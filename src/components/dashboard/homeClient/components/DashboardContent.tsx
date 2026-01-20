@@ -260,8 +260,8 @@ const createStyles = (theme: Theme) =>
       height: heightScale(67),
       borderRadius: moderateWidthScale(999),
       backgroundColor: theme.emptyProfileImage,
-      borderWidth:1,
-      borderColor:theme.borderLight,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     verifiedCardImageNew: {
       width: widthScale(105),
@@ -1381,7 +1381,6 @@ export default function DashboardContent() {
     useCallback(() => {
       if (userRole === "customer") {
         fetchAppointments();
-       
       }
     }, [])
   );
