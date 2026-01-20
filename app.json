@@ -1,0 +1,81 @@
+{
+  "expo": {
+    "name": "Fresh Pass",
+    "slug": "fresh-pass",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "com.freshpass",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.freshpass",
+      "config": {
+        "googleMapsApiKey": "AIzaSyCVenDT7Q0jMPj-x5tLh4gFO3aF_rP5i7c"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.freshpass",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCVenDT7Q0jMPj-x5tLh4gFO3aF_rP5i7c"
+        }
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro",
+      "viewport": "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FEFAE0",
+          "dark": {
+            "backgroundColor": "#FEFAE0"
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your clients.",
+          "cameraPermission": "The app accesses your camera to let you take photos for your portfolio."
+        }
+      ],
+      "expo-font",
+      "expo-secure-store",
+      "expo-build-properties",
+      "expo-localization",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a60362a5-ab12-4c36-8266-068fcb6ea83e"
+      }
+    },
+    "owner": "fresh-pass-org"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "hello": "Bonjour!",
+  "welcome": "Bienvenue dans notre application",
+  "dashboard": "Tableau de bord",
+  "goToHome": "Aller à l'accueil",
+  "change": "Changer",
+  "current": "Actuel",
+  "theme": "Thème",
+  "type": "Type",
+  "language": "Langue"
+}

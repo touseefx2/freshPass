@@ -1,0 +1,346 @@
+import React, { useMemo, useEffect, useCallback, useState } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { Theme } from "@/src/theme/colors";
+import { fontSize, fonts } from "@/src/theme/fonts";
+import {
+  heightScale,
+  moderateHeightScale,
+  moderateWidthScale,
+} from "@/src/theme/dimensions";
+import { IMAGES } from "@/src/constant/images";
+import {
+  setBusinessCategory,
+  setSearchTerm,
+  setCategories,
+} from "@/src/state/slices/completeProfileSlice";
+import FloatingInput from "@/src/components/floatingInput";
+import { ApiService } from "@/src/services/api";
+import { businessEndpoints } from "@/src/services/endpoints";
+import { Skeleton } from "@/src/components/skeletons";
+import RetryButton from "@/src/components/retryButton";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
+
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      gap: moderateHeightScale(20),
+    },
+    titleSec: {
+      marginTop: moderateHeightScale(8),
+      gap: moderateHeightScale(5),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    title: {
+      fontSize: fontSize.size24,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    subtitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    searchContainer: {
+      marginTop: moderateHeightScale(5),
+      marginHorizontal: moderateWidthScale(20),
+    },
+    lineSeparator: {
+      width: "100%",
+      height: 1,
+      backgroundColor: theme.borderLight,
+      position: "absolute",
+    },
+    categoriesContainer: {
+      paddingVertical: moderateHeightScale(20),
+    },
+    categoriesGrid: {
+      width: "100%",
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      rowGap: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(20),
+      gap: "5%",
+    },
+    categoryCard: {
+      width: "30%",
+      height: heightScale(118),
+    },
+    categoryImage: {
+      width: "100%",
+      height: heightScale(90),
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      borderRadius: moderateWidthScale(12),
+    },
+    categoryCardSelected: {
+      borderColor: theme.selectCard,
+      borderWidth: 3,
+    },
+    categoryLabelContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(8),
+      backgroundColor: theme.background,
+    },
+    categoryLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    otherCategoriesContainer: {
+      gap: moderateHeightScale(15),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    otherCategoriesTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen2,
+    },
+    otherCategoryContainer: {
+      gap: moderateHeightScale(12),
+    },
+    otherCategoryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    catSeparator: {
+      width: "100%",
+      height: 1,
+      backgroundColor: theme.borderLight,
+    },
+    otherCategoryLabel: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      flex: 1,
+    },
+    emptyStateContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    emptyStateText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
+  });
+
+export default function StepOne() {
+  const dispatch = useAppDispatch();
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+  const { showBanner } = useNotificationContext();
+  const { searchTerm, businessCategory, categories } = useAppSelector(
+    (state) => state.completeProfile
+  );
+
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      setApiError(false);
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: Array<{
+          id: number;
+          name: string;
+          imageUrl: string | null;
+        }>;
+      }>(businessEndpoints.categories);
+
+      if (response.success && response.data) {
+        dispatch(setCategories(response.data));
+      }
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
+      setApiError(true);
+      showBanner("API Failed", "API failed to fetch categories", "error", 2500);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // Split categories into popular (first 6) and other (rest)
+  const popularCategories = useMemo(() => {
+    return categories.slice(0, 6);
+  }, [categories]);
+
+  const otherCategories = useMemo(() => {
+    return categories.slice(6);
+  }, [categories]);
+
+  const filteredPopular = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return popularCategories;
+    }
+    const term = searchTerm.toLowerCase();
+    return popularCategories.filter((category) =>
+      category.name.toLowerCase().includes(term)
+    );
+  }, [popularCategories, searchTerm]);
+
+  const filteredOther = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return otherCategories;
+    }
+    const term = searchTerm.toLowerCase();
+    return otherCategories.filter((category) =>
+      category.name.toLowerCase().includes(term)
+    );
+  }, [otherCategories, searchTerm]);
+
+  const handleSearchChange = (value: string) => {
+    dispatch(setSearchTerm(value));
+  };
+
+  const handleSelectCategory = useCallback(
+    (categoryId: number, categoryName: string) => {
+      dispatch(setBusinessCategory({ id: categoryId, name: categoryName }));
+    },
+    [dispatch]
+  );
+
+  const hasNoData = !categoriesLoading && !apiError && categories.length === 0;
+  const showSkeleton = categoriesLoading && categories.length === 0;
+
+  return (
+    <View style={styles.container}>
+      {showSkeleton ? (
+        <Skeleton screenType="StepOne" styles={styles} />
+      ) : apiError ? (
+        <View style={styles.emptyStateContainer}>
+          <RetryButton onPress={fetchCategories} loading={categoriesLoading} />
+        </View>
+      ) : hasNoData ? (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>
+            Business category data not found
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.titleSec}>
+            <Text style={styles.title}>What&apos;s your business?</Text>
+            <Text style={styles.subtitle}>
+              Select the category that best represents your salon or service.
+              This helps customers find you.
+            </Text>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <FloatingInput
+              label="Search"
+              value={searchTerm}
+              onChangeText={handleSearchChange}
+              placeholder="Search"
+              placeholderTextColor={(colors as Theme).lightGreen2}
+              onClear={() => dispatch(setSearchTerm(""))}
+              containerStyle={{
+                borderRadius: moderateWidthScale(999),
+              }}
+              inputStyle={{
+                height: heightScale(18),
+              }}
+              renderLeftAccessory={() => (
+                <Feather
+                  name="search"
+                  size={moderateWidthScale(18)}
+                  color={(colors as Theme).darkGreen}
+                />
+              )}
+            />
+          </View>
+
+          <View style={styles.categoriesContainer}>
+            <View style={[styles.lineSeparator, { top: 0 }]} />
+            <View style={styles.categoriesGrid}>
+              {filteredPopular.map((item) => {
+                const isSelected = businessCategory?.id === item.id;
+                return (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => handleSelectCategory(item.id, item.name)}
+                    style={styles.categoryCard}
+                  >
+                    <Image
+                      source={{
+                        uri: item?.imageUrl
+                          ? process.env.EXPO_PUBLIC_API_BASE_URL +
+                            item?.imageUrl
+                          : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
+                      }}
+                      style={[
+                        styles.categoryImage,
+                        isSelected && styles.categoryCardSelected,
+                      ]}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.categoryLabelContainer}>
+                      <Text numberOfLines={2} style={styles.categoryLabel}>
+                        {item.name}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={[styles.lineSeparator, { bottom: 0 }]} />
+          </View>
+
+          <View style={styles.otherCategoriesContainer}>
+            <Text style={styles.otherCategoriesTitle}>Other categories</Text>
+
+            {filteredOther.map((category, index) => {
+              const isSelected = businessCategory?.id === category.id;
+              return (
+                <View key={category.id} style={styles.otherCategoryContainer}>
+                  <Pressable
+                    onPress={() =>
+                      handleSelectCategory(category.id, category.name)
+                    }
+                    style={[
+                      styles.otherCategoryRow,
+                      isSelected && {
+                        backgroundColor: (colors as Theme).lightBeige,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.otherCategoryLabel}>
+                      {category.name}
+                    </Text>
+                    <Feather
+                      name="chevron-right"
+                      size={moderateWidthScale(18)}
+                      color={(colors as Theme).darkGreen}
+                    />
+                  </Pressable>
+                  {index < filteredOther.length - 1 && (
+                    <View style={styles.catSeparator} />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        </>
+      )}
+    </View>
+  );
+}

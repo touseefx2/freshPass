@@ -1,0 +1,11 @@
+{
+    "hello": "Hello!",
+    "welcome": "Welcome to our app",
+    "dashboard":"Dashboard",
+    "goToHome":"Go to Home",
+    "change": "Change",
+    "current":"Current",
+    "theme":"Theme",
+    "type":"Type",
+    "language":"Language"
+  }
