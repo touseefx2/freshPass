@@ -1,0 +1,351 @@
+# FreshPass Styling Rules
+
+## Theme and Colors
+- **ALWAYS** use `theme.` prefix when accessing colors and design tokens
+- **NEVER** use hardcoded color values like "#FFFFFF", "#000000", etc.
+- **NEVER** use direct color strings - always use theme properties
+
+### Correct Usage:
+```typescript
+backgroundColor: theme.background,
+color: theme.text,
+borderColor: theme.borderLine,
+backgroundColor: theme.primary,
+color: theme.selectedDropDownText,
+```
+
+### Incorrect Usage:
+```typescript
+backgroundColor: "#FFFFFF",  // ❌ WRONG
+color: "#000000",            // ❌ WRONG
+backgroundColor: "white",     // ❌ WRONG
+```
+
+## Font Sizes
+- **ALWAYS** use `fontSize.sizeXX` pattern for font sizes
+- **NEVER** use hardcoded numeric values like `fontSize: 18`, `fontSize: 32`, etc.
+- Available sizes: size1, size10, size11, size12, size13, size14, size15, size16, size17, size18, size19, size20, size21, size22, size23, size24, size25, size26, size27, size28, size29, size30, size32, size34, size36, size38, size40
+
+### Correct Usage:
+```typescript
+fontSize: fontSize.size18,
+fontSize: fontSize.size32,
+fontSize: fontSize.size12,
+```
+
+### Incorrect Usage:
+```typescript
+fontSize: 18,      // ❌ WRONG
+fontSize: 32,      // ❌ WRONG
+fontSize: "18px",  // ❌ WRONG
+```
+
+## Font Families
+- **ALWAYS** use `fonts.fontXX` pattern for font families
+- Available fonts: fonts.fontRegular, fonts.fontMedium, fonts.fontBold, fonts.fontExtraBold
+
+### Correct Usage:
+```typescript
+fontFamily: fonts.fontBold,
+fontFamily: fonts.fontRegular,
+fontFamily: fonts.fontMedium,
+```
+
+### Incorrect Usage:
+```typescript
+fontFamily: "Arial",           // ❌ WRONG
+fontFamily: "fontBold",       // ❌ WRONG
+fontWeight: "bold",           // ❌ WRONG - use fontFamily instead
+```
+
+## Style Creation Pattern
+- **ALWAYS** use the `createStyles` function pattern with `theme: Theme` parameter
+- **ALWAYS** use `useMemo` to memoize styles with `colors` dependency
+- **ALWAYS** import `Theme` type from `@/src/theme/colors`
+- **ALWAYS** import `fontSize` and `fonts` from `@/src/theme/fonts`
+- **ALWAYS** import responsive dimension functions from `@/src/theme/dimensions` when needed
+- **ALWAYS** use `useTheme()` hook to get `colors` (which is the Theme object)
+
+### Correct Pattern:
+```typescript
+import { Theme } from "@/src/theme/colors";
+import { fontSize, fonts } from "@/src/theme/fonts";
+import { widthScale, heightScale, moderateWidthScale, moderateHeightScale } from "@/src/theme/dimensions";
+import { useTheme } from "@/src/hooks/hooks";
+import { useMemo } from "react";
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+      padding: moderateWidthScale(16),
+    },
+    text: {
+      color: theme.text,
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+    },
+    box: {
+      width: widthScale(100),
+      height: heightScale(100),
+      borderRadius: moderateWidthScale(8),
+    },
+  });
+
+export default function MyComponent() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  
+  // ... rest of component
+}
+```
+
+## Component Structure
+- When creating new components, follow the existing pattern:
+  1. Import Theme type, fontSize/fonts, and responsive dimension functions
+  2. Create `createStyles` function with `theme: Theme` parameter
+  3. Use `useTheme()` hook to get colors
+  4. Memoize styles with `useMemo(() => createStyles(colors), [colors])`
+
+## When Styling Components
+- For any color-related property (backgroundColor, color, borderColor, etc.), use `theme.` prefix
+- For any fontSize property, use `fontSize.sizeXX` pattern
+- For any fontFamily property, use `fonts.fontXX` pattern
+- When creating new style objects, always pass `theme` parameter to `createStyles` function
+
+## Responsive Dimensions (Width, Height, Padding, Margin, etc.)
+- **ALWAYS** use responsive scaling functions for width, height, padding, margin, borderRadius, and other dimension values
+- **NEVER** use hardcoded numeric values for dimensions like `width: 100`, `height: 200`, `padding: 16`, etc.
+- **ALWAYS** import responsive functions from `@/src/theme/dimensions`
+
+### Available Functions:
+1. **`widthScale(size)`** - Use for width values
+2. **`heightScale(size)`** - Use for height values  
+3. **`moderateWidthScale(size, factor?)`** - Use for padding, margin, borderRadius (horizontal)
+4. **`moderateHeightScale(size, factor?)`** - Use for padding, margin (vertical)
+
+### When to Use Which Function:
+
+#### `widthScale(size)` - Use for:
+- `width` property
+- `minWidth`, `maxWidth` properties
+- Horizontal spacing that needs to scale proportionally
+
+#### `heightScale(size)` - Use for:
+- `height` property
+- `minHeight`, `maxHeight` properties
+- Vertical spacing that needs to scale proportionally
+
+#### `moderateWidthScale(size, factor?)` - Use for:
+- `padding`, `paddingLeft`, `paddingRight`, `paddingHorizontal`
+- `margin`, `marginLeft`, `marginRight`, `marginHorizontal`
+- `borderRadius` (horizontal values)
+- `gap` (horizontal)
+- `left`, `right` positioning values
+- **Factor parameter** (optional): Default is 0.5. Use 0.3 for less scaling, 0.7 for more scaling
+
+#### `moderateHeightScale(size, factor?)` - Use for:
+- `paddingTop`, `paddingBottom`, `paddingVertical`
+- `marginTop`, `marginBottom`, `marginVertical`
+- `top`, `bottom` positioning values
+- `gap` (vertical)
+- **Factor parameter** (optional): Default is 0.5. Use 0.3 for less scaling, 0.7 for more scaling
+
+### Correct Usage:
+```typescript
+import { widthScale, heightScale, moderateWidthScale, moderateHeightScale } from "@/src/theme/dimensions";
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      width: widthScale(100),           // ✅ Correct - responsive width
+      height: heightScale(100),         // ✅ Correct - responsive height
+      padding: moderateWidthScale(16),  // ✅ Correct - responsive padding
+      marginTop: moderateHeightScale(20), // ✅ Correct - responsive margin
+      borderRadius: moderateWidthScale(8), // ✅ Correct - responsive border radius
+      gap: moderateWidthScale(12),      // ✅ Correct - responsive gap
+    },
+    card: {
+      width: widthScale(300),
+      minHeight: heightScale(200),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(12),
+    },
+    button: {
+      paddingHorizontal: moderateWidthScale(24),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(8),
+      minWidth: widthScale(100),
+    },
+  });
+```
+
+### Incorrect Usage:
+```typescript
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    container: {
+      width: 100,           // ❌ WRONG - use widthScale(100)
+      height: 200,          // ❌ WRONG - use heightScale(200)
+      padding: 16,          // ❌ WRONG - use moderateWidthScale(16)
+      marginTop: 20,        // ❌ WRONG - use moderateHeightScale(20)
+      borderRadius: 8,      // ❌ WRONG - use moderateWidthScale(8)
+      gap: 12,              // ❌ WRONG - use moderateWidthScale(12)
+    },
+  });
+```
+
+### Special Cases:
+- **`flex: 1`** - ✅ OK to use directly (this is a flexbox value, not a dimension)
+- **`flex: 0`** - ✅ OK to use directly
+- **Percentage values** - ✅ OK to use directly (e.g., `width: "100%"`)
+- **`aspectRatio`** - ✅ OK to use directly (e.g., `aspectRatio: 16/9`)
+- **`borderWidth`** - Usually OK to use small fixed values (e.g., `borderWidth: 1`), but for larger borders use `moderateWidthScale(2)`
+
+## Component File Organization
+- **SINGLE FILE COMPONENTS** (styles in same file): Put component file directly in `src/components/` folder (NO subfolder)
+  - Example: `src/components/button.tsx` ✅
+  - Example: `src/components/radioOption.tsx` ✅
+  - **NEVER** create a folder if styles are in the same file
+- **FOLDER STRUCTURE** (styles in separate file): Create a folder with `index.tsx` and `styles.ts` files
+  - Example: `src/components/header/index.tsx` and `src/components/header/styles.ts` ✅
+  - Only use folder structure when styles are separated from component code
+
+### Decision Rule:
+- **If styles are in the same file** → Put component directly in `src/components/` folder (e.g., `src/components/button.tsx`)
+- **If styles are in a separate file** → Create folder with `index.tsx` and `styles.ts` (e.g., `src/components/header/index.tsx` and `src/components/header/styles.ts`)
+
+### Single File Component (Correct Pattern):
+```typescript
+// src/components/button.tsx ✅ CORRECT - No folder needed
+import { Theme } from "@/src/theme/colors";
+import { fontSize, fonts } from "@/src/theme/fonts";
+import { StyleSheet } from "react-native";
+
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    button: {
+      // styles here
+    },
+  });
+
+export default function Button() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+  // component code
+}
+```
+
+### Folder Structure Component (Correct Pattern):
+```typescript
+// src/components/header/index.tsx
+import { createStyles } from "./styles";
+
+export default function Header() {
+  // component code
+}
+
+// src/components/header/styles.ts
+export const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    // many styles here
+  });
+```
+
+### Incorrect Patterns:
+```typescript
+// ❌ WRONG - Don't create folder if styles are in same file
+// src/components/button/button.tsx (with styles in same file)
+// ✅ CORRECT - src/components/button.tsx
+
+// ❌ WRONG - Don't put single file component in folder
+// src/components/radioOption/radioOption.tsx (single file with styles)
+// ✅ CORRECT - src/components/radioOption.tsx
+```
+
+## Text Component - FontFamily Requirement
+- **MANDATORY**: Every `Text` component **MUST** have `fontFamily` property
+- **NEVER** create Text without fontFamily - it's required for all text
+- Choose fontFamily based on design image provided:
+  - `fonts.fontRegular` - for normal body text
+  - `fonts.fontMedium` - for medium weight text
+  - `fonts.fontBold` - for bold/heading text
+  - `fonts.fontExtraBold` - for extra bold text
+- If design image shows text weight/style, match it accordingly
+- If no design image provided, default to `fonts.fontRegular` for body text and `fonts.fontBold` for headings
+
+### Correct Usage:
+```typescript
+<Text style={styles.text}>Hello World</Text>
+
+// In styles:
+text: {
+  fontSize: fontSize.size16,
+  fontFamily: fonts.fontRegular,  // ✅ REQUIRED - always include fontFamily
+  color: theme.text,
+}
+```
+
+### Incorrect Usage:
+```typescript
+text: {
+  fontSize: fontSize.size16,
+  color: theme.text,
+  // ❌ WRONG - fontFamily missing!
+}
+```
+
+## Button Component Usage
+- **ALWAYS** use the `Button` component (`@/src/components/button`) when creating buttons with similar design
+- **NEVER** create custom button components or inline button styles if they match the Button component design
+- The Button component supports: `title`, `onPress`, `disabled` (optional), `containerStyle` (optional)
+- If button design matches (dark green background, white text, rounded corners), **MUST** use Button component
+
+### Correct Usage:
+```typescript
+import Button from "@/src/components/button";
+
+// ✅ CORRECT - Use Button component
+<Button title="Sign in or Register" onPress={handlePress} />
+<Button title="Continue" onPress={handleContinue} disabled={!isValid} />
+```
+
+### Incorrect Usage:
+```typescript
+// ❌ WRONG - Don't create custom button if design matches Button component
+<TouchableOpacity style={styles.customButton}>
+  <Text style={styles.buttonText}>Sign in</Text>
+</TouchableOpacity>
+
+// ❌ WRONG - Don't duplicate button styles
+const createStyles = (theme: Theme) =>
+  StyleSheet.create({
+    customButton: {
+      backgroundColor: theme.buttonBack,  // Same as Button component
+      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+      // ... should use Button component instead
+    },
+  });
+```
+
+## Important Notes
+- These rules apply to ALL styling in the project
+- When generating code, always follow these patterns
+- When refactoring code, ensure old hardcoded values are replaced with theme-based values
+- The theme object is accessed via `useTheme()` hook which returns `{ colors }` where `colors` is the Theme object
+- **ALL dimension values must use responsive scaling functions** - this ensures your UI looks consistent across all devices (phone, tablet, web, iOS, iPad, Android)
+- **ALL Text components MUST have fontFamily** - never create Text without fontFamily
+- **ALWAYS use Button component** when button design matches (dark green background, white text, rounded) - don't create duplicate button code
+
+## Language Response Rules
+- **NEVER** respond in Hindi - Hindi is strictly forbidden
+- **ONLY** respond in **English** or **Roman Urdu**
+- Match the user's language:
+  - If user writes in **Roman Urdu** → respond in **Roman Urdu**
+  - If user writes in **English** → respond in **English**
+- Keep responses consistent with the language the user is using
+- Code comments should always be in English regardless of conversation language
