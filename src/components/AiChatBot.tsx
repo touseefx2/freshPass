@@ -12,6 +12,8 @@ import {
   Animated,
   Keyboard,
   Dimensions,
+  Easing,
+  Alert,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -31,6 +33,7 @@ import {
   receiveAiResponse,
   ChatMessage,
 } from "@/src/state/slices/chatSlice";
+import { checkInternetConnection } from "../services/api";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
@@ -48,7 +51,7 @@ const createStyles = (theme: Theme, bottomInset: number) =>
     },
     overlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
     },
     floatingButton: {
       position: "absolute",
@@ -58,19 +61,35 @@ const createStyles = (theme: Theme, bottomInset: number) =>
       height: widthScale(45),
       borderRadius: widthScale(45 / 2),
       backgroundColor: theme.darkGreen,
+      borderWidth: 1,
+      borderColor: theme.darkGreenLight,
+    },
+    buttonInner: {
+      width: "100%",
+      height: "100%",
       alignItems: "center",
       justifyContent: "center",
-      zIndex: 1000,
+      borderRadius: widthScale(27),
     },
     shadow: {
       shadowColor: theme.shadow,
       shadowOffset: {
         width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.23,
+      shadowRadius: 2.62,
+      elevation: 4,
+    },
+    shadowLight: {
+      shadowColor: theme.shadow,
+      shadowOffset: {
+        width: 0,
         height: 1,
       },
-      shadowOpacity: 0.22,
-      shadowRadius: 2.22,
-      elevation: 3,
+      shadowOpacity: 0.20,
+      shadowRadius: 1.41,
+      elevation: 2,
     },
     aiIconContainer: {
       alignItems: "center",
@@ -79,7 +98,7 @@ const createStyles = (theme: Theme, bottomInset: number) =>
     chatBoxContainer: {
       position: "absolute",
       bottom: moderateHeightScale(70) + bottomInset,
-      right: moderateWidthScale(16),
+      right: moderateWidthScale(5),
       width: CHAT_BOX_WIDTH,
       height: CHAT_BOX_HEIGHT,
       backgroundColor: theme.background,
@@ -92,7 +111,7 @@ const createStyles = (theme: Theme, bottomInset: number) =>
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(10),
+      paddingVertical: moderateHeightScale(8),
       backgroundColor: theme.darkGreen,
     },
     headerLeft: {
@@ -157,24 +176,37 @@ const createStyles = (theme: Theme, bottomInset: number) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(8),
       borderTopWidth: 1,
       borderTopColor: theme.borderLight,
       gap: moderateWidthScale(10),
       backgroundColor: theme.background,
     },
-    textInput: {
+    textInputWrapper: {
       flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(24),
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(10),
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
       maxHeight: heightScale(100),
       borderWidth: 1,
       borderColor: theme.borderLight,
+    },
+    textInput: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      paddingVertical: 0,
+      maxHeight: heightScale(80),
+      textAlignVertical: "center",
+      includeFontPadding: false,
+    },
+    clearButton: {
+      marginLeft: moderateWidthScale(8),
+      padding: moderateWidthScale(4),
     },
     sendButton: {
       width: widthScale(42),
@@ -323,8 +355,99 @@ const AiChatBot: React.FC = () => {
   const { isOpen, messages, isLoading } = useAppSelector((state) => state.chat);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
+
+  // Animation refs
+  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const chatBoxAnim = useRef(new Animated.Value(0)).current;
+
+  // Smooth bouncy float + wiggle + heartbeat animation
+  useEffect(() => {
+    // Bouncy floating (elastic feel)
+    const bounceAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, {
+          toValue: -12,
+          duration: 1200,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(bounceAnim, {
+          toValue: 0,
+          duration: 1200,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.cubic),
+        }),
+      ])
+    );
+
+    // Subtle wiggle rotation
+    const rotateAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 2500,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: -1,
+          duration: 2500,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 0,
+          duration: 2500,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+      ])
+    );
+
+    // Heartbeat scale pulse
+    const scaleAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.1,
+          duration: 600,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1.05,
+          duration: 400,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+          easing: Easing.in(Easing.cubic),
+        }),
+        Animated.delay(1500), // Pause between heartbeats
+      ])
+    );
+
+    // Start all animations
+    bounceAnimation.start();
+    rotateAnimation.start();
+    scaleAnimation.start();
+
+    return () => {
+      bounceAnimation.stop();
+      rotateAnimation.stop();
+      scaleAnimation.stop();
+    };
+  }, [bounceAnim, rotateAnim, scaleAnim]);
 
   // Animate chat box open/close
   useEffect(() => {
@@ -336,21 +459,6 @@ const AiChatBot: React.FC = () => {
     }).start();
   }, [isOpen, chatBoxAnim]);
 
-  // Animate button press
-  const handlePressIn = useCallback(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.9,
-      useNativeDriver: true,
-    }).start();
-  }, [scaleAnim]);
-
-  const handlePressOut = useCallback(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
-  }, [scaleAnim]);
-
   const handleToggleChat = useCallback(() => {
     dispatch(toggleChat());
   }, [dispatch]);
@@ -360,8 +468,18 @@ const AiChatBot: React.FC = () => {
     dispatch(closeChat());
   }, [dispatch]);
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = async () => {
+
     if (inputText.trim().length === 0) return;
+
+
+    const hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      Alert.alert("No Internet Connection", "Please check your internet connection and try again.");
+      return;
+    }
+
+
 
     const messageText = inputText.trim();
     setInputText("");
@@ -372,7 +490,7 @@ const AiChatBot: React.FC = () => {
       const randomResponse = AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)];
       dispatch(receiveAiResponse(randomResponse));
     }, 1500);
-  }, [inputText, dispatch]);
+  }
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -404,17 +522,21 @@ const AiChatBot: React.FC = () => {
     [styles]
   );
 
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
+
   const renderEmptyState = () => {
     return (
-      <View style={styles.emptyContainer}>
-
-        <AiRobotIcon width={50} height={50} color={theme.darkGreen} />
-
-        <Text style={styles.emptyTitle}>AI Assistant</Text>
-        <Text style={styles.emptySubtitle}>
-          Ask me anything! I'm here to help you with questions, information, and assistance.
-        </Text>
-      </View>
+      <TouchableWithoutFeedback onPress={dismissKeyboard}>
+        <View style={styles.emptyContainer}>
+          <AiRobotIcon width={50} height={50} color={theme.darkGreen} />
+          <Text style={styles.emptyTitle}>AI Assistant</Text>
+          <Text style={styles.emptySubtitle}>
+            Ask me anything! I'm here to help you with questions, information, and assistance.
+          </Text>
+        </View>
+      </TouchableWithoutFeedback>
     );
   }
 
@@ -479,6 +601,8 @@ const AiChatBot: React.FC = () => {
               renderEmptyState()
             ) : (
               <FlatList
+                keyboardShouldPersistTaps="handled"
+                onScrollBeginDrag={dismissKeyboard}
                 ref={flatListRef}
                 data={messages}
                 renderItem={renderMessage}
@@ -494,17 +618,28 @@ const AiChatBot: React.FC = () => {
 
             {/* Input Area */}
             <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Ask me anything..."
-                placeholderTextColor={theme.lightGreen}
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={5000}
-                returnKeyType="send"
-                onSubmitEditing={handleSendMessage}
-              />
+              <View style={[styles.textInputWrapper, styles.shadowLight]}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Ask me anything..."
+                  placeholderTextColor={theme.lightGreen2}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  multiline
+                  maxLength={5000}
+                  returnKeyType="send"
+                  onSubmitEditing={handleSendMessage}
+                />
+                {inputText.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.clearButton}
+                    onPress={() => setInputText("")}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <CloseIcon width={16} height={16} color={theme.darkGreen} />
+                  </TouchableOpacity>
+                )}
+              </View>
               <TouchableOpacity
                 style={[
                   styles.sendButton,
@@ -521,17 +656,32 @@ const AiChatBot: React.FC = () => {
         </Animated.View>
       )}
 
-      {/* Floating AI Button - always shows robot icon, stays in place */}
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      {/* Floating AI Button - Smooth bounce + wiggle + heartbeat */}
+      <Animated.View
+        style={[
+          styles.floatingButton,
+          styles.shadow,
+          {
+            transform: [
+              { translateY: bounceAnim },
+              {
+                rotate: rotateAnim.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange: ["-8deg", "0deg", "8deg"],
+                }),
+              },
+              { scale: scaleAnim },
+            ],
+          },
+        ]}
+      >
         <TouchableOpacity
-          style={[styles.floatingButton, styles.shadow]}
+          style={styles.buttonInner}
           onPress={handleToggleChat}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          activeOpacity={1}
+          activeOpacity={0.9}
         >
           <View style={styles.aiIconContainer}>
-            <AiRobotIcon width={25} height={25} color={theme.white} />
+            <AiRobotIcon width={22} height={22} color={theme.white} />
           </View>
         </TouchableOpacity>
       </Animated.View>
