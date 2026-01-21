@@ -5,18 +5,23 @@ export interface ChatMessage {
   text: string;
   sender: "user" | "ai";
   timestamp: number;
+  isStreaming?: boolean;
 }
 
 export interface ChatState {
   isOpen: boolean;
   messages: ChatMessage[];
   isLoading: boolean;
+  isStreaming: boolean;
+  sessionId: string;
 }
 
 const initialState: ChatState = {
   isOpen: false,
   messages: [],
   isLoading: false,
+  isStreaming: false,
+  sessionId: "0",
 };
 
 const chatSlice = createSlice({
@@ -44,12 +49,71 @@ const chatSlice = createSlice({
     setLoading(state, action: PayloadAction<boolean>) {
       state.isLoading = action.payload;
     },
+    setStreaming(state, action: PayloadAction<boolean>) {
+      state.isStreaming = action.payload;
+    },
+    setSessionId(state, action: PayloadAction<string>) {
+      state.sessionId = action.payload;
+    },
     clearMessages(state) {
       state.messages = [];
+      state.sessionId = "0";
     },
-    // Static AI response for now - will be replaced with actual API call later
+    // Add user message and set loading
+    sendUserMessage(state, action: PayloadAction<string>) {
+      const userMessage: ChatMessage = {
+        id: Date.now().toString(),
+        text: action.payload,
+        sender: "user",
+        timestamp: Date.now(),
+      };
+      state.messages.push(userMessage);
+      state.isLoading = true;
+      state.isStreaming = false;
+    },
+    // Start AI streaming response - creates empty AI message
+    startAiStreamResponse(state) {
+      const aiMessage: ChatMessage = {
+        id: `ai-${Date.now()}`,
+        text: "",
+        sender: "ai",
+        timestamp: Date.now(),
+        isStreaming: true,
+      };
+      state.messages.push(aiMessage);
+      state.isLoading = false;
+      state.isStreaming = true;
+    },
+    // Append token to the last AI message
+    appendTokenToLastMessage(state, action: PayloadAction<string>) {
+      const lastMessage = state.messages[state.messages.length - 1];
+      if (lastMessage && lastMessage.sender === "ai") {
+        lastMessage.text += action.payload;
+      }
+    },
+    // Complete AI streaming response
+    completeAiStreamResponse(state, action: PayloadAction<{ fullResponse: string; sessionId: string }>) {
+      const lastMessage = state.messages[state.messages.length - 1];
+      if (lastMessage && lastMessage.sender === "ai") {
+        lastMessage.text = action.payload.fullResponse;
+        lastMessage.isStreaming = false;
+      }
+      state.isStreaming = false;
+      state.isLoading = false;
+      state.sessionId = action.payload.sessionId;
+    },
+    // Handle streaming error
+    streamError(state) {
+      // Remove the last AI message if it was streaming
+      const lastMessage = state.messages[state.messages.length - 1];
+      if (lastMessage && lastMessage.sender === "ai" && lastMessage.isStreaming) {
+        state.messages.pop();
+      }
+      state.isStreaming = false;
+      state.isLoading = false;
+    },
+    // Legacy methods for backward compatibility
     sendMessageAndGetResponse(state, action: PayloadAction<string>) {
-      // Add user message
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
         text: action.payload,
@@ -78,7 +142,14 @@ export const {
   closeChat,
   addMessage,
   setLoading,
+  setStreaming,
+  setSessionId,
   clearMessages,
+  sendUserMessage,
+  startAiStreamResponse,
+  appendTokenToLastMessage,
+  completeAiStreamResponse,
+  streamError,
   sendMessageAndGetResponse,
   receiveAiResponse,
 } = chatSlice.actions;

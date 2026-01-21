@@ -29,11 +29,17 @@ import { SendIcon, CloseIcon, AiRobotIcon } from "@/assets/icons";
 import {
   toggleChat,
   closeChat,
-  sendMessageAndGetResponse,
-  receiveAiResponse,
+  clearMessages,
+  setSessionId,
+  sendUserMessage,
+  startAiStreamResponse,
+  appendTokenToLastMessage,
+  completeAiStreamResponse,
+  streamError,
   ChatMessage,
 } from "@/src/state/slices/chatSlice";
 import { checkInternetConnection } from "../services/api";
+import { AiToolsService } from "../services/aiToolsService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
@@ -51,7 +57,7 @@ const createStyles = (theme: Theme, bottomInset: number) =>
     },
     overlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: "rgba(0, 0, 0, 0.6)",
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
     },
     floatingButton: {
       position: "absolute",
@@ -132,9 +138,16 @@ const createStyles = (theme: Theme, bottomInset: number) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    closeButton: {
+    headerRightButtons: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    headerButton: {
       width: widthScale(32),
-      alignItems: "flex-end"
+      height: widthScale(32),
+      alignItems: "center",
+      justifyContent: "center",
     },
     messagesList: {
       flex: 1,
@@ -144,7 +157,6 @@ const createStyles = (theme: Theme, bottomInset: number) =>
       paddingVertical: moderateHeightScale(16),
     },
     messageBubble: {
-      maxWidth: "85%",
       paddingHorizontal: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(10),
       borderRadius: moderateWidthScale(16),
@@ -152,13 +164,9 @@ const createStyles = (theme: Theme, bottomInset: number) =>
     },
     userMessage: {
       alignSelf: "flex-end",
+      maxWidth: "85%",
       backgroundColor: theme.buttonBack,
       borderBottomRightRadius: moderateWidthScale(4),
-    },
-    aiMessage: {
-      alignSelf: "flex-start",
-      backgroundColor: theme.lightGreen1,
-      borderBottomLeftRadius: moderateWidthScale(4),
     },
     userMessageText: {
       fontSize: fontSize.size14,
@@ -209,20 +217,24 @@ const createStyles = (theme: Theme, bottomInset: number) =>
       padding: moderateWidthScale(4),
     },
     sendButton: {
-      width: widthScale(42),
-      height: widthScale(42),
-      borderRadius: widthScale(21),
-      backgroundColor: theme.buttonBack,
+      width: widthScale(32),
+      height: widthScale(32),
+      borderRadius: widthScale(32 / 2),
+      backgroundColor: theme.darkGreen,
       alignItems: "center",
       justifyContent: "center",
-      shadowColor: theme.buttonBack,
-      shadowOffset: { width: 0, height: moderateHeightScale(2) },
-      shadowOpacity: 0.3,
-      shadowRadius: moderateWidthScale(4),
-      elevation: 3,
     },
     sendButtonDisabled: {
       opacity: 0.4,
+    },
+    inputContainerDisabled: {
+      opacity: 0.7,
+    },
+    inputWrapperDisabled: {
+      backgroundColor: theme.borderLight,
+    },
+    textInputDisabled: {
+      color: theme.lightGreen,
     },
     emptyContainer: {
       flex: 1,
@@ -250,96 +262,283 @@ const createStyles = (theme: Theme, bottomInset: number) =>
       alignItems: "center",
       backgroundColor: theme.lightGreen1,
       paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(10),
+      paddingVertical: moderateHeightScale(12),
       borderRadius: moderateWidthScale(16),
       borderBottomLeftRadius: moderateWidthScale(4),
       marginBottom: moderateHeightScale(8),
+      gap: moderateWidthScale(10),
+    },
+    typingIconContainer: {
+      width: widthScale(20),
+      height: widthScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    typingDotsContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
     },
     typingDot: {
-      width: widthScale(6),
-      height: widthScale(6),
-      borderRadius: widthScale(3),
-      backgroundColor: theme.lightGreen,
-      marginHorizontal: moderateWidthScale(2),
+      width: widthScale(8),
+      height: widthScale(8),
+      borderRadius: widthScale(4),
+      backgroundColor: theme.darkGreen,
+    },
+    aiMessageContainer: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(8),
+      maxWidth: "85%",
+    },
+    aiMessageIconContainer: {
+      width: widthScale(24),
+      height: widthScale(24),
+      borderRadius: widthScale(12),
+      backgroundColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: moderateHeightScale(2),
+    },
+    aiMessageBubble: {
+      flex: 1,
+      borderRadius: moderateWidthScale(16),
+      borderBottomLeftRadius: moderateWidthScale(4),
+      backgroundColor: theme.lightGreen1,
+    },
+    inlineTypingContainer: {
+      paddingVertical: moderateHeightScale(4),
+    },
+    inlineTypingDots: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+    },
+    inlineTypingDot: {
+      width: widthScale(8),
+      height: widthScale(8),
+      borderRadius: widthScale(4),
+      backgroundColor: theme.darkGreen,
     },
   });
 
-// Static AI responses for now
-const AI_RESPONSES = [
-  "Hello! How can I help you today?",
-  "I'm here to assist you with any questions about our services.",
-  "That's a great question! Let me help you with that.",
-  "I understand. Is there anything else you'd like to know?",
-  "Thank you for your message. I'm processing your request.",
-  "I'd be happy to help you find the perfect service for your needs.",
-];
-
 const TypingIndicator: React.FC<{ theme: Theme; bottomInset: number }> = ({ theme, bottomInset }) => {
   const styles = useMemo(() => createStyles(theme, bottomInset), [theme, bottomInset]);
-  const dot1Anim = useRef(new Animated.Value(0)).current;
-  const dot2Anim = useRef(new Animated.Value(0)).current;
-  const dot3Anim = useRef(new Animated.Value(0)).current;
+  const dot1Anim = useRef(new Animated.Value(0.3)).current;
+  const dot2Anim = useRef(new Animated.Value(0.3)).current;
+  const dot3Anim = useRef(new Animated.Value(0.3)).current;
+  const iconPulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    // Animate typing dots with smooth wave effect
     const animateDots = () => {
       Animated.loop(
+        Animated.stagger(150, [
+          Animated.sequence([
+            Animated.timing(dot1Anim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.out(Easing.cubic),
+            }),
+            Animated.timing(dot1Anim, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(dot2Anim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.out(Easing.cubic),
+            }),
+            Animated.timing(dot2Anim, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(dot3Anim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.out(Easing.cubic),
+            }),
+            Animated.timing(dot3Anim, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+          ]),
+        ])
+      ).start();
+    };
+
+    // Animate icon pulse
+    const animateIcon = () => {
+      Animated.loop(
         Animated.sequence([
-          Animated.timing(dot1Anim, {
+          Animated.timing(iconPulseAnim, {
+            toValue: 1.15,
+            duration: 800,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.sin),
+          }),
+          Animated.timing(iconPulseAnim, {
             toValue: 1,
-            duration: 300,
+            duration: 800,
             useNativeDriver: true,
-          }),
-          Animated.timing(dot2Anim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(dot3Anim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(dot1Anim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(dot2Anim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(dot3Anim, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
+            easing: Easing.inOut(Easing.sin),
           }),
         ])
       ).start();
     };
+
     animateDots();
-  }, [dot1Anim, dot2Anim, dot3Anim]);
+    animateIcon();
+  }, [dot1Anim, dot2Anim, dot3Anim, iconPulseAnim]);
 
   return (
     <View style={styles.typingIndicator}>
       <Animated.View
         style={[
-          styles.typingDot,
-          { transform: [{ scale: Animated.add(1, Animated.multiply(dot1Anim, 0.5)) }] },
+          styles.typingIconContainer,
+          { transform: [{ scale: iconPulseAnim }] },
         ]}
-      />
-      <Animated.View
-        style={[
-          styles.typingDot,
-          { transform: [{ scale: Animated.add(1, Animated.multiply(dot2Anim, 0.5)) }] },
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.typingDot,
-          { transform: [{ scale: Animated.add(1, Animated.multiply(dot3Anim, 0.5)) }] },
-        ]}
-      />
+      >
+        <AiRobotIcon width={18} height={18} color={theme.darkGreen} />
+      </Animated.View>
+      <View style={styles.typingDotsContainer}>
+        <Animated.View
+          style={[
+            styles.typingDot,
+            {
+              opacity: dot1Anim,
+              transform: [{ scale: dot1Anim }],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.typingDot,
+            {
+              opacity: dot2Anim,
+              transform: [{ scale: dot2Anim }],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.typingDot,
+            {
+              opacity: dot3Anim,
+              transform: [{ scale: dot3Anim }],
+            },
+          ]}
+        />
+      </View>
+    </View>
+  );
+};
+
+// Inline typing indicator for empty streaming messages
+const InlineTypingIndicator: React.FC<{ theme: Theme }> = ({ theme }) => {
+  const styles = useMemo(() => createStyles(theme, 0), [theme]);
+  const dot1Anim = useRef(new Animated.Value(0.3)).current;
+  const dot2Anim = useRef(new Animated.Value(0.3)).current;
+  const dot3Anim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    // Animate typing dots with smooth wave effect
+    const animateDots = () => {
+      Animated.loop(
+        Animated.stagger(150, [
+          Animated.sequence([
+            Animated.timing(dot1Anim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.out(Easing.cubic),
+            }),
+            Animated.timing(dot1Anim, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(dot2Anim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.out(Easing.cubic),
+            }),
+            Animated.timing(dot2Anim, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+          ]),
+          Animated.sequence([
+            Animated.timing(dot3Anim, {
+              toValue: 1,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.out(Easing.cubic),
+            }),
+            Animated.timing(dot3Anim, {
+              toValue: 0.3,
+              duration: 400,
+              useNativeDriver: true,
+              easing: Easing.in(Easing.cubic),
+            }),
+          ]),
+        ])
+      ).start();
+    };
+
+    animateDots();
+  }, [dot1Anim, dot2Anim, dot3Anim]);
+
+  return (
+    <View style={styles.inlineTypingContainer}>
+      <View style={styles.inlineTypingDots}>
+        <Animated.View
+          style={[
+            styles.inlineTypingDot,
+            {
+              opacity: dot1Anim,
+              transform: [{ scale: dot1Anim }],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.inlineTypingDot,
+            {
+              opacity: dot2Anim,
+              transform: [{ scale: dot2Anim }],
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.inlineTypingDot,
+            {
+              opacity: dot3Anim,
+              transform: [{ scale: dot3Anim }],
+            },
+          ]}
+        />
+      </View>
     </View>
   );
 };
@@ -352,9 +551,12 @@ const AiChatBot: React.FC = () => {
   const bottomInset = insets.bottom;
   const styles = useMemo(() => createStyles(theme, bottomInset), [theme, bottomInset]);
 
-  const { isOpen, messages, isLoading } = useAppSelector((state) => state.chat);
+  const { isOpen, messages, isLoading, isStreaming, sessionId } = useAppSelector((state) => state.chat);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
+
+  // Check if input should be disabled (loading or streaming)
+  const isInputDisabled = isLoading || isStreaming;
 
   // Animation refs
   const bounceAnim = useRef(new Animated.Value(0)).current;
@@ -468,10 +670,29 @@ const AiChatBot: React.FC = () => {
     dispatch(closeChat());
   }, [dispatch]);
 
+  const handleDeleteChat = useCallback(() => {
+    Alert.alert(
+      "Clear Chat",
+      "Are you sure you want to clear all messages? This will start a new conversation.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: () => {
+            dispatch(clearMessages());
+            dispatch(setSessionId("0"));
+          },
+        },
+      ]
+    );
+  }, [dispatch]);
+
   const handleSendMessage = async () => {
-
-    if (inputText.trim().length === 0) return;
-
+    if (inputText.trim().length === 0 || isInputDisabled) return;
 
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
@@ -479,47 +700,94 @@ const AiChatBot: React.FC = () => {
       return;
     }
 
-
-
     const messageText = inputText.trim();
     setInputText("");
-    dispatch(sendMessageAndGetResponse(messageText));
 
-    // Simulate AI response after delay (static for now)
-    setTimeout(() => {
-      const randomResponse = AI_RESPONSES[Math.floor(Math.random() * AI_RESPONSES.length)];
-      dispatch(receiveAiResponse(randomResponse));
-    }, 1500);
-  }
+    // Add user message
+    dispatch(sendUserMessage(messageText));
 
-  // Scroll to bottom when new messages arrive
+    // Start streaming response
+    dispatch(startAiStreamResponse());
+
+    // Call API with streaming
+    await AiToolsService.streamChat(
+      sessionId,
+      messageText,
+      null, // business_id is optional
+      // onToken callback - append each token to the message
+      (token: string) => {
+        dispatch(appendTokenToLastMessage(token));
+      },
+      // onComplete callback - finalize the message
+      (fullResponse: string, newSessionId: string) => {
+        dispatch(completeAiStreamResponse({ fullResponse, sessionId: newSessionId }));
+      },
+      // onError callback - handle errors
+      (error: Error) => {
+        dispatch(streamError());
+        Alert.alert("Error", error.message || "Failed to get response from AI. Please try again.");
+      }
+    );
+  };
+
+  // Scroll to bottom when new messages arrive or during streaming
   useEffect(() => {
     if (messages.length > 0 && flatListRef.current) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [messages.length, isLoading]);
+  }, [messages.length, isLoading, isStreaming]);
+
+  // Also scroll when the last message text changes (for streaming)
+  const lastMessageText = messages.length > 0 ? messages[messages.length - 1].text : "";
+  useEffect(() => {
+    if (isStreaming && flatListRef.current) {
+      flatListRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [lastMessageText, isStreaming]);
 
   const renderMessage = useCallback(
     ({ item }: { item: ChatMessage }) => {
       const isUser = item.sender === "user";
-      return (
-        <View
-          style={[
-            styles.messageBubble,
-            isUser ? styles.userMessage : styles.aiMessage,
-          ]}
-        >
-          <Text
-            style={isUser ? styles.userMessageText : styles.aiMessageText}
+
+      if (isUser) {
+        // User message - no icon needed
+        return (
+          <View
+            style={[
+              styles.messageBubble,
+              styles.userMessage,
+            ]}
           >
-            {item.text}
-          </Text>
+            <Text style={styles.userMessageText}>
+              {item.text}
+            </Text>
+          </View>
+        );
+      }
+
+      // AI message - with icon on left
+      const isEmptyAndStreaming = !item.text && item.isStreaming;
+
+      return (
+        <View style={styles.aiMessageContainer}>
+          <View style={styles.aiMessageIconContainer}>
+            <AiRobotIcon width={16} height={16} color={theme.darkGreen} />
+          </View>
+          <View style={[styles.aiMessageBubble, styles.messageBubble]}>
+            {isEmptyAndStreaming ? (
+              <InlineTypingIndicator theme={theme} />
+            ) : (
+              <Text style={styles.aiMessageText}>
+                {item.text}
+              </Text>
+            )}
+          </View>
         </View>
       );
     },
-    [styles]
+    [styles, theme]
   );
 
   const dismissKeyboard = useCallback(() => {
@@ -579,7 +847,7 @@ const AiChatBot: React.FC = () => {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? moderateHeightScale(100) : 0}
           >
-            {/* Header with AI Assistant title and close button */}
+            {/* Header with AI Assistant title and action buttons */}
             <View style={styles.chatHeader}>
               <View style={styles.headerLeft}>
                 <View style={styles.aiAvatarHeader}>
@@ -587,13 +855,107 @@ const AiChatBot: React.FC = () => {
                 </View>
                 <Text style={styles.headerTitle}>AI Assistant</Text>
               </View>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={handleCloseChat}
-                activeOpacity={0.7}
-              >
-                <CloseIcon width={20} height={20} color={theme.white} />
-              </TouchableOpacity>
+              <View style={styles.headerRightButtons}>
+                {/* Delete button - clears all messages (only show when messages exist) */}
+                {messages.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.headerButton}
+                    onPress={handleDeleteChat}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={{
+                        width: widthScale(18),
+                        height: widthScale(18),
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {/* Trash can icon */}
+                      <View
+                        style={{
+                          width: widthScale(14),
+                          height: widthScale(12),
+                          borderWidth: 1.5,
+                          borderColor: theme.white,
+                          borderRadius: moderateWidthScale(1),
+                          borderTopWidth: 0,
+                          position: "relative",
+                        }}
+                      >
+                        {/* Trash lid */}
+                        <View
+                          style={{
+                            width: widthScale(16),
+                            height: widthScale(2),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(-2),
+                            left: moderateWidthScale(-1),
+                          }}
+                        />
+                        {/* Trash handle */}
+                        <View
+                          style={{
+                            width: widthScale(4),
+                            height: widthScale(2),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(-4),
+                            left: moderateWidthScale(5),
+                          }}
+                        />
+                        {/* Trash lines */}
+                        <View
+                          style={{
+                            width: widthScale(1),
+                            height: widthScale(6),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(2),
+                            left: moderateWidthScale(3),
+                          }}
+                        />
+                        <View
+                          style={{
+                            width: widthScale(1),
+                            height: widthScale(6),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(2),
+                            left: moderateWidthScale(6.5),
+                          }}
+                        />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                {/* Minimize button - closes chat */}
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={handleCloseChat}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={{
+                      width: widthScale(18),
+                      height: widthScale(18),
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {/* Minimize icon - horizontal line */}
+                    <View
+                      style={{
+                        width: widthScale(14),
+                        height: widthScale(2),
+                        backgroundColor: theme.white,
+                        borderRadius: moderateWidthScale(1),
+                      }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Messages List */}
@@ -611,17 +973,32 @@ const AiChatBot: React.FC = () => {
                 contentContainerStyle={styles.messagesContent}
                 showsVerticalScrollIndicator={false}
                 ListFooterComponent={
-                  isLoading ? <TypingIndicator theme={theme} bottomInset={bottomInset} /> : null
+                  (() => {
+                    // Check if last message is empty and streaming (shows inline typing indicator)
+                    const lastMessage = messages[messages.length - 1];
+                    const hasEmptyStreamingMessage = lastMessage &&
+                      lastMessage.sender === "ai" &&
+                      !lastMessage.text &&
+                      lastMessage.isStreaming;
+
+                    // Only show bottom indicator if not showing inline indicator
+                    if (hasEmptyStreamingMessage) {
+                      return null;
+                    }
+
+                    // Show bottom indicator when loading or streaming (but no empty message)
+                    return (isLoading || isStreaming) ? <TypingIndicator theme={theme} bottomInset={bottomInset} /> : null;
+                  })()
                 }
               />
             )}
 
             {/* Input Area */}
-            <View style={styles.inputContainer}>
-              <View style={[styles.textInputWrapper, styles.shadowLight]}>
+            <View style={[styles.inputContainer, isInputDisabled && styles.inputContainerDisabled]}>
+              <View style={[styles.textInputWrapper, styles.shadowLight, isInputDisabled && styles.inputWrapperDisabled]}>
                 <TextInput
-                  style={styles.textInput}
-                  placeholder="Ask me anything..."
+                  style={[styles.textInput, isInputDisabled && styles.textInputDisabled]}
+                  placeholder={isInputDisabled ? "AI is responding..." : "Ask me anything..."}
                   placeholderTextColor={theme.lightGreen2}
                   value={inputText}
                   onChangeText={setInputText}
@@ -629,8 +1006,9 @@ const AiChatBot: React.FC = () => {
                   maxLength={5000}
                   returnKeyType="send"
                   onSubmitEditing={handleSendMessage}
+                  editable={!isInputDisabled}
                 />
-                {inputText.length > 0 && (
+                {inputText.length > 0 && !isInputDisabled && (
                   <TouchableOpacity
                     style={styles.clearButton}
                     onPress={() => setInputText("")}
@@ -643,13 +1021,13 @@ const AiChatBot: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.sendButton,
-                  inputText.trim().length === 0 && styles.sendButtonDisabled,
+                  (inputText.trim().length === 0 || isInputDisabled) && styles.sendButtonDisabled,
                 ]}
                 onPress={handleSendMessage}
-                disabled={inputText.trim().length === 0}
+                disabled={inputText.trim().length === 0 || isInputDisabled}
                 activeOpacity={0.8}
               >
-                <SendIcon width={20} height={20} color={theme.white} />
+                <SendIcon width={16} height={16} color={theme.white} />
               </TouchableOpacity>
             </View>
           </KeyboardAvoidingView>

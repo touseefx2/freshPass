@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import { Platform } from "react-native";
 import { checkInternetConnection } from "./api";
-import { hairTryonEndpoints, socialMediaEndpoints, businessEndpoints } from "./endpoints";
+import { hairTryonEndpoints, socialMediaEndpoints, businessEndpoints, clientChatEndpoints } from "./endpoints";
 
 // Get AI Tool base URL and token from environment
 const AI_TOOL_BASE_URL = process.env.EXPO_PUBLIC_AITOOL_API_BASE_URL || "";
@@ -542,6 +543,319 @@ export class AiToolsService {
       (customError as any).data = error.response?.data;
       (customError as any).isNoInternet = error.isNoInternet;
       throw customError;
+    }
+  }
+
+  /**
+   * Stream Chat with AI Assistant
+   * @param sessionId - Session ID for the chat
+   * @param message - User message
+   * @param businessId - Optional Business ID
+   * @param onToken - Callback function called for each token received
+   * @param onComplete - Callback function called when stream is complete
+   * @param onError - Callback function called on error
+   * @returns Promise that resolves when stream is complete
+   */
+  static async streamChat(
+    sessionId: string,
+    message: string,
+    businessId: string | null,
+    onToken: (token: string) => void,
+    onComplete: (fullResponse: string, newSessionId: string) => void,
+    onError: (error: Error) => void
+  ): Promise<void> {
+    // Check internet connection
+    const hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      const error = new Error("No internet connection");
+      (error as any).isNoInternet = true;
+      onError(error);
+      return;
+    }
+
+    const endpoint = clientChatEndpoints.chatStream;
+    // Fix double slash in URL
+    const baseUrl = AI_TOOL_BASE_URL.endsWith("/") ? AI_TOOL_BASE_URL.slice(0, -1) : AI_TOOL_BASE_URL;
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const fullUrl = `${baseUrl}${cleanEndpoint}`;
+
+    // Prepare request body as URL-encoded form data
+    const formData = new URLSearchParams();
+    formData.append("session_id", sessionId);
+    formData.append("message", message);
+    
+    // Add business_id only if provided and not null
+    if (businessId && businessId.trim() !== "") {
+      formData.append("business_id", businessId);
+    }
+
+    if (__DEV__) {
+      const bodyObj: any = {
+        session_id: sessionId,
+        message: message,
+      };
+      if (businessId && businessId.trim() !== "") {
+        bodyObj.business_id = businessId;
+      }
+      console.log(`🚀 AI Stream Chat Request:`, JSON.stringify({ url: fullUrl, body: bodyObj }, null, 2));
+    }
+
+    try {
+      // Use XMLHttpRequest for React Native (React Native doesn't support ReadableStream)
+      // This mimics the web fetch + ReadableStream pattern but uses XMLHttpRequest
+      return new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        let fullResponse = "";
+        let newSessionId = sessionId;
+        let processedLength = 0;
+        let buffer = "";
+        let hasReceivedData = false;
+        const startTime = Date.now();
+        const TIMEOUT_MS = 30000; // 30 seconds timeout
+
+        xhr.open("POST", fullUrl, true);
+        xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+        xhr.setRequestHeader("Accept", "text/event-stream");
+        xhr.setRequestHeader("Authorization", `Bearer ${AI_API_BEARER_TOKEN}`);
+        xhr.responseType = "text";
+
+        // Polling interval to check for new data (React Native doesn't support streaming events)
+        let pollingInterval: ReturnType<typeof setInterval> | null = null;
+        let isComplete = false;
+
+        const processSSEEvents = (text: string) => {
+          buffer += text;
+          // Normalize newlines
+          buffer = buffer.replace(/\r\n/g, "\n");
+          
+          // Process events separated by \n\n (SSE format)
+          let eventEnd: number;
+          while ((eventEnd = buffer.indexOf("\n\n")) !== -1) {
+            const rawEvent = buffer.slice(0, eventEnd);
+            buffer = buffer.slice(eventEnd + 2);
+            
+            if (!rawEvent.trim()) continue;
+            
+            const lines = rawEvent.split("\n");
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              
+              if (__DEV__) {
+                console.log("SSE line:", line);
+              }
+              
+              // Handle both "data: " and "data: data: " prefixes
+              let dataStr = "";
+              if (line.startsWith("data: data: ")) {
+                dataStr = line.slice(12).trim();
+              } else if (line.startsWith("data: ")) {
+                dataStr = line.slice(6).trim();
+              } else {
+                continue;
+              }
+              
+              if (!dataStr) continue;
+              
+              try {
+                const parsed = JSON.parse(dataStr);
+                
+                if (__DEV__) {
+                  console.log("Parsed SSE data:", parsed);
+                }
+                
+                // 1) Token chunks during streaming
+                if (parsed.token) {
+                  fullResponse += parsed.token;
+                  onToken(parsed.token);
+                  hasReceivedData = true;
+                }
+                
+                // 2) Completion event: done === true
+                if (parsed.done) {
+                  // Update session id from completion event
+                  if (parsed.session_id) {
+                    newSessionId = parsed.session_id;
+                  }
+                  
+                  // Ensure full response is reflected if provided
+                  if (parsed.full_response) {
+                    fullResponse = typeof parsed.full_response === "string" 
+                      ? parsed.full_response 
+                      : fullResponse;
+                  }
+                  
+                  isComplete = true;
+                  if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                  }
+                  
+                  if (__DEV__) {
+                    console.log(`✅ AI Stream Chat Complete:`, { fullResponse, newSessionId });
+                  }
+                  
+                  onComplete(fullResponse, newSessionId);
+                  resolve();
+                  return;
+                }
+                
+                // 3) Session ID may also arrive independently
+                if (parsed.session_id && !parsed.done) {
+                  newSessionId = parsed.session_id;
+                }
+                
+                // 4) Error event inside stream
+                if (parsed.error || parsed.detail) {
+                  const errorMessage = parsed.detail || parsed.message || parsed.error || "An error occurred";
+                  if (__DEV__) {
+                    console.error("AI API error:", parsed);
+                  }
+                  isComplete = true;
+                  if (pollingInterval) {
+                    clearInterval(pollingInterval);
+                    pollingInterval = null;
+                  }
+                  const error = new Error(errorMessage);
+                  (error as any).status = xhr.status || 500;
+                  reject(error);
+                  return;
+                }
+              } catch (e) {
+                // If not JSON, treat as plain text token (fallback)
+                if (dataStr.trim()) {
+                  if (__DEV__) {
+                    console.log("Non-JSON data:", dataStr);
+                  }
+                  fullResponse += dataStr;
+                  onToken(dataStr);
+                  hasReceivedData = true;
+                }
+              }
+            }
+          }
+        };
+
+        const checkForNewData = () => {
+          if (isComplete) return;
+          
+          // Check for timeout
+          if (Date.now() - startTime > TIMEOUT_MS && !hasReceivedData) {
+            if (__DEV__) {
+              console.error("Stream timeout - no data received");
+            }
+            isComplete = true;
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+              pollingInterval = null;
+            }
+            const error = new Error("Request timeout: No response received from the server");
+            (error as any).status = 408;
+            reject(error);
+            return;
+          }
+          
+          try {
+            if (xhr.responseText && typeof xhr.responseText === "string") {
+              const currentLength = xhr.responseText.length;
+              if (currentLength > processedLength) {
+                const newData = xhr.responseText.substring(processedLength);
+                processedLength = currentLength;
+                processSSEEvents(newData);
+              }
+            }
+          } catch (e) {
+            if (__DEV__) {
+              console.log("Error checking for new data:", e);
+            }
+          }
+        };
+
+        // Start polling for new data
+        pollingInterval = setInterval(checkForNewData, 50); // Check every 50ms
+
+        xhr.onreadystatechange = () => {
+          checkForNewData();
+          
+          if (xhr.readyState === XMLHttpRequest.DONE || xhr.readyState === 4) {
+            // Stop polling
+            if (pollingInterval) {
+              clearInterval(pollingInterval);
+              pollingInterval = null;
+            }
+            isComplete = true;
+            
+            // Process any remaining data
+            checkForNewData();
+            
+            if (xhr.status >= 200 && xhr.status < 300) {
+              if (!hasReceivedData) {
+                if (__DEV__) {
+                  console.warn("Stream ended without receiving any data");
+                }
+                // Still complete with empty response
+                onComplete(fullResponse || "No response received. Please try again.", newSessionId);
+                resolve();
+              } else if (!isComplete) {
+                // If not already completed, complete now
+                onComplete(fullResponse, newSessionId);
+                resolve();
+              }
+            } else {
+              // Handle HTTP error
+              let errorMessage = `Chat service error (HTTP ${xhr.status})`;
+              try {
+                const errorData = xhr.responseText;
+                if (errorData) {
+                  const json = JSON.parse(errorData);
+                  errorMessage = json.detail || json.message || json.error || errorMessage;
+                }
+              } catch (e) {
+                // If parsing fails, use default message
+              }
+              
+              if (__DEV__) {
+                console.error("Stream response error:", xhr.status, xhr.responseText);
+              }
+              
+              const error = new Error(errorMessage);
+              (error as any).status = xhr.status;
+              reject(error);
+            }
+          }
+        };
+
+        xhr.onerror = () => {
+          // Stop polling on error
+          if (pollingInterval) {
+            clearInterval(pollingInterval);
+            pollingInterval = null;
+          }
+          isComplete = true;
+          const error = new Error("Network error occurred");
+          (error as any).status = 0;
+          reject(error);
+        };
+
+        xhr.send(formData.toString());
+      }).catch((error: any) => {
+        // Handle Promise rejection (async errors from XMLHttpRequest)
+        if (__DEV__) {
+          console.error(`❌ AI Stream Chat Error:`, error);
+        }
+        const errorMessage = error.message || getErrorMessage(error);
+        const customError = new Error(errorMessage);
+        (customError as any).status = error.status || error.response?.status;
+        onError(customError);
+      });
+    } catch (error: any) {
+      // Handle synchronous errors
+      if (__DEV__) {
+        console.error(`❌ AI Stream Chat Error:`, error);
+      }
+      const errorMessage = error.message || getErrorMessage(error);
+      const customError = new Error(errorMessage);
+      (customError as any).status = error.status || error.response?.status;
+      onError(customError);
     }
   }
 }

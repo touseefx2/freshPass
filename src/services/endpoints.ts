@@ -206,3 +206,10 @@ export const socialMediaEndpoints = {
 export const hairTryonEndpoints = {
   generateWithReplicate: `/api/hair_tryon/generate_with_replicate`,
 };
+
+/**
+ * Client chat endpoints
+ */
+export const clientChatEndpoints = {
+  chatStream: `/api/client_chat/chat/stream`,
+};
