@@ -58,7 +58,7 @@ export const createStyles = (theme: Theme) =>
     navigateButton: {
       width: widthScale(40),
       height: widthScale(40),
-      borderRadius: moderateWidthScale(20),
+      borderRadius: widthScale(40/2),
       backgroundColor: theme.lightGreen015,
       alignItems: "center",
       justifyContent: "center",

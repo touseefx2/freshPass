@@ -299,96 +299,96 @@ export default function LeaveReview() {
   );
 
   const renderReviewForm = () => (
-      <View style={{ flex: 1 }}>
-        <KeyboardAwareScrollView
-          bottomOffset={0}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Business Info */}
-          {renderBusineesInfo()}
+    <View style={{ flex: 1 }}>
+      <KeyboardAwareScrollView
+        bottomOffset={0}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Business Info */}
+        {renderBusineesInfo()}
 
-          {/* Heading */}
-          <Text style={styles.heading}>Write your experience.</Text>
-          <Text style={styles.subheading}>
-            Help others discover the best services by sharing your visit.
-          </Text>
+        {/* Heading */}
+        <Text style={styles.heading}>Write your experience.</Text>
+        <Text style={styles.subheading}>
+          Help others discover the best services by sharing your visit.
+        </Text>
 
-          {/* Questions */}
-          <Text style={styles.questions}>
-            What did you love about the service? How was the stylist? Would you
-            recommend this salon to others?
-          </Text>
+        {/* Questions */}
+        <Text style={styles.questions}>
+          What did you love about the service? How was the stylist? Would you
+          recommend this salon to others?
+        </Text>
 
-          {/* Review Title Input - Using FloatingInput with Dropdown */}
-          <View style={styles.inputContainer}>
-            <Pressable
-              ref={reviewTitleInputRef}
-              onPress={() => setShowSuggestionsDropdown(true)}
-            >
-              <FloatingInput
-                label="Give your review a title."
-                value={reviewTitle}
-                onChangeText={() => { }}
-                placeholder="Enter review title"
-                editable={false}
-                renderRightAccessory={({ isFocused, hasValue }) => (
-                  <View style={styles.dropdownArrowButton}>
-                    <ChevronDownIcon
-                      width={widthScale(12)}
-                      height={heightScale(8)}
-                      color={theme.darkGreen}
-                    />
-                  </View>
-                )}
-                showClearButton={false}
-              />
-            </Pressable>
-            <ReviewSuggestionsDropdown
-              visible={showSuggestionsDropdown}
-              suggestions={reviewSuggestions}
-              onSelect={(title, id) => handleSuggestionSelect(title, id)}
-              onClose={() => setShowSuggestionsDropdown(false)}
-              buttonRef={reviewTitleInputRef}
-            />
-          </View>
-
-          {/* Review Details Input - Using description style */}
-          <View style={styles.inputContainer}>
-            <Text style={styles.questions}>Review details.</Text>
-            <View style={styles.textInputContainer}>
-              <TextInput
-                style={styles.textInput}
-                value={reviewDetails}
-                onChangeText={setReviewDetails}
-                placeholder="Share your experience..."
-                placeholderTextColor={theme.lightGreen2}
-                multiline
-                textAlignVertical="top"
-                autoCapitalize="sentences"
-              />
-              {reviewDetails.length > 0 && (
-                <Pressable
-                  onPress={handleClearDescription}
-                  style={styles.clearButton}
-                  hitSlop={moderateWidthScale(8)}
-                >
-                  <CloseIcon color={theme.darkGreen} />
-                </Pressable>
+        {/* Review Title Input - Using FloatingInput with Dropdown */}
+        <View style={styles.inputContainer}>
+          <Pressable
+            ref={reviewTitleInputRef}
+            onPress={() => setShowSuggestionsDropdown(true)}
+          >
+            <FloatingInput
+              label="Give your review a title."
+              value={reviewTitle}
+              onChangeText={() => { }}
+              placeholder="Enter review title"
+              editable={false}
+              renderRightAccessory={({ isFocused, hasValue }) => (
+                <View style={styles.dropdownArrowButton}>
+                  <ChevronDownIcon
+                    width={widthScale(12)}
+                    height={heightScale(8)}
+                    color={theme.darkGreen}
+                  />
+                </View>
               )}
-            </View>
-          </View>
-        </KeyboardAwareScrollView>
-        <View style={styles.continueButtonContainer}>
-          <Button
-            title="Continue"
-            onPress={handleContinue}
-            disabled={isSubmitting}
-            loading={isSubmitting}
+              showClearButton={false}
+            />
+          </Pressable>
+          <ReviewSuggestionsDropdown
+            visible={showSuggestionsDropdown}
+            suggestions={reviewSuggestions}
+            onSelect={(title, id) => handleSuggestionSelect(title, id)}
+            onClose={() => setShowSuggestionsDropdown(false)}
+            buttonRef={reviewTitleInputRef}
           />
         </View>
+
+        {/* Review Details Input - Using description style */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.questions}>Review details.</Text>
+          <View style={styles.textInputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={reviewDetails}
+              onChangeText={setReviewDetails}
+              placeholder="Share your experience..."
+              placeholderTextColor={theme.lightGreen2}
+              multiline
+              textAlignVertical="top"
+              autoCapitalize="sentences"
+            />
+            {reviewDetails.length > 0 && (
+              <Pressable
+                onPress={handleClearDescription}
+                style={styles.clearButton}
+                hitSlop={moderateWidthScale(8)}
+              >
+                <CloseIcon color={theme.darkGreen} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </KeyboardAwareScrollView>
+      <View style={styles.continueButtonContainer}>
+        <Button
+          title="Continue"
+          onPress={handleContinue}
+          disabled={isSubmitting}
+          loading={isSubmitting}
+        />
       </View>
+    </View>
   );
 
   const renderBusineesInfo = () => (
@@ -405,8 +405,8 @@ export default function LeaveReview() {
           onPress={handleReviewModalNavigate}
         >
           <MapPinIcon
-            width={widthScale(20)}
-            height={heightScale(20)}
+            width={widthScale(17)}
+            height={heightScale(17)}
             color={theme.primary}
           />
         </TouchableOpacity>
