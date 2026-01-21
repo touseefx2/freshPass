@@ -2127,6 +2127,38 @@ export const AiChatSupportIcon: React.FC<AiChatSupportIconProps> = ({
   return <SvgXml xml={svgXml} />;
 };
 
+// AI Robot Icon SVG - Modern Robot Head Design
+const aiRobotIconSvg = `
+<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="3" y="7" width="18" height="13" rx="3" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="8" y="11" width="2" height="2" rx="0.5" fill="{{COLOR}}"/>
+  <rect x="14" y="11" width="2" height="2" rx="0.5" fill="{{COLOR}}"/>
+  <path d="M9 16H15" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M12 4V7" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="12" cy="3" r="1.5" stroke="{{COLOR}}" stroke-width="1.5"/>
+  <path d="M1 11V15" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
+  <path d="M23 11V15" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
+`;
+
+interface AiRobotIconProps {
+  width?: number;
+  height?: number;
+  color?: string;
+}
+
+export const AiRobotIcon: React.FC<AiRobotIconProps> = ({
+  width = 24,
+  height = 24,
+  color = "#FFFFFF",
+}) => {
+  const svgXml = aiRobotIconSvg
+    .replace(/{{WIDTH}}/g, width.toString())
+    .replace(/{{HEIGHT}}/g, height.toString())
+    .replace(/{{COLOR}}/g, color);
+  return <SvgXml xml={svgXml} />;
+};
+
 export default {
   LeafLogo,
   GoogleIcon,
@@ -2200,4 +2232,5 @@ export default {
   AiHairTryOnIcon,
   AiReceptionistIcon,
   AiChatSupportIcon,
+  AiRobotIcon,
 };
