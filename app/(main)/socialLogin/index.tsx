@@ -20,18 +20,14 @@ import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import SocialAuthOptions from "@/src/components/socialAuthOptions";
 import SectionSeparator from "@/src/components/sectionSeparator";
-import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
+// import { ApiService } from "@/src/services/api";
 // import { businessEndpoints } from "@/src/services/endpoints";
 // import { setUser, setTokens } from "@/src/state/slices/userSlice";
 // import { setRegisterEmail } from "@/src/state/slices/generalSlice";
-
 type SocialProvider = "google" | "apple" | "facebook";
-
-// Links from environment
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
-
 // Get Google Web Client ID from environment
 // IMPORTANT: 
 // 1. Android Client ID: Google Cloud Console mein Android OAuth client banayein (package name + SHA-1 ke saath) - ye Google Cloud Console mein configure hota hai
@@ -46,17 +42,20 @@ export default function SocialLogin() {
   const isButtonMode = Platform.OS === "android" && insets.bottom > 30;
   const router = useRouter();
   const dispatch = useAppDispatch();
-  // Get selected role from Redux (will be null initially, then "business", "client", or "staff")
   const selectedRole = useAppSelector((state) => state.general.role);
 
-  // Initialize Google Sign-In
+
   useEffect(() => {
     if (Platform.OS !== "web") {
-      GoogleSignin.configure({
-        webClientId: GOOGLE_WEB_CLIENT_ID, // Web Client ID from Google Cloud Console (required for ID token)
-        offlineAccess: true, // For server-side access to Google APIs
-        forceCodeForRefreshToken: true, // [Android] Get serverAuthCode for backend
-      });
+      try {
+        GoogleSignin.configure({
+          webClientId: GOOGLE_WEB_CLIENT_ID, // Web Client ID from Google Cloud Console (required for ID token)
+          offlineAccess: true, // For server-side access to Google APIs
+          forceCodeForRefreshToken: true, // [Android] Get serverAuthCode for backend
+        });
+      } catch (error) {
+        Logger.error("Google Sign-In configuration error:", error);
+      }
     }
   }, []);
 
@@ -71,14 +70,6 @@ export default function SocialLogin() {
         await GoogleSignin.signOut();
       } catch (signOutError) {
         Logger.log("Google logout out error (ignored):", signOutError);
-      }
-
-      // Logout from app session to clear any existing tokens/user data
-      try {
-        await ApiService.logout();
-      } catch (logoutError) {
-        // Ignore logout errors - might not have active session
-        Logger.log("App logout error (ignored):", logoutError);
       }
 
       // Check if Google Play Services are available (Android only)
