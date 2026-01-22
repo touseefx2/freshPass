@@ -2,7 +2,6 @@ import React, {
   useMemo,
   useState,
   useRef,
-  useEffect,
   useCallback,
 } from "react";
 import {
@@ -10,13 +9,8 @@ import {
   Text,
   View,
   ScrollView,
-  TouchableOpacity,
-  Image,
-  Animated,
   Dimensions,
-  ActivityIndicator,
 } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import dayjs from "dayjs";
 import { Theme } from "@/src/theme/colors";
@@ -28,16 +22,6 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import Button from "@/src/components/button";
-import {
-  PersonIcon,
-  MonitorIcon,
-  PlatformVerifiedStarIcon,
-  StarIconSmall,
-  ChevronDownIcon,
-  ChevronRight,
-} from "@/assets/icons";
-import InclusionsModal from "@/src/components/inclusionsModal";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import {
@@ -49,7 +33,6 @@ import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
 import ShowAppointments from "./ShowAppointments";
-
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const createStyles = (theme: Theme) =>
@@ -442,49 +425,7 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-// Static data - categories will be fetched from API
-
-// Service filters will be populated dynamically from API
-
-const membershipFilters = [
-  { id: "list", label: "List", isPrimary: true },
-  { id: "all", label: "All", isPrimary: false },
-  { id: "classic-care", label: "Classic Care", isPrimary: false },
-  { id: "gold-glam", label: "Gold Glam", isPrimary: false },
-  { id: "vip-elite", label: "VIP Elite", isPrimary: false },
-];
-
-// Section-based data structure
-interface ServiceItem {
-  id: number;
-  title: string;
-  price: number;
-  originalPrice: number;
-  description: string;
-  duration: string;
-}
-
-interface SubscriptionItem {
-  id: number;
-  title: string;
-  price: number;
-  originalPrice: number;
-  offer: string;
-  offer2?: string;
-  inclusions: string[];
-  image: string | null;
-}
-
-interface ServiceSection {
-  id: number;
-  businessName: string;
-  type: "individual" | "subscription";
-  services?: ServiceItem[];
-  subscriptions?: SubscriptionItem[];
-}
-
-// Static data removed - now using API data
-
+ 
 interface Appointment {
   id: number;
   businessId: number;
@@ -569,67 +510,22 @@ export default function DashboardContent() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const router = useRouter();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state: any) => state.user.userRole);
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
-  const userLocation = useAppSelector((state: any) => state.user.location);
-  const selectedDateISO = useAppSelector(
-    (state: any) => state.general.selectedDate,
-  );
-  const searchText = useAppSelector((state: any) => state.general.searchText);
-
   const isCusotmerandGuest = isGuest || userRole === "customer";
-
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState(false);
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
-  const [businessesCount, setBusinessesCount] = useState(0);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(false);
-  const [appointmentsError, setAppointmentsError] = useState(false);
-  const [activeTab, setActiveTab] = useState<"subscriptions" | "individual">(
-    "subscriptions",
-  );
   const [selectedCategory, setSelectedCategory] = useState<
     string | number | undefined
   >(undefined);
-  const [selectedServiceFilter, setSelectedServiceFilter] =
-    useState<string>("all");
-  const [selectedMembershipFilter, setSelectedMembershipFilter] =
-    useState<string>("all");
-  const [serviceTemplates, setServiceTemplates] = useState<
-    Array<{
-      id: number;
-      name: string;
-      category_id: number;
-      category: string;
-      base_price: number;
-      duration_hours: number;
-      duration_minutes: number;
-      active: boolean;
-      createdAt: string;
-    }>
-  >([]);
-  const [serviceTemplatesLoading, setServiceTemplatesLoading] = useState(false);
-  const [serviceTemplatesError, setServiceTemplatesError] = useState(false);
-  const [inclusionsModalVisible, setInclusionsModalVisible] = useState(false);
-  const [selectedInclusions, setSelectedInclusions] = useState<string[]>([]);
-  const [serviceSections, setServiceSections] = useState<ServiceSection[]>([]);
-  const [subscriptionSections, setSubscriptionSections] = useState<
-    ServiceSection[]
-  >([]);
-  const [sectionsLoading, setSectionsLoading] = useState(false);
-  const [sectionsError, setSectionsError] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const horizontalScrollViewRef = useRef<ScrollView>(null);
-  const isManualScrollRef = useRef(false);
   const isCategoryScrollingRef = useRef(false);
-  const tabsContainerHeight = useRef(0);
-  const tabsContainerRef = useRef<View>(null);
+
 
   const fetchCategories = async () => {
     try {
@@ -661,46 +557,6 @@ export default function DashboardContent() {
       setCategories([]);
     } finally {
       setCategoriesLoading(false);
-    }
-  };
-
-  const fetchServiceTemplates = async (categoryId: number | string) => {
-    try {
-      setServiceTemplatesLoading(true);
-      setServiceTemplatesError(false);
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: Array<{
-          id: number;
-          name: string;
-          category_id: number;
-          category: string;
-          base_price: number;
-          duration_hours: number;
-          duration_minutes: number;
-          active: boolean;
-          createdAt: string;
-        }>;
-      }>(businessEndpoints.serviceTemplates(categoryId as number));
-
-      if (response.success && response.data) {
-        setServiceTemplates(response.data);
-      } else {
-        setServiceTemplates([]);
-      }
-    } catch (error) {
-      Logger.error("Failed to fetch service templates:", error);
-      setServiceTemplatesError(true);
-      showBanner(
-        "API Failed",
-        "API failed to fetch service templates",
-        "error",
-        2500,
-      );
-      setServiceTemplates([]);
-    } finally {
-      setServiceTemplatesLoading(false);
     }
   };
 
@@ -761,203 +617,16 @@ export default function DashboardContent() {
         });
 
         setVerifiedSalons(mappedSalons);
-        setBusinessesCount(response.data.length);
+
       }
     } catch (error) {
       Logger.error("Failed to fetch businesses:", error);
       setBusinessesError(true);
       showBanner("API Failed", "API failed to fetch businesses", "error", 2500);
       setVerifiedSalons([]);
-      setBusinessesCount(0);
+
     } finally {
       setBusinessesLoading(false);
-    }
-  };
-
-  const fetchBusinessesWithData = async (
-    categoryId: number | string,
-    tab: "individual" | "subscriptions",
-    serviceTemplateId?: number,
-    search?: string,
-  ) => {
-    try {
-      setSectionsLoading(true);
-      setSectionsError(false);
-
-      // Build API URL with appropriate query parameters
-      const baseUrl = businessEndpoints.businesses(categoryId as number);
-      const queryParams = new URLSearchParams();
-
-      if (tab === "individual") {
-        queryParams.append("with_services", "true");
-        if (serviceTemplateId) {
-          queryParams.append(
-            "service_template_id",
-            serviceTemplateId.toString(),
-          );
-        }
-      } else {
-        queryParams.append("with_subscription_plans", "true");
-      }
-
-      if (search && search.trim()) {
-        queryParams.append("search", search.trim());
-      }
-
-      if (selectedDateISO) {
-        const formattedDate = dayjs(selectedDateISO).format("YYYY-MM-DD");
-        queryParams.append("availability_date", formattedDate);
-      }
-
-      if (userLocation?.lat && userLocation?.long) {
-        queryParams.append("latitude", userLocation.lat.toString());
-        queryParams.append("longitude", userLocation.long.toString());
-        queryParams.append("radius_km", "100");
-      }
-
-      // const url = `${baseUrl}&${queryParams.toString()}&sort=completed_appointments`;
-      const url = `${baseUrl}&${queryParams.toString()}&sort=completed_appointments&direction=desc`;
-
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: Array<{
-          id: number;
-          title: string;
-          image_url: string | null;
-          logo_url: string | null;
-          portfolio_photos?: Array<{
-            id: number;
-            path: string;
-            url: string;
-          }>;
-          services?: Array<{
-            id: number;
-            name: string;
-            description: string | null;
-            price: string;
-            duration_hours: number;
-            duration_minutes: number;
-          }>;
-          subscription_plans?: Array<{
-            id: number;
-            name: string;
-            description: string;
-            price: string;
-            visits: number;
-            planType: string;
-            active: boolean;
-            services: Array<{
-              id: number;
-              name: string;
-            }>;
-          }>;
-        }>;
-      }>(url);
-
-      if (response.success && response.data) {
-        if (tab === "individual") {
-          // Transform services data
-          const mappedSections: ServiceSection[] = response.data
-            .filter(
-              (business) => business.services && business.services.length > 0,
-            )
-            .map((business) => ({
-              id: business.id,
-              businessName: business.title,
-              type: "individual" as const,
-              services: business.services!.map((service) => {
-                const durationHours = service.duration_hours || 0;
-                const durationMinutes = service.duration_minutes || 0;
-                let durationText = "";
-                if (durationHours > 0 && durationMinutes > 0) {
-                  durationText = `${durationHours} hr ${durationMinutes} min`;
-                } else if (durationHours > 0) {
-                  durationText = `${durationHours} hr`;
-                } else if (durationMinutes > 0) {
-                  durationText = `${durationMinutes} min`;
-                } else {
-                  durationText = "N/A";
-                }
-
-                return {
-                  id: service.id,
-                  title: service.name,
-                  price: parseFloat(service.price),
-                  originalPrice: parseFloat(
-                    (parseFloat(service.price) * 1.1).toFixed(2),
-                  ), // Approximate original price
-                  description:
-                    service.description || "No description available",
-                  duration: durationText,
-                };
-              }),
-            }));
-
-          setServiceSections(mappedSections);
-        } else {
-          // Transform subscription plans data
-          const mappedSections: ServiceSection[] = response.data
-            .filter(
-              (business) =>
-                business.subscription_plans &&
-                business.subscription_plans.length > 0,
-            )
-            .map((business) => ({
-              id: business.id,
-              businessName: business.title,
-              type: "subscription" as const,
-              subscriptions: business.subscription_plans!.map((plan) => {
-                // Create inclusions from services
-                const inclusions = plan.services.map(
-                  (service, index) => `${index + 1}. ${service.name}`,
-                );
-
-                return {
-                  id: plan.id,
-                  title: plan.name,
-                  price: parseFloat(plan.price),
-                  originalPrice: parseFloat(
-                    (parseFloat(plan.price) * 1.15).toFixed(2),
-                  ), // Approximate original price
-                  offer: `${plan.visits} visits included`,
-                  offer2: plan.planType === "user" ? "User Plan" : undefined,
-                  inclusions:
-                    inclusions.length > 0
-                      ? inclusions
-                      : ["No services included"],
-                  image: null,
-                };
-              }),
-            }));
-
-          setSubscriptionSections(mappedSections);
-        }
-      } else {
-        // Empty response
-        if (tab === "individual") {
-          setServiceSections([]);
-        } else {
-          setSubscriptionSections([]);
-        }
-      }
-    } catch (error) {
-      Logger.error("Failed to fetch businesses with data:", error);
-      setSectionsError(true);
-      showBanner(
-        "API Failed",
-        `API failed to fetch ${tab === "individual" ? "services" : "subscriptions"
-        }`,
-        "error",
-        2500,
-      );
-      if (tab === "individual") {
-        setServiceSections([]);
-      } else {
-        setSubscriptionSections([]);
-      }
-    } finally {
-      setSectionsLoading(false);
     }
   };
 
@@ -1028,9 +697,6 @@ export default function DashboardContent() {
 
   const fetchAppointments = async () => {
     try {
-      setAppointmentsLoading(true);
-      setAppointmentsError(false);
-
       // Build params object
       const params: {
         status: string;
@@ -1045,19 +711,12 @@ export default function DashboardContent() {
         per_page: 6,
       };
 
-      // Add from_date parameter if selectedDate is not null
-      // if (selectedDateISO) {
-      //   const selectedDate = dayjs(selectedDateISO);
-      //   params.from_date = selectedDate.format("YYYY-MM-DD");
-      //   params.to_date = selectedDate.format("YYYY-MM-DD");
-      // }
+      // Set from_date and to_date to today's date
+      const today = dayjs();
+      params.from_date = today.format("YYYY-MM-DD");
+      params.to_date = today.format("YYYY-MM-DD");
 
-      // Add appointment_type parameter based on activeTab
-      // if (activeTab === "individual") {
-      //   params.appointment_type = "service";
-      // } else if (activeTab === "subscriptions") {
-      //   params.appointment_type = "subscription";
-      // }
+     
 
       const response = await ApiService.get<{
         success: boolean;
@@ -1129,16 +788,6 @@ export default function DashboardContent() {
       setAppointments(mappedAppointments);
     } catch (error) {
       Logger.error("Failed to fetch appointments:", error);
-      setAppointmentsError(true);
-      showBanner(
-        "API Failed",
-        "API failed to fetch appointments",
-        "error",
-        2500,
-      );
-      setAppointments([]);
-    } finally {
-      setAppointmentsLoading(false);
     }
   };
 
@@ -1147,161 +796,15 @@ export default function DashboardContent() {
       if (userRole === "customer") {
         fetchAppointments();
       }
+
+      if (isCusotmerandGuest) {
+        fetchCategories();
+        fetchBusinesses();
+      }
     }, []),
   );
 
-  // Fetch categories on mount
-  useEffect(() => {
-    if (isCusotmerandGuest) {
-      fetchCategories();
-    }
-  }, []);
 
-  // Fetch service templates when category changes or when switching to individual tab
-  useEffect(() => {
-    if (isCusotmerandGuest && selectedCategory && activeTab === "individual") {
-      fetchServiceTemplates(selectedCategory);
-    }
-  }, [selectedCategory, activeTab]);
-
-  // Reset service filter to "all" when category changes
-  useEffect(() => {
-    if (isCusotmerandGuest && selectedCategory) {
-      setSelectedServiceFilter("all");
-    }
-  }, [selectedCategory]);
-
-  // Fetch businesses when category or tab changes (with debounced search)
-  useEffect(() => {
-    if (isCusotmerandGuest) {
-      fetchBusinesses();
-    }
-  }, []);
-
-  // Initialize scroll position to subscriptions (index 0)
-  useEffect(() => {
-    // Set initial position without animation
-    horizontalScrollViewRef.current?.scrollTo({
-      x: 0,
-      animated: false,
-    });
-  }, []);
-
-  // Update horizontal scroll position when tab changes (only when clicking, not swiping)
-  useEffect(() => {
-    // Only scroll if this was a manual tab change (click), not from swipe
-    if (isManualScrollRef.current) {
-      const tabIndex = activeTab === "subscriptions" ? 0 : 1;
-      const targetX = tabIndex * SCREEN_WIDTH;
-
-      // Update ScrollView position
-      horizontalScrollViewRef.current?.scrollTo({
-        x: targetX,
-        animated: true,
-      });
-
-      // Reset flag after animation completes
-      setTimeout(() => {
-        isManualScrollRef.current = false;
-      }, 500);
-    }
-  }, [activeTab]);
-
-  const handleHorizontalScrollEnd = (event: any) => {
-    // Only update tab when scroll ends (prevents flickering during animation)
-    if (!isManualScrollRef.current) {
-      const offsetX = event.nativeEvent.contentOffset.x;
-      const newTabIndex = Math.round(offsetX / SCREEN_WIDTH);
-      // Index 0 = subscriptions, Index 1 = individual
-      const newTab = newTabIndex === 0 ? "subscriptions" : "individual";
-
-      if (newTab !== activeTab) {
-        setActiveTab(newTab);
-      }
-    }
-  };
-
-  const handleTabPress = (tab: "subscriptions" | "individual") => {
-    isManualScrollRef.current = true;
-    setActiveTab(tab);
-  };
-
-  // Generate service filters dynamically from API data
-  const serviceFilters = useMemo(() => {
-    const filters: Array<{ id: string; label: string; isPrimary: boolean }> = [
-      { id: "services", label: "Services", isPrimary: true },
-      { id: "all", label: "All", isPrimary: false },
-    ];
-
-    // Add service templates from API
-    serviceTemplates.forEach((template) => {
-      if (template.active) {
-        filters.push({
-          id: template.id.toString(),
-          label: template.name,
-          isPrimary: false,
-        });
-      }
-    });
-
-    return filters;
-  }, [serviceTemplates]);
-
-  const renderFilters = (
-    filters: Array<{ id: string; label: string; isPrimary: boolean }>,
-    selectedFilter: string,
-    onFilterSelect: (id: string) => void,
-  ) => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.filtersContainer}
-      contentContainerStyle={{
-        paddingHorizontal: moderateWidthScale(20),
-        flexDirection: "row",
-      }}
-      nestedScrollEnabled={true}
-    >
-      {filters.map((filter, index) => (
-        <TouchableOpacity
-          key={filter.id}
-          style={[
-            styles.filterItem,
-            filter.isPrimary
-              ? styles.filterItemPrimary
-              : selectedFilter === filter.id
-                ? styles.filterItemActive
-                : styles.filterItemInactive,
-            index < filters.length - 1 && {
-              marginRight: moderateWidthScale(12),
-            },
-          ]}
-          onPress={() => !filter.isPrimary && onFilterSelect(filter.id)}
-        >
-          <Text
-            style={[
-              filter.isPrimary
-                ? styles.filterTextPrimary
-                : selectedFilter === filter.id
-                  ? styles.filterTextActive
-                  : styles.filterTextInactive,
-            ]}
-          >
-            {filter.label}
-          </Text>
-          {filter.isPrimary && (
-            <View style={styles.filterIcon}>
-              <ChevronRight
-                width={widthScale(6)}
-                height={heightScale(9)}
-                color={theme.background}
-              />
-            </View>
-          )}
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  );
 
   return (
     <ScrollView nestedScrollEnabled style={styles.container} contentContainerStyle={styles.contentContainer}>
@@ -1350,12 +853,7 @@ export default function DashboardContent() {
         />
       </View>
 
-      {/* Inclusions Modal */}
-      <InclusionsModal
-        visible={inclusionsModalVisible}
-        onClose={() => setInclusionsModalVisible(false)}
-        inclusions={selectedInclusions}
-      />
+
     </ScrollView>
   );
 }
