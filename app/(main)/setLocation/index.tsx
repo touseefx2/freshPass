@@ -17,6 +17,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import MapView, { Circle, Region } from "react-native-maps";
+import Logger from "@/src/services/logger";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -350,7 +351,7 @@ export default function SetLocationScreen() {
           });
         }
       } catch (error) {
-        console.error("Error fetching address:", error);
+        Logger.error("Error fetching address:", error);
         setTempLocation({
           lat: latitude,
           long: longitude,
@@ -439,12 +440,12 @@ export default function SetLocationScreen() {
         }
       } catch (error) {
         setLocationLoading(false);
-        console.error("Error getting location position:", error);
+        Logger.error("Error getting location position:", error);
       }
 
       if (!currentPosition) {
         setLocationLoading(false);
-        console.error("Unable to get current position");
+        Logger.error("Unable to get current position");
         showBanner(
           "Location Error",
           "Unable to get your current position. Please try again.",
@@ -477,12 +478,12 @@ export default function SetLocationScreen() {
         }
       } catch (error) {
         setLocationLoading(false);
-        console.error("Reverse geocode failed:", error);
+        Logger.error("Reverse geocode failed:", error);
       }
 
       if (!locationName) {
         setLocationLoading(false);
-        console.error("Unable to get current position");
+        Logger.error("Unable to get current position");
         showBanner(
           "Location Error",
           "Unable to get your current position. Please try again.",
@@ -516,7 +517,7 @@ export default function SetLocationScreen() {
       });
     } catch (error) {
       setLocationLoading(false);
-      console.error("Error getting location:", error);
+      Logger.error("Error getting location:", error);
       showBanner(
         "Location Error",
         "Unable to get your current location. Please try again.",
@@ -583,7 +584,7 @@ export default function SetLocationScreen() {
           setPredictions([]);
         }
       } catch (error: any) {
-        console.error("Error fetching suggestions:", error);
+        Logger.error("Error fetching suggestions:", error);
         showBanner(
           "Search Error",
           "Unable to load suggestions. Please try again.",
@@ -648,7 +649,7 @@ export default function SetLocationScreen() {
           setPredictions([]);
         }
       } catch (error) {
-        console.error("Error fetching place details:", error);
+        Logger.error("Error fetching place details:", error);
         showBanner(
           "Location Error",
           "Unable to fetch place details. Try again.",

@@ -27,6 +27,7 @@ import {
   setAboutYourself,
 } from "@/src/state/slices/completeProfileSlice";
 import { validateName, validateDescription } from "@/src/services/validationService";
+import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -199,7 +200,7 @@ export default function StepOne() {
 
   const handleImportFromGoogleDrive = () => {
     // TODO: Implement Google Drive import
-    console.log("Import from Google Drive pressed");
+    Logger.log("Import from Google Drive pressed");
   };
 
   return (

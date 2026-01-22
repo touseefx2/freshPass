@@ -1,4 +1,5 @@
 import React, { use, useMemo } from "react";
+import Logger from "@/src/services/logger";
 import {
   StyleSheet,
   Text,
@@ -152,7 +153,7 @@ export default function ProfileScreen() {
   const userEmail = user.email || "";
 
 
-  console.log("profileImageUri :",user?.profile_image_url)
+  Logger.log("profileImageUri :",user?.profile_image_url)
 
   return (
     <View style={styles.container}>

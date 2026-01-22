@@ -23,6 +23,7 @@ import {
 } from "@/src/services/validationService";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { router } from "expo-router";
@@ -208,7 +209,7 @@ export default function ChangePasswordScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to change password:", error);
+      Logger.error("Failed to change password:", error);
       
       // Handle specific error cases
       if (error.status === 400 || error.status === 422) {

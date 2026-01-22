@@ -19,6 +19,7 @@ import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { validateDescription } from "@/src/services/validationService";
+import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -137,7 +138,7 @@ export default function DescriptionScreen() {
         setDescription(response.data.description || "");
       }
     } catch (error: any) {
-      console.error("Failed to fetch description:", error);
+      Logger.error("Failed to fetch description:", error);
     } finally {
       setLoading(false);
     }
@@ -214,7 +215,7 @@ export default function DescriptionScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update description:", error);
+      Logger.error("Failed to update description:", error);
       showBanner(
         "Error",
         error.message || "Failed to update description. Please try again.",

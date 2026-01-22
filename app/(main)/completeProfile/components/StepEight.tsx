@@ -40,6 +40,7 @@ import {
 import ServiceListBottomSheet from "@/src/components/ServiceListBottomSheet";
 import EditServiceBottomSheet from "@/src/components/EditServiceBottomSheet";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
@@ -280,7 +281,7 @@ export default function StepEight() {
         dispatch(setServiceTemplates(response.data));
       }
     } catch (error) {
-      console.error("Failed to fetch service templates:", error);
+      Logger.error("Failed to fetch service templates:", error);
       setApiError(true);
       showBanner(
         "API Failed",

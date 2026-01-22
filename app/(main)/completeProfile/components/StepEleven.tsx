@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback } from "react";
+import Logger from "@/src/services/logger";
 import {
   StyleSheet,
   Text,
@@ -173,7 +174,7 @@ export default function StepEleven() {
         });
       }
     } catch (error) {
-      console.error("Error selecting image from gallery:", error);
+      Logger.error("Error selecting image from gallery:", error);
       Alert.alert(
         "Error",
         "Failed to select image from gallery. Please try again."
@@ -203,7 +204,7 @@ export default function StepEleven() {
         );
       }
     } catch (error) {
-      console.error("Error taking photo:", error);
+      Logger.error("Error taking photo:", error);
       Alert.alert("Error", "Failed to take photo. Please try again.");
     }
   }, [dispatch]);

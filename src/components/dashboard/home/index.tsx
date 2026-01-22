@@ -29,6 +29,7 @@ import {
   BusinessStatus,
 } from "@/src/state/slices/userSlice";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import {
   userEndpoints,
   dashboardEndpoints,
@@ -410,7 +411,7 @@ export default function HomeScreen() {
       "change",
       async (nextAppState) => {
         if (nextAppState === "active") {
-          console.log("app comes to foreground");
+          Logger.log("app comes to foreground");
           // Refresh data when app comes to foreground
           handleFetchUserStatus();
           handleFetchUnreadCount();

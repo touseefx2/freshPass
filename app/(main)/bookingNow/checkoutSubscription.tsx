@@ -25,6 +25,7 @@ import Button from "@/src/components/button";
 import StackHeader from "@/src/components/StackHeader";
 import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import { fetchPaymentSheetParams } from "@/src/services/stripeService";
+import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import { ApiService } from "@/src/services/api";
@@ -540,7 +541,7 @@ function CheckoutSubscriptionContent() {
         setAvailableSubscriptions(response.data.business.subscription_plans);
       }
     } catch (err: any) {
-      console.error("Failed to fetch subscriptions:", err);
+      Logger.error("Failed to fetch subscriptions:", err);
     }
   };
 
@@ -624,7 +625,7 @@ function CheckoutSubscriptionContent() {
         );
       }
 
-      console.log("paymentConfig", paymentConfig);
+      Logger.log("paymentConfig", paymentConfig);
 
       const { error: initError } = await initPaymentSheet(paymentConfig);
 

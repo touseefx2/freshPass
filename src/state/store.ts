@@ -1,6 +1,7 @@
 import { LocalStorageService } from "@/src/services/storage";
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import { persistReducer, persistStore } from "redux-persist";
+import Logger from "@/src/services/logger";
 import generalReducer from "./slices/generalSlice";
 import completeProfileReducer from "./slices/completeProfileSlice";
 import userReducer from "./slices/userSlice";
@@ -14,7 +15,7 @@ const LocalStorageAdapter = {
     try {
       await LocalStorageService.setItem(key, value);
     } catch (error) {
-      console.error(`❌ Failed to persist ${key}:`, error);
+      Logger.error(`❌ Failed to persist ${key}:`, error);
       // Don't throw - let redux-persist handle it gracefully
     }
   },
@@ -23,7 +24,7 @@ const LocalStorageAdapter = {
       const value = await LocalStorageService.getItem(key);
       return value;
     } catch (error) {
-      console.error(`❌ Failed to retrieve ${key}:`, error);
+      Logger.error(`❌ Failed to retrieve ${key}:`, error);
       // Return null on error so redux-persist can use initial state
       return null;
     }
@@ -32,7 +33,7 @@ const LocalStorageAdapter = {
     try {
       await LocalStorageService.removeItem(key);
     } catch (error) {
-      console.error(`❌ Failed to remove ${key}:`, error);
+      Logger.error(`❌ Failed to remove ${key}:`, error);
       // Don't throw - let redux-persist handle it gracefully
     }
   },

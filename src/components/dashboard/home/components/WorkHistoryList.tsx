@@ -18,6 +18,7 @@ import dayjs from "dayjs";
 import { Appointment } from "@/src/components/appointmentDetail";
 import { useRouter } from "expo-router";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { UserRole } from "@/src/state/slices/userSlice";
 import StackHeader from "@/src/components/StackHeader";
@@ -193,7 +194,7 @@ export default function WorkHistoryList() {
           }
         }
       } catch (error: any) {
-        console.error("Failed to fetch work history:", error);
+        Logger.error("Failed to fetch work history:", error);
       } finally {
         setLoading(false);
         setLoadingMore(false);

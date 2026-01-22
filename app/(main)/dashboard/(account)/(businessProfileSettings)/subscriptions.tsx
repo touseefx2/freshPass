@@ -23,6 +23,7 @@ import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { Skeleton } from "@/src/components/skeletons";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import { businessEndpoints } from "@/src/services/endpoints";
 import {
@@ -477,7 +478,7 @@ export default function ManageSubscriptionsScreen() {
         dispatch(setBusinessServices(response.data));
       }
     } catch (error) {
-      console.error("Failed to fetch business services:", error);
+      Logger.error("Failed to fetch business services:", error);
     }
   };
 
@@ -528,7 +529,7 @@ export default function ManageSubscriptionsScreen() {
         dispatch(setSubscriptions([]));
       }
     } catch (error: any) {
-      console.error("Failed to fetch subscription plans module data:", error);
+      Logger.error("Failed to fetch subscription plans module data:", error);
       showBanner(
         "Error",
         error?.message ||
@@ -637,7 +638,7 @@ export default function ManageSubscriptionsScreen() {
           );
         }
       } catch (error: any) {
-        console.error("Failed to delete subscription plan:", error);
+        Logger.error("Failed to delete subscription plan:", error);
         showBanner(
           "Error",
           error?.message ||
@@ -742,7 +743,7 @@ export default function ManageSubscriptionsScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update subscription plans:", error);
+      Logger.error("Failed to update subscription plans:", error);
       showBanner(
         "Error",
         error?.message ||
@@ -794,7 +795,7 @@ export default function ManageSubscriptionsScreen() {
           );
         }
       } catch (error: any) {
-        console.error("Failed to generate subscription plans:", error);
+        Logger.error("Failed to generate subscription plans:", error);
         showBanner(
           "Error",
           error?.message ||

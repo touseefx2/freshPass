@@ -35,6 +35,7 @@ import FullImageModal from "@/src/components/fullImageModal";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
+import Logger from "@/src/services/logger";
 
 interface MediaFile {
   id: string;
@@ -180,7 +181,7 @@ const businessId = user?.business_id ?? ""
         }
       }
     } catch (error) {
-      console.error("Error selecting media:", error);
+      Logger.error("Error selecting media:", error);
       showBanner(
         "Error",
         "Failed to select media. Please try again.",
@@ -257,7 +258,7 @@ const businessId = user?.business_id ?? ""
         }
       }
     } catch (error) {
-      console.error("Error taking photo:", error);
+      Logger.error("Error taking photo:", error);
       showBanner(
         "Error",
         "Failed to take photo. Please try again.",
@@ -322,7 +323,7 @@ const businessId = user?.business_id ?? ""
         });
       }
     } catch (error) {
-      console.error("Error selecting audio file:", error);
+      Logger.error("Error selecting audio file:", error);
       showBanner(
         "Error",
         "Failed to select audio file. Please try again.",
@@ -457,7 +458,7 @@ const businessId = user?.business_id ?? ""
       setGeneratedResult(response);
       setResultModalVisible(true);
     } catch (error: any) {
-      console.error(`Error generating ${toolType.toLowerCase()}:`, error);
+      Logger.error(`Error generating ${toolType.toLowerCase()}:`, error);
       
       // Handle no internet error
       if (error.isNoInternet) {

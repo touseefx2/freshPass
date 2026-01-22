@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { Platform } from "react-native";
 import { checkInternetConnection } from "./api";
 import { hairTryonEndpoints, socialMediaEndpoints, businessEndpoints, clientChatEndpoints } from "./endpoints";
+import Logger from "./logger";
 
 // Get AI Tool base URL and token from environment
 const AI_TOOL_BASE_URL = process.env.EXPO_PUBLIC_AITOOL_API_BASE_URL || "";
@@ -110,7 +111,7 @@ const logAiToolRequest = (
       logData.body = extractFormDataForLogging(formData);
     }
 
-    console.log(`🚀 AI Tool ${method} Request:`, JSON.stringify(logData, null, 2));
+    Logger.log(`🚀 AI Tool ${method} Request:`, JSON.stringify(logData, null, 2));
   }
 };
 
@@ -122,7 +123,7 @@ const logAiToolResponse = (
 ) => {
   if (__DEV__) {
     const fullUrl = `${AI_TOOL_BASE_URL}${endpoint}`;
-    console.log(`✅ AI Tool ${method} Response:`, {
+    Logger.log(`✅ AI Tool ${method} Response:`, {
       url: fullUrl,
       status: status,
       data: JSON.stringify(data),
@@ -137,7 +138,7 @@ const logAiToolError = (
 ) => {
   if (__DEV__) {
     const fullUrl = `${AI_TOOL_BASE_URL}${endpoint}`;
-    console.error(`❌ AI Tool ${method} Error:`, {
+    Logger.error(`❌ AI Tool ${method} Error:`, {
       url: fullUrl,
       error: error.message,
       status: error.response?.status,
@@ -597,7 +598,7 @@ export class AiToolsService {
       if (businessId && businessId.trim() !== "") {
         bodyObj.business_id = businessId;
       }
-      console.log(`🚀 AI Stream Chat Request:`, JSON.stringify({ url: fullUrl, body: bodyObj }, null, 2));
+      Logger.log(`🚀 AI Stream Chat Request:`, JSON.stringify({ url: fullUrl, body: bodyObj }, null, 2));
     }
 
     try {
@@ -641,7 +642,7 @@ export class AiToolsService {
               if (!line.trim()) continue;
               
               if (__DEV__) {
-                console.log("SSE line:", line);
+                Logger.log("SSE line:", line);
               }
               
               // Handle both "data: " and "data: data: " prefixes
@@ -660,7 +661,7 @@ export class AiToolsService {
                 const parsed = JSON.parse(dataStr);
                 
                 if (__DEV__) {
-                  console.log("Parsed SSE data:", parsed);
+                  Logger.log("Parsed SSE data:", parsed);
                 }
                 
                 // 1) Token chunks during streaming
@@ -691,7 +692,7 @@ export class AiToolsService {
                   }
                   
                   if (__DEV__) {
-                    console.log(`✅ AI Stream Chat Complete:`, { fullResponse, newSessionId });
+                    Logger.log(`✅ AI Stream Chat Complete:`, { fullResponse, newSessionId });
                   }
                   
                   onComplete(fullResponse, newSessionId);
@@ -708,7 +709,7 @@ export class AiToolsService {
                 if (parsed.error || parsed.detail) {
                   const errorMessage = parsed.detail || parsed.message || parsed.error || "An error occurred";
                   if (__DEV__) {
-                    console.error("AI API error:", parsed);
+                    Logger.error("AI API error:", parsed);
                   }
                   isComplete = true;
                   if (pollingInterval) {
@@ -724,7 +725,7 @@ export class AiToolsService {
                 // If not JSON, treat as plain text token (fallback)
                 if (dataStr.trim()) {
                   if (__DEV__) {
-                    console.log("Non-JSON data:", dataStr);
+                    Logger.log("Non-JSON data:", dataStr);
                   }
                   fullResponse += dataStr;
                   onToken(dataStr);
@@ -741,7 +742,7 @@ export class AiToolsService {
           // Check for timeout
           if (Date.now() - startTime > TIMEOUT_MS && !hasReceivedData) {
             if (__DEV__) {
-              console.error("Stream timeout - no data received");
+              Logger.error("Stream timeout - no data received");
             }
             isComplete = true;
             if (pollingInterval) {
@@ -765,7 +766,7 @@ export class AiToolsService {
             }
           } catch (e) {
             if (__DEV__) {
-              console.log("Error checking for new data:", e);
+              Logger.log("Error checking for new data:", e);
             }
           }
         };
@@ -790,7 +791,7 @@ export class AiToolsService {
             if (xhr.status >= 200 && xhr.status < 300) {
               if (!hasReceivedData) {
                 if (__DEV__) {
-                  console.warn("Stream ended without receiving any data");
+                  Logger.warn("Stream ended without receiving any data");
                 }
                 // Still complete with empty response
                 onComplete(fullResponse || "No response received. Please try again.", newSessionId);
@@ -814,7 +815,7 @@ export class AiToolsService {
               }
               
               if (__DEV__) {
-                console.error("Stream response error:", xhr.status, xhr.responseText);
+                Logger.error("Stream response error:", xhr.status, xhr.responseText);
               }
               
               const error = new Error(errorMessage);
@@ -840,7 +841,7 @@ export class AiToolsService {
       }).catch((error: any) => {
         // Handle Promise rejection (async errors from XMLHttpRequest)
         if (__DEV__) {
-          console.error(`❌ AI Stream Chat Error:`, error);
+          Logger.error(`❌ AI Stream Chat Error:`, error);
         }
         const errorMessage = error.message || getErrorMessage(error);
         const customError = new Error(errorMessage);
@@ -850,7 +851,7 @@ export class AiToolsService {
     } catch (error: any) {
       // Handle synchronous errors
       if (__DEV__) {
-        console.error(`❌ AI Stream Chat Error:`, error);
+        Logger.error(`❌ AI Stream Chat Error:`, error);
       }
       const errorMessage = error.message || getErrorMessage(error);
       const customError = new Error(errorMessage);

@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import Logger from "@/src/services/logger";
 import {
   StyleSheet,
   Text,
@@ -136,7 +137,7 @@ export default function LanguageChangeScreen() {
           await Updates.reloadAsync();
         }, 50);
       } catch (error) {
-        console.warn(
+        Logger.warn(
           "Could not reload app. RTL change will apply on next restart:",
           error
         );

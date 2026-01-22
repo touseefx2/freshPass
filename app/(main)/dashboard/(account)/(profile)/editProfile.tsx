@@ -21,6 +21,7 @@ import { AntDesign, MaterialIcons, Feather } from "@expo/vector-icons";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { staffEndpoints, userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -488,7 +489,7 @@ const parseDateOfBirth = (
       };
     }
   } catch (error) {
-    console.error("Error parsing date of birth:", error);
+    Logger.error("Error parsing date of birth:", error);
   }
 
   return null;
@@ -866,7 +867,7 @@ export default function EditProfileScreen() {
 
   const handleImportFromGoogleDrive = () => {
     // TODO: Implement Google Drive import
-    console.log("Import from Google Drive pressed");
+    Logger.log("Import from Google Drive pressed");
   };
 
   // Check if form is valid
@@ -1066,7 +1067,7 @@ export default function EditProfileScreen() {
       }>(endpoint, formData, config);
 
       if (response.success) {
-        console.log("response.data :", response.data);
+        Logger.log("response.data :", response.data);
         // Update Redux state with new user data (for user endpoint responses)
         if (response.data) {
           // Parse date_of_birth from API response if it exists (only for customer users)
@@ -1115,7 +1116,7 @@ export default function EditProfileScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update profile:", error);
+      Logger.error("Failed to update profile:", error);
       showBanner(
         "Error",
         error.message || "Failed to update profile. Please try again.",

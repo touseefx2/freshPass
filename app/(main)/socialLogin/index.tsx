@@ -21,6 +21,7 @@ import { MAIN_ROUTES } from "@/src/constant/routes";
 import SocialAuthOptions from "@/src/components/socialAuthOptions";
 import SectionSeparator from "@/src/components/sectionSeparator";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 // import { businessEndpoints } from "@/src/services/endpoints";
 // import { setUser, setTokens } from "@/src/state/slices/userSlice";
 // import { setRegisterEmail } from "@/src/state/slices/generalSlice";
@@ -69,7 +70,7 @@ export default function SocialLogin() {
       try {
         await GoogleSignin.signOut();
       } catch (signOutError) {
-        console.log("Google logout out error (ignored):", signOutError);
+        Logger.log("Google logout out error (ignored):", signOutError);
       }
 
       // Logout from app session to clear any existing tokens/user data
@@ -77,7 +78,7 @@ export default function SocialLogin() {
         await ApiService.logout();
       } catch (logoutError) {
         // Ignore logout errors - might not have active session
-        console.log("App logout error (ignored):", logoutError);
+        Logger.log("App logout error (ignored):", logoutError);
       }
 
       // Check if Google Play Services are available (Android only)
@@ -101,8 +102,8 @@ export default function SocialLogin() {
       }
 
 
-      console.log("userInfo", userInfo);
-      console.log("idToken", idToken);
+      Logger.log("userInfo", userInfo);
+      Logger.log("idToken", idToken);
 
       // Send token to backend for authentication
       // NOTE: You need to create a backend endpoint at /api/auth/google that accepts the idToken
@@ -170,7 +171,7 @@ export default function SocialLogin() {
       //     Alert.alert("Error", response.message || "Login failed");
       //   }
       // } catch (apiError: any) {
-      //   console.error("API Error:", apiError);
+      //   Logger.error("API Error:", apiError);
       //   Alert.alert(
       //     "Login Failed",
       //     apiError.message || "Failed to authenticate with server"
@@ -178,14 +179,14 @@ export default function SocialLogin() {
       // }
 
     } catch (error: any) {
-      console.error("Google Sign-In Error:", error);
+      Logger.error("Google Sign-In Error:", error);
 
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         // User cancelled the login flow
-        console.log("User cancelled Google Sign-In");
+        Logger.log("User cancelled Google Sign-In");
       } else if (error.code === statusCodes.IN_PROGRESS) {
         // Operation (e.g. sign in) is in progress already
-        console.log("Google Sign-In already in progress");
+        Logger.log("Google Sign-In already in progress");
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         // Play services not available or outdated
         Alert.alert(
@@ -233,7 +234,7 @@ export default function SocialLogin() {
         Alert.alert("Error", `Cannot open ${title}`);
       }
     } catch (error) {
-      console.error("Error opening link:", error);
+      Logger.error("Error opening link:", error);
       Alert.alert("Error", `Failed to open ${title}`);
     }
   }, []);

@@ -26,6 +26,7 @@ import {
   setTotalSteps,
 } from "@/src/state/slices/completeProfileSlice";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
@@ -184,7 +185,7 @@ export default function completeCusotmerProfile() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update profile:", error);
+      Logger.error("Failed to update profile:", error);
       showBanner(
         "Error",
         error.message || "Failed to update profile. Please try again.",

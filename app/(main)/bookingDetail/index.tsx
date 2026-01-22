@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
+import Logger from "@/src/services/logger";
 import {
   StatusBar,
   StyleSheet,
@@ -438,7 +439,7 @@ export default function BookingDetail() {
         const services = JSON.parse(params.selectedServices);
         setSelectedServices(services);
       } catch (e) {
-        console.error("Error parsing selectedServices:", e);
+        Logger.error("Error parsing selectedServices:", e);
       }
     }
 
@@ -447,7 +448,7 @@ export default function BookingDetail() {
         const staff = JSON.parse(params.selectedStaffMember);
         setSelectedStaffMember(staff);
       } catch (e) {
-        console.error("Error parsing selectedStaffMember:", e);
+        Logger.error("Error parsing selectedStaffMember:", e);
       }
     }
 

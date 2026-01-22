@@ -1,4 +1,5 @@
 import { langData, themeData } from "@/src/constant/data";
+import Logger from "@/src/services/logger";
 import { setupRTL } from "@/src/constant/functions";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import {
@@ -69,7 +70,7 @@ export default function Header() {
         }, 50);
       } catch (error) {
         // If reload fails (e.g., in Expo Go), the change will apply on next app restart
-        console.warn(
+        Logger.warn(
           "Could not reload app. RTL change will apply on next restart:",
           error
         );

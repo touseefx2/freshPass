@@ -1,5 +1,6 @@
 import { Platform, I18nManager } from "react-native";
 import * as Location from "expo-location";
+import Logger from "@/src/services/logger";
 import {
   Coordinates,
   GoogleGeocodeResponse,
@@ -164,7 +165,7 @@ export const tryGetPosition = async (): Promise<Location.LocationObject> => {
       });
       return position;
     } catch (error) {
-      console.warn("getCurrentPosition retry failed", error);
+      Logger.warn("getCurrentPosition retry failed", error);
     }
   }
 
@@ -181,7 +182,7 @@ export const resolveAddressViaGoogle = async (
     );
     const payload = (await response.json()) as GoogleGeocodeResponse;
     if (payload.status !== "OK" || !payload.results?.length) {
-      console.warn(
+      Logger.warn(
         "Google geocode did not return results",
         payload.status,
         payload.error_message
@@ -213,7 +214,7 @@ export const resolveAddressViaGoogle = async (
       countryCode,
     };
   } catch (error) {
-    console.warn("Google geocode request failed", error);
+    Logger.warn("Google geocode request failed", error);
     return null;
   }
 };
@@ -265,9 +266,9 @@ export const resolveCurrentLocation = async ({
       });
       [reverseAddress] = reverseResults;
     } catch (reverseError) {
-      console.warn("Reverse geocode failed", reverseError);
+      Logger.warn("Reverse geocode failed", reverseError);
       const providerStatus = await Location.getProviderStatusAsync();
-      console.warn("Provider status", providerStatus);
+      Logger.warn("Provider status", providerStatus);
       notice =
         "We found your coordinates but couldn’t fetch the address. Please confirm the details below.";
     }
@@ -323,7 +324,7 @@ export const resolveCurrentLocation = async ({
       },
     };
   } catch (error) {
-    console.error("resolveCurrentLocation failure", error);
+    Logger.error("resolveCurrentLocation failure", error);
     const message =
       error instanceof Error ? error.message : "Location lookup failed";
     return {

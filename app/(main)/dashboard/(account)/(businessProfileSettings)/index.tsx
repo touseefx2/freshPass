@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import Logger from "@/src/services/logger";
 import {
   StyleSheet,
   Text,
@@ -79,7 +80,7 @@ export default function BusinessProfileSettingsScreen() {
       router.push("./location");
     } else {
       // TODO: Navigate to respective screens
-      console.log("Business profile setting pressed:", key);
+      Logger.log("Business profile setting pressed:", key);
     }
   };
 

@@ -1,5 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { Platform, Alert, Linking } from "react-native";
+import Logger from "./logger";
 
 export interface MediaPermissionResult {
   granted: boolean;
@@ -64,7 +65,7 @@ export const requestMediaLibraryPermission =
           "Media library permission was denied. Please enable photo access in your device settings.",
       };
     } catch (error) {
-      console.error("Error requesting media library permission:", error);
+      Logger.error("Error requesting media library permission:", error);
       return {
         granted: false,
         canRequestAgain: true,
@@ -130,7 +131,7 @@ export const requestCameraPermission =
           "Camera permission was denied. Please enable camera access in your device settings.",
       };
     } catch (error) {
-      console.error("Error requesting camera permission:", error);
+      Logger.error("Error requesting camera permission:", error);
       return {
         granted: false,
         canRequestAgain: true,
@@ -176,7 +177,7 @@ export const openMediaSettings = async (): Promise<void> => {
       await Linking.openSettings();
     }
   } catch (error) {
-    console.error("Error opening settings:", error);
+    Logger.error("Error opening settings:", error);
     Alert.alert(
       "Unable to open settings",
       "Please manually enable photo permissions in your device settings."

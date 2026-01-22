@@ -20,6 +20,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
@@ -203,7 +204,7 @@ export default function AccountScreen() {
     } else if (key === "delete") {
       handleDeleteAccount();
     } else {
-      console.log("Account row pressed:", key);
+      Logger.log("Account row pressed:", key);
     }
   };
 

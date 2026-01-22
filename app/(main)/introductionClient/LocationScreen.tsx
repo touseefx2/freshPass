@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import Logger from "@/src/services/logger";
 import { StyleSheet, Text, View, Platform, Image } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -92,7 +93,7 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
       }
       onNext();
     } catch (error) {
-      console.error("Error getting location:", error);
+      Logger.error("Error getting location:", error);
       const errorMsg =
         error instanceof Error
           ? error.message

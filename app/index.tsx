@@ -1,4 +1,5 @@
 import { Redirect } from "expo-router";
+import Logger from "@/src/services/logger";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { useAppSelector } from "@/src/hooks/hooks";
 import { useEffect, useState } from "react";
@@ -21,7 +22,7 @@ export default function Index() {
   if (!isReady) {
     return null;
   }
-  console.log("accessToken", accessToken);
+  Logger.log("accessToken", accessToken);
 
   if (accessToken || isGuest)
     return <Redirect href={`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any} />;

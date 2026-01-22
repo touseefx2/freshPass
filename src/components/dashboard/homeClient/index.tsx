@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Logger from "@/src/services/logger";
 import { StyleSheet, View, StatusBar } from "react-native";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -88,12 +89,12 @@ export default function HomeScreen() {
         }
       } catch (error) {
         dispatch(setLocationLoading(false));
-        console.error("Error getting location position:", error);
+        Logger.error("Error getting location position:", error);
       }
 
       if (!currentPosition) {
         dispatch(setLocationLoading(false));
-        console.error("Unable to get current position");
+        Logger.error("Unable to get current position");
         showBanner(
           "Location Error",
           "Unable to get your current position. Please try again.",
@@ -126,12 +127,12 @@ export default function HomeScreen() {
         }
       } catch (error) {
         dispatch(setLocationLoading(false));
-        console.error("Reverse geocode failed:", error);
+        Logger.error("Reverse geocode failed:", error);
       }
 
       if (!locationName) {
         dispatch(setLocationLoading(false));
-        console.error("Unable to get current position");
+        Logger.error("Unable to get current position");
         showBanner(
           "Location Error",
           "Unable to get your current position. Please try again.",
@@ -152,7 +153,7 @@ export default function HomeScreen() {
       dispatch(setLocationLoading(false));
     } catch (error) {
       dispatch(setLocationLoading(false));
-      console.error("Error getting location:", error);
+      Logger.error("Error getting location:", error);
       showBanner(
         "Location Error",
         "Unable to get your current location. Please try again.",

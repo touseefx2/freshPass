@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import Logger from "@/src/services/logger";
 import { Modal, StyleSheet, View, Text, TouchableOpacity } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -164,7 +165,7 @@ export default function LocationEnableModal({
         return;
       }
     } catch (error) {
-      console.error("Error getting location:", error);
+      Logger.error("Error getting location:", error);
       const errorMsg =
         error instanceof Error
           ? error.message

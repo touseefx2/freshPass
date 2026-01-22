@@ -18,6 +18,7 @@ import FloatingInput from "@/src/components/floatingInput";
 import Button from "@/src/components/button";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter } from "expo-router";
@@ -583,7 +584,7 @@ export default function CountryChangeScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update country:", error);
+      Logger.error("Failed to update country:", error);
       showBanner(
         "Error",
         error.message || "Failed to update country. Please try again.",

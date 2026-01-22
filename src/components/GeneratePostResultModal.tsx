@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
+import Logger from "@/src/services/logger";
 import {
   View,
   Text,
@@ -406,7 +407,7 @@ export default function GeneratePostResultModal({
     try {
       Clipboard.setString(text);
     } catch (error) {
-      console.error("Error copying to clipboard:", error);
+      Logger.error("Error copying to clipboard:", error);
       Alert.alert("Error", "Failed to copy to clipboard");
     }
   };
@@ -437,7 +438,7 @@ export default function GeneratePostResultModal({
         await Linking.openURL(uri);
       }
     } catch (error) {
-      console.error("Error opening file:", error);
+      Logger.error("Error opening file:", error);
     } finally {
       setDownloading(false);
     }

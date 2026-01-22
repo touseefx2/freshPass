@@ -24,6 +24,7 @@ import FloatingInput from "@/src/components/floatingInput";
 import Button from "@/src/components/button";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import { validateName } from "@/src/services/validationService";
+import Logger from "@/src/services/logger";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -647,7 +648,7 @@ export default function EditBusinessProfileScreen() {
 
   const handleImportFromGoogleDrive = () => {
     // TODO: Implement Google Drive import
-    console.log("Import from Google Drive pressed");
+    Logger.log("Import from Google Drive pressed");
   };
 
   // Check if form is valid
@@ -759,7 +760,7 @@ export default function EditBusinessProfileScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update business profile:", error);
+      Logger.error("Failed to update business profile:", error);
       showBanner(
         "Error",
         error.message || "Failed to update business profile. Please try again.",

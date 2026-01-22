@@ -18,6 +18,7 @@ import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter } from "expo-router";
@@ -349,7 +350,7 @@ export default function SetupAvailabilityScreen() {
         setBusinessHours(parsedHours);
       }
     } catch (error: any) {
-      console.error("Failed to fetch availability:", error);
+      Logger.error("Failed to fetch availability:", error);
       showBanner(
         "Error",
         error.message || "Failed to fetch availability. Please try again.",
@@ -555,7 +556,7 @@ export default function SetupAvailabilityScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update availability:", error);
+      Logger.error("Failed to update availability:", error);
       showBanner(
         "Error",
         error.message || "Failed to update availability. Please try again.",

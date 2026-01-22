@@ -36,6 +36,7 @@ import {
 } from "@/src/state/slices/completeProfileSlice";
 import PrivacyBanner from "@/src/components/privacyBanner";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
@@ -332,7 +333,7 @@ export default function CompleteProfile() {
       }>(businessEndpoints.onboarding, requestBody, config);
 
       if (response.success) {
-        console.log("---->business : ", response?.data?.business?.id);
+        Logger.log("---->business : ", response?.data?.business?.id);
         if (currentStep === 1) {
           dispatch(setBusinessId(response?.data?.business?.id));
         }
@@ -352,7 +353,7 @@ export default function CompleteProfile() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to submit onboarding step:", error);
+      Logger.error("Failed to submit onboarding step:", error);
       showBanner(
         "Error",
         error.message || "Failed to save step data. Please try again.",
@@ -416,7 +417,7 @@ export default function CompleteProfile() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to submit onboarding step:", error);
+      Logger.error("Failed to submit onboarding step:", error);
       showBanner(
         "Error",
         error.message || "Failed to save step data. Please try again.",

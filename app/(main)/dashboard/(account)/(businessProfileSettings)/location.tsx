@@ -31,6 +31,7 @@ import StackHeader from "@/src/components/StackHeader";
 import FloatingInput from "@/src/components/floatingInput";
 import { Skeleton } from "@/src/components/skeletons";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useRouter } from "expo-router";
 import StepFourSearchSection from "../../../completeProfile/components/StepFour/StepFourSearchSection";
@@ -305,7 +306,7 @@ export default function LocationScreen() {
         }
       }
     } catch (error: any) {
-      console.error("Failed to fetch location:", error);
+      Logger.error("Failed to fetch location:", error);
     } finally {
       setLoading(false);
     }
@@ -349,7 +350,7 @@ export default function LocationScreen() {
           setPredictions([]);
         }
       } catch (error: any) {
-        console.error("Error fetching suggestions:", error);
+        Logger.error("Error fetching suggestions:", error);
         setSuggestionError("Unable to load suggestions. Please try again.");
         setPredictions([]);
       } finally {
@@ -606,7 +607,7 @@ export default function LocationScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update location:", error);
+      Logger.error("Failed to update location:", error);
       showBanner(
         "Error",
         error?.message || "Failed to update location. Please try again.",

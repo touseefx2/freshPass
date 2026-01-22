@@ -20,6 +20,7 @@ import {
 } from "@/src/state/slices/completeProfileSlice";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateEmail } from "@/src/services/validationService";
@@ -213,7 +214,7 @@ export default function StepSix() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to send invitation:", error);
+      Logger.error("Failed to send invitation:", error);
       showBanner(
         "Error",
         error.message || "Failed to send invitation. Please try again.",

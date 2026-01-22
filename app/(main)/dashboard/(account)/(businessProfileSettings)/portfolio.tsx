@@ -26,6 +26,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import {
   handleCameraPermission,
@@ -203,7 +204,7 @@ export default function ManagePortfolioPhotosScreen() {
         setExistingPhotos([]);
       }
     } catch (error: any) {
-      console.error("Failed to fetch portfolio module data:", error);
+      Logger.error("Failed to fetch portfolio module data:", error);
       showBanner(
         "Error",
         error?.message || "Failed to fetch portfolio photos. Please try again.",
@@ -249,7 +250,7 @@ export default function ManagePortfolioPhotosScreen() {
         }
       }
     } catch (error) {
-      console.error("Error selecting image from gallery:", error);
+      Logger.error("Error selecting image from gallery:", error);
       Alert.alert(
         "Error",
         "Failed to select image from gallery. Please try again."
@@ -280,7 +281,7 @@ export default function ManagePortfolioPhotosScreen() {
         ]);
       }
     } catch (error) {
-      console.error("Error taking photo:", error);
+      Logger.error("Error taking photo:", error);
       Alert.alert("Error", "Failed to take photo. Please try again.");
     }
   }, []);
@@ -461,7 +462,7 @@ export default function ManagePortfolioPhotosScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update portfolio photos:", error);
+      Logger.error("Failed to update portfolio photos:", error);
       showBanner(
         "Error",
         error?.message || "Failed to update portfolio photos. Please try again.",

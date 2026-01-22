@@ -19,6 +19,7 @@ import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter } from "expo-router";
@@ -181,7 +182,7 @@ export default function SocialMediaScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to fetch social media:", error);
+      Logger.error("Failed to fetch social media:", error);
     } finally {
       setLoading(false);
     }
@@ -269,7 +270,7 @@ export default function SocialMediaScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update social media:", error);
+      Logger.error("Failed to update social media:", error);
       showBanner(
         "Error",
         error.message || "Failed to update social media. Please try again.",

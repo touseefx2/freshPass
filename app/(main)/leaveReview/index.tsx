@@ -40,6 +40,7 @@ import {
 } from "@/assets/icons";
 import ReviewSuggestionsDropdown from "@/src/components/ReviewSuggestionsDropdown";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { reviewsEndpoints } from "@/src/services/endpoints";
 import { StatusBar } from "react-native";
 import { KeyboardAwareScrollView, KeyboardProvider } from "react-native-keyboard-controller";
@@ -134,7 +135,7 @@ export default function LeaveReview() {
           // );
         }
       } catch (error: any) {
-        console.error("Failed to fetch review suggestions:", error);
+        Logger.error("Failed to fetch review suggestions:", error);
         // showBanner(
         //   "Error",
         //   error.message || "Failed to load review suggestions",
@@ -233,7 +234,7 @@ export default function LeaveReview() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to submit review:", error);
+      Logger.error("Failed to submit review:", error);
       showBanner(
         "Error",
         error.message || "Failed to submit review. Please try again.",

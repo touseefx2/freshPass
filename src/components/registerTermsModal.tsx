@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from "react";
+import Logger from "@/src/services/logger";
 import {
   Modal,
   StyleSheet,
@@ -223,7 +224,7 @@ export default function RegisterTermsModal({
       }
       onContinue();
     } catch (error) {
-      console.error("Error getting location:", error);
+      Logger.error("Error getting location:", error);
       const errorMsg =
         error instanceof Error
           ? error.message

@@ -25,6 +25,7 @@ import {
 import { useRouter, useFocusEffect } from "expo-router";
 import { Entypo, Ionicons } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
@@ -403,7 +404,7 @@ export default function BookingScreen() {
   };
 
   const mapApiStatusToBookingStatus = (apiStatus: string): BookingStatus => {
-    console.log("apiStatus : ", apiStatus);
+    Logger.log("apiStatus : ", apiStatus);
     switch (apiStatus.toLowerCase()) {
       case "scheduled":
         return "ongoing";

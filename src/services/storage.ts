@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Logger from './logger';
 
 // Local storage service using AsyncStorage (works on all platforms including web)
 export class LocalStorageService {
@@ -9,7 +10,7 @@ export class LocalStorageService {
     try {
       await AsyncStorage.setItem(key, value);
     } catch (error) {
-      console.error(`❌ Failed to store ${key}:`, error);
+      Logger.error(`❌ Failed to store ${key}:`, error);
       throw error;
     }
   }
@@ -22,7 +23,7 @@ export class LocalStorageService {
       const value = await AsyncStorage.getItem(key);
       return value;
     } catch (error) {
-      console.error(`❌ Failed to retrieve ${key}:`, error);
+      Logger.error(`❌ Failed to retrieve ${key}:`, error);
       return null;
     }
   }
@@ -34,7 +35,7 @@ export class LocalStorageService {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.error(`❌ Failed to remove ${key}:`, error);
+      Logger.error(`❌ Failed to remove ${key}:`, error);
       throw error;
     }
   }

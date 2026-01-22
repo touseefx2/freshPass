@@ -22,6 +22,7 @@ import {
 import { IMAGES } from "@/src/constant/images";
 import FloatingInput from "@/src/components/floatingInput";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
@@ -241,7 +242,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
         setCategories(response.data);
       }
     } catch (error) {
-      console.error("Failed to fetch categories:", error);
+      Logger.error("Failed to fetch categories:", error);
       setApiError(true);
       showBanner("API Failed", "API failed to fetch categories", "error", 2500);
     } finally {

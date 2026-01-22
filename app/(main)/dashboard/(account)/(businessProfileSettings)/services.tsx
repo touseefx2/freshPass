@@ -22,6 +22,7 @@ import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { Skeleton } from "@/src/components/skeletons";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import {
   addService,
@@ -291,7 +292,7 @@ export default function ManageServicesScreen() {
         dispatch(setServices([]));
       }
     } catch (error: any) {
-      console.error("Failed to fetch services module data:", error);
+      Logger.error("Failed to fetch services module data:", error);
       showBanner(
         "Error",
         error?.message || "Failed to fetch services. Please try again.",
@@ -334,7 +335,7 @@ export default function ManageServicesScreen() {
         dispatch(setServiceTemplates(response.data));
       }
     } catch (error) {
-      console.error("Failed to fetch service templates:", error);
+      Logger.error("Failed to fetch service templates:", error);
       setApiError(true);
     } finally {
       setServiceTemplatesLoading(false);
@@ -452,7 +453,7 @@ export default function ManageServicesScreen() {
           );
         }
       } catch (error: any) {
-        console.error("Failed to delete service:", error);
+        Logger.error("Failed to delete service:", error);
         showBanner(
           "Error",
           error?.message || "Failed to delete service. Please try again.",
@@ -524,7 +525,7 @@ export default function ManageServicesScreen() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to update services:", error);
+      Logger.error("Failed to update services:", error);
       showBanner(
         "Error",
         error?.message || "Failed to update services. Please try again.",

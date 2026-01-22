@@ -22,6 +22,7 @@ import {
   goToPreviousStep,
 } from "@/src/state/slices/completeProfileSlice";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { staffEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
@@ -181,7 +182,7 @@ export default function CompleteStaffProfile() {
         );
       }
     } catch (error: any) {
-      console.error("Failed to submit onboarding step:", error);
+      Logger.error("Failed to submit onboarding step:", error);
       showBanner(
         "Error",
         error.message || "Failed to save step data. Please try again.",

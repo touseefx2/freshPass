@@ -34,6 +34,7 @@ import {
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import {
   appointmentsEndpoints,
   businessEndpoints,
@@ -1419,7 +1420,7 @@ function CheckoutContent() {
       requestBody.subscription_id = subscriptionId;
     }
 
-    console.log("requestBody", requestBody);
+    Logger.log("requestBody", requestBody);
 
     // Show loader
     dispatch(setActionLoader(true));
@@ -1444,7 +1445,7 @@ function CheckoutContent() {
       // Hide loader
       dispatch(setActionLoader(false));
 
-      console.log(
+      Logger.log(
         "Appointment API Response:",
         JSON.stringify(response, null, 2)
       );
@@ -1508,7 +1509,7 @@ function CheckoutContent() {
       }
     } catch (error: any) {
       dispatch(setActionLoader(false));
-      console.error("Appointment API Error:", error);
+      Logger.error("Appointment API Error:", error);
 
       showBanner(
         "Booking Failed",

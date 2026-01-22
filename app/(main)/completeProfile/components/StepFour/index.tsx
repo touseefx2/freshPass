@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import Logger from "@/src/services/logger";
 import { Region } from "react-native-maps";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -228,7 +229,7 @@ export default function StepFour() {
           setPredictions([]);
         }
       } catch (error: any) {
-        console.error("Error fetching suggestions:", error);
+        Logger.error("Error fetching suggestions:", error);
         setSuggestionError("Unable to load suggestions. Please try again.");
         setPredictions([]);
       } finally {

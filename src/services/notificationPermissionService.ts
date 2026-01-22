@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { Platform, Alert, Linking } from "react-native";
+import Logger from "./logger";
 
 export interface NotificationPermissionResult {
   granted: boolean;
@@ -46,9 +47,9 @@ export const requestNotificationPermission =
         // Get push token (optional, for sending push notifications from server)
         try {
           const token = await Notifications.getExpoPushTokenAsync();
-          console.log("Push token:", token);
+          Logger.log("Push token:", token);
         } catch (error) {
-          console.log("Could not get push token:", error);
+          Logger.log("Could not get push token:", error);
         }
 
         return {
@@ -97,7 +98,7 @@ export const requestNotificationPermission =
           "Notification permission was denied. Please enable notifications in your device settings to receive booking alerts.",
       };
     } catch (error) {
-      console.error("Error requesting notification permission:", error);
+      Logger.error("Error requesting notification permission:", error);
       return {
         granted: false,
         canRequestAgain: true,
@@ -143,7 +144,7 @@ export const openNotificationSettings = async (): Promise<void> => {
       await Linking.openSettings();
     }
   } catch (error) {
-    console.error("Error opening settings:", error);
+    Logger.error("Error opening settings:", error);
     Alert.alert(
       "Unable to open settings",
       "Please manually enable notification permissions in your device settings."

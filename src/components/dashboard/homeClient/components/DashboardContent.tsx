@@ -39,6 +39,7 @@ import {
 } from "@/assets/icons";
 import InclusionsModal from "@/src/components/inclusionsModal";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import {
   businessEndpoints,
   appointmentsEndpoints,
@@ -876,7 +877,7 @@ export default function DashboardContent() {
         }
       }
     } catch (error) {
-      console.error("Failed to fetch categories:", error);
+      Logger.error("Failed to fetch categories:", error);
       setCategoriesError(true);
       showBanner("API Failed", "API failed to fetch categories", "error", 2500);
     } finally {
@@ -910,7 +911,7 @@ export default function DashboardContent() {
         setServiceTemplates([]);
       }
     } catch (error) {
-      console.error("Failed to fetch service templates:", error);
+      Logger.error("Failed to fetch service templates:", error);
       setServiceTemplatesError(true);
       showBanner(
         "API Failed",
@@ -992,7 +993,7 @@ export default function DashboardContent() {
         setBusinessesCount(response.data.length);
       }
     } catch (error) {
-      console.error("Failed to fetch businesses:", error);
+      Logger.error("Failed to fetch businesses:", error);
       setBusinessesError(true);
       showBanner("API Failed", "API failed to fetch businesses", "error", 2500);
       setVerifiedSalons([]);
@@ -1170,7 +1171,7 @@ export default function DashboardContent() {
         }
       }
     } catch (error) {
-      console.error("Failed to fetch businesses with data:", error);
+      Logger.error("Failed to fetch businesses with data:", error);
       setSectionsError(true);
       showBanner(
         "API Failed",
@@ -1359,7 +1360,7 @@ export default function DashboardContent() {
 
       setAppointments(mappedAppointments);
     } catch (error) {
-      console.error("Failed to fetch appointments:", error);
+      Logger.error("Failed to fetch appointments:", error);
       setAppointmentsError(true);
       showBanner(
         "API Failed",
@@ -2375,7 +2376,7 @@ export default function DashboardContent() {
                                 <Button
                                   title="Book Now"
                                   onPress={() => {
-                                    console.log("subscription: ", subscription);
+                                    Logger.log("subscription: ", subscription);
                                     router.push({
                                       pathname:
                                         "/(main)/bookingNow/checkoutSubscription",

@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import { Platform, Alert, Linking } from "react-native";
+import Logger from "./logger";
 
 export interface LocationPermissionResult {
   granted: boolean;
@@ -97,7 +98,7 @@ export const requestLocationPermission =
           "Location permission was denied. Please enable location access in your device settings.",
       };
     } catch (error) {
-      console.error("Error requesting location permission:", error);
+      Logger.error("Error requesting location permission:", error);
       return {
         granted: false,
         canRequestAgain: true,
@@ -148,7 +149,7 @@ export const openLocationSettings = async (): Promise<void> => {
       await Linking.openURL("android.settings.LOCATION_SOURCE_SETTINGS");
     }
   } catch (error) {
-    console.error("Error opening location settings:", error);
+    Logger.error("Error opening location settings:", error);
     // Fallback: Try opening general settings if location settings intent fails
     try {
       if (Platform.OS === "android") {
@@ -157,7 +158,7 @@ export const openLocationSettings = async (): Promise<void> => {
         await Linking.openURL("app-settings:");
       }
     } catch (fallbackError) {
-      console.error("Error opening fallback settings:", fallbackError);
+      Logger.error("Error opening fallback settings:", fallbackError);
       Alert.alert(
         "Unable to open settings",
         "Please manually enable location services in your device settings:\n\n• Android: Settings > Location\n• iOS: Settings > Privacy & Security > Location Services"

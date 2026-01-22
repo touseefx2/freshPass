@@ -17,6 +17,7 @@ import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
 import { Platform } from "react-native";
 import { router } from "expo-router";
 import { MAIN_ROUTES } from "../constant/routes";
+import Logger from "./logger";
 // Get base URL from environment
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "";
 
@@ -103,7 +104,7 @@ export const checkInternetConnection = async (): Promise<boolean> => {
     // Only block if explicitly not connected to any network
     return false;
   } catch (error) {
-    console.error("Error checking internet connection:", error);
+    Logger.error("Error checking internet connection:", error);
     // On error, allow the request to proceed - let axios handle network errors
     return true;
   }
@@ -132,7 +133,7 @@ const getAccessToken = (): string | null => {
     const state = store.getState();
     return state.user?.accessToken || null;
   } catch (error) {
-    console.error("❌ Failed to get access token:", error);
+    Logger.error("❌ Failed to get access token:", error);
     return null;
   }
 };
@@ -145,7 +146,7 @@ const getRefreshToken = (): string | null => {
     const state = store.getState();
     return state.user?.refreshToken || null;
   } catch (error) {
-    console.error("❌ Failed to get refresh token:", error);
+    Logger.error("❌ Failed to get refresh token:", error);
     return null;
   }
 };
@@ -183,7 +184,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
     throw new Error("Invalid refresh token response");
   } catch (error) {
-    console.error("❌ Failed to refresh token:", error);
+    Logger.error("❌ Failed to refresh token:", error);
     handleLogout();
     throw error;
   }
@@ -275,7 +276,7 @@ apiClient.interceptors.request.use(
         }
       }
     } catch (error) {
-      console.error("❌ Failed to add token to request:", error);
+      Logger.error("❌ Failed to add token to request:", error);
     }
     return config;
   },
@@ -407,7 +408,7 @@ const logApiRequest = (
       logData.config = config;
     }
 
-    console.log(`🚀 API ${method} Request:`, JSON.stringify(logData));
+    Logger.log(`🚀 API ${method} Request:`, JSON.stringify(logData));
   }
 };
 
@@ -420,7 +421,7 @@ const logApiResponse = (
 ) => {
   if (__DEV__) {
     const fullUrl = getFullUrl(route);
-    console.log(`✅ API ${method} Response:`, {
+    Logger.log(`✅ API ${method} Response:`, {
       url: fullUrl,
       status: status,
       data: JSON.stringify(data),
@@ -436,7 +437,7 @@ const logApiError = (
 ) => {
   if (__DEV__) {
     const fullUrl = getFullUrl(route);
-    console.error(`❌ API ${method} Error:`, {
+    Logger.error(`❌ API ${method} Error:`, {
       url: fullUrl,
       error: error.message,
       status: error.response?.status,

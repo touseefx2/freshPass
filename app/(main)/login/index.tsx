@@ -26,6 +26,7 @@ import SocialAuthOptions from "@/src/components/socialAuthOptions";
 import SectionSeparator from "@/src/components/sectionSeparator";
 import VerificationCodeModal from "@/src/components/verificationCodeModal";
 import { validateEmail } from "@/src/services/validationService";
+import Logger from "@/src/services/logger";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { ApiService } from "@/src/services/api";
@@ -356,7 +357,7 @@ export default function Login() {
 
   const handleForgetPassword = useCallback(() => {
     // TODO: Navigate to forget password screen
-    console.log("Forget password");
+    Logger.log("Forget password");
   }, []);
 
   const handleSignup = useCallback(() => {

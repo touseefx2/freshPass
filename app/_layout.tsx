@@ -1,4 +1,5 @@
 import { ThemedStatusBar } from "@/src/components/themedStatusBar";
+import Logger from "@/src/services/logger";
 import { setupRTL } from "@/src/constant/functions";
 import { initI18n } from "@/src/i18n/index";
 import { persistor, store } from "@/src/state/store";
@@ -71,7 +72,7 @@ export default function RootLayout() {
                   i18n.changeLanguage(state.general.language);
                   setupRTL(state.general.language);
                 } catch (error) {
-                  console.warn("Error changing language:", error);
+                  Logger.warn("Error changing language:", error);
                 }
               }
             }}

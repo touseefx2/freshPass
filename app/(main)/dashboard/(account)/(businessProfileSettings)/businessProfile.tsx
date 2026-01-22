@@ -19,6 +19,7 @@ import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
@@ -157,7 +158,7 @@ export default function BusinessProfileScreen() {
         setProfileData(response.data);
       }
     } catch (error: any) {
-      console.error("Failed to fetch business profile:", error);
+      Logger.error("Failed to fetch business profile:", error);
     } finally {
       setLoading(false);
     }

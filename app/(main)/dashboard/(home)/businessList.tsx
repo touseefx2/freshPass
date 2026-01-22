@@ -1,4 +1,5 @@
 import React from "react";
+import Logger from "@/src/services/logger";
 import { useLocalSearchParams } from "expo-router";
 import BusinessList, { BusinessListData } from "@/src/components/businessList";
 
@@ -12,7 +13,7 @@ export default function BusinessListScreen() {
       data = JSON.parse(params.data);
     }
   } catch (error) {
-    console.error("Error parsing business list data:", error);
+    Logger.error("Error parsing business list data:", error);
   }
 
   return <BusinessList data={data} />;

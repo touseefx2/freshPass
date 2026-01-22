@@ -35,6 +35,7 @@ import {
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import ApiService from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import { fetchAppointmentPaymentSheetParams } from "@/src/services/stripeService";
@@ -1210,7 +1211,7 @@ function CheckoutContent() {
       requestBody.subscription_id = subscriptionId;
     }
 
-    console.log("requestBody", requestBody);
+    Logger.log("requestBody", requestBody);
 
     // Show loader
     dispatch(setActionLoader(true));
@@ -1236,7 +1237,7 @@ function CheckoutContent() {
       dispatch(setActionLoader(false));
 
       // Console log response
-      console.log(
+      Logger.log(
         "Appointment API Response:",
         JSON.stringify(response, null, 2)
       );
@@ -1246,7 +1247,7 @@ function CheckoutContent() {
       // But terminal shows nested structure, so check both
       const isSuccess = response?.success || response?.data?.success;
 
-      console.log("isSuccess:", isSuccess, "response:", response);
+      Logger.log("isSuccess:", isSuccess, "response:", response);
 
       if (isSuccess) {
         // Extract appointment ID and date from response
@@ -1466,7 +1467,7 @@ function CheckoutContent() {
       dispatch(setActionLoader(false));
 
       // Console log error
-      console.error("Appointment API Error:", error);
+      Logger.error("Appointment API Error:", error);
 
       showBanner(
         "Booking Failed",

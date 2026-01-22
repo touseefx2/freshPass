@@ -15,6 +15,7 @@ import {
 } from "@/src/state/slices/completeProfileSlice";
 import EditSubscriptionBottomSheet from "@/src/components/EditSubscriptionBottomSheet";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import GeneratedSubscriptionPlansModal from "@/src/components/GeneratedSubscriptionPlansModal";
@@ -418,7 +419,7 @@ export default function StepNine() {
         dispatch(setBusinessServices(response.data));
       }
     } catch (error) {
-      console.error("Failed to fetch business services:", error);
+      Logger.error("Failed to fetch business services:", error);
       // Silent fail - no loader/error shown as per requirement
     }
   };
@@ -541,7 +542,7 @@ export default function StepNine() {
           );
         }
       } catch (error: any) {
-        console.error("Failed to generate subscription plans:", error);
+        Logger.error("Failed to generate subscription plans:", error);
         showBanner(
           "Error",
           error?.message ||

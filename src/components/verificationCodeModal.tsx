@@ -29,6 +29,7 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { emailVerificationEndpoints } from "@/src/services/endpoints";
 import RetryButton from "@/src/components/retryButton";
 import NotificationBanner from "@/src/components/notificationBanner";
@@ -290,7 +291,7 @@ export default function VerificationCodeModal({
         }
       }
     } catch (error: any) {
-      console.error("Failed to resend verification email:", error);
+      Logger.error("Failed to resend verification email:", error);
       if (isInitial) {
         setIsInitialLoading(false);
         setInitialLoadError(true);
@@ -365,7 +366,7 @@ export default function VerificationCodeModal({
         }, 100);
       }
     } catch (error: any) {
-      console.error("Failed to verify email:", error);
+      Logger.error("Failed to verify email:", error);
       // Get actual API error message from response data
       const errorMessage =
         error.data?.message ||

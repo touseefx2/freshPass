@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import Logger from "@/src/services/logger";
 import {
   StyleSheet,
   Text,
@@ -68,7 +69,7 @@ export default function RulesAndTermsScreen() {
         Alert.alert("Error", `Cannot open ${title}. URL: ${url}`);
       }
     } catch (error) {
-      console.error("Error opening link:", error);
+      Logger.error("Error opening link:", error);
       Alert.alert("Error", `Failed to open ${title}`);
     }
   };
