@@ -399,13 +399,6 @@ const createStyles = (theme: Theme) =>
       marginLeft: moderateWidthScale(5),
       top: 1,
     },
-    sectionTitle: {
-      fontSize: fontSize.size19,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      paddingHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(5),
-    },
     sectionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -612,6 +605,16 @@ const createStyles = (theme: Theme) =>
     },
     sectionContainer: {
       // marginBottom: moderateHeightScale(24),
+    },
+    section: {
+      marginVertical: moderateHeightScale(12),
+      gap: moderateHeightScale(16),
+    },
+    sectionTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      paddingHorizontal: moderateWidthScale(20),
     },
   });
 
@@ -1377,12 +1380,7 @@ export default function DashboardContent() {
     }
   }, [activeTab]);
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    {
-      useNativeDriver: false,
-    }
-  );
+
 
   const handleHorizontalScrollEnd = (event: any) => {
     // Only update tab when scroll ends (prevents flickering during animation)
@@ -1486,24 +1484,7 @@ export default function DashboardContent() {
   );
 
   const renderTabContent = (tab: "subscriptions" | "individual") => (
-    <ScrollView
-      style={styles.tabContent}
-      onScroll={handleScroll}
-      scrollEventThrottle={16}
-      showsVerticalScrollIndicator={false}
-    >
-
-      {/* Results Summary */}
-      <View style={styles.resultsHeader}>
-        <Text style={styles.resultsText}>
-          Showing:{" "}
-          <Text style={styles.resultsTextBold}>{businessesCount} results</Text>{" "}
-          for {getCategoryName()}
-          {selectedDateISO && (
-            <> on {dayjs(selectedDateISO).format("MMM D, YYYY")}</>
-          )}
-        </Text>
-      </View>
+    <>
 
       {/* Platform Verified Salon */}
       <ScrollView
@@ -1637,497 +1618,8 @@ export default function DashboardContent() {
         )}
       </ScrollView>
 
-      {/* Booking appointment card - only show if error or has appointments */}
-      {userRole === "customer" &&
-        (appointmentsError || appointments.length > 0) && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={[styles.appCard]}
-            contentContainerStyle={styles.appointmentsScroll}
-            nestedScrollEnabled={true}
-          >
-            {appointmentsError ? (
-              <View
-                style={{
-                  paddingVertical: moderateHeightScale(20),
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: SCREEN_WIDTH,
-                  gap: moderateHeightScale(12),
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: fontSize.size14,
-                    fontFamily: fonts.fontRegular,
-                    color: theme.lightGreen,
-                    textAlign: "center",
-                  }}
-                >
-                  Failed to load upcoming appointments
-                </Text>
-                <RetryButton
-                  onPress={fetchAppointments}
-                  loading={appointmentsLoading}
-                />
-              </View>
-            ) : (
-              appointments.map((appointment, index) => (
-                <View key={appointment.id} style={[styles.verifiedSalonCard]}>
-                  <View style={styles.verifiedCardTopRow}>
-                    <View style={styles.verifiedBadge}>
-                      <Text style={styles.verifiedBadgeText}>
-                        {appointment.badgeText}
-                      </Text>
-                    </View>
-                    <View style={styles.dateTimeBadge}>
-                      <Text style={styles.dateTimeBadgeText}>
-                        {appointment.dateTime}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.verifiedCardContent}>
-                    <Image
-                      source={{
-                        uri: appointment.staffImage,
-                      }}
-                      style={styles.verifiedCardImage}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.verifiedCardTextContainer}>
-                      <Text numberOfLines={1} style={styles.salonName}>
-                        {appointment.services}
-                      </Text>
-                      <View style={styles.verifiedCardInfoRow}>
-                        <MonitorIcon
-                          width={widthScale(16)}
-                          height={heightScale(16)}
-                          color={theme.white80}
-                        />
-                        <Text style={styles.verifiedCardInfoText}>
-                          {appointment.membershipInfo}
-                        </Text>
-                      </View>
-                      <View style={styles.verifiedCardInfoRow2}>
-                        <View
-                          style={[styles.verifiedCardInfoRow, { width: "58%" }]}
-                        >
-                          <PersonIcon
-                            width={widthScale(16)}
-                            height={heightScale(16)}
-                            color={theme.white80}
-                          />
-                          <Text
-                            numberOfLines={1}
-                            style={styles.verifiedCardInfoText}
-                          >
-                            {appointment.staffName}
-                          </Text>
-                        </View>
+    </>
 
-                        <TouchableOpacity
-                          style={styles.viewDetailLink}
-                          onPress={() => {
-                            router.push({
-                              pathname: "/(main)/bookingDetailsById",
-                              params: {
-                                bookingId: appointment.id,
-                              },
-                            });
-                          }}
-                        >
-                          <Text style={styles.viewDetailText}>View detail</Text>
-                          <ChevronRight
-                            width={widthScale(4)}
-                            height={heightScale(8)}
-                            color={theme.orangeBrown}
-                          />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              ))
-            )}
-          </ScrollView>
-        )}
-
-      {/* Service Filters (for Individual Services) */}
-      {tab === "individual" &&
-        serviceFilters.length > 0 &&
-        renderFilters(
-          serviceFilters,
-          selectedServiceFilter,
-          setSelectedServiceFilter
-        )}
-
-      {/* Membership Filters (for Subscriptions) */}
-      {tab === "subscriptions" &&
-        renderFilters(
-          membershipFilters,
-          selectedMembershipFilter,
-          setSelectedMembershipFilter
-        )}
-
-      {/* Sections */}
-      <Text style={styles.sectionTitle}>Nearest to you</Text>
-      {sectionsLoading ? (
-        <View
-          style={{
-            paddingVertical: moderateHeightScale(40),
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      ) : sectionsError ? (
-        <View
-          style={{
-            paddingVertical: moderateHeightScale(40),
-            alignItems: "center",
-            justifyContent: "center",
-            gap: moderateHeightScale(12),
-          }}
-        >
-          <Text
-            style={{
-              fontSize: fontSize.size14,
-              fontFamily: fonts.fontRegular,
-              color: theme.lightGreen,
-              textAlign: "center",
-            }}
-          >
-            Failed to load data
-          </Text>
-          <RetryButton
-            onPress={() => {
-              if (selectedCategory) {
-                const trimmedSearch = searchText?.trim() || "";
-                const serviceTemplateId =
-                  tab === "individual" &&
-                    selectedServiceFilter !== "all" &&
-                    selectedServiceFilter !== "services"
-                    ? parseInt(selectedServiceFilter)
-                    : undefined;
-                fetchBusinessesWithData(
-                  selectedCategory,
-                  tab,
-                  serviceTemplateId,
-                  trimmedSearch || undefined
-                );
-              }
-            }}
-            loading={sectionsLoading}
-          />
-        </View>
-      ) : (tab === "individual" ? serviceSections : subscriptionSections)
-        .length > 0 ? (
-        (tab === "individual" ? serviceSections : subscriptionSections).map(
-          (section, sectionIndex) => {
-            const itemsCount =
-              tab === "individual"
-                ? section.services?.length || 0
-                : section.subscriptions?.length || 0;
-            const showViewMore = itemsCount >= 10;
-
-            return (
-              <View key={section.id} style={styles.sectionContainer}>
-                {/* Section Header */}
-                <View
-                  style={[
-                    styles.sectionHeader,
-                    {
-                      marginTop:
-                        sectionIndex === 0
-                          ? moderateHeightScale(16)
-                          : moderateHeightScale(24),
-                      marginBottom: moderateHeightScale(10),
-                    },
-                  ]}
-                >
-                  <Text
-                    onPress={() => {
-                      router.push({
-                        pathname: "/(main)/businessDetail",
-                        params: { business_id: section.id.toString() },
-                      } as any);
-                    }}
-                    style={styles.sectionSubTitle}
-                  >
-                    {section.businessName}
-                  </Text>
-                  {showViewMore && (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => {
-                        router.push({
-                          pathname: "/(main)/businessDetail",
-                          params: { business_id: section.id.toString() },
-                        } as any);
-                      }}
-                    // onPress={() => {
-                    //   router.push({
-                    //     pathname: "/(main)/dashboard/(home)/businessList",
-                    //     params: {
-                    //       data: JSON.stringify({
-                    //         businessName: section.businessName,
-                    //         type: section.type,
-                    //         services: section.services,
-                    //         subscriptions: section.subscriptions,
-                    //       }),
-                    //     },
-                    //   });
-                    // }}
-                    >
-                      <Text style={styles.sectionViewMore}>View more</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-
-                {/* Services or Subscriptions */}
-                {tab === "individual" && section.services ? (
-                  <ScrollView
-                    horizontal
-                    nestedScrollEnabled
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.servicesScroll}
-                  >
-                    {section.services.map((service, index) => (
-                      <View
-                        key={service.id}
-                        style={[styles.serviceCard, styles.shadow]}
-                      >
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                            paddingHorizontal: moderateWidthScale(12),
-                          }}
-                        >
-                          <View
-                            style={{
-                              gap: moderateHeightScale(8),
-                              width: "70%",
-                            }}
-                          >
-                            <Text style={styles.serviceTitle}>
-                              {service.title}
-                            </Text>
-                            <Text
-                              numberOfLines={2}
-                              style={styles.serviceDescription}
-                            >
-                              {service.description}
-                            </Text>
-                          </View>
-                          <View style={styles.servicePrice}>
-                            <Text style={styles.priceCurrent}>
-                              ${service.price}
-                            </Text>
-                            <Text style={styles.priceOriginal}>
-                              ${service.originalPrice}
-                            </Text>
-                          </View>
-                        </View>
-
-                        <View style={styles.line} />
-                        <View style={styles.serviceBottomRow}>
-                          <Text
-                            numberOfLines={1}
-                            style={styles.serviceDuration}
-                          >
-                            {service.duration}
-                          </Text>
-                          <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => { }}
-                            style={styles.serviceButtonContainer}
-                          >
-                            <Button
-                              title="Book Now"
-                              onPress={() => {
-                                router.push({
-                                  pathname: "/(main)/bookingNow",
-                                  params: {
-                                    business_id: section.id.toString(),
-                                    service_id: service.id.toString(),
-                                  },
-                                });
-                              }}
-                              containerStyle={styles.button}
-                              textStyle={styles.buttonText}
-                            />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))}
-                  </ScrollView>
-                ) : (
-                  section.subscriptions && (
-                    <ScrollView
-                      horizontal
-                      nestedScrollEnabled
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.servicesScroll}
-                    >
-                      {section.subscriptions.map((subscription, index) => (
-                        <View
-                          key={subscription.id}
-                          style={[styles.subscriptionCard, styles.shadow]}
-                        >
-                          <View
-                            style={{
-                              paddingHorizontal: moderateWidthScale(16),
-                              paddingTop: moderateHeightScale(16),
-                              flex: 1,
-                              justifyContent: "space-between",
-                            }}
-                          >
-                            <View style={styles.offerBadgesContainer}>
-                              {subscription.offer && (
-                                <View
-                                  style={[
-                                    styles.offerBadge,
-                                    styles.offerBadgeOrange,
-                                  ]}
-                                >
-                                  <Text style={styles.offerText}>
-                                    {subscription.offer}
-                                  </Text>
-                                </View>
-                              )}
-                              {subscription.offer2 && (
-                                <View
-                                  style={[
-                                    styles.offerBadge,
-                                    styles.offerBadgeGreen,
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.offerText,
-                                      { color: theme.darkGreen },
-                                    ]}
-                                  >
-                                    {subscription.offer2}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                            <View>
-                              <Text
-                                numberOfLines={1}
-                                style={styles.subscriptionTitle}
-                              >
-                                {subscription.title}
-                              </Text>
-                              {subscription.inclusions.length > 2 ? (
-                                <>
-                                  {subscription.inclusions
-                                    .slice(0, 2)
-                                    .map((inclusion, index) => (
-                                      <Text
-                                        numberOfLines={1}
-                                        key={index}
-                                        style={styles.inclusionItem}
-                                      >
-                                        {inclusion}
-                                      </Text>
-                                    ))}
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      setSelectedInclusions(
-                                        subscription.inclusions
-                                      );
-                                      setInclusionsModalVisible(true);
-                                    }}
-                                  >
-                                    <Text style={styles.moreText}>
-                                      and +{subscription.inclusions.length - 2}{" "}
-                                      more
-                                    </Text>
-                                  </TouchableOpacity>
-                                </>
-                              ) : (
-                                subscription.inclusions.map(
-                                  (inclusion, index) => (
-                                    <Text
-                                      numberOfLines={1}
-                                      key={index}
-                                      style={styles.inclusionItem}
-                                    >
-                                      {inclusion}
-                                    </Text>
-                                  )
-                                )
-                              )}
-                            </View>
-                            <View style={styles.line} />
-                            <View style={styles.subscriptionPrice}>
-                              <View style={styles.subscriptionPriceContainer}>
-                                <Text style={styles.priceCurrent}>
-                                  ${subscription.price}
-                                </Text>
-                                {subscription.originalPrice && (
-                                  <Text style={styles.priceOriginal}>
-                                    ${subscription.originalPrice}
-                                  </Text>
-                                )}
-                              </View>
-                              <View style={styles.subscriptionButtonContainer}>
-                                <Button
-                                  title="Book Now"
-                                  onPress={() => {
-                                    Logger.log("subscription: ", subscription);
-                                    router.push({
-                                      pathname:
-                                        "/(main)/bookingNow/checkoutSubscription",
-                                      params: {
-                                        subscriptionId:
-                                          subscription.id.toString(),
-                                        businessId: section.id.toString(),
-                                        screenName: "DashboardContent",
-                                      },
-                                    });
-                                  }}
-                                  containerStyle={styles.button}
-                                  textStyle={styles.buttonText}
-                                />
-                              </View>
-                            </View>
-                          </View>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )
-                )}
-              </View>
-            );
-          }
-        )
-      ) : (
-        <View
-          style={{
-            paddingVertical: moderateHeightScale(40),
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text
-            style={{
-              fontSize: fontSize.size14,
-              fontFamily: fonts.fontRegular,
-              color: theme.lightGreen,
-              textAlign: "center",
-            }}
-          >
-            No businesses found
-          </Text>
-        </View>
-      )}
-    </ScrollView>
   );
 
   return (
@@ -2145,21 +1637,18 @@ export default function DashboardContent() {
         onCategoriesLoaded={setCategories}
       />
 
- 
-      <ScrollView
-        nestedScrollEnabled
-        ref={horizontalScrollViewRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={handleHorizontalScrollEnd}
-        scrollEnabled={!isCategoryScrollingRef.current}
-        style={styles.contentContainer}
-        contentContainerStyle={styles.swipeableContent}
-      >
+
+
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>
+          FreshPass Deals
+        </Text>
         {renderTabContent("subscriptions")}
-        {renderTabContent("individual")}
-      </ScrollView>
+      </View>
+
+
+
 
 
       {/* Inclusions Modal */}

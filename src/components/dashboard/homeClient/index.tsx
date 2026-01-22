@@ -167,7 +167,6 @@ export default function HomeScreen() {
       <View style={styles.container}>
         <StatusBar barStyle="light-content" backgroundColor={theme.darkGreen} translucent={true} />
         <DashboardHeaderClient />
-       
         <DashboardContent />
       </View>
 
