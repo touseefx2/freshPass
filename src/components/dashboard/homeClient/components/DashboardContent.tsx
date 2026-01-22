@@ -799,8 +799,7 @@ export default function DashboardContent() {
     }, []),
   );
 
-
-
+ 
   return (
     <ScrollView nestedScrollEnabled style={styles.container} contentContainerStyle={styles.contentContainer}>
       <SearchBar />
