@@ -798,7 +798,9 @@ export default function DashboardContent() {
   const scrollY = useRef(new Animated.Value(0)).current;
   const horizontalScrollViewRef = useRef<ScrollView>(null);
   const isManualScrollRef = useRef(false);
-
+  const isCategoryScrollingRef = useRef(false);
+  const tabsContainerHeight = useRef(0);
+  const tabsContainerRef = useRef<View>(null);
 
   const fetchServiceTemplates = async (categoryId: number | string) => {
     try {
@@ -2138,11 +2140,12 @@ export default function DashboardContent() {
         selectedCategory={selectedCategory}
         onCategorySelect={setSelectedCategory}
         onCategoryScrollingChange={(isScrolling) => {
+          isCategoryScrollingRef.current = isScrolling;
         }}
         onCategoriesLoaded={setCategories}
       />
 
-
+ 
       <ScrollView
         nestedScrollEnabled
         ref={horizontalScrollViewRef}
@@ -2150,7 +2153,7 @@ export default function DashboardContent() {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleHorizontalScrollEnd}
-
+        scrollEnabled={!isCategoryScrollingRef.current}
         style={styles.contentContainer}
         contentContainerStyle={styles.swipeableContent}
       >

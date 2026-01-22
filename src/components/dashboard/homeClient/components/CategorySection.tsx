@@ -30,15 +30,15 @@ const createStyles = (theme: Theme) =>
     },
     categoriesScroll: {
       paddingHorizontal: moderateWidthScale(20),
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(14),
     },
     categoryItem: {
       alignItems: "center",
-      width: widthScale(65),
+      width: widthScale(70),
     },
     categoryImage: {
-      width: widthScale(65),
-      height: heightScale(65),
+      width: widthScale(70),
+      height: heightScale(68),
       borderRadius: moderateWidthScale(8),
       backgroundColor: theme.lightGreen2,
       borderColor: theme.lightGreen1,
@@ -210,6 +210,11 @@ export default function CategorySection({
       style={styles.categoriesContainer}
       contentContainerStyle={styles.categoriesScroll}
       nestedScrollEnabled={true}
+      bounces={true}
+      alwaysBounceHorizontal={true}
+      overScrollMode="always"
+      decelerationRate="fast"
+      scrollEventThrottle={16}
       onTouchStart={() => {
         handleCategoryScrolling(true);
       }}
