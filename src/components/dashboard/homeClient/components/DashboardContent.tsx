@@ -42,7 +42,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
     },
     contentContainer: {
-      paddingVertical: moderateHeightScale(18),
+      paddingTop: moderateHeightScale(18),
+      paddingBottom: moderateHeightScale(40),
     },
 
     swipeableContent: {
@@ -425,7 +426,7 @@ const createStyles = (theme: Theme) =>
     },
   });
 
- 
+
 interface Appointment {
   id: number;
   businessId: number;
@@ -716,7 +717,7 @@ export default function DashboardContent() {
       params.from_date = today.format("YYYY-MM-DD");
       params.to_date = today.format("YYYY-MM-DD");
 
-     
+
 
       const response = await ApiService.get<{
         success: boolean;
