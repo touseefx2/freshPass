@@ -27,7 +27,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(999),
       paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(6),
+      paddingVertical: moderateHeightScale(8),
       gap: moderateWidthScale(12),
       marginHorizontal: moderateWidthScale(20),
       marginVertical: moderateHeightScale(12),
@@ -86,7 +86,7 @@ const createStyles = (theme: Theme) =>
     filterButton: {
       width: widthScale(30),
       height: widthScale(30),
-      borderRadius: widthScale(30/2),
+      borderRadius: widthScale(30 / 2),
       borderWidth: 0.8,
       borderColor: theme.lightGreen22,
       justifyContent: "center",
@@ -175,7 +175,7 @@ export default function SearchBar({
   };
 
   return (
-    <View style={[styles.searchBar, styles.shadow]}>
+    <TouchableOpacity activeOpacity={0.9} style={[styles.searchBar, styles.shadow]}>
       <View style={styles.searchIconContainer}>
         <SearchIcon
           width={widthScale(20)}
@@ -216,7 +216,7 @@ export default function SearchBar({
           </Pressable>
         )}
         <TouchableOpacity
-        disabled
+          disabled
           style={styles.filterButton}
           onPress={onFilterPress}
           activeOpacity={0.7}
@@ -228,6 +228,6 @@ export default function SearchBar({
           />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }

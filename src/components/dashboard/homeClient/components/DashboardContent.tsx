@@ -46,6 +46,8 @@ import {
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import RetryButton from "@/src/components/retryButton";
+import SearchBar from "./SearchBar";
+import CategorySection from "./CategorySection";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -101,45 +103,6 @@ const createStyles = (theme: Theme) =>
     segmentTextInactive: {
       color: theme.segmentInactiveTabText,
       fontFamily: fonts.fontRegular,
-    },
-    categoriesContainer: {
-      marginTop: moderateHeightScale(4),
-    },
-    categoriesScroll: {
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    categoryItem: {
-      alignItems: "center",
-      marginRight: moderateWidthScale(16),
-      width: widthScale(60),
-    },
-    categoryImage: {
-      width: widthScale(60),
-      height: heightScale(60),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.lightGreen2,
-      borderColor: theme.borderLight,
-    },
-    categoryImageActive: {
-      borderColor: theme.selectCard,
-    },
-    categoryText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      marginTop: moderateHeightScale(4),
-      textAlign: "center",
-      flexWrap: "wrap",
-      width: widthScale(60),
-    },
-    categoryTextActive: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.selectCard,
-      marginTop: moderateHeightScale(4),
-      textAlign: "center",
-      flexWrap: "wrap",
-      width: widthScale(60),
     },
     categoryTabs: {
       flexDirection: "row",
@@ -716,17 +679,17 @@ interface Appointment {
   services: any;
   totalPrice: number | {};
   subscriptionServices:
-    | Array<{
-        id: number;
-        name: string;
-        description: string;
-        price: string;
-        duration: {
-          hours: number;
-          minutes: number;
-        };
-      }>
-    | {};
+  | Array<{
+    id: number;
+    name: string;
+    description: string;
+    price: string;
+    duration: {
+      hours: number;
+      minutes: number;
+    };
+  }>
+  | {};
   subscriptionVisits: {
     used: number;
     upcoming: number;
@@ -792,8 +755,6 @@ export default function DashboardContent() {
   const isCusotmerandGuest = isGuest || userRole === "customer";
 
   const [categories, setCategories] = useState<Category[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [categoriesError, setCategoriesError] = useState(false);
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
@@ -807,7 +768,6 @@ export default function DashboardContent() {
   const [selectedCategory, setSelectedCategory] = useState<
     string | number | undefined
   >(undefined);
-  const [showCategoryTabs, setShowCategoryTabs] = useState(false);
   const [selectedServiceFilter, setSelectedServiceFilter] =
     useState<string>("all");
   const [selectedMembershipFilter, setSelectedMembershipFilter] =
@@ -836,54 +796,9 @@ export default function DashboardContent() {
   const [sectionsLoading, setSectionsLoading] = useState(false);
   const [sectionsError, setSectionsError] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
-  const stickyTabsOpacity = useRef(new Animated.Value(0)).current;
-  const stickyTabsTranslateY = useRef(new Animated.Value(-20)).current;
-  const categorySectionOpacity = useRef(new Animated.Value(1)).current;
-  const categorySectionTranslateY = useRef(new Animated.Value(0)).current;
   const horizontalScrollViewRef = useRef<ScrollView>(null);
   const isManualScrollRef = useRef(false);
-  const categoryScrollRef = useRef<ScrollView>(null);
-  const isCategoryScrollingRef = useRef(false);
-  const categorySectionHeight = useRef(0);
-  const categorySectionRef = useRef<View>(null);
-  const tabsContainerHeight = useRef(0);
-  const tabsContainerRef = useRef<View>(null);
 
-  const fetchCategories = async () => {
-    try {
-      setCategoriesLoading(true);
-      setCategoriesError(false);
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: Array<{
-          id: number;
-          name: string;
-          imageUrl: string | null;
-        }>;
-      }>(businessEndpoints.categories);
-
-      if (response.success && response.data) {
-        // Map API response to component format (imageUrl -> image)
-        const mappedCategories: Category[] = response.data.map((item) => ({
-          id: item.id,
-          name: item.name,
-          image: item.imageUrl,
-        }));
-        setCategories(mappedCategories);
-        // Set first category as selected if categories exist
-        if (mappedCategories.length > 0) {
-          setSelectedCategory(mappedCategories[0].id);
-        }
-      }
-    } catch (error) {
-      Logger.error("Failed to fetch categories:", error);
-      setCategoriesError(true);
-      showBanner("API Failed", "API failed to fetch categories", "error", 2500);
-    } finally {
-      setCategoriesLoading(false);
-    }
-  };
 
   const fetchServiceTemplates = async (categoryId: number | string) => {
     try {
@@ -1175,8 +1090,7 @@ export default function DashboardContent() {
       setSectionsError(true);
       showBanner(
         "API Failed",
-        `API failed to fetch ${
-          tab === "individual" ? "services" : "subscriptions"
+        `API failed to fetch ${tab === "individual" ? "services" : "subscriptions"
         }`,
         "error",
         2500
@@ -1239,9 +1153,8 @@ export default function DashboardContent() {
       if (appointment.subscriptionVisits) {
         const { remaining } = appointment.subscriptionVisits;
         const subscriptionName = "Subscription";
-        return `${subscriptionName} • ${remaining} visit${
-          remaining !== 1 ? "s" : ""
-        } left`;
+        return `${subscriptionName} • ${remaining} visit${remaining !== 1 ? "s" : ""
+          } left`;
       }
       return appointment.subscription || "Subscription";
     } else {
@@ -1250,9 +1163,8 @@ export default function DashboardContent() {
         Array.isArray(appointment.services) &&
         appointment.services.length > 0
       ) {
-        return `${appointment.services.length} service${
-          appointment.services.length !== 1 ? "s" : ""
-        }`;
+        return `${appointment.services.length} service${appointment.services.length !== 1 ? "s" : ""
+          }`;
       }
       return "Service";
     }
@@ -1374,9 +1286,6 @@ export default function DashboardContent() {
     }
   };
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -1411,8 +1320,8 @@ export default function DashboardContent() {
         fetchBusinesses(selectedCategory, trimmedSearch || undefined);
         const serviceTemplateId =
           activeTab === "individual" &&
-          selectedServiceFilter !== "all" &&
-          selectedServiceFilter !== "services"
+            selectedServiceFilter !== "all" &&
+            selectedServiceFilter !== "services"
             ? parseInt(selectedServiceFilter)
             : undefined;
         fetchBusinessesWithData(
@@ -1445,64 +1354,6 @@ export default function DashboardContent() {
     });
   }, []);
 
-  // Animate sticky tabs and category section when showCategoryTabs changes
-  useEffect(() => {
-    if (showCategoryTabs) {
-      Animated.parallel([
-        // Sticky tabs animation
-        Animated.timing(stickyTabsOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(stickyTabsTranslateY, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        // Category section hide animation
-        Animated.parallel([
-          Animated.timing(categorySectionOpacity, {
-            toValue: 0,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.timing(categorySectionTranslateY, {
-            toValue: -20,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
-    } else {
-      Animated.parallel([
-        // Sticky tabs hide animation
-        Animated.timing(stickyTabsOpacity, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(stickyTabsTranslateY, {
-          toValue: -20,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        // Category section show animation
-        Animated.parallel([
-          Animated.timing(categorySectionOpacity, {
-            toValue: 1,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.timing(categorySectionTranslateY, {
-            toValue: 0,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]).start();
-    }
-  }, [showCategoryTabs]);
 
   // Update horizontal scroll position when tab changes (only when clicking, not swiping)
   useEffect(() => {
@@ -1528,17 +1379,6 @@ export default function DashboardContent() {
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
     {
       useNativeDriver: false,
-      listener: (event: any) => {
-        const offsetY = event.nativeEvent.contentOffset.y;
-        // Show category tabs when scrolled a bit (around 50-80px)
-        const threshold = moderateHeightScale(50);
-
-        if (offsetY > threshold && !showCategoryTabs) {
-          setShowCategoryTabs(true);
-        } else if (offsetY <= threshold && showCategoryTabs) {
-          setShowCategoryTabs(false);
-        }
-      },
     }
   );
 
@@ -1610,8 +1450,8 @@ export default function DashboardContent() {
             filter.isPrimary
               ? styles.filterItemPrimary
               : selectedFilter === filter.id
-              ? styles.filterItemActive
-              : styles.filterItemInactive,
+                ? styles.filterItemActive
+                : styles.filterItemInactive,
             index < filters.length - 1 && {
               marginRight: moderateWidthScale(12),
             },
@@ -1623,8 +1463,8 @@ export default function DashboardContent() {
               filter.isPrimary
                 ? styles.filterTextPrimary
                 : selectedFilter === filter.id
-                ? styles.filterTextActive
-                : styles.filterTextInactive,
+                  ? styles.filterTextActive
+                  : styles.filterTextInactive,
             ]}
           >
             {filter.label}
@@ -1650,144 +1490,6 @@ export default function DashboardContent() {
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
-      {/* Spacer for sticky tabs */}
-      {showCategoryTabs && (
-        <View style={{ height: moderateHeightScale(100) }} />
-      )}
-
-      {/* Categories - Show images with smooth animation */}
-      <Animated.View
-        ref={categorySectionRef}
-        onLayout={(event) => {
-          const { height } = event.nativeEvent.layout;
-          if (height > 0) {
-            categorySectionHeight.current = height;
-          }
-        }}
-        style={[
-          {
-            opacity: categorySectionOpacity,
-            transform: [{ translateY: categorySectionTranslateY }],
-          },
-          showCategoryTabs && {
-            position: "absolute",
-            width: "100%",
-            height: 0,
-            overflow: "hidden",
-          },
-        ]}
-        pointerEvents={!showCategoryTabs ? "auto" : "none"}
-      >
-        {categoriesLoading ? (
-          <View
-            style={[
-              styles.categoriesContainer,
-              {
-                paddingVertical: moderateHeightScale(20),
-                alignItems: "center",
-                justifyContent: "center",
-              },
-            ]}
-          >
-            <ActivityIndicator size="large" color={theme.primary} />
-          </View>
-        ) : categoriesError ? (
-          <View
-            style={[
-              styles.categoriesContainer,
-              {
-                paddingVertical: moderateHeightScale(20),
-                alignItems: "center",
-                justifyContent: "center",
-                gap: moderateHeightScale(12),
-              },
-            ]}
-          >
-            <Text
-              style={{
-                fontSize: fontSize.size14,
-                fontFamily: fonts.fontRegular,
-                color: theme.lightGreen,
-                textAlign: "center",
-              }}
-            >
-              Failed to load categories
-            </Text>
-            <RetryButton
-              onPress={fetchCategories}
-              loading={categoriesLoading}
-            />
-          </View>
-        ) : categories.length > 0 ? (
-          <ScrollView
-            ref={categoryScrollRef}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.categoriesContainer}
-            contentContainerStyle={styles.categoriesScroll}
-            nestedScrollEnabled={true}
-            onTouchStart={() => {
-              isCategoryScrollingRef.current = true;
-            }}
-            onTouchEnd={() => {
-              setTimeout(() => {
-                isCategoryScrollingRef.current = false;
-              }, 100);
-            }}
-            onScrollBeginDrag={() => {
-              isCategoryScrollingRef.current = true;
-            }}
-            onScrollEndDrag={() => {
-              setTimeout(() => {
-                isCategoryScrollingRef.current = false;
-              }, 100);
-            }}
-            onMomentumScrollEnd={() => {
-              setTimeout(() => {
-                isCategoryScrollingRef.current = false;
-              }, 100);
-            }}
-          >
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.id}
-                style={styles.categoryItem}
-                onPress={() => setSelectedCategory(category.id)}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={{
-                    uri: category?.image
-                      ? process.env.EXPO_PUBLIC_API_BASE_URL + category?.image
-                      : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
-                  }}
-                  style={[
-                    styles.categoryImage,
-                    selectedCategory === category.id &&
-                      styles.categoryImageActive,
-                    {
-                      borderWidth: moderateWidthScale(
-                        selectedCategory === category.id ? 3 : 1
-                      ),
-                    },
-                  ]}
-                  resizeMode="cover"
-                />
-                <Text
-                  style={
-                    selectedCategory === category.id
-                      ? styles.categoryTextActive
-                      : styles.categoryText
-                  }
-                  numberOfLines={2}
-                >
-                  {category.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        ) : null}
-      </Animated.View>
 
       {/* Results Summary */}
       <View style={styles.resultsHeader}>
@@ -2103,8 +1805,8 @@ export default function DashboardContent() {
                 const trimmedSearch = searchText?.trim() || "";
                 const serviceTemplateId =
                   tab === "individual" &&
-                  selectedServiceFilter !== "all" &&
-                  selectedServiceFilter !== "services"
+                    selectedServiceFilter !== "all" &&
+                    selectedServiceFilter !== "services"
                     ? parseInt(selectedServiceFilter)
                     : undefined;
                 fetchBusinessesWithData(
@@ -2119,7 +1821,7 @@ export default function DashboardContent() {
           />
         </View>
       ) : (tab === "individual" ? serviceSections : subscriptionSections)
-          .length > 0 ? (
+        .length > 0 ? (
         (tab === "individual" ? serviceSections : subscriptionSections).map(
           (section, sectionIndex) => {
             const itemsCount =
@@ -2163,19 +1865,19 @@ export default function DashboardContent() {
                           params: { business_id: section.id.toString() },
                         } as any);
                       }}
-                      // onPress={() => {
-                      //   router.push({
-                      //     pathname: "/(main)/dashboard/(home)/businessList",
-                      //     params: {
-                      //       data: JSON.stringify({
-                      //         businessName: section.businessName,
-                      //         type: section.type,
-                      //         services: section.services,
-                      //         subscriptions: section.subscriptions,
-                      //       }),
-                      //     },
-                      //   });
-                      // }}
+                    // onPress={() => {
+                    //   router.push({
+                    //     pathname: "/(main)/dashboard/(home)/businessList",
+                    //     params: {
+                    //       data: JSON.stringify({
+                    //         businessName: section.businessName,
+                    //         type: section.type,
+                    //         services: section.services,
+                    //         subscriptions: section.subscriptions,
+                    //       }),
+                    //     },
+                    //   });
+                    // }}
                     >
                       <Text style={styles.sectionViewMore}>View more</Text>
                     </TouchableOpacity>
@@ -2238,7 +1940,7 @@ export default function DashboardContent() {
                           </Text>
                           <TouchableOpacity
                             activeOpacity={0.7}
-                            onPress={() => {}}
+                            onPress={() => { }}
                             style={styles.serviceButtonContainer}
                           >
                             <Button
@@ -2427,118 +2129,35 @@ export default function DashboardContent() {
   );
 
   return (
-    <View style={styles.container}>
-      {/* Fixed Segmented Control */}
-      <View
-        ref={tabsContainerRef}
-        style={styles.tabsContainer}
-        onLayout={(event) => {
-          const { height } = event.nativeEvent.layout;
-          if (height > 0) {
-            tabsContainerHeight.current = height;
-          }
+    <ScrollView nestedScrollEnabled style={styles.container}>
+
+      <SearchBar />
+
+      {/* Category Section */}
+      <CategorySection
+        selectedCategory={selectedCategory}
+        onCategorySelect={setSelectedCategory}
+        onCategoryScrollingChange={(isScrolling) => {
         }}
-      >
-        <View style={styles.segmentedControl}>
-          <TouchableOpacity
-            style={[
-              styles.segment,
-              activeTab === "subscriptions"
-                ? styles.segmentActive
-                : styles.segmentInactive,
-            ]}
-            onPress={() => handleTabPress("subscriptions")}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                activeTab === "subscriptions"
-                  ? styles.segmentTextActive
-                  : styles.segmentTextInactive,
-              ]}
-            >
-              Subscriptions list
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.segment,
-              activeTab === "individual"
-                ? styles.segmentActive
-                : styles.segmentInactive,
-            ]}
-            onPress={() => handleTabPress("individual")}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                activeTab === "individual"
-                  ? styles.segmentTextActive
-                  : styles.segmentTextInactive,
-              ]}
-            >
-              Individual services
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        onCategoriesLoaded={setCategories}
+      />
 
-      {/* Sticky Category Tabs - Fixed at top when scrolled (Image 2 design) */}
-      <Animated.View
-        style={[
-          styles.categoryTabsSticky,
-          {
-            top: tabsContainerHeight.current,
-            opacity: stickyTabsOpacity,
-            transform: [{ translateY: stickyTabsTranslateY }],
-          },
-        ]}
-        pointerEvents={showCategoryTabs ? "auto" : "none"}
-      >
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryTabs}
-        >
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={styles.categoryTab}
-              onPress={() => setSelectedCategory(category.id)}
-            >
-              <Text
-                style={
-                  selectedCategory === category.id
-                    ? styles.categoryTabTextActive
-                    : styles.categoryTabText
-                }
-              >
-                {category.name}
-              </Text>
-              {selectedCategory === category.id && (
-                <View style={styles.categoryTabUnderline} />
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </Animated.View>
 
-      {/* Swipeable Content */}
-      <GestureHandlerRootView style={styles.contentContainer}>
-        <ScrollView
-          ref={horizontalScrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={handleHorizontalScrollEnd}
-          scrollEnabled={!isCategoryScrollingRef.current}
-          style={styles.contentContainer}
-          contentContainerStyle={styles.swipeableContent}
-        >
-          {renderTabContent("subscriptions")}
-          {renderTabContent("individual")}
-        </ScrollView>
-      </GestureHandlerRootView>
+      <ScrollView
+        nestedScrollEnabled
+        ref={horizontalScrollViewRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleHorizontalScrollEnd}
+
+        style={styles.contentContainer}
+        contentContainerStyle={styles.swipeableContent}
+      >
+        {renderTabContent("subscriptions")}
+        {renderTabContent("individual")}
+      </ScrollView>
+
 
       {/* Inclusions Modal */}
       <InclusionsModal
@@ -2546,6 +2165,6 @@ export default function DashboardContent() {
         onClose={() => setInclusionsModalVisible(false)}
         inclusions={selectedInclusions}
       />
-    </View>
+    </ScrollView>
   );
 }
