@@ -20,7 +20,7 @@ import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import SocialAuthOptions from "@/src/components/socialAuthOptions";
 import SectionSeparator from "@/src/components/sectionSeparator";
-// import { ApiService } from "@/src/services/api";
+import { ApiService } from "@/src/services/api";
 // import { businessEndpoints } from "@/src/services/endpoints";
 // import { setUser, setTokens } from "@/src/state/slices/userSlice";
 // import { setRegisterEmail } from "@/src/state/slices/generalSlice";
@@ -63,8 +63,23 @@ export default function SocialLogin() {
     router.push(`/${MAIN_ROUTES.LOGIN}`);
   };
 
-  const handleGoogleLogin = useCallback(async () => {
+  const handleGoogleLogin = async () => {
     try {
+
+      try {
+        await GoogleSignin.signOut();
+      } catch (signOutError) {
+        console.log("Google logout out error (ignored):", signOutError);
+      }
+
+      // Logout from app session to clear any existing tokens/user data
+      try {
+        await ApiService.logout();
+      } catch (logoutError) {
+        // Ignore logout errors - might not have active session
+        console.log("App logout error (ignored):", logoutError);
+      }
+
       // Check if Google Play Services are available (Android only)
       if (Platform.OS === "android") {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -161,6 +176,7 @@ export default function SocialLogin() {
       //     apiError.message || "Failed to authenticate with server"
       //   );
       // }
+
     } catch (error: any) {
       console.error("Google Sign-In Error:", error);
 
@@ -184,7 +200,7 @@ export default function SocialLogin() {
         );
       }
     }
-  }, [dispatch, router, selectedRole]);
+  }
 
   const handleSocialLogin = useCallback(
     async (provider: SocialProvider) => {
