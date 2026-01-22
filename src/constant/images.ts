@@ -8,4 +8,5 @@ export const IMAGES = {
     aiFeatureBack:require("@/assets/images/aiFeatureBack.png"),
     plusLoader:require("@/assets/lotties/plusLoader.json"),
     location:require("@/assets/images/location.png"),
+    logo3d:require("@/assets/images/logo3d.png"),
   };

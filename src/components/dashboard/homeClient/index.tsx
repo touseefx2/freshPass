@@ -38,13 +38,13 @@ export default function HomeScreen() {
   const { showBanner } = useNotificationContext();
 
   useEffect(() => {
-    if (
-      (userRole === "customer" || isGuest) &&
-      user?.location.lat === null &&
-      user?.location.long === null
-    ) {
-      isLocationEnable();
-    }
+    // if (
+    //   (userRole === "customer" || isGuest) &&
+    //   user?.location.lat === null &&
+    //   user?.location.long === null
+    // ) {
+    //   isLocationEnable();
+    // }
   }, []);
 
   const isLocationEnable = async () => {
@@ -165,7 +165,7 @@ export default function HomeScreen() {
   return (
     <>
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="light-content" backgroundColor={theme.darkGreen} translucent={true} />
         <DashboardHeaderClient />
         <SearchBar />
         <DashboardContent />
