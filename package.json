@@ -26,7 +26,7 @@
     "@stripe/stripe-react-native": "0.50.3",
     "axios": "^1.13.2",
     "dayjs": "^1.11.19",
-    "expo": "~54.0.31",
+    "expo": "~54.0.32",
     "expo-av": "~16.0.8",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
