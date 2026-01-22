@@ -553,9 +553,7 @@ export default function DashboardContent() {
       }
     } catch (error) {
       Logger.error("Failed to fetch categories:", error);
-      setCategoriesError(true);
-      showBanner("API Failed", "API failed to fetch categories", "error", 2500);
-      setCategories([]);
+      categories.length <= 0 && setCategoriesError(true);
     } finally {
       setCategoriesLoading(false);
     }
@@ -622,10 +620,7 @@ export default function DashboardContent() {
       }
     } catch (error) {
       Logger.error("Failed to fetch businesses:", error);
-      setBusinessesError(true);
-      showBanner("API Failed", "API failed to fetch businesses", "error", 2500);
-      setVerifiedSalons([]);
-
+      verifiedSalons.length <= 0 && setBusinessesError(true);
     } finally {
       setBusinessesLoading(false);
     }
@@ -797,7 +792,6 @@ export default function DashboardContent() {
       if (userRole === "customer") {
         fetchAppointments();
       }
-
       if (isCusotmerandGuest) {
         fetchCategories();
         fetchBusinesses();
@@ -811,7 +805,6 @@ export default function DashboardContent() {
     <ScrollView nestedScrollEnabled style={styles.container} contentContainerStyle={styles.contentContainer}>
       <SearchBar />
 
-      {/* Category Section */}
       <CategorySection
         selectedCategory={selectedCategory}
         onCategorySelect={setSelectedCategory}
@@ -823,7 +816,6 @@ export default function DashboardContent() {
         categoriesError={categoriesError}
         onRetry={fetchCategories}
       />
-
 
       {userRole === "customer" && appointments.length > 0 && (
         <View style={styles.section}>
@@ -843,7 +835,6 @@ export default function DashboardContent() {
         />
       </View>
 
-
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Recommended </Text>
         <ShowBusiness
@@ -853,7 +844,6 @@ export default function DashboardContent() {
           onRetry={fetchBusinesses}
         />
       </View>
-
 
     </ScrollView>
   );

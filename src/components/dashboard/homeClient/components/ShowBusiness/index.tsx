@@ -44,7 +44,7 @@ export default function ShowBusiness({
   businessesLoading,
   businessesError,
   verifiedSalons,
- 
+
   onRetry,
 }: ShowBusinessProps) {
   const { colors } = useTheme();
@@ -54,14 +54,14 @@ export default function ShowBusiness({
 
   return (
     <ScrollView
-    decelerationRate={0.8}
+      decelerationRate={0.8}
       horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.appCard}
       contentContainerStyle={styles.appointmentsScroll}
       nestedScrollEnabled={true}
     >
-      {businessesLoading ? (
+      {(businessesLoading && verifiedSalons.length <= 0) ? (
         <View
           style={[
             styles.loadingContainer,

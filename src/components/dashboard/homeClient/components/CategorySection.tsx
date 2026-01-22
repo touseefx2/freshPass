@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Dimensions,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -20,6 +21,8 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import RetryButton from "@/src/components/retryButton";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -73,6 +76,34 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       flexWrap: "wrap",
       width: widthScale(60),
+    },
+    loadingContainer: {
+      paddingVertical: moderateHeightScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    errorContainer: {
+      paddingVertical: moderateHeightScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(12),
+    },
+    errorText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
+    emptyContainer: {
+      paddingVertical: moderateHeightScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emptyText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textAlign: "center",
     },
   });
 
@@ -179,70 +210,15 @@ export default function CategorySection({
     }
   }, [categories.length, oneSetWidth]);
 
-  if (categoriesLoading) {
-    return (
-      <View
-        style={[
-          styles.categoriesContainer,
-          {
-            paddingVertical: moderateHeightScale(20),
-            alignItems: "center",
-            justifyContent: "center",
-          },
-        ]}
-      >
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
-  }
-
-  if (categoriesError) {
-    return (
-      <View
-        style={[
-          styles.categoriesContainer,
-          {
-            paddingVertical: moderateHeightScale(20),
-            alignItems: "center",
-            justifyContent: "center",
-            gap: moderateHeightScale(12),
-          },
-        ]}
-      >
-        <Text
-          style={{
-            fontSize: fontSize.size14,
-            fontFamily: fonts.fontRegular,
-            color: theme.lightGreen,
-            textAlign: "center",
-          }}
-        >
-          Failed to load categories
-        </Text>
-        <RetryButton
-          onPress={onRetry}
-          loading={categoriesLoading}
-        />
-      </View>
-    );
-  }
-
-  if (categories.length === 0) {
-    return null;
-  }
-
   return (
     <ScrollView
       ref={categoryScrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.categoriesContainer}
-      contentContainerStyle={
-        styles.categoriesScroll
-      }
+      contentContainerStyle={styles.categoriesScroll}
       nestedScrollEnabled={true}
       bounces={false}
-      // decelerationRate={0.92}
       scrollEventThrottle={1}
       pagingEnabled={false}
       directionalLockEnabled={true}
@@ -277,42 +253,78 @@ export default function CategorySection({
         }, 200);
       }}
     >
-      {duplicatedCategories.map((category, index) => (
-        <TouchableOpacity
-          key={`${category.id}-${index}`}
-          style={styles.categoryItem}
-          onPress={() => onCategorySelect(category.id)}
-          activeOpacity={0.8}
+      {(categoriesLoading && categories.length === 0) ? (
+        <View
+          style={[
+            styles.loadingContainer,
+            {
+              width: SCREEN_WIDTH,
+            },
+          ]}
         >
-          <Image
-            source={{
-              uri: category?.image
-                ? process.env.EXPO_PUBLIC_API_BASE_URL + category?.image
-                : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
-            }}
-            style={[
-              styles.categoryImage,
-              selectedCategory === category.id && styles.categoryImageActive,
-              {
-                borderWidth: moderateWidthScale(
-                  selectedCategory === category.id ? 3 : 1
-                ),
-              },
-            ]}
-            resizeMode="cover"
-          />
-          <Text
-            style={
-              selectedCategory === category.id
-                ? styles.categoryTextActive
-                : styles.categoryText
-            }
-            numberOfLines={2}
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      ) : categoriesError ? (
+        <View
+          style={[
+            styles.errorContainer,
+            {
+              width: SCREEN_WIDTH,
+            },
+          ]}
+        >
+          <Text style={styles.errorText}>Failed to load categories</Text>
+          <RetryButton onPress={onRetry} loading={categoriesLoading} />
+        </View>
+      ) : categories.length > 0 ? (
+        duplicatedCategories.map((category, index) => (
+          <TouchableOpacity
+            key={`${category.id}-${index}`}
+            style={styles.categoryItem}
+            onPress={() => onCategorySelect(category.id)}
+            activeOpacity={0.8}
           >
-            {category.name}
-          </Text>
-        </TouchableOpacity>
-      ))}
+            <Image
+              source={{
+                uri: category?.image
+                  ? process.env.EXPO_PUBLIC_API_BASE_URL + category?.image
+                  : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
+              }}
+              style={[
+                styles.categoryImage,
+                selectedCategory === category.id && styles.categoryImageActive,
+                {
+                  borderWidth: moderateWidthScale(
+                    selectedCategory === category.id ? 3 : 1
+                  ),
+                },
+              ]}
+              resizeMode="cover"
+            />
+            <Text
+              style={
+                selectedCategory === category.id
+                  ? styles.categoryTextActive
+                  : styles.categoryText
+              }
+              numberOfLines={2}
+            >
+              {category.name}
+            </Text>
+          </TouchableOpacity>
+        ))
+      ) : (
+        <View
+          style={[
+            styles.emptyContainer,
+            {
+              width: SCREEN_WIDTH,
+            },
+          ]}
+        >
+          <Text style={styles.emptyText}>No category found</Text>
+        </View>
+      )}
     </ScrollView>
   );
 }
