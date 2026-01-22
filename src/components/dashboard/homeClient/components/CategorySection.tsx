@@ -19,20 +19,16 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { ApiService } from "@/src/services/api";
-import Logger from "@/src/services/logger";
-import { businessEndpoints } from "@/src/services/endpoints";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import RetryButton from "@/src/components/retryButton";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     categoriesContainer: {
-      marginVertical: moderateHeightScale(12),
+      marginTop: moderateHeightScale(24),
     },
     categoriesScroll: {
       paddingHorizontal: moderateWidthScale(20),
-      gap: moderateWidthScale(14),
+      gap: moderateWidthScale(14)
     },
     categoryItem: {
       alignItems: "center",
@@ -90,65 +86,30 @@ interface CategorySectionProps {
   selectedCategory?: string | number | undefined;
   onCategorySelect: (categoryId: number) => void;
   onCategoryScrollingChange?: (isScrolling: boolean) => void;
-  onCategoriesLoaded?: (categories: Category[]) => void;
+  categories: Category[];
+  categoriesLoading: boolean;
+  categoriesError: boolean;
+  onRetry: () => void;
 }
 
 export default function CategorySection({
   selectedCategory,
   onCategorySelect,
   onCategoryScrollingChange,
-  onCategoriesLoaded,
+  categories,
+  categoriesLoading,
+  categoriesError,
+  onRetry,
 }: CategorySectionProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const { showBanner } = useNotificationContext();
 
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [categoriesError, setCategoriesError] = useState(false);
   const categoryScrollRef = useRef<ScrollView>(null);
   const isCategoryScrollingRef = useRef(false);
   const scrollPositionRef = useRef(0);
   const isScrollingRef = useRef(false);
   const isJumpingRef = useRef(false);
-
-  const fetchCategories = async () => {
-    try {
-      setCategoriesLoading(true);
-      setCategoriesError(false);
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: Array<{
-          id: number;
-          name: string;
-          imageUrl: string | null;
-        }>;
-      }>(businessEndpoints.categories);
-
-      if (response.success && response.data) {
-        // Map API response to component format (imageUrl -> image)
-        const mappedCategories: Category[] = response.data.map((item) => ({
-          id: item.id,
-          name: item.name,
-          image: item.imageUrl,
-        }));
-        setCategories(mappedCategories);
-        onCategoriesLoaded?.(mappedCategories);
-      }
-    } catch (error) {
-      Logger.error("Failed to fetch categories:", error);
-      setCategoriesError(true);
-      showBanner("API Failed", "API failed to fetch categories", "error", 2500);
-    } finally {
-      setCategoriesLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   const handleCategoryScrolling = (isScrolling: boolean) => {
     isCategoryScrollingRef.current = isScrolling;
@@ -259,7 +220,7 @@ export default function CategorySection({
           Failed to load categories
         </Text>
         <RetryButton
-          onPress={fetchCategories}
+          onPress={onRetry}
           loading={categoriesLoading}
         />
       </View>
@@ -276,10 +237,9 @@ export default function CategorySection({
       horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.categoriesContainer}
-      contentContainerStyle={[
-        styles.categoriesScroll,
-        { paddingRight: moderateWidthScale(20) },
-      ]}
+      contentContainerStyle={
+        styles.categoriesScroll
+      }
       nestedScrollEnabled={true}
       bounces={false}
       // decelerationRate={0.92}

@@ -45,9 +45,10 @@ import {
   appointmentsEndpoints,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import RetryButton from "@/src/components/retryButton";
 import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
+import ShowBusiness from "./ShowBusiness";
+import ShowAppointments from "./ShowAppointments";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -57,12 +58,10 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    tabsContainer: {
-      backgroundColor: theme.background,
-    },
     contentContainer: {
-      flex: 1,
+      paddingVertical: moderateHeightScale(18),
     },
+
     swipeableContent: {
       flexDirection: "row",
     },
@@ -166,67 +165,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-    appCard: {
-      height: heightScale(150),
-    },
-    appointmentsScroll: {
-      paddingHorizontal: moderateWidthScale(20),
-      gap: moderateWidthScale(12),
-    },
-    verifiedSalonCard: {
-      backgroundColor: theme.darkGreen,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      height: heightScale(140),
-      width: widthScale(310),
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(12),
-    },
-    verifiedCardTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(12),
-      gap: moderateWidthScale(4),
-      width: "100%",
-    },
-    verifiedBadge: {
-      backgroundColor: theme.orangeBrown,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      alignSelf: "flex-start",
-    },
-    verifiedBadgeText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    dateTimeBadge: {
-      backgroundColor: theme.darkGreenLight,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      alignSelf: "flex-start",
-    },
-    dateTimeBadgeText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
-    verifiedCardContent: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: moderateWidthScale(12),
-    },
-    verifiedCardImage: {
-      width: widthScale(67),
-      height: heightScale(67),
-      borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
     verifiedCardImageNew: {
       width: widthScale(105),
       height: heightScale(120),
@@ -235,120 +173,6 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.borderLight,
       overflow: "hidden",
-    },
-    verifiedCardTextContainer: {
-      flex: 1,
-      gap: moderateHeightScale(4),
-    },
-    salonName: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textTransform: "capitalize",
-    },
-    verifiedCardInfoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    verifiedCardInfoRow2: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      width: "100%",
-    },
-    verifiedCardInfoText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white80,
-      marginLeft: moderateWidthScale(6),
-    },
-    viewDetailLink: {
-      flexDirection: "row",
-      alignItems: "center",
-      alignSelf: "flex-end",
-      gap: moderateWidthScale(4),
-    },
-    viewDetailText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-    },
-    verifiedSalonCardNew: {
-      backgroundColor: theme.darkGreen,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      height: heightScale(140),
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-      width: widthScale(310),
-    },
-    verifiedSalonImage: {
-      width: widthScale(100),
-      height: heightScale(110),
-      borderRadius: moderateWidthScale(6),
-      backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
-    },
-    platformVerifiedBadge: {
-      backgroundColor: theme.darkGreenLight,
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-      alignSelf: "flex-start",
-    },
-    platformVerifiedText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
-    verifiedSalonContent: {
-      gap: moderateHeightScale(12),
-      width: "60%",
-    },
-    verifiedSalonBusinessName: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textTransform: "capitalize",
-    },
-    verifiedSalonAddress: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.white80,
-    },
-    verifiedSalonBottomRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    verifiedSalonRatingButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      borderWidth: moderateWidthScale(1),
-      borderColor: theme.white70,
-      gap: moderateWidthScale(6),
-    },
-    verifiedSalonRatingText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.white,
-    },
-    verifiedSalonViewDetail: {},
-    verifiedSalonViewDetailText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-      textDecorationLine: "underline",
-      textDecorationColor: theme.orangeBrown,
     },
     filtersContainer: {
       marginBottom: moderateHeightScale(16),
@@ -607,8 +431,8 @@ const createStyles = (theme: Theme) =>
       // marginBottom: moderateHeightScale(24),
     },
     section: {
-      marginVertical: moderateHeightScale(12),
-      gap: moderateHeightScale(16),
+      marginTop: moderateHeightScale(16),
+      gap: moderateHeightScale(14),
     },
     sectionTitle: {
       fontSize: fontSize.size20,
@@ -751,13 +575,15 @@ export default function DashboardContent() {
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
   const userLocation = useAppSelector((state: any) => state.user.location);
   const selectedDateISO = useAppSelector(
-    (state: any) => state.general.selectedDate
+    (state: any) => state.general.selectedDate,
   );
   const searchText = useAppSelector((state: any) => state.general.searchText);
 
   const isCusotmerandGuest = isGuest || userRole === "customer";
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesError, setCategoriesError] = useState(false);
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
@@ -766,7 +592,7 @@ export default function DashboardContent() {
   const [appointmentsLoading, setAppointmentsLoading] = useState(false);
   const [appointmentsError, setAppointmentsError] = useState(false);
   const [activeTab, setActiveTab] = useState<"subscriptions" | "individual">(
-    "subscriptions"
+    "subscriptions",
   );
   const [selectedCategory, setSelectedCategory] = useState<
     string | number | undefined
@@ -805,6 +631,39 @@ export default function DashboardContent() {
   const tabsContainerHeight = useRef(0);
   const tabsContainerRef = useRef<View>(null);
 
+  const fetchCategories = async () => {
+    try {
+      setCategoriesLoading(true);
+      setCategoriesError(false);
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: Array<{
+          id: number;
+          name: string;
+          imageUrl: string | null;
+        }>;
+      }>(businessEndpoints.categories);
+
+      if (response.success && response.data) {
+        // Map API response to component format (imageUrl -> image)
+        const mappedCategories: Category[] = response.data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          image: item.imageUrl,
+        }));
+        setCategories(mappedCategories);
+      }
+    } catch (error) {
+      Logger.error("Failed to fetch categories:", error);
+      setCategoriesError(true);
+      showBanner("API Failed", "API failed to fetch categories", "error", 2500);
+      setCategories([]);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
   const fetchServiceTemplates = async (categoryId: number | string) => {
     try {
       setServiceTemplatesLoading(true);
@@ -837,7 +696,7 @@ export default function DashboardContent() {
         "API Failed",
         "API failed to fetch service templates",
         "error",
-        2500
+        2500,
       );
       setServiceTemplates([]);
     } finally {
@@ -845,28 +704,20 @@ export default function DashboardContent() {
     }
   };
 
-  const fetchBusinesses = async (
-    categoryId: number | string,
-    search?: string
-  ) => {
+  const fetchBusinesses = async () => {
     try {
       setBusinessesLoading(true);
       setBusinessesError(false);
-      let url = businessEndpoints.businesses(categoryId as number);
-      if (search && search.trim()) {
-        url += `&search=${encodeURIComponent(search.trim())}`;
-      }
-      if (selectedDateISO) {
-        const formattedDate = dayjs(selectedDateISO).format("YYYY-MM-DD");
-        url += `&availability_date=${encodeURIComponent(formattedDate)}`;
-      }
-      url = `${url}&sort=completed_appointments&direction=desc`;
+      let url = businessEndpoints.businesses();
+
+      url = `${url}?sort=completed_appointments&direction=desc`;
 
       // if (userLocation?.lat && userLocation?.long) {
       //   url += `&latitude=${userLocation.lat}`;
       //   url += `&longitude=${userLocation.long}`;
       //   url += `&radius_km=20`;
       // }
+
       const response = await ApiService.get<{
         success: boolean;
         message: string;
@@ -927,7 +778,7 @@ export default function DashboardContent() {
     categoryId: number | string,
     tab: "individual" | "subscriptions",
     serviceTemplateId?: number,
-    search?: string
+    search?: string,
   ) => {
     try {
       setSectionsLoading(true);
@@ -942,7 +793,7 @@ export default function DashboardContent() {
         if (serviceTemplateId) {
           queryParams.append(
             "service_template_id",
-            serviceTemplateId.toString()
+            serviceTemplateId.toString(),
           );
         }
       } else {
@@ -1009,7 +860,7 @@ export default function DashboardContent() {
           // Transform services data
           const mappedSections: ServiceSection[] = response.data
             .filter(
-              (business) => business.services && business.services.length > 0
+              (business) => business.services && business.services.length > 0,
             )
             .map((business) => ({
               id: business.id,
@@ -1034,7 +885,7 @@ export default function DashboardContent() {
                   title: service.name,
                   price: parseFloat(service.price),
                   originalPrice: parseFloat(
-                    (parseFloat(service.price) * 1.1).toFixed(2)
+                    (parseFloat(service.price) * 1.1).toFixed(2),
                   ), // Approximate original price
                   description:
                     service.description || "No description available",
@@ -1050,7 +901,7 @@ export default function DashboardContent() {
             .filter(
               (business) =>
                 business.subscription_plans &&
-                business.subscription_plans.length > 0
+                business.subscription_plans.length > 0,
             )
             .map((business) => ({
               id: business.id,
@@ -1059,7 +910,7 @@ export default function DashboardContent() {
               subscriptions: business.subscription_plans!.map((plan) => {
                 // Create inclusions from services
                 const inclusions = plan.services.map(
-                  (service, index) => `${index + 1}. ${service.name}`
+                  (service, index) => `${index + 1}. ${service.name}`,
                 );
 
                 return {
@@ -1067,7 +918,7 @@ export default function DashboardContent() {
                   title: plan.name,
                   price: parseFloat(plan.price),
                   originalPrice: parseFloat(
-                    (parseFloat(plan.price) * 1.15).toFixed(2)
+                    (parseFloat(plan.price) * 1.15).toFixed(2),
                   ), // Approximate original price
                   offer: `${plan.visits} visits included`,
                   offer2: plan.planType === "user" ? "User Plan" : undefined,
@@ -1098,7 +949,7 @@ export default function DashboardContent() {
         `API failed to fetch ${tab === "individual" ? "services" : "subscriptions"
         }`,
         "error",
-        2500
+        2500,
       );
       if (tab === "individual") {
         setServiceSections([]);
@@ -1233,15 +1084,15 @@ export default function DashboardContent() {
         (appointment) => {
           const imageUrl = appointment.businessLogoUrl
             ? process.env.EXPO_PUBLIC_API_BASE_URL + appointment.businessLogoUrl
-            : process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+            : (process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "");
 
           const staffImageUrl = appointment.staffImage
             ? process.env.EXPO_PUBLIC_API_BASE_URL + appointment.staffImage
-            : process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+            : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
 
           const dateTime = formatAppointmentDateTime(
             appointment.appointmentDate,
-            appointment.appointmentTime
+            appointment.appointmentTime,
           );
 
           const membershipInfo = formatMembershipInfo(appointment);
@@ -1272,7 +1123,7 @@ export default function DashboardContent() {
             staffImage: staffImageUrl,
             originalAppointment: appointment,
           };
-        }
+        },
       );
 
       setAppointments(mappedAppointments);
@@ -1283,7 +1134,7 @@ export default function DashboardContent() {
         "API Failed",
         "API failed to fetch appointments",
         "error",
-        2500
+        2500,
       );
       setAppointments([]);
     } finally {
@@ -1291,14 +1142,20 @@ export default function DashboardContent() {
     }
   };
 
-
   useFocusEffect(
     useCallback(() => {
       if (userRole === "customer") {
         fetchAppointments();
       }
-    }, [])
+    }, []),
   );
+
+  // Fetch categories on mount
+  useEffect(() => {
+    if (isCusotmerandGuest) {
+      fetchCategories();
+    }
+  }, []);
 
   // Fetch service templates when category changes or when switching to individual tab
   useEffect(() => {
@@ -1316,39 +1173,10 @@ export default function DashboardContent() {
 
   // Fetch businesses when category or tab changes (with debounced search)
   useEffect(() => {
-    if (isCusotmerandGuest && selectedCategory) {
-      // Trim search text
-      const trimmedSearch = searchText?.trim() || "";
-
-      // Debounce search - wait 500ms after user stops typing
-      const debounceTimer = setTimeout(() => {
-        fetchBusinesses(selectedCategory, trimmedSearch || undefined);
-        const serviceTemplateId =
-          activeTab === "individual" &&
-            selectedServiceFilter !== "all" &&
-            selectedServiceFilter !== "services"
-            ? parseInt(selectedServiceFilter)
-            : undefined;
-        fetchBusinessesWithData(
-          selectedCategory,
-          activeTab,
-          serviceTemplateId,
-          trimmedSearch || undefined
-        );
-      }, 500);
-
-      return () => {
-        clearTimeout(debounceTimer);
-      };
+    if (isCusotmerandGuest) {
+      fetchBusinesses();
     }
-  }, [
-    selectedCategory,
-    activeTab,
-    selectedServiceFilter,
-    searchText,
-    selectedDateISO,
-    userLocation,
-  ]);
+  }, []);
 
   // Initialize scroll position to subscriptions (index 0)
   useEffect(() => {
@@ -1358,7 +1186,6 @@ export default function DashboardContent() {
       animated: false,
     });
   }, []);
-
 
   // Update horizontal scroll position when tab changes (only when clicking, not swiping)
   useEffect(() => {
@@ -1380,8 +1207,6 @@ export default function DashboardContent() {
     }
   }, [activeTab]);
 
-
-
   const handleHorizontalScrollEnd = (event: any) => {
     // Only update tab when scroll ends (prevents flickering during animation)
     if (!isManualScrollRef.current) {
@@ -1399,11 +1224,6 @@ export default function DashboardContent() {
   const handleTabPress = (tab: "subscriptions" | "individual") => {
     isManualScrollRef.current = true;
     setActiveTab(tab);
-  };
-
-  const getCategoryName = () => {
-    const category = categories.find((cat) => cat.id === selectedCategory);
-    return category ? category.name : "Hair Salon";
   };
 
   // Generate service filters dynamically from API data
@@ -1430,7 +1250,7 @@ export default function DashboardContent() {
   const renderFilters = (
     filters: Array<{ id: string; label: string; isPrimary: boolean }>,
     selectedFilter: string,
-    onFilterSelect: (id: string) => void
+    onFilterSelect: (id: string) => void,
   ) => (
     <ScrollView
       horizontal
@@ -1483,148 +1303,8 @@ export default function DashboardContent() {
     </ScrollView>
   );
 
-  const renderTabContent = (tab: "subscriptions" | "individual") => (
-    <>
-
-      {/* Platform Verified Salon */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.appCard]}
-        contentContainerStyle={styles.appointmentsScroll}
-        nestedScrollEnabled={true}
-      >
-        {businessesLoading ? (
-          <View
-            style={{
-              paddingVertical: moderateHeightScale(20),
-              alignItems: "center",
-              justifyContent: "center",
-              width: SCREEN_WIDTH,
-            }}
-          >
-            <ActivityIndicator size="large" color={theme.primary} />
-          </View>
-        ) : businessesError ? (
-          <View
-            style={{
-              paddingVertical: moderateHeightScale(20),
-              alignItems: "center",
-              justifyContent: "center",
-              width: SCREEN_WIDTH,
-              gap: moderateHeightScale(12),
-            }}
-          >
-            <Text
-              style={{
-                fontSize: fontSize.size14,
-                fontFamily: fonts.fontRegular,
-                color: theme.lightGreen,
-                textAlign: "center",
-              }}
-            >
-              Failed to load businesses
-            </Text>
-            <RetryButton
-              onPress={() => {
-                if (selectedCategory) {
-                  const trimmedSearch = searchText?.trim() || "";
-                  fetchBusinesses(selectedCategory, trimmedSearch || undefined);
-                }
-              }}
-              loading={businessesLoading}
-            />
-          </View>
-        ) : verifiedSalons.length > 0 ? (
-          verifiedSalons.map((salon, index) => (
-            <View key={salon.id} style={[styles.verifiedSalonCardNew]}>
-              <Image
-                source={{
-                  uri: salon.image ?? "",
-                }}
-                style={styles.verifiedSalonImage}
-                resizeMode="cover"
-              />
-
-              <View style={styles.verifiedSalonContent}>
-                <View style={styles.platformVerifiedBadge}>
-                  <PlatformVerifiedStarIcon
-                    width={widthScale(10)}
-                    height={heightScale(10)}
-                  />
-                  <Text style={styles.platformVerifiedText}>
-                    Platform verified
-                  </Text>
-                </View>
-                <View style={{ gap: moderateHeightScale(6) }}>
-                  <Text
-                    numberOfLines={1}
-                    style={styles.verifiedSalonBusinessName}
-                  >
-                    {salon.businessName}
-                  </Text>
-                  <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
-                    {salon.address}
-                  </Text>
-                </View>
-                <View style={styles.verifiedSalonBottomRow}>
-                  <View style={styles.verifiedSalonRatingButton}>
-                    <StarIconSmall
-                      width={widthScale(12)}
-                      height={heightScale(12)}
-                      color={theme.orangeBrown}
-                    />
-                    <Text style={styles.verifiedSalonRatingText}>
-                      {salon.rating || 0}/ {salon.reviewCount || 0} reviews
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.verifiedSalonViewDetail}
-                    onPress={() => {
-                      router.push({
-                        pathname: "/(main)/businessDetail",
-                        params: { business_id: salon.id.toString() },
-                      } as any);
-                    }}
-                  >
-                    <Text style={styles.verifiedSalonViewDetailText}>
-                      View detail
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          ))
-        ) : (
-          <View
-            style={{
-              paddingVertical: moderateHeightScale(20),
-              alignItems: "center",
-              justifyContent: "center",
-              width: SCREEN_WIDTH,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: fontSize.size14,
-                fontFamily: fonts.fontMedium,
-                color: theme.lightGreen,
-                textAlign: "center",
-              }}
-            >
-              No businesses found
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-    </>
-
-  );
-
   return (
-    <ScrollView nestedScrollEnabled style={styles.container}>
-
+    <ScrollView nestedScrollEnabled style={styles.container} contentContainerStyle={styles.contentContainer}>
       <SearchBar />
 
       {/* Category Section */}
@@ -1634,22 +1314,41 @@ export default function DashboardContent() {
         onCategoryScrollingChange={(isScrolling) => {
           isCategoryScrollingRef.current = isScrolling;
         }}
-        onCategoriesLoaded={setCategories}
+        categories={categories}
+        categoriesLoading={categoriesLoading}
+        categoriesError={categoriesError}
+        onRetry={fetchCategories}
       />
 
 
-
+      {userRole === "customer" && appointments.length > 0 && (
+        <View style={styles.section}>
+          <ShowAppointments
+            appointments={appointments}
+          />
+        </View>
+      )}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          FreshPass Deals
-        </Text>
-        {renderTabContent("subscriptions")}
+        <Text style={styles.sectionTitle}>FreshPass Deals</Text>
+        <ShowBusiness
+          businessesLoading={businessesLoading}
+          businessesError={businessesError}
+          verifiedSalons={verifiedSalons}
+          onRetry={fetchBusinesses}
+        />
       </View>
 
 
-
-
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recommended </Text>
+        <ShowBusiness
+          businessesLoading={businessesLoading}
+          businessesError={businessesError}
+          verifiedSalons={verifiedSalons}
+          onRetry={fetchBusinesses}
+        />
+      </View>
 
       {/* Inclusions Modal */}
       <InclusionsModal

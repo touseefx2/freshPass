@@ -30,7 +30,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(8),
       gap: moderateWidthScale(12),
       marginHorizontal: moderateWidthScale(20),
-      marginVertical: moderateHeightScale(12),
       // borderWidth: 1,
       // borderColor: theme.borderLight,
     },
