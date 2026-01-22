@@ -41,18 +41,19 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#FEFAE0",
-          "dark": {
-            "backgroundColor": "#FEFAE0"
-          }
-        }
-      ],
+      // [
+      //   "expo-splash-screen",
+      //   {
+      //     // "image": "./assets/images/splash-icon.png",
+      //     "image": "./assets/images/icon.png",
+      //     "imageWidth": 200,
+      //     "resizeMode": "contain",
+      //     "backgroundColor": "#FEFAE0",
+      //     "dark": {
+      //       "backgroundColor": "#FEFAE0"
+      //     }
+      //   }
+      // ],
       [
         "expo-image-picker",
         {
@@ -61,10 +62,7 @@
         }
       ],
       "expo-font",
-      "expo-secure-store",
-      "expo-build-properties",
-      "expo-localization",
-      "expo-web-browser"
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,

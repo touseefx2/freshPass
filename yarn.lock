@@ -3929,13 +3929,6 @@ expo-linking@~8.0.11:
     expo-constants "~18.0.12"
     invariant "^2.2.4"
 
-expo-localization@~17.0.8:
-  version "17.0.8"
-  resolved "https://registry.yarnpkg.com/expo-localization/-/expo-localization-17.0.8.tgz#eb74ae0f9b5b49596322d68d2005662346211100"
-  integrity sha512-UrdwklZBDJ+t+ZszMMiE0SXZ2eJxcquCuQcl6EvGHM9K+e6YqKVRQ+w8qE+iIB3H75v2RJy6MHAaLK+Mqeo04g==
-  dependencies:
-    rtl-detect "^1.0.2"
-
 expo-location@~19.0.8:
   version "19.0.8"
   resolved "https://registry.yarnpkg.com/expo-location/-/expo-location-19.0.8.tgz#1805393151b1286021c1ad36246b6fd095d09b55"
@@ -4009,11 +4002,6 @@ expo-router@~6.0.22:
     use-latest-callback "^0.2.1"
     vaul "^1.1.2"
 
-expo-secure-store@~15.0.8:
-  version "15.0.8"
-  resolved "https://registry.yarnpkg.com/expo-secure-store/-/expo-secure-store-15.0.8.tgz#678065599bb76061b5a85b15b9426bf7a11089ae"
-  integrity sha512-lHnzvRajBu4u+P99+0GEMijQMFCOYpWRO4dWsXSuMt77+THPIGjzNvVKrGSl6mMrLsfVaKL8BpwYZLGlgA+zAw==
-
 expo-server@^1.0.5:
   version "1.0.5"
   resolved "https://registry.yarnpkg.com/expo-server/-/expo-server-1.0.5.tgz#2d52002199a2af99c2c8771d0657916004345ca9"
@@ -4077,11 +4065,6 @@ expo-updates@~29.0.16:
     glob "^13.0.0"
     ignore "^5.3.1"
     resolve-from "^5.0.0"
-
-expo-web-browser@~15.0.10:
-  version "15.0.10"
-  resolved "https://registry.yarnpkg.com/expo-web-browser/-/expo-web-browser-15.0.10.tgz#ee7fb59b4f143f262c13c020433a83444181f1a3"
-  integrity sha512-fvDhW4bhmXAeWFNFiInmsGCK83PAqAcQaFyp/3pE/jbdKmFKoRCWr46uZGIfN4msLK/OODhaQ/+US7GSJNDHJg==
 
 expo@~54.0.32:
   version "54.0.32"
@@ -6827,11 +6810,6 @@ rimraf@^3.0.2:
   integrity sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==
   dependencies:
     glob "^7.1.3"
-
-rtl-detect@^1.0.2:
-  version "1.1.2"
-  resolved "https://registry.npmjs.org/rtl-detect/-/rtl-detect-1.1.2.tgz"
-  integrity sha512-PGMBq03+TTG/p/cRB7HCLKJ1MgDIi07+QU1faSjiYRfmY5UsAttV9Hs08jDAHVwcOwmVLcSJkpwyfXszVjWfIQ==
 
 run-parallel@^1.1.9:
   version "1.2.0"
