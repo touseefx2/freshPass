@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -38,7 +40,7 @@ const createStyles = (theme: Theme) =>
     },
     categoryImage: {
       width: widthScale(70),
-      height: heightScale(68),
+      height: heightScale(70),
       borderRadius: moderateWidthScale(8),
       backgroundColor: theme.lightGreen2,
       borderColor: theme.lightGreen1,
@@ -107,6 +109,9 @@ export default function CategorySection({
   const [categoriesError, setCategoriesError] = useState(false);
   const categoryScrollRef = useRef<ScrollView>(null);
   const isCategoryScrollingRef = useRef(false);
+  const scrollPositionRef = useRef(0);
+  const isScrollingRef = useRef(false);
+  const isJumpingRef = useRef(false);
 
   const fetchCategories = async () => {
     try {
@@ -149,6 +154,69 @@ export default function CategorySection({
     isCategoryScrollingRef.current = isScrolling;
     onCategoryScrollingChange?.(isScrolling);
   };
+
+  // Create duplicated categories for infinite scroll (3 copies)
+  const duplicatedCategories = useMemo(() => {
+    if (categories.length === 0) return [];
+    return [...categories, ...categories, ...categories];
+  }, [categories]);
+
+  // Calculate the width of one set of categories
+  const oneSetWidth = useMemo(() => {
+    if (categories.length === 0) return 0;
+    const itemWidth = widthScale(70);
+    const gap = moderateWidthScale(14);
+    return (
+      moderateWidthScale(20) + // left padding
+      categories.length * itemWidth + // all items
+      (categories.length - 1) * gap + // gaps between items
+      moderateWidthScale(20) // right padding
+    );
+  }, [categories.length]);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (isJumpingRef.current) return;
+
+    const offsetX = event.nativeEvent.contentOffset.x;
+    scrollPositionRef.current = offsetX;
+
+    // If scrolled past the second set (near end), jump to first set smoothly
+    if (offsetX >= oneSetWidth * 2 - 150) {
+      isJumpingRef.current = true;
+      isScrollingRef.current = false;
+      categoryScrollRef.current?.scrollTo({
+        x: offsetX - oneSetWidth,
+        animated: false,
+      });
+      setTimeout(() => {
+        isJumpingRef.current = false;
+      }, 100);
+    }
+    // If scrolled before the first set (near start), jump to second set smoothly
+    else if (offsetX <= 150) {
+      isJumpingRef.current = true;
+      isScrollingRef.current = false;
+      categoryScrollRef.current?.scrollTo({
+        x: offsetX + oneSetWidth,
+        animated: false,
+      });
+      setTimeout(() => {
+        isJumpingRef.current = false;
+      }, 100);
+    }
+  };
+
+  // Initialize scroll position to middle set
+  useEffect(() => {
+    if (categories.length > 0 && oneSetWidth > 0) {
+      setTimeout(() => {
+        categoryScrollRef.current?.scrollTo({
+          x: oneSetWidth,
+          animated: false,
+        });
+      }, 100);
+    }
+  }, [categories.length, oneSetWidth]);
 
   if (categoriesLoading) {
     return (
@@ -208,38 +276,50 @@ export default function CategorySection({
       horizontal
       showsHorizontalScrollIndicator={false}
       style={styles.categoriesContainer}
-      contentContainerStyle={styles.categoriesScroll}
+      contentContainerStyle={[
+        styles.categoriesScroll,
+        { paddingRight: moderateWidthScale(20) },
+      ]}
       nestedScrollEnabled={true}
-      bounces={true}
-      alwaysBounceHorizontal={true}
-      overScrollMode="always"
-      decelerationRate="fast"
-      scrollEventThrottle={16}
+      bounces={false}
+      // decelerationRate={0.92}
+      scrollEventThrottle={1}
+      pagingEnabled={false}
+      directionalLockEnabled={true}
+      onScroll={handleScroll}
       onTouchStart={() => {
+        isScrollingRef.current = true;
         handleCategoryScrolling(true);
       }}
       onTouchEnd={() => {
         setTimeout(() => {
+          isScrollingRef.current = false;
           handleCategoryScrolling(false);
-        }, 100);
+        }, 200);
       }}
       onScrollBeginDrag={() => {
+        isScrollingRef.current = true;
         handleCategoryScrolling(true);
       }}
       onScrollEndDrag={() => {
         setTimeout(() => {
+          isScrollingRef.current = false;
           handleCategoryScrolling(false);
-        }, 100);
+        }, 200);
+      }}
+      onMomentumScrollBegin={() => {
+        isScrollingRef.current = true;
       }}
       onMomentumScrollEnd={() => {
         setTimeout(() => {
+          isScrollingRef.current = false;
           handleCategoryScrolling(false);
-        }, 100);
+        }, 200);
       }}
     >
-      {categories.map((category) => (
+      {duplicatedCategories.map((category, index) => (
         <TouchableOpacity
-          key={category.id}
+          key={`${category.id}-${index}`}
           style={styles.categoryItem}
           onPress={() => onCategorySelect(category.id)}
           activeOpacity={0.8}
