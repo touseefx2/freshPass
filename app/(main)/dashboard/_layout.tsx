@@ -9,6 +9,7 @@ import {
   ChatIcon,
   NotificationIcon,
   AccountIcon,
+  ExploreIcon,
 } from "@/assets/icons";
 import {
   moderateHeightScale,
@@ -175,105 +176,108 @@ export default function DashboardLayout() {
           tabBarHideOnKeyboard: true,
         }}
       >
-      <Tabs.Screen
-        name="(home)"
-        options={{
-          title: "Home",
-          tabBarIcon: ({ color, size, focused }) => (
-            <View
-              style={[styles.iconContainer, focused && styles.iconBackground]}
-            >
-              <HomeIcon
-                width={size}
-                height={size}
-                color={color}
-                focused={focused}
-              />
-            </View>
-          ),
-        }}
-      />
+        <Tabs.Screen
+          name="(home)"
+          options={{
+            title: "Home",
+            tabBarIcon: ({ color, size, focused }) => (
+              <View
+                style={[styles.iconContainer, focused && styles.iconBackground]}
+              >
+                <HomeIcon
+                  width={size}
+                  height={size}
+                  color={theme.darkGreen}
+                  focused={focused}
+                />
+              </View>
+            ),
+          }}
+        />
 
-      <Tabs.Screen
-        name="(calendar)"
-        options={{
-          title: isCustomer ? "Booking" : "Calendar",
-          tabBarIcon: ({ color, size, focused }) => (
-            <View
-              style={[styles.iconContainer, focused && styles.iconBackground]}
-            >
-              <CalendarIcon
-                width={size}
-                height={size}
-                color={color}
-                focused={focused}
-              />
-            </View>
-          ),
-        }}
-      />
 
-      <Tabs.Screen
-        name="notifications"
-        options={{
-          title: "Notifications",
-          tabBarIcon: ({ color, size, focused }) => (
-            <View
-              style={[styles.iconContainer, focused && styles.iconBackground]}
-            >
-              <NotificationIcon
-                width={size}
-                height={size}
-                color={color}
-                focused={focused}
-              />
-              {unreadCount > 0 && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>
-                    {unreadCount > 99 ? "99+" : unreadCount.toString()}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="(chat)"
-        options={{
-          title: "Chat",
-          tabBarIcon: ({ color, size, focused }) => (
-            <View
-              style={[styles.iconContainer, focused && styles.iconBackground]}
-            >
-              <ChatIcon
-                width={size}
-                height={size}
-                color={color}
-                focused={focused}
-              />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="(account)"
-        options={{
-          title: "Account",
-          tabBarIcon: ({ color, size, focused }) => (
-            <View
-              style={[styles.iconContainer, focused && styles.iconBackground]}
-            >
-              <AccountIcon
-                width={size}
-                height={size}
-                color={color}
-                focused={focused}
-              />
-            </View>
-          ),
-        }}
-      />
+        <Tabs.Screen
+          name="explore"
+          options={{
+            title: "Explore",
+            tabBarIcon: ({ color, size, focused }) => (
+              <View
+                style={[styles.iconContainer, focused && styles.iconBackground]}
+              >
+                <ExploreIcon
+                  width={size}
+                  height={size}
+                  color={theme.darkGreen}
+                  focused={focused}
+                />
+                {/* {unreadCount > 0 && (
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>
+                      {unreadCount > 99 ? "99+" : unreadCount.toString()}
+                    </Text>
+                  </View>
+                )} */}
+              </View>
+            ),
+          }}
+        />
+
+        <Tabs.Screen
+          name="(calendar)"
+          options={{
+            title: isCustomer ? "Appointments" : "Calendar",
+            tabBarIcon: ({ color, size, focused }) => (
+              <View
+                style={[styles.iconContainer, focused && styles.iconBackground]}
+              >
+                <CalendarIcon
+                  width={size}
+                  height={size}
+                  color={theme.darkGreen}
+                  focused={focused}
+                />
+              </View>
+            ),
+          }}
+        />
+
+
+        <Tabs.Screen
+          name="(chat)"
+          options={{
+            title: "Chat",
+            tabBarIcon: ({ color, size, focused }) => (
+              <View
+                style={[styles.iconContainer, focused && styles.iconBackground]}
+              >
+                <ChatIcon
+                  width={size}
+                  height={size}
+                  color={theme.darkGreen}
+                  focused={focused}
+                />
+              </View>
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="(account)"
+          options={{
+            title: "Profile",
+            tabBarIcon: ({ color, size, focused }) => (
+              <View
+                style={[styles.iconContainer, focused && styles.iconBackground]}
+              >
+                <AccountIcon
+                  width={size}
+                  height={size}
+                  color={theme.darkGreen}
+                  focused={focused}
+                />
+              </View>
+            ),
+          }}
+        />
       </Tabs>
       {/* Floating AI ChatBot Button */}
       {!shouldHideAiChat && <AiChatBot />}

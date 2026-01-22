@@ -586,6 +586,41 @@ export const NotificationIcon: React.FC<NotificationIconProps> = ({
   return <SvgXml xml={svgXml} />;
 };
 
+// Explore Icon SVG (Unfocused - Outline)
+const exploreIconSvg = `
+<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M19.0667 8.625L19.7333 12H4.26667L4.93333 8.625H19.0667ZM20.8889 3H3.11111V5.25H20.8889V3ZM20.8889 6.375H3.11111L2 12V14.25H3.11111V21H14.2222V14.25H18.6667V21H20.8889V14.25H22V12L20.8889 6.375ZM5.33333 18.75V14.25H12V18.75H5.33333Z" fill="{{COLOR}}"/>
+</svg>
+`;
+
+// Explore Icon SVG (Focused - Filled)
+const exploreIconFilledSvg = `
+<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M20.8889 3H3.11111V5.25H20.8889V3ZM22 14.25V12L20.8889 6.375H3.11111L2 12V14.25H3.11111V21H14.2222V14.25H18.6667V21H20.8889V14.25H22ZM12 18.75H5.33333V14.25H12V18.75Z" fill="{{COLOR}}"/>
+</svg>
+`;
+
+interface ExploreIconProps {
+  width?: number;
+  height?: number;
+  color?: string;
+  focused?: boolean;
+}
+
+export const ExploreIcon: React.FC<ExploreIconProps> = ({
+  width = 24,
+  height = 24,
+  color = "#283618",
+  focused = false,
+}) => {
+  const svgXml = (focused ? exploreIconFilledSvg : exploreIconSvg)
+    .replace(/{{WIDTH}}/g, width.toString())
+    .replace(/{{HEIGHT}}/g, height.toString())
+    .replace(/{{COLOR}}/g, color);
+
+  return <SvgXml xml={svgXml} />;
+};
+
 // Chat Icon SVG (Unfocused - Outline)
 const chatIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -2177,6 +2212,7 @@ export default {
   HomeIcon,
   CalendarIcon,
   NotificationIcon,
+  ExploreIcon,
   ChatIcon,
   AccountIcon,
   DollarCheckIcon,
