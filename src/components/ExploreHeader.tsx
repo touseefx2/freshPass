@@ -3,9 +3,10 @@ import {
   StyleSheet,
   Text,
   View,
+  TouchableOpacity,
+  ScrollView,
 } from "react-native";
-import { Image } from "expo-image";
-import { useAppSelector, useTheme, } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
   moderateHeightScale,
@@ -14,56 +15,106 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { IMAGES } from "@/src/constant/images";
-import { NotificationIcon } from "@/assets/icons";
+import {
+  SearchIcon,
+  FilterIcon,
+  LocationPinIcon,
+  CalendarIcon,
+} from "@/assets/icons";
 import { fontSize, fonts } from "../theme/fonts";
+import {
+  setSelectedCategory,
+  Category,
+} from "@/src/state/slices/categoriesSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     headerContainer: {
+      backgroundColor: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(12),
+      paddingBottom: moderateHeightScale(16),
+    },
+    searchContainer: {
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.darkGreen
-    },
-    logoImage: {
-      width: widthScale(156),
-      height: heightScale(36),
-      resizeMode: "contain",
-    },
-    notificationContainer: {
-
-    },
-    iconContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.white15,
-      position: "absolute",
-      right: moderateWidthScale(20),
-      bottom: moderateHeightScale(18),
-      width: widthScale(44),
-      height: heightScale(30),
+      backgroundColor: theme.white,
       borderRadius: moderateWidthScale(999),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(12),
     },
-    badgeContainer: {
-      position: "absolute",
-      top: moderateHeightScale(-2),
-      right: moderateWidthScale(2),
-      backgroundColor: theme.red,
-      borderRadius: moderateWidthScale(999),
-      minWidth: moderateWidthScale(18),
-      height: moderateHeightScale(16),
-      alignItems: "center",
+    searchIconContainer: {
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(4),
+      alignItems: "center",
     },
-    badgeText: {
+    searchTextContainer: {
+      flex: 1,
+    },
+    searchPlaceholder: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    filterIconContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    filtersRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(16),
+    },
+    filterField: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(999),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateWidthScale(10),
+    },
+    whereWhenIconContainer: {
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    filterPlaceholder: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    categoriesContainer: {
+      marginTop: moderateHeightScale(4),
+    },
+    categoriesScroll: {
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    categoryItem: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      marginRight: moderateWidthScale(16),
+      position: "relative",
+    },
+    categoryText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    categoryTextActive: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
       color: theme.white,
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
     },
-
+    categoryUnderline: {
+      position: "absolute",
+      bottom: moderateHeightScale(0),
+      left: moderateWidthScale(12),
+      right: moderateWidthScale(12),
+      height: moderateHeightScale(2),
+      backgroundColor: theme.selectCard,
+      borderRadius: moderateWidthScale(1),
+    },
   });
 
 export default function ExploreHeader() {
@@ -71,6 +122,35 @@ export default function ExploreHeader() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
+  const dispatch = useAppDispatch();
+  const categories = useAppSelector((state: any) => state.categories.categories);
+  const selectedCategory = useAppSelector(
+    (state: any) => state.categories.selectedCategory
+  );
+
+  const handleSearchPress = () => {
+    // TODO: Navigate to search screen or open search modal
+    console.log("Search pressed");
+  };
+
+  const handleFilterPress = () => {
+    // TODO: Open filter modal
+    console.log("Filter pressed");
+  };
+
+  const handleWherePress = () => {
+    // TODO: Navigate to location selection screen
+    console.log("Where pressed");
+  };
+
+  const handleWhenPress = () => {
+    // TODO: Open date picker
+    console.log("When pressed");
+  };
+
+  const handleCategorySelect = (categoryId: number | "all") => {
+    dispatch(setSelectedCategory(categoryId === "all" ? undefined : categoryId));
+  };
 
   return (
     <View
@@ -78,7 +158,110 @@ export default function ExploreHeader() {
         styles.headerContainer,
         { paddingTop: insets.top + moderateHeightScale(10) },
       ]}>
+      {/* Search Field */}
+      <TouchableOpacity
+        style={styles.searchContainer}
+        onPress={handleSearchPress}
+        activeOpacity={0.8}>
+        <View style={styles.searchIconContainer}>
+          <SearchIcon
+            width={widthScale(20)}
+            height={heightScale(20)}
+            color={theme.darkGreen}
+          />
+        </View>
+        <View style={styles.searchTextContainer}>
+          <Text style={styles.searchPlaceholder}>
+            Find services & subscription
+          </Text>
+        </View>
+        <TouchableOpacity
+          style={styles.filterIconContainer}
+          onPress={handleFilterPress}
+          activeOpacity={0.8}>
+          <FilterIcon
+            width={widthScale(20)}
+            height={heightScale(20)}
+            color={theme.darkGreen}
+          />
+        </TouchableOpacity>
+      </TouchableOpacity>
 
+      {/* Where? and When? Fields */}
+      <View style={styles.filtersRow}>
+        <TouchableOpacity
+          style={styles.filterField}
+          onPress={handleWherePress}
+          activeOpacity={0.8}>
+          <View style={styles.whereWhenIconContainer}>
+            <LocationPinIcon
+              width={widthScale(16)}
+              height={heightScale(16)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <Text style={styles.filterPlaceholder}>Where?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.filterField}
+          onPress={handleWhenPress}
+          activeOpacity={0.8}>
+          <View style={styles.whereWhenIconContainer}>
+            <CalendarIcon
+              width={widthScale(16)}
+              height={heightScale(16)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <Text style={styles.filterPlaceholder}>When?</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Category List */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoriesContainer}
+        contentContainerStyle={styles.categoriesScroll}>
+        {/* All Category */}
+        <TouchableOpacity
+          style={styles.categoryItem}
+          onPress={() => handleCategorySelect("all")}
+          activeOpacity={0.8}>
+          <Text
+            style={
+              selectedCategory === undefined
+                ? styles.categoryTextActive
+                : styles.categoryText
+            }>
+            All
+          </Text>
+          {selectedCategory === undefined && (
+            <View style={styles.categoryUnderline} />
+          )}
+        </TouchableOpacity>
+
+        {/* Other Categories */}
+        {categories.map((category: Category) => {
+          const isSelected = selectedCategory === category.id;
+          return (
+            <TouchableOpacity
+              key={category.id}
+              style={styles.categoryItem}
+              onPress={() => handleCategorySelect(category.id)}
+              activeOpacity={0.8}>
+              <Text
+                style={
+                  isSelected ? styles.categoryTextActive : styles.categoryText
+                }>
+                {category.name}
+              </Text>
+              {isSelected && <View style={styles.categoryUnderline} />}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 }

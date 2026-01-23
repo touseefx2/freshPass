@@ -11,7 +11,7 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import dayjs from "dayjs";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -29,6 +29,12 @@ import {
   appointmentsEndpoints,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import {
+  setCategories,
+  setCategoriesLoading,
+  setCategoriesError,
+  setSelectedCategory,
+} from "@/src/state/slices/categoriesSlice";
 import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
@@ -511,16 +517,21 @@ export default function DashboardContent() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state: any) => state.user.userRole);
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
   const isCusotmerandGuest = isGuest || userRole === "customer";
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<
-    string | number | undefined
-  >(undefined);
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
-  const [categoriesError, setCategoriesError] = useState(false);
+  const categories = useAppSelector((state: any) => state.categories.categories);
+  const selectedCategory = useAppSelector(
+    (state: any) => state.categories.selectedCategory
+  );
+  const categoriesLoading = useAppSelector(
+    (state: any) => state.categories.categoriesLoading
+  );
+  const categoriesError = useAppSelector(
+    (state: any) => state.categories.categoriesError
+  );
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
@@ -530,8 +541,8 @@ export default function DashboardContent() {
 
   const fetchCategories = async () => {
     try {
-      setCategoriesLoading(true);
-      setCategoriesError(false);
+      dispatch(setCategoriesLoading(true));
+      dispatch(setCategoriesError(false));
       const response = await ApiService.get<{
         success: boolean;
         message: string;
@@ -549,13 +560,15 @@ export default function DashboardContent() {
           name: item.name,
           image: item.imageUrl,
         }));
-        setCategories(mappedCategories);
+        dispatch(setCategories(mappedCategories));
       }
     } catch (error) {
       Logger.error("Failed to fetch categories:", error);
-      categories.length <= 0 && setCategoriesError(true);
+      if (categories.length <= 0) {
+        dispatch(setCategoriesError(true));
+      }
     } finally {
-      setCategoriesLoading(false);
+      dispatch(setCategoriesLoading(false));
     }
   };
 
@@ -806,7 +819,7 @@ export default function DashboardContent() {
 
       <CategorySection
         selectedCategory={selectedCategory}
-        onCategorySelect={setSelectedCategory}
+        onCategorySelect={(categoryId) => dispatch(setSelectedCategory(categoryId))}
         onCategoryScrollingChange={(isScrolling) => {
           isCategoryScrollingRef.current = isScrolling;
         }}

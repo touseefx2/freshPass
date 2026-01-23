@@ -249,7 +249,7 @@ const completeProfileSlice = createSlice({
     goToPreviousStep: (state) => {
       if (state.currentStep > 1) {
         const nextStep = state.currentStep - 1;
- 
+
         // Clear ALL Step 4 fields when going back to step 3 or earlier
         // This ensures all address-related fields are cleared when going from step 4 to step 3
         if (nextStep <= 3) {
@@ -357,7 +357,7 @@ const completeProfileSlice = createSlice({
     },
     setBusinessCategory: (
       state,
-      action: PayloadAction<{ id: number; name: string } | null>
+      action: PayloadAction<{ id: number; name: string } | null>,
     ) => {
       state.businessCategory = action.payload;
     },
@@ -375,7 +375,7 @@ const completeProfileSlice = createSlice({
     },
     setPhoneNumber: (
       state,
-      action: PayloadAction<{ value: string; isValid: boolean }>
+      action: PayloadAction<{ value: string; isValid: boolean }>,
     ) => {
       state.phoneNumber = action.payload.value.replace(/\s+/g, "");
       state.phoneIsValid = action.payload.isValid;
@@ -386,7 +386,7 @@ const completeProfileSlice = createSlice({
         countryCode: string;
         countryIso: string;
         phonePlaceholder?: string;
-      }>
+      }>,
     ) => {
       state.countryCode = action.payload.countryCode;
       state.countryIso = action.payload.countryIso;
@@ -397,7 +397,7 @@ const completeProfileSlice = createSlice({
     },
     setAppointmentVolume: (
       state,
-      action: PayloadAction<{ id: string; title: string } | null>
+      action: PayloadAction<{ id: string; title: string } | null>,
     ) => {
       state.appointmentVolume = action.payload;
     },
@@ -424,19 +424,19 @@ const completeProfileSlice = createSlice({
     },
     setAddressStage: (
       state,
-      action: PayloadAction<CompleteProfileState["addressStage"]>
+      action: PayloadAction<CompleteProfileState["addressStage"]>,
     ) => {
       state.addressStage = action.payload;
     },
     setSelectedLocation: (
       state,
-      action: PayloadAction<CompleteProfileState["selectedLocation"]>
+      action: PayloadAction<CompleteProfileState["selectedLocation"]>,
     ) => {
       state.selectedLocation = action.payload;
     },
     setTeamSize: (
       state,
-      action: PayloadAction<{ id: string; title: string } | null>
+      action: PayloadAction<{ id: string; title: string } | null>,
     ) => {
       state.teamSize = action.payload;
     },
@@ -445,11 +445,11 @@ const completeProfileSlice = createSlice({
     },
     addStaffInvitation: (
       state,
-      action: PayloadAction<{ email: string; status: "sent" | "accepted" }>
+      action: PayloadAction<{ email: string; status: "sent" | "accepted" }>,
     ) => {
       // Check if invitation already exists
       const exists = state.staffInvitations.some(
-        (inv) => inv.email.toLowerCase() === action.payload.email.toLowerCase()
+        (inv) => inv.email.toLowerCase() === action.payload.email.toLowerCase(),
       );
       if (!exists) {
         state.staffInvitations.push(action.payload);
@@ -457,7 +457,9 @@ const completeProfileSlice = createSlice({
     },
     setStaffInvitations: (
       state,
-      action: PayloadAction<Array<{ email: string; status: "sent" | "accepted" }>>
+      action: PayloadAction<
+        Array<{ email: string; status: "sent" | "accepted" }>
+      >,
     ) => {
       state.staffInvitations = action.payload;
     },
@@ -466,7 +468,7 @@ const completeProfileSlice = createSlice({
     },
     setDayAvailability: (
       state,
-      action: PayloadAction<{ day: string; isOpen: boolean }>
+      action: PayloadAction<{ day: string; isOpen: boolean }>,
     ) => {
       if (!state.businessHours[action.payload.day]) {
         state.businessHours[action.payload.day] = {
@@ -494,7 +496,7 @@ const completeProfileSlice = createSlice({
           tillHours: number;
           tillMinutes: number;
         }>;
-      }>
+      }>,
     ) => {
       if (!state.businessHours[action.payload.day]) {
         state.businessHours[action.payload.day] = {
@@ -529,7 +531,7 @@ const completeProfileSlice = createSlice({
         fromMinutes: number;
         tillHours: number;
         tillMinutes: number;
-      }>
+      }>,
     ) => {
       if (!state.businessHours[action.payload.day]) {
         return;
@@ -563,14 +565,14 @@ const completeProfileSlice = createSlice({
     },
     removeDayBreakTime: (
       state,
-      action: PayloadAction<{ day: string; breakIndex: number }>
+      action: PayloadAction<{ day: string; breakIndex: number }>,
     ) => {
       if (!state.businessHours[action.payload.day]) {
         return;
       }
       state.businessHours[action.payload.day].breaks.splice(
         action.payload.breakIndex,
-        1
+        1,
       );
     },
     addService: (
@@ -582,11 +584,11 @@ const completeProfileSlice = createSlice({
         minutes: number;
         price: number;
         currency: string;
-      }>
+      }>,
     ) => {
       // Check if service with same id already exists
       const existingIndex = state.services.findIndex(
-        (s) => s.id === action.payload.id
+        (s) => s.id === action.payload.id,
       );
       if (existingIndex === -1) {
         state.services.push(action.payload);
@@ -604,11 +606,9 @@ const completeProfileSlice = createSlice({
         minutes: number;
         price: number;
         currency: string;
-      }>
+      }>,
     ) => {
-      const index = state.services.findIndex(
-        (s) => s.id === action.payload.id
-      );
+      const index = state.services.findIndex((s) => s.id === action.payload.id);
       if (index !== -1) {
         state.services[index] = action.payload;
       }
@@ -627,11 +627,11 @@ const completeProfileSlice = createSlice({
           price: number;
           currency: string;
         }>
-      >
+      >,
     ) => {
       action.payload.forEach((service) => {
         const existingIndex = state.services.findIndex(
-          (s) => s.id === service.id
+          (s) => s.id === service.id,
         );
         if (existingIndex === -1) {
           state.services.push(service);
@@ -647,11 +647,11 @@ const completeProfileSlice = createSlice({
         price: number;
         currency: string;
         serviceIds: string[];
-      }>
+      }>,
     ) => {
       // Check if subscription with same id already exists
       const existingIndex = state.subscriptions.findIndex(
-        (s) => s.id === action.payload.id
+        (s) => s.id === action.payload.id,
       );
       if (existingIndex === -1) {
         state.subscriptions.push(action.payload);
@@ -669,10 +669,10 @@ const completeProfileSlice = createSlice({
         price: number;
         currency: string;
         serviceIds: string[];
-      }>
+      }>,
     ) => {
       const index = state.subscriptions.findIndex(
-        (s) => s.id === action.payload.id
+        (s) => s.id === action.payload.id,
       );
       if (index !== -1) {
         state.subscriptions[index] = action.payload;
@@ -680,7 +680,7 @@ const completeProfileSlice = createSlice({
     },
     removeSubscription: (state, action: PayloadAction<string>) => {
       state.subscriptions = state.subscriptions.filter(
-        (s) => s.id !== action.payload
+        (s) => s.id !== action.payload,
       );
     },
     setTiktokUrl: (state, action: PayloadAction<string>) => {
@@ -692,10 +692,7 @@ const completeProfileSlice = createSlice({
     setFacebookUrl: (state, action: PayloadAction<string>) => {
       state.facebookUrl = action.payload;
     },
-    addPhoto: (
-      state,
-      action: PayloadAction<{ id: string; uri: string }>
-    ) => {
+    addPhoto: (state, action: PayloadAction<{ id: string; uri: string }>) => {
       state.photos.push(action.payload);
     },
     removePhoto: (state, action: PayloadAction<string>) => {
@@ -703,7 +700,7 @@ const completeProfileSlice = createSlice({
     },
     setPhotos: (
       state,
-      action: PayloadAction<Array<{ id: string; uri: string }>>
+      action: PayloadAction<Array<{ id: string; uri: string }>>,
     ) => {
       state.photos = action.payload;
     },
@@ -715,7 +712,7 @@ const completeProfileSlice = createSlice({
           name: string;
           imageUrl: string | null;
         }>
-      >
+      >,
     ) => {
       state.categories = action.payload;
     },
@@ -733,7 +730,7 @@ const completeProfileSlice = createSlice({
           active: boolean;
           createdAt: string;
         }>
-      >
+      >,
     ) => {
       state.serviceTemplates = action.payload;
     },
@@ -756,7 +753,7 @@ const completeProfileSlice = createSlice({
           created_at: string;
           createdAt: string;
         }>
-      >
+      >,
     ) => {
       state.businessServices = action.payload;
     },
@@ -771,7 +768,7 @@ const completeProfileSlice = createSlice({
           currency: string;
           serviceIds: string[];
         }>
-      >
+      >,
     ) => {
       state.subscriptions = action.payload;
     },
@@ -786,7 +783,7 @@ const completeProfileSlice = createSlice({
           price: number;
           currency: string;
         }>
-      >
+      >,
     ) => {
       state.services = action.payload;
     },
@@ -806,7 +803,7 @@ const completeProfileSlice = createSlice({
             tillMinutes: number;
           }>;
         };
-      }>
+      }>,
     ) => {
       state.salonBusinessHours = action.payload;
     },
@@ -816,7 +813,7 @@ const completeProfileSlice = createSlice({
         date: string;
         month: string;
         year: string;
-      } | null>
+      } | null>,
     ) => {
       state.dateOfBirth = action.payload;
     },
@@ -887,5 +884,3 @@ export const {
 } = completeProfileSlice.actions;
 
 export default completeProfileSlice.reducer;
-
-

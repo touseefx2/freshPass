@@ -97,6 +97,7 @@ const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
+    resetUser: () => initialState,
     setUser(
       state,
       action: PayloadAction<{
@@ -110,13 +111,13 @@ const userSlice = createSlice({
         accessToken: string;
         refreshToken?: string;
         userRole?: UserRole;
-      }>
+      }>,
     ) {
       state.id = action.payload.id;
       state.name = action.payload.name;
       state.description = action.payload.description || "";
       state.email = action.payload.email || null;
-       // Optional contact/profile fields from login response
+      // Optional contact/profile fields from login response
       state.phone = action.payload.phone || null;
       state.country_code = action.payload.country_code || null;
       state.profile_image_url = action.payload.profile_image_url || null;
@@ -132,7 +133,7 @@ const userSlice = createSlice({
       action: PayloadAction<{
         accessToken: string;
         refreshToken?: string;
-      }>
+      }>,
     ) {
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken || null;
@@ -166,7 +167,7 @@ const userSlice = createSlice({
         countryName?: string;
         business_id?: number;
         business_name?: string;
-      }>
+      }>,
     ) {
       if (action.payload.name !== undefined) {
         state.name = action.payload.name;
@@ -224,7 +225,7 @@ const userSlice = createSlice({
           id: number;
           name: string;
         }[]
-      >
+      >,
     ) {
       state.selectBsnsCategory = action.payload;
     },
@@ -247,33 +248,7 @@ const userSlice = createSlice({
       state.unreadCount = initialState.unreadCount;
       state.businessStatusLoading = initialState.businessStatusLoading;
       state.businessStatusError = initialState.businessStatusError;
-      state.isGuest = initialState.isGuest;
-      state.location = initialState.location;
-      state.discover = initialState.discover;
-      state.selectBsnsCategory = initialState.selectBsnsCategory;
-      state.dateOfBirth = initialState.dateOfBirth;
-      state.countryZipCode = initialState.countryZipCode;
-      state.countryName = initialState.countryName;
-      state.business_id = initialState.business_id;
-      state.business_name = initialState.business_name;
-    },
-    resetUser(state) {
-      state.id = initialState.id;
-      state.name = initialState.name;
-      state.description = initialState.description;
-      state.email = initialState.email;
-      state.phone = initialState.phone;
-      state.country_code = initialState.country_code;
-      state.email_notifications = initialState.email_notifications;
-      state.profile_image_url = initialState.profile_image_url;
-      state.accessToken = initialState.accessToken;
-      state.refreshToken = initialState.refreshToken;
-      state.userRole = initialState.userRole;
-      state.businessStatus = initialState.businessStatus;
-      state.unreadCount = initialState.unreadCount;
-      state.businessStatusLoading = initialState.businessStatusLoading;
-      state.businessStatusError = initialState.businessStatusError;
-      state.isGuest = initialState.isGuest;
+      // state.isGuest = initialState.isGuest;
       state.location = initialState.location;
       state.discover = initialState.discover;
       state.selectBsnsCategory = initialState.selectBsnsCategory;

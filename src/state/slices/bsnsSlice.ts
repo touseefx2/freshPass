@@ -58,6 +58,7 @@ const bsnsSlice = createSlice({
   name: "bsns",
   initialState,
   reducers: {
+    resetBusiness: () => initialState,
     setBusinessData(
       state,
       action: PayloadAction<{
@@ -66,14 +67,14 @@ const bsnsSlice = createSlice({
         staffMembers?: StaffMember[];
         businessId?: string;
         businessHours?: BusinessHours | null;
-      }>
+      }>,
     ) {
       if (action.payload.selectedService !== undefined) {
         state.selectedService = action.payload.selectedService;
         // Also set it as first item in selectedServices if not already there
         if (
           !state.selectedServices.find(
-            (s) => s.id === action.payload.selectedService!.id
+            (s) => s.id === action.payload.selectedService!.id,
           )
         ) {
           state.selectedServices = [action.payload.selectedService];
@@ -106,20 +107,8 @@ const bsnsSlice = createSlice({
     },
     removeService(state, action: PayloadAction<number>) {
       state.selectedServices = state.selectedServices.filter(
-        (s) => s.id !== action.payload
+        (s) => s.id !== action.payload,
       );
-    },
-    clearBusinessData(state) {
-      state.selectedService = null;
-      state.selectedServices = [];
-      state.selectedStaff = "anyone";
-      state.allServices = [];
-      state.staffMembers = [];
-      state.businessId = "";
-      state.businessHours = null;
-    },
-    resetBusinessState(state) {
-      return initialState;
     },
   },
 });
@@ -130,8 +119,6 @@ export const {
   setSelectedStaff,
   addService,
   removeService,
-  clearBusinessData,
-  resetBusinessState,
+  resetBusiness,
 } = bsnsSlice.actions;
 export default bsnsSlice.reducer;
-

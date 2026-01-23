@@ -28,6 +28,7 @@ const chatSlice = createSlice({
   name: "chat",
   initialState,
   reducers: {
+    resetChat: () => initialState,
     toggleChat(state) {
       state.isOpen = !state.isOpen;
     },
@@ -37,7 +38,10 @@ const chatSlice = createSlice({
     closeChat(state) {
       state.isOpen = false;
     },
-    addMessage(state, action: PayloadAction<Omit<ChatMessage, "id" | "timestamp">>) {
+    addMessage(
+      state,
+      action: PayloadAction<Omit<ChatMessage, "id" | "timestamp">>,
+    ) {
       const newMessage: ChatMessage = {
         id: Date.now().toString(),
         text: action.payload.text,
@@ -92,7 +96,10 @@ const chatSlice = createSlice({
       }
     },
     // Complete AI streaming response
-    completeAiStreamResponse(state, action: PayloadAction<{ fullResponse: string; sessionId: string }>) {
+    completeAiStreamResponse(
+      state,
+      action: PayloadAction<{ fullResponse: string; sessionId: string }>,
+    ) {
       const lastMessage = state.messages[state.messages.length - 1];
       if (lastMessage && lastMessage.sender === "ai") {
         lastMessage.text = action.payload.fullResponse;
@@ -106,7 +113,11 @@ const chatSlice = createSlice({
     streamError(state) {
       // Remove the last AI message if it was streaming
       const lastMessage = state.messages[state.messages.length - 1];
-      if (lastMessage && lastMessage.sender === "ai" && lastMessage.isStreaming) {
+      if (
+        lastMessage &&
+        lastMessage.sender === "ai" &&
+        lastMessage.isStreaming
+      ) {
         state.messages.pop();
       }
       state.isStreaming = false;
@@ -152,6 +163,7 @@ export const {
   streamError,
   sendMessageAndGetResponse,
   receiveAiResponse,
+  resetChat,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

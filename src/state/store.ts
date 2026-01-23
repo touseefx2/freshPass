@@ -7,6 +7,7 @@ import completeProfileReducer from "./slices/completeProfileSlice";
 import userReducer from "./slices/userSlice";
 import bsnsReducer from "./slices/bsnsSlice";
 import chatReducer from "./slices/chatSlice";
+import categoriesReducer from "./slices/categoriesSlice";
 
 // ✅ Custom AsyncStorage adapter for redux-persist
 // Note: redux-persist supports async storage, but we need to ensure promises are properly handled
@@ -71,6 +72,7 @@ const rootReducer = combineReducers({
   user: persistedUserReducer, // Persisted with field filtering (id, name, token)
   bsns: bsnsReducer, // Business/booking state
   chat: chatReducer, // AI Chat state (not persisted)
+  categories: categoriesReducer, // Categories state (not persisted)
 });
 
 // ✅ No root-level persistence needed - general is already persisted with nested config

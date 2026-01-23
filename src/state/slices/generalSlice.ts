@@ -40,6 +40,7 @@ const generalSlice = createSlice({
   name: "general",
   initialState,
   reducers: {
+    resetGeneral: () => initialState,
     setTheme(state, action: PayloadAction<"light" | "dark" | "blue">) {
       state.theme = action.payload;
     },
@@ -89,15 +90,21 @@ const generalSlice = createSlice({
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
     },
-    resetGeneral(state) {
-      state.language = "en";
-      state.selectedDate = null;
-      state.searchText = "";
-      state.actionLoaderTitle = "";
-      state.actionLoader = false;
-      state.locationLoading = false;
-      state.guestModeModalVisible = false;
-      state.toggleLoading=false
+    clearGeneral(state) {
+      state.theme = initialState.theme;
+      state.themeType = initialState.themeType;
+      state.language = initialState.language;
+      // state.registerEmail = initialState.registerEmail;
+      // state.savedPassword = initialState.savedPassword;
+      state.actionLoader = initialState.actionLoader;
+      state.actionLoaderTitle = initialState.actionLoaderTitle;
+      state.locationLoading = initialState.locationLoading;
+      state.toggleLoading = initialState.toggleLoading;
+      state.role = initialState.role;
+      state.isVisitFirst = initialState.isVisitFirst;
+      state.selectedDate = initialState.selectedDate;
+      state.searchText = initialState.searchText;
+      state.guestModeModalVisible = initialState.guestModeModalVisible;
     },
   },
 });
@@ -120,5 +127,6 @@ export const {
   clearSearchText,
   setGuestModeModalVisible,
   resetGeneral,
+  clearGeneral,
 } = generalSlice.actions;
 export default generalSlice.reducer;

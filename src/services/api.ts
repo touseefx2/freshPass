@@ -6,18 +6,17 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import NetInfo from "@react-native-community/netinfo";
-import { store, persistor } from "@/src/state/store";
-import { setTokens, resetUser } from "@/src/state/slices/userSlice";
-import {
-  resetGeneral,
-  setRegisterEmail,
-  setSavedPassword,
-} from "../state/slices/generalSlice";
+import { store } from "@/src/state/store";
+import { setTokens, clearUser } from "@/src/state/slices/userSlice";
+import { clearGeneral } from "../state/slices/generalSlice";
 import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
 import { Platform } from "react-native";
 import { router } from "expo-router";
 import { MAIN_ROUTES } from "../constant/routes";
 import Logger from "./logger";
+import { resetCategories } from "../state/slices/categoriesSlice";
+import { resetBusiness } from "../state/slices/bsnsSlice";
+import { resetChat } from "../state/slices/chatSlice";
 // Get base URL from environment
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "";
 
@@ -43,6 +42,9 @@ let failedQueue: Array<{
   reject: (error?: any) => void;
 }> = [];
 
+// Track all pending API requests for cancellation
+const pendingRequests = new Set<AbortController>();
+
 // Callback for handling session expiration (401 errors)
 let onSessionExpired: (() => void) | null = null;
 
@@ -59,7 +61,7 @@ let onShowToast:
   | ((
       title: string,
       message: string,
-      type: "success" | "error" | "warning" | "info"
+      type: "success" | "error" | "warning" | "info",
     ) => void)
   | null = null;
 
@@ -71,8 +73,8 @@ export const setToastHandler = (
   callback: (
     title: string,
     message: string,
-    type: "success" | "error" | "warning" | "info"
-  ) => void
+    type: "success" | "error" | "warning" | "info",
+  ) => void,
 ) => {
   onShowToast = callback;
 };
@@ -113,7 +115,7 @@ export const checkInternetConnection = async (): Promise<boolean> => {
 // Process queued requests after token refresh
 const processQueue = (
   error: AxiosError | null,
-  token: string | null = null
+  token: string | null = null,
 ) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -177,7 +179,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
         setTokens({
           accessToken: accessToken,
           refreshToken: newRefreshToken || undefined,
-        })
+        }),
       );
       return accessToken;
     }
@@ -191,15 +193,50 @@ const refreshAccessToken = async (): Promise<string | null> => {
 };
 
 /**
+ * Cancel all pending API requests
+ */
+const cancelAllPendingRequests = () => {
+  pendingRequests.forEach((controller) => {
+    try {
+      controller.abort();
+    } catch (error) {
+      Logger.error("Error aborting request:", error);
+    }
+  });
+  pendingRequests.clear();
+};
+
+/**
+ * Create and track an AbortController for a request
+ */
+const createAbortController = (): AbortController => {
+  const controller = new AbortController();
+  pendingRequests.add(controller);
+  return controller;
+};
+
+/**
+ * Remove AbortController from tracking when request completes
+ */
+const removeAbortController = (controller: AbortController) => {
+  pendingRequests.delete(controller);
+};
+
+/**
  * Handle logout - clear tokens and persisted storage
  * Note: Navigation and Redux reset should be handled in the component calling logout
  * This function clears tokens from Redux state and all persisted data from SecureStore
  */
 const handleLogout = async () => {
+  // Cancel all pending API requests
+  cancelAllPendingRequests();
   // Clear Redux state
   store.dispatch(resetCompleteProfile());
-  store.dispatch(resetGeneral());
-  store.dispatch(resetUser());
+  store.dispatch(clearGeneral());
+  store.dispatch(resetCategories());
+  store.dispatch(resetBusiness());
+  store.dispatch(resetChat());
+  store.dispatch(clearUser());
   router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
 };
 
@@ -282,7 +319,7 @@ apiClient.interceptors.request.use(
   },
   (error: AxiosError) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor - Handle errors and token refresh
@@ -362,7 +399,7 @@ apiClient.interceptors.response.use(
         onShowToast(
           "Request Timeout",
           "The request took too long to complete. Please try again.",
-          "error"
+          "error",
         );
       }
     }
@@ -374,7 +411,7 @@ apiClient.interceptors.response.use(
     (customError as any).data = error.response?.data;
 
     return Promise.reject(customError);
-  }
+  },
 );
 
 /**
@@ -391,7 +428,7 @@ const logApiRequest = (
   method: string,
   route: string,
   body?: any,
-  config?: AxiosRequestConfig
+  config?: AxiosRequestConfig,
 ) => {
   if (__DEV__) {
     const fullUrl = getFullUrl(route);
@@ -417,7 +454,7 @@ const logApiResponse = (
   url: string,
   route: string,
   status: number,
-  data: any
+  data: any,
 ) => {
   if (__DEV__) {
     const fullUrl = getFullUrl(route);
@@ -433,7 +470,7 @@ const logApiError = (
   method: string,
   url: string,
   route: string,
-  error: any
+  error: any,
 ) => {
   if (__DEV__) {
     const fullUrl = getFullUrl(route);
@@ -456,16 +493,27 @@ export class ApiService {
    */
   static async get<T = any>(
     url: string,
-    config?: AxiosRequestConfig
+    config?: AxiosRequestConfig,
   ): Promise<T> {
     logApiRequest("GET", url, undefined, config);
 
+    const abortController = createAbortController();
+    const requestConfig = {
+      ...config,
+      signal: abortController.signal,
+    };
+
     try {
-      const response = await apiClient.get<T>(url, config);
+      const response = await apiClient.get<T>(url, requestConfig);
       logApiResponse("GET", url, url, response.status, response.data);
+      removeAbortController(abortController);
       return response.data;
     } catch (error: any) {
-      logApiError("GET", url, url, error);
+      removeAbortController(abortController);
+      // Don't log error if request was aborted
+      if (error.name !== "AbortError" && error.code !== "ERR_CANCELED") {
+        logApiError("GET", url, url, error);
+      }
       throw error;
     }
   }
@@ -476,13 +524,20 @@ export class ApiService {
   static async post<T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
+    config?: AxiosRequestConfig,
   ): Promise<T> {
     logApiRequest("POST", url, data, config);
+
+    const abortController = createAbortController();
+    const requestConfig = {
+      ...config,
+      signal: abortController.signal,
+    };
 
     // Check internet connection before making POST request
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
+      removeAbortController(abortController);
       const error = new Error("No internet connection");
       (error as any).isNoInternet = true;
 
@@ -491,7 +546,7 @@ export class ApiService {
         onShowToast(
           "No Internet Connection",
           "Please check your internet connection and try again.",
-          "error"
+          "error",
         );
       }
 
@@ -500,11 +555,16 @@ export class ApiService {
     }
 
     try {
-      const response = await apiClient.post<T>(url, data, config);
+      const response = await apiClient.post<T>(url, data, requestConfig);
       logApiResponse("POST", url, url, response.status, response.data);
+      removeAbortController(abortController);
       return response.data;
     } catch (error: any) {
-      logApiError("POST", url, url, error);
+      removeAbortController(abortController);
+      // Don't log error if request was aborted
+      if (error.name !== "AbortError" && error.code !== "ERR_CANCELED") {
+        logApiError("POST", url, url, error);
+      }
       throw error;
     }
   }
@@ -515,16 +575,27 @@ export class ApiService {
   static async put<T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
+    config?: AxiosRequestConfig,
   ): Promise<T> {
     logApiRequest("PUT", url, data, config);
 
+    const abortController = createAbortController();
+    const requestConfig = {
+      ...config,
+      signal: abortController.signal,
+    };
+
     try {
-      const response = await apiClient.put<T>(url, data, config);
+      const response = await apiClient.put<T>(url, data, requestConfig);
       logApiResponse("PUT", url, url, response.status, response.data);
+      removeAbortController(abortController);
       return response.data;
     } catch (error: any) {
-      logApiError("PUT", url, url, error);
+      removeAbortController(abortController);
+      // Don't log error if request was aborted
+      if (error.name !== "AbortError" && error.code !== "ERR_CANCELED") {
+        logApiError("PUT", url, url, error);
+      }
       throw error;
     }
   }
@@ -535,16 +606,27 @@ export class ApiService {
   static async patch<T = any>(
     url: string,
     data?: any,
-    config?: AxiosRequestConfig
+    config?: AxiosRequestConfig,
   ): Promise<T> {
     logApiRequest("PATCH", url, data, config);
 
+    const abortController = createAbortController();
+    const requestConfig = {
+      ...config,
+      signal: abortController.signal,
+    };
+
     try {
-      const response = await apiClient.patch<T>(url, data, config);
+      const response = await apiClient.patch<T>(url, data, requestConfig);
       logApiResponse("PATCH", url, url, response.status, response.data);
+      removeAbortController(abortController);
       return response.data;
     } catch (error: any) {
-      logApiError("PATCH", url, url, error);
+      removeAbortController(abortController);
+      // Don't log error if request was aborted
+      if (error.name !== "AbortError" && error.code !== "ERR_CANCELED") {
+        logApiError("PATCH", url, url, error);
+      }
       throw error;
     }
   }
@@ -554,16 +636,27 @@ export class ApiService {
    */
   static async delete<T = any>(
     url: string,
-    config?: AxiosRequestConfig
+    config?: AxiosRequestConfig,
   ): Promise<T> {
     logApiRequest("DELETE", url, undefined, config);
 
+    const abortController = createAbortController();
+    const requestConfig = {
+      ...config,
+      signal: abortController.signal,
+    };
+
     try {
-      const response = await apiClient.delete<T>(url, config);
+      const response = await apiClient.delete<T>(url, requestConfig);
       logApiResponse("DELETE", url, url, response.status, response.data);
+      removeAbortController(abortController);
       return response.data;
     } catch (error: any) {
-      logApiError("DELETE", url, url, error);
+      removeAbortController(abortController);
+      // Don't log error if request was aborted
+      if (error.name !== "AbortError" && error.code !== "ERR_CANCELED") {
+        logApiError("DELETE", url, url, error);
+      }
       throw error;
     }
   }
