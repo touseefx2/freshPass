@@ -516,15 +516,15 @@ export default function DashboardContent() {
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
   const isCusotmerandGuest = isGuest || userRole === "customer";
   const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<
+    string | number | undefined
+  >(undefined);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [categoriesError, setCategoriesError] = useState(false);
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<
-    string | number | undefined
-  >(undefined);
   const isCategoryScrollingRef = useRef(false);
 
 
@@ -799,7 +799,7 @@ export default function DashboardContent() {
     }, []),
   );
 
- 
+
   return (
     <ScrollView nestedScrollEnabled style={styles.container} contentContainerStyle={styles.contentContainer}>
       <SearchBar />
