@@ -34,6 +34,7 @@ import {
   setSelectBsnsCategory,
   setIsGuest,
 } from "@/src/state/slices/userSlice";
+import { setIsVisitFirst } from "@/src/state/slices/generalSlice";
 
 interface CategorySelectProps {
   onNext: () => void;
@@ -334,6 +335,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
 
   const handleSkip = () => {
     dispatch(setIsGuest(true));
+    dispatch(setIsVisitFirst(false));
     onNext();
   };
 
@@ -357,6 +359,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
     // Dispatch selected categories and set isGuest to true
     dispatch(setSelectBsnsCategory(selectedCategoriesData));
     dispatch(setIsGuest(true));
+    dispatch(setIsVisitFirst(false));
     onNext();
   };
 

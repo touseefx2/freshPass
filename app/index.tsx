@@ -17,6 +17,7 @@ export default function Index() {
   const accessToken = user.accessToken;
   const isGuest = user.isGuest;
   console.log("----> accessToken", accessToken);
+  console.log("----> isGuest", isGuest);
 
   const handleNavigation = () => {
     if (accessToken || isGuest) {

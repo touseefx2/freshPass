@@ -232,32 +232,6 @@ const userSlice = createSlice({
     setBusinessId(state, action: PayloadAction<number | undefined>) {
       state.business_id = action.payload;
     },
-    clearUser(state) {
-      state.id = initialState.id;
-      state.name = initialState.name;
-      state.description = initialState.description;
-      state.email = initialState.email;
-      state.phone = initialState.phone;
-      state.country_code = initialState.country_code;
-      state.email_notifications = initialState.email_notifications;
-      state.profile_image_url = initialState.profile_image_url;
-      state.accessToken = initialState.accessToken;
-      state.refreshToken = initialState.refreshToken;
-      state.userRole = initialState.userRole;
-      state.businessStatus = initialState.businessStatus;
-      state.unreadCount = initialState.unreadCount;
-      state.businessStatusLoading = initialState.businessStatusLoading;
-      state.businessStatusError = initialState.businessStatusError;
-      // state.isGuest = initialState.isGuest;
-      state.location = initialState.location;
-      state.discover = initialState.discover;
-      state.selectBsnsCategory = initialState.selectBsnsCategory;
-      state.dateOfBirth = initialState.dateOfBirth;
-      state.countryZipCode = initialState.countryZipCode;
-      state.countryName = initialState.countryName;
-      state.business_id = initialState.business_id;
-      state.business_name = initialState.business_name;
-    },
   },
 });
 
@@ -275,7 +249,6 @@ export const {
   setDiscover,
   setSelectBsnsCategory,
   setBusinessId,
-  clearUser,
   resetUser,
 } = userSlice.actions;
 export default userSlice.reducer;

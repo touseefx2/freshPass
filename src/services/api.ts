@@ -7,7 +7,7 @@ import axios, {
 } from "axios";
 import NetInfo from "@react-native-community/netinfo";
 import { store } from "@/src/state/store";
-import { setTokens, clearUser } from "@/src/state/slices/userSlice";
+import { setTokens, clearUser, resetUser } from "@/src/state/slices/userSlice";
 import { clearGeneral } from "../state/slices/generalSlice";
 import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
 import { Platform } from "react-native";
@@ -236,7 +236,7 @@ const handleLogout = async () => {
   store.dispatch(resetCategories());
   store.dispatch(resetBusiness());
   store.dispatch(resetChat());
-  store.dispatch(clearUser());
+  store.dispatch(resetUser());
   router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
 };
 

@@ -13,13 +13,15 @@ import { setRole, UserRole } from "@/src/state/slices/generalSlice";
 
 export default function Role() {
   const { colors } = useTheme();
+  const dispatch = useAppDispatch();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const router = useRouter();
   const isFirstVisit = useAppSelector((state) => state.general.isVisitFirst);
-  const dispatch = useAppDispatch();
-   
-  // Get selected role from Redux (will be null initially, then "business", "client", or "staff")
   const selectedRole = useAppSelector((state) => state.general.role);
+
+
+  console.log("----> isFirstVisit", isFirstVisit);
+
 
   const handleOptionSelect = (option: UserRole) => {
     // Save selected role to Redux immediately when user selects
