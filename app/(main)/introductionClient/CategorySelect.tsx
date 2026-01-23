@@ -333,6 +333,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
   );
 
   const handleSkip = () => {
+    dispatch(setIsGuest(true));
     onNext();
   };
 
@@ -343,20 +344,19 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
         const category = categories.find((cat) => cat.id === categoryId);
         return category
           ? {
-              id: category.id,
-              name: category.name,
-            }
+            id: category.id,
+            name: category.name,
+          }
           : null;
       })
       .filter((cat) => cat !== null) as Array<{
-      id: number;
-      name: string;
-    }>;
+        id: number;
+        name: string;
+      }>;
 
     // Dispatch selected categories and set isGuest to true
     dispatch(setSelectBsnsCategory(selectedCategoriesData));
     dispatch(setIsGuest(true));
-
     onNext();
   };
 
