@@ -20,8 +20,6 @@ export default function Role() {
   const selectedRole = useAppSelector((state) => state.general.role);
 
 
-  console.log("----> isFirstVisit", isFirstVisit);
-
 
   const handleOptionSelect = (option: UserRole) => {
     // Save selected role to Redux immediately when user selects

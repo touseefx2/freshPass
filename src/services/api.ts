@@ -229,7 +229,7 @@ const removeAbortController = (controller: AbortController) => {
  */
 const handleLogout = async () => {
   // Cancel all pending API requests
-  cancelAllPendingRequests();
+  // cancelAllPendingRequests();
   // Clear Redux state
   store.dispatch(resetCompleteProfile());
   store.dispatch(clearGeneral());
