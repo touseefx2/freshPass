@@ -66,35 +66,18 @@ const createStyles = (theme: Theme) =>
 
   });
 
-export default function DashboardHeaderClient() {
+export default function ExploreHeader() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
-  const unreadCount = useAppSelector((state) => state.user.unreadCount);
 
   return (
     <View
       style={[
         styles.headerContainer,
-        { paddingTop: insets.top + moderateHeightScale(10), },
-      ]}
-    >
-      <Image
-        source={IMAGES.logo3d}
-        style={styles.logoImage}
-      />
-
-      <View style={styles.iconContainer} >
-        <NotificationIcon width={24} height={22} color={theme.white} />
-        {unreadCount > 0 && (
-          <View style={styles.badgeContainer}>
-            <Text style={styles.badgeText}>
-              {unreadCount > 9 ? "9+" : unreadCount.toString()}
-            </Text>
-          </View>
-        )}
-      </View>
+        { paddingTop: insets.top + moderateHeightScale(10) },
+      ]}>
 
     </View>
   );
