@@ -28,9 +28,7 @@
           "apiKey": "AIzaSyCVenDT7Q0jMPj-x5tLh4gFO3aF_rP5i7c"
         }
       },
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ],
+      "permissions": ["android.permission.RECORD_AUDIO"],
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
@@ -54,6 +52,18 @@
       //     }
       //   }
       // ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#FEFAE0",
+          "dark": {
+            "backgroundColor": "#FEFAE0"
+          }
+        }
+      ],
       [
         "expo-image-picker",
         {
