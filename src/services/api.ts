@@ -7,7 +7,7 @@ import axios, {
 } from "axios";
 import NetInfo from "@react-native-community/netinfo";
 import { store } from "@/src/state/store";
-import { setTokens, clearUser, resetUser } from "@/src/state/slices/userSlice";
+import { setTokens, resetUser } from "@/src/state/slices/userSlice";
 import { clearGeneral } from "../state/slices/generalSlice";
 import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
 import { Platform } from "react-native";
