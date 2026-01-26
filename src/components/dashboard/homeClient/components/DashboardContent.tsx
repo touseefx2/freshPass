@@ -535,6 +535,9 @@ export default function DashboardContent() {
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
+  const [verifiedSalonsDeals, setVerifiedSalonsDeals] = useState<VerifiedSalon[]>([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
+  const [dealsError, setDealsError] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
 
@@ -569,6 +572,73 @@ export default function DashboardContent() {
       }
     } finally {
       dispatch(setCategoriesLoading(false));
+    }
+  };
+
+
+  const fetchBusinessesDeals = async () => {
+    try {
+      setDealsLoading(true);
+      setDealsError(false);
+      let url = businessEndpoints.businesses();
+
+      // url = `${url}?sort=completed_appointments&direction=desc`;
+      // if (userLocation?.lat && userLocation?.long) {
+      //   url += `&latitude=${userLocation.lat}`;
+      //   url += `&longitude=${userLocation.long}`;
+      //   url += `&radius_km=20`;
+      // }
+
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: Array<{
+          id: number;
+          title: string;
+          address: string;
+          average_rating: number;
+          ratings_count: number;
+          image_url: string | null;
+          logo_url: string | null;
+          portfolio_photos?: Array<{
+            id: number;
+            path: string;
+            url: string;
+          }>;
+        }>;
+      }>(url);
+
+      if (response.success && response.data) {
+        // Map API response to VerifiedSalon format
+        const mappedSalons: VerifiedSalon[] = response.data.map((item) => {
+          let imageUrl = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
+
+          if (
+            item.portfolio_photos &&
+            item.portfolio_photos.length > 0 &&
+            item.portfolio_photos[0]?.url
+          ) {
+            imageUrl = item.portfolio_photos[0].url;
+          }
+
+          return {
+            id: item.id,
+            businessName: item.title,
+            address: item.address,
+            rating: item.average_rating || 0,
+            reviewCount: item.ratings_count || 0,
+            image: imageUrl,
+          };
+        });
+
+        setVerifiedSalonsDeals(mappedSalons);
+
+      }
+    } catch (error) {
+      Logger.error("Failed to fetch businesses deals:", error);
+      verifiedSalonsDeals.length <= 0 && setDealsError(true);
+    } finally {
+      setDealsLoading(false);
     }
   };
 
@@ -808,6 +878,7 @@ export default function DashboardContent() {
       if (isCusotmerandGuest) {
         fetchCategories();
         fetchBusinesses();
+        fetchBusinessesDeals();
       }
     }, []),
   );
@@ -840,10 +911,10 @@ export default function DashboardContent() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>FreshPass Deals</Text>
         <ShowBusiness
-          businessesLoading={businessesLoading}
-          businessesError={businessesError}
-          verifiedSalons={verifiedSalons}
-          onRetry={fetchBusinesses}
+          businessesLoading={dealsLoading}
+          businessesError={dealsError}
+          verifiedSalons={verifiedSalonsDeals}
+          onRetry={fetchBusinessesDeals}
         />
       </View>
 

@@ -21,7 +21,7 @@ import {
   LocationPinIcon,
   CalendarIcon,
 } from "@/assets/icons";
-import { fontSize, fonts } from "../theme/fonts";
+import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   setSelectedCategory,
   Category,

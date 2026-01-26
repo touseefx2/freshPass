@@ -16,9 +16,10 @@ export default function Index() {
   const user = useAppSelector((state) => state.user);
   const accessToken = user.accessToken;
   const isGuest = user.isGuest;
-  console.log("----> accessToken", accessToken);
 
   const handleNavigation = () => {
+    console.log("----> accessToken", accessToken);
+
     if (accessToken || isGuest) {
       router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
     } else {

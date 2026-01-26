@@ -197,7 +197,7 @@ export default function DashboardLayout() {
 
 
         <Tabs.Screen
-          name="explore"
+          name="(explore)"
           options={{
             title: "Explore",
             tabBarIcon: ({ color, size, focused }) => (
