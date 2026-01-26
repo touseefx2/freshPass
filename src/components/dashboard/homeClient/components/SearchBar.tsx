@@ -223,7 +223,7 @@ export default function SearchBar({
           <FilterIcon
             width={widthScale(17)}
             height={heightScale(17)}
-            color={theme.selectCard}
+            color={theme.darkGreenLight}
           />
         </TouchableOpacity>
       </View>

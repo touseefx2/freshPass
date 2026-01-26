@@ -31,8 +31,8 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     headerContainer: {
       backgroundColor: theme.darkGreen,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(16),
+      // paddingHorizontal: moderateWidthScale(20),
+      // paddingBottom: moderateHeightScale(16),
     },
     searchContainer: {
       flexDirection: "row",
@@ -43,6 +43,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(12),
       gap: moderateWidthScale(12),
       marginBottom: moderateHeightScale(12),
+      marginHorizontal: moderateWidthScale(20),
     },
     searchIconContainer: {
       justifyContent: "center",
@@ -74,6 +75,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(12),
       gap: moderateWidthScale(10),
+      marginHorizontal: moderateWidthScale(20),
     },
     whereWhenIconContainer: {
       justifyContent: "center",
@@ -85,34 +87,35 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
     categoriesContainer: {
-      marginTop: moderateHeightScale(4),
+      // marginTop: moderateHeightScale(4),
     },
     categoriesScroll: {
-      paddingHorizontal: moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(14),
+      gap: moderateWidthScale(12),
     },
     categoryItem: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(8),
-      marginRight: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingTop: moderateHeightScale(5),
+      paddingBottom: moderateHeightScale(12),
       position: "relative",
     },
     categoryText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.white70,
     },
     categoryTextActive: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontMedium,
       color: theme.white,
     },
     categoryUnderline: {
       position: "absolute",
       bottom: moderateHeightScale(0),
-      left: moderateWidthScale(12),
-      right: moderateWidthScale(12),
-      height: moderateHeightScale(2),
-      backgroundColor: theme.selectCard,
+      left: moderateWidthScale(4),
+      right: moderateWidthScale(4),
+      height: moderateHeightScale(3),
+      backgroundColor: theme.orangeBrown,
       borderRadius: moderateWidthScale(1),
     },
   });
