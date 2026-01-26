@@ -67,7 +67,7 @@ export default function ExploreScreen() {
   const selectedCategory = useAppSelector(
     (state: any) => state.categories.selectedCategory
   );
-  const isGuest = user.isGuest;
+  const isCusotmerandGuest = user.isGuest || user.userRole === "customer";
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
@@ -216,11 +216,19 @@ export default function ExploreScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (isGuest || user.userRole === "customer") {
+      if (isCusotmerandGuest) {
         fetchBusinessesDeals();
+      }
+    }, []),
+  );
+
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isCusotmerandGuest) {
         fetchBusinesses();
       }
-    }, [isGuest, user.userRole, selectedCategory]),
+    }, [selectedCategory]),
   );
 
 
