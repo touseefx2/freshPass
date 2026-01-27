@@ -147,10 +147,12 @@ export function BusinessCardType({
   item: salon,
   styles,
   type,
+  index,
 }: {
   item: VerifiedSalon;
   styles: ListStyles;
   type: "individual" | "subscriptions";
+  index?: number;
 }) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -158,20 +160,17 @@ export function BusinessCardType({
   const [inclusionsModalVisible, setInclusionsModalVisible] = useState(false);
   const [selectedInclusions, setSelectedInclusions] = useState<string[]>([]);
 
-  const showServices = type === "individual" && (salon.services?.length ?? 0) > 0;
-  const showSubscriptions =
-    type === "subscriptions" && (salon.subscriptions?.length ?? 0) > 0;
+  const hasServices = (salon.services?.length ?? 0) > 0;
+  const hasSubscriptions = (salon.subscriptions?.length ?? 0) > 0;
+  const isIndividual = type === "individual";
 
   return (
     <View>
-
-
       <View
         style={[
           styles.sectionHeader,
           {
-            marginTop:
-              moderateHeightScale(16),
+            marginTop: moderateHeightScale(16),
             marginBottom: moderateHeightScale(10),
           },
         ]}
@@ -187,10 +186,9 @@ export function BusinessCardType({
         >
           {salon.businessName}
         </Text>
-
       </View>
 
-      {showServices && (
+      {isIndividual && hasServices && (
         <ScrollView
           horizontal
           nestedScrollEnabled
@@ -252,7 +250,13 @@ export function BusinessCardType({
         </ScrollView>
       )}
 
-      {showSubscriptions && (
+      {isIndividual && !hasServices && (
+        <View style={styles.noListFoundContainer}>
+          <Text style={styles.noListFoundText}>No services found</Text>
+        </View>
+      )}
+
+      {!isIndividual && hasSubscriptions && (
         <ScrollView
           horizontal
           nestedScrollEnabled
@@ -379,6 +383,12 @@ export function BusinessCardType({
             </View>
           ))}
         </ScrollView>
+      )}
+
+      {!isIndividual && !hasSubscriptions && (
+        <View style={styles.noListFoundContainer}>
+          <Text style={styles.noListFoundText}>No subscription list found</Text>
+        </View>
       )}
 
       <InclusionsModal

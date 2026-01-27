@@ -282,4 +282,16 @@ export const createStyles = (theme: Theme) =>
       maxWidth: "75%",
       textTransform: "capitalize",
     },
+    noListFoundContainer: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(16),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    noListFoundText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
   });
