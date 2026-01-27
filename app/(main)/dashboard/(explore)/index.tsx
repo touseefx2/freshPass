@@ -106,6 +106,28 @@ export default function ExploreScreen() {
     { id: number; name: string } | null
   >(null);
 
+  // Reset both filters when category changes
+  useEffect(() => {
+    setSelectedServiceFilter(null);
+    setSelectedSubscriptionFilter(null);
+  }, [selectedCategory]);
+
+  const handleServiceFilterSelect = useCallback(
+    (value: { id: number; name: string } | null) => {
+      setSelectedServiceFilter(value);
+      setSelectedSubscriptionFilter(null);
+    },
+    []
+  );
+
+  const handleSubscriptionFilterSelect = useCallback(
+    (value: { id: number; name: string } | null) => {
+      setSelectedSubscriptionFilter(value);
+      setSelectedServiceFilter(null);
+    },
+    []
+  );
+
   const subscriptionFilters = useMemo(
     () =>
       [
@@ -355,7 +377,7 @@ export default function ExploreScreen() {
                   type="service"
                   filters={serviceFilters}
                   selectedFilter={selectedServiceFilter}
-                  onSelect={setSelectedServiceFilter}
+                  onSelect={handleServiceFilterSelect}
                 />
               )}
 
@@ -365,7 +387,7 @@ export default function ExploreScreen() {
                     type="subscription"
                     filters={subscriptionFilters}
                     selectedFilter={selectedSubscriptionFilter}
-                    onSelect={setSelectedSubscriptionFilter}
+                    onSelect={handleSubscriptionFilterSelect}
                   />
                 )}
 
