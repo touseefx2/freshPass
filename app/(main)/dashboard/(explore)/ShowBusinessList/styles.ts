@@ -26,6 +26,7 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(12),
       width: widthScale(310),
+      alignSelf: "center",
     },
     verifiedSalonImage: {
       width: widthScale(100),

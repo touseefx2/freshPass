@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from "react";
 import {
+  FlatList,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -24,8 +25,11 @@ import SortByBottomSheet, {
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
-import { ScrollView } from "react-native-gesture-handler";
-import ShowBusinessList from "./ShowBusinessList";
+import {
+  BusinessCard,
+  ListEmptySection,
+} from "./ShowBusinessList";
+import { createStyles as createListStyles } from "./ShowBusinessList/styles";
 import ShowBusiness from "@/src/components/dashboard/homeClient/components/ShowBusiness";
 
 
@@ -36,15 +40,13 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    content: {
+    list: {
       flex: 1,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(20),
     },
-
     section: {
       marginTop: moderateHeightScale(16),
       gap: moderateHeightScale(14),
+
     },
     sectionTitle: {
       fontSize: fontSize.size20,
@@ -98,6 +100,7 @@ export default function ExploreScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const listStyles = useMemo(() => createListStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -274,50 +277,68 @@ export default function ExploreScreen() {
         <ExploreHeader />
 
 
-        <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
-
-
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>FreshPass Deals</Text>
-            <ShowBusiness
-              businessesLoading={dealsLoading}
-              businessesError={dealsError}
-              verifiedSalons={verifiedSalonsDeals}
-              onRetry={fetchBusinessesDeals}
-            />
-          </View>
-
-
-          <View style={styles.section}>
-            <View style={styles.resultsHeader}>
-              <Text style={styles.resultsText}>
-                Showing:<Text style={styles.resultsTextBold}> {verifiedSalons.length} results</Text>
-              </Text>
-              <Pressable
-                onPress={() => setSortSheetVisible(true)}
-                style={styles.sortByButton}
-                accessibilityLabel="Sort by"
-              >
-                <Text style={styles.sortByLabel}>Sort by: {getSortByLabel(sortBy)} </Text>
-                <Feather
-                  name="chevron-down"
-                  size={moderateWidthScale(14)}
-                  color={theme.darkGreen}
+        {/* FlatList is the single scroll owner: onEndReached works for pagination. Add onEndReached={fetchNextPage} when implementing. */}
+        <FlatList
+          data={verifiedSalons}
+          renderItem={({ item }) => (
+            <BusinessCard item={item} styles={listStyles} />
+          )}
+          keyExtractor={(item) => item.id.toString()}
+          ListHeaderComponent={
+            <>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>FreshPass Deals</Text>
+                <ShowBusiness
+                  businessesLoading={dealsLoading}
+                  businessesError={dealsError}
+                  verifiedSalons={verifiedSalonsDeals}
+                  onRetry={fetchBusinessesDeals}
                 />
-              </Pressable>
-            </View>
-            {/* <Text style={styles.sectionTitle}>Recommended</Text> */}
-            <ShowBusinessList
+              </View>
+              <View style={styles.resultsHeader}>
+                <Text style={styles.resultsText}>
+                  Showing:
+                  <Text style={styles.resultsTextBold}>
+                    {" "}
+                    {verifiedSalons.length} results
+                  </Text>
+                </Text>
+                <Pressable
+                  onPress={() => setSortSheetVisible(true)}
+                  style={styles.sortByButton}
+                  accessibilityLabel="Sort by"
+                >
+                  <Text style={styles.sortByLabel}>
+                    Sort by: {getSortByLabel(sortBy)}{" "}
+                  </Text>
+                  <Feather
+                    name="chevron-down"
+                    size={moderateWidthScale(14)}
+                    color={theme.darkGreen}
+                  />
+                </Pressable>
+              </View>
+            </>
+          }
+          ListEmptyComponent={() => (
+            <ListEmptySection
               businessesLoading={businessesLoading}
               businessesError={businessesError}
-              verifiedSalons={verifiedSalons}
               onRetry={fetchBusinesses}
+              styles={listStyles}
             />
-          </View>
-
-
-        </ScrollView>
+          )}
+          ItemSeparatorComponent={() => (
+            <View style={{ height: moderateHeightScale(12) }} />
+          )}
+          contentContainerStyle={{
+            paddingBottom: moderateHeightScale(20),
+            flexGrow: 1,
+          }}
+          style={styles.list}
+          showsVerticalScrollIndicator={false}
+          onEndReachedThreshold={0.3}
+        />
 
       </View>
 

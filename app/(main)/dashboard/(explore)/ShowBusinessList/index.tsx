@@ -23,7 +23,7 @@ import {
 import RetryButton from "@/src/components/retryButton";
 import { createStyles } from "./styles";
 
-interface VerifiedSalon {
+export interface VerifiedSalon {
   id: number;
   businessName: string;
   address: string;
@@ -32,25 +32,20 @@ interface VerifiedSalon {
   image: string | null;
 }
 
-interface ShowBusinessProps {
-  businessesLoading: boolean;
-  businessesError: boolean;
-  verifiedSalons: VerifiedSalon[];
-  onRetry: () => void;
-}
+export type ListStyles = ReturnType<typeof createStyles>;
 
-export default function ShowBusinessList({
-  businessesLoading,
-  businessesError,
-  verifiedSalons,
-  onRetry,
-}: ShowBusinessProps) {
+export function BusinessCard({
+  item: salon,
+  styles,
+}: {
+  item: VerifiedSalon;
+  styles: ListStyles;
+}) {
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
 
-  const renderCard = ({ item: salon }: { item: VerifiedSalon }) => (
+  return (
     <View style={styles.verifiedSalonCardNew}>
       <Image
         source={{ uri: salon.image ?? "" }}
@@ -102,29 +97,73 @@ export default function ShowBusinessList({
       </View>
     </View>
   );
+}
 
-  const ListEmpty = () => {
-    if (businessesLoading) {
-      return (
-        <View style={[styles.loadingContainer, { alignSelf: "stretch" }]}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      );
-    }
-    if (businessesError) {
-      return (
-        <View style={[styles.errorContainer, { alignSelf: "stretch" }]}>
-          <Text style={styles.errorText}>Failed to load businesses</Text>
-          <RetryButton onPress={onRetry} loading={businessesLoading} />
-        </View>
-      );
-    }
+export function ListEmptySection({
+  businessesLoading,
+  businessesError,
+  onRetry,
+  styles,
+}: {
+  businessesLoading: boolean;
+  businessesError: boolean;
+  onRetry: () => void;
+  styles: ListStyles;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+
+  if (businessesLoading) {
     return (
-      <View style={[styles.emptyContainer, { alignSelf: "stretch" }]}>
-        <Text style={styles.emptyText}>No businesses found</Text>
+      <View style={[styles.loadingContainer, { alignSelf: "stretch" }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
-  };
+  }
+  if (businessesError) {
+    return (
+      <View style={[styles.errorContainer, { alignSelf: "stretch" }]}>
+        <Text style={styles.errorText}>Failed to load businesses</Text>
+        <RetryButton onPress={onRetry} loading={businessesLoading} />
+      </View>
+    );
+  }
+  return (
+    <View style={[styles.emptyContainer, { alignSelf: "stretch" }]}>
+      <Text style={styles.emptyText}>No businesses found</Text>
+    </View>
+  );
+}
+
+interface ShowBusinessProps {
+  businessesLoading: boolean;
+  businessesError: boolean;
+  verifiedSalons: VerifiedSalon[];
+  onRetry: () => void;
+}
+
+export default function ShowBusinessList({
+  businessesLoading,
+  businessesError,
+  verifiedSalons,
+  onRetry,
+}: ShowBusinessProps) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createStyles(theme), [colors]);
+
+  const renderCard = ({ item: salon }: { item: VerifiedSalon }) => (
+    <BusinessCard item={salon} styles={styles} />
+  );
+
+  const ListEmpty = () => (
+    <ListEmptySection
+      businessesLoading={businessesLoading}
+      businessesError={businessesError}
+      onRetry={onRetry}
+      styles={styles}
+    />
+  );
 
   return (
     <FlatList
