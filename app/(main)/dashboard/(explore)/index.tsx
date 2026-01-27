@@ -27,6 +27,7 @@ import ExploreSegmentToggle, {
   type ExploreSegmentValue,
 } from "./ExploreSegmentToggle";
 import ExploreResultsHeader from "./ExploreResultsHeader";
+import ExploreServiceFilters from "./ExploreServiceFilters";
 
 
 
@@ -84,6 +85,15 @@ export default function ExploreScreen() {
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
   const [selectedSegment, setSelectedSegment] =
     useState<ExploreSegmentValue>("individual");
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState("All");
+
+  const serviceFilters = [
+    "All",
+    "Beard Trim",
+    "Hair blow dry",
+    "Haircut",
+    "Manicure",
+  ];
 
   const getSortByLabel = (value: SortByOption) =>
     SORT_OPTIONS.find((o) => o.value === value)?.label ?? "Recommended";
@@ -271,6 +281,14 @@ export default function ExploreScreen() {
                 value={selectedSegment}
                 onSelect={setSelectedSegment}
               />
+
+              {selectedSegment === "individual" && serviceFilters.length > 0 && (
+                <ExploreServiceFilters
+                  filters={serviceFilters}
+                  selectedFilter={selectedServiceFilter}
+                  onSelect={setSelectedServiceFilter}
+                />
+              )}
 
               <ExploreResultsHeader
                 resultsCount={verifiedSalons.length}
