@@ -919,7 +919,7 @@ export default function DashboardContent() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recommended </Text>
+        <Text style={styles.sectionTitle}>Recommended</Text>
         <ShowBusiness
           businessesLoading={businessesLoading}
           businessesError={businessesError}

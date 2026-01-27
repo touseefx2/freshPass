@@ -82,9 +82,9 @@ export default function ExploreScreen() {
       setDealsError(false);
       let url = businessEndpoints.businesses();
 
-      // if (selectedCategory) {
-      //   url = `${url}?category_ids=${selectedCategory}`;
-      // }
+      if (selectedCategory) {
+        url = `${url}?category_ids=${selectedCategory}`;
+      }
 
       // url = `${url}?sort=completed_appointments&direction=desc`;
 
@@ -214,26 +214,16 @@ export default function ExploreScreen() {
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      if (isCusotmerandGuest) {
-        fetchBusinessesDeals();
-      }
-    }, []),
-  );
 
 
   useFocusEffect(
     useCallback(() => {
       if (isCusotmerandGuest) {
         fetchBusinesses();
+        fetchBusinessesDeals();
       }
     }, [selectedCategory]),
   );
-
-
-
-
 
 
   return (
@@ -255,7 +245,7 @@ export default function ExploreScreen() {
 
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recommended </Text>
+          <Text style={styles.sectionTitle}>Recommended</Text>
           <ShowBusiness
             businessesLoading={businessesLoading}
             businessesError={businessesError}
