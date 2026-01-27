@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
-  FlatList,
   Image,
   TouchableOpacity,
   ActivityIndicator,

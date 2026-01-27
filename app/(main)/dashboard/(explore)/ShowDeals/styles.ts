@@ -11,7 +11,7 @@ import {
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     appCard: {
-      height: heightScale(145),
+      height: heightScale(130),
     },
     appointmentsScroll: {
       paddingHorizontal: moderateWidthScale(20),
@@ -20,15 +20,15 @@ export const createStyles = (theme: Theme) =>
     verifiedSalonCardNew: {
       backgroundColor: theme.darkGreen,
       borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      height: heightScale(140),
+      paddingHorizontal: moderateWidthScale(10),
+      height: heightScale(124),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
       width: widthScale(310),
     },
     verifiedSalonImage: {
-      width: widthScale(100),
+      width: widthScale(110),
       height: heightScale(110),
       borderRadius: moderateWidthScale(6),
       backgroundColor: theme.emptyProfileImage,
@@ -52,7 +52,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     verifiedSalonContent: {
-      gap: moderateHeightScale(12),
+      gap: moderateHeightScale(14),
       width: "60%",
     },
     verifiedSalonBusinessName: {

@@ -85,7 +85,7 @@ export default function ShowDeals({
         </View>
       ) : verifiedSalons.length > 0 ? (
         verifiedSalons.map((salon) => (
-          <View key={salon.id} style={[styles.verifiedSalonCardNew]}>
+          <View key={salon.id} style={styles.verifiedSalonCardNew}>
             <Image
               source={{
                 uri: salon.image ?? "",

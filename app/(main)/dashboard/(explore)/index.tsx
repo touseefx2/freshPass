@@ -415,11 +415,11 @@ export default function ExploreScreen() {
 
         <FlatList
           data={verifiedSalons}
+          style={styles.list}
           contentContainerStyle={{
             paddingBottom: moderateHeightScale(20),
             flexGrow: 1,
           }}
-          style={styles.list}
           showsVerticalScrollIndicator={false}
           onEndReachedThreshold={0.3}
           keyExtractor={(item) => item.id.toString()}

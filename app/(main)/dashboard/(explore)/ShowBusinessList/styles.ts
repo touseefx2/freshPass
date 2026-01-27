@@ -20,8 +20,8 @@ export const createStyles = (theme: Theme) =>
     verifiedSalonCardNew: {
       backgroundColor: theme.darkGreen,
       borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(16),
-      height: heightScale(140),
+      paddingHorizontal: moderateWidthScale(10),
+      height: heightScale(124),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
@@ -29,7 +29,7 @@ export const createStyles = (theme: Theme) =>
       alignSelf: "center",
     },
     verifiedSalonImage: {
-      width: widthScale(100),
+      width: widthScale(110),
       height: heightScale(110),
       borderRadius: moderateWidthScale(6),
       backgroundColor: theme.emptyProfileImage,
@@ -53,7 +53,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     verifiedSalonContent: {
-      gap: moderateHeightScale(12),
+      gap: moderateHeightScale(14),
       width: "60%",
     },
     verifiedSalonBusinessName: {
