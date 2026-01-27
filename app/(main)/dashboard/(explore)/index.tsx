@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useCallback } from "react";
 import {
+  Pressable,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -16,6 +18,10 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import ExploreHeader from "./ExploreHeader";
 import { fonts, fontSize } from "@/src/theme/fonts";
 import ShowBusiness from "@/src/components/dashboard/homeClient/components/ShowBusiness";
+import SortByBottomSheet, {
+  SORT_OPTIONS,
+  type SortByOption,
+} from "./SortByBottomSheet";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -45,8 +51,11 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     resultsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(10),
+      paddingVertical: moderateHeightScale(12),
       marginVertical: moderateHeightScale(12),
       backgroundColor: theme.mapCircleFill,
       width: "100%",
@@ -59,10 +68,19 @@ const createStyles = (theme: Theme) =>
     },
     resultsTextBold: {
       fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-
+    sortByButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    sortByLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
   });
 
 interface VerifiedSalon {
@@ -92,7 +110,11 @@ export default function ExploreScreen() {
   const [verifiedSalonsDeals, setVerifiedSalonsDeals] = useState<VerifiedSalon[]>([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
+  const [sortBy, setSortBy] = useState<SortByOption>("recommended");
+  const [sortSheetVisible, setSortSheetVisible] = useState(false);
 
+  const getSortByLabel = (value: SortByOption) =>
+    SORT_OPTIONS.find((o) => o.value === value)?.label ?? "Recommended";
 
   const fetchBusinessesDeals = async () => {
     try {
@@ -157,7 +179,6 @@ export default function ExploreScreen() {
       setDealsLoading(false);
     }
   };
-
 
   const fetchBusinesses = async () => {
     try {
@@ -265,7 +286,20 @@ export default function ExploreScreen() {
         <View style={styles.section}>
           <View style={styles.resultsHeader}>
             <Text style={styles.resultsText}>
-              Showing:<Text style={styles.resultsTextBold}> 0 results</Text></Text>
+              Showing:<Text style={styles.resultsTextBold}> {verifiedSalons.length} results</Text>
+            </Text>
+            <Pressable
+              onPress={() => setSortSheetVisible(true)}
+              style={styles.sortByButton}
+              accessibilityLabel="Sort by"
+            >
+              <Text style={styles.sortByLabel}>Sort by: {getSortByLabel(sortBy)} </Text>
+              <Feather
+                name="chevron-down"
+                size={moderateWidthScale(14)}
+                color={theme.darkGreen}
+              />
+            </Pressable>
           </View>
           {/* <Text style={styles.sectionTitle}>Recommended</Text> */}
           <ShowBusiness
@@ -277,6 +311,13 @@ export default function ExploreScreen() {
         </View>
 
       </View>
+
+      <SortByBottomSheet
+        visible={sortSheetVisible}
+        onClose={() => setSortSheetVisible(false)}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+      />
     </>
   );
 }
