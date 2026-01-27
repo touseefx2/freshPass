@@ -17,7 +17,6 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import ExploreHeader from "./ExploreHeader";
 import { fonts, fontSize } from "@/src/theme/fonts";
-import ShowBusiness from "@/src/components/dashboard/homeClient/components/ShowBusiness";
 import SortByBottomSheet, {
   SORT_OPTIONS,
   type SortByOption,
@@ -25,6 +24,9 @@ import SortByBottomSheet, {
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
+import { ScrollView } from "react-native-gesture-handler";
+import ShowBusinessList from "./ShowBusinessList";
+import ShowBusiness from "@/src/components/dashboard/homeClient/components/ShowBusiness";
 
 
 
@@ -272,43 +274,50 @@ export default function ExploreScreen() {
         <ExploreHeader />
 
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>FreshPass Deals</Text>
-          <ShowBusiness
-            businessesLoading={dealsLoading}
-            businessesError={dealsError}
-            verifiedSalons={verifiedSalonsDeals}
-            onRetry={fetchBusinessesDeals}
-          />
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
 
 
-        <View style={styles.section}>
-          <View style={styles.resultsHeader}>
-            <Text style={styles.resultsText}>
-              Showing:<Text style={styles.resultsTextBold}> {verifiedSalons.length} results</Text>
-            </Text>
-            <Pressable
-              onPress={() => setSortSheetVisible(true)}
-              style={styles.sortByButton}
-              accessibilityLabel="Sort by"
-            >
-              <Text style={styles.sortByLabel}>Sort by: {getSortByLabel(sortBy)} </Text>
-              <Feather
-                name="chevron-down"
-                size={moderateWidthScale(14)}
-                color={theme.darkGreen}
-              />
-            </Pressable>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>FreshPass Deals</Text>
+            <ShowBusiness
+              businessesLoading={dealsLoading}
+              businessesError={dealsError}
+              verifiedSalons={verifiedSalonsDeals}
+              onRetry={fetchBusinessesDeals}
+            />
           </View>
-          {/* <Text style={styles.sectionTitle}>Recommended</Text> */}
-          <ShowBusiness
-            businessesLoading={businessesLoading}
-            businessesError={businessesError}
-            verifiedSalons={verifiedSalons}
-            onRetry={fetchBusinesses}
-          />
-        </View>
+
+
+          <View style={styles.section}>
+            <View style={styles.resultsHeader}>
+              <Text style={styles.resultsText}>
+                Showing:<Text style={styles.resultsTextBold}> {verifiedSalons.length} results</Text>
+              </Text>
+              <Pressable
+                onPress={() => setSortSheetVisible(true)}
+                style={styles.sortByButton}
+                accessibilityLabel="Sort by"
+              >
+                <Text style={styles.sortByLabel}>Sort by: {getSortByLabel(sortBy)} </Text>
+                <Feather
+                  name="chevron-down"
+                  size={moderateWidthScale(14)}
+                  color={theme.darkGreen}
+                />
+              </Pressable>
+            </View>
+            {/* <Text style={styles.sectionTitle}>Recommended</Text> */}
+            <ShowBusinessList
+              businessesLoading={businessesLoading}
+              businessesError={businessesError}
+              verifiedSalons={verifiedSalons}
+              onRetry={fetchBusinesses}
+            />
+          </View>
+
+
+        </ScrollView>
 
       </View>
 

@@ -44,7 +44,6 @@ export default function ShowBusiness({
   businessesLoading,
   businessesError,
   verifiedSalons,
-
   onRetry,
 }: ShowBusinessProps) {
   const { colors } = useTheme();
