@@ -79,6 +79,7 @@ export default function ExploreScreen() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const user = useAppSelector((state) => state.user);
+  const isFirstTryon = useAppSelector((state) => state.general.isFirstShowTryOn);
   const categories = useAppSelector(
     (state: any) => state.categories.categories
   );

@@ -17,6 +17,7 @@ export interface GeneralState {
   selectedDate: string | null; // Selected date for viewing appointments (ISO string format)
   searchText: string; // Search text for location/services search
   guestModeModalVisible: boolean; // Guest mode modal visibility state
+  isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
 }
 
 const initialState: GeneralState = {
@@ -34,6 +35,7 @@ const initialState: GeneralState = {
   selectedDate: null,
   searchText: "",
   guestModeModalVisible: false,
+  isFirstShowTryOn: false,
 };
 
 const generalSlice = createSlice({
@@ -90,6 +92,9 @@ const generalSlice = createSlice({
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
     },
+    setIsFirstShowTryOn(state, action: PayloadAction<boolean>) {
+      state.isFirstShowTryOn = action.payload;
+    },
     clearGeneral(state) {
       state.theme = initialState.theme;
       state.themeType = initialState.themeType;
@@ -105,6 +110,7 @@ const generalSlice = createSlice({
       state.selectedDate = initialState.selectedDate;
       state.searchText = initialState.searchText;
       state.guestModeModalVisible = initialState.guestModeModalVisible;
+      // state.isFirstShowTryOn = initialState.isFirstShowTryOn;
     },
   },
 });
@@ -126,6 +132,7 @@ export const {
   setSearchText,
   clearSearchText,
   setGuestModeModalVisible,
+  setIsFirstShowTryOn,
   resetGeneral,
   clearGeneral,
 } = generalSlice.actions;

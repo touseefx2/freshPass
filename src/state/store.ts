@@ -45,25 +45,53 @@ const LocalStorageAdapter = {
 const generalPersistConfig = {
   key: "general",
   storage: LocalStorageAdapter,
-  whitelist: ["theme", "themeType", "language", "savedPassword","registerEmail", "isVisitFirst"], // Only persist these fields
+  whitelist: [
+    "theme",
+    "themeType",
+    "language",
+    "savedPassword",
+    "registerEmail",
+    "isVisitFirst",
+    "isFirstShowTryOn",
+  ], // Only persist these fields
 };
 
 // ✅ Nested persist config for user slice - only persist name, id, email, tokens, userRole (businessStatus is NOT persisted)
 const userPersistConfig = {
   key: "user",
   storage: LocalStorageAdapter,
-  whitelist: ["id", "name", "email",  "email_notifications", "profile_image_url", "accessToken", "userRole", "unreadCount","description","country_code","phone", "isGuest", "location", "discover", "selectBsnsCategory", "dateOfBirth", "countryZipCode", "countryName","business_id","business_name"], // Only persist these fields (businessStatus excluded)
+  whitelist: [
+    "id",
+    "name",
+    "email",
+    "email_notifications",
+    "profile_image_url",
+    "accessToken",
+    "userRole",
+    "unreadCount",
+    "description",
+    "country_code",
+    "phone",
+    "isGuest",
+    "location",
+    "discover",
+    "selectBsnsCategory",
+    "dateOfBirth",
+    "countryZipCode",
+    "countryName",
+    "business_id",
+    "business_name",
+  ], // Only persist these fields (businessStatus excluded)
 };
 
- 
-
 // ✅ Persist the general reducer with field filtering
-const persistedGeneralReducer = persistReducer(generalPersistConfig, generalReducer);
+const persistedGeneralReducer = persistReducer(
+  generalPersistConfig,
+  generalReducer,
+);
 
 // ✅ Persist the user reducer with field filtering
 const persistedUserReducer = persistReducer(userPersistConfig, userReducer);
-
- 
 
 // ✅ combine reducers
 const rootReducer = combineReducers({
