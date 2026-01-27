@@ -416,7 +416,7 @@ export default function ExploreScreen() {
             <View style={{ height: moderateHeightScale(12) }} />
           )}
           renderItem={({ item }) => (
-            <BusinessCard item={item} styles={listStyles} />
+            selectedServiceFilter || selectedSubscriptionFilter ? null : <BusinessCard item={item} styles={listStyles} />
           )}
 
         />
