@@ -62,6 +62,12 @@ interface VerifiedSalon {
   image: string | null;
 }
 
+const SUBSCRIPTION_TEMPLATES: Array<{ id: number; name: string }> = [
+  { id: 1, name: "Classic Care" },
+  { id: 2, name: "Gold Glam" },
+  { id: 3, name: "VIP Elite" },
+];
+
 export default function ExploreScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -89,16 +95,33 @@ export default function ExploreScreen() {
   const [selectedSegment, setSelectedSegment] =
     useState<ExploreSegmentValue>("individual");
 
-  const [selectedServiceFilter, setSelectedServiceFilter] = useState("Services");
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [serviceTemplates, setServiceTemplates] = useState<
     Array<{ id: number; name: string }>
   >([]);
+  const [selectedSubscriptionFilter, setSelectedSubscriptionFilter] = useState<
+    { id: number; name: string } | null
+  >(null);
 
+  const subscriptionFilters = useMemo(
+    () =>
+      [
+        { id: null, name: "Subscriptions" },
+        ...SUBSCRIPTION_TEMPLATES,
+      ] as Array<{ id: number | null; name: string }>,
+    []
+  );
 
   const serviceFilters = useMemo(
     () =>
       serviceTemplates.length > 0
-        ? ["Services", ...serviceTemplates.map((s) => s.name)]
+        ? ([
+          { id: null, name: "Services" },
+          ...serviceTemplates,
+        ] as Array<{ id: number | null; name: string }>)
         : [],
     [serviceTemplates]
   );
@@ -329,11 +352,22 @@ export default function ExploreScreen() {
 
               {selectedSegment === "individual" && serviceFilters.length > 0 && (
                 <ExploreServiceFilters
+                  type="service"
                   filters={serviceFilters}
                   selectedFilter={selectedServiceFilter}
                   onSelect={setSelectedServiceFilter}
                 />
               )}
+
+              {selectedSegment === "subscriptions" &&
+                subscriptionFilters.length > 0 && (
+                  <ExploreServiceFilters
+                    type="subscription"
+                    filters={subscriptionFilters}
+                    selectedFilter={selectedSubscriptionFilter}
+                    onSelect={setSelectedSubscriptionFilter}
+                  />
+                )}
 
               <ExploreResultsHeader
                 resultsCount={verifiedSalons.length}

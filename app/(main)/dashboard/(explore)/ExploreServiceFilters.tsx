@@ -26,15 +26,15 @@ const createStyles = (theme: Theme) =>
     primaryFilterButton: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
       borderRadius: moderateWidthScale(999),
       backgroundColor: theme.darkGreenLight,
       gap: moderateWidthScale(4),
     },
     filterButton: {
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
       borderRadius: moderateWidthScale(999),
       borderWidth: moderateWidthScale(1),
       borderColor: theme.borderNormal
@@ -44,12 +44,12 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.borderDark,
     },
     primaryFilterButtonText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.background,
     },
     filterButtonText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
@@ -59,13 +59,19 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+export type ExploreFilterType = "service" | "subscription";
+
+export type FilterOption = { id: number | null; name: string };
+
 interface ExploreServiceFiltersProps {
-  filters: string[];
-  selectedFilter: string;
-  onSelect: (value: string) => void;
+  type: ExploreFilterType;
+  filters: FilterOption[];
+  selectedFilter: { id: number; name: string } | null;
+  onSelect: (value: { id: number; name: string } | null) => void;
 }
 
 export default function ExploreServiceFilters({
+  type,
   filters,
   selectedFilter,
   onSelect,
@@ -85,20 +91,24 @@ export default function ExploreServiceFilters({
       >
         {filters.map((filter, index) => (
           <Pressable
-            key={filter}
+            key={filter.id !== null ? `filter-${filter.id}` : "filter-services"}
             style={[
               index === 0
                 ? styles.primaryFilterButton
                 : [
                   styles.filterButton,
-                  selectedFilter === filter && styles.filterButtonActive,
+                  selectedFilter?.id != null &&
+                  selectedFilter.id === filter.id &&
+                  styles.filterButtonActive,
                 ],
             ]}
-            onPress={() => onSelect(filter)}
+            onPress={() =>
+              onSelect(index === 0 ? null : { id: filter.id!, name: filter.name })
+            }
           >
             {index === 0 ? (
               <>
-                <Text style={styles.primaryFilterButtonText}>{filter}</Text>
+                <Text style={styles.primaryFilterButtonText}>{filter.name}</Text>
                 <Feather
                   name="chevron-right"
                   size={moderateWidthScale(12)}
@@ -109,10 +119,12 @@ export default function ExploreServiceFilters({
               <Text
                 style={[
                   styles.filterButtonText,
-                  selectedFilter === filter && styles.filterButtonTextActive,
+                  selectedFilter?.id != null &&
+                  selectedFilter.id === filter.id &&
+                  styles.filterButtonTextActive,
                 ]}
               >
-                {filter}
+                {filter.name}
               </Text>
             )}
           </Pressable>
