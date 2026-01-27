@@ -195,28 +195,39 @@ export default function DashboardLayout() {
           }}
         />
 
-
         <Tabs.Screen
           name="(explore)"
           options={{
-            title: "Explore",
+            title: isCustomer ? "Explore" : "Notification",
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}
               >
-                <ExploreIcon
-                  width={size}
-                  height={size}
-                  color={theme.darkGreen}
-                  focused={focused}
-                />
-                {/* {unreadCount > 0 && (
-                  <View style={styles.badgeContainer}>
-                    <Text style={styles.badgeText}>
-                      {unreadCount > 99 ? "99+" : unreadCount.toString()}
-                    </Text>
-                  </View>
-                )} */}
+                {isCustomer ? (
+                  <ExploreIcon
+                    width={size}
+                    height={size}
+                    color={theme.darkGreen}
+                    focused={focused}
+                  />
+                ) : (
+                  <>
+                    <NotificationIcon
+                      width={size}
+                      height={size}
+                      color={theme.darkGreen}
+                      focused={focused}
+                    />
+
+                    {unreadCount > 0 && (
+                      <View style={styles.badgeContainer}>
+                        <Text style={styles.badgeText}>
+                          {unreadCount > 99 ? "99+" : unreadCount.toString()}
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
               </View>
             ),
           }}
@@ -241,7 +252,6 @@ export default function DashboardLayout() {
           }}
         />
 
-
         <Tabs.Screen
           name="(chat)"
           options={{
@@ -260,6 +270,7 @@ export default function DashboardLayout() {
             ),
           }}
         />
+
         <Tabs.Screen
           name="(account)"
           options={{
