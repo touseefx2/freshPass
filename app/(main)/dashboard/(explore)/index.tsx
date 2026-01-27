@@ -60,7 +60,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(12),
-      marginVertical: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(12),
       backgroundColor: theme.mapCircleFill,
       width: "100%",
     },
@@ -84,6 +84,39 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
+    },
+    segmentedControl: {
+      flexDirection: "row",
+      backgroundColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(999),
+      padding: moderateWidthScale(3),
+      marginHorizontal: moderateWidthScale(20),
+      marginVertical: moderateHeightScale(12),
+
+    },
+    segmentOption: {
+      flex: 1,
+      paddingVertical: moderateHeightScale(10),
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: moderateWidthScale(999),
+    },
+    segmentOptionActive: {
+      backgroundColor: theme.orangeBrown,
+    },
+    segmentOptionInactive: {
+      backgroundColor: "transparent",
+    },
+    segmentOptionText: {
+      fontSize: fontSize.size13,
+    },
+    segmentOptionTextActive: {
+      color: theme.darkGreen,
+      fontFamily: fonts.fontMedium,
+    },
+    segmentOptionTextInactive: {
+      color: theme.segmentInactiveTabText,
+      fontFamily: fonts.fontRegular,
     },
   });
 
@@ -117,6 +150,9 @@ export default function ExploreScreen() {
   const [dealsError, setDealsError] = useState(false);
   const [sortBy, setSortBy] = useState<SortByOption>("recommended");
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
+  const [selectedSegment, setSelectedSegment] = useState<
+    "subscriptions" | "individual"
+  >("individual");
 
   const getSortByLabel = (value: SortByOption) =>
     SORT_OPTIONS.find((o) => o.value === value)?.label ?? "Recommended";
@@ -299,6 +335,51 @@ export default function ExploreScreen() {
                   />
                 </View>
               )}
+
+              <View style={styles.segmentedControl}>
+                <Pressable
+                  onPress={() => setSelectedSegment("individual")}
+                  style={[
+                    styles.segmentOption,
+                    selectedSegment === "individual"
+                      ? styles.segmentOptionActive
+                      : styles.segmentOptionInactive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.segmentOptionText,
+                      selectedSegment === "individual"
+                        ? styles.segmentOptionTextActive
+                        : styles.segmentOptionTextInactive,
+                    ]}
+                  >
+                    Individual services
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setSelectedSegment("subscriptions")}
+                  style={[
+                    styles.segmentOption,
+                    selectedSegment === "subscriptions"
+                      ? styles.segmentOptionActive
+                      : styles.segmentOptionInactive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.segmentOptionText,
+                      selectedSegment === "subscriptions"
+                        ? styles.segmentOptionTextActive
+                        : styles.segmentOptionTextInactive,
+                    ]}
+                  >
+                    Subscriptions list
+                  </Text>
+                </Pressable>
+              </View>
+
+
               <View style={styles.resultsHeader}>
                 <Text style={styles.resultsText}>
                   Showing:
