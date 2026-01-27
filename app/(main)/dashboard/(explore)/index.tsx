@@ -423,7 +423,7 @@ export default function ExploreScreen() {
           keyExtractor={(item) => item.id.toString()}
           ListHeaderComponent={
             <>
-              {verifiedSalonsDeals.length > 0 && (
+              {(verifiedSalonsDeals.length > 0 || dealsLoading) && (
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>FreshPass Deals</Text>
                   <ShowDeals
