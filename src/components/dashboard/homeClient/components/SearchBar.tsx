@@ -22,7 +22,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(12),
       gap: moderateWidthScale(12),
       marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
     },
     searchIconContainer: {
       justifyContent: "center",
@@ -49,6 +48,16 @@ const createStyles = (theme: Theme) =>
       borderRadius: 9999999,
       padding: 4,
     },
+    shadow: {
+      shadowColor: theme.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.18,
+      shadowRadius: 1.0,
+      elevation: 1,
+    },
   });
 
 interface SearchBarProps {
@@ -69,7 +78,7 @@ export default function SearchBar({
 
   return (
     <TouchableOpacity
-      style={styles.searchContainer}
+      style={[styles.searchContainer, styles.shadow]}
       onPress={onSearchPress}
       activeOpacity={0.8}
     >
@@ -99,6 +108,6 @@ export default function SearchBar({
           color={theme.darkGreen}
         />
       </TouchableOpacity>
-    </TouchableOpacity>
+    </TouchableOpacity >
   );
 }
