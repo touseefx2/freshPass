@@ -30,6 +30,8 @@ import ExploreSegmentToggle, {
 import ExploreResultsHeader from "./ExploreResultsHeader";
 import ExploreServiceFilters from "./ExploreServiceFilters";
 import type { ServiceItem, SubscriptionItem } from "@/src/components/businessList";
+import TryOnModal from "./TryOnModal";
+import { setIsFirstShowTryOn } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -500,6 +502,14 @@ export default function ExploreScreen() {
         sortBy={sortBy}
         setSortBy={setSortBy}
       />
+
+      {!isFirstTryon && (
+        <TryOnModal
+          visible={!isFirstTryon}
+          onClose={() => dispatch(setIsFirstShowTryOn(true))}
+        />
+      )}
+
     </>
   );
 }
