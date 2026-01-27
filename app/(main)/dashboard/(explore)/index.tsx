@@ -44,6 +44,24 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(20),
     },
+    resultsHeader: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(10),
+      marginVertical: moderateHeightScale(12),
+      backgroundColor: theme.mapCircleFill,
+      width: "100%",
+    },
+    resultsText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      flexWrap: "wrap",
+    },
+    resultsTextBold: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
 
   });
 
@@ -245,7 +263,11 @@ export default function ExploreScreen() {
 
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recommended</Text>
+          <View style={styles.resultsHeader}>
+            <Text style={styles.resultsText}>
+              Showing:<Text style={styles.resultsTextBold}> 0 results</Text></Text>
+          </View>
+          {/* <Text style={styles.sectionTitle}>Recommended</Text> */}
           <ShowBusiness
             businessesLoading={businessesLoading}
             businessesError={businessesError}
