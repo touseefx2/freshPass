@@ -19,14 +19,14 @@ const createStyles = (theme: Theme) =>
       width: "100%",
     },
     resultsText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
       flexWrap: "wrap",
     },
     resultsTextBold: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
     sortByButton: {
@@ -35,7 +35,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(4),
     },
     sortByLabel: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
