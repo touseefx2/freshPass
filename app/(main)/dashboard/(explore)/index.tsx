@@ -30,7 +30,7 @@ import {
   ListEmptySection,
 } from "./ShowBusinessList";
 import { createStyles as createListStyles } from "./ShowBusinessList/styles";
-import ShowBusiness from "@/src/components/dashboard/homeClient/components/ShowBusiness";
+import ShowDeals from "./ShowDeals";
 
 
 
@@ -276,19 +276,21 @@ export default function ExploreScreen() {
         <StatusBar barStyle="light-content" />
         <ExploreHeader />
 
-
-        {/* FlatList is the single scroll owner: onEndReached works for pagination. Add onEndReached={fetchNextPage} when implementing. */}
         <FlatList
           data={verifiedSalons}
-          renderItem={({ item }) => (
-            <BusinessCard item={item} styles={listStyles} />
-          )}
+          contentContainerStyle={{
+            paddingBottom: moderateHeightScale(20),
+            flexGrow: 1,
+          }}
+          style={styles.list}
+          showsVerticalScrollIndicator={false}
+          onEndReachedThreshold={0.3}
           keyExtractor={(item) => item.id.toString()}
           ListHeaderComponent={
             <>
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>FreshPass Deals</Text>
-                <ShowBusiness
+                <ShowDeals
                   businessesLoading={dealsLoading}
                   businessesError={dealsError}
                   verifiedSalons={verifiedSalonsDeals}
@@ -331,13 +333,10 @@ export default function ExploreScreen() {
           ItemSeparatorComponent={() => (
             <View style={{ height: moderateHeightScale(12) }} />
           )}
-          contentContainerStyle={{
-            paddingBottom: moderateHeightScale(20),
-            flexGrow: 1,
-          }}
-          style={styles.list}
-          showsVerticalScrollIndicator={false}
-          onEndReachedThreshold={0.3}
+          renderItem={({ item }) => (
+            <BusinessCard item={item} styles={listStyles} />
+          )}
+
         />
 
       </View>

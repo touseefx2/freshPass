@@ -11,7 +11,7 @@ import {
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     appCard: {
-      flex: 1,
+      height: heightScale(145),
     },
     appointmentsScroll: {
       paddingHorizontal: moderateWidthScale(20),
