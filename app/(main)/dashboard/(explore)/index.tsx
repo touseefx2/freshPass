@@ -288,15 +288,17 @@ export default function ExploreScreen() {
           keyExtractor={(item) => item.id.toString()}
           ListHeaderComponent={
             <>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>FreshPass Deals</Text>
-                <ShowDeals
-                  businessesLoading={dealsLoading}
-                  businessesError={dealsError}
-                  verifiedSalons={verifiedSalonsDeals}
-                  onRetry={fetchBusinessesDeals}
-                />
-              </View>
+              {verifiedSalonsDeals.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>FreshPass Deals</Text>
+                  <ShowDeals
+                    businessesLoading={dealsLoading}
+                    businessesError={dealsError}
+                    verifiedSalons={verifiedSalonsDeals}
+                    onRetry={fetchBusinessesDeals}
+                  />
+                </View>
+              )}
               <View style={styles.resultsHeader}>
                 <Text style={styles.resultsText}>
                   Showing:
