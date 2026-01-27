@@ -1,13 +1,5 @@
 import React, { useMemo, useState, useCallback } from "react";
-import {
-  FlatList,
-  Pressable,
-  StatusBar,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -31,6 +23,10 @@ import {
 } from "./ShowBusinessList";
 import { createStyles as createListStyles } from "./ShowBusinessList/styles";
 import ShowDeals from "./ShowDeals";
+import ExploreSegmentToggle, {
+  type ExploreSegmentValue,
+} from "./ExploreSegmentToggle";
+import ExploreResultsHeader from "./ExploreResultsHeader";
 
 
 
@@ -53,70 +49,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(20),
-    },
-    resultsHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(12),
-      backgroundColor: theme.mapCircleFill,
-      width: "100%",
-    },
-    resultsText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      flexWrap: "wrap",
-    },
-    resultsTextBold: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    sortByButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
-    },
-    sortByLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    segmentedControl: {
-      flexDirection: "row",
-      backgroundColor: theme.darkGreen,
-      borderRadius: moderateWidthScale(999),
-      padding: moderateWidthScale(3),
-      marginHorizontal: moderateWidthScale(20),
-      marginVertical: moderateHeightScale(12),
-
-    },
-    segmentOption: {
-      flex: 1,
-      paddingVertical: moderateHeightScale(10),
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: moderateWidthScale(999),
-    },
-    segmentOptionActive: {
-      backgroundColor: theme.orangeBrown,
-    },
-    segmentOptionInactive: {
-      backgroundColor: "transparent",
-    },
-    segmentOptionText: {
-      fontSize: fontSize.size13,
-    },
-    segmentOptionTextActive: {
-      color: theme.darkGreen,
-      fontFamily: fonts.fontMedium,
-    },
-    segmentOptionTextInactive: {
-      color: theme.segmentInactiveTabText,
-      fontFamily: fonts.fontRegular,
     },
   });
 
@@ -150,9 +82,8 @@ export default function ExploreScreen() {
   const [dealsError, setDealsError] = useState(false);
   const [sortBy, setSortBy] = useState<SortByOption>("recommended");
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
-  const [selectedSegment, setSelectedSegment] = useState<
-    "subscriptions" | "individual"
-  >("individual");
+  const [selectedSegment, setSelectedSegment] =
+    useState<ExploreSegmentValue>("individual");
 
   const getSortByLabel = (value: SortByOption) =>
     SORT_OPTIONS.find((o) => o.value === value)?.label ?? "Recommended";
@@ -336,73 +267,16 @@ export default function ExploreScreen() {
                 </View>
               )}
 
-              <View style={styles.segmentedControl}>
-                <Pressable
-                  onPress={() => setSelectedSegment("individual")}
-                  style={[
-                    styles.segmentOption,
-                    selectedSegment === "individual"
-                      ? styles.segmentOptionActive
-                      : styles.segmentOptionInactive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.segmentOptionText,
-                      selectedSegment === "individual"
-                        ? styles.segmentOptionTextActive
-                        : styles.segmentOptionTextInactive,
-                    ]}
-                  >
-                    Individual services
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setSelectedSegment("subscriptions")}
-                  style={[
-                    styles.segmentOption,
-                    selectedSegment === "subscriptions"
-                      ? styles.segmentOptionActive
-                      : styles.segmentOptionInactive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.segmentOptionText,
-                      selectedSegment === "subscriptions"
-                        ? styles.segmentOptionTextActive
-                        : styles.segmentOptionTextInactive,
-                    ]}
-                  >
-                    Subscriptions list
-                  </Text>
-                </Pressable>
-              </View>
+              <ExploreSegmentToggle
+                value={selectedSegment}
+                onSelect={setSelectedSegment}
+              />
 
-
-              <View style={styles.resultsHeader}>
-                <Text style={styles.resultsText}>
-                  Showing:
-                  <Text style={styles.resultsTextBold}>
-                    {" "}
-                    {verifiedSalons.length} results
-                  </Text>
-                </Text>
-                <Pressable
-                  onPress={() => setSortSheetVisible(true)}
-                  style={styles.sortByButton}
-                  accessibilityLabel="Sort by"
-                >
-                  <Text style={styles.sortByLabel}>
-                    Sort by: {getSortByLabel(sortBy)}{" "}
-                  </Text>
-                  <Feather
-                    name="chevron-down"
-                    size={moderateWidthScale(14)}
-                    color={theme.darkGreen}
-                  />
-                </Pressable>
-              </View>
+              <ExploreResultsHeader
+                resultsCount={verifiedSalons.length}
+                sortByLabel={getSortByLabel(sortBy)}
+                onSortPress={() => setSortSheetVisible(true)}
+              />
             </>
           }
           ListEmptyComponent={() => (
