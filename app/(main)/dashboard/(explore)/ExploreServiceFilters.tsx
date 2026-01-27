@@ -6,6 +6,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
@@ -22,24 +23,38 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(8),
       paddingHorizontal: moderateWidthScale(20),
     },
+    primaryFilterButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.darkGreenLight,
+      gap: moderateWidthScale(4),
+    },
     filterButton: {
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(8),
       borderRadius: moderateWidthScale(999),
       borderWidth: moderateWidthScale(1),
-      borderColor: theme.borderLight,
+      borderColor: theme.borderNormal
     },
     filterButtonActive: {
-      backgroundColor: theme.lightGreen015,
-      borderColor: theme.darkGreen,
+      backgroundColor: theme.lightGreen1,
+      borderColor: theme.borderDark,
+    },
+    primaryFilterButtonText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.background,
     },
     filterButtonText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.text,
+      color: theme.darkGreen,
     },
     filterButtonTextActive: {
-      fontFamily: fonts.fontMedium,
+      // fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
   });
@@ -68,23 +83,38 @@ export default function ExploreServiceFilters({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.filterScrollContent}
       >
-        {filters.map((filter) => (
+        {filters.map((filter, index) => (
           <Pressable
             key={filter}
             style={[
-              styles.filterButton,
-              selectedFilter === filter && styles.filterButtonActive,
+              index === 0
+                ? styles.primaryFilterButton
+                : [
+                  styles.filterButton,
+                  selectedFilter === filter && styles.filterButtonActive,
+                ],
             ]}
             onPress={() => onSelect(filter)}
           >
-            <Text
-              style={[
-                styles.filterButtonText,
-                selectedFilter === filter && styles.filterButtonTextActive,
-              ]}
-            >
-              {filter}
-            </Text>
+            {index === 0 ? (
+              <>
+                <Text style={styles.primaryFilterButtonText}>{filter}</Text>
+                <Feather
+                  name="chevron-right"
+                  size={moderateWidthScale(12)}
+                  color={theme.background}
+                />
+              </>
+            ) : (
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  selectedFilter === filter && styles.filterButtonTextActive,
+                ]}
+              >
+                {filter}
+              </Text>
+            )}
           </Pressable>
         ))}
       </ScrollView>
