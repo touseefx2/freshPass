@@ -29,7 +29,10 @@ import ExploreSegmentToggle, {
 } from "./ExploreSegmentToggle";
 import ExploreResultsHeader from "./ExploreResultsHeader";
 import ExploreServiceFilters from "./ExploreServiceFilters";
-import type { ServiceItem, SubscriptionItem } from "@/src/components/businessList";
+import type {
+  ServiceItem,
+  SubscriptionItem,
+} from "@/src/components/businessList";
 import TryOnModal from "./TryOnModal";
 import { setIsFirstShowTryOn } from "@/src/state/slices/generalSlice";
 
@@ -45,7 +48,6 @@ const createStyles = (theme: Theme) =>
     section: {
       marginTop: moderateHeightScale(16),
       gap: moderateHeightScale(14),
-
     },
     sectionTitle: {
       fontSize: fontSize.size20,
@@ -81,18 +83,22 @@ export default function ExploreScreen() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const user = useAppSelector((state) => state.user);
-  const isFirstTryon = useAppSelector((state) => state.general.isFirstShowTryOn);
+  const isFirstTryon = useAppSelector(
+    (state) => state.general.isFirstShowTryOn,
+  );
   const categories = useAppSelector(
-    (state: any) => state.categories.categories
+    (state: any) => state.categories.categories,
   );
   const selectedCategory = useAppSelector(
-    (state: any) => state.categories.selectedCategory
+    (state: any) => state.categories.selectedCategory,
   );
   const isCusotmerandGuest = user.isGuest || user.userRole === "customer";
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
-  const [verifiedSalonsDeals, setVerifiedSalonsDeals] = useState<VerifiedSalon[]>([]);
+  const [verifiedSalonsDeals, setVerifiedSalonsDeals] = useState<
+    VerifiedSalon[]
+  >([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
   const [sortBy, setSortBy] = useState<SortByOption>("recommended");
@@ -107,9 +113,10 @@ export default function ExploreScreen() {
   const [serviceTemplates, setServiceTemplates] = useState<
     Array<{ id: number; name: string }>
   >([]);
-  const [selectedSubscriptionFilter, setSelectedSubscriptionFilter] = useState<
-    { id: number; name: string } | null
-  >(null);
+  const [selectedSubscriptionFilter, setSelectedSubscriptionFilter] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   // Reset both filters when category changes
   useEffect(() => {
@@ -122,7 +129,7 @@ export default function ExploreScreen() {
       setSelectedServiceFilter(value);
       setSelectedSubscriptionFilter(null);
     },
-    []
+    [],
   );
 
   const handleSubscriptionFilterSelect = useCallback(
@@ -130,7 +137,7 @@ export default function ExploreScreen() {
       setSelectedSubscriptionFilter(value);
       setSelectedServiceFilter(null);
     },
-    []
+    [],
   );
 
   const subscriptionFilters = useMemo(
@@ -139,18 +146,18 @@ export default function ExploreScreen() {
         { id: null, name: "Subscriptions" },
         ...SUBSCRIPTION_TEMPLATES,
       ] as Array<{ id: number | null; name: string }>,
-    []
+    [],
   );
 
   const serviceFilters = useMemo(
     () =>
       serviceTemplates.length > 0
-        ? ([
-          { id: null, name: "Services" },
-          ...serviceTemplates,
-        ] as Array<{ id: number | null; name: string }>)
+        ? ([{ id: null, name: "Services" }, ...serviceTemplates] as Array<{
+            id: number | null;
+            name: string;
+          }>)
         : [],
-    [serviceTemplates]
+    [serviceTemplates],
   );
 
   const getSortByLabel = (value: SortByOption) =>
@@ -158,7 +165,6 @@ export default function ExploreScreen() {
 
   const fetchServiceTemplates = async (categoryId: number) => {
     try {
-
       const response = await ApiService.get<{
         success: boolean;
         message: string;
@@ -180,12 +186,8 @@ export default function ExploreScreen() {
       }
     } catch (error) {
       Logger.error("Failed to fetch service templates:", error);
-
-
-
     }
-
-  }
+  };
 
   const fetchBusinessesDeals = async () => {
     try {
@@ -262,7 +264,10 @@ export default function ExploreScreen() {
         params.push(`category_ids=${selectedCategory}`);
       }
       if (selectedServiceFilter) {
-        params.push(`service_template_id=${selectedServiceFilter.id}`, `with_services=true`);
+        params.push(
+          `service_template_id=${selectedServiceFilter.id}`,
+          `with_services=true`,
+        );
       }
       if (selectedSubscriptionFilter) {
         params.push(`with_subscription_plans=true`);
@@ -347,7 +352,8 @@ export default function ExploreScreen() {
               else if (h > 0) duration = `${h}h`;
               else if (m > 0) duration = `${m} Mins`;
               else duration = "45 Mins";
-              const price = typeof s.price === "string" ? parseFloat(s.price) : s.price;
+              const price =
+                typeof s.price === "string" ? parseFloat(s.price) : s.price;
 
               const originalPrice = Number((price * 1.1).toFixed(2));
               return {
@@ -358,12 +364,13 @@ export default function ExploreScreen() {
                 description: s.description ?? "",
                 duration,
               };
-            }
+            },
           );
 
           const subscriptions: SubscriptionItem[] | undefined =
             item.subscription_plans?.map((p) => {
-              const price = typeof p.price === "string" ? parseFloat(p.price) : p.price;
+              const price =
+                typeof p.price === "string" ? parseFloat(p.price) : p.price;
               const orig = Number((price * 1.1).toFixed(2));
               return {
                 id: p.id,
@@ -380,12 +387,13 @@ export default function ExploreScreen() {
           return {
             ...base,
             ...(services && services.length > 0 ? { services } : {}),
-            ...(subscriptions && subscriptions.length > 0 ? { subscriptions } : {}),
+            ...(subscriptions && subscriptions.length > 0
+              ? { subscriptions }
+              : {}),
           };
         });
 
         setVerifiedSalons(mappedSalons);
-
       }
     } catch (error) {
       Logger.error("Failed to fetch businesses:", error);
@@ -400,13 +408,12 @@ export default function ExploreScreen() {
       if (isCusotmerandGuest) {
         fetchBusinessesDeals();
         fetchBusinesses();
-        fetchServiceTemplates(selectedCategory ?
-          Number(selectedCategory)
-          : categories?.[0]?.id);
+        fetchServiceTemplates(
+          selectedCategory ? Number(selectedCategory) : categories?.[0]?.id,
+        );
       }
     }, [selectedCategory, selectedServiceFilter, selectedSubscriptionFilter]),
   );
-
 
   return (
     <>
@@ -443,14 +450,15 @@ export default function ExploreScreen() {
                 onSelect={setSelectedSegment}
               />
 
-              {selectedSegment === "individual" && serviceFilters.length > 0 && (
-                <ExploreServiceFilters
-                  type="service"
-                  filters={serviceFilters}
-                  selectedFilter={selectedServiceFilter}
-                  onSelect={handleServiceFilterSelect}
-                />
-              )}
+              {selectedSegment === "individual" &&
+                serviceFilters.length > 0 && (
+                  <ExploreServiceFilters
+                    type="service"
+                    filters={serviceFilters}
+                    selectedFilter={selectedServiceFilter}
+                    onSelect={handleServiceFilterSelect}
+                  />
+                )}
 
               {selectedSegment === "subscriptions" &&
                 subscriptionFilters.length > 0 && (
@@ -478,7 +486,13 @@ export default function ExploreScreen() {
             />
           )}
           ItemSeparatorComponent={() => (
-            <View style={{ height: moderateHeightScale(selectedServiceFilter || selectedSubscriptionFilter ? 5 : 16) }} />
+            <View
+              style={{
+                height: moderateHeightScale(
+                  selectedServiceFilter || selectedSubscriptionFilter ? 5 : 16,
+                ),
+              }}
+            />
           )}
           renderItem={({ item, index }) =>
             selectedServiceFilter || selectedSubscriptionFilter ? (
@@ -493,7 +507,6 @@ export default function ExploreScreen() {
             )
           }
         />
-
       </View>
 
       <SortByBottomSheet
@@ -507,9 +520,9 @@ export default function ExploreScreen() {
         <TryOnModal
           visible={!isFirstTryon}
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
+          onUnlockPress={() => {}}
         />
       )}
-
     </>
   );
 }
