@@ -251,20 +251,31 @@ export default function ExploreScreen() {
       setBusinessesLoading(true);
       setBusinessesError(false);
       let url = businessEndpoints.businesses();
-
-
-      url = `${url}?sort=completed_appointments&direction=desc`;
-
+      const params: string[] = [];
 
       if (selectedCategory) {
-        url = `${url}&category_ids=${selectedCategory}`;
+        params.push(`category_ids=${selectedCategory}`);
+      }
+      if (selectedServiceFilter) {
+        params.push(`service_template_id=${selectedServiceFilter.id}`, `with_services=true`);
+      }
+      if (selectedSubscriptionFilter) {
+        params.push(`with_subscription_plans=true`);
+      }
+      if (sortBy === "recommended") {
+        params.push(`sort=completed_appointments`, `direction=desc`);
       }
 
+      if (params.length > 0) {
+        url = `${url}?${params.join("&")}`;
+      }
       // if (userLocation?.lat && userLocation?.long) {
       //   url += `&latitude=${userLocation.lat}`;
       //   url += `&longitude=${userLocation.long}`;
       //   url += `&radius_km=20`;
       // }
+
+      console.log("----------->url", url);
 
       const response = await ApiService.get<{
         success: boolean;
@@ -322,19 +333,14 @@ export default function ExploreScreen() {
   useFocusEffect(
     useCallback(() => {
       if (isCusotmerandGuest) {
-        fetchBusinesses();
         fetchBusinessesDeals();
+        fetchBusinesses();
         fetchServiceTemplates(selectedCategory ?
           Number(selectedCategory)
           : categories?.[0]?.id);
       }
-    }, [selectedCategory]),
+    }, [selectedCategory, selectedServiceFilter, selectedSubscriptionFilter]),
   );
-
-
-
-
-
 
 
   return (
