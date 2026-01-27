@@ -99,6 +99,7 @@ export function BusinessCard({
   );
 }
 
+
 export function ListEmptySection({
   businessesLoading,
   businessesError,
@@ -131,6 +132,72 @@ export function ListEmptySection({
   return (
     <View style={[styles.emptyContainer, { alignSelf: "stretch" }]}>
       <Text style={styles.emptyText}>No businesses found</Text>
+    </View>
+  );
+}
+
+
+export function BusinessCardType({
+  item: salon,
+  styles,
+}: {
+  item: VerifiedSalon;
+  styles: ListStyles;
+}) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const router = useRouter();
+
+  return (
+    <View style={styles.verifiedSalonCardNew}>
+      <Image
+        source={{ uri: salon.image ?? "" }}
+        style={styles.verifiedSalonImage}
+        resizeMode="cover"
+      />
+      <View style={styles.verifiedSalonContent}>
+        <View style={styles.platformVerifiedBadge}>
+          <PlatformVerifiedStarIcon
+            width={widthScale(10)}
+            height={heightScale(10)}
+          />
+          <Text style={styles.platformVerifiedText}>Platform verified</Text>
+        </View>
+        <View style={styles.businessInfoContainer}>
+          <Text
+            numberOfLines={1}
+            style={styles.verifiedSalonBusinessName}
+          >
+            {salon.businessName}
+          </Text>
+          <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
+            {salon.address}
+          </Text>
+        </View>
+        <View style={styles.verifiedSalonBottomRow}>
+          <View style={styles.verifiedSalonRatingButton}>
+            <StarIconSmall
+              width={widthScale(12)}
+              height={heightScale(12)}
+              color={theme.orangeBrown}
+            />
+            <Text style={styles.verifiedSalonRatingText}>
+              {salon.rating || 0}/ {salon.reviewCount || 0} reviews
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.verifiedSalonViewDetail}
+            onPress={() => {
+              router.push({
+                pathname: "/(main)/businessDetail",
+                params: { business_id: salon.id.toString() },
+              } as any);
+            }}
+          >
+            <Text style={styles.verifiedSalonViewDetailText}>View detail</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }

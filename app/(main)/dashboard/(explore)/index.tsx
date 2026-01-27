@@ -19,6 +19,7 @@ import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import {
   BusinessCard,
+  BusinessCardType,
   ListEmptySection,
 } from "./ShowBusinessList";
 import { createStyles as createListStyles } from "./ShowBusinessList/styles";
@@ -416,7 +417,7 @@ export default function ExploreScreen() {
             <View style={{ height: moderateHeightScale(12) }} />
           )}
           renderItem={({ item }) => (
-            selectedServiceFilter || selectedSubscriptionFilter ? null : <BusinessCard item={item} styles={listStyles} />
+            selectedServiceFilter || selectedSubscriptionFilter ? <BusinessCardType item={item} styles={listStyles} /> : <BusinessCard item={item} styles={listStyles} />
           )}
         />
 
