@@ -418,7 +418,6 @@ export default function ExploreScreen() {
           renderItem={({ item }) => (
             selectedServiceFilter || selectedSubscriptionFilter ? null : <BusinessCard item={item} styles={listStyles} />
           )}
-
         />
 
       </View>
