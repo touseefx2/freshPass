@@ -13,7 +13,6 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
@@ -283,7 +282,7 @@ export default function BusinessList({ data }: BusinessListProps) {
           <View style={styles.serviceButtonContainer}>
             <Button
               title="Book Now"
-              onPress={() => {}}
+              onPress={() => { }}
               containerStyle={styles.button}
               textStyle={styles.buttonText}
             />
@@ -379,7 +378,7 @@ export default function BusinessList({ data }: BusinessListProps) {
             <View style={styles.subscriptionButtonContainer}>
               <Button
                 title="Book Now"
-                onPress={() => {}}
+                onPress={() => { }}
                 containerStyle={styles.button}
                 textStyle={styles.buttonText}
               />

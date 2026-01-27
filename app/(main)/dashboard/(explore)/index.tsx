@@ -345,11 +345,13 @@ export default function ExploreScreen() {
               else if (m > 0) duration = `${m} Mins`;
               else duration = "45 Mins";
               const price = typeof s.price === "string" ? parseFloat(s.price) : s.price;
+
+              const originalPrice = Number((price * 1.1).toFixed(2));
               return {
                 id: s.id,
                 title: s.name,
                 price,
-                originalPrice: price * 1.1,
+                originalPrice: originalPrice,
                 description: s.description ?? "",
                 duration,
               };
@@ -359,11 +361,7 @@ export default function ExploreScreen() {
           const subscriptions: SubscriptionItem[] | undefined =
             item.subscription_plans?.map((p) => {
               const price = typeof p.price === "string" ? parseFloat(p.price) : p.price;
-              const orig = p.original_price
-                ? typeof p.original_price === "string"
-                  ? parseFloat(p.original_price)
-                  : p.original_price
-                : price * 0.8;
+              const orig = Number((price * 1.1).toFixed(2));
               return {
                 id: p.id,
                 title: p.name,
@@ -477,7 +475,7 @@ export default function ExploreScreen() {
             />
           )}
           ItemSeparatorComponent={() => (
-            <View style={{ height: moderateHeightScale(12) }} />
+            <View style={{ height: moderateHeightScale(selectedServiceFilter || selectedSubscriptionFilter ? 5 : 16) }} />
           )}
           renderItem={({ item, index }) =>
             selectedServiceFilter || selectedSubscriptionFilter ? (

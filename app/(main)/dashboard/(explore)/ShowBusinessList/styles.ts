@@ -129,10 +129,13 @@ export const createStyles = (theme: Theme) =>
     // Services / Subscriptions horizontal scroll
     shadow: {
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.18,
-      shadowRadius: 1.0,
-      elevation: 1,
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.2,
+      shadowRadius: 1.41,
+      elevation: 2,
     },
     servicesScroll: {
       paddingHorizontal: moderateWidthScale(20),
@@ -197,7 +200,7 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
       width: widthScale(200),
-      minHeight: heightScale(180),
+      minHeight: heightScale(160),
       overflow: "hidden",
     },
     offerBadgesContainer: {
@@ -281,6 +284,13 @@ export const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       maxWidth: "75%",
       textTransform: "capitalize",
+    },
+    sectionSubTitle2: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      textDecorationLine: "underline",
+      textDecorationColor: theme.orangeBrown,
     },
     noListFoundContainer: {
       paddingHorizontal: moderateWidthScale(20),

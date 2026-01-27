@@ -185,6 +185,7 @@ export function BusinessCardType({
         >
           {salon.businessName}
         </Text>
+        <Text style={styles.sectionSubTitle2}>View detail</Text>
       </View>
 
       {isIndividual && hasServices && (
@@ -270,7 +271,7 @@ export function BusinessCardType({
               <View
                 style={{
                   paddingHorizontal: moderateWidthScale(16),
-                  paddingTop: moderateHeightScale(16),
+                  padding: moderateHeightScale(16),
                   flex: 1,
                   justifyContent: "space-between",
                 }}
@@ -347,7 +348,6 @@ export function BusinessCardType({
                     ))
                   )}
                 </View>
-                <View style={styles.line} />
                 <View style={styles.subscriptionPrice}>
                   <View style={styles.subscriptionPriceContainer}>
                     <Text style={styles.priceCurrent}>
