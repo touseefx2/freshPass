@@ -29,8 +29,7 @@ import ExploreSegmentToggle, {
 } from "./ExploreSegmentToggle";
 import ExploreResultsHeader from "./ExploreResultsHeader";
 import ExploreServiceFilters from "./ExploreServiceFilters";
-
-
+import type { ServiceItem, SubscriptionItem } from "@/src/components/businessList";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -61,6 +60,8 @@ interface VerifiedSalon {
   rating: number;
   reviewCount: number;
   image: string | null;
+  services?: ServiceItem[];
+  subscriptions?: SubscriptionItem[];
 }
 
 const SUBSCRIPTION_TEMPLATES: Array<{ id: number; name: string }> = [
@@ -289,16 +290,31 @@ export default function ExploreScreen() {
           ratings_count: number;
           image_url: string | null;
           logo_url: string | null;
-          portfolio_photos?: Array<{
+          portfolio_photos?: Array<{ id: number; path: string; url: string }>;
+          services?: Array<{
             id: number;
-            path: string;
-            url: string;
+            name: string;
+            description?: string;
+            price: string | number;
+            duration_hours?: number;
+            duration_minutes?: number;
+          }>;
+          subscription_plans?: Array<{
+            id: number;
+            name: string;
+            price: string | number;
+            original_price?: string | number;
+            visits?: number;
+            offer?: string;
+            offer2?: string;
+            image_url?: string | null;
+            image?: string | null;
+            services?: Array<{ name: string }>;
           }>;
         }>;
       }>(url);
 
       if (response.success && response.data) {
-        // Map API response to VerifiedSalon format
         const mappedSalons: VerifiedSalon[] = response.data.map((item) => {
           let imageUrl = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
 
@@ -310,13 +326,60 @@ export default function ExploreScreen() {
             imageUrl = item.portfolio_photos[0].url;
           }
 
-          return {
+          const base = {
             id: item.id,
             businessName: item.title,
             address: item.address,
             rating: item.average_rating || 0,
             reviewCount: item.ratings_count || 0,
             image: imageUrl,
+          };
+
+          const services: ServiceItem[] | undefined = item.services?.map(
+            (s) => {
+              const h = s.duration_hours ?? 0;
+              const m = s.duration_minutes ?? 0;
+              let duration = "";
+              if (h > 0 && m > 0) duration = `${h}h ${m}m`;
+              else if (h > 0) duration = `${h}h`;
+              else if (m > 0) duration = `${m} Mins`;
+              else duration = "45 Mins";
+              const price = typeof s.price === "string" ? parseFloat(s.price) : s.price;
+              return {
+                id: s.id,
+                title: s.name,
+                price,
+                originalPrice: price * 1.1,
+                description: s.description ?? "",
+                duration,
+              };
+            }
+          );
+
+          const subscriptions: SubscriptionItem[] | undefined =
+            item.subscription_plans?.map((p) => {
+              const price = typeof p.price === "string" ? parseFloat(p.price) : p.price;
+              const orig = p.original_price
+                ? typeof p.original_price === "string"
+                  ? parseFloat(p.original_price)
+                  : p.original_price
+                : price * 0.8;
+              return {
+                id: p.id,
+                title: p.name,
+                price,
+                originalPrice: orig,
+                offer: p.offer ?? `${p.visits ?? 0} visits/month`,
+                offer2: p.offer2,
+                inclusions: p.services?.map((s) => s.name) ?? [],
+                image: p.image_url ?? p.image ?? null,
+              };
+            });
+
+          return {
+            ...base,
+            ...(services && services.length > 0 ? { services } : {}),
+            ...(subscriptions && subscriptions.length > 0 ? { subscriptions } : {}),
           };
         });
 
@@ -416,9 +479,18 @@ export default function ExploreScreen() {
           ItemSeparatorComponent={() => (
             <View style={{ height: moderateHeightScale(12) }} />
           )}
-          renderItem={({ item }) => (
-            selectedServiceFilter || selectedSubscriptionFilter ? <BusinessCardType item={item} styles={listStyles} /> : <BusinessCard item={item} styles={listStyles} />
-          )}
+          renderItem={({ item, index }) =>
+            selectedServiceFilter || selectedSubscriptionFilter ? (
+              <BusinessCardType
+                item={item}
+                index={index}
+                styles={listStyles}
+                type={selectedServiceFilter ? "individual" : "subscriptions"}
+              />
+            ) : (
+              <BusinessCard item={item} styles={listStyles} />
+            )
+          }
         />
 
       </View>

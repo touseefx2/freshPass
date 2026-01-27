@@ -126,4 +126,160 @@ export const createStyles = (theme: Theme) =>
     businessInfoContainer: {
       gap: moderateHeightScale(6),
     },
+    // Services / Subscriptions horizontal scroll
+    shadow: {
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.18,
+      shadowRadius: 1.0,
+      elevation: 1,
+    },
+    servicesScroll: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(12),
+      paddingBottom: moderateHeightScale(16),
+      gap: moderateWidthScale(12),
+    },
+    serviceCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateWidthScale(12),
+      width: widthScale(225),
+      minHeight: heightScale(120),
+      justifyContent: "space-between",
+    },
+    serviceTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    serviceDescription: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    servicePrice: {
+      alignItems: "flex-end",
+      gap: moderateWidthScale(4),
+    },
+    priceCurrent: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    priceOriginal: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      textDecorationLine: "line-through",
+    },
+    line: {
+      height: 0.5,
+      width: "100%",
+      backgroundColor: theme.borderLight,
+    },
+    serviceBottomRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    serviceDuration: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      maxWidth: "65%",
+    },
+    serviceButtonContainer: {
+      alignSelf: "flex-end",
+    },
+    subscriptionCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      width: widthScale(200),
+      minHeight: heightScale(180),
+      overflow: "hidden",
+    },
+    offerBadgesContainer: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(4),
+    },
+    offerBadge: {
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(999),
+      alignSelf: "flex-start",
+    },
+    offerBadgeOrange: {
+      backgroundColor: theme.selectCard,
+    },
+    offerBadgeGreen: {
+      borderWidth: 1,
+      borderColor: theme.lightGreen,
+      borderRadius: moderateWidthScale(999),
+    },
+    offerText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    subscriptionTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginVertical: moderateHeightScale(8),
+    },
+    inclusionItem: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    moreText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.primary,
+      textDecorationLine: "underline",
+      textDecorationColor: theme.primary,
+    },
+    subscriptionPrice: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      width: "100%",
+    },
+    subscriptionPriceContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      maxWidth: "55%",
+    },
+    subscriptionButtonContainer: {
+      alignSelf: "flex-end",
+    },
+    button: {
+      backgroundColor: theme.bookNowButton,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      height: moderateHeightScale(28),
+      borderRadius: moderateWidthScale(999),
+    },
+    buttonText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    sectionSubTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      maxWidth: "75%",
+      textTransform: "capitalize",
+    },
   });
