@@ -60,6 +60,10 @@ const createStyles = (theme: Theme) =>
     filterIconContainer: {
       justifyContent: "center",
       alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.borderMedium,
+      borderRadius: 9999999,
+      padding: 4,
     },
     filtersRow: {
       flexDirection: "row",
@@ -183,8 +187,8 @@ export default function ExploreHeader() {
           onPress={handleFilterPress}
           activeOpacity={0.8}>
           <FilterIcon
-            width={widthScale(20)}
-            height={heightScale(20)}
+            width={widthScale(18)}
+            height={heightScale(18)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
