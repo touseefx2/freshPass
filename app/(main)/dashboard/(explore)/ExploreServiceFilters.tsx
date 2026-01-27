@@ -14,8 +14,7 @@ import { fonts, fontSize } from "@/src/theme/fonts";
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     filterWrapper: {
-      backgroundColor: theme.lightGreen05,
-      paddingVertical: moderateHeightScale(12),
+      paddingTop: moderateHeightScale(6),
       marginBottom: moderateHeightScale(16),
     },
     filterScrollContent: {

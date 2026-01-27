@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -71,6 +71,9 @@ export default function ExploreScreen() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const user = useAppSelector((state) => state.user);
+  const categories = useAppSelector(
+    (state: any) => state.categories.categories
+  );
   const selectedCategory = useAppSelector(
     (state: any) => state.categories.selectedCategory
   );
@@ -85,18 +88,54 @@ export default function ExploreScreen() {
   const [sortSheetVisible, setSortSheetVisible] = useState(false);
   const [selectedSegment, setSelectedSegment] =
     useState<ExploreSegmentValue>("individual");
-  const [selectedServiceFilter, setSelectedServiceFilter] = useState("All");
 
-  const serviceFilters = [
-    "All",
-    "Beard Trim",
-    "Hair blow dry",
-    "Haircut",
-    "Manicure",
-  ];
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState("Services");
+  const [serviceTemplates, setServiceTemplates] = useState<
+    Array<{ id: number; name: string }>
+  >([]);
+
+
+  const serviceFilters = useMemo(
+    () =>
+      serviceTemplates.length > 0
+        ? ["Services", ...serviceTemplates.map((s) => s.name)]
+        : [],
+    [serviceTemplates]
+  );
 
   const getSortByLabel = (value: SortByOption) =>
     SORT_OPTIONS.find((o) => o.value === value)?.label ?? "Recommended";
+
+  const fetchServiceTemplates = async (categoryId: number) => {
+    try {
+
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: Array<{
+          id: number;
+          name: string;
+          category_id: number;
+          category: string;
+          base_price: number;
+          duration_hours: number;
+          duration_minutes: number;
+          active: boolean;
+          createdAt: string;
+        }>;
+      }>(businessEndpoints.serviceTemplates(categoryId));
+
+      if (response.success && response.data) {
+        setServiceTemplates(response.data);
+      }
+    } catch (error) {
+      Logger.error("Failed to fetch service templates:", error);
+
+
+
+    }
+
+  }
 
   const fetchBusinessesDeals = async () => {
     try {
@@ -235,16 +274,22 @@ export default function ExploreScreen() {
     }
   };
 
-
-
   useFocusEffect(
     useCallback(() => {
       if (isCusotmerandGuest) {
         fetchBusinesses();
         fetchBusinessesDeals();
+        fetchServiceTemplates(selectedCategory ?
+          Number(selectedCategory)
+          : categories?.[0]?.id);
       }
     }, [selectedCategory]),
   );
+
+
+
+
+
 
 
   return (
