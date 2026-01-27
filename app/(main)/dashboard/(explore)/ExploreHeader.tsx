@@ -61,7 +61,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       alignItems: "center",
       borderWidth: 1,
-      borderColor: theme.borderMedium,
+      borderColor: theme.borderLight,
       borderRadius: 9999999,
       padding: 4,
     },
