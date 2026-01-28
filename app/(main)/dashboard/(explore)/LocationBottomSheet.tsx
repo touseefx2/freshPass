@@ -4,7 +4,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -16,6 +15,7 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
+import FloatingInput from "@/src/components/floatingInput";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import { LocationPinIcon } from "@/assets/icons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -45,18 +45,11 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
-      marginBottom: moderateHeightScale(20),
+      marginVertical: moderateHeightScale(20),
     },
-    searchInput: {
-      flex: 1,
-      borderWidth: 1,
-      borderColor: theme.borderLine,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
+    searchInputContainer: {
+      // flex: 1,
+      width: "100%",
     },
     cancelText: {
       fontSize: fontSize.size14,
@@ -165,15 +158,9 @@ export default function LocationBottomSheet({
   const [enablingLocation, setEnablingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
 
-  console.log("currentLocation", currentLocation);
-
   useEffect(() => {
     checkLocationPermission();
   }, []);
-
-  const handleCancelSearch = () => {
-    setSearchQuery("");
-  };
 
   const checkLocationPermission = async () => {
     const servicesEnabled = await Location.hasServicesEnabledAsync();
@@ -320,19 +307,20 @@ export default function LocationBottomSheet({
 
   return (
     <ModalizeBottomSheet
-        visible={visible}
-        onClose={onClose}
-        title="Location"
-        modalHeightPercent={0.85}
-      >
+      visible={visible}
+      onClose={onClose}
+      title="Location"
+      modalHeightPercent={0.85}
+    >
       {/* Search row */}
       <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Enter a new location"
-          placeholderTextColor={theme.lightGreen}
+        <FloatingInput
+          label="Enter a new location"
           value={searchQuery}
           onChangeText={setSearchQuery}
+          placeholder="Enter a new location"
+          placeholderTextColor={theme.lightGreen}
+          containerStyle={styles.searchInputContainer}
         />
       </View>
 
