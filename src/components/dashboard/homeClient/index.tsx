@@ -110,6 +110,10 @@ export default function HomeScreen() {
 
       // Get address via reverse geocoding
       let locationName: string | null = null;
+      let countryName: string | null = null;
+      let cityName: string | null = null;
+      let countryCode: string | null = null;
+      let zipCode: string | null = null;
       try {
         const reverseResults = await Location.reverseGeocodeAsync(coordinates, {
           useGoogleMaps: true,
@@ -117,6 +121,12 @@ export default function HomeScreen() {
         });
         if (reverseResults && reverseResults.length > 0) {
           const address = reverseResults[0];
+          countryName =
+            (address as { country?: string }).country ?? null;
+          cityName = address.city ?? null;
+          countryCode =
+            (address as { isoCountryCode?: string }).isoCountryCode ?? null;
+          zipCode = address.postalCode ?? null;
           const addressParts = [
             address.street,
             address.city,
@@ -147,6 +157,10 @@ export default function HomeScreen() {
           lat: coordinates.latitude,
           long: coordinates.longitude,
           locationName: locationName,
+          countryName,
+          cityName,
+          countryCode,
+          zipCode,
         })
       );
 

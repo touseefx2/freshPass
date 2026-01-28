@@ -93,6 +93,8 @@ declare module "expo-location" {
     subregion?: string;
     region?: string;
     postalCode?: string;
+    country?: string;
+    isoCountryCode?: string;
   }
 
   export function requestForegroundPermissionsAsync(): Promise<PermissionResponse>;

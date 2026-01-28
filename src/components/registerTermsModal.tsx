@@ -207,6 +207,10 @@ export default function RegisterTermsModal({
           lat: null,
           long: null,
           locationName: null,
+          countryName: null,
+          cityName: null,
+          countryCode: null,
+          zipCode: null,
         })
       );
       onContinue();

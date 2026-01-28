@@ -42,6 +42,10 @@ const initialState: GeneralState = {
     lat: null,
     long: null,
     locationName: null,
+    countryName: null,
+    cityName: null,
+    countryCode: null,
+    zipCode: null,
   },
 };
 
@@ -110,6 +114,10 @@ const generalSlice = createSlice({
         lat: null,
         long: null,
         locationName: null,
+        countryName: null,
+        cityName: null,
+        countryCode: null,
+        zipCode: null,
       };
     },
     clearGeneral(state) {

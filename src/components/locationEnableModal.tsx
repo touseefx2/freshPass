@@ -237,9 +237,7 @@ export default function LocationEnableModal({
             ) : (
               <>
                 <Text style={styles.descriptionText}>
-                  Businesses are shown nearby based on your current location. You
-                  can also change your location in the header by selecting the
-                  location option.
+                  Businesses are shown based on your current location
                 </Text>
                 <View style={styles.bulletPoint}>
                   <View style={styles.bulletDot} />

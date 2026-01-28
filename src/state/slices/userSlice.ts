@@ -23,6 +23,10 @@ export interface Location {
   lat: number | null;
   long: number | null;
   locationName: string | null;
+  countryName: string | null;
+  cityName: string | null;
+  countryCode: string | null;
+  zipCode: string | null;
 }
 
 export type DiscoverType = "women" | "men" | "both" | "other" | null;
@@ -83,6 +87,10 @@ const initialState: UserState = {
     lat: null,
     long: null,
     locationName: null,
+    countryName: null,
+    cityName: null,
+    countryCode: null,
+    zipCode: null,
   },
   discover: null,
   selectBsnsCategory: [],

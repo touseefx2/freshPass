@@ -273,6 +273,10 @@ export default function SetLocationScreen() {
     lat: number;
     long: number;
     locationName: string | null;
+    countryName: string | null;
+    cityName: string | null;
+    countryCode: string | null;
+    zipCode: string | null;
   } | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
@@ -304,6 +308,10 @@ export default function SetLocationScreen() {
         lat,
         long: lng,
         locationName: user.location.locationName,
+        countryName: user.location.countryName ?? null,
+        cityName: user.location.cityName ?? null,
+        countryCode: user.location.countryCode ?? null,
+        zipCode: user.location.zipCode ?? null,
       });
     } else {
       // Default to a US location if no location set
@@ -342,12 +350,20 @@ export default function SetLocationScreen() {
             lat: latitude,
             long: longitude,
             locationName,
+            countryName: null,
+            cityName: null,
+            countryCode: addressData.countryCode ?? null,
+            zipCode: addressData.postal ?? null,
           });
         } else {
           setTempLocation({
             lat: latitude,
             long: longitude,
             locationName: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+            countryName: null,
+            cityName: null,
+            countryCode: null,
+            zipCode: null,
           });
         }
       } catch (error) {
@@ -356,6 +372,10 @@ export default function SetLocationScreen() {
           lat: latitude,
           long: longitude,
           locationName: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+          countryName: null,
+          cityName: null,
+          countryCode: null,
+          zipCode: null,
         });
       } finally {
         setIsFetchingAddress(false);
@@ -461,6 +481,10 @@ export default function SetLocationScreen() {
 
       // Get address via reverse geocoding
       let locationName: string | null = null;
+      let countryName: string | null = null;
+      let cityName: string | null = null;
+      let countryCode: string | null = null;
+      let zipCode: string | null = null;
       try {
         const reverseResults = await Location.reverseGeocodeAsync(coordinates, {
           useGoogleMaps: true,
@@ -468,6 +492,12 @@ export default function SetLocationScreen() {
         });
         if (reverseResults && reverseResults.length > 0) {
           const address = reverseResults[0];
+          countryName =
+            (address as { country?: string }).country ?? null;
+          cityName = address.city ?? null;
+          countryCode =
+            (address as { isoCountryCode?: string }).isoCountryCode ?? null;
+          zipCode = address.postalCode ?? null;
           const addressParts = [
             address.street,
             address.city,
@@ -507,6 +537,10 @@ export default function SetLocationScreen() {
         lat: coordinates.latitude,
         long: coordinates.longitude,
         locationName,
+        countryName,
+        cityName,
+        countryCode,
+        zipCode,
       });
 
       // Animate map after state updates
@@ -533,6 +567,10 @@ export default function SetLocationScreen() {
           lat: tempLocation.lat,
           long: tempLocation.long,
           locationName: tempLocation.locationName,
+          countryName: tempLocation.countryName ?? null,
+          cityName: tempLocation.cityName ?? null,
+          countryCode: tempLocation.countryCode ?? null,
+          zipCode: tempLocation.zipCode ?? null,
         })
       );
 
@@ -635,6 +673,10 @@ export default function SetLocationScreen() {
             lat: details.latitude,
             long: details.longitude,
             locationName: details.formattedAddress || description,
+            countryName: null,
+            cityName: null,
+            countryCode: details.countryCode ?? null,
+            zipCode: details.postal ?? null,
           });
 
           // Animate map to the new location

@@ -29,6 +29,7 @@ import {
   Category,
 } from "@/src/state/slices/categoriesSlice";
 import DatePickerModal from "@/src/components/datePickerModal";
+import LocationBottomSheet from "./LocationBottomSheet";
 import dayjs from "dayjs";
 import {
   setSelectedDate,
@@ -168,6 +169,7 @@ export default function ExploreHeader() {
   );
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
   const [dateModalVisible, setDateModalVisible] = useState(false);
+  const [locationSheetVisible, setLocationSheetVisible] = useState(false);
   const selectedDate = selectedDateISO ? dayjs(selectedDateISO) : null;
 
   const handleSearchPress = () => {
@@ -181,8 +183,7 @@ export default function ExploreHeader() {
   };
 
   const handleWherePress = () => {
-    // TODO: Navigate to location selection screen
-    console.log("Where pressed");
+    setLocationSheetVisible(true);
   };
 
   const handleWhenPress = () => {
@@ -348,6 +349,13 @@ export default function ExploreHeader() {
           dispatch(setSelectedDate(date.toISOString()));
         }}
       />
+      
+      {locationSheetVisible && (
+        <LocationBottomSheet
+          visible={locationSheetVisible}
+          onClose={() => setLocationSheetVisible(false)}
+        />
+      )}
     </View>
   );
 }
