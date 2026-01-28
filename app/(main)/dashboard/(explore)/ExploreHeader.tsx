@@ -239,12 +239,12 @@ export default function ExploreHeader() {
 
       {/* Where? and When? Fields */}
       <View style={styles.filtersRow}>
-        <View style={styles.filterField}>
-          <TouchableOpacity
-            style={styles.filterFieldTouchable}
-            onPress={handleWherePress}
-            activeOpacity={0.8}
-          >
+        <TouchableOpacity
+          onPress={handleWherePress}
+          activeOpacity={0.8}
+          style={styles.filterField}
+        >
+          <View style={styles.filterFieldTouchable}>
             <View style={styles.whereWhenIconContainer}>
               <LocationPinIcon
                 width={widthScale(16)}
@@ -263,7 +263,7 @@ export default function ExploreHeader() {
                 {location?.lat ? location.countryName : "Where?"}
               </Text>
             </View>
-          </TouchableOpacity>
+          </View>
 
           {location.lat && (
             <Pressable
@@ -278,14 +278,14 @@ export default function ExploreHeader() {
               />
             </Pressable>
           )}
-        </View>
+        </TouchableOpacity>
 
-        <View style={styles.filterField}>
-          <TouchableOpacity
-            style={styles.filterFieldTouchable}
-            onPress={handleWhenPress}
-            activeOpacity={0.8}
-          >
+        <TouchableOpacity
+          onPress={handleWhenPress}
+          activeOpacity={0.8}
+          style={styles.filterField}
+        >
+          <View style={styles.filterFieldTouchable}>
             <View style={styles.whereWhenIconContainer}>
               <CalendarIcon
                 width={widthScale(16)}
@@ -303,7 +303,7 @@ export default function ExploreHeader() {
                 {selectedDate ? formatSelectedDateLabel(selectedDate) : "When?"}
               </Text>
             </View>
-          </TouchableOpacity>
+          </View>
           {selectedDate && (
             <Pressable
               onPress={() => dispatch(clearSelectedDate())}
@@ -317,7 +317,7 @@ export default function ExploreHeader() {
               />
             </Pressable>
           )}
-        </View>
+        </TouchableOpacity>
       </View>
 
       {/* Category List */}
