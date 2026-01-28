@@ -74,7 +74,7 @@ const userPersistConfig = {
     "country_code",
     "phone",
     "isGuest",
-    "location",
+    // "location",
     "discover",
     "selectBsnsCategory",
     "dateOfBirth",

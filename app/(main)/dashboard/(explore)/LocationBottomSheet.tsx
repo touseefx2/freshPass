@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -6,6 +12,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -31,11 +38,21 @@ import { tryGetPosition } from "@/src/constant/functions";
 import Logger from "@/src/services/logger";
 import { setLocation } from "@/src/state/slices/userSlice";
 import { TouchableOpacity } from "react-native";
-
+import { PlacePrediction } from "@/src/types/location";
+import {
+  fetchSuggestions as fetchSuggestionsApi,
+  fetchPlaceDetails as fetchPlaceDetailsApi,
+} from "@/src/services/googlePlacesApi";
+ 
 interface LocationBottomSheetProps {
   visible: boolean;
   onClose: () => void;
 }
+
+const generateSessionToken = () =>
+  Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
+const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -135,6 +152,43 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       paddingVertical: moderateHeightScale(30),
     },
+    suggestionsContainer: {
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+      overflow: "hidden",
+      marginBottom: moderateHeightScale(20),
+    },
+    suggestionItem: {
+      paddingHorizontal: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(12),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen2,
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+      alignItems: "center",
+    },
+    suggestionText: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    infoText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      paddingVertical: moderateHeightScale(12),
+    },
+    errorText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.link,
+      textAlign: "center",
+      paddingVertical: moderateHeightScale(12),
+    },
   });
 
 export default function LocationBottomSheet({
@@ -158,10 +212,172 @@ export default function LocationBottomSheet({
   const [searchQuery, setSearchQuery] = useState("");
   const [enablingLocation, setEnablingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
+  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const sessionTokenRef = useRef<string>(generateSessionToken());
 
   useEffect(() => {
     getCurrentLocation();
   }, []);
+
+  const ensureSessionToken = useCallback(() => {
+    if (!sessionTokenRef.current) {
+      sessionTokenRef.current = generateSessionToken();
+    }
+  }, []);
+
+  const fetchSuggestions = async (query: string) => {
+    if (!query.trim()) {
+      setPredictions([]);
+      setSuggestionError(null);
+      return;
+    }
+
+    if (!apiKey) {
+      setPredictions([]);
+      setSuggestionError("Unable to load suggestions. Please try again.");
+      return;
+    }
+
+    try {
+      setIsLoadingSuggestions(true);
+      setSuggestionError(null);
+      ensureSessionToken();
+
+      const response = await fetchSuggestionsApi(
+        query,
+        sessionTokenRef.current,
+      );
+
+      if (response.status === "OK" || response.status === "ZERO_RESULTS") {
+        setPredictions(response.predictions);
+        if (response.status === "ZERO_RESULTS") {
+          setSuggestionError(null);
+        }
+      } else {
+        setSuggestionError("Unable to load suggestions. Please try again.");
+        setPredictions([]);
+      }
+    } catch (error: any) {
+      Logger.error("Error fetching suggestions:", error);
+      setSuggestionError("Unable to load suggestions. Please try again.");
+      setPredictions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchSuggestions(searchQuery);
+    }, 100);
+
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const handleFetchPlaceDetails = async (
+    placeId: string,
+    description: string,
+  ) => {
+    if (!apiKey) {
+      showBanner(
+        "Error",
+        "Unable to fetch place details. Please try again.",
+        "error",
+      );
+      return;
+    }
+
+    try {
+      setIsFetchingDetails(true);
+      ensureSessionToken();
+
+      const details = await fetchPlaceDetailsApi(
+        placeId,
+        sessionTokenRef.current,
+      );
+
+      // Extract country name and city from formatted address or use reverse geocoding
+      let countryName: string | null = null;
+      let cityName: string | null = null;
+      let zipCode: string | null = details.postal || null;
+
+      // If we have coordinates, use reverse geocoding to get accurate country and city
+      if (details.latitude && details.longitude) {
+        try {
+          const reverseResults = await Location.reverseGeocodeAsync(
+            {
+              latitude: details.latitude,
+              longitude: details.longitude,
+            },
+            {
+              useGoogleMaps: true,
+              timeout: 10000,
+            },
+          );
+          if (reverseResults && reverseResults.length > 0) {
+            const address = reverseResults[0];
+            countryName = (address as { country?: string }).country ?? null;
+            cityName = address.city ?? null;
+            if (!zipCode) {
+              zipCode = address.postalCode ?? null;
+            }
+          }
+        } catch (error) {
+          Logger.error("Reverse geocode failed:", error);
+        }
+      }
+
+      // Fallback: Try to extract from formatted address if reverse geocoding failed
+      if (!countryName && details.formattedAddress) {
+        const addressParts = details.formattedAddress.split(",");
+        if (addressParts.length > 0) {
+          countryName = addressParts[addressParts.length - 1]?.trim() || null;
+          if (addressParts.length > 1 && !cityName) {
+            cityName = addressParts[addressParts.length - 2]?.trim() || null;
+          }
+        }
+      }
+
+      // Use area as city if available and cityName is still null
+      if (details.area && !cityName) {
+        cityName = details.area;
+      }
+
+      const locationPayload = {
+        lat: details.latitude || null,
+        long: details.longitude || null,
+        locationName: details.formattedAddress || description,
+        countryName,
+        cityName,
+        countryCode: details.countryCode || null,
+        zipCode,
+      };
+
+      dispatch(setLocation(locationPayload));
+      dispatch(addToRecentLocations(locationPayload));
+      setSearchQuery("");
+      setPredictions([]);
+      onClose();
+    } catch (error: any) {
+      Logger.error("Error fetching place details:", error);
+      showBanner(
+        "Error",
+        "Unable to fetch place details. Please try again.",
+        "error",
+      );
+    } finally {
+      setIsFetchingDetails(false);
+      sessionTokenRef.current = generateSessionToken();
+    }
+  };
+
+  const handleSuggestionPress = (prediction: PlacePrediction) => {
+    setSearchQuery(prediction.description);
+    handleFetchPlaceDetails(prediction.place_id, prediction.description);
+  };
 
   const handleCloseModal = async (shouldGetLocation?: boolean) => {
     setShowLocationModal(false);
@@ -310,8 +526,70 @@ export default function LocationBottomSheet({
           placeholder="Enter a new location"
           placeholderTextColor={theme.lightGreen}
           containerStyle={styles.searchInputContainer}
+          onClear={() => {
+            setSearchQuery("");
+            setPredictions([]);
+            setSuggestionError(null);
+          }}
+          renderLeftAccessory={() => (
+            <Feather
+              name="search"
+              size={moderateWidthScale(18)}
+              color={theme.darkGreen}
+            />
+          )}
         />
       </View>
+
+      {/* Search suggestions */}
+      {searchQuery.trim().length > 0 && (
+        <View style={styles.suggestionsContainer}>
+          {isLoadingSuggestions && (
+            <View style={{ paddingVertical: moderateHeightScale(12) }}>
+              <ActivityIndicator size="small" color={theme.darkGreen} />
+            </View>
+          )}
+          {!isLoadingSuggestions &&
+            !suggestionError &&
+            predictions.map((prediction, index) => {
+              const isLast = index === predictions.length - 1;
+              return (
+                <Pressable
+                  key={prediction.place_id ?? index.toString()}
+                  style={[
+                    styles.suggestionItem,
+                    isLast && { borderBottomWidth: 0 },
+                  ]}
+                  onPress={() => handleSuggestionPress(prediction)}
+                  disabled={isFetchingDetails}
+                >
+                  <Feather
+                    name="map-pin"
+                    size={moderateWidthScale(16)}
+                    color={theme.lightGreen}
+                  />
+                  <Text style={styles.suggestionText}>
+                    {prediction.structured_formatting?.main_text ??
+                      prediction.description}
+                    {prediction.structured_formatting?.secondary_text
+                      ? `, ${prediction.structured_formatting.secondary_text}`
+                      : ""}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          {!isLoadingSuggestions && suggestionError && (
+            <Text style={styles.errorText}>{suggestionError}</Text>
+          )}
+          {!isLoadingSuggestions &&
+            !suggestionError &&
+            predictions.length === 0 && (
+              <Text style={styles.infoText}>
+                No results yet. Try refining your search.
+              </Text>
+            )}
+        </View>
+      )}
 
       {/* Current location */}
       <TouchableOpacity
