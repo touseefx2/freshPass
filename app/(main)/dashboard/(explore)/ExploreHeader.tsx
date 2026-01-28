@@ -30,6 +30,7 @@ import {
 } from "@/src/state/slices/categoriesSlice";
 import DatePickerModal from "@/src/components/datePickerModal";
 import LocationBottomSheet from "./LocationBottomSheet";
+import SearchBottomSheet from "./SearchBottomSheet";
 import dayjs from "dayjs";
 import {
   setSelectedDate,
@@ -170,11 +171,11 @@ export default function ExploreHeader() {
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
   const [dateModalVisible, setDateModalVisible] = useState(false);
   const [locationSheetVisible, setLocationSheetVisible] = useState(false);
+  const [searchSheetVisible, setSearchSheetVisible] = useState(false);
   const selectedDate = selectedDateISO ? dayjs(selectedDateISO) : null;
 
   const handleSearchPress = () => {
-    // TODO: Navigate to search screen or open search modal
-    console.log("Search pressed");
+    setSearchSheetVisible(true);
   };
 
   const handleFilterPress = () => {
@@ -382,6 +383,13 @@ export default function ExploreHeader() {
         <LocationBottomSheet
           visible={locationSheetVisible}
           onClose={() => setLocationSheetVisible(false)}
+        />
+      )}
+
+      {searchSheetVisible && (
+        <SearchBottomSheet
+          visible={searchSheetVisible}
+          onClose={() => setSearchSheetVisible(false)}
         />
       )}
     </View>
