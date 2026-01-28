@@ -45,7 +45,10 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
 const CHAT_BOX_HEIGHT = SCREEN_HEIGHT * 0.6;
 
-const createStyles = (theme: Theme, bottomInset: number) =>
+const CHAT_BOTTOM_OFFSET = 70;
+const CHAT_BOTTOM_OFFSET_TRYON = 110; // when isFirstShowTryOn is true
+
+const createStyles = (theme: Theme, bottomInset: number, chatBottomOffset: number = CHAT_BOTTOM_OFFSET) =>
   StyleSheet.create({
     container: {
       position: "absolute",
@@ -61,7 +64,7 @@ const createStyles = (theme: Theme, bottomInset: number) =>
     },
     floatingButton: {
       position: "absolute",
-      bottom: moderateHeightScale(70) + bottomInset,
+      bottom: moderateHeightScale(chatBottomOffset) + bottomInset,
       right: moderateWidthScale(16),
       width: widthScale(45),
       height: widthScale(45),
@@ -103,7 +106,7 @@ const createStyles = (theme: Theme, bottomInset: number) =>
     },
     chatBoxContainer: {
       position: "absolute",
-      bottom: moderateHeightScale(70) + bottomInset,
+      bottom: moderateHeightScale(chatBottomOffset) + bottomInset,
       right: moderateWidthScale(5),
       width: CHAT_BOX_WIDTH,
       height: CHAT_BOX_HEIGHT,
@@ -549,7 +552,9 @@ const AiChatBot: React.FC = () => {
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom;
-  const styles = useMemo(() => createStyles(theme, bottomInset), [theme, bottomInset]);
+  const isFirstTryon = useAppSelector((state) => state.general.isFirstShowTryOn);
+  const chatBottomOffset = isFirstTryon ? CHAT_BOTTOM_OFFSET_TRYON : CHAT_BOTTOM_OFFSET;
+  const styles = useMemo(() => createStyles(theme, bottomInset, chatBottomOffset), [theme, bottomInset, chatBottomOffset]);
 
   const { isOpen, messages, isLoading, isStreaming, sessionId } = useAppSelector((state) => state.chat);
   const [inputText, setInputText] = useState("");
