@@ -67,8 +67,9 @@ const createStyles = (theme: Theme) =>
     },
     filtersRow: {
       flexDirection: "row",
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(15),
       marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
     },
     filterField: {
       flex: 1,
@@ -79,7 +80,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(12),
       gap: moderateWidthScale(10),
-      marginHorizontal: moderateWidthScale(20),
     },
     whereWhenIconContainer: {
       justifyContent: "center",
