@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { Location } from "./userSlice";
 
 export type UserRole = "business" | "customer" | "staff" | null;
 
@@ -18,6 +19,7 @@ export interface GeneralState {
   searchText: string; // Search text for location/services search
   guestModeModalVisible: boolean; // Guest mode modal visibility state
   isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
+  currentLocation: Location; // Current location (lat, long, locationName)
 }
 
 const initialState: GeneralState = {
@@ -36,6 +38,11 @@ const initialState: GeneralState = {
   searchText: "",
   guestModeModalVisible: false,
   isFirstShowTryOn: false,
+  currentLocation: {
+    lat: null,
+    long: null,
+    locationName: null,
+  },
 };
 
 const generalSlice = createSlice({
@@ -95,6 +102,16 @@ const generalSlice = createSlice({
     setIsFirstShowTryOn(state, action: PayloadAction<boolean>) {
       state.isFirstShowTryOn = action.payload;
     },
+    setCurrentLocation(state, action: PayloadAction<Location>) {
+      state.currentLocation = action.payload;
+    },
+    clearCurrentLocation(state) {
+      state.currentLocation = {
+        lat: null,
+        long: null,
+        locationName: null,
+      };
+    },
     clearGeneral(state) {
       state.theme = initialState.theme;
       state.themeType = initialState.themeType;
@@ -111,6 +128,7 @@ const generalSlice = createSlice({
       state.searchText = initialState.searchText;
       state.guestModeModalVisible = initialState.guestModeModalVisible;
       // state.isFirstShowTryOn = initialState.isFirstShowTryOn;
+      state.currentLocation = initialState.currentLocation;
     },
   },
 });
@@ -133,6 +151,8 @@ export const {
   clearSearchText,
   setGuestModeModalVisible,
   setIsFirstShowTryOn,
+  setCurrentLocation,
+  clearCurrentLocation,
   resetGeneral,
   clearGeneral,
 } = generalSlice.actions;

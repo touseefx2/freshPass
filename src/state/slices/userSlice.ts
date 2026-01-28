@@ -46,7 +46,6 @@ export interface UserState {
   businessStatusError: boolean;
   isGuest: boolean;
   location: Location;
-  currentLocation: Location;
   discover: DiscoverType;
   selectBsnsCategory: {
     id: number;
@@ -81,11 +80,6 @@ const initialState: UserState = {
   businessStatusError: false,
   isGuest: false,
   location: {
-    lat: null,
-    long: null,
-    locationName: null,
-  },
-  currentLocation:{
     lat: null,
     long: null,
     locationName: null,
@@ -221,9 +215,6 @@ const userSlice = createSlice({
     setLocation(state, action: PayloadAction<Location>) {
       state.location = action.payload;
     },
-    setCurrentLocation(state, action: PayloadAction<Location>) {
-      state.currentLocation = action.payload;
-    },
     setDiscover(state, action: PayloadAction<DiscoverType>) {
       state.discover = action.payload;
     },
@@ -251,7 +242,6 @@ export const {
   setBusinessStatus,
   setBusinessStatusLoading,
   setBusinessStatusError,
-  setCurrentLocation,
   setUserDetails,
   setUnreadCount,
   setIsGuest,
