@@ -14,7 +14,7 @@ import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import {
   setSelectedServices,
   setSelectedStaff,
-  clearBusinessData,
+  resetBusiness,
   setBusinessData as setBusinessDataAction,
   type StaffMember,
 } from "@/src/state/slices/bsnsSlice";
@@ -633,7 +633,7 @@ export default function BookingNow() {
     }
 
     return () => {
-      dispatch(clearBusinessData());
+      dispatch(resetBusiness());
     };
   }, []);
 
