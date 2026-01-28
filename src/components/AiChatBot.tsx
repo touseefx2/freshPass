@@ -25,6 +25,7 @@ import {
   moderateHeightScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSegments } from "expo-router";
 import { SendIcon, CloseIcon, AiRobotIcon } from "@/assets/icons";
 import {
   toggleChat,
@@ -70,8 +71,8 @@ const createStyles = (theme: Theme, bottomInset: number, chatBottomOffset: numbe
       height: widthScale(45),
       borderRadius: widthScale(45 / 2),
       backgroundColor: theme.darkGreen,
-      borderWidth: 1,
-      borderColor: theme.darkGreenLight,
+      borderWidth: 0.5,
+      borderColor: theme.white85,
     },
     buttonInner: {
       width: "100%",
@@ -552,8 +553,10 @@ const AiChatBot: React.FC = () => {
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom;
+  const segments = useSegments() as string[];
+  const isOnExploreScreen = Array.isArray(segments) && segments.includes("(explore)");
   const isFirstTryon = useAppSelector((state) => state.general.isFirstShowTryOn);
-  const chatBottomOffset = isFirstTryon ? CHAT_BOTTOM_OFFSET_TRYON : CHAT_BOTTOM_OFFSET;
+  const chatBottomOffset = (isFirstTryon && isOnExploreScreen) ? CHAT_BOTTOM_OFFSET_TRYON : CHAT_BOTTOM_OFFSET;
   const styles = useMemo(() => createStyles(theme, bottomInset, chatBottomOffset), [theme, bottomInset, chatBottomOffset]);
 
   const { isOpen, messages, isLoading, isStreaming, sessionId } = useAppSelector((state) => state.chat);
