@@ -23,16 +23,13 @@ import LocationEnableModal from "@/src/components/locationEnableModal";
 import * as Location from "expo-location";
 import { handleLocationPermission } from "@/src/services/locationPermissionService";
 import {
+  addToRecentLocations,
   setCurrentLocation,
   setLocationLoading,
 } from "@/src/state/slices/generalSlice";
 import { tryGetPosition } from "@/src/constant/functions";
 import Logger from "@/src/services/logger";
-
-const RECENT_LOCATIONS_MOCK: { name: string; subtitle: string }[] = [
-  // { name: "Africa", subtitle: "Rockport, IN" },
-  // { name: "United States", subtitle: "" },
-];
+import { setLocation } from "@/src/state/slices/userSlice";
 
 interface LocationBottomSheetProps {
   visible: boolean;
@@ -154,6 +151,9 @@ export default function LocationBottomSheet({
   const locationLoading = useAppSelector(
     (state) => state.general.locationLoading,
   );
+  const recentLocations = useAppSelector(
+    (state) => state.general.recentLocations,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [enablingLocation, setEnablingLocation] = useState(false);
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -272,18 +272,17 @@ export default function LocationBottomSheet({
         return;
       }
 
-      // Store location in user slice
-      dispatch(
-        setCurrentLocation({
-          lat: coordinates.latitude,
-          long: coordinates.longitude,
-          locationName: locationName,
-          countryName,
-          cityName,
-          countryCode,
-          zipCode,
-        }),
-      );
+      const locationPayload = {
+        lat: coordinates.latitude,
+        long: coordinates.longitude,
+        locationName: locationName,
+        countryName,
+        cityName,
+        countryCode,
+        zipCode,
+      };
+      dispatch(setCurrentLocation(locationPayload));
+      dispatch(addToRecentLocations(locationPayload));
 
       dispatch(setLocationLoading(false));
     } catch (error) {
@@ -301,7 +300,7 @@ export default function LocationBottomSheet({
     ? locationLoading
       ? "Getting location..."
       : currentLocation.lat && currentLocation.long
-        ? currentLocation?.countryName + ", " + currentLocation?.cityName
+        ? currentLocation?.countryName
         : "Get location"
     : "Location access disabled";
 
@@ -359,31 +358,42 @@ export default function LocationBottomSheet({
 
       {/* Recent locations */}
       <Text style={styles.recentSectionTitle}>Recent locations</Text>
-      {RECENT_LOCATIONS_MOCK.length > 0 ? (
-        RECENT_LOCATIONS_MOCK.map((item, i) => (
-          <Pressable
-            key={i}
-            style={[
-              styles.recentItem,
-              i === RECENT_LOCATIONS_MOCK.length - 1 && styles.recentItemLast,
-            ]}
-            onPress={() => onClose()}
-          >
-            <View style={styles.recentItemIconWrap}>
-              <LocationPinIcon
-                width={widthScale(18)}
-                height={heightScale(18)}
-                color={theme.lightGreen}
-              />
-            </View>
-            <View style={styles.recentItemText}>
-              <Text style={styles.recentItemName}>{item.name}</Text>
-              {item.subtitle ? (
-                <Text style={styles.recentItemSubtitle}>{item.subtitle}</Text>
-              ) : null}
-            </View>
-          </Pressable>
-        ))
+      {recentLocations.length > 0 ? (
+        recentLocations.map((item, i) => {
+          const name = item.countryName;
+
+          const subtitle =
+            item.locationName ?? item.cityName ?? item.countryName ?? "";
+
+          return (
+            <Pressable
+              key={`${item.lat}-${item.long}-${i}`}
+              style={[
+                styles.recentItem,
+                i === recentLocations.length - 1 && styles.recentItemLast,
+              ]}
+              onPress={() => {
+                dispatch(setLocation(item));
+                dispatch(addToRecentLocations(item));
+                onClose();
+              }}
+            >
+              <View style={styles.recentItemIconWrap}>
+                <LocationPinIcon
+                  width={widthScale(18)}
+                  height={heightScale(18)}
+                  color={theme.lightGreen}
+                />
+              </View>
+              <View style={styles.recentItemText}>
+                <Text style={styles.recentItemName}>{name}</Text>
+                {subtitle ? (
+                  <Text style={styles.recentItemSubtitle}>{subtitle}</Text>
+                ) : null}
+              </View>
+            </Pressable>
+          );
+        })
       ) : (
         <Text style={styles.recentEmpty}>No recent location found</Text>
       )}

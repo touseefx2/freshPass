@@ -53,6 +53,7 @@ const generalPersistConfig = {
     "registerEmail",
     "isVisitFirst",
     "isFirstShowTryOn",
+    "recentLocations",
   ], // Only persist these fields
 };
 

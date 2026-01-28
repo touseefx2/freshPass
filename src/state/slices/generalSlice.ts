@@ -3,6 +3,18 @@ import type { Location } from "./userSlice";
 
 export type UserRole = "business" | "customer" | "staff" | null;
 
+function isSameLocation(a: Location, b: Location): boolean {
+  return (
+    a.lat === b.lat &&
+    a.long === b.long &&
+    (a.locationName ?? null) === (b.locationName ?? null) &&
+    (a.countryName ?? null) === (b.countryName ?? null) &&
+    (a.cityName ?? null) === (b.cityName ?? null) &&
+    (a.countryCode ?? null) === (b.countryCode ?? null) &&
+    (a.zipCode ?? null) === (b.zipCode ?? null)
+  );
+}
+
 export interface GeneralState {
   theme: "light" | "dark" | "blue";
   themeType: "default" | "system";
@@ -20,6 +32,7 @@ export interface GeneralState {
   guestModeModalVisible: boolean; // Guest mode modal visibility state
   isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
   currentLocation: Location; // Current location (lat, long, locationName)
+  recentLocations: Location[]; // Recent locations (persisted)
 }
 
 const initialState: GeneralState = {
@@ -47,6 +60,7 @@ const initialState: GeneralState = {
     countryCode: null,
     zipCode: null,
   },
+  recentLocations: [],
 };
 
 const generalSlice = createSlice({
@@ -109,6 +123,14 @@ const generalSlice = createSlice({
     setCurrentLocation(state, action: PayloadAction<Location>) {
       state.currentLocation = action.payload;
     },
+    addToRecentLocations(state, action: PayloadAction<Location>) {
+      const loc = action.payload;
+      const idx = state.recentLocations.findIndex((r) => isSameLocation(r, loc));
+      if (idx >= 0) {
+        state.recentLocations.splice(idx, 1);
+      }
+      state.recentLocations.unshift(loc);
+    },
     clearCurrentLocation(state) {
       state.currentLocation = {
         lat: null,
@@ -137,6 +159,7 @@ const generalSlice = createSlice({
       state.guestModeModalVisible = initialState.guestModeModalVisible;
       // state.isFirstShowTryOn = initialState.isFirstShowTryOn;
       state.currentLocation = initialState.currentLocation;
+      state.recentLocations = initialState.recentLocations;
     },
   },
 });
@@ -160,6 +183,7 @@ export const {
   setGuestModeModalVisible,
   setIsFirstShowTryOn,
   setCurrentLocation,
+  addToRecentLocations,
   clearCurrentLocation,
   resetGeneral,
   clearGeneral,
