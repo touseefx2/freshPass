@@ -35,6 +35,7 @@ import {
   setSelectedDate,
   clearSelectedDate,
 } from "@/src/state/slices/generalSlice";
+import { clearLocation, setLocation } from "@/src/state/slices/userSlice";
 
 function formatSelectedDateLabel(d: dayjs.Dayjs): string {
   if (dayjs().isSame(d, "day")) return "Today";
@@ -237,20 +238,46 @@ export default function ExploreHeader() {
 
       {/* Where? and When? Fields */}
       <View style={styles.filtersRow}>
-        <TouchableOpacity
-          style={styles.filterField}
-          onPress={handleWherePress}
-          activeOpacity={0.8}
-        >
-          <View style={styles.whereWhenIconContainer}>
-            <LocationPinIcon
-              width={widthScale(16)}
-              height={heightScale(16)}
-              color={theme.darkGreen}
-            />
-          </View>
-          <Text style={styles.filterPlaceholder}>Where?</Text>
-        </TouchableOpacity>
+        <View style={styles.filterField}>
+          <TouchableOpacity
+            style={styles.filterFieldTouchable}
+            onPress={handleWherePress}
+            activeOpacity={0.8}
+          >
+            <View style={styles.whereWhenIconContainer}>
+              <LocationPinIcon
+                width={widthScale(16)}
+                height={heightScale(16)}
+                color={theme.darkGreen}
+              />
+            </View>
+
+            <View style={styles.filterTextContainer}>
+              <Text
+                style={
+                  location?.lat ? styles.filterValue : styles.filterPlaceholder
+                }
+                numberOfLines={1}
+              >
+                {location?.lat ? location.countryName : "Where?"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {location.lat && (
+            <Pressable
+              onPress={() => dispatch(clearLocation())}
+              style={styles.clearButton}
+              hitSlop={moderateWidthScale(8)}
+            >
+              <CloseIcon
+                width={widthScale(18)}
+                height={heightScale(18)}
+                color={theme.darkGreen}
+              />
+            </Pressable>
+          )}
+        </View>
 
         <View style={styles.filterField}>
           <TouchableOpacity

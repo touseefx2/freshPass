@@ -223,6 +223,17 @@ const userSlice = createSlice({
     setLocation(state, action: PayloadAction<Location>) {
       state.location = action.payload;
     },
+    clearLocation(state) {
+      state.location = {
+        lat: null,
+        long: null,
+        locationName: null,
+        countryName: null,
+        cityName: null,
+        countryCode: null,
+        zipCode: null,
+      };
+    },
     setDiscover(state, action: PayloadAction<DiscoverType>) {
       state.discover = action.payload;
     },
@@ -258,5 +269,6 @@ export const {
   setSelectBsnsCategory,
   setBusinessId,
   resetUser,
+  clearLocation
 } = userSlice.actions;
 export default userSlice.reducer;
