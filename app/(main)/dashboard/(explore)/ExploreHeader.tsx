@@ -5,6 +5,7 @@ import {
   View,
   TouchableOpacity,
   ScrollView,
+  Pressable,
 } from "react-native";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -20,6 +21,7 @@ import {
   FilterIcon,
   LocationPinIcon,
   CalendarIcon,
+  CloseIcon,
 } from "@/assets/icons";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -28,7 +30,17 @@ import {
 } from "@/src/state/slices/categoriesSlice";
 import DatePickerModal from "@/src/components/datePickerModal";
 import dayjs from "dayjs";
-import { setSelectedDate } from "@/src/state/slices/generalSlice";
+import {
+  setSelectedDate,
+  clearSelectedDate,
+} from "@/src/state/slices/generalSlice";
+
+function formatSelectedDateLabel(d: dayjs.Dayjs): string {
+  if (dayjs().isSame(d, "day")) return "Today";
+  if (dayjs().add(1, "day").isSame(d, "day")) return "Tomorrow";
+  if (d.year() === dayjs().year()) return d.format("MMM D");
+  return d.format("MMM D, YYYY");
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -84,6 +96,12 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(12),
       gap: moderateWidthScale(10),
     },
+    filterFieldTouchable: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+    },
     whereWhenIconContainer: {
       justifyContent: "center",
       alignItems: "center",
@@ -93,6 +111,15 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    filterTextContainer: {
+      flex: 1,
+    },
+    filterValue: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    clearButton: {},
     categoriesContainer: {
       // marginTop: moderateHeightScale(4),
     },
@@ -142,8 +169,6 @@ export default function ExploreHeader() {
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
   const [dateModalVisible, setDateModalVisible] = useState(false);
   const selectedDate = selectedDateISO ? dayjs(selectedDateISO) : null;
-
-  console.log("selectedDate", selectedDate);
 
   const handleSearchPress = () => {
     // TODO: Navigate to search screen or open search modal
@@ -225,20 +250,44 @@ export default function ExploreHeader() {
           <Text style={styles.filterPlaceholder}>Where?</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.filterField}
-          onPress={handleWhenPress}
-          activeOpacity={0.8}
-        >
-          <View style={styles.whereWhenIconContainer}>
-            <CalendarIcon
-              width={widthScale(16)}
-              height={heightScale(16)}
-              color={theme.darkGreen}
-            />
-          </View>
-          <Text style={styles.filterPlaceholder}>When?</Text>
-        </TouchableOpacity>
+        <View style={styles.filterField}>
+          <TouchableOpacity
+            style={styles.filterFieldTouchable}
+            onPress={handleWhenPress}
+            activeOpacity={0.8}
+          >
+            <View style={styles.whereWhenIconContainer}>
+              <CalendarIcon
+                width={widthScale(16)}
+                height={heightScale(16)}
+                color={theme.darkGreen}
+              />
+            </View>
+            <View style={styles.filterTextContainer}>
+              <Text
+                style={
+                  selectedDate ? styles.filterValue : styles.filterPlaceholder
+                }
+                numberOfLines={1}
+              >
+                {selectedDate ? formatSelectedDateLabel(selectedDate) : "When?"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+          {selectedDate && (
+            <Pressable
+              onPress={() => dispatch(clearSelectedDate())}
+              style={styles.clearButton}
+              hitSlop={moderateWidthScale(8)}
+            >
+              <CloseIcon
+                width={widthScale(18)}
+                height={heightScale(18)}
+                color={theme.darkGreen}
+              />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       {/* Category List */}
