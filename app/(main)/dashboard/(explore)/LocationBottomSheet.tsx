@@ -274,8 +274,6 @@ export default function LocationBottomSheet({
         zipCode,
       };
       dispatch(setCurrentLocation(locationPayload));
-      dispatch(addToRecentLocations(locationPayload));
-
       dispatch(setLocationLoading(false));
     } catch (error) {
       dispatch(setLocationLoading(false));
