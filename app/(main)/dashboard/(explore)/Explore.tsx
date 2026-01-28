@@ -516,13 +516,14 @@ export default function ExploreScreen() {
         setSortBy={setSortBy}
       />
 
-      {!isFirstTryon && (
+      {/* {!isFirstTryon && ( */}
         <TryOnModal
-          visible={!isFirstTryon}
+          // visible={!isFirstTryon}
+          visible={true}
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
           onUnlockPress={() => {}}
         />
-      )}
+      {/* )} */}
     </>
   );
 }

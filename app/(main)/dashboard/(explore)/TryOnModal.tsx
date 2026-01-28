@@ -19,7 +19,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface TryOnModalProps {
   visible: boolean;
@@ -70,7 +70,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(6),
-      marginBottom: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(5),
     },
     logoText: {
       fontSize: fontSize.size20,
@@ -89,7 +89,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontExtraBold,
     },
     description1: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
       color: theme.white,
       textAlign: "center",
@@ -98,16 +98,16 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(8),
     },
     description2: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.white,
+      color: theme.white85,
       textAlign: "center",
       lineHeight: moderateHeightScale(24),
       paddingHorizontal: moderateWidthScale(8),
     },
     bottomSection: {
       alignItems: "center",
-      paddingBottom: moderateHeightScale(40),
+      paddingBottom: moderateHeightScale(20),
     },
     unlockButton: {
       width: "100%",
@@ -117,7 +117,7 @@ const createStyles = (theme: Theme) =>
     pricingText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.white,
+      color: theme.white70,
       textAlign: "center",
     },
   });
@@ -145,7 +145,7 @@ export default function TryOnModal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View style={styles.container}>
+      <SafeAreaView edges={["bottom"]} style={styles.container}>
         <StatusBar barStyle="light-content" translucent />
         <ImageBackground
           source={IMAGES.tryOnBack}
@@ -156,7 +156,7 @@ export default function TryOnModal({
             <TouchableOpacity
               style={[
                 styles.skipButton,
-                { top: insets.top + moderateHeightScale(8) },
+                { top: insets.top + moderateHeightScale(12) },
               ]}
               onPress={onClose}
               activeOpacity={0.7}
@@ -204,7 +204,7 @@ export default function TryOnModal({
             </View>
           </View>
         </ImageBackground>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
