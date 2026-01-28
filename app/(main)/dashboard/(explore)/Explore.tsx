@@ -418,7 +418,7 @@ export default function ExploreScreen() {
   return (
     <>
       <View style={styles.container}>
-        <StatusBar barStyle="light-content" />
+      <StatusBar backgroundColor={theme.darkGreen} barStyle="light-content" translucent />
         <ExploreHeader />
 
         <FlatList
@@ -507,6 +507,8 @@ export default function ExploreScreen() {
             )
           }
         />
+
+
       </View>
 
       <SortByBottomSheet
@@ -516,14 +518,14 @@ export default function ExploreScreen() {
         setSortBy={setSortBy}
       />
 
-      {/* {!isFirstTryon && ( */}
+      {!isFirstTryon && (
         <TryOnModal
-          // visible={!isFirstTryon}
-          visible={true}
+          visible={!isFirstTryon}
+          // visible={true}
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
           onUnlockPress={() => {}}
         />
-      {/* )} */}
+      )}  
     </>
   );
 }
