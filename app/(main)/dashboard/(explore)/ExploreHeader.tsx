@@ -161,11 +161,10 @@ export default function ExploreHeader() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
-  const categories = useAppSelector(
-    (state: any) => state.categories.categories,
-  );
+  const location = useAppSelector((state) => state.user.location);
+  const categories = useAppSelector((state) => state.categories.categories);
   const selectedCategory = useAppSelector(
-    (state: any) => state.categories.selectedCategory,
+    (state) => state.categories.selectedCategory,
   );
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
   const [dateModalVisible, setDateModalVisible] = useState(false);
@@ -195,6 +194,8 @@ export default function ExploreHeader() {
       setSelectedCategory(categoryId === "all" ? undefined : categoryId),
     );
   };
+
+  console.log("------> location", location);
 
   return (
     <View
@@ -349,7 +350,7 @@ export default function ExploreHeader() {
           dispatch(setSelectedDate(date.toISOString()));
         }}
       />
-      
+
       {locationSheetVisible && (
         <LocationBottomSheet
           visible={locationSheetVisible}
