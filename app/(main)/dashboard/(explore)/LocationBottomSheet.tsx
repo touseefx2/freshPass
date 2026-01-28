@@ -30,6 +30,7 @@ import {
 import { tryGetPosition } from "@/src/constant/functions";
 import Logger from "@/src/services/logger";
 import { setLocation } from "@/src/state/slices/userSlice";
+import { TouchableOpacity } from "react-native";
 
 interface LocationBottomSheetProps {
   visible: boolean;
@@ -315,7 +316,14 @@ export default function LocationBottomSheet({
       </View>
 
       {/* Current location */}
-      <View style={styles.currentLocationRow}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => {
+          dispatch(setLocation(currentLocation));
+          onClose();
+        }}
+        style={styles.currentLocationRow}
+      >
         <LocationPinIcon
           width={widthScale(18)}
           height={heightScale(18)}
@@ -328,7 +336,7 @@ export default function LocationBottomSheet({
           </Text>
         </View>
 
-        {!enablingLocation  ? (
+        {!enablingLocation ? (
           <Pressable
             onPress={() => setShowLocationModal(true)}
             style={styles.enableButton}
@@ -348,7 +356,7 @@ export default function LocationBottomSheet({
             )}
           </Pressable>
         )}
-      </View>
+      </TouchableOpacity>
 
       {/* Recent locations */}
       <Text style={styles.recentSectionTitle}>Recent locations</Text>
@@ -368,7 +376,6 @@ export default function LocationBottomSheet({
               ]}
               onPress={() => {
                 dispatch(setLocation(item));
-                dispatch(addToRecentLocations(item));
                 onClose();
               }}
             >
