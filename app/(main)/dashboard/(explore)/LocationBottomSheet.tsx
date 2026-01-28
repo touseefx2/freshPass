@@ -159,17 +159,8 @@ export default function LocationBottomSheet({
   const [showLocationModal, setShowLocationModal] = useState(false);
 
   useEffect(() => {
-    checkLocationPermission();
+    getCurrentLocation();
   }, []);
-
-  const checkLocationPermission = async () => {
-    const servicesEnabled = await Location.hasServicesEnabledAsync();
-    setEnablingLocation(servicesEnabled);
-  };
-
-  const handleEnableLocation = async () => {
-    setShowLocationModal(true);
-  };
 
   const handleCloseModal = async (shouldGetLocation?: boolean) => {
     setShowLocationModal(false);
@@ -337,8 +328,11 @@ export default function LocationBottomSheet({
           </Text>
         </View>
 
-        {!enablingLocation ? (
-          <Pressable onPress={handleEnableLocation} style={styles.enableButton}>
+        {!enablingLocation  ? (
+          <Pressable
+            onPress={() => setShowLocationModal(true)}
+            style={styles.enableButton}
+          >
             <Text style={styles.enableButtonText}>Enable</Text>
           </Pressable>
         ) : (
