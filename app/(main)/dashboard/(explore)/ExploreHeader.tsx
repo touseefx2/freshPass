@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -26,6 +26,9 @@ import {
   setSelectedCategory,
   Category,
 } from "@/src/state/slices/categoriesSlice";
+import DatePickerModal from "@/src/components/datePickerModal";
+import dayjs from "dayjs";
+import { setSelectedDate } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -130,10 +133,17 @@ export default function ExploreHeader() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
-  const categories = useAppSelector((state: any) => state.categories.categories);
-  const selectedCategory = useAppSelector(
-    (state: any) => state.categories.selectedCategory
+  const categories = useAppSelector(
+    (state: any) => state.categories.categories,
   );
+  const selectedCategory = useAppSelector(
+    (state: any) => state.categories.selectedCategory,
+  );
+  const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
+  const [dateModalVisible, setDateModalVisible] = useState(false);
+  const selectedDate = selectedDateISO ? dayjs(selectedDateISO) : null;
+
+  console.log("selectedDate", selectedDate);
 
   const handleSearchPress = () => {
     // TODO: Navigate to search screen or open search modal
@@ -151,12 +161,13 @@ export default function ExploreHeader() {
   };
 
   const handleWhenPress = () => {
-    // TODO: Open date picker
-    console.log("When pressed");
+    setDateModalVisible(true);
   };
 
   const handleCategorySelect = (categoryId: number | "all") => {
-    dispatch(setSelectedCategory(categoryId === "all" ? undefined : categoryId));
+    dispatch(
+      setSelectedCategory(categoryId === "all" ? undefined : categoryId),
+    );
   };
 
   return (
@@ -164,12 +175,14 @@ export default function ExploreHeader() {
       style={[
         styles.headerContainer,
         { paddingTop: insets.top + moderateHeightScale(10) },
-      ]}>
+      ]}
+    >
       {/* Search Field */}
       <TouchableOpacity
         style={styles.searchContainer}
         onPress={handleSearchPress}
-        activeOpacity={0.8}>
+        activeOpacity={0.8}
+      >
         <View style={styles.searchIconContainer}>
           <SearchIcon
             width={widthScale(20)}
@@ -185,7 +198,8 @@ export default function ExploreHeader() {
         <TouchableOpacity
           style={styles.filterIconContainer}
           onPress={handleFilterPress}
-          activeOpacity={0.8}>
+          activeOpacity={0.8}
+        >
           <FilterIcon
             width={widthScale(18)}
             height={heightScale(18)}
@@ -199,7 +213,8 @@ export default function ExploreHeader() {
         <TouchableOpacity
           style={styles.filterField}
           onPress={handleWherePress}
-          activeOpacity={0.8}>
+          activeOpacity={0.8}
+        >
           <View style={styles.whereWhenIconContainer}>
             <LocationPinIcon
               width={widthScale(16)}
@@ -213,7 +228,8 @@ export default function ExploreHeader() {
         <TouchableOpacity
           style={styles.filterField}
           onPress={handleWhenPress}
-          activeOpacity={0.8}>
+          activeOpacity={0.8}
+        >
           <View style={styles.whereWhenIconContainer}>
             <CalendarIcon
               width={widthScale(16)}
@@ -230,18 +246,21 @@ export default function ExploreHeader() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.categoriesContainer}
-        contentContainerStyle={styles.categoriesScroll}>
+        contentContainerStyle={styles.categoriesScroll}
+      >
         {/* All Category */}
         <TouchableOpacity
           style={styles.categoryItem}
           onPress={() => handleCategorySelect("all")}
-          activeOpacity={0.8}>
+          activeOpacity={0.8}
+        >
           <Text
             style={
               selectedCategory === undefined
                 ? styles.categoryTextActive
                 : styles.categoryText
-            }>
+            }
+          >
             All
           </Text>
           {selectedCategory === undefined && (
@@ -257,11 +276,13 @@ export default function ExploreHeader() {
               key={category.id}
               style={styles.categoryItem}
               onPress={() => handleCategorySelect(category.id)}
-              activeOpacity={0.8}>
+              activeOpacity={0.8}
+            >
               <Text
                 style={
                   isSelected ? styles.categoryTextActive : styles.categoryText
-                }>
+                }
+              >
                 {category.name}
               </Text>
               {isSelected && <View style={styles.categoryUnderline} />}
@@ -269,6 +290,15 @@ export default function ExploreHeader() {
           );
         })}
       </ScrollView>
+
+      <DatePickerModal
+        visible={dateModalVisible}
+        onClose={() => setDateModalVisible(false)}
+        selectedDate={selectedDate}
+        onDateSelect={(date) => {
+          dispatch(setSelectedDate(date.toISOString()));
+        }}
+      />
     </View>
   );
 }

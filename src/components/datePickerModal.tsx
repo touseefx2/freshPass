@@ -277,7 +277,7 @@ export default function DatePickerModal({
     <Modal
       visible={visible}
       transparent={true}
-      animationType="none"
+      animationType="slide"
       onRequestClose={onClose}
       statusBarTranslucent
     >
