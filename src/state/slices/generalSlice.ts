@@ -130,6 +130,10 @@ const generalSlice = createSlice({
         state.recentLocations.splice(idx, 1);
       }
       state.recentLocations.unshift(loc);
+      // Keep only the latest 5 recent locations
+      if (state.recentLocations.length > 5) {
+        state.recentLocations = state.recentLocations.slice(0, 5);
+      }
     },
     clearCurrentLocation(state) {
       state.currentLocation = {
