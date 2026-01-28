@@ -108,8 +108,8 @@ const createStyles = (theme: Theme) =>
       borderBottomWidth: 0,
     },
     recentItemIconWrap: {
-      width: widthScale(40),
-      height: heightScale(40),
+      width: widthScale(30),
+      height: heightScale(30),
       borderRadius: moderateWidthScale(8),
       backgroundColor: theme.borderLight,
       alignItems: "center",
@@ -119,18 +119,18 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     recentItemName: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.text,
     },
     recentItemSubtitle: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       marginTop: moderateHeightScale(2),
     },
     recentEmpty: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       paddingVertical: moderateHeightScale(30),
@@ -381,8 +381,8 @@ export default function LocationBottomSheet({
             >
               <View style={styles.recentItemIconWrap}>
                 <LocationPinIcon
-                  width={widthScale(18)}
-                  height={heightScale(18)}
+                  width={widthScale(15)}
+                  height={heightScale(15)}
                   color={theme.lightGreen}
                 />
               </View>
