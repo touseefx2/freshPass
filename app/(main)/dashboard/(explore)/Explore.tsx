@@ -35,6 +35,7 @@ import type {
 } from "@/src/components/businessList";
 import TryOnModal from "./TryOnModal";
 import { setIsFirstShowTryOn } from "@/src/state/slices/generalSlice";
+import TryOnBanner from "./TryOnBanner";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -418,7 +419,11 @@ export default function ExploreScreen() {
   return (
     <>
       <View style={styles.container}>
-      <StatusBar backgroundColor={theme.darkGreen} barStyle="light-content" translucent />
+        <StatusBar
+          backgroundColor={theme.darkGreen}
+          barStyle="light-content"
+          translucent
+        />
         <ExploreHeader />
 
         <FlatList
@@ -508,8 +513,7 @@ export default function ExploreScreen() {
           }
         />
 
-
-
+        {isFirstTryon && <TryOnBanner onPress={() => {}} />}
       </View>
 
       <SortByBottomSheet
@@ -526,7 +530,7 @@ export default function ExploreScreen() {
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
           onUnlockPress={() => {}}
         />
-      )}  
+      )}
     </>
   );
 }
