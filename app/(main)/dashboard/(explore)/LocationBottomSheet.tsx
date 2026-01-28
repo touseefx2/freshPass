@@ -319,7 +319,12 @@ export default function LocationBottomSheet({
     : "Location access disabled";
 
   return (
-    <ModalizeBottomSheet visible={visible} onClose={onClose} title="Location">
+    <ModalizeBottomSheet
+        visible={visible}
+        onClose={onClose}
+        title="Location"
+        modalHeightPercent={0.85}
+      >
       {/* Search row */}
       <View style={styles.searchRow}>
         <TextInput

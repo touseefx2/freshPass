@@ -33,6 +33,8 @@ interface ModalizeBottomSheetProps {
   sheetContainerStyle?: ViewStyle;
   contentStyle?: ViewStyle;
   scrollViewStyle?: ViewStyle;
+  /** Fixed height as fraction of screen (e.g. 0.85 = 85%). When set, sheet uses this height instead of adjusting to content. */
+  modalHeightPercent?: number;
 }
 
 const createStyles = (theme: Theme) =>
@@ -96,9 +98,10 @@ export default function ModalizeBottomSheet({
   onFooterButtonPress,
   footerButtonDisabled = false,
   children,
-  sheetContainerStyle={},
+  sheetContainerStyle = {},
   contentStyle,
   scrollViewStyle,
+  modalHeightPercent,
 }: ModalizeBottomSheetProps) {
   const modalizeRef = useRef<Modalize>(null);
   const { colors } = useTheme();
@@ -106,7 +109,9 @@ export default function ModalizeBottomSheet({
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
   const screenHeight = Dimensions.get("window").height;
-  const maxContentHeight = screenHeight * 0.75;
+  const maxContentHeight = modalHeightPercent
+    ? screenHeight * modalHeightPercent - 140
+    : screenHeight * 0.75;
 
   useEffect(() => {
     if (visible) {
@@ -123,14 +128,21 @@ export default function ModalizeBottomSheet({
       <Modalize
         ref={modalizeRef}
         onClosed={onClose}
-        adjustToContentHeight
+        adjustToContentHeight={!modalHeightPercent}
         handlePosition="inside"
         withOverlay
         closeOnOverlayTap
         panGestureEnabled
         avoidKeyboardLikeIOS
         overlayStyle={styles.modalOverlay}
-        modalStyle={[styles.bottomSheet,sheetContainerStyle, { maxHeight: screenHeight * 0.9 }]}
+        modalStyle={[
+          styles.bottomSheet,
+          sheetContainerStyle,
+          { maxHeight: screenHeight * 0.9 },
+          modalHeightPercent != null && {
+            height: screenHeight * modalHeightPercent,
+          },
+        ]}
         HeaderComponent={
           <View style={styles.header}>
             <Text style={styles.headerTitle}>{title}</Text>
