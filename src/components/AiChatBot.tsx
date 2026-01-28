@@ -47,7 +47,7 @@ const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
 const CHAT_BOX_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 const CHAT_BOTTOM_OFFSET = 70;
-const CHAT_BOTTOM_OFFSET_TRYON = 110; // when isFirstShowTryOn is true
+const CHAT_BOTTOM_OFFSET_TRYON = 115; // when isFirstShowTryOn is true
 
 const createStyles = (theme: Theme, bottomInset: number, chatBottomOffset: number = CHAT_BOTTOM_OFFSET) =>
   StyleSheet.create({
