@@ -106,6 +106,7 @@ export default function SocialLogin() {
 
       Logger.log("userInfo", userInfo);
       Logger.log("idToken", idToken);
+      Logger.log("role", selectedRole);
     } catch (error: any) {
       Logger.error("Google Sign-In Error:", error);
 
