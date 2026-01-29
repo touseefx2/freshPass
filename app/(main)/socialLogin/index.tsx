@@ -5,6 +5,12 @@ import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
+import appleAuth, {
+  AppleRequestOperation,
+  AppleRequestScope,
+  AppleCredentialState,
+  AppleError,
+} from "@invertase/react-native-apple-authentication";
 import { Image } from "expo-image";
 import {
   SafeAreaView,
@@ -37,6 +43,7 @@ const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 // 2. Web Client ID: Google Cloud Console mein Web Application OAuth client banayein - ye code mein use hoga
 // Web Client ID code mein chahiye kyunki ID token backend verify karta hai, aur Web Client ID se hi ID token milta hai
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
+const APPLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
 
 export default function SocialLogin() {
   const { colors } = useTheme();
@@ -52,6 +59,7 @@ export default function SocialLogin() {
     if (Platform.OS !== "web") {
       try {
         GoogleSignin.configure({
+          iosClientId: APPLE_IOS_CLIENT_ID, // iOS Client ID from Google Cloud Console (required for iOS)
           webClientId: GOOGLE_WEB_CLIENT_ID, // Web Client ID from Google Cloud Console (required for ID token)
           offlineAccess: true, // For server-side access to Google APIs
           forceCodeForRefreshToken: true, // [Android] Get serverAuthCode for backend
@@ -123,7 +131,88 @@ export default function SocialLogin() {
     }
   };
 
-  const handleAppleLogin = async () => {};
+  const handleAppleLogin = async () => {
+    try {
+      // Check if Apple Sign-In is available (iOS 13+)
+      if (Platform.OS !== "ios") {
+        Alert.alert("Error", "Apple Sign-In is only available on iOS devices");
+        return;
+      }
+
+      if (!appleAuth.isSupported) {
+        Alert.alert(
+          "Error",
+          "Apple Sign-In is not available on this device. iOS 13+ is required.",
+        );
+        return;
+      }
+
+      // Perform Apple Sign-In request
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: AppleRequestOperation.LOGIN,
+        requestedScopes: [AppleRequestScope.EMAIL, AppleRequestScope.FULL_NAME],
+      });
+
+      // Check if the request was successful
+      if (!appleAuthRequestResponse.identityToken) {
+        Alert.alert("Error", "Failed to get identity token from Apple");
+        return;
+      }
+
+      // Get credential state to check if user is authenticated
+      const credentialState = await appleAuth.getCredentialStateForUser(
+        appleAuthRequestResponse.user,
+      );
+
+      if (credentialState === AppleCredentialState.REVOKED) {
+        Alert.alert("Error", "Apple Sign-In credentials have been revoked");
+        return;
+      }
+
+      // Extract user information
+      const { identityToken, authorizationCode, user, email, fullName } =
+        appleAuthRequestResponse;
+
+      Logger.log("Apple Sign-In Success:", {
+        user,
+        email,
+        fullName,
+        hasIdentityToken: !!identityToken,
+        hasAuthorizationCode: !!authorizationCode,
+      });
+
+      // You can now send identityToken and authorizationCode to your backend
+      // Backend will verify the token with Apple's servers
+      if (identityToken) {
+        Logger.log("Apple Identity Token:", identityToken);
+      }
+      if (authorizationCode) {
+        Logger.log("Apple Authorization Code:", authorizationCode);
+      }
+    } catch (error: any) {
+      Logger.error("Apple Sign-In Error:", error);
+
+      if (error.code === AppleError.CANCELED) {
+        // User cancelled the login flow
+        Logger.log("User cancelled Apple Sign-In");
+      } else if (error.code === AppleError.NOT_HANDLED) {
+        // Sign-In request was not handled
+        Logger.log("Apple Sign-In request was not handled");
+      } else if (error.code === AppleError.UNKNOWN) {
+        // Unknown error occurred
+        Alert.alert(
+          "Apple Sign-In Failed",
+          error.message || "An unknown error occurred during Apple Sign-In",
+        );
+      } else {
+        // Some other error happened
+        Alert.alert(
+          "Apple Sign-In Failed",
+          error.message || "An error occurred during Apple Sign-In",
+        );
+      }
+    }
+  };
 
   const handleSocialLogin = async (provider: SocialProvider) => {
     if (provider === "google") {
