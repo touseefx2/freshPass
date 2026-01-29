@@ -424,7 +424,7 @@ export default function ExploreScreen() {
           barStyle="light-content"
           translucent
         />
-        <ExploreHeader />
+        <ExploreHeader popularServices={serviceFilters} />
 
         <FlatList
           data={verifiedSalons}

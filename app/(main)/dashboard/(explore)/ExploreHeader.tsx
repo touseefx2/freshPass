@@ -30,7 +30,9 @@ import {
 } from "@/src/state/slices/categoriesSlice";
 import DatePickerModal from "@/src/components/datePickerModal";
 import LocationBottomSheet from "./LocationBottomSheet";
-import SearchBottomSheet from "./SearchBottomSheet";
+import SearchBottomSheet, {
+  type PopularServiceItem,
+} from "./SearchBottomSheet";
 import dayjs from "dayjs";
 import {
   setSelectedDate,
@@ -157,7 +159,13 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function ExploreHeader() {
+interface ExploreHeaderProps {
+  popularServices?: PopularServiceItem[];
+}
+
+export default function ExploreHeader({
+  popularServices = [],
+}: ExploreHeaderProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -390,6 +398,7 @@ export default function ExploreHeader() {
         <SearchBottomSheet
           visible={searchSheetVisible}
           onClose={() => setSearchSheetVisible(false)}
+          popularServices={popularServices}
         />
       )}
     </View>

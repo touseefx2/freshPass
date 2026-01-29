@@ -14,10 +14,13 @@ import FloatingInput from "@/src/components/floatingInput";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import { SearchIcon } from "@/assets/icons";
 
+export type PopularServiceItem = { id: number | null; name: string };
+
 interface SearchBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   onSearch?: (query: string) => void;
+  popularServices?: PopularServiceItem[];
 }
 
 const createStyles = (theme: Theme) =>
@@ -83,20 +86,16 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-const mockPopularServices = [
-  "Tattoo Session",
-  "Tattoo Consultation",
-  "Haircut",
-  "Beard Trim",
-  "Facial",
-  "Massage",
-];
-
 export default function SearchBottomSheet({
   visible,
   onClose,
   onSearch,
+  popularServices = [],
 }: SearchBottomSheetProps) {
+  const popularList = useMemo(
+    () => popularServices.filter((s) => s.id !== null),
+    [popularServices],
+  );
   const dispatch = useAppDispatch();
   const recentSearches = useAppSelector(
     (state) => state.general.recentSearches,
@@ -117,14 +116,10 @@ export default function SearchBottomSheet({
 
   const handleRecentSearchPress = (query: string) => {
     setSearchQuery(query);
-    onSearch?.(query);
-    onClose();
   };
 
-  const handlePopularServicePress = (service: string) => {
-    setSearchQuery(service);
-    onSearch?.(service);
-    onClose();
+  const handlePopularServicePress = (serviceName: string) => {
+    setSearchQuery(serviceName);
   };
 
   return (
@@ -183,19 +178,23 @@ export default function SearchBottomSheet({
       )}
 
       {/* Popular Services Section */}
-      <Text style={styles.popularSectionTitle}>Popular Services</Text>
-      <View style={styles.popularServicesContainer}>
-        {mockPopularServices.map((service, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.popularServiceTag}
-            onPress={() => handlePopularServicePress(service)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.popularServiceText}>{service}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {popularList.length > 0 && (
+        <>
+          <Text style={styles.popularSectionTitle}>Popular Services</Text>
+          <View style={styles.popularServicesContainer}>
+            {popularList.map((service) => (
+              <TouchableOpacity
+                key={service.id ?? service.name}
+                style={styles.popularServiceTag}
+                onPress={() => handlePopularServicePress(service.name)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.popularServiceText}>{service.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
     </ModalizeBottomSheet>
   );
 }
