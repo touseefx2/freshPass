@@ -61,7 +61,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
-      marginVertical: moderateHeightScale(20),
+      marginVertical: moderateHeightScale(10),
     },
     searchInputContainer: {
       // flex: 1,

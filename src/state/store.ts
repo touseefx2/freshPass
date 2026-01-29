@@ -54,6 +54,7 @@ const generalPersistConfig = {
     "isVisitFirst",
     "isFirstShowTryOn",
     "recentLocations",
+    "recentSearches",
   ], // Only persist these fields
 };
 

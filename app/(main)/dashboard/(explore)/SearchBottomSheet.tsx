@@ -1,11 +1,7 @@
 import React, { useMemo, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-} from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { addToRecentSearches } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -28,7 +24,9 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     searchInputContainer: {
       width: "100%",
-      marginBottom: moderateHeightScale(24),
+
+      marginTop: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(20),
     },
     recentSectionTitle: {
       fontSize: fontSize.size14,
@@ -52,6 +50,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.text,
+    },
+    recentEmpty: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      paddingVertical: moderateHeightScale(15),
     },
     popularSectionTitle: {
       fontSize: fontSize.size14,
@@ -79,15 +83,6 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-// Mock data - replace with actual data from state/API
-const mockRecentSearches = [
-  "Female Haircut",
-  "Male Haircut",
-  "Beard Shaping",
-  "Skin Fade",
-  "Line Up",
-];
-
 const mockPopularServices = [
   "Tattoo Session",
   "Tattoo Consultation",
@@ -102,14 +97,20 @@ export default function SearchBottomSheet({
   onClose,
   onSearch,
 }: SearchBottomSheetProps) {
+  const dispatch = useAppDispatch();
+  const recentSearches = useAppSelector(
+    (state) => state.general.recentSearches,
+  );
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = () => {
-    if (searchQuery.trim()) {
-      onSearch?.(searchQuery.trim());
+    const query = searchQuery.trim();
+    if (query) {
+      dispatch(addToRecentSearches(query));
+      onSearch?.(query);
       onClose();
     }
   };
@@ -157,28 +158,28 @@ export default function SearchBottomSheet({
       />
 
       {/* Recent Searches Section */}
-      {mockRecentSearches.length > 0 && (
-        <>
-          <Text style={styles.recentSectionTitle}>Recent searches</Text>
-          {mockRecentSearches.map((search, index) => {
-            const isLast = index === mockRecentSearches.length - 1;
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[styles.recentItem, isLast && styles.recentItemLast]}
-                onPress={() => handleRecentSearchPress(search)}
-                activeOpacity={0.7}
-              >
-                <SearchIcon
-                  width={widthScale(18)}
-                  height={heightScale(18)}
-                  color={theme.lightGreen}
-                />
-                <Text style={styles.recentItemText}>{search}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </>
+      <Text style={styles.recentSectionTitle}>Recent searches</Text>
+      {recentSearches.length > 0 ? (
+        recentSearches.map((search, index) => {
+          const isLast = index === recentSearches.length - 1;
+          return (
+            <TouchableOpacity
+              key={`${search}-${index}`}
+              style={[styles.recentItem, isLast && styles.recentItemLast]}
+              onPress={() => handleRecentSearchPress(search)}
+              activeOpacity={0.7}
+            >
+              <SearchIcon
+                width={widthScale(18)}
+                height={heightScale(18)}
+                color={theme.lightGreen}
+              />
+              <Text style={styles.recentItemText}>{search}</Text>
+            </TouchableOpacity>
+          );
+        })
+      ) : (
+        <Text style={styles.recentEmpty}>No recent search found</Text>
       )}
 
       {/* Popular Services Section */}

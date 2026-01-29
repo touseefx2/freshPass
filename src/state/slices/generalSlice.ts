@@ -33,6 +33,7 @@ export interface GeneralState {
   isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
   currentLocation: Location; // Current location (lat, long, locationName)
   recentLocations: Location[]; // Recent locations (persisted)
+  recentSearches: string[]; // Recent search queries (persisted, max 4)
 }
 
 const initialState: GeneralState = {
@@ -61,6 +62,7 @@ const initialState: GeneralState = {
     zipCode: null,
   },
   recentLocations: [],
+  recentSearches: [],
 };
 
 const generalSlice = createSlice({
@@ -125,7 +127,9 @@ const generalSlice = createSlice({
     },
     addToRecentLocations(state, action: PayloadAction<Location>) {
       const loc = action.payload;
-      const idx = state.recentLocations.findIndex((r) => isSameLocation(r, loc));
+      const idx = state.recentLocations.findIndex((r) =>
+        isSameLocation(r, loc),
+      );
       if (idx >= 0) {
         state.recentLocations.splice(idx, 1);
       }
@@ -133,6 +137,21 @@ const generalSlice = createSlice({
       // Keep only the latest 5 recent locations
       if (state.recentLocations.length > 5) {
         state.recentLocations = state.recentLocations.slice(0, 5);
+      }
+    },
+    addToRecentSearches(state, action: PayloadAction<string>) {
+      const query = action.payload.trim();
+      if (!query) return;
+      const idx = state.recentSearches.findIndex(
+        (s) => s.toLowerCase() === query.toLowerCase(),
+      );
+      if (idx >= 0) {
+        state.recentSearches.splice(idx, 1);
+      }
+      state.recentSearches.unshift(query);
+      // Keep only the latest 4 recent searches
+      if (state.recentSearches.length > 4) {
+        state.recentSearches = state.recentSearches.slice(0, 4);
       }
     },
     clearCurrentLocation(state) {
@@ -164,6 +183,7 @@ const generalSlice = createSlice({
       // state.isFirstShowTryOn = initialState.isFirstShowTryOn;
       state.currentLocation = initialState.currentLocation;
       state.recentLocations = initialState.recentLocations;
+      state.recentSearches = initialState.recentSearches;
     },
   },
 });
@@ -188,6 +208,7 @@ export const {
   setIsFirstShowTryOn,
   setCurrentLocation,
   addToRecentLocations,
+  addToRecentSearches,
   clearCurrentLocation,
   resetGeneral,
   clearGeneral,
