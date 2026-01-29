@@ -30,10 +30,10 @@ import { MAIN_ROUTES } from "@/src/constant/routes";
 import SocialAuthOptions from "@/src/components/socialAuthOptions";
 import SectionSeparator from "@/src/components/sectionSeparator";
 import Logger from "@/src/services/logger";
-// import { ApiService } from "@/src/services/api";
-// import { businessEndpoints } from "@/src/services/endpoints";
-// import { setUser, setTokens } from "@/src/state/slices/userSlice";
-// import { setRegisterEmail } from "@/src/state/slices/generalSlice";
+import { ApiService } from "@/src/services/api";
+import { businessEndpoints } from "@/src/services/endpoints";
+import { setUser, UserRole } from "@/src/state/slices/userSlice";
+import { setFullName } from "@/src/state/slices/completeProfileSlice";
 type SocialProvider = "google" | "apple" | "facebook";
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -76,11 +76,11 @@ export default function SocialLogin() {
 
   const handleGoogleLogin = async () => {
     try {
-      try {
-        await GoogleSignin.signOut();
-      } catch (signOutError) {
-        Logger.log("Google logout out error (ignored):", signOutError);
-      }
+      // try {
+      //   await GoogleSignin.signOut();
+      // } catch (signOutError) {
+      //   Logger.log("Google logout out error (ignored):", signOutError);
+      // }
 
       // Check if Google Play Services are available (Android only)
       if (Platform.OS === "android") {
@@ -107,6 +107,64 @@ export default function SocialLogin() {
       Logger.log("userInfo", userInfo);
       Logger.log("idToken", idToken);
       Logger.log("role", selectedRole);
+
+      const response = await ApiService.post<{
+        success: boolean;
+        message: string;
+        data: {
+          user: {
+            id: number;
+            name: string;
+            email?: string;
+            phone?: string;
+            country_code?: string;
+            profile_image_url?: string;
+            role: string;
+            rolesCount?: number;
+            createdAt?: string;
+          };
+          token: string;
+          isNewCretared?: boolean;
+        };
+      }>(businessEndpoints.socialLogin, {
+        provider: "google",
+        token: idToken,
+        role: selectedRole?.toLowerCase() ?? "",
+      });
+
+      if (response.success && response.data) {
+        const { user, token, isNewCretared } = response.data;
+        if (user && token) {
+          // if (user?.role?.toLowerCase() === "customer") {
+          //   dispatch(
+          //     setUser({
+          //       id: user.id,
+          //       name: user.name || "",
+          //       email: user.email || "",
+          //       description: "",
+          //       phone: user.phone || "",
+          //       country_code: user.country_code || "",
+          //       profile_image_url: user.profile_image_url || "",
+          //       accessToken: token,
+          //       userRole: (user.role?.toLowerCase() as UserRole) || null,
+          //     }),
+          //   );
+          //   if (isNewCretared) {
+          //     dispatch(setFullName(user.name || ""));
+          //     router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+          //   } else {
+          //     router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+          //   }
+          // }
+          // if (user?.role?.toLowerCase() === "business") {
+          // }
+        }
+      } else {
+        Alert.alert(
+          "Login Failed",
+          response.message || "Social login failed. Please try again.",
+        );
+      }
     } catch (error: any) {
       Logger.error("Google Sign-In Error:", error);
 

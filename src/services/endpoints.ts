@@ -35,27 +35,34 @@ export const customerEndpoints = {
 export const businessEndpoints = {
   register: `/api/register`,
   login: `/api/login`,
+  socialLogin: `/api/social-login`,
   categories: `/api/categories`,
   onboarding: `/api/business/onboarding`,
-  serviceTemplates: (categoryId: number) => `/api/service-templates?category_id=${categoryId}`,
+  serviceTemplates: (categoryId: number) =>
+    `/api/service-templates?category_id=${categoryId}`,
   services: `/api/services?status=active`,
   profile: `/api/business/profile`,
   businesses: (categoryIds?: number | number[]) => {
     if (categoryIds) {
       const ids = Array.isArray(categoryIds) ? categoryIds : [categoryIds];
-      return `/api/businesses?category_ids=${ids.join(',')}`;
+      return `/api/businesses?category_ids=${ids.join(",")}`;
     }
     return `/api/businesses`;
   },
   moduleData: (module: string, businessId?: number) => {
     const queryParams = new URLSearchParams();
-    queryParams.append('module', module);
+    queryParams.append("module", module);
     if (businessId) {
-      queryParams.append('business_id', businessId.toString());
+      queryParams.append("business_id", businessId.toString());
     }
     return `/api/business/module-data?${queryParams.toString()}`;
   },
-  subscriptionPlans: (planType: string = "business", status: string = "active", sort: string = "price", direction: string = "asc") => 
+  subscriptionPlans: (
+    planType: string = "business",
+    status: string = "active",
+    sort: string = "price",
+    direction: string = "asc",
+  ) =>
     `/api/subscription-plans?plan_type=${planType}&status=${status}&sort=${sort}&direction=${direction}`,
   subscribe: (planId: number) => `/api/subscription-plans/${planId}/subscribe`,
   subscriptions: (status?: string) => {
@@ -64,9 +71,12 @@ export const businessEndpoints = {
     }
     return `/api/subscriptions`;
   },
-  cancelTrial: (subscriptionId: number) => `/api/subscriptions/${subscriptionId}/cancel-trial`,
-  cancelSubscription: (subscriptionId: number) => `/api/subscriptions/${subscriptionId}/cancel`,
-  businessDetails: (businessId: string | number) => `/api/business/details?business_id=${businessId}`,
+  cancelTrial: (subscriptionId: number) =>
+    `/api/subscriptions/${subscriptionId}/cancel-trial`,
+  cancelSubscription: (subscriptionId: number) =>
+    `/api/subscriptions/${subscriptionId}/cancel`,
+  businessDetails: (businessId: string | number) =>
+    `/api/business/details?business_id=${businessId}`,
   generateSubscription: `/api/subscription/generate`,
 };
 
@@ -118,24 +128,28 @@ export const appointmentsEndpoints = {
     appointment_type?: string;
   }) => {
     const queryParams = new URLSearchParams();
-    
-    if (params?.status) queryParams.append('status', params.status);
-    if (params?.search) queryParams.append('search', params.search);
-    if (params?.sort) queryParams.append('sort', params.sort);
-    if (params?.direction) queryParams.append('direction', params.direction);
-    if (params?.per_page) queryParams.append('per_page', params.per_page.toString());
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.from_date) queryParams.append('from_date', params.from_date);
-    if (params?.to_date) queryParams.append('to_date', params.to_date);
-    if (params?.staff_id) queryParams.append('staff_id', params.staff_id.toString());
-    if (params?.appointment_type) queryParams.append('appointment_type', params.appointment_type);
-    
+
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.sort) queryParams.append("sort", params.sort);
+    if (params?.direction) queryParams.append("direction", params.direction);
+    if (params?.per_page)
+      queryParams.append("per_page", params.per_page.toString());
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.from_date) queryParams.append("from_date", params.from_date);
+    if (params?.to_date) queryParams.append("to_date", params.to_date);
+    if (params?.staff_id)
+      queryParams.append("staff_id", params.staff_id.toString());
+    if (params?.appointment_type)
+      queryParams.append("appointment_type", params.appointment_type);
+
     const queryString = queryParams.toString();
-    return `/api/appointments${queryString ? `?${queryString}` : ''}`;
+    return `/api/appointments${queryString ? `?${queryString}` : ""}`;
   },
   create: `/api/appointments`,
   getById: (bookingId: string | number) => `/api/appointments/${bookingId}`,
-  cancel: (bookingId: string | number) => `/api/appointments/${bookingId}/cancel`,
+  cancel: (bookingId: string | number) =>
+    `/api/appointments/${bookingId}/cancel`,
 };
 
 /**
@@ -149,14 +163,17 @@ export const reviewsEndpoints = {
     user_id?: number | string;
   }) => {
     const queryParams = new URLSearchParams();
-    
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.per_page) queryParams.append('per_page', params.per_page.toString());
-    if (params?.business_id) queryParams.append('business_id', params.business_id.toString());
-    if (params?.user_id) queryParams.append('user_id', params.user_id.toString());
-    
+
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.per_page)
+      queryParams.append("per_page", params.per_page.toString());
+    if (params?.business_id)
+      queryParams.append("business_id", params.business_id.toString());
+    if (params?.user_id)
+      queryParams.append("user_id", params.user_id.toString());
+
     const queryString = queryParams.toString();
-    return `/api/reviews${queryString ? `?${queryString}` : ''}`;
+    return `/api/reviews${queryString ? `?${queryString}` : ""}`;
   },
   create: `/api/reviews`,
   suggestions: `/api/review-suggestions`,
@@ -166,19 +183,18 @@ export const reviewsEndpoints = {
  * Notifications endpoints
  */
 export const notificationsEndpoints = {
-  list: (params?: {
-    page?: number;
-    per_page?: number;
-  }) => {
+  list: (params?: { page?: number; per_page?: number }) => {
     const queryParams = new URLSearchParams();
-    
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.per_page) queryParams.append('per_page', params.per_page.toString());
-    
+
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.per_page)
+      queryParams.append("per_page", params.per_page.toString());
+
     const queryString = queryParams.toString();
-    return `/api/notifications${queryString ? `?${queryString}` : ''}`;
+    return `/api/notifications${queryString ? `?${queryString}` : ""}`;
   },
-  markAsRead: (notificationId: number) => `/api/notifications/${notificationId}/read`,
+  markAsRead: (notificationId: number) =>
+    `/api/notifications/${notificationId}/read`,
   markAllAsRead: `/api/notifications/mark-all-read`,
   unreadCount: `/api/notifications/unread-count`,
 };
