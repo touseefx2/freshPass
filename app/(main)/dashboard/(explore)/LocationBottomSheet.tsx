@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -43,7 +44,7 @@ import {
   fetchSuggestions as fetchSuggestionsApi,
   fetchPlaceDetails as fetchPlaceDetailsApi,
 } from "@/src/services/googlePlacesApi";
- 
+
 interface LocationBottomSheetProps {
   visible: boolean;
   onClose: () => void;
