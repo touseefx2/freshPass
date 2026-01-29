@@ -1,7 +1,10 @@
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import React, { useMemo, useCallback, useEffect } from "react";
 import { View, Text, StatusBar, Platform, Linking, Alert } from "react-native";
-import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import { Image } from "expo-image";
 import {
   SafeAreaView,
@@ -29,7 +32,7 @@ type SocialProvider = "google" | "apple" | "facebook";
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 // Get Google Web Client ID from environment
-// IMPORTANT: 
+// IMPORTANT:
 // 1. Android Client ID: Google Cloud Console mein Android OAuth client banayein (package name + SHA-1 ke saath) - ye Google Cloud Console mein configure hota hai
 // 2. Web Client ID: Google Cloud Console mein Web Application OAuth client banayein - ye code mein use hoga
 // Web Client ID code mein chahiye kyunki ID token backend verify karta hai, aur Web Client ID se hi ID token milta hai
@@ -43,7 +46,7 @@ export default function SocialLogin() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const selectedRole = useAppSelector((state) => state.general.role);
-
+  console.log("selectedRole", selectedRole);
 
   useEffect(() => {
     if (Platform.OS !== "web") {
@@ -65,7 +68,6 @@ export default function SocialLogin() {
 
   const handleGoogleLogin = async () => {
     try {
-
       try {
         await GoogleSignin.signOut();
       } catch (signOutError) {
@@ -74,7 +76,9 @@ export default function SocialLogin() {
 
       // Check if Google Play Services are available (Android only)
       if (Platform.OS === "android") {
-        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        await GoogleSignin.hasPlayServices({
+          showPlayServicesUpdateDialog: true,
+        });
       }
 
       // Sign in with Google - this will show account picker
@@ -92,83 +96,8 @@ export default function SocialLogin() {
         return;
       }
 
-
       Logger.log("userInfo", userInfo);
       Logger.log("idToken", idToken);
-
-      // Send token to backend for authentication
-      // NOTE: You need to create a backend endpoint at /api/auth/google that accepts the idToken
-      // The endpoint should verify the Google ID token and return user data + access token
-      // If your endpoint is different, update the URL below
-      // try {
-      //   const response = await ApiService.post("/api/auth/google", {
-      //     idToken: idToken,
-      //     role: selectedRole || "customer", // Use selected role or default to customer
-      //   });
-
-      //   // Handle successful login similar to regular login
-      //   if (response.success && response.data) {
-      //     const { user, token, email_verification_required } = response.data;
-
-      //     if (user && token) {
-      //       dispatch(setRegisterEmail(user.email || ""));
-
-      //       // Set tokens
-      //       dispatch(
-      //         setTokens({
-      //           accessToken: token,
-      //           refreshToken: response.data.refreshToken,
-      //         })
-      //       );
-
-      //       // Set user data
-      //       dispatch(
-      //         setUser({
-      //           id: user.id,
-      //           name: user?.name || "",
-      //           email: user.email || "",
-      //           description: user?.description || "",
-      //           phone: user?.phone || "",
-      //           country_code: user?.country_code || "",
-      //           profile_image_url: user?.profile_image_url || "",
-      //           accessToken: token,
-      //           userRole: user?.role?.toLowerCase() || null,
-      //         })
-      //       );
-
-      //       // Navigate based on role
-      //       if (user?.role?.toLowerCase() === "business") {
-      //         router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-      //       } else if (user?.role?.toLowerCase() === "customer") {
-      //         if (email_verification_required) {
-      //           // Handle email verification if needed
-      //           Alert.alert("Verification Required", "Please verify your email");
-      //         } else {
-      //           router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-      //         }
-      //       } else if (user?.role?.toLowerCase() === "staff") {
-      //         if (user?.is_onboarded) {
-      //           router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-      //         } else {
-      //           router.replace(
-      //             `/(main)/${MAIN_ROUTES.COMPLETE_STAFF_PROFILE}` as any
-      //           );
-      //         }
-      //       }
-      //     } else {
-      //       Alert.alert("Error", "Invalid response from server");
-      //     }
-      //   } else {
-      //     Alert.alert("Error", response.message || "Login failed");
-      //   }
-      // } catch (apiError: any) {
-      //   Logger.error("API Error:", apiError);
-      //   Alert.alert(
-      //     "Login Failed",
-      //     apiError.message || "Failed to authenticate with server"
-      //   );
-      // }
-
     } catch (error: any) {
       Logger.error("Google Sign-In Error:", error);
 
@@ -182,30 +111,29 @@ export default function SocialLogin() {
         // Play services not available or outdated
         Alert.alert(
           "Error",
-          "Google Play Services is not available. Please update Google Play Services."
+          "Google Play Services is not available. Please update Google Play Services.",
         );
       } else {
         // Some other error happened
         Alert.alert(
           "Google Sign-In Failed",
-          error.message || "An error occurred during Google Sign-In"
+          error.message || "An error occurred during Google Sign-In",
         );
       }
     }
-  }
+  };
 
-  const handleSocialLogin = useCallback(
-    async (provider: SocialProvider) => {
-      if (provider === "google") {
-        await handleGoogleLogin();
-      } else if (provider === "apple") {
-        Alert.alert("Coming Soon", "Apple Sign-In will be available soon");
-      } else if (provider === "facebook") {
-        Alert.alert("Coming Soon", "Facebook Sign-In will be available soon");
-      }
-    },
-    [handleGoogleLogin]
-  );
+  const handleAppleLogin = async () => {};
+
+  const handleSocialLogin = async (provider: SocialProvider) => {
+    if (provider === "google") {
+      await handleGoogleLogin();
+    } else if (provider === "apple") {
+      await handleAppleLogin();
+    } else if (provider === "facebook") {
+      Alert.alert("Coming Soon", "Facebook Sign-In will be available soon");
+    }
+  };
 
   const handleGuestLogin = () => {
     router.push(`/${MAIN_ROUTES.INTRODUCTION_CLIENT}`);
@@ -310,7 +238,7 @@ export default function SocialLogin() {
             //   ? {
             //       gap: moderateHeightScale(18),
             //     }
-            //   : 
+            //   :
             {}
           }
         />
