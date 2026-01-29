@@ -7,6 +7,7 @@ import {
   ScrollView,
   Pressable,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -29,10 +30,7 @@ import {
   Category,
 } from "@/src/state/slices/categoriesSlice";
 import DatePickerModal from "@/src/components/datePickerModal";
-import LocationBottomSheet from "./LocationBottomSheet";
-import SearchBottomSheet, {
-  type PopularServiceItem,
-} from "./SearchBottomSheet";
+import type { PopularServiceItem } from "./SearchBottomSheet";
 import dayjs from "dayjs";
 import {
   setSelectedDate,
@@ -176,14 +174,16 @@ export default function ExploreHeader({
   const selectedCategory = useAppSelector(
     (state) => state.categories.selectedCategory,
   );
+  const router = useRouter();
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
   const [dateModalVisible, setDateModalVisible] = useState(false);
-  const [locationSheetVisible, setLocationSheetVisible] = useState(false);
-  const [searchSheetVisible, setSearchSheetVisible] = useState(false);
   const selectedDate = selectedDateISO ? dayjs(selectedDateISO) : null;
 
   const handleSearchPress = () => {
-    setSearchSheetVisible(true);
+    router.push({
+      pathname: "./search",
+      params: { popularServices: JSON.stringify(popularServices) },
+    });
   };
 
   const handleFilterPress = () => {
@@ -192,7 +192,7 @@ export default function ExploreHeader({
   };
 
   const handleWherePress = () => {
-    setLocationSheetVisible(true);
+    router.push("./location");
   };
 
   const handleWhenPress = () => {
@@ -386,21 +386,6 @@ export default function ExploreHeader({
           dispatch(setSelectedDate(date.toISOString()));
         }}
       />
-
-      {locationSheetVisible && (
-        <LocationBottomSheet
-          visible={locationSheetVisible}
-          onClose={() => setLocationSheetVisible(false)}
-        />
-      )}
-
-      {searchSheetVisible && (
-        <SearchBottomSheet
-          visible={searchSheetVisible}
-          onClose={() => setSearchSheetVisible(false)}
-          popularServices={popularServices}
-        />
-      )}
     </View>
   );
 }
