@@ -14,7 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import {
   addToRecentSearches,
-  setSearchText,
+  setSearchState,
+  type SearchState,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -64,11 +65,19 @@ const createStyles = (theme: Theme) =>
     recentItemLast: {
       borderBottomWidth: 0,
     },
-    recentItemText: {
+    recentItemContent: {
       flex: 1,
+    },
+    recentItemText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.text,
+    },
+    recentItemSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
     },
     recentEmpty: {
       fontSize: fontSize.size12,
@@ -132,29 +141,68 @@ export default function SearchScreen() {
     [popularServices],
   );
   const dispatch = useAppDispatch();
-  const recentSearches = useAppSelector(
+  const recentSearchesRaw = useAppSelector(
     (state) => state.general.recentSearches,
+  );
+  const recentSearches = useMemo(
+    (): SearchState[] =>
+      recentSearchesRaw.map((item) =>
+        typeof item === "string"
+          ? {
+              search: item,
+              serviceId: null,
+              businessId: "",
+              businessName: "",
+              businessLocationName: "",
+            }
+          : item,
+      ),
+    [recentSearchesRaw],
   );
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
+    null,
+  );
+  const [selectedServiceName, setSelectedServiceName] = useState("");
 
   const handleSearch = () => {
     const query = searchQuery.trim();
-    if (query) {
-      dispatch(addToRecentSearches(query));
-      dispatch(setSearchText(query));
-      router.back();
-    }
+    if (!query) return;
+    const payload: SearchState = {
+      search: query,
+      serviceId: selectedServiceId ?? null,
+      businessId: "",
+      businessName: "",
+      businessLocationName: "",
+      ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
+    };
+    dispatch(addToRecentSearches(payload));
+    dispatch(setSearchState(payload));
+    router.back();
   };
 
-  const handleRecentSearchPress = (query: string) => {
-    setSearchQuery(query);
+  const handleRecentSearchPress = (item: SearchState) => {
+    setSearchQuery(item.search);
+    setSelectedServiceId(item.serviceId ?? null);
+    setSelectedServiceName(item.serviceName ?? "");
   };
 
-  const handlePopularServicePress = (serviceName: string) => {
-    setSearchQuery(serviceName);
+  const handlePopularServicePress = (service: {
+    id: number | null;
+    name: string;
+  }) => {
+    setSearchQuery(service.name);
+    setSelectedServiceId(service.id ?? null);
+    setSelectedServiceName(service.name);
+  };
+
+  const handleSearchInputChange = (text: string) => {
+    setSearchQuery(text);
+    setSelectedServiceId(null);
+    setSelectedServiceName("");
   };
 
   return (
@@ -175,11 +223,15 @@ export default function SearchScreen() {
           <FloatingInput
             label="Search services or businesses"
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={handleSearchInputChange}
             placeholder="Search services or businesses"
             placeholderTextColor={theme.lightGreen}
             containerStyle={styles.searchInputContainer}
-            onClear={() => setSearchQuery("")}
+            onClear={() => {
+              setSearchQuery("");
+              setSelectedServiceId(null);
+              setSelectedServiceName("");
+            }}
             renderLeftAccessory={() => (
               <SearchIcon
                 width={widthScale(18)}
@@ -191,13 +243,14 @@ export default function SearchScreen() {
 
           <Text style={styles.recentSectionTitle}>Recent searches</Text>
           {recentSearches.length > 0 ? (
-            recentSearches.map((search, index) => {
+            recentSearches.map((item, index) => {
               const isLast = index === recentSearches.length - 1;
+              const key = `${item.search}-${item.serviceId ?? "n"}-${index}`;
               return (
                 <TouchableOpacity
-                  key={`${search}-${index}`}
+                  key={key}
                   style={[styles.recentItem, isLast && styles.recentItemLast]}
-                  onPress={() => handleRecentSearchPress(search)}
+                  onPress={() => handleRecentSearchPress(item)}
                   activeOpacity={0.7}
                 >
                   <SearchIcon
@@ -205,7 +258,18 @@ export default function SearchScreen() {
                     height={heightScale(18)}
                     color={theme.lightGreen}
                   />
-                  <Text style={styles.recentItemText}>{search}</Text>
+                  <View style={styles.recentItemContent}>
+                    <Text style={styles.recentItemText} numberOfLines={1}>
+                      {item.search}
+                    </Text>
+                    {(item.serviceName || item.serviceId != null) && (
+                      <Text style={styles.recentItemSubtitle} numberOfLines={1}>
+                        {item.serviceName
+                          ? `Service: ${item.serviceName}`
+                          : `Service ID: ${item.serviceId}`}
+                      </Text>
+                    )}
+                  </View>
                 </TouchableOpacity>
               );
             })
@@ -221,7 +285,7 @@ export default function SearchScreen() {
                   <TouchableOpacity
                     key={service.id ?? service.name}
                     style={styles.popularServiceTag}
-                    onPress={() => handlePopularServicePress(service.name)}
+                    onPress={() => handlePopularServicePress(service)}
                     activeOpacity={0.7}
                   >
                     <Text style={styles.popularServiceText}>

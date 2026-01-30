@@ -30,11 +30,12 @@ import {
   Category,
 } from "@/src/state/slices/categoriesSlice";
 import DatePickerModal from "@/src/components/datePickerModal";
-import type { PopularServiceItem } from "./SearchBottomSheet";
+import type { PopularServiceItem } from "./search";
 import dayjs from "dayjs";
 import {
   setSelectedDate,
   clearSelectedDate,
+  clearSearchState,
 } from "@/src/state/slices/generalSlice";
 import { clearLocation, setLocation } from "@/src/state/slices/userSlice";
 
@@ -170,6 +171,7 @@ export default function ExploreHeader({
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const location = useAppSelector((state) => state.user.location);
+  const search = useAppSelector((state) => state.general.searchState);
   const categories = useAppSelector((state) => state.categories.categories);
   const selectedCategory = useAppSelector(
     (state) => state.categories.selectedCategory,
@@ -205,7 +207,8 @@ export default function ExploreHeader({
     );
   };
 
-  console.log("------> location", location);
+  const hasSearchValue = (search.search ?? "").trim() !== "";
+  console.log("------> hasSearchValue", search);
 
   return (
     <View
@@ -228,10 +231,30 @@ export default function ExploreHeader({
           />
         </View>
         <View style={styles.searchTextContainer}>
-          <Text style={styles.searchPlaceholder}>
-            Find services & subscription
+          <Text
+            style={
+              hasSearchValue ? styles.filterValue : styles.searchPlaceholder
+            }
+            numberOfLines={1}
+          >
+            {hasSearchValue
+              ? (search.search ?? "").trim()
+              : "Find services & subscription"}
           </Text>
         </View>
+        {hasSearchValue && (
+          <Pressable
+            onPress={() => dispatch(clearSearchState())}
+            style={styles.clearButton}
+            hitSlop={moderateWidthScale(8)}
+          >
+            <CloseIcon
+              width={widthScale(18)}
+              height={heightScale(18)}
+              color={theme.darkGreen}
+            />
+          </Pressable>
+        )}
         <TouchableOpacity
           style={styles.filterIconContainer}
           onPress={handleFilterPress}

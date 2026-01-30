@@ -3,6 +3,23 @@ import type { Location } from "./userSlice";
 
 export type UserRole = "business" | "customer" | "staff" | null;
 
+export interface SearchState {
+  search: string;
+  serviceId: number | null;
+  businessId: string;
+  businessName: string;
+  businessLocationName: string;
+  serviceName?: string;
+}
+
+const initialSearchState: SearchState = {
+  search: "",
+  serviceId: null,
+  businessId: "",
+  businessName: "",
+  businessLocationName: "",
+};
+
 function isSameLocation(a: Location, b: Location): boolean {
   return (
     a.lat === b.lat &&
@@ -28,12 +45,12 @@ export interface GeneralState {
   role: UserRole; // Selected user role
   isVisitFirst: boolean; // Track if it's the first visit
   selectedDate: string | null; // Selected date for viewing appointments (ISO string format)
-  searchText: string; // Search text for location/services search
+  searchState: SearchState; // Search filters (search, serviceId, business, etc.)
   guestModeModalVisible: boolean; // Guest mode modal visibility state
   isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
   currentLocation: Location; // Current location (lat, long, locationName)
   recentLocations: Location[]; // Recent locations (persisted)
-  recentSearches: string[]; // Recent search queries (persisted, max 4)
+  recentSearches: SearchState[]; // Recent searches as objects (persisted, max 4)
 }
 
 const initialState: GeneralState = {
@@ -49,7 +66,7 @@ const initialState: GeneralState = {
   role: null,
   isVisitFirst: true,
   selectedDate: null,
-  searchText: "",
+  searchState: initialSearchState,
   guestModeModalVisible: false,
   isFirstShowTryOn: false,
   currentLocation: {
@@ -110,11 +127,11 @@ const generalSlice = createSlice({
     clearSelectedDate(state) {
       state.selectedDate = null;
     },
-    setSearchText(state, action: PayloadAction<string>) {
-      state.searchText = action.payload;
+    setSearchState(state, action: PayloadAction<SearchState>) {
+      state.searchState = action.payload;
     },
-    clearSearchText(state) {
-      state.searchText = "";
+    clearSearchState(state) {
+      state.searchState = { ...initialSearchState };
     },
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
@@ -139,17 +156,24 @@ const generalSlice = createSlice({
         state.recentLocations = state.recentLocations.slice(0, 5);
       }
     },
-    addToRecentSearches(state, action: PayloadAction<string>) {
-      const query = action.payload.trim();
-      if (!query) return;
-      const idx = state.recentSearches.findIndex(
-        (s) => s.toLowerCase() === query.toLowerCase(),
-      );
+    addToRecentSearches(state, action: PayloadAction<SearchState>) {
+      const item = action.payload;
+      if (!item.search.trim()) return;
+      const itemSearch = (item.search ?? "").toLowerCase();
+      const idx = state.recentSearches.findIndex((s) => {
+        const searchStr =
+          typeof s === "string" ? s : ((s as SearchState).search ?? "");
+        const sid =
+          typeof s === "string" ? null : ((s as SearchState).serviceId ?? null);
+        return (
+          searchStr.toLowerCase() === itemSearch &&
+          sid === (item.serviceId ?? null)
+        );
+      });
       if (idx >= 0) {
         state.recentSearches.splice(idx, 1);
       }
-      state.recentSearches.unshift(query);
-      // Keep only the latest 4 recent searches
+      state.recentSearches.unshift({ ...item });
       if (state.recentSearches.length > 4) {
         state.recentSearches = state.recentSearches.slice(0, 4);
       }
@@ -178,7 +202,7 @@ const generalSlice = createSlice({
       state.role = initialState.role;
       // state.isVisitFirst = initialState.isVisitFirst;
       state.selectedDate = initialState.selectedDate;
-      state.searchText = initialState.searchText;
+      state.searchState = initialState.searchState;
       state.guestModeModalVisible = initialState.guestModeModalVisible;
       // state.isFirstShowTryOn = initialState.isFirstShowTryOn;
       state.currentLocation = initialState.currentLocation;
@@ -202,8 +226,8 @@ export const {
   setIsVisitFirst,
   setSelectedDate,
   clearSelectedDate,
-  setSearchText,
-  clearSearchText,
+  setSearchState,
+  clearSearchState,
   setGuestModeModalVisible,
   setIsFirstShowTryOn,
   setCurrentLocation,
