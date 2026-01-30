@@ -197,7 +197,7 @@ export default function Search2Screen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <StackHeader title="Services or Businesses" />
-      <StatusBar barStyle="dark-content" />
+      <StatusBar backgroundColor={theme.white} barStyle="dark-content" />
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
