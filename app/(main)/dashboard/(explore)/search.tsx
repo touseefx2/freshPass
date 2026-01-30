@@ -193,12 +193,9 @@ export default function SearchScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const q = (searchState.search ?? "").trim();
-      if (q) {
-        setSearchQuery(searchState.search ?? "");
-        setSelectedServiceId(searchState.serviceId ?? null);
-        setSelectedServiceName(searchState.serviceName ?? "");
-      }
+      setSearchQuery(searchState.search ?? "");
+      setSelectedServiceId(searchState.serviceId ?? null);
+      setSelectedServiceName(searchState.serviceName ?? "");
     }, [searchState.search, searchState.serviceId, searchState.serviceName]),
   );
 

@@ -239,7 +239,7 @@ export default function ExploreHeader({
           >
             {hasSearchValue
               ? (search.search ?? "").trim()
-              : "Find services & subscription"}
+              : "Find services to book in"}
           </Text>
         </View>
         {hasSearchValue && (

@@ -1,7 +1,8 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
+  TextInput,
   View,
   TouchableOpacity,
   ScrollView,
@@ -15,6 +16,7 @@ import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import {
   addToRecentSearches,
   setSearchState,
+  clearSearchState,
   type SearchState,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
@@ -173,6 +175,7 @@ export default function Search2Screen() {
     : null;
   const initialServiceName = (params.serviceName ?? "").trim();
 
+  const inputRef = useRef<TextInput>(null);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
     initialServiceId,
@@ -186,13 +189,47 @@ export default function Search2Screen() {
     setSelectedServiceName(initialServiceName);
   }, [initialQuery, initialServiceId, initialServiceName]);
 
+  useEffect(() => {
+    const t = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 300);
+    return () => clearTimeout(t);
+  }, []);
+
   const handleSearchInputChange = (text: string) => {
     setSearchQuery(text);
     setSelectedServiceId(null);
     setSelectedServiceName("");
   };
 
-  const handleSearch = () => {};
+  const handleSearch = () => {
+    const query = searchQuery.trim();
+    if (!query) {
+      dispatch(clearSearchState());
+      router.back();
+      return;
+    }
+    const payload: SearchState = {
+      search: query,
+      serviceId: selectedServiceId ?? null,
+      businessId: "",
+      businessName: "",
+      businessLocationName: "",
+      ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
+    };
+    // dispatch(addToRecentSearches(payload));
+    dispatch(setSearchState(payload));
+    router.back();
+  };
+
+  const handleClear = () => {
+    setSearchQuery("");
+    setSelectedServiceId(null);
+    setSelectedServiceName("");
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -210,6 +247,7 @@ export default function Search2Screen() {
           showsVerticalScrollIndicator={false}
         >
           <FloatingInput
+            ref={inputRef}
             label="Search services or businesses"
             value={searchQuery}
             onChangeText={handleSearchInputChange}
@@ -218,11 +256,7 @@ export default function Search2Screen() {
             containerStyle={styles.searchInputContainer}
             returnKeyType="search"
             onSubmitEditing={handleSearch}
-            onClear={() => {
-              setSearchQuery("");
-              setSelectedServiceId(null);
-              setSelectedServiceName("");
-            }}
+            onClear={handleClear}
             renderLeftAccessory={() => (
               <SearchIcon
                 width={widthScale(18)}
