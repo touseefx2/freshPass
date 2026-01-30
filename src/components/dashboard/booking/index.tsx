@@ -28,6 +28,7 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import DashboardHeaderClient from "../../DashboardHeaderClient";
 
 type TabType = "all" | "complete" | "cancelled";
 type ListType = "subscriptions" | "individual";
@@ -327,7 +328,7 @@ export default function BookingScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const user = useAppSelector((state: any) => state.user);
-  const userRole =  user.userRole;
+  const userRole = user.userRole;
   const isGuest = user.isGuest;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -439,8 +440,6 @@ export default function BookingScreen() {
     }
   };
 
-  
-
   const formatAppointmentDateTime = (date: string, time: string): string => {
     try {
       // Parse date format "MM/DD/YYYY"
@@ -489,7 +488,7 @@ export default function BookingScreen() {
     return `$${numPrice.toFixed(2)} USD`;
   };
 
-  const getPrice = (apiAppointment:any) => {
+  const getPrice = (apiAppointment: any) => {
     if (apiAppointment.appointmentType === "subscription") {
       return apiAppointment.paidAmount;
     }
@@ -511,9 +510,7 @@ export default function BookingScreen() {
     if (appointment.appointmentType === "subscription") {
       if (appointment.subscriptionVisits) {
         const { remaining } = appointment.subscriptionVisits;
-        return `${remaining} visit${
-          remaining !== 1 ? "s" : ""
-        } left`;
+        return `${remaining} visit${remaining !== 1 ? "s" : ""} left`;
       }
       return appointment.subscription || "Subscription";
     } else {
@@ -531,10 +528,8 @@ export default function BookingScreen() {
   };
 
   const mapApiAppointmentToBookingItem = (
-    apiAppointment: ApiAppointment
+    apiAppointment: ApiAppointment,
   ): BookingItem => {
-
-
     const services = Array.isArray(apiAppointment.services)
       ? apiAppointment.services
       : [];
@@ -566,17 +561,14 @@ export default function BookingScreen() {
 
     const staffName = apiAppointment.staffName || "Anyone";
 
-     
     const membershipType = formatMembershipInfo(apiAppointment);
 
     const planName = apiAppointment.subscription || "----";
 
     const dateTime = formatAppointmentDateTime(
       apiAppointment.appointmentDate,
-      apiAppointment.appointmentTime
+      apiAppointment.appointmentTime,
     );
-
-    
 
     const price = getPrice(apiAppointment);
 
@@ -600,7 +592,7 @@ export default function BookingScreen() {
 
   const fetchAppointments = async (
     page: number = 1,
-    append: boolean = false
+    append: boolean = false,
   ) => {
     if (append) {
       setLoadingMore(true);
@@ -651,7 +643,7 @@ export default function BookingScreen() {
 
       if (response.success && response.data?.data) {
         const mappedBookings = response.data.data.map(
-          mapApiAppointmentToBookingItem
+          mapApiAppointmentToBookingItem,
         );
         if (append) {
           setBookings((prev) => [...prev, ...mappedBookings]);
@@ -670,7 +662,7 @@ export default function BookingScreen() {
         "API Failed",
         error?.message || "Failed to fetch appointments",
         "error",
-        2500
+        2500,
       );
       if (!append) {
         setBookings([]);
@@ -688,7 +680,7 @@ export default function BookingScreen() {
         setBookings([]);
         fetchAppointments(1, false);
       }
-    }, [selectedTab, listType])
+    }, [selectedTab, listType]),
   );
 
   const handleLoadMore = () => {
@@ -787,7 +779,8 @@ export default function BookingScreen() {
 
   return (
     <View style={styles.container}>
-      <DashboardHeader />
+      {/* <DashboardHeader /> */}
+      <DashboardHeaderClient />
       <View style={styles.content}>
         <Text style={styles.title}>Booking list</Text>
 

@@ -11,12 +11,8 @@ import LocationEnableModal from "@/src/components/locationEnableModal";
 import { setLocation } from "@/src/state/slices/userSlice";
 import { tryGetPosition } from "@/src/constant/functions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import {
-  setLocationLoading,
-} from "@/src/state/slices/generalSlice";
-import {
-  handleLocationPermission,
-} from "@/src/services/locationPermissionService";
+import { setLocationLoading } from "@/src/state/slices/generalSlice";
+import { handleLocationPermission } from "@/src/services/locationPermissionService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -98,7 +94,7 @@ export default function HomeScreen() {
         showBanner(
           "Location Error",
           "Unable to get your current position. Please try again.",
-          "error"
+          "error",
         );
         return;
       }
@@ -121,8 +117,7 @@ export default function HomeScreen() {
         });
         if (reverseResults && reverseResults.length > 0) {
           const address = reverseResults[0];
-          countryName =
-            (address as { country?: string }).country ?? null;
+          countryName = (address as { country?: string }).country ?? null;
           cityName = address.city ?? null;
           countryCode =
             (address as { isoCountryCode?: string }).isoCountryCode ?? null;
@@ -146,7 +141,7 @@ export default function HomeScreen() {
         showBanner(
           "Location Error",
           "Unable to get your current position. Please try again.",
-          "error"
+          "error",
         );
         return;
       }
@@ -161,7 +156,7 @@ export default function HomeScreen() {
           cityName,
           countryCode,
           zipCode,
-        })
+        }),
       );
 
       dispatch(setLocationLoading(false));
@@ -171,7 +166,7 @@ export default function HomeScreen() {
       showBanner(
         "Location Error",
         "Unable to get your current location. Please try again.",
-        "error"
+        "error",
       );
     }
   };
@@ -179,7 +174,11 @@ export default function HomeScreen() {
   return (
     <>
       <View style={styles.container}>
-        <StatusBar backgroundColor={theme.darkGreen} barStyle="light-content" translucent />
+        <StatusBar
+          backgroundColor={theme.darkGreen}
+          barStyle="light-content"
+          translucent
+        />
         <DashboardHeaderClient />
         <DashboardContent />
       </View>

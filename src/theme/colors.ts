@@ -39,6 +39,7 @@ export const themes = {
     white85: "rgba(255, 255, 255, 0.85)",
     white80: "rgba(255, 255, 255, 0.8)",
     white70: "rgba(255, 255, 255, 0.7)",
+    white50: "rgba(255, 255, 255, 0.5)",
     white15: "rgba(255, 255, 255, 0.15)",
     black: "#000000",
     buttonBack: "#606C38",

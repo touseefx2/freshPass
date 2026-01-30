@@ -22,6 +22,7 @@ import Button from "@/src/components/button";
 import { Feather } from "@expo/vector-icons";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { ApiService } from "@/src/services/api";
+import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 
 type ChatItem = {
   id: string;
@@ -173,7 +174,7 @@ export default function ChatScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const user = useAppSelector((state: any) => state.user);
-const isGuest = user.isGuest;
+  const isGuest = user.isGuest;
 
   const sections = useMemo<ChatSection[]>(() => {
     const chats: ChatItem[] = [
@@ -201,10 +202,8 @@ const isGuest = user.isGuest;
         message: "Okay this makes ore sense than...",
         timeLabel: "1/5/2025",
         createdAt: "2025-11-30T08:00:00Z",
-        image:
-          "https://biteable.com/wp-content/uploads/2025/09/Avatar-4.jpg",
+        image: "https://biteable.com/wp-content/uploads/2025/09/Avatar-4.jpg",
       },
-     
     ];
 
     const today = new Date();
@@ -217,7 +216,7 @@ const isGuest = user.isGuest;
       const yesterday = new Date(
         today.getFullYear(),
         today.getMonth(),
-        today.getDate() - 1
+        today.getDate() - 1,
       );
 
       if (isSameDay(date, today)) {
@@ -246,14 +245,14 @@ const isGuest = user.isGuest;
     });
 
     const sortedDates = Array.from(grouped.keys()).sort((a, b) =>
-      a < b ? 1 : a > b ? -1 : 0
+      a < b ? 1 : a > b ? -1 : 0,
     );
 
     return sortedDates.map((isoDate) => {
       const dateObj = new Date(isoDate);
       const items = [...(grouped.get(isoDate) ?? [])].sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
       // First group (latest date) should show as "Recent"
@@ -274,7 +273,7 @@ const isGuest = user.isGuest;
     return `${first}${second}`.toUpperCase();
   };
 
-  const handleSignIn = async() => {
+  const handleSignIn = async () => {
     await ApiService.logout();
   };
 
@@ -282,7 +281,11 @@ const isGuest = user.isGuest;
     return (
       <View style={styles.container}>
         <DashboardHeader />
-          <Text style={[styles.screenTitle,{paddingTop: moderateHeightScale(20)}]}>Chat box</Text>
+        <Text
+          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
+        >
+          Chat box
+        </Text>
         <View style={styles.guestContainer}>
           <View style={styles.guestContent}>
             <View style={styles.iconContainer}>
@@ -311,7 +314,11 @@ const isGuest = user.isGuest;
 
   return (
     <View style={styles.container}>
-      <DashboardHeader />
+      {user.userRole === "customer" || isGuest ? (
+        <DashboardHeaderClient />
+      ) : (
+        <DashboardHeader />
+      )}
       <SectionList
         style={styles.content}
         contentContainerStyle={styles.listContent}

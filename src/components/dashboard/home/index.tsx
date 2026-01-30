@@ -109,7 +109,7 @@ export default function HomeScreen() {
   >(null);
   const [appointmentsTotalCount, setAppointmentsTotalCount] = useState(0);
   const [workHistoryData, setWorkHistoryData] = useState<Appointment[] | null>(
-    null
+    null,
   );
   const [workHistoryTotalCount, setWorkHistoryTotalCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -123,7 +123,7 @@ export default function HomeScreen() {
         "API Failed",
         error || "Failed to fetch business status",
         "error",
-        2500
+        2500,
       );
       return false; // Failed
     }
@@ -159,7 +159,7 @@ export default function HomeScreen() {
             profile_image_url: response.data.profile_image_url,
             business_id: response.data.business.id ?? "",
             business_name: response.data.business.title ?? "",
-          })
+          }),
         );
       }
     } catch (error: any) {}
@@ -200,7 +200,7 @@ export default function HomeScreen() {
         "API Failed",
         error?.message || "Failed to fetch dashboard stats",
         "error",
-        2500
+        2500,
       );
     }
   };
@@ -247,7 +247,7 @@ export default function HomeScreen() {
         "API Failed",
         error?.message || "Failed to fetch staff details",
         "error",
-        2500
+        2500,
       );
     }
   };
@@ -303,7 +303,7 @@ export default function HomeScreen() {
         "API Failed",
         error?.message || "Failed to fetch appointments",
         "error",
-        2500
+        2500,
       );
     }
   };
@@ -357,7 +357,7 @@ export default function HomeScreen() {
         "API Failed",
         error?.message || "Failed to fetch work history",
         "error",
-        2500
+        2500,
       );
     }
   };
@@ -374,7 +374,7 @@ export default function HomeScreen() {
           "No Internet Connection",
           "Please check your internet connection and try again.",
           "error",
-          2500
+          2500,
         );
         setRefreshing(false);
         return;
@@ -403,8 +403,8 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    if(userRole === "business" || userRole==="staff"){
-    fetchInitialData();
+    if (userRole === "business" || userRole === "staff") {
+      fetchInitialData();
     }
 
     const subscription = AppState.addEventListener(
@@ -416,7 +416,7 @@ export default function HomeScreen() {
           handleFetchUserStatus();
           handleFetchUnreadCount();
         }
-      }
+      },
     );
 
     return () => {
@@ -431,7 +431,11 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar
+        backgroundColor={theme.darkGreen}
+        barStyle="light-content"
+        translucent
+      />
       <DashboardHeader />
       {showLoadingState || showErrorState ? (
         <View style={styles.loaderContainer}>

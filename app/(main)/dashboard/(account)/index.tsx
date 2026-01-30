@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -23,6 +24,7 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -121,7 +123,7 @@ export default function AccountScreen() {
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -150,7 +152,7 @@ export default function AccountScreen() {
                   "Success",
                   "Account deleted successfully",
                   "success",
-                  2500
+                  2500,
                 );
                 // Logout after successful deletion
                 await ApiService.logout();
@@ -161,7 +163,7 @@ export default function AccountScreen() {
                 "Error",
                 error?.message || "Failed to delete account",
                 "error",
-                2500
+                2500,
               );
             } finally {
               setDeleteLoading(false);
@@ -169,7 +171,7 @@ export default function AccountScreen() {
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -277,7 +279,11 @@ export default function AccountScreen() {
 
   return (
     <View style={styles.container}>
-      <DashboardHeader />
+      {userRole === "customer" || isGuest ? (
+        <DashboardHeaderClient />
+      ) : (
+        <DashboardHeader />
+      )}
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

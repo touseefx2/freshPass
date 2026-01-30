@@ -410,12 +410,12 @@ export default function CalendarScreen() {
           to_date: toDate,
           per_page: 100,
           direction: "desc",
-        })
+        }),
       );
 
       if (response.success && response.data) {
         const transformedAppointments = transformAppointments(
-          response.data.data
+          response.data.data,
         );
         setAppointments(transformedAppointments);
       }
@@ -424,7 +424,7 @@ export default function CalendarScreen() {
         "API Failed",
         error?.message || "Failed to fetch appointments",
         "error",
-        2500
+        2500,
       );
     } finally {
       setLoading(false);
@@ -432,7 +432,7 @@ export default function CalendarScreen() {
   };
 
   const transformAppointments = (
-    apiAppointments: Appointment[]
+    apiAppointments: Appointment[],
   ): CalendarAppointment[] => {
     return apiAppointments.map((appointment) => {
       // Get service titles (subscription base or service base)
@@ -455,7 +455,7 @@ export default function CalendarScreen() {
 
       // Calculate total duration
       const calculateTotalDuration = (
-        services: Array<{ duration: { hours: number; minutes: number } }> | {}
+        services: Array<{ duration: { hours: number; minutes: number } }> | {},
       ) => {
         if (!services || !Array.isArray(services) || services.length === 0)
           return 0;
@@ -471,7 +471,7 @@ export default function CalendarScreen() {
           : appointment.services;
 
       const totalMinutes = calculateTotalDuration(
-        Array.isArray(services) ? services : []
+        Array.isArray(services) ? services : [],
       );
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
@@ -495,7 +495,7 @@ export default function CalendarScreen() {
 
       const scheduledAt = dayjs(
         `${year}-${month}-${day} ${hour}:${minute}`,
-        "YYYY-MM-DD HH:mm"
+        "YYYY-MM-DD HH:mm",
       ).toISOString();
 
       // Format status - show "On-going apt." for scheduled
@@ -647,10 +647,10 @@ export default function CalendarScreen() {
                   if (!appointment.scheduled_at) return false;
 
                   const scheduledDate = dayjs(appointment.scheduled_at).format(
-                    "YYYY-MM-DD"
+                    "YYYY-MM-DD",
                   );
                   const scheduledTime = dayjs(appointment.scheduled_at).format(
-                    "HH:mm"
+                    "HH:mm",
                   );
 
                   if (scheduledDate !== currentDate) return false;
@@ -667,7 +667,7 @@ export default function CalendarScreen() {
                     scheduledMinutes >= slotMinutes &&
                     scheduledMinutes < slotMinutes + 60
                   );
-                }
+                },
               );
 
               const hasMultipleAppointments = filteredAppointments.length > 1;
@@ -717,7 +717,7 @@ export default function CalendarScreen() {
                                   </Text>
                                   <Text style={styles.appointmentMeta}>
                                     {formatAppointmentDate(
-                                      appointment.scheduled_at
+                                      appointment.scheduled_at,
                                     )}{" "}
                                     • {appointment.duration}
                                   </Text>

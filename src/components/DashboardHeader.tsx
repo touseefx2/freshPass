@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Animated,
   Linking,
+  Image,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { setToggleLoading } from "@/src/state/slices/generalSlice";
@@ -28,12 +29,14 @@ import {
 import { checkInternetConnection } from "@/src/services/api";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
+import { IMAGES } from "../constant/images";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     headerContainer: {
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(12),
+      backgroundColor: theme.darkGreen,
     },
     header: {
       flexDirection: "row",
@@ -72,6 +75,11 @@ const createStyles = (theme: Theme) =>
       textDecorationLine: "underline",
       textDecorationColor: theme.white,
     },
+    logoImage: {
+      width: widthScale(156),
+      height: heightScale(36),
+      resizeMode: "contain",
+    },
   });
 
 interface DashboardHeaderProps {
@@ -109,7 +117,7 @@ function DashboardHeader({
         "No Internet Connection",
         "Please check your internet connection and try again",
         "error",
-        2500
+        2500,
       );
       return;
     }
@@ -118,14 +126,14 @@ function DashboardHeader({
     setIsFetchingStripeLink(true);
     try {
       const businessData = await dispatch(
-        fetchUserStatus({ showError: false })
+        fetchUserStatus({ showError: false }),
       ).unwrap();
 
       // Open the link in browser after successful fetch
       if (businessData?.stripe_onboarding_link) {
         try {
           const canOpen = await Linking.canOpenURL(
-            businessData.stripe_onboarding_link
+            businessData.stripe_onboarding_link,
           );
           if (canOpen) {
             await Linking.openURL(businessData.stripe_onboarding_link);
@@ -137,7 +145,7 @@ function DashboardHeader({
             "Error",
             error.message || "Failed to open link",
             "error",
-            2500
+            2500,
           );
         }
       } else {
@@ -145,7 +153,7 @@ function DashboardHeader({
           "Stripe Connect",
           "Stripe onboarding link is not available",
           "error",
-          2500
+          2500,
         );
       }
     } catch (error: any) {
@@ -153,7 +161,7 @@ function DashboardHeader({
         "Error",
         error.message || "Failed to fetch Stripe onboarding link",
         "error",
-        2500
+        2500,
       );
     } finally {
       setIsFetchingStripeLink(false);
@@ -232,7 +240,7 @@ function DashboardHeader({
         // Call API to update active status
         try {
           await dispatch(
-            updateBusinessActiveStatus({ active: value })
+            updateBusinessActiveStatus({ active: value }),
           ).unwrap();
           // Success - status already updated in Redux via thunk
         } catch (error: any) {
@@ -252,7 +260,7 @@ function DashboardHeader({
         }
       }
     },
-    [dispatch, isOnline, actualCanGoOnline, handleToggleAttempt, showBanner]
+    [dispatch, isOnline, actualCanGoOnline, handleToggleAttempt, showBanner],
   );
 
   return (
@@ -265,13 +273,7 @@ function DashboardHeader({
       >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <LeafLogo
-              width={widthScale(18)}
-              height={heightScale(24)}
-              color1={theme.darkGreen}
-              color2={theme.darkGreen}
-            />
-            <Text style={styles.logoText}>FRESHPASS</Text>
+            <Image source={IMAGES.logo3d} style={styles.logoImage} />
           </View>
           {isCustomer ? (
             <View style={{ width: 16, height: moderateHeightScale(38) }} />

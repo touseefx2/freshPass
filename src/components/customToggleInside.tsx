@@ -1,5 +1,11 @@
 import React, { useMemo, useCallback, useRef } from "react";
-import { Pressable, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  ActivityIndicator,
+} from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -21,7 +27,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       borderRadius: 999,
       overflow: "hidden",
-      backgroundColor: theme.lightGreen16,
+      backgroundColor: theme.white85,
       width: moderateWidthScale(135),
       height: moderateHeightScale(38),
       padding: 4,
@@ -37,9 +43,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: 999,
       overflow: "hidden",
     },
-    offlineSectionInactive: {
-      
-    },
+    offlineSectionInactive: {},
     offlineSectionActive: {
       backgroundColor: theme.toggleActive,
     },
@@ -52,9 +56,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-    textInactive:{
+    textInactive: {
       color: theme.lightGreen,
-    }
+    },
   });
 
 export default function CustomToggleInside({
@@ -98,7 +102,7 @@ export default function CustomToggleInside({
           <ActivityIndicator size="small" color={theme.darkGreen} />
         ) : (
           <Text style={[styles.text, value && styles.textInactive]}>
-           Inactive
+            Inactive
           </Text>
         )}
       </View>
