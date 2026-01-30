@@ -730,94 +730,6 @@ export default function bookingDetailsById() {
     }, []),
   );
 
-  // Loading state
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => {
-                router.back();
-              }}
-            >
-              <BackArrowIcon
-                width={widthScale(25)}
-                height={heightScale(25)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <Text style={styles.logoText}>Booking Detail</Text>
-          </View>
-        </View>
-        <View style={styles.line} />
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={theme.darkGreen} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => {
-                router.back();
-              }}
-            >
-              <BackArrowIcon
-                width={widthScale(25)}
-                height={heightScale(25)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <Text style={styles.logoText}>Booking Detail</Text>
-          </View>
-        </View>
-        <View style={styles.line} />
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <RetryButton onPress={fetchBookingDetails} loading={loading} />
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // No booking data
-  if (!booking) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity
-              style={styles.backButton}
-              onPress={() => {
-                router.back();
-              }}
-            >
-              <BackArrowIcon
-                width={widthScale(25)}
-                height={heightScale(25)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <Text style={styles.logoText}>Booking Detail</Text>
-          </View>
-        </View>
-        <View style={styles.line} />
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No booking data found</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   const getStatusBadgeStyle = (status: BookingStatus) => {
     switch (status) {
       case "ongoing":
@@ -863,18 +775,18 @@ export default function bookingDetailsById() {
     }
   };
 
-  const isCancelled = booking.status === "cancelled";
+  const isCancelled = booking?.status === "cancelled";
 
   // Parse date and time from dateTime string
-  const dateTimeParts = booking.dateTime.split(" - ");
-  const date = dateTimeParts[0] || booking.dateTime;
-  const time = dateTimeParts[1] || "";
+  const dateTimeParts = booking?.dateTime?.split(" - ") ?? [];
+  const date = (dateTimeParts[0] || booking?.dateTime) ?? "";
+  const time = dateTimeParts[1] ?? "";
 
-  const businessName = booking.businessName || booking.location || "---";
-  const businessLatitude = booking.businessLatitude
+  const businessName = booking?.businessName || booking?.location || "---";
+  const businessLatitude = booking?.businessLatitude
     ? parseFloat(booking.businessLatitude)
     : undefined;
-  const businessLongitude = booking.businessLongitude
+  const businessLongitude = booking?.businessLongitude
     ? parseFloat(booking.businessLongitude)
     : undefined;
 
@@ -961,159 +873,188 @@ export default function bookingDetailsById() {
     }
   };
 
-  return (
-    <SafeAreaView edges={["bottom"]} style={styles.container}>
-      {/* Header */}
-      <StackHeader title="Booking Detail" />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* Booking Section */}
-        <View style={styles.bookingSection}>
-          {/* Status and Membership Badges */}
-          <View style={styles.badgesContainer}>
-            <View
-              style={[styles.statusBadge, getStatusBadgeStyle(booking.status)]}
-            >
-              <Text
-                style={[styles.statusText, getStatusTextStyle(booking.status)]}
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={theme.darkGreen} />
+        </View>
+      );
+    }
+    if (error) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <RetryButton onPress={fetchBookingDetails} loading={loading} />
+        </View>
+      );
+    }
+    if (!booking) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>No booking data found</Text>
+        </View>
+      );
+    }
+    return (
+      <>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Booking Section */}
+          <View style={styles.bookingSection}>
+            {/* Status and Membership Badges */}
+            <View style={styles.badgesContainer}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  getStatusBadgeStyle(booking.status),
+                ]}
               >
-                {getStatusLabel(booking.status)}
+                <Text
+                  style={[
+                    styles.statusText,
+                    getStatusTextStyle(booking.status),
+                  ]}
+                >
+                  {getStatusLabel(booking.status)}
+                </Text>
+              </View>
+              {booking.subscriptionVisits &&
+                booking.subscriptionVisits.remaining !== undefined && (
+                  <View style={styles.membershipBadge}>
+                    <Text style={styles.membershipBadgeText}>
+                      {booking.subscriptionVisits.remaining} visit
+                      {booking.subscriptionVisits.remaining !== 1
+                        ? "s"
+                        : ""}{" "}
+                      left
+                    </Text>
+                  </View>
+                )}
+            </View>
+
+            {/* Service Name */}
+            <Text style={styles.serviceName}>{booking.serviceName}</Text>
+
+            {/* Details Row */}
+            <View style={styles.detailsRowContainer}>
+              <View style={styles.detailsRowTopLine} />
+              <View style={styles.detailsRow}>
+                <View style={styles.detailColumn}>
+                  <View style={styles.detailIconContainer}>
+                    <Ionicons
+                      name="time-outline"
+                      size={moderateWidthScale(17)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <View style={styles.detailTextContainer}>
+                    <Text style={styles.detailLabel}>Duration</Text>
+                    <Text style={styles.detailValue}>{booking.duration}</Text>
+                  </View>
+                  <View style={styles.detailColumnSeparator} />
+                </View>
+                <View style={styles.detailColumn}>
+                  <View style={styles.detailIconContainer}>
+                    <CalendarIcon
+                      width={moderateWidthScale(17)}
+                      height={moderateWidthScale(17)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <View style={styles.detailTextContainer}>
+                    <Text style={styles.detailLabel}>Date</Text>
+                    <Text style={styles.detailValue}>
+                      {date}
+                      {time ? ` -` : ""}
+                    </Text>
+                    {time && <Text style={styles.detailValue}>{time}</Text>}
+                  </View>
+                  <View style={styles.detailColumnSeparator} />
+                </View>
+                <View style={[styles.detailColumn, { borderRightWidth: 0 }]}>
+                  <View style={styles.detailIconContainer}>
+                    <PersonIcon
+                      width={moderateWidthScale(17)}
+                      height={moderateWidthScale(17)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <View style={styles.detailTextContainer}>
+                    <Text style={styles.detailLabel}>
+                      My {userRole === "customer" ? "barber" : "Customer"}
+                    </Text>
+                    <Text style={styles.detailValue} numberOfLines={2}>
+                      {staffClientname}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.detailsRowBottomLine} />
+            </View>
+          </View>
+
+          {/* Business Information Card */}
+          <View style={styles.businessCard}>
+            <View style={styles.businessImageContainer}>
+              <Image
+                source={{
+                  uri: booking.businessLogoUrl,
+                }}
+                style={styles.businessImage}
+              />
+              {booking.businessAverageRating !== undefined &&
+                booking.businessAverageRating > 0 && (
+                  <View style={[styles.ratingBadge, styles.sahdow]}>
+                    <Ionicons
+                      name="star"
+                      size={moderateWidthScale(10)}
+                      color={theme.selectCard}
+                      style={styles.ratingStar}
+                    />
+                    <Text style={styles.ratingText}>
+                      {booking.businessAverageRating.toFixed(1)}
+                    </Text>
+                  </View>
+                )}
+            </View>
+            <View style={styles.businessInfo}>
+              <Text style={styles.businessName}>{booking.businessName}</Text>
+              <Text style={styles.businessAddress}>
+                {booking.businessAddress}
               </Text>
             </View>
-            {booking.subscriptionVisits &&
-              booking.subscriptionVisits.remaining !== undefined && (
-                <View style={styles.membershipBadge}>
-                  <Text style={styles.membershipBadgeText}>
-                    {booking.subscriptionVisits.remaining} visit
-                    {booking.subscriptionVisits.remaining !== 1 ? "s" : ""} left
-                  </Text>
-                </View>
-              )}
+            {businessLatitude && businessLongitude && (
+              <TouchableOpacity
+                style={styles.mapPinContainer}
+                onPress={handleLocationPress}
+              >
+                <MapPinIcon
+                  width={moderateWidthScale(18)}
+                  height={moderateWidthScale(18)}
+                  color={theme.primary}
+                />
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Service Name */}
-          <Text style={styles.serviceName}>{booking.serviceName}</Text>
+          <View style={styles.line} />
 
-          {/* Details Row */}
-          <View style={styles.detailsRowContainer}>
-            <View style={styles.detailsRowTopLine} />
-            <View style={styles.detailsRow}>
-              <View style={styles.detailColumn}>
-                <View style={styles.detailIconContainer}>
-                  <Ionicons
-                    name="time-outline"
-                    size={moderateWidthScale(17)}
-                    color={theme.darkGreen}
-                  />
-                </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={styles.detailLabel}>Duration</Text>
-                  <Text style={styles.detailValue}>{booking.duration}</Text>
-                </View>
-                <View style={styles.detailColumnSeparator} />
+          {/* Action Buttons */}
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
+              <View style={styles.actionButtonCircle}>
+                <ContactIcon
+                  width={moderateWidthScale(22)}
+                  height={moderateWidthScale(22)}
+                  color={theme.darkGreen}
+                />
               </View>
-              <View style={styles.detailColumn}>
-                <View style={styles.detailIconContainer}>
-                  <CalendarIcon
-                    width={moderateWidthScale(17)}
-                    height={moderateWidthScale(17)}
-                    color={theme.darkGreen}
-                  />
-                </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={styles.detailLabel}>Date</Text>
-                  <Text style={styles.detailValue}>
-                    {date}
-                    {time ? ` -` : ""}
-                  </Text>
-                  {time && <Text style={styles.detailValue}>{time}</Text>}
-                </View>
-                <View style={styles.detailColumnSeparator} />
-              </View>
-              <View style={[styles.detailColumn, { borderRightWidth: 0 }]}>
-                <View style={styles.detailIconContainer}>
-                  <PersonIcon
-                    width={moderateWidthScale(17)}
-                    height={moderateWidthScale(17)}
-                    color={theme.darkGreen}
-                  />
-                </View>
-                <View style={styles.detailTextContainer}>
-                  <Text style={styles.detailLabel}>
-                    My {userRole === "customer" ? "barber" : "Customer"}
-                  </Text>
-                  <Text style={styles.detailValue} numberOfLines={2}>
-                    {staffClientname}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.detailsRowBottomLine} />
-          </View>
-        </View>
-
-        {/* Business Information Card */}
-        <View style={styles.businessCard}>
-          <View style={styles.businessImageContainer}>
-            <Image
-              source={{
-                uri: booking.businessLogoUrl,
-              }}
-              style={styles.businessImage}
-            />
-            {booking.businessAverageRating !== undefined &&
-              booking.businessAverageRating > 0 && (
-                <View style={[styles.ratingBadge, styles.sahdow]}>
-                  <Ionicons
-                    name="star"
-                    size={moderateWidthScale(10)}
-                    color={theme.selectCard}
-                    style={styles.ratingStar}
-                  />
-                  <Text style={styles.ratingText}>
-                    {booking.businessAverageRating.toFixed(1)}
-                  </Text>
-                </View>
-              )}
-          </View>
-          <View style={styles.businessInfo}>
-            <Text style={styles.businessName}>{booking.businessName}</Text>
-            <Text style={styles.businessAddress}>
-              {booking.businessAddress}
-            </Text>
-          </View>
-          {businessLatitude && businessLongitude && (
-            <TouchableOpacity
-              style={styles.mapPinContainer}
-              onPress={handleLocationPress}
-            >
-              <MapPinIcon
-                width={moderateWidthScale(18)}
-                height={moderateWidthScale(18)}
-                color={theme.primary}
-              />
+              <Text style={styles.actionButtonText}>Contact</Text>
             </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.line} />
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
-            <View style={styles.actionButtonCircle}>
-              <ContactIcon
-                width={moderateWidthScale(22)}
-                height={moderateWidthScale(22)}
-                color={theme.darkGreen}
-              />
-            </View>
-            <Text style={styles.actionButtonText}>Contact</Text>
-          </TouchableOpacity>
-          {/* {isCancelled && (
+            {/* {isCancelled && (
             <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
               <View style={styles.actionButtonCircle}>
                 <BookAgainIcon
@@ -1125,7 +1066,7 @@ export default function bookingDetailsById() {
               <Text style={styles.actionButtonText}>Book again</Text>
             </TouchableOpacity>
           )} */}
-          {/* <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
+            {/* <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
             <View style={styles.actionButtonCircle}>
               <CalendarIcon
                 width={moderateWidthScale(22)}
@@ -1135,99 +1076,111 @@ export default function bookingDetailsById() {
             </View>
             <Text style={styles.actionButtonText}>Reschedule</Text>
           </TouchableOpacity> */}
-          <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
-            <View style={styles.actionButtonCircle}>
-              <SupportIcon
-                width={moderateWidthScale(22)}
-                height={moderateWidthScale(22)}
+            <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
+              <View style={styles.actionButtonCircle}>
+                <SupportIcon
+                  width={moderateWidthScale(22)}
+                  height={moderateWidthScale(22)}
+                  color={theme.darkGreen}
+                />
+              </View>
+              <Text style={styles.actionButtonText}>Support</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.line} />
+
+          {/* Payment Information */}
+          {booking.type === "service" ? (
+            <View style={styles.paymentSection}>
+              <View style={styles.paymentIcon}>
+                <WalletIcon
+                  width={moderateWidthScale(22)}
+                  height={moderateWidthScale(22)}
+                  color={theme.orangeBrown}
+                />
+              </View>
+              <View style={styles.paymentTextContainer}>
+                {booking.paymentMethod === "pay_now" &&
+                booking.paidAmount !== null &&
+                booking.paidAmount !== undefined ? (
+                  <>
+                    <Text style={styles.paymentLabel}>I paid</Text>
+                    <Text style={styles.paymentAmount}>
+                      <Text style={styles.paymentAmountVal}>
+                        {formatPrice(booking.paidAmount)}
+                      </Text>
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.paymentLabel}>I will pay</Text>
+                    <Text style={styles.paymentAmount}>
+                      Total:{" "}
+                      <Text style={styles.paymentAmountVal}>
+                        {booking.price}
+                      </Text>
+                    </Text>
+                  </>
+                )}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.paymentSection}>
+              <View style={styles.paymentTextContainer}>
+                <Text style={styles.paymentAmount}>
+                  <Text style={styles.paymentAmountVal}>
+                    {booking.planName}
+                  </Text>
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.line} />
+
+          {/* Policy Link (only for ongoing bookings) */}
+          {!isCancelled && userRole === "customer" && (
+            <TouchableOpacity style={styles.policyLink}>
+              <Text style={styles.policyText}>Booking cancel policy</Text>
+              <Entypo
+                name="chevron-small-right"
+                size={moderateWidthScale(22)}
                 color={theme.darkGreen}
               />
-            </View>
-            <Text style={styles.actionButtonText}>Support</Text>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
 
-        <View style={styles.line} />
+        {/* Bottom Button */}
 
-        {/* Payment Information */}
-        {booking.type === "service" ? (
-          <View style={styles.paymentSection}>
-            <View style={styles.paymentIcon}>
-              <WalletIcon
-                width={moderateWidthScale(22)}
-                height={moderateWidthScale(22)}
-                color={theme.orangeBrown}
-              />
-            </View>
-            <View style={styles.paymentTextContainer}>
-              {booking.paymentMethod === "pay_now" &&
-              booking.paidAmount !== null &&
-              booking.paidAmount !== undefined ? (
-                <>
-                  <Text style={styles.paymentLabel}>I paid</Text>
-                  <Text style={styles.paymentAmount}>
-                    <Text style={styles.paymentAmountVal}>
-                      {formatPrice(booking.paidAmount)}
-                    </Text>
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.paymentLabel}>I will pay</Text>
-                  <Text style={styles.paymentAmount}>
-                    Total:{" "}
-                    <Text style={styles.paymentAmountVal}>{booking.price}</Text>
-                  </Text>
-                </>
-              )}
-            </View>
-          </View>
-        ) : (
-          <View style={styles.paymentSection}>
-            <View style={styles.paymentTextContainer}>
-              <Text style={styles.paymentAmount}>
-                <Text style={styles.paymentAmountVal}>{booking.planName}</Text>
-              </Text>
-            </View>
-          </View>
-        )}
-
-        <View style={styles.line} />
-
-        {/* Policy Link (only for ongoing bookings) */}
         {!isCancelled && userRole === "customer" && (
-          <TouchableOpacity style={styles.policyLink}>
-            <Text style={styles.policyText}>Booking cancel policy</Text>
-            <Entypo
-              name="chevron-small-right"
-              size={moderateWidthScale(22)}
-              color={theme.darkGreen}
+          <View style={styles.bottomButton}>
+            <Button
+              title={"Cancel this booking"}
+              onPress={() => {
+                handleOpenCancelModal();
+              }}
+              containerStyle={styles.cancelButton}
+              textColor={"#D32F2F"}
             />
-          </TouchableOpacity>
+          </View>
         )}
-      </ScrollView>
 
-      {/* Bottom Button */}
+        {/* Cancel Booking Bottom Sheet */}
+        <CancelBookingBottomSheet
+          visible={cancelModalVisible}
+          onClose={handleCloseCancelModal}
+          onSubmit={handleCancelBooking}
+        />
+      </>
+    );
+  };
 
-      {!isCancelled && userRole === "customer" && (
-        <View style={styles.bottomButton}>
-          <Button
-            title={"Cancel this booking"}
-            onPress={() => {
-              handleOpenCancelModal();
-            }}
-            containerStyle={styles.cancelButton}
-            textColor={"#D32F2F"}
-          />
-        </View>
-      )}
-
-      {/* Cancel Booking Bottom Sheet */}
-      <CancelBookingBottomSheet
-        visible={cancelModalVisible}
-        onClose={handleCloseCancelModal}
-        onSubmit={handleCancelBooking}
-      />
+  return (
+    <SafeAreaView edges={["bottom"]} style={styles.container}>
+      <StackHeader title="Booking Detail" />
+      {renderContent()}
     </SafeAreaView>
   );
 }
