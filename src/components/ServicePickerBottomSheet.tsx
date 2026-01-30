@@ -1,11 +1,7 @@
 import React, { useMemo, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -77,12 +73,11 @@ export default function ServicePickerBottomSheet({
   selectedServiceIds,
   onSelectServices,
 }: ServicePickerBottomSheetProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
-  const { businessServices } = useAppSelector(
-    (state) => state.completeProfile
-  );
+  const { businessServices } = useAppSelector((state) => state.completeProfile);
   const [localSelectedIds, setLocalSelectedIds] =
     useState<string[]>(selectedServiceIds);
 
@@ -108,7 +103,7 @@ export default function ServicePickerBottomSheet({
   // Get all service IDs
   const allServiceIds = useMemo(
     () => availableServices.map((s) => s.id),
-    [availableServices]
+    [availableServices],
   );
 
   // Check if all services are selected
@@ -131,12 +126,12 @@ export default function ServicePickerBottomSheet({
 
   const handleToggleService = (serviceId: string) => {
     // Handle service toggle
-      const isSelected = localSelectedIds.includes(serviceId);
-      if (isSelected) {
+    const isSelected = localSelectedIds.includes(serviceId);
+    if (isSelected) {
       // Remove this service
       setLocalSelectedIds(localSelectedIds.filter((id) => id !== serviceId));
-      } else {
-        // Add this service
+    } else {
+      // Add this service
       setLocalSelectedIds([...localSelectedIds, serviceId]);
     }
   };
@@ -148,7 +143,7 @@ export default function ServicePickerBottomSheet({
 
   const renderServiceItem = (
     service: (typeof availableServices)[0],
-    showBorder: boolean = true
+    showBorder: boolean = true,
   ) => {
     const isSelected = localSelectedIds.includes(service.id);
     return (
@@ -184,7 +179,7 @@ export default function ServicePickerBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Select services"
+      title={t("selectServices")}
       footerButtonTitle="Select"
       onFooterButtonPress={handleSelect}
     >
@@ -216,8 +211,8 @@ export default function ServicePickerBottomSheet({
             </View>
           </TouchableOpacity>
 
-      {/* Separator line */}
-      <View style={styles.separator} />
+          {/* Separator line */}
+          <View style={styles.separator} />
         </>
       )}
 
@@ -227,4 +222,3 @@ export default function ServicePickerBottomSheet({
     </ModalizeBottomSheet>
   );
 }
-

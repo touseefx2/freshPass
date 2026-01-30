@@ -1,10 +1,14 @@
 import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
-import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
+import {
+  moderateHeightScale,
+  moderateWidthScale,
+} from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 
 export type SortByOption = "recommended" | "distance" | "reviews";
@@ -51,6 +55,7 @@ export default function SortByBottomSheet({
   sortBy,
   setSortBy,
 }: SortByBottomSheetProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -59,7 +64,7 @@ export default function SortByBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Sort by"
+      title={t("sortBy")}
     >
       {SORT_OPTIONS.map((opt, index) => {
         const isSelected = sortBy === opt.value;

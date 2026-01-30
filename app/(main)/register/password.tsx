@@ -298,11 +298,11 @@ export default function RegisterPassword() {
               </View>
 
               <FloatingInput
-                label="Type password"
+                label={t("typePassword")}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!isPasswordVisible}
-                placeholder="Type your password"
+                placeholder={t("typeYourPassword")}
                 autoCapitalize="none"
                 onClear={handleClear}
                 renderRightAccessory={() =>
@@ -327,11 +327,11 @@ export default function RegisterPassword() {
               )}
 
               <FloatingInput
-                label="Confirm password"
+                label={t("confirmPassword")}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry={!isConfirmPasswordVisible}
-                placeholder="Confirm your password"
+                placeholder={t("confirmYourPassword")}
                 autoCapitalize="none"
                 onClear={handleClearConfirmPassword}
                 renderRightAccessory={() =>
@@ -371,11 +371,11 @@ export default function RegisterPassword() {
                     )}
                   </View>
                 </View>
-                <Text style={styles.saveText}>Save password</Text>
+                <Text style={styles.saveText}>{t("savePassword")}</Text>
               </Pressable>
             </View>
             <Button
-              title="Continue"
+              title={t("continue")}
               onPress={handleContinue}
               disabled={!isFormValid}
               loading={isLoading}

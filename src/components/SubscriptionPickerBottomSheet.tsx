@@ -1,10 +1,6 @@
-import React, {
-  useMemo,
-  useState,
-  useEffect,
-  useRef,
-} from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -15,7 +11,6 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
-
 
 interface SubscriptionPlan {
   id: number;
@@ -78,7 +73,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(4),
-      textTransform:"capitalize"
+      textTransform: "capitalize",
     },
     subscriptionVisits: {
       fontSize: fontSize.size12,
@@ -116,6 +111,7 @@ export default function SubscriptionPickerBottomSheet({
   selectedSubscriptionId,
   onSelectSubscription,
 }: SubscriptionPickerBottomSheetProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -141,7 +137,7 @@ export default function SubscriptionPickerBottomSheet({
     // Only apply selection when Done is pressed
     if (localSelectedId !== null) {
       const selectedSubscription = subscriptions.find(
-        (sub) => sub.id === localSelectedId
+        (sub) => sub.id === localSelectedId,
       );
       if (selectedSubscription) {
         onSelectSubscription(selectedSubscription);
@@ -154,25 +150,26 @@ export default function SubscriptionPickerBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Change subscription"
+      title={t("changeSubscription")}
       footerButtonTitle="Done"
       onFooterButtonPress={handleDone}
     >
       {subscriptions.map((subscription) => {
         // Parse price to number (handle both string and number)
-        const price = typeof subscription.price === 'string' 
-          ? parseFloat(subscription.price) 
-          : subscription.price;
-        
+        const price =
+          typeof subscription.price === "string"
+            ? parseFloat(subscription.price)
+            : subscription.price;
+
         // Parse original_price to number if it exists
         const originalPriceValue = subscription.original_price
-          ? (typeof subscription.original_price === 'string'
-              ? parseFloat(subscription.original_price)
-              : subscription.original_price)
+          ? typeof subscription.original_price === "string"
+            ? parseFloat(subscription.original_price)
+            : subscription.original_price
           : price * 1.25;
-        
+
         const isSelected = localSelectedId === subscription.id;
-        
+
         return (
           <TouchableOpacity
             onPress={() => handleSelectSubscription(subscription)}
@@ -190,11 +187,10 @@ export default function SubscriptionPickerBottomSheet({
                 {isSelected && <View style={styles.radioButtonInner} />}
               </View>
               <View style={styles.subscriptionCardLeft}>
-                <Text style={styles.subscriptionName}>
-                  {subscription.name}
-                </Text>
+                <Text style={styles.subscriptionName}>{subscription.name}</Text>
                 <Text style={styles.subscriptionVisits}>
-                  {subscription.visits} visit{subscription.visits !== 1 ? "s" : ""} per month
+                  {subscription.visits} visit
+                  {subscription.visits !== 1 ? "s" : ""} per month
                 </Text>
               </View>
               <View style={styles.subscriptionCardRight}>

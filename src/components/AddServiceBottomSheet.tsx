@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SvgXml } from "react-native-svg";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -143,6 +144,7 @@ export default function AddServiceBottomSheet({
   selectedServiceIds,
   onUpdateServices,
 }: AddServiceBottomSheetProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -171,7 +173,7 @@ export default function AddServiceBottomSheet({
   const handleDone = () => {
     // Update parent with final selection when Done is pressed
     const selectedServices = services.filter((service) =>
-      localSelectedIds.includes(service.id)
+      localSelectedIds.includes(service.id),
     );
     onUpdateServices(selectedServices);
     onClose();
@@ -181,22 +183,23 @@ export default function AddServiceBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Add another service"
+      title={t("addAnotherServiceTitle")}
       footerButtonTitle="Done"
       onFooterButtonPress={handleDone}
     >
       {services.map((service) => (
         <TouchableOpacity
-        onPress={() => handleToggleService(service.id)}
-        activeOpacity={0.8}
-        key={service.id} style={styles.serviceListItem}>
+          onPress={() => handleToggleService(service.id)}
+          activeOpacity={0.8}
+          key={service.id}
+          style={styles.serviceListItem}
+        >
           <View style={styles.serviceCardContent}>
             <View
               style={[
                 styles.checkboxContainer,
                 localSelectedIds.includes(service.id) && styles.checkboxChecked,
               ]}
-           
             >
               {localSelectedIds.includes(service.id) && (
                 <CheckboxIcon

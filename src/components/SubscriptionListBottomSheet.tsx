@@ -1,11 +1,7 @@
 import React, { useMemo, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -88,12 +84,14 @@ export default function SubscriptionListBottomSheet({
   suggestions,
   selectedSubscriptionIds,
 }: SubscriptionListBottomSheetProps) {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
-  const [localSelectedIds, setLocalSelectedIds] =
-    useState<string[]>(selectedSubscriptionIds);
+  const [localSelectedIds, setLocalSelectedIds] = useState<string[]>(
+    selectedSubscriptionIds,
+  );
 
   React.useEffect(() => {
     if (visible) {
@@ -105,7 +103,7 @@ export default function SubscriptionListBottomSheet({
     const isSelected = localSelectedIds.includes(subscriptionId);
     if (isSelected) {
       setLocalSelectedIds(
-        localSelectedIds.filter((id) => id !== subscriptionId)
+        localSelectedIds.filter((id) => id !== subscriptionId),
       );
     } else {
       setLocalSelectedIds([...localSelectedIds, subscriptionId]);
@@ -116,12 +114,13 @@ export default function SubscriptionListBottomSheet({
     // Add newly selected subscriptions
     const newlySelected = suggestions.filter(
       (s) =>
-        localSelectedIds.includes(s.id) && !selectedSubscriptionIds.includes(s.id)
+        localSelectedIds.includes(s.id) &&
+        !selectedSubscriptionIds.includes(s.id),
     );
 
     // Remove unselected subscriptions
     const toRemove = selectedSubscriptionIds.filter(
-      (id) => !localSelectedIds.includes(id)
+      (id) => !localSelectedIds.includes(id),
     );
 
     newlySelected.forEach((subscription) => {
@@ -137,14 +136,17 @@ export default function SubscriptionListBottomSheet({
 
   const renderSubscriptionItem = (
     subscription: (typeof suggestions)[0],
-    showBorder: boolean = true
+    showBorder: boolean = true,
   ) => {
     const isSelected = localSelectedIds.includes(subscription.id);
     return (
       <TouchableOpacity
         activeOpacity={0.7}
         key={subscription.id}
-        style={[styles.subscriptionItem, !showBorder && { borderBottomWidth: 0 }]}
+        style={[
+          styles.subscriptionItem,
+          !showBorder && { borderBottomWidth: 0 },
+        ]}
         onPress={() => handleToggleSubscription(subscription.id)}
       >
         <Text style={styles.subscriptionName}>{subscription.packageName}</Text>
@@ -168,21 +170,22 @@ export default function SubscriptionListBottomSheet({
 
   // Filter out selected subscriptions from the list
   const unselectedSuggestions = suggestions.filter(
-    (s) => !localSelectedIds.includes(s.id)
+    (s) => !localSelectedIds.includes(s.id),
   );
 
   return (
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Select subscription plans"
+      title={t("selectSubscriptionPlans")}
       footerButtonTitle="Select"
       onFooterButtonPress={handleSelect}
     >
       {/* Popular starting points section */}
       <Text style={styles.sectionTitle}>Popular starting points:</Text>
-      {unselectedSuggestions.map((subscription) => renderSubscriptionItem(subscription))}
+      {unselectedSuggestions.map((subscription) =>
+        renderSubscriptionItem(subscription),
+      )}
     </ModalizeBottomSheet>
   );
 }
-

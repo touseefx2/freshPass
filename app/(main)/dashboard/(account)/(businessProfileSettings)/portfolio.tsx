@@ -491,7 +491,7 @@ export default function ManagePortfolioPhotosScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Manage portfolio photos" />
+      <StackHeader title={t("managePortfolioPhotos")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -502,9 +502,9 @@ export default function ManagePortfolioPhotosScreen() {
         ) : (
           <>
             <View style={styles.titleSec}>
-              <Text style={styles.title}>Build trust with photos</Text>
+              <Text style={styles.title}>{t("buildTrustWithPhotos")}</Text>
               <Text style={styles.subtitle}>
-                Clients book salon barbers with great portfolios first.
+                {t("clientsBookSalonBarbersFirst")}
               </Text>
             </View>
 
@@ -521,7 +521,7 @@ export default function ManagePortfolioPhotosScreen() {
             {!hasAnyPhoto && (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  You didn't select anything yet
+                  {t("youDidntSelectAnythingYet")}
                 </Text>
               </View>
             )}
@@ -532,7 +532,7 @@ export default function ManagePortfolioPhotosScreen() {
       {!loading && (
         <View style={styles.continueButtonContainer}>
           <Button
-            title="Update photos"
+            title={t("updatePhotos")}
             onPress={handleUpdate}
             disabled={isUpdating || !hasChanges}
             loading={isUpdating}

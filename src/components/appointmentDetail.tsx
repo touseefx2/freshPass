@@ -1,10 +1,6 @@
 import React, { useMemo } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-} from "react-native";
+import { StyleSheet, View, Text, ScrollView } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -26,30 +22,34 @@ export interface Appointment {
   user: string;
   userEmail: string;
   subscription: string | null;
-  subscriptionServices: Array<{
-    id: number;
-    name: string;
-    description: string;
-    price: string;
-    duration: {
-      hours: number;
-      minutes: number;
-    };
-  }> | {};
+  subscriptionServices:
+    | Array<{
+        id: number;
+        name: string;
+        description: string;
+        price: string;
+        duration: {
+          hours: number;
+          minutes: number;
+        };
+      }>
+    | {};
   subscriptionVisits: {
     used: number;
     total: number;
   } | null;
-  services: Array<{
-    id: number;
-    name: string;
-    description: string;
-    price: string;
-    duration: {
-      hours: number;
-      minutes: number;
-    };
-  }> | {};
+  services:
+    | Array<{
+        id: number;
+        name: string;
+        description: string;
+        price: string;
+        duration: {
+          hours: number;
+          minutes: number;
+        };
+      }>
+    | {};
   totalPrice: number | {};
   paidAmount: string;
   staffName: string;
@@ -366,7 +366,10 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function AppointmentDetail({ appointment }: AppointmentDetailProps) {
+export default function AppointmentDetail({
+  appointment,
+}: AppointmentDetailProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -374,10 +377,10 @@ export default function AppointmentDetail({ appointment }: AppointmentDetailProp
   if (!appointment) {
     return (
       <View style={styles.container}>
-        <StackHeader title="Appointment Detail" />
+        <StackHeader title={t("appointmentDetail")} />
         <View style={styles.contentContainer}>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No appointment data available</Text>
+            <Text style={styles.emptyStateText}>{t("noDataAvailable")}</Text>
           </View>
         </View>
       </View>
@@ -387,7 +390,7 @@ export default function AppointmentDetail({ appointment }: AppointmentDetailProp
   const formatDateTime = (
     date: string,
     time: string,
-    totalMinutes?: number
+    totalMinutes?: number,
   ) => {
     const formattedDate = date;
     const timeObj = dayjs(`2025-01-01 ${time}`, "YYYY-MM-DD HH:mm");
@@ -415,7 +418,7 @@ export default function AppointmentDetail({ appointment }: AppointmentDetailProp
   };
 
   const calculateTotalDuration = (
-    services: Array<{ duration: { hours: number; minutes: number } }>
+    services: Array<{ duration: { hours: number; minutes: number } }>,
   ) => {
     if (!services || services.length === 0) return 0;
     const totalMinutes = services.reduce((total, service) => {
@@ -442,17 +445,18 @@ export default function AppointmentDetail({ appointment }: AppointmentDetailProp
   };
 
   const services = getServices();
-  const totalDuration = appointment.appointmentType === "subscription"
-    ? Array.isArray(appointment.subscriptionServices)
-      ? calculateTotalDuration(appointment.subscriptionServices)
-      : 0
-    : Array.isArray(appointment.services)
-    ? calculateTotalDuration(appointment.services)
-    : 0;
+  const totalDuration =
+    appointment.appointmentType === "subscription"
+      ? Array.isArray(appointment.subscriptionServices)
+        ? calculateTotalDuration(appointment.subscriptionServices)
+        : 0
+      : Array.isArray(appointment.services)
+        ? calculateTotalDuration(appointment.services)
+        : 0;
 
   return (
     <View style={styles.container}>
-      <StackHeader title="Appointment Detail" />
+      <StackHeader title={t("appointmentDetail")} />
       <ScrollView
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
@@ -512,7 +516,7 @@ export default function AppointmentDetail({ appointment }: AppointmentDetailProp
                 {formatDateTime(
                   appointment.appointmentDate,
                   appointment.appointmentTime,
-                  totalDuration
+                  totalDuration,
                 )}
               </Text>
             </View>
@@ -609,8 +613,8 @@ export default function AppointmentDetail({ appointment }: AppointmentDetailProp
                 service.duration.hours > 0 && service.duration.minutes > 0
                   ? `${service.duration.hours}h ${service.duration.minutes}m`
                   : service.duration.hours > 0
-                  ? `${service.duration.hours}h`
-                  : `${service.duration.minutes}m`;
+                    ? `${service.duration.hours}h`
+                    : `${service.duration.minutes}m`;
 
               return (
                 <View
@@ -678,7 +682,7 @@ export default function AppointmentDetail({ appointment }: AppointmentDetailProp
                     {Math.round(
                       (appointment.subscriptionVisits.used /
                         appointment.subscriptionVisits.total) *
-                        100
+                        100,
                     )}
                     %
                   </Text>

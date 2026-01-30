@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { IMAGES } from "@/src/constant/images";
@@ -19,7 +20,10 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 interface TryOnModalProps {
   visible: boolean;
@@ -127,6 +131,7 @@ export default function TryOnModal({
   onClose,
   onUnlockPress,
 }: TryOnModalProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -192,7 +197,7 @@ export default function TryOnModal({
 
             <View style={styles.bottomSection}>
               <Button
-                title="Unlock AI Try-On"
+                title={t("unlockAiTryOn")}
                 onPress={handleUnlock}
                 backgroundColor={theme.orangeBrown}
                 textColor={theme.darkGreen}

@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -161,6 +162,7 @@ export default function EditServiceBottomSheet({
   serviceId,
 }: EditServiceBottomSheetProps) {
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -290,7 +292,7 @@ export default function EditServiceBottomSheet({
           minutes,
           price: priceValue,
           currency,
-        })
+        }),
       );
     }
 
@@ -305,148 +307,145 @@ export default function EditServiceBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Edit service"
+      title={t("editService")}
       footerButtonTitle="Save"
       onFooterButtonPress={handleSave}
       contentStyle={styles.scrollContent}
     >
-          <View style={styles.serviceNameWrapper}>
-            <Text style={styles.inputLabel}>Service name</Text>
-            <Text style={styles.serviceNameText}>{serviceName}</Text>
-          </View>
+      <View style={styles.serviceNameWrapper}>
+        <Text style={styles.inputLabel}>Service name</Text>
+        <Text style={styles.serviceNameText}>{serviceName}</Text>
+      </View>
 
-          <View style={{ gap: 15 }}>
-            <Text style={styles.inputLabelTitle}>Service time</Text>
-            <View style={styles.timeRow}>
-              <View style={styles.timeInputWrapper}>
-                <View style={styles.mainTimeCon}>
-                  <Text style={styles.inputLabel}>Hour</Text>
-                  <View style={styles.timeInputContainer}>
-                    <TextInput
-                      style={styles.timeInput}
-                      value={hours.toString()}
-                      onChangeText={handleHoursChange}
-                      keyboardType="number-pad"
-                      placeholder="0"
-                      placeholderTextColor={theme.lightGreen2}
-                    />
-                  </View>
-                </View>
-                <View style={styles.arrowButtonsContainer}>
-                  <TouchableOpacity
-                    onPress={handleIncrementHours}
-                    style={styles.timeButton}
-                  >
-                    <AntDesign
-                      name="caret-up"
-                      size={moderateWidthScale(15)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                  <View style={styles.arrowButtonSeparator} />
-                  <TouchableOpacity
-                    onPress={handleDecrementHours}
-                    style={styles.timeButton}
-                  >
-                    <AntDesign
-                      name="caret-down"
-                      size={moderateWidthScale(15)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.timeInputWrapper}>
-                <View style={styles.mainTimeCon}>
-                  <Text style={styles.inputLabel}>Time</Text>
-                  <View style={styles.timeInputContainer}>
-                    <TextInput
-                      style={styles.timeInput}
-                      value={formatMinutes(minutes)}
-                      onChangeText={handleMinutesChange}
-                      keyboardType="number-pad"
-                      placeholder="0 mins"
-                      placeholderTextColor={theme.lightGreen2}
-                    />
-                  </View>
-                </View>
-                <View style={styles.arrowButtonsContainer}>
-                  <TouchableOpacity
-                    onPress={handleIncrementMinutes}
-                    style={styles.timeButton}
-                  >
-                    <AntDesign
-                      name="caret-up"
-                      size={moderateWidthScale(15)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                  <View style={styles.arrowButtonSeparator} />
-                  <TouchableOpacity
-                    onPress={handleDecrementMinutes}
-                    style={styles.timeButton}
-                  >
-                    <AntDesign
-                      name="caret-down"
-                      size={moderateWidthScale(15)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                </View>
+      <View style={{ gap: 15 }}>
+        <Text style={styles.inputLabelTitle}>Service time</Text>
+        <View style={styles.timeRow}>
+          <View style={styles.timeInputWrapper}>
+            <View style={styles.mainTimeCon}>
+              <Text style={styles.inputLabel}>Hour</Text>
+              <View style={styles.timeInputContainer}>
+                <TextInput
+                  style={styles.timeInput}
+                  value={hours.toString()}
+                  onChangeText={handleHoursChange}
+                  keyboardType="number-pad"
+                  placeholder="0"
+                  placeholderTextColor={theme.lightGreen2}
+                />
               </View>
             </View>
-
-            <View style={styles.timeInputWrapper}>
-              <View style={styles.mainTimeCon}>
-                <Text style={styles.inputLabel}>Price</Text>
-                <View style={styles.timeInputContainer}>
-                  <TextInput
-                    style={styles.timeInput}
-                    value={`${currency} $${parseFloat(price || "0").toFixed(
-                      2
-                    )}`}
-                    onChangeText={(text) => {
-                      // Extract number from "USD $145.99" or just "145.99" format
-                      const cleaned = text.replace(/[^0-9.]/g, "");
-                      if (cleaned) {
-                        setPrice(cleaned);
-                      } else {
-                        setPrice("0");
-                      }
-                    }}
-                    keyboardType="decimal-pad"
-                    placeholder={`${currency} $0.00`}
-                    placeholderTextColor={theme.lightGreen2}
-                  />
-                </View>
-              </View>
-              <View style={[styles.arrowButtonsContainer, { width: "14%" }]}>
-                <TouchableOpacity
-                  onPress={handleIncrementPrice}
-                  style={styles.timeButton}
-                >
-                  <AntDesign
-                    name="caret-up"
-                    size={moderateWidthScale(15)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-                <View style={styles.arrowButtonSeparator} />
-                <TouchableOpacity
-                  onPress={handleDecrementPrice}
-                  style={styles.timeButton}
-                >
-                  <AntDesign
-                    name="caret-down"
-                    size={moderateWidthScale(15)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-              </View>
+            <View style={styles.arrowButtonsContainer}>
+              <TouchableOpacity
+                onPress={handleIncrementHours}
+                style={styles.timeButton}
+              >
+                <AntDesign
+                  name="caret-up"
+                  size={moderateWidthScale(15)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+              <View style={styles.arrowButtonSeparator} />
+              <TouchableOpacity
+                onPress={handleDecrementHours}
+                style={styles.timeButton}
+              >
+                <AntDesign
+                  name="caret-down"
+                  size={moderateWidthScale(15)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
             </View>
           </View>
+
+          <View style={styles.timeInputWrapper}>
+            <View style={styles.mainTimeCon}>
+              <Text style={styles.inputLabel}>Time</Text>
+              <View style={styles.timeInputContainer}>
+                <TextInput
+                  style={styles.timeInput}
+                  value={formatMinutes(minutes)}
+                  onChangeText={handleMinutesChange}
+                  keyboardType="number-pad"
+                  placeholder="0 mins"
+                  placeholderTextColor={theme.lightGreen2}
+                />
+              </View>
+            </View>
+            <View style={styles.arrowButtonsContainer}>
+              <TouchableOpacity
+                onPress={handleIncrementMinutes}
+                style={styles.timeButton}
+              >
+                <AntDesign
+                  name="caret-up"
+                  size={moderateWidthScale(15)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+              <View style={styles.arrowButtonSeparator} />
+              <TouchableOpacity
+                onPress={handleDecrementMinutes}
+                style={styles.timeButton}
+              >
+                <AntDesign
+                  name="caret-down"
+                  size={moderateWidthScale(15)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.timeInputWrapper}>
+          <View style={styles.mainTimeCon}>
+            <Text style={styles.inputLabel}>Price</Text>
+            <View style={styles.timeInputContainer}>
+              <TextInput
+                style={styles.timeInput}
+                value={`${currency} $${parseFloat(price || "0").toFixed(2)}`}
+                onChangeText={(text) => {
+                  // Extract number from "USD $145.99" or just "145.99" format
+                  const cleaned = text.replace(/[^0-9.]/g, "");
+                  if (cleaned) {
+                    setPrice(cleaned);
+                  } else {
+                    setPrice("0");
+                  }
+                }}
+                keyboardType="decimal-pad"
+                placeholder={`${currency} $0.00`}
+                placeholderTextColor={theme.lightGreen2}
+              />
+            </View>
+          </View>
+          <View style={[styles.arrowButtonsContainer, { width: "14%" }]}>
+            <TouchableOpacity
+              onPress={handleIncrementPrice}
+              style={styles.timeButton}
+            >
+              <AntDesign
+                name="caret-up"
+                size={moderateWidthScale(15)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+            <View style={styles.arrowButtonSeparator} />
+            <TouchableOpacity
+              onPress={handleDecrementPrice}
+              style={styles.timeButton}
+            >
+              <AntDesign
+                name="caret-down"
+                size={moderateWidthScale(15)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
     </ModalizeBottomSheet>
   );
 }
-

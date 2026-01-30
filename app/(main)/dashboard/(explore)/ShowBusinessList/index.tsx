@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -16,15 +17,15 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import {
-  PlatformVerifiedStarIcon,
-  StarIconSmall,
-} from "@/assets/icons";
+import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import Button from "@/src/components/button";
 import InclusionsModal from "@/src/components/inclusionsModal";
 import { createStyles } from "./styles";
-import type { ServiceItem, SubscriptionItem } from "@/src/components/businessList";
+import type {
+  ServiceItem,
+  SubscriptionItem,
+} from "@/src/components/businessList";
 
 export interface VerifiedSalon {
   id: number;
@@ -46,6 +47,7 @@ export function BusinessCard({
   item: VerifiedSalon;
   styles: ListStyles;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const router = useRouter();
@@ -63,13 +65,12 @@ export function BusinessCard({
             width={widthScale(10)}
             height={heightScale(10)}
           />
-          <Text style={styles.platformVerifiedText}>Platform verified</Text>
+          <Text style={styles.platformVerifiedText}>
+            {t("platformVerified")}
+          </Text>
         </View>
         <View style={styles.businessInfoContainer}>
-          <Text
-            numberOfLines={1}
-            style={styles.verifiedSalonBusinessName}
-          >
+          <Text numberOfLines={1} style={styles.verifiedSalonBusinessName}>
             {salon.businessName}
           </Text>
           <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
@@ -96,14 +97,15 @@ export function BusinessCard({
               } as any);
             }}
           >
-            <Text style={styles.verifiedSalonViewDetailText}>View detail</Text>
+            <Text style={styles.verifiedSalonViewDetailText}>
+              {t("viewDetail")}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 }
-
 
 export function ListEmptySection({
   businessesLoading,
@@ -116,6 +118,7 @@ export function ListEmptySection({
   onRetry: () => void;
   styles: ListStyles;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
 
@@ -129,18 +132,17 @@ export function ListEmptySection({
   if (businessesError) {
     return (
       <View style={[styles.errorContainer, { alignSelf: "stretch" }]}>
-        <Text style={styles.errorText}>Failed to load businesses</Text>
+        <Text style={styles.errorText}>{t("failedToLoadBusinesses")}</Text>
         <RetryButton onPress={onRetry} loading={businessesLoading} />
       </View>
     );
   }
   return (
     <View style={[styles.emptyContainer, { alignSelf: "stretch" }]}>
-      <Text style={styles.emptyText}>No businesses found</Text>
+      <Text style={styles.emptyText}>{t("noBusinessesFound")}</Text>
     </View>
   );
 }
-
 
 export function BusinessCardType({
   item: salon,
@@ -153,6 +155,7 @@ export function BusinessCardType({
   type: "individual" | "subscriptions";
   index?: number;
 }) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const router = useRouter();
@@ -185,7 +188,7 @@ export function BusinessCardType({
         >
           {salon.businessName}
         </Text>
-        <Text style={styles.sectionSubTitle2}>View detail</Text>
+        <Text style={styles.sectionSubTitle2}>{t("viewDetail")}</Text>
       </View>
 
       {isIndividual && hasServices && (
@@ -196,10 +199,7 @@ export function BusinessCardType({
           contentContainerStyle={styles.servicesScroll}
         >
           {salon.services!.map((service) => (
-            <View
-              key={service.id}
-              style={[styles.serviceCard, styles.shadow]}
-            >
+            <View key={service.id} style={[styles.serviceCard, styles.shadow]}>
               <View
                 style={{
                   flexDirection: "row",
@@ -209,10 +209,7 @@ export function BusinessCardType({
               >
                 <View style={{ gap: moderateHeightScale(8), width: "70%" }}>
                   <Text style={styles.serviceTitle}>{service.title}</Text>
-                  <Text
-                    numberOfLines={2}
-                    style={styles.serviceDescription}
-                  >
+                  <Text numberOfLines={2} style={styles.serviceDescription}>
                     {service.description}
                   </Text>
                 </View>
@@ -230,7 +227,7 @@ export function BusinessCardType({
                 </Text>
                 <View style={styles.serviceButtonContainer}>
                   <Button
-                    title="Book Now"
+                    title={t("bookNow")}
                     onPress={() => {
                       router.push({
                         pathname: "/(main)/bookingNow",
@@ -252,7 +249,7 @@ export function BusinessCardType({
 
       {isIndividual && !hasServices && (
         <View style={styles.noListFoundContainer}>
-          <Text style={styles.noListFoundText}>No services found</Text>
+          <Text style={styles.noListFoundText}>{t("noServicesFound")}</Text>
         </View>
       )}
 
@@ -278,27 +275,14 @@ export function BusinessCardType({
               >
                 <View style={styles.offerBadgesContainer}>
                   {subscription.offer && (
-                    <View
-                      style={[
-                        styles.offerBadge,
-                        styles.offerBadgeOrange,
-                      ]}
-                    >
+                    <View style={[styles.offerBadge, styles.offerBadgeOrange]}>
                       <Text style={styles.offerText}>{subscription.offer}</Text>
                     </View>
                   )}
                   {subscription.offer2 && (
-                    <View
-                      style={[
-                        styles.offerBadge,
-                        styles.offerBadgeGreen,
-                      ]}
-                    >
+                    <View style={[styles.offerBadge, styles.offerBadgeGreen]}>
                       <Text
-                        style={[
-                          styles.offerText,
-                          { color: theme.darkGreen },
-                        ]}
+                        style={[styles.offerText, { color: theme.darkGreen }]}
                       >
                         {subscription.offer2}
                       </Text>
@@ -306,10 +290,7 @@ export function BusinessCardType({
                   )}
                 </View>
                 <View>
-                  <Text
-                    numberOfLines={1}
-                    style={styles.subscriptionTitle}
-                  >
+                  <Text numberOfLines={1} style={styles.subscriptionTitle}>
                     {subscription.title}
                   </Text>
                   {subscription.inclusions.length > 2 ? (
@@ -361,11 +342,10 @@ export function BusinessCardType({
                   </View>
                   <View style={styles.subscriptionButtonContainer}>
                     <Button
-                      title="Book Now"
+                      title={t("bookNow")}
                       onPress={() => {
                         router.push({
-                          pathname:
-                            "/(main)/bookingNow/checkoutSubscription",
+                          pathname: "/(main)/bookingNow/checkoutSubscription",
                           params: {
                             subscriptionId: subscription.id.toString(),
                             businessId: salon.id.toString(),
@@ -398,4 +378,3 @@ export function BusinessCardType({
     </View>
   );
 }
-

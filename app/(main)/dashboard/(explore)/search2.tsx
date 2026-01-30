@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import {
   addToRecentSearches,
@@ -131,6 +132,7 @@ function parsePopularServices(
 }
 
 export default function Search2Screen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{
     popularServices?: string;
@@ -233,7 +235,7 @@ export default function Search2Screen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <StackHeader title="Services or Businesses" />
+      <StackHeader title={t("servicesOrBusinesses")} />
       <StatusBar backgroundColor={theme.white} barStyle="dark-content" />
       <KeyboardAvoidingView
         style={styles.container}
@@ -248,10 +250,10 @@ export default function Search2Screen() {
         >
           <FloatingInput
             ref={inputRef}
-            label="Search services or businesses"
+            label={t("searchServicesOrBusinesses")}
             value={searchQuery}
             onChangeText={handleSearchInputChange}
-            placeholder="Search services or businesses"
+            placeholder={t("searchServicesOrBusinesses")}
             placeholderTextColor={theme.lightGreen}
             containerStyle={styles.searchInputContainer}
             returnKeyType="search"

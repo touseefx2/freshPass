@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SvgXml } from "react-native-svg";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -65,9 +66,9 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateWidthScale(12),
     },
     radioContainerSelected: {
-     borderColor: theme.lightGreen,
+      borderColor: theme.lightGreen,
     },
-     
+
     reasonText: {
       flex: 1,
       fontSize: fontSize.size14,
@@ -81,6 +82,7 @@ export default function CancelBookingBottomSheet({
   onClose,
   onSubmit,
 }: CancelBookingBottomSheetProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -110,7 +112,7 @@ export default function CancelBookingBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Reason to cancel"
+      title={t("reasonToCancel")}
       footerButtonTitle="Submit"
       onFooterButtonPress={handleSubmit}
       footerButtonDisabled={!selectedReason}
@@ -142,4 +144,3 @@ export default function CancelBookingBottomSheet({
     </ModalizeBottomSheet>
   );
 }
-

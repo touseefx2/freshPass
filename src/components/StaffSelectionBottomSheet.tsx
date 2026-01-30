@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Image } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -59,7 +60,7 @@ const createStyles = (theme: Theme) =>
     staffImage: {
       width: widthScale(50),
       height: widthScale(50),
-      borderRadius: widthScale(50/2),
+      borderRadius: widthScale(50 / 2),
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 1,
       borderColor: theme.borderLight,
@@ -100,10 +101,12 @@ export default function StaffSelectionBottomSheet({
   selectedStaffId,
   onSelectStaff,
 }: StaffSelectionBottomSheetProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
-  const [localSelectedId, setLocalSelectedId] = useState<string>(selectedStaffId);
+  const [localSelectedId, setLocalSelectedId] =
+    useState<string>(selectedStaffId);
   const prevVisibleRef = useRef(false);
 
   useEffect(() => {
@@ -146,7 +149,7 @@ export default function StaffSelectionBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Change staff member"
+      title={t("changeStaffMember")}
       footerButtonTitle="Change staff member"
       onFooterButtonPress={handleChangeStaff}
     >
@@ -206,4 +209,3 @@ export default function StaffSelectionBottomSheet({
     </ModalizeBottomSheet>
   );
 }
-

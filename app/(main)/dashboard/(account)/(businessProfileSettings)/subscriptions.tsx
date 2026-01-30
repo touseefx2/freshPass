@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -82,7 +83,7 @@ const getSuggestionIdForName = (name: string) => {
 
 // Popular starting points suggestions - will be populated with first 2 services
 const getPopularSuggestions = (
-  services: Array<{ id: string; name: string }>
+  services: Array<{ id: string; name: string }>,
 ) => {
   const firstTwoServiceIds = services.slice(0, 2).map((s) => s.id);
 
@@ -309,6 +310,7 @@ const createStyles = (theme: Theme) =>
 
 export default function ManageSubscriptionsScreen() {
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -318,7 +320,7 @@ export default function ManageSubscriptionsScreen() {
   const businessId = user?.business_id ?? "";
 
   const { subscriptions, businessServices } = useAppSelector(
-    (state) => state.completeProfile
+    (state) => state.completeProfile,
   );
 
   const [generatedResult, setGeneratedResult] = useState<any>(null);
@@ -356,7 +358,7 @@ export default function ManageSubscriptionsScreen() {
       opacity: new Animated.Value(0),
       scale: new Animated.Value(0),
       rotate: new Animated.Value(0),
-    }))
+    })),
   ).current;
 
   // Start animations when component mounts
@@ -374,7 +376,7 @@ export default function ManageSubscriptionsScreen() {
           duration: 1000,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
     // Rotate animation for icon
@@ -383,7 +385,7 @@ export default function ManageSubscriptionsScreen() {
         toValue: 1,
         duration: 3000,
         useNativeDriver: true,
-      })
+      }),
     );
 
     // Sparkling stars animation
@@ -436,7 +438,7 @@ export default function ManageSubscriptionsScreen() {
               useNativeDriver: true,
             }),
           ]),
-        ])
+        ]),
       );
     });
 
@@ -535,7 +537,7 @@ export default function ManageSubscriptionsScreen() {
         error?.message ||
           "Failed to fetch subscription plans. Please try again.",
         "error",
-        3000
+        3000,
       );
       setSubscriptionPlanIdMap({});
       dispatch(setSubscriptions([]));
@@ -561,13 +563,13 @@ export default function ManageSubscriptionsScreen() {
   // Get popular suggestions with first 2 services from business services
   const predefinedSuggestions = useMemo(
     () => getPopularSuggestions(services),
-    [services]
+    [services],
   );
 
   // Combine predefined and custom suggestions
   const popularSuggestions = useMemo(
     () => [...predefinedSuggestions, ...customSuggestions],
-    [predefinedSuggestions, customSuggestions]
+    [predefinedSuggestions, customSuggestions],
   );
 
   const getServiceNames = (serviceIds: string[]): string[] => {
@@ -581,7 +583,7 @@ export default function ManageSubscriptionsScreen() {
 
   const confirmDeleteSubscription = (
     subscriptionId: string,
-    subscriptionName: string
+    subscriptionName: string,
   ) => {
     if (deletingSubscriptionId) {
       return;
@@ -600,7 +602,7 @@ export default function ManageSubscriptionsScreen() {
           style: "destructive",
           onPress: () => handleDeleteSubscription(subscriptionId),
         },
-      ]
+      ],
     );
   };
 
@@ -627,14 +629,14 @@ export default function ManageSubscriptionsScreen() {
             "Success",
             response.message || "Subscription plan deleted successfully.",
             "success",
-            3000
+            3000,
           );
         } else {
           showBanner(
             "Error",
             response.message || "Failed to delete subscription plan.",
             "error",
-            3000
+            3000,
           );
         }
       } catch (error: any) {
@@ -644,7 +646,7 @@ export default function ManageSubscriptionsScreen() {
           error?.message ||
             "Failed to delete subscription plan. Please try again.",
           "error",
-          3000
+          3000,
         );
       } finally {
         setDeletingSubscriptionId(null);
@@ -686,7 +688,7 @@ export default function ManageSubscriptionsScreen() {
   };
 
   const handleSelectSuggestion = (
-    suggestion: (typeof popularSuggestions)[0]
+    suggestion: (typeof popularSuggestions)[0],
   ) => {
     const isSelected = subscriptions.some((s) => s.id === suggestion.id);
     if (isSelected) {
@@ -695,7 +697,7 @@ export default function ManageSubscriptionsScreen() {
       dispatch(addSubscription(suggestion));
       // If it's a custom suggestion, remove it from customSuggestions
       setCustomSuggestions((prev) =>
-        prev.filter((custom) => custom.id !== suggestion.id)
+        prev.filter((custom) => custom.id !== suggestion.id),
       );
     }
   };
@@ -731,7 +733,7 @@ export default function ManageSubscriptionsScreen() {
           "Success",
           response.message || "Subscription plans updated successfully",
           "success",
-          3000
+          3000,
         );
         router.back();
       } else {
@@ -739,7 +741,7 @@ export default function ManageSubscriptionsScreen() {
           "Error",
           response.message || "Failed to update subscription plans",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -749,7 +751,7 @@ export default function ManageSubscriptionsScreen() {
         error?.message ||
           "Failed to update subscription plans. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
@@ -758,7 +760,7 @@ export default function ManageSubscriptionsScreen() {
 
   // Filter out selected subscriptions from popular suggestions
   const unselectedSuggestions = popularSuggestions.filter(
-    (s) => !subscriptions.some((sub) => sub.id === s.id)
+    (s) => !subscriptions.some((sub) => sub.id === s.id),
   );
 
   const onClickAi = async () => {
@@ -770,7 +772,7 @@ export default function ManageSubscriptionsScreen() {
           "Error",
           "Business ID not found. Please complete your business profile.",
           "error",
-          3000
+          3000,
         );
         return;
       }
@@ -780,7 +782,7 @@ export default function ManageSubscriptionsScreen() {
 
       try {
         const response = await AiToolsService.generateSubscription(
-          Number(businessId)
+          Number(businessId),
         );
 
         if (response.status === "success" && response.generated_plans) {
@@ -791,7 +793,7 @@ export default function ManageSubscriptionsScreen() {
             "Error",
             "Failed to generate subscription plans. Please try again.",
             "error",
-            3000
+            3000,
           );
         }
       } catch (error: any) {
@@ -801,7 +803,7 @@ export default function ManageSubscriptionsScreen() {
           error?.message ||
             "Failed to generate subscription plans. Please try again.",
           "error",
-          3000
+          3000,
         );
       } finally {
         dispatch(setActionLoader(false));
@@ -812,7 +814,7 @@ export default function ManageSubscriptionsScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Manage subscription list" />
+      <StackHeader title={t("manageSubscriptionList")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -874,14 +876,14 @@ export default function ManageSubscriptionsScreen() {
                             <Text style={styles.subscriptionPriceText}>
                               {formatPrice(
                                 subscription.price,
-                                subscription.currency
+                                subscription.currency,
                               )}
                             </Text>
                             <TouchableOpacity
                               onPress={() =>
                                 confirmDeleteSubscription(
                                   subscription.id,
-                                  subscription.packageName
+                                  subscription.packageName,
                                 )
                               }
                             >
@@ -952,7 +954,7 @@ export default function ManageSubscriptionsScreen() {
               {unselectedSuggestions.length > 0 &&
                 unselectedSuggestions.map((suggestion) => {
                   const isSelected = subscriptions.some(
-                    (s) => s.id === suggestion.id
+                    (s) => s.id === suggestion.id,
                   );
                   return (
                     <View key={suggestion.id}>
@@ -1061,7 +1063,11 @@ export default function ManageSubscriptionsScreen() {
 
       {!loading && (
         <View style={styles.continueButtonContainer}>
-          <Button title="Update" onPress={handleUpdate} disabled={isUpdating} />
+          <Button
+            title={t("update")}
+            onPress={handleUpdate}
+            disabled={isUpdating}
+          />
         </View>
       )}
 
@@ -1089,7 +1095,7 @@ export default function ManageSubscriptionsScreen() {
             // Check if a subscription with the same name already exists
             const existingSubscription = subscriptions.find(
               (sub: { packageName: string }) =>
-                sub.packageName.toLowerCase() === plan.name.toLowerCase()
+                sub.packageName.toLowerCase() === plan.name.toLowerCase(),
             );
 
             if (existingSubscription) {
@@ -1136,14 +1142,14 @@ export default function ManageSubscriptionsScreen() {
                 addedCount > 1 ? "s" : ""
               } added successfully`,
               "success",
-              3000
+              3000,
             );
           } else if (selectedPlans.length > 0) {
             showBanner(
               "Info",
               "Selected plans are already in your subscription list",
               "info",
-              3000
+              3000,
             );
           }
         }}

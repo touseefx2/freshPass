@@ -93,24 +93,9 @@ const createStyles = (theme: Theme) =>
   });
 
 const languages = [
-  {
-    code: "en",
-    nameKey: "languagesEnName",
-    nativeNameKey: "languagesEnNativeName",
-    flag: "🇬🇧",
-  },
-  {
-    code: "fr",
-    nameKey: "languagesFrName",
-    nativeNameKey: "languagesFrNativeName",
-    flag: "🇫🇷",
-  },
-  {
-    code: "es",
-    nameKey: "languagesEsName",
-    nativeNameKey: "languagesEsNativeName",
-    flag: "🇪🇸",
-  },
+  { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
+  { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
+  { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },
 ];
 
 export default function LanguageChangeScreen() {
@@ -168,9 +153,9 @@ export default function LanguageChangeScreen() {
                       <Text style={styles.flagText}>{language.flag}</Text>
                     </View>
                     <View style={styles.languageInfo}>
-                      <Text style={styles.rowTitle}>{t(language.nameKey)}</Text>
+                      <Text style={styles.rowTitle}>{language.name}</Text>
                       <Text style={styles.rowSubtitle}>
-                        {t(language.nativeNameKey)}
+                        {language.nativeName}
                       </Text>
                       {/* <Text style={styles.languageCode}>{language.code.toUpperCase()}</Text> */}
                     </View>

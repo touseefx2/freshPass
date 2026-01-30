@@ -11,6 +11,7 @@ import {
   BackHandler,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Theme } from "@/src/theme/colors";
@@ -362,8 +363,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightGreen05,
       paddingVertical: moderateHeightScale(16),
       paddingHorizontal: moderateWidthScale(20),
-      alignItems:"center",
-      justifyContent:"center"
+      alignItems: "center",
+      justifyContent: "center",
     },
     actionSection: {
       flexDirection: "row",
@@ -405,13 +406,14 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function BookingDetail() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
   const router = useRouter();
   const params = useLocalSearchParams<{
-    appointmentId?:string;
+    appointmentId?: string;
     bookingId?: string;
     selectedServices?: string;
     selectedStaff?: string;
@@ -476,7 +478,7 @@ export default function BookingDetail() {
       "Download",
       "Download receipt functionality coming soon",
       "info",
-      2000
+      2000,
     );
   };
 
@@ -487,7 +489,7 @@ export default function BookingDetail() {
       //   pathname: "/(main)/businessDetail",
       //   params: { business_id: params.businessId },
       // });
-    }  
+    }
   }, [params.businessId, router]);
 
   // Handle Android hardware back button
@@ -500,11 +502,11 @@ export default function BookingDetail() {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
 
       return () => subscription.remove();
-    }, [handleBackNavigation])
+    }, [handleBackNavigation]),
   );
 
   const handleViewBooking = () => {
@@ -675,16 +677,17 @@ export default function BookingDetail() {
         )}
 
         {/* Staff Member */}
-          <View style={styles.staffCard}>
-            <Text style={styles.staffLabel}>Staff member:</Text>
-            <Text style={styles.staffName}>{selectedStaffMember?.name || "Anyone"}</Text>
-            {selectedStaffMember?.experience && (
-              <Text style={styles.staffExperience}>
-                {selectedStaffMember.experience} Years Of Experience
-              </Text>
-            )}
-          </View>
-       
+        <View style={styles.staffCard}>
+          <Text style={styles.staffLabel}>Staff member:</Text>
+          <Text style={styles.staffName}>
+            {selectedStaffMember?.name || "Anyone"}
+          </Text>
+          {selectedStaffMember?.experience && (
+            <Text style={styles.staffExperience}>
+              {selectedStaffMember.experience} Years Of Experience
+            </Text>
+          )}
+        </View>
 
         {/* Action Buttons */}
         <View style={styles.actionContainer}>
@@ -740,7 +743,7 @@ export default function BookingDetail() {
 
       {/* Bottom Button */}
       <View style={styles.bottomButton}>
-        <Button title="View bookings" onPress={handleViewBooking} />
+        <Button title={t("viewBookings")} onPress={handleViewBooking} />
       </View>
     </SafeAreaView>
   );

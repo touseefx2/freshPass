@@ -7,6 +7,7 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -83,6 +84,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function WorkHistoryList() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -185,9 +187,9 @@ export default function WorkHistoryList() {
           setTotalCount(response.data.meta.total);
           setCurrentPage(response.data.meta.current_page);
           setHasMore(
-            response.data.meta.current_page < response.data.meta.last_page
+            response.data.meta.current_page < response.data.meta.last_page,
           );
-          
+
           // Mark initial load as complete after first page loads
           if (page === 1) {
             setInitialLoadComplete(true);
@@ -200,7 +202,7 @@ export default function WorkHistoryList() {
         setLoadingMore(false);
       }
     },
-    [userRole]
+    [userRole],
   );
 
   useEffect(() => {
@@ -214,7 +216,14 @@ export default function WorkHistoryList() {
       setCurrentPage(nextPage);
       fetchWorkHistory(nextPage, true);
     }
-  }, [initialLoadComplete, loading, currentPage, hasMore, loadingMore, fetchWorkHistory]);
+  }, [
+    initialLoadComplete,
+    loading,
+    currentPage,
+    hasMore,
+    loadingMore,
+    fetchWorkHistory,
+  ]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Appointment; index: number }) => {
@@ -249,7 +258,7 @@ export default function WorkHistoryList() {
         </View>
       );
     },
-    [data.length, router, styles]
+    [data.length, router, styles],
   );
 
   const renderFooter = useCallback(() => {
@@ -271,14 +280,14 @@ export default function WorkHistoryList() {
     }
     return (
       <View style={styles.emptyStateContainer}>
-        <Text style={styles.emptyStateText}>No work history found</Text>
+        <Text style={styles.emptyStateText}>{t("noWorkHistoryFound")}</Text>
       </View>
     );
   }, [loading, styles]);
 
   return (
     <View style={styles.container}>
-      <StackHeader title="Work History" />
+      <StackHeader title={t("workHistory")} />
       <FlatList
         data={data}
         renderItem={renderItem}
@@ -293,4 +302,3 @@ export default function WorkHistoryList() {
     </View>
   );
 }
-

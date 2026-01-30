@@ -8,6 +8,7 @@ import {
   Keyboard,
   Pressable,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -145,6 +146,7 @@ const buildFullUrl = (username: string, prefix: string): string => {
 };
 
 export default function SocialMediaScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -175,10 +177,10 @@ export default function SocialMediaScreen() {
         const links = response.data.social_media_links;
         setTiktokUsername(extractUsername(links.tiktok || "", TIKTOK_PREFIX));
         setInstagramUsername(
-          extractUsername(links.instagram || "", INSTAGRAM_PREFIX)
+          extractUsername(links.instagram || "", INSTAGRAM_PREFIX),
         );
         setFacebookUsername(
-          extractUsername(links.facebook || "", FACEBOOK_PREFIX)
+          extractUsername(links.facebook || "", FACEBOOK_PREFIX),
         );
       }
     } catch (error: any) {
@@ -257,7 +259,7 @@ export default function SocialMediaScreen() {
           "Success",
           response.message || "Social media updated successfully",
           "success",
-          3000
+          3000,
         );
 
         router.back();
@@ -266,7 +268,7 @@ export default function SocialMediaScreen() {
           "Error",
           response.message || "Failed to update social media",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -275,7 +277,7 @@ export default function SocialMediaScreen() {
         "Error",
         error.message || "Failed to update social media. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
@@ -298,7 +300,7 @@ export default function SocialMediaScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Your social media" />
+      <StackHeader title={t("yourSocialMedia")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -325,7 +327,7 @@ export default function SocialMediaScreen() {
                     style={styles.input}
                     value={tiktokUsername}
                     onChangeText={handleTiktokChange}
-                    placeholder="username"
+                    placeholder={t("username")}
                     placeholderTextColor={theme.lightGreen2}
                   />
                   {tiktokUsername && tiktokUsername.trim() !== "" && (
@@ -348,7 +350,7 @@ export default function SocialMediaScreen() {
                     style={styles.input}
                     value={instagramUsername}
                     onChangeText={handleInstagramChange}
-                    placeholder="username"
+                    placeholder={t("username")}
                     placeholderTextColor={theme.lightGreen2}
                   />
                   {instagramUsername && instagramUsername.trim() !== "" && (
@@ -371,7 +373,7 @@ export default function SocialMediaScreen() {
                     style={styles.input}
                     value={facebookUsername}
                     onChangeText={handleFacebookChange}
-                    placeholder="username"
+                    placeholder={t("username")}
                     placeholderTextColor={theme.lightGreen2}
                   />
                   {facebookUsername && facebookUsername.trim() !== "" && (
@@ -393,7 +395,7 @@ export default function SocialMediaScreen() {
       {!loading && (
         <View style={styles.continueButtonContainer}>
           <Button
-            title="Update"
+            title={t("update")}
             onPress={handleUpdate}
             disabled={isUpdating}
           />
@@ -402,4 +404,3 @@ export default function SocialMediaScreen() {
     </SafeAreaView>
   );
 }
-

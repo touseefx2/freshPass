@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -54,6 +55,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function BusinessProfileSettingsScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -85,21 +87,21 @@ export default function BusinessProfileSettingsScreen() {
   };
 
   const settings = [
-    { key: "businessProfile", title: "Business profile" },
-    { key: "businessLocation", title: "Your business location" },
-    { key: "description", title: "Description" },
-    { key: "availability", title: "Set availability" },
-    { key: "services", title: "Manage services list" },
-    { key: "subscriptions", title: "Manage subscription list" },
-    { key: "team", title: "Manage team" },
-    { key: "socialMedia", title: "Your social media" },
-    { key: "portfolio", title: "Manage portfolio photos" },
+    { key: "businessProfile", title: t("businessProfile") },
+    { key: "businessLocation", title: t("yourBusinessLocation") },
+    { key: "description", title: t("description") },
+    { key: "availability", title: t("setAvailabilityTitle") },
+    { key: "services", title: t("manageServicesList") },
+    { key: "subscriptions", title: t("manageSubscriptionList") },
+    { key: "team", title: t("manageTeam") },
+    { key: "socialMedia", title: t("yourSocialMedia") },
+    { key: "portfolio", title: t("managePortfolioPhotos") },
     // { key: "verification", title: "Manage salon verification" },
   ];
 
   return (
     <View style={styles.container}>
-      <StackHeader title="Business profile settings" />
+      <StackHeader title={t("businessProfileSettings")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

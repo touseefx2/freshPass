@@ -909,7 +909,7 @@ export default function BookingNow() {
 
         {/* Checkout Button */}
         <Button
-          title="Checkout"
+          title={t("checkout")}
           onPress={() => {
             if (selectedServices.length === 0) {
               showBanner(

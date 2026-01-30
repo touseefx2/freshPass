@@ -1,11 +1,6 @@
 import React, { useMemo } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  FlatList,
-  Image,
-} from "react-native";
+import { StyleSheet, View, Text, FlatList, Image } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -221,6 +216,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function BusinessList({ data }: BusinessListProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -228,17 +224,18 @@ export default function BusinessList({ data }: BusinessListProps) {
   if (!data) {
     return (
       <View style={styles.container}>
-        <StackHeader title="Business List" />
+        <StackHeader title={t("businessList")} />
         <View style={styles.contentContainer}>
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No data available</Text>
+            <Text style={styles.emptyStateText}>{t("noDataAvailable")}</Text>
           </View>
         </View>
       </View>
     );
   }
 
-  const items = data.type === "individual" ? data.services || [] : data.subscriptions || [];
+  const items =
+    data.type === "individual" ? data.services || [] : data.subscriptions || [];
 
   const renderServiceItem = ({ item }: { item: ServiceItem }) => {
     return (
@@ -257,20 +254,13 @@ export default function BusinessList({ data }: BusinessListProps) {
             }}
           >
             <Text style={styles.serviceTitle}>{item.title}</Text>
-            <Text
-              numberOfLines={2}
-              style={styles.serviceDescription}
-            >
+            <Text numberOfLines={2} style={styles.serviceDescription}>
               {item.description}
             </Text>
           </View>
           <View style={styles.servicePrice}>
-            <Text style={styles.priceCurrent}>
-              ${item.price}
-            </Text>
-            <Text style={styles.priceOriginal}>
-              ${item.originalPrice}
-            </Text>
+            <Text style={styles.priceCurrent}>${item.price}</Text>
+            <Text style={styles.priceOriginal}>${item.originalPrice}</Text>
           </View>
         </View>
 
@@ -281,8 +271,8 @@ export default function BusinessList({ data }: BusinessListProps) {
           </Text>
           <View style={styles.serviceButtonContainer}>
             <Button
-              title="Book Now"
-              onPress={() => { }}
+              title={t("bookNow")}
+              onPress={() => {}}
               containerStyle={styles.button}
               textStyle={styles.buttonText}
             />
@@ -313,40 +303,20 @@ export default function BusinessList({ data }: BusinessListProps) {
         >
           <View style={styles.offerBadgesContainer}>
             {item.offer && (
-              <View
-                style={[
-                  styles.offerBadge,
-                  styles.offerBadgeOrange,
-                ]}
-              >
-                <Text style={styles.offerText}>
-                  {item.offer}
-                </Text>
+              <View style={[styles.offerBadge, styles.offerBadgeOrange]}>
+                <Text style={styles.offerText}>{item.offer}</Text>
               </View>
             )}
             {item.offer2 && (
-              <View
-                style={[
-                  styles.offerBadge,
-                  styles.offerBadgeGreen,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.offerText,
-                    { color: theme.darkGreen },
-                  ]}
-                >
+              <View style={[styles.offerBadge, styles.offerBadgeGreen]}>
+                <Text style={[styles.offerText, { color: theme.darkGreen }]}>
                   {item.offer2}
                 </Text>
               </View>
             )}
           </View>
           <View>
-            <Text
-              numberOfLines={1}
-              style={styles.subscriptionTitle}
-            >
+            <Text numberOfLines={1} style={styles.subscriptionTitle}>
               {item.title}
             </Text>
             {item.inclusions && item.inclusions.length > 0 && (
@@ -368,17 +338,13 @@ export default function BusinessList({ data }: BusinessListProps) {
           </View>
           <View style={styles.subscriptionPrice}>
             <View style={styles.subscriptionPriceContainer}>
-              <Text style={styles.priceCurrent}>
-                ${item.price}
-              </Text>
-              <Text style={styles.priceOriginal}>
-                ${item.originalPrice}
-              </Text>
+              <Text style={styles.priceCurrent}>${item.price}</Text>
+              <Text style={styles.priceOriginal}>${item.originalPrice}</Text>
             </View>
             <View style={styles.subscriptionButtonContainer}>
               <Button
-                title="Book Now"
-                onPress={() => { }}
+                title={t("bookNow")}
+                onPress={() => {}}
                 containerStyle={styles.button}
                 textStyle={styles.buttonText}
               />
@@ -394,7 +360,11 @@ export default function BusinessList({ data }: BusinessListProps) {
       <StackHeader title={data.businessName} />
       <FlatList
         data={items}
-        renderItem={data.type === "individual" ? renderServiceItem : renderSubscriptionItem}
+        renderItem={
+          data.type === "individual"
+            ? renderServiceItem
+            : renderSubscriptionItem
+        }
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={[styles.contentContainer, styles.listContent]}
         showsVerticalScrollIndicator={false}
@@ -402,4 +372,3 @@ export default function BusinessList({ data }: BusinessListProps) {
     </View>
   );
 }
-

@@ -1,11 +1,7 @@
 import React, { useMemo, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -88,6 +84,7 @@ export default function ServiceListBottomSheet({
   suggestions,
   selectedServiceIds,
 }: ServiceListBottomSheetProps) {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -104,7 +101,7 @@ export default function ServiceListBottomSheet({
   // Get all service IDs (excluding "all-over" if it exists in suggestions)
   const allServiceIds = useMemo(
     () => suggestions.filter((s) => s.id !== "all-over").map((s) => s.id),
-    [suggestions]
+    [suggestions],
   );
 
   // Check if all services are selected
@@ -116,24 +113,24 @@ export default function ServiceListBottomSheet({
   }, [allServiceIds, localSelectedIds]);
 
   const handleToggleAllOver = () => {
-      if (areAllServicesSelected) {
-        // Unselect all services
-        setLocalSelectedIds([]);
-      } else {
-        // Select all services
-        setLocalSelectedIds([...allServiceIds]);
-      }
+    if (areAllServicesSelected) {
+      // Unselect all services
+      setLocalSelectedIds([]);
+    } else {
+      // Select all services
+      setLocalSelectedIds([...allServiceIds]);
+    }
   };
 
   const handleToggleService = (serviceId: string) => {
-      // Handle regular service toggle
-      const isSelected = localSelectedIds.includes(serviceId);
-      if (isSelected) {
-        // Remove this service
-        setLocalSelectedIds(localSelectedIds.filter((id) => id !== serviceId));
-      } else {
-        // Add this service
-        setLocalSelectedIds([...localSelectedIds, serviceId]);
+    // Handle regular service toggle
+    const isSelected = localSelectedIds.includes(serviceId);
+    if (isSelected) {
+      // Remove this service
+      setLocalSelectedIds(localSelectedIds.filter((id) => id !== serviceId));
+    } else {
+      // Add this service
+      setLocalSelectedIds([...localSelectedIds, serviceId]);
     }
   };
 
@@ -141,12 +138,12 @@ export default function ServiceListBottomSheet({
     // Add newly selected services
     const newlySelected = suggestions.filter(
       (s) =>
-        localSelectedIds.includes(s.id) && !selectedServiceIds.includes(s.id)
+        localSelectedIds.includes(s.id) && !selectedServiceIds.includes(s.id),
     );
 
     // Remove unselected services
     const toRemove = selectedServiceIds.filter(
-      (id) => !localSelectedIds.includes(id)
+      (id) => !localSelectedIds.includes(id),
     );
 
     newlySelected.forEach((service) => {
@@ -162,7 +159,7 @@ export default function ServiceListBottomSheet({
 
   const renderServiceItem = (
     service: (typeof suggestions)[0],
-    showBorder: boolean = true
+    showBorder: boolean = true,
   ) => {
     const isSelected = localSelectedIds.includes(service.id);
     return (
@@ -198,7 +195,7 @@ export default function ServiceListBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Select services"
+      title={t("selectServices")}
       footerButtonTitle="Select"
       onFooterButtonPress={handleSelect}
     >
@@ -230,8 +227,8 @@ export default function ServiceListBottomSheet({
             </View>
           </TouchableOpacity>
 
-      {/* Separator line */}
-      <View style={styles.separator} />
+          {/* Separator line */}
+          <View style={styles.separator} />
         </>
       )}
 
@@ -243,4 +240,3 @@ export default function ServiceListBottomSheet({
     </ModalizeBottomSheet>
   );
 }
-
