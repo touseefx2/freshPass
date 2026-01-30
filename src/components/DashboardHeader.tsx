@@ -59,8 +59,8 @@ const createStyles = (theme: Theme) =>
     },
     line: {
       width: "100%",
-      height: 1.1,
-      backgroundColor: theme.borderLight,
+      height: 0.5,
+      backgroundColor: theme.white85,
     },
     stripeBanner: {
       backgroundColor: theme.darkGreen,
