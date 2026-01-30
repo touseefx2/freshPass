@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Pressable,
+  type LayoutChangeEvent,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
@@ -180,6 +181,26 @@ export default function ExploreHeader({
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
   const [dateModalVisible, setDateModalVisible] = useState(false);
   const selectedDate = selectedDateISO ? dayjs(selectedDateISO) : null;
+  const categoryScrollRef = useRef<ScrollView>(null);
+  const categoryXPositionsRef = useRef<number[]>([]);
+
+  // Scroll category list so selected category is at start (when coming from Home)
+  useEffect(() => {
+    if (categories.length === 0) return;
+    const index =
+      selectedCategory === undefined
+        ? 0
+        : 1 + categories.findIndex((c: Category) => c.id === selectedCategory);
+    if (index >= 0 && categoryXPositionsRef.current[index] !== undefined) {
+      const x = categoryXPositionsRef.current[index];
+      setTimeout(() => {
+        categoryScrollRef.current?.scrollTo({
+          x: Math.max(0, x),
+          animated: true,
+        });
+      }, 300);
+    }
+  }, [selectedCategory, categories.length]);
 
   const handleSearchPress = () => {
     router.push({
@@ -353,6 +374,7 @@ export default function ExploreHeader({
 
       {/* Category List */}
       <ScrollView
+        ref={categoryScrollRef}
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.categoriesContainer}
@@ -362,6 +384,9 @@ export default function ExploreHeader({
         <TouchableOpacity
           style={styles.categoryItem}
           onPress={() => handleCategorySelect("all")}
+          onLayout={(e: LayoutChangeEvent) => {
+            categoryXPositionsRef.current[0] = e.nativeEvent.layout.x;
+          }}
           activeOpacity={0.8}
         >
           <Text
@@ -379,13 +404,17 @@ export default function ExploreHeader({
         </TouchableOpacity>
 
         {/* Other Categories */}
-        {categories.map((category: Category) => {
+        {categories.map((category: Category, index: number) => {
           const isSelected = selectedCategory === category.id;
           return (
             <TouchableOpacity
               key={category.id}
               style={styles.categoryItem}
               onPress={() => handleCategorySelect(category.id)}
+              onLayout={(e: LayoutChangeEvent) => {
+                const layout = e.nativeEvent.layout;
+                categoryXPositionsRef.current[index + 1] = layout.x;
+              }}
               activeOpacity={0.8}
             >
               <Text

@@ -508,6 +508,7 @@ export default function DashboardContent() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state: any) => state.user.userRole);
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
@@ -891,9 +892,10 @@ export default function DashboardContent() {
 
       <CategorySection
         selectedCategory={selectedCategory}
-        onCategorySelect={(categoryId) =>
-          dispatch(setSelectedCategory(categoryId))
-        }
+        onCategorySelect={(categoryId) => {
+          dispatch(setSelectedCategory(categoryId));
+          router.push("/dashboard/(explore)" as any);
+        }}
         onCategoryScrollingChange={(isScrolling) => {
           isCategoryScrollingRef.current = isScrolling;
         }}
