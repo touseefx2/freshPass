@@ -42,6 +42,7 @@ export const fetchUserStatus = createAsyncThunk<
             id: number;
             title: string;
           };
+          active: boolean;
         };
         active: boolean;
       }>(userEndpoints.status);
@@ -56,23 +57,23 @@ export const fetchUserStatus = createAsyncThunk<
           stripe_onboarding_link: null,
           has_subscription: false,
           subscription_status: "",
-          active: response.active ?? false,
+          active: response.data.active ?? response?.active ?? false,
           business_id: response.data.business?.id,
           business_name: response.data.business?.title,
         };
         dispatch(setBusinessStatus(businessStatusData));
         dispatch(setBusinessStatusError(false));
-        
+
         // Set business_id and business_name in user state
         if (response.data.business?.id && response.data.business?.title) {
           dispatch(
             setUserDetails({
               business_id: response.data.business.id,
               business_name: response.data.business.title,
-            })
+            }),
           );
         }
-        
+
         return businessStatusData;
       }
       return null;
@@ -100,7 +101,7 @@ export const fetchUserStatus = createAsyncThunk<
             setUserDetails({
               business_id: response.data.business_id,
               business_name: response.data.business_name,
-            })
+            }),
           );
         }
 
@@ -118,7 +119,7 @@ export const fetchUserStatus = createAsyncThunk<
     if (showError) {
       // Error will be handled by the component using the thunk
       return rejectWithValue(
-        error.message || "Failed to fetch business status"
+        error.message || "Failed to fetch business status",
       );
     }
     throw error;
@@ -162,7 +163,7 @@ export const updateBusinessActiveStatus = createAsyncThunk<
             setBusinessStatus({
               ...currentBusinessStatus,
               active: response.data.active ?? false,
-            })
+            }),
           );
         }
         return response.data.active ?? false;
@@ -174,5 +175,5 @@ export const updateBusinessActiveStatus = createAsyncThunk<
         isNoInternet: error?.isNoInternet || false,
       });
     }
-  }
+  },
 );

@@ -187,7 +187,10 @@ export default function UserReviewsScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
-  const params = useLocalSearchParams<{ business_id?: string; user_id?: string }>();
+  const params = useLocalSearchParams<{
+    business_id?: string;
+    user_id?: string;
+  }>();
 
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(false);
@@ -230,7 +233,7 @@ export default function UserReviewsScreen() {
         // }
 
         const response = await ApiService.get<ReviewsResponse>(
-          reviewsEndpoints.list(apiParams)
+          reviewsEndpoints.list(apiParams),
         );
 
         if (response.success && response.data) {
@@ -249,14 +252,14 @@ export default function UserReviewsScreen() {
           "API Failed",
           error?.message || "Failed to fetch reviews",
           "error",
-          2500
+          2500,
         );
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [showBanner, params.business_id, params.user_id]
+    [showBanner, params.business_id, params.user_id],
   );
 
   useEffect(() => {
@@ -312,9 +315,7 @@ export default function UserReviewsScreen() {
             style={[
               styles.avatar,
               {
-                backgroundColor: hasImage
-                  ? theme.lightGreen07
-                  : theme.green,
+                backgroundColor: hasImage ? theme.lightGreen07 : theme.green,
               },
             ]}
           >
@@ -412,8 +413,8 @@ export default function UserReviewsScreen() {
   return (
     <View style={styles.container}>
       <StackHeader title="User reviews rate" />
-      <StatusBar barStyle={"dark-content"} />
-      {loading   ? (
+
+      {loading ? (
         <View style={styles.contentContainer}>
           <Skeleton screenType="Reviews" styles={styles} />
         </View>
