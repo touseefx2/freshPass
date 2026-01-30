@@ -124,7 +124,7 @@ export default function SocialLogin() {
             createdAt?: string;
           };
           token: string;
-          isNewCretared?: boolean;
+          isNewCreated?: boolean;
         };
       }>(businessEndpoints.socialLogin, {
         provider: "google",
