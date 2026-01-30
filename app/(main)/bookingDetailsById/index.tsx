@@ -1105,7 +1105,9 @@ export default function bookingDetailsById() {
                 booking.paidAmount !== null &&
                 booking.paidAmount !== undefined ? (
                   <>
-                    <Text style={styles.paymentLabel}>I paid</Text>
+                    <Text style={styles.paymentLabel}>
+                      {userRole === "customer" ? "I" : staffClientname} paid
+                    </Text>
                     <Text style={styles.paymentAmount}>
                       <Text style={styles.paymentAmountVal}>
                         {formatPrice(booking.paidAmount)}
@@ -1114,7 +1116,9 @@ export default function bookingDetailsById() {
                   </>
                 ) : (
                   <>
-                    <Text style={styles.paymentLabel}>I will pay</Text>
+                    <Text style={styles.paymentLabel}>
+                      {userRole === "customer" ? "I" : staffClientname} will pay
+                    </Text>
                     <Text style={styles.paymentAmount}>
                       Total:{" "}
                       <Text style={styles.paymentAmountVal}>
