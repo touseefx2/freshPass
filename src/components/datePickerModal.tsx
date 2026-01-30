@@ -207,7 +207,7 @@ export default function DatePickerModal({
   const today = dayjs();
   const [week, setWeek] = useState(getWeekDays(selectedDate || today));
   const [localSelectedDate, setLocalSelectedDate] = useState(
-    selectedDate || today
+    selectedDate || today,
   );
   const slideAnim = useRef(new Animated.Value(0)).current;
 
@@ -260,7 +260,6 @@ export default function DatePickerModal({
   // const timezoneText = `In your time zone, ${locationName} (${timezoneInfo.gmtOffset})`;
   const timezoneText = `In your time zone, ${timezoneInfo.timezone} (${timezoneInfo.gmtOffset})`;
 
-
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   const translateY = slideAnim.interpolate({
@@ -283,7 +282,7 @@ export default function DatePickerModal({
     >
       <StatusBar
         barStyle="dark-content"
-        backgroundColor="transparent"
+        backgroundColor={theme.white}
         translucent
       />
       <Animated.View style={[styles.modalOverlay, { opacity: overlayOpacity }]}>
@@ -358,8 +357,11 @@ export default function DatePickerModal({
                   <View style={styles.daysRow}>
                     {week.map((day) => {
                       const isToday = day.isSame(today, "day");
-                      const isSelected = selectedDate !== null && day.isSame(selectedDate, "day");
-                      const isTodayWithoutSelection = selectedDate === null && isToday;
+                      const isSelected =
+                        selectedDate !== null &&
+                        day.isSame(selectedDate, "day");
+                      const isTodayWithoutSelection =
+                        selectedDate === null && isToday;
                       return (
                         <TouchableOpacity
                           key={day.format("YYYY-MM-DD")}
@@ -376,7 +378,8 @@ export default function DatePickerModal({
                               style={[
                                 styles.dayNumber,
                                 isSelected && styles.dayNumberSelectedText,
-                                isTodayWithoutSelection && styles.dayNumberTodayText,
+                                isTodayWithoutSelection &&
+                                  styles.dayNumberTodayText,
                               ]}
                             >
                               {day.format("D")}
@@ -407,7 +410,7 @@ export default function DatePickerModal({
                     marginBottom: moderateHeightScale(12),
                   }}
                 >
-                  <Text style={[styles.timezoneText,{marginBottom:0}]}>
+                  <Text style={[styles.timezoneText, { marginBottom: 0 }]}>
                     To view businesses on a specific date, select a date above
                   </Text>
 
