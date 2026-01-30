@@ -105,12 +105,12 @@ const languages = [
     nativeName: "Français",
     flag: "🇫🇷",
   },
-  {
-    code: "es",
-    name: "Spanish",
-    nativeName: "Español",
-    flag: "🇪🇸",
-  },
+  // {
+  //   code: "es",
+  //   name: "Spanish",
+  //   nativeName: "Español",
+  //   flag: "🇪🇸",
+  // },
 ];
 
 export default function LanguageChangeScreen() {
@@ -139,7 +139,7 @@ export default function LanguageChangeScreen() {
       } catch (error) {
         Logger.warn(
           "Could not reload app. RTL change will apply on next restart:",
-          error
+          error,
         );
       }
     }
@@ -169,7 +169,9 @@ export default function LanguageChangeScreen() {
                     </View>
                     <View style={styles.languageInfo}>
                       <Text style={styles.rowTitle}>{language.name}</Text>
-                      <Text style={styles.rowSubtitle}>{language.nativeName}</Text>
+                      <Text style={styles.rowSubtitle}>
+                        {language.nativeName}
+                      </Text>
                       {/* <Text style={styles.languageCode}>{language.code.toUpperCase()}</Text> */}
                     </View>
                   </View>
