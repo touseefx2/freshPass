@@ -1,6 +1,7 @@
 import { Tabs, useSegments } from "expo-router";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, View, Text } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -63,6 +64,7 @@ const createStyles = (theme: Theme) =>
 
 export default function DashboardLayout() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
@@ -194,7 +196,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(home)"
           options={{
-            title: "Home",
+            title: t("tabHome"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}
@@ -213,7 +215,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(explore)"
           options={{
-            title: isCustomer ? "Explore" : "Notification",
+            title: isCustomer ? t("tabExplore") : t("tabNotification"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}
@@ -251,7 +253,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(calendar)"
           options={{
-            title: isCustomer ? "Appointments" : "Calendar",
+            title: isCustomer ? t("tabAppointments") : t("tabCalendar"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}
@@ -270,7 +272,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(chat)"
           options={{
-            title: "Chat",
+            title: t("tabChat"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}
@@ -289,7 +291,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(account)"
           options={{
-            title: "Profile",
+            title: t("tabProfile"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}

@@ -95,22 +95,22 @@ const createStyles = (theme: Theme) =>
 const languages = [
   {
     code: "en",
-    name: "English",
-    nativeName: "English",
+    nameKey: "languagesEnName",
+    nativeNameKey: "languagesEnNativeName",
     flag: "🇬🇧",
   },
   {
     code: "fr",
-    name: "French",
-    nativeName: "Français",
+    nameKey: "languagesFrName",
+    nativeNameKey: "languagesFrNativeName",
     flag: "🇫🇷",
   },
-  // {
-  //   code: "es",
-  //   name: "Spanish",
-  //   nativeName: "Español",
-  //   flag: "🇪🇸",
-  // },
+  {
+    code: "es",
+    nameKey: "languagesEsName",
+    nativeNameKey: "languagesEsNativeName",
+    flag: "🇪🇸",
+  },
 ];
 
 export default function LanguageChangeScreen() {
@@ -118,7 +118,7 @@ export default function LanguageChangeScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const currentLanguage = useAppSelector((state) => state.general.language);
 
   const changeLang = async (langCode: string) => {
@@ -147,7 +147,7 @@ export default function LanguageChangeScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Language" />
+      <StackHeader title={t("language")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -168,9 +168,9 @@ export default function LanguageChangeScreen() {
                       <Text style={styles.flagText}>{language.flag}</Text>
                     </View>
                     <View style={styles.languageInfo}>
-                      <Text style={styles.rowTitle}>{language.name}</Text>
+                      <Text style={styles.rowTitle}>{t(language.nameKey)}</Text>
                       <Text style={styles.rowSubtitle}>
-                        {language.nativeName}
+                        {t(language.nativeNameKey)}
                       </Text>
                       {/* <Text style={styles.languageCode}>{language.code.toUpperCase()}</Text> */}
                     </View>

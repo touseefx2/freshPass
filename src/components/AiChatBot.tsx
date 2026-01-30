@@ -1,4 +1,10 @@
-import React, { useMemo, useRef, useEffect, useState, useCallback } from "react";
+import React, {
+  useMemo,
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -16,6 +22,7 @@ import {
   Alert,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -49,7 +56,11 @@ const CHAT_BOX_HEIGHT = SCREEN_HEIGHT * 0.6;
 const CHAT_BOTTOM_OFFSET = 70;
 const CHAT_BOTTOM_OFFSET_TRYON = 115; // when isFirstShowTryOn is true
 
-const createStyles = (theme: Theme, bottomInset: number, chatBottomOffset: number = CHAT_BOTTOM_OFFSET) =>
+const createStyles = (
+  theme: Theme,
+  bottomInset: number,
+  chatBottomOffset: number = CHAT_BOTTOM_OFFSET,
+) =>
   StyleSheet.create({
     container: {
       position: "absolute",
@@ -97,7 +108,7 @@ const createStyles = (theme: Theme, bottomInset: number, chatBottomOffset: numbe
         width: 0,
         height: 1,
       },
-      shadowOpacity: 0.20,
+      shadowOpacity: 0.2,
       shadowRadius: 1.41,
       elevation: 2,
     },
@@ -326,8 +337,14 @@ const createStyles = (theme: Theme, bottomInset: number, chatBottomOffset: numbe
     },
   });
 
-const TypingIndicator: React.FC<{ theme: Theme; bottomInset: number }> = ({ theme, bottomInset }) => {
-  const styles = useMemo(() => createStyles(theme, bottomInset), [theme, bottomInset]);
+const TypingIndicator: React.FC<{ theme: Theme; bottomInset: number }> = ({
+  theme,
+  bottomInset,
+}) => {
+  const styles = useMemo(
+    () => createStyles(theme, bottomInset),
+    [theme, bottomInset],
+  );
   const dot1Anim = useRef(new Animated.Value(0.3)).current;
   const dot2Anim = useRef(new Animated.Value(0.3)).current;
   const dot3Anim = useRef(new Animated.Value(0.3)).current;
@@ -380,7 +397,7 @@ const TypingIndicator: React.FC<{ theme: Theme; bottomInset: number }> = ({ them
               easing: Easing.in(Easing.cubic),
             }),
           ]),
-        ])
+        ]),
       ).start();
     };
 
@@ -400,7 +417,7 @@ const TypingIndicator: React.FC<{ theme: Theme; bottomInset: number }> = ({ them
             useNativeDriver: true,
             easing: Easing.inOut(Easing.sin),
           }),
-        ])
+        ]),
       ).start();
     };
 
@@ -505,7 +522,7 @@ const InlineTypingIndicator: React.FC<{ theme: Theme }> = ({ theme }) => {
               easing: Easing.in(Easing.cubic),
             }),
           ]),
-        ])
+        ]),
       ).start();
     };
 
@@ -549,17 +566,28 @@ const InlineTypingIndicator: React.FC<{ theme: Theme }> = ({ theme }) => {
 
 const AiChatBot: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom;
   const segments = useSegments() as string[];
-  const isOnExploreScreen = Array.isArray(segments) && segments.includes("(explore)");
-  const isFirstTryon = useAppSelector((state) => state.general.isFirstShowTryOn);
-  const chatBottomOffset = (isFirstTryon && isOnExploreScreen) ? CHAT_BOTTOM_OFFSET_TRYON : CHAT_BOTTOM_OFFSET;
-  const styles = useMemo(() => createStyles(theme, bottomInset, chatBottomOffset), [theme, bottomInset, chatBottomOffset]);
+  const isOnExploreScreen =
+    Array.isArray(segments) && segments.includes("(explore)");
+  const isFirstTryon = useAppSelector(
+    (state) => state.general.isFirstShowTryOn,
+  );
+  const chatBottomOffset =
+    isFirstTryon && isOnExploreScreen
+      ? CHAT_BOTTOM_OFFSET_TRYON
+      : CHAT_BOTTOM_OFFSET;
+  const styles = useMemo(
+    () => createStyles(theme, bottomInset, chatBottomOffset),
+    [theme, bottomInset, chatBottomOffset],
+  );
 
-  const { isOpen, messages, isLoading, isStreaming, sessionId } = useAppSelector((state) => state.chat);
+  const { isOpen, messages, isLoading, isStreaming, sessionId } =
+    useAppSelector((state) => state.chat);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
@@ -589,7 +617,7 @@ const AiChatBot: React.FC = () => {
           useNativeDriver: true,
           easing: Easing.inOut(Easing.cubic),
         }),
-      ])
+      ]),
     );
 
     // Subtle wiggle rotation
@@ -613,7 +641,7 @@ const AiChatBot: React.FC = () => {
           useNativeDriver: true,
           easing: Easing.inOut(Easing.sin),
         }),
-      ])
+      ]),
     );
 
     // Heartbeat scale pulse
@@ -644,7 +672,7 @@ const AiChatBot: React.FC = () => {
           easing: Easing.in(Easing.cubic),
         }),
         Animated.delay(1500), // Pause between heartbeats
-      ])
+      ]),
     );
 
     // Start all animations
@@ -679,24 +707,20 @@ const AiChatBot: React.FC = () => {
   }, [dispatch]);
 
   const handleDeleteChat = useCallback(() => {
-    Alert.alert(
-      "Clear Chat",
-      "Are you sure you want to clear all messages? This will start a new conversation.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
+    Alert.alert(t("clearChat"), t("clearChatConfirm"), [
+      {
+        text: t("cancel"),
+        style: "cancel",
+      },
+      {
+        text: t("clear"),
+        style: "destructive",
+        onPress: () => {
+          dispatch(clearMessages());
+          dispatch(setSessionId("0"));
         },
-        {
-          text: "Clear",
-          style: "destructive",
-          onPress: () => {
-            dispatch(clearMessages());
-            dispatch(setSessionId("0"));
-          },
-        },
-      ]
-    );
+      },
+    ]);
   }, [dispatch]);
 
   const handleSendMessage = async () => {
@@ -704,7 +728,10 @@ const AiChatBot: React.FC = () => {
 
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
-      Alert.alert("No Internet Connection", "Please check your internet connection and try again.");
+      Alert.alert(
+        t("noInternetConnection"),
+        t("pleaseCheckInternetConnection"),
+      );
       return;
     }
 
@@ -728,13 +755,15 @@ const AiChatBot: React.FC = () => {
       },
       // onComplete callback - finalize the message
       (fullResponse: string, newSessionId: string) => {
-        dispatch(completeAiStreamResponse({ fullResponse, sessionId: newSessionId }));
+        dispatch(
+          completeAiStreamResponse({ fullResponse, sessionId: newSessionId }),
+        );
       },
       // onError callback - handle errors
       (error: Error) => {
         dispatch(streamError());
-        Alert.alert("Error", error.message || "Failed to get response from AI. Please try again.");
-      }
+        Alert.alert(t("error"), error.message || t("failedToGetAiResponse"));
+      },
     );
   };
 
@@ -748,7 +777,8 @@ const AiChatBot: React.FC = () => {
   }, [messages.length, isLoading, isStreaming]);
 
   // Also scroll when the last message text changes (for streaming)
-  const lastMessageText = messages.length > 0 ? messages[messages.length - 1].text : "";
+  const lastMessageText =
+    messages.length > 0 ? messages[messages.length - 1].text : "";
   useEffect(() => {
     if (isStreaming && flatListRef.current) {
       flatListRef.current?.scrollToEnd({ animated: false });
@@ -762,15 +792,8 @@ const AiChatBot: React.FC = () => {
       if (isUser) {
         // User message - no icon needed
         return (
-          <View
-            style={[
-              styles.messageBubble,
-              styles.userMessage,
-            ]}
-          >
-            <Text style={styles.userMessageText}>
-              {item.text}
-            </Text>
+          <View style={[styles.messageBubble, styles.userMessage]}>
+            <Text style={styles.userMessageText}>{item.text}</Text>
           </View>
         );
       }
@@ -787,15 +810,13 @@ const AiChatBot: React.FC = () => {
             {isEmptyAndStreaming ? (
               <InlineTypingIndicator theme={theme} />
             ) : (
-              <Text style={styles.aiMessageText}>
-                {item.text}
-              </Text>
+              <Text style={styles.aiMessageText}>{item.text}</Text>
             )}
           </View>
         </View>
       );
     },
-    [styles, theme]
+    [styles, theme],
   );
 
   const dismissKeyboard = useCallback(() => {
@@ -809,12 +830,13 @@ const AiChatBot: React.FC = () => {
           <AiRobotIcon width={50} height={50} color={theme.darkGreen} />
           <Text style={styles.emptyTitle}>AI Assistant</Text>
           <Text style={styles.emptySubtitle}>
-            Ask me anything! I'm here to help you with questions, information, and assistance.
+            Ask me anything! I'm here to help you with questions, information,
+            and assistance.
           </Text>
         </View>
       </TouchableWithoutFeedback>
     );
-  }
+  };
 
   const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
 
@@ -849,11 +871,15 @@ const AiChatBot: React.FC = () => {
 
       {/* Chat Box - positioned above the button */}
       {isOpen && (
-        <Animated.View style={[styles.chatBoxContainer, chatBoxAnimStyle, styles.shadow]}>
+        <Animated.View
+          style={[styles.chatBoxContainer, chatBoxAnimStyle, styles.shadow]}
+        >
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
-            keyboardVerticalOffset={Platform.OS === "ios" ? moderateHeightScale(100) : 0}
+            keyboardVerticalOffset={
+              Platform.OS === "ios" ? moderateHeightScale(100) : 0
+            }
           >
             {/* Header with AI Assistant title and action buttons */}
             <View style={styles.chatHeader}>
@@ -861,7 +887,7 @@ const AiChatBot: React.FC = () => {
                 <View style={styles.aiAvatarHeader}>
                   <AiRobotIcon width={24} height={24} color={theme.white} />
                 </View>
-                <Text style={styles.headerTitle}>AI Assistant</Text>
+                <Text style={styles.headerTitle}>{t("aiAssistant")}</Text>
               </View>
               <View style={styles.headerRightButtons}>
                 {/* Delete button - clears all messages (only show when messages exist) */}
@@ -980,33 +1006,52 @@ const AiChatBot: React.FC = () => {
                 style={styles.messagesList}
                 contentContainerStyle={styles.messagesContent}
                 showsVerticalScrollIndicator={false}
-                ListFooterComponent={
-                  (() => {
-                    // Check if last message is empty and streaming (shows inline typing indicator)
-                    const lastMessage = messages[messages.length - 1];
-                    const hasEmptyStreamingMessage = lastMessage &&
-                      lastMessage.sender === "ai" &&
-                      !lastMessage.text &&
-                      lastMessage.isStreaming;
+                ListFooterComponent={(() => {
+                  // Check if last message is empty and streaming (shows inline typing indicator)
+                  const lastMessage = messages[messages.length - 1];
+                  const hasEmptyStreamingMessage =
+                    lastMessage &&
+                    lastMessage.sender === "ai" &&
+                    !lastMessage.text &&
+                    lastMessage.isStreaming;
 
-                    // Only show bottom indicator if not showing inline indicator
-                    if (hasEmptyStreamingMessage) {
-                      return null;
-                    }
+                  // Only show bottom indicator if not showing inline indicator
+                  if (hasEmptyStreamingMessage) {
+                    return null;
+                  }
 
-                    // Show bottom indicator when loading or streaming (but no empty message)
-                    return (isLoading || isStreaming) ? <TypingIndicator theme={theme} bottomInset={bottomInset} /> : null;
-                  })()
-                }
+                  // Show bottom indicator when loading or streaming (but no empty message)
+                  return isLoading || isStreaming ? (
+                    <TypingIndicator theme={theme} bottomInset={bottomInset} />
+                  ) : null;
+                })()}
               />
             )}
 
             {/* Input Area */}
-            <View style={[styles.inputContainer, isInputDisabled && styles.inputContainerDisabled]}>
-              <View style={[styles.textInputWrapper, styles.shadowLight, isInputDisabled && styles.inputWrapperDisabled]}>
+            <View
+              style={[
+                styles.inputContainer,
+                isInputDisabled && styles.inputContainerDisabled,
+              ]}
+            >
+              <View
+                style={[
+                  styles.textInputWrapper,
+                  styles.shadowLight,
+                  isInputDisabled && styles.inputWrapperDisabled,
+                ]}
+              >
                 <TextInput
-                  style={[styles.textInput, isInputDisabled && styles.textInputDisabled]}
-                  placeholder={isInputDisabled ? "AI is responding..." : "Ask me anything..."}
+                  style={[
+                    styles.textInput,
+                    isInputDisabled && styles.textInputDisabled,
+                  ]}
+                  placeholder={
+                    isInputDisabled
+                      ? "AI is responding..."
+                      : "Ask me anything..."
+                  }
                   placeholderTextColor={theme.lightGreen2}
                   value={inputText}
                   onChangeText={setInputText}
@@ -1029,7 +1074,8 @@ const AiChatBot: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.sendButton,
-                  (inputText.trim().length === 0 || isInputDisabled) && styles.sendButtonDisabled,
+                  (inputText.trim().length === 0 || isInputDisabled) &&
+                    styles.sendButtonDisabled,
                 ]}
                 onPress={handleSendMessage}
                 disabled={inputText.trim().length === 0 || isInputDisabled}

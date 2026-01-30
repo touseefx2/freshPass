@@ -27,6 +27,7 @@ import {
   validatePassword,
   validatePasswordMatch,
 } from "@/src/services/validationService";
+import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import {
@@ -113,6 +114,7 @@ const createStyles = (theme: Theme) =>
 
 export default function RegisterPassword() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const router = useRouter();
@@ -129,7 +131,7 @@ export default function RegisterPassword() {
   const [savePassword, setSavePassword] = useState(!!savedPassword);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordLengthError, setPasswordLengthError] = useState<string | null>(
-    null
+    null,
   );
   const [isLoading, setIsLoading] = useState(false);
   const [isVerificationModalVisible, setIsVerificationModalVisible] =
@@ -194,7 +196,7 @@ export default function RegisterPassword() {
         accessToken: token,
         refreshToken: refreshToken || null,
         userRole: user?.role?.toLowerCase() || null, // Set userRole from response or use current role
-      })
+      }),
     );
     router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
     handleCloseVerificationModal();
@@ -243,7 +245,7 @@ export default function RegisterPassword() {
                 accessToken: token,
                 refreshToken: refreshToken || null,
                 userRole: user?.role?.toLowerCase() || null, // Set userRole from response or use current role
-              })
+              }),
             );
             router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
           } else {
@@ -252,14 +254,17 @@ export default function RegisterPassword() {
             }
           }
         } else {
-          Alert.alert("Error", "Invalid response from server");
+          Alert.alert(t("error"), t("invalidResponseFromServer"));
         }
       } else {
-        Alert.alert("Error", response.message || "Registration failed");
+        Alert.alert(t("error"), response.message || t("registrationFailed"));
       }
     } catch (error: any) {
       // Error message is already formatted by ApiService
-      Alert.alert("Registration Failed", error.message || "An error occurred");
+      Alert.alert(
+        t("registrationFailedTitle"),
+        error.message || t("anErrorOccurred"),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -389,9 +394,7 @@ export default function RegisterPassword() {
           accessToken={data?.token || null}
           screen="signup"
         />
-
       )}
-
     </SafeAreaView>
   );
 }

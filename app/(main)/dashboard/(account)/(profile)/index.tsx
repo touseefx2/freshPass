@@ -9,6 +9,7 @@ import {
   Image,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -153,10 +154,11 @@ export default function ProfileScreen() {
     : "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
   const userName = user.name || "";
   const userEmail = user.email || "";
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
-      <StackHeader title="Profile" />
+      <StackHeader title={t("profile")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -186,25 +188,19 @@ export default function ProfileScreen() {
               size={moderateWidthScale(18)}
               color={theme.buttonText}
             />
-            <Text style={styles.editButtonText}>Edit</Text>
+            <Text style={styles.editButtonText}>{t("edit")}</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.privacyNote}>
           {user?.userRole === "staff"
-            ? "This photo is seen by others when they view your profile."
-            : "This photo is seen by others when they view your business profile, messages and reviews."}
+            ? t("privacyNoteStaff")
+            : t("privacyNoteBusiness")}
         </Text>
 
         {user?.userRole === "staff" && (
           <View style={styles.staffInfoCard}>
-            <Text style={styles.staffInfoText}>
-              Staff details are optional, businesses can choose whether to list
-              staff members in their profile. There is no separate availability
-              calendar per staff member, they follow the business hours, and
-              services are just linked to specific staff to highlight their
-              expertise.
-            </Text>
+            <Text style={styles.staffInfoText}>{t("staffInfoText")}</Text>
           </View>
         )}
 
@@ -215,7 +211,7 @@ export default function ProfileScreen() {
           onPress={handleChangePasswordPress}
           style={styles.changePasswordRow}
         >
-          <Text style={styles.changePasswordText}>Change password</Text>
+          <Text style={styles.changePasswordText}>{t("changePassword")}</Text>
           <MaterialIcons
             name="keyboard-arrow-right"
             size={moderateWidthScale(18)}

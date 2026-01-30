@@ -10,6 +10,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -241,6 +242,7 @@ type ApiNotification = {
 
 export default function NotificationsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
@@ -306,56 +308,57 @@ export default function NotificationsScreen() {
   };
 
   // Fetch notifications from API
-  const fetchNotifications =  
-    async (page: number = 1, append: boolean = false) => {
-      if (isGuest) {
-        setLoading(false);
-        setLoadingMore(false);
-        return;
-      }
+  const fetchNotifications = async (
+    page: number = 1,
+    append: boolean = false,
+  ) => {
+    if (isGuest) {
+      setLoading(false);
+      setLoadingMore(false);
+      return;
+    }
 
-      if (append) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
-      }
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
 
-      try {
-        const response = await ApiService.get<{
-          success: boolean;
-          message: string;
-          data: {
-            data: ApiNotification[];
-            current_page: number;
-            per_page: number;
-            total: number;
-            last_page: number;
-          };
-        }>(notificationsEndpoints.list({ page, per_page: 16 }));
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          data: ApiNotification[];
+          current_page: number;
+          per_page: number;
+          total: number;
+          last_page: number;
+        };
+      }>(notificationsEndpoints.list({ page, per_page: 16 }));
 
-        if (response.success && response.data) {
-          const mappedNotifications =
-            response.data.data.map(mapApiNotification);
-          if (append) {
-            setNotifications((prev) => [...prev, ...mappedNotifications]);
-          } else {
-            setNotifications(mappedNotifications);
-          }
-          setCurrentPage(response.data.current_page);
-          setTotalPages(response.data.last_page);
+      if (response.success && response.data) {
+        const mappedNotifications = response.data.data.map(mapApiNotification);
+        if (append) {
+          setNotifications((prev) => [...prev, ...mappedNotifications]);
+        } else {
+          setNotifications(mappedNotifications);
         }
-      } catch (error: any) {
-        showBanner(
-          "API Failed",
-          error?.message || "Failed to fetch notifications",
-          "error",
-          2500
-        );
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        setCurrentPage(response.data.current_page);
+        setTotalPages(response.data.last_page);
       }
-    };
+    } catch (error: any) {
+      showBanner(
+        t("apiFailed"),
+        error?.message || t("failedToFetchNotifications"),
+        "error",
+        2500,
+      );
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
 
   // Fetch unread count
   const handleFetchUnreadCount = async () => {
@@ -394,18 +397,18 @@ export default function NotificationsScreen() {
         // Update local state
         setNotifications((prev) =>
           prev.map((notif) =>
-            notif.id === itemId ? { ...notif, isRead: true } : notif
-          )
+            notif.id === itemId ? { ...notif, isRead: true } : notif,
+          ),
         );
         // Fetch updated unread count
         handleFetchUnreadCount();
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to mark notification as read",
+        t("apiFailed"),
+        error?.message || t("failedToMarkNotificationRead"),
         "error",
-        2500
+        2500,
       );
     }
   };
@@ -428,10 +431,10 @@ export default function NotificationsScreen() {
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to mark all notifications as read",
+        t("apiFailed"),
+        error?.message || t("failedToMarkAllNotificationsRead"),
         "error",
-        2500
+        2500,
       );
     } finally {
       setMarkAllAsReadLoading(false);
@@ -446,7 +449,7 @@ export default function NotificationsScreen() {
       } else {
         setLoading(false);
       }
-    }, [isGuest])
+    }, [isGuest]),
   );
 
   const handleRefresh = async () => {
@@ -463,10 +466,10 @@ export default function NotificationsScreen() {
 
       if (!hasInternet) {
         showBanner(
-          "No Internet Connection",
-          "Please check your internet connection and try again.",
+          t("noInternetConnection"),
+          t("pleaseCheckInternetConnection"),
           "error",
-          2500
+          2500,
         );
         setRefreshing(false);
         return;
@@ -482,16 +485,16 @@ export default function NotificationsScreen() {
     } finally {
       setRefreshing(false);
     }
-  } 
+  };
 
-  const loadMore =  () => {
+  const loadMore = () => {
     if (isGuest) {
       return;
     }
     if (!loadingMore && currentPage < totalPages) {
       fetchNotifications(currentPage + 1, true);
     }
-  } 
+  };
 
   const sections = useMemo<NotificationSection[]>(() => {
     if (notifications.length === 0) {
@@ -509,7 +512,7 @@ export default function NotificationsScreen() {
       const yesterday = new Date(
         today.getFullYear(),
         today.getMonth(),
-        today.getDate() - 1
+        today.getDate() - 1,
       );
 
       if (isSameDay(date, today)) {
@@ -540,14 +543,14 @@ export default function NotificationsScreen() {
 
     // Sort dates descending (latest first)
     const sortedDates = Array.from(grouped.keys()).sort((a, b) =>
-      a < b ? 1 : a > b ? -1 : 0
+      a < b ? 1 : a > b ? -1 : 0,
     );
 
     return sortedDates.map((isoDate) => {
       const dateObj = new Date(isoDate);
       const items = [...(grouped.get(isoDate) ?? [])].sort(
         (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
       return {
@@ -595,7 +598,7 @@ export default function NotificationsScreen() {
     );
   };
 
-  const handleSignIn = async() => {
+  const handleSignIn = async () => {
     await ApiService.logout();
   };
 
@@ -604,10 +607,7 @@ export default function NotificationsScreen() {
       <View style={styles.container}>
         <DashboardHeader />
         <Text
-          style={[
-            styles.screenTitle,
-            { paddingTop: moderateHeightScale(20) },
-          ]}
+          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
         >
           Notifications
         </Text>
@@ -621,15 +621,12 @@ export default function NotificationsScreen() {
               />
             </View>
 
-            <Text style={styles.guestTitle}>Guest Mode</Text>
+            <Text style={styles.guestTitle}>{t("guestMode")}</Text>
 
-            <Text style={styles.guestMessage}>
-              You are currently browsing as a guest. To access all features and
-              make bookings, please sign in to your account.
-            </Text>
+            <Text style={styles.guestMessage}>{t("guestModeMessage")}</Text>
 
             <View style={styles.buttonContainer}>
-              <Button title="Sign In" onPress={handleSignIn} />
+              <Button title={t("signIn")} onPress={handleSignIn} />
             </View>
           </View>
         </View>
@@ -657,7 +654,7 @@ export default function NotificationsScreen() {
             />
           }
         >
-          <Text style={styles.emptyStateText}>No notifications yet</Text>
+          <Text style={styles.emptyStateText}>{t("noNotificationsYet")}</Text>
         </ScrollView>
       ) : (
         <SectionList
@@ -676,7 +673,7 @@ export default function NotificationsScreen() {
           }
           renderSectionHeader={({ section }) => {
             const sectionIndex = sections.findIndex(
-              (s) => s.title === section.title
+              (s) => s.title === section.title,
             );
             return (
               <View style={styles.sectionHeaderContainer}>

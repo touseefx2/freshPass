@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Logger from "@/src/services/logger";
 import { StyleSheet, View, StatusBar } from "react-native";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import DashboardHeaderClient from "../../DashboardHeaderClient";
 import SearchBar from "./components/SearchBar";
@@ -24,6 +25,7 @@ const createStyles = (theme: Theme) =>
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
@@ -92,8 +94,8 @@ export default function HomeScreen() {
         dispatch(setLocationLoading(false));
         Logger.error("Unable to get current position");
         showBanner(
-          "Location Error",
-          "Unable to get your current position. Please try again.",
+          t("locationError"),
+          t("unableToGetCurrentPosition"),
           "error",
         );
         return;
@@ -139,8 +141,8 @@ export default function HomeScreen() {
         dispatch(setLocationLoading(false));
         Logger.error("Unable to get current position");
         showBanner(
-          "Location Error",
-          "Unable to get your current position. Please try again.",
+          t("locationError"),
+          t("unableToGetCurrentPosition"),
           "error",
         );
         return;
@@ -163,11 +165,7 @@ export default function HomeScreen() {
     } catch (error) {
       dispatch(setLocationLoading(false));
       Logger.error("Error getting location:", error);
-      showBanner(
-        "Location Error",
-        "Unable to get your current location. Please try again.",
-        "error",
-      );
+      showBanner(t("locationError"), t("unableToGetCurrentLocation"), "error");
     }
   };
 

@@ -1,6 +1,7 @@
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import React, { useMemo } from "react";
 import { View, Text, Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
@@ -13,13 +14,12 @@ import { setRole, UserRole } from "@/src/state/slices/generalSlice";
 
 export default function Role() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const router = useRouter();
   const isFirstVisit = useAppSelector((state) => state.general.isVisitFirst);
   const selectedRole = useAppSelector((state) => state.general.role);
-
-
 
   const handleOptionSelect = (option: UserRole) => {
     // Save selected role to Redux immediately when user selects
@@ -52,29 +52,31 @@ export default function Role() {
 
         <View style={styles.titleContainer}>
           <Text style={styles.titleText}>
-            <Text>Manage, Book,</Text>
-            {"\n"}&<Text style={styles.titlePart2}> Delight</Text>
+            <Text>{t("manageBookDelight").split("\n")[0]}</Text>
+            {"\n"}&
+            <Text style={styles.titlePart2}>
+              {" "}
+              {t("manageBookDelight").split("\n")[1]?.trim() || ""}
+            </Text>
           </Text>
         </View>
 
-        <Text style={styles.subtitle}>
-          Are you here to book services or provide them?
-        </Text>
+        <Text style={styles.subtitle}>{t("areYouHereToBook")}</Text>
       </View>
 
       <View style={styles.mainContent2}>
         <View style={styles.optionsContainer}>
           <RadioOption
-            title="I manage a Business"
-            subtitle="Login to your business dashboard"
+            title={t("iManageBusiness")}
+            subtitle={t("loginToBusinessDashboard")}
             option="business"
             selectedOption={selectedRole}
             onPress={handleOptionSelect}
           />
 
           <RadioOption
-            title="I'm a Client"
-            subtitle="Book, subscribe, and manage your visits"
+            title={t("imAClient")}
+            subtitle={t("bookSubscribeManageVisits")}
             option="client"
             selectedOption={
               selectedRole === "customer" ? "client" : selectedRole
@@ -84,15 +86,13 @@ export default function Role() {
         </View>
 
         <Text style={styles.privacyText}>
-          Your privacy matters. Read to understand your rights and our
-          commitments. View our <Text>Privacy Policy</Text> and{" "}
-          <Text>Terms of Service</Text> for details on data protection and
-          platform usage.
+          {t("privacyMatters")} <Text>{t("privacyPolicy")}</Text>{" "}
+          <Text>{t("termsOfService")}</Text>
         </Text>
       </View>
 
       <Button
-        title="Continue"
+        title={t("continue")}
         onPress={handleContinue}
         disabled={!selectedRole} // Disable button if no role is selected
       />

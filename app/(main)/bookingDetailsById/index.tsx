@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
@@ -472,6 +473,7 @@ const createStyles = (theme: Theme) =>
 
 export default function bookingDetailsById() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
@@ -796,7 +798,7 @@ export default function bookingDetailsById() {
   // Handle location navigation to Google Maps
   const handleLocationPress = async () => {
     if (!businessLatitude || !businessLongitude) {
-      Alert.alert("Error", "Location coordinates not available");
+      Alert.alert(t("error"), t("locationCoordinatesNotAvailable"));
       return;
     }
 
@@ -813,11 +815,11 @@ export default function bookingDetailsById() {
           const appleMapsUrl = `http://maps.apple.com/?ll=${businessLatitude},${businessLongitude}&q=${encodedName}`;
           await Linking.openURL(appleMapsUrl);
         } else {
-          Alert.alert("Error", "Unable to open maps");
+          Alert.alert(t("error"), t("unableToOpenMaps"));
         }
       }
     } catch (error) {
-      Alert.alert("Error", "Unable to open maps");
+      Alert.alert(t("error"), t("unableToOpenMaps"));
     }
   };
 
@@ -832,7 +834,7 @@ export default function bookingDetailsById() {
 
   const handleCancelBooking = async (reason: string) => {
     if (!bookingId) {
-      showBanner("Error", "Booking ID is required", "error", 2500);
+      showBanner(t("error"), t("bookingIdRequired"), "error", 2500);
       return;
     }
 
@@ -848,26 +850,21 @@ export default function bookingDetailsById() {
       });
 
       if (response.success) {
-        showBanner(
-          "Success",
-          "Booking cancelled successfully",
-          "success",
-          2500,
-        );
+        showBanner(t("success"), t("bookingCancelledSuccess"), "success", 2500);
         // Fetch booking details again to update the UI
         await fetchBookingDetails();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to cancel booking",
+          t("error"),
+          response.message || t("failedToCancelBooking"),
           "error",
           2500,
         );
       }
     } catch (error: any) {
       showBanner(
-        "Error",
-        error?.message || "Failed to cancel booking",
+        t("error"),
+        error?.message || t("failedToCancelBookingTryAgain"),
         "error",
         2500,
       );
@@ -895,7 +892,7 @@ export default function bookingDetailsById() {
     if (!booking) {
       return (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No booking data found</Text>
+          <Text style={styles.errorText}>{t("noBookingDataFound")}</Text>
         </View>
       );
     }
@@ -954,7 +951,7 @@ export default function bookingDetailsById() {
                     />
                   </View>
                   <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Duration</Text>
+                    <Text style={styles.detailLabel}>{t("duration")}</Text>
                     <Text style={styles.detailValue}>{booking.duration}</Text>
                   </View>
                   <View style={styles.detailColumnSeparator} />
@@ -968,7 +965,7 @@ export default function bookingDetailsById() {
                     />
                   </View>
                   <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>Date</Text>
+                    <Text style={styles.detailLabel}>{t("date")}</Text>
                     <Text style={styles.detailValue}>
                       {date}
                       {time ? ` -` : ""}
@@ -987,7 +984,9 @@ export default function bookingDetailsById() {
                   </View>
                   <View style={styles.detailTextContainer}>
                     <Text style={styles.detailLabel}>
-                      My {userRole === "customer" ? "barber" : "Customer"}
+                      {userRole === "customer"
+                        ? t("myBarber")
+                        : t("myCustomer")}
                     </Text>
                     <Text style={styles.detailValue} numberOfLines={2}>
                       {staffClientname}
@@ -1055,7 +1054,7 @@ export default function bookingDetailsById() {
                   color={theme.darkGreen}
                 />
               </View>
-              <Text style={styles.actionButtonText}>Contact</Text>
+              <Text style={styles.actionButtonText}>{t("contact")}</Text>
             </TouchableOpacity>
             {/* {isCancelled && (
             <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
@@ -1066,7 +1065,7 @@ export default function bookingDetailsById() {
                   color={theme.darkGreen}
                 />
               </View>
-              <Text style={styles.actionButtonText}>Book again</Text>
+              <Text style={styles.actionButtonText}>{t("bookAgain")}</Text>
             </TouchableOpacity>
           )} */}
             {/* <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
@@ -1077,7 +1076,7 @@ export default function bookingDetailsById() {
                 color={theme.darkGreen}
               />
             </View>
-            <Text style={styles.actionButtonText}>Reschedule</Text>
+            <Text style={styles.actionButtonText}>{t("reschedule")}</Text>
           </TouchableOpacity> */}
             <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
               <View style={styles.actionButtonCircle}>
@@ -1087,7 +1086,7 @@ export default function bookingDetailsById() {
                   color={theme.darkGreen}
                 />
               </View>
-              <Text style={styles.actionButtonText}>Support</Text>
+              <Text style={styles.actionButtonText}>{t("support")}</Text>
             </TouchableOpacity>
           </View>
 
@@ -1149,7 +1148,7 @@ export default function bookingDetailsById() {
           {/* Policy Link (only for ongoing bookings) */}
           {!isCancelled && userRole === "customer" && (
             <TouchableOpacity style={styles.policyLink}>
-              <Text style={styles.policyText}>Booking cancel policy</Text>
+              <Text style={styles.policyText}>{t("bookingCancelPolicy")}</Text>
               <Entypo
                 name="chevron-small-right"
                 size={moderateWidthScale(22)}
@@ -1164,7 +1163,7 @@ export default function bookingDetailsById() {
         {!isCancelled && userRole === "customer" && (
           <View style={styles.bottomButton}>
             <Button
-              title={"Cancel this booking"}
+              title={t("cancelThisBooking")}
               onPress={() => {
                 handleOpenCancelModal();
               }}
@@ -1186,7 +1185,7 @@ export default function bookingDetailsById() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Booking Detail" />
+      <StackHeader title={t("bookingDetail")} />
       {renderContent()}
     </SafeAreaView>
   );

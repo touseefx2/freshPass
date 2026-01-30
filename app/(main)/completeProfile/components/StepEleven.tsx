@@ -13,6 +13,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -139,6 +140,7 @@ const createStyles = (theme: Theme) =>
 export default function StepEleven() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { photos } = useAppSelector((state) => state.completeProfile);
@@ -168,7 +170,7 @@ export default function StepEleven() {
               addPhoto({
                 id: generatePhotoId(),
                 uri: asset.uri,
-              })
+              }),
             );
           }
         });
@@ -177,7 +179,7 @@ export default function StepEleven() {
       Logger.error("Error selecting image from gallery:", error);
       Alert.alert(
         "Error",
-        "Failed to select image from gallery. Please try again."
+        "Failed to select image from gallery. Please try again.",
       );
     }
   }, [dispatch]);
@@ -200,12 +202,12 @@ export default function StepEleven() {
           addPhoto({
             id: generatePhotoId(),
             uri: result.assets[0].uri,
-          })
+          }),
         );
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
-      Alert.alert("Error", "Failed to take photo. Please try again.");
+      Alert.alert(t("error"), t("failedToTakePhoto"));
     }
   }, [dispatch]);
 
@@ -213,7 +215,7 @@ export default function StepEleven() {
     (id: string) => {
       dispatch(removePhoto(id));
     },
-    [dispatch]
+    [dispatch],
   );
 
   const itemWidth = useMemo(() => calculateItemWidth(), []);
@@ -301,7 +303,7 @@ export default function StepEleven() {
       handleSelectFromGallery,
       handleTakePhoto,
       handleDeletePhoto,
-    ]
+    ],
   );
 
   return (

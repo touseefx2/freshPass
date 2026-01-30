@@ -24,6 +24,7 @@ import {
 } from "react-native-safe-area-context";
 import { Feather, FontAwesome } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -260,6 +261,7 @@ const createStyles = (theme: Theme) =>
 
 export default function SetLocationScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
@@ -336,7 +338,7 @@ export default function SetLocationScreen() {
       try {
         const addressData = await resolveAddressViaGoogle(
           { latitude, longitude },
-          apiKey
+          apiKey,
         );
 
         if (addressData && addressData.formatted) {
@@ -381,7 +383,7 @@ export default function SetLocationScreen() {
         setIsFetchingAddress(false);
       }
     },
-    []
+    [],
   );
 
   const handleRegionChangeComplete = useCallback(
@@ -389,7 +391,7 @@ export default function SetLocationScreen() {
       currentRegionRef.current = region;
       fetchAddressFromCoordinates(region.latitude, region.longitude);
     },
-    [fetchAddressFromCoordinates]
+    [fetchAddressFromCoordinates],
   );
 
   const handleZoom = useCallback((direction: "in" | "out") => {
@@ -398,11 +400,11 @@ export default function SetLocationScreen() {
     const factor = direction === "in" ? 0.7 : 1.3;
     const latitudeDelta = Math.max(
       currentRegionRef.current.latitudeDelta * factor,
-      0.0005
+      0.0005,
     );
     const longitudeDelta = Math.max(
       currentRegionRef.current.longitudeDelta * factor,
-      0.0005
+      0.0005,
     );
 
     const newRegion: Region = {
@@ -467,9 +469,9 @@ export default function SetLocationScreen() {
         setLocationLoading(false);
         Logger.error("Unable to get current position");
         showBanner(
-          "Location Error",
-          "Unable to get your current position. Please try again.",
-          "error"
+          t("locationError"),
+          t("unableToGetCurrentPosition"),
+          "error",
         );
         return;
       }
@@ -492,8 +494,7 @@ export default function SetLocationScreen() {
         });
         if (reverseResults && reverseResults.length > 0) {
           const address = reverseResults[0];
-          countryName =
-            (address as { country?: string }).country ?? null;
+          countryName = (address as { country?: string }).country ?? null;
           cityName = address.city ?? null;
           countryCode =
             (address as { isoCountryCode?: string }).isoCountryCode ?? null;
@@ -515,9 +516,9 @@ export default function SetLocationScreen() {
         setLocationLoading(false);
         Logger.error("Unable to get current position");
         showBanner(
-          "Location Error",
-          "Unable to get your current position. Please try again.",
-          "error"
+          t("locationError"),
+          t("unableToGetCurrentPosition"),
+          "error",
         );
         return;
       }
@@ -552,11 +553,7 @@ export default function SetLocationScreen() {
     } catch (error) {
       setLocationLoading(false);
       Logger.error("Error getting location:", error);
-      showBanner(
-        "Location Error",
-        "Unable to get your current location. Please try again.",
-        "error"
-      );
+      showBanner(t("locationError"), t("unableToGetCurrentLocation"), "error");
     }
   };
 
@@ -571,10 +568,10 @@ export default function SetLocationScreen() {
           cityName: tempLocation.cityName ?? null,
           countryCode: tempLocation.countryCode ?? null,
           zipCode: tempLocation.zipCode ?? null,
-        })
+        }),
       );
 
-      showBanner("Success", "Location updated successfully", "success");
+      showBanner(t("success"), t("locationUpdatedSuccess"), "success");
       router.back();
     }
   }, [tempLocation, dispatch, router, showBanner]);
@@ -594,11 +591,7 @@ export default function SetLocationScreen() {
 
       if (!apiKey) {
         setPredictions([]);
-        showBanner(
-          "Search Error",
-          "Unable to load suggestions. Please try again.",
-          "error"
-        );
+        showBanner(t("searchError"), t("unableToLoadSuggestions"), "error");
         return;
       }
 
@@ -608,32 +601,24 @@ export default function SetLocationScreen() {
 
         const response = await fetchSuggestionsApi(
           query,
-          sessionTokenRef.current
+          sessionTokenRef.current,
         );
 
         if (response.status === "OK" || response.status === "ZERO_RESULTS") {
           setPredictions(response.predictions);
         } else {
-          showBanner(
-            "Search Error",
-            "Unable to load suggestions. Please try again.",
-            "error"
-          );
+          showBanner(t("searchError"), t("unableToLoadSuggestions"), "error");
           setPredictions([]);
         }
       } catch (error: any) {
         Logger.error("Error fetching suggestions:", error);
-        showBanner(
-          "Search Error",
-          "Unable to load suggestions. Please try again.",
-          "error"
-        );
+        showBanner(t("searchError"), t("unableToLoadSuggestions"), "error");
         setPredictions([]);
       } finally {
         setIsLoadingSuggestions(false);
       }
     },
-    [apiKey, ensureSessionToken, showBanner]
+    [apiKey, ensureSessionToken, showBanner],
   );
 
   useEffect(() => {
@@ -656,7 +641,7 @@ export default function SetLocationScreen() {
 
         const details = await fetchPlaceDetailsApi(
           placeId,
-          sessionTokenRef.current
+          sessionTokenRef.current,
         );
 
         if (details.latitude && details.longitude) {
@@ -693,16 +678,16 @@ export default function SetLocationScreen() {
       } catch (error) {
         Logger.error("Error fetching place details:", error);
         showBanner(
-          "Location Error",
-          "Unable to fetch place details. Try again.",
-          "error"
+          t("locationError"),
+          t("unableToFetchPlaceDetailsTryAgain"),
+          "error",
         );
       } finally {
         setIsFetchingPlaceDetails(false);
         sessionTokenRef.current = generateSessionToken();
       }
     },
-    [apiKey, ensureSessionToken, showBanner]
+    [apiKey, ensureSessionToken, showBanner],
   );
 
   const handleSuggestionPress = useCallback(
@@ -710,7 +695,7 @@ export default function SetLocationScreen() {
       Keyboard.dismiss();
       handleFetchPlaceDetails(prediction.place_id, prediction.description);
     },
-    [handleFetchPlaceDetails]
+    [handleFetchPlaceDetails],
   );
 
   const handleSearchChange = useCallback((value: string) => {
@@ -735,28 +720,28 @@ export default function SetLocationScreen() {
     >
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View style={styles.headerTop}>
-              <TouchableOpacity
-                onPress={handleClose}
-                style={styles.closeButton}
-                activeOpacity={0.7}
-              >
-                <Feather
-                  name="x"
-                  size={moderateWidthScale(18)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>Select your location</Text>
-            </View>
-          </TouchableWithoutFeedback>
-          <View style={styles.searchContainer}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.closeButton}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="x"
+                size={moderateWidthScale(18)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{t("selectYourLocation")}</Text>
+          </View>
+        </TouchableWithoutFeedback>
+        <View style={styles.searchContainer}>
           <FloatingInput
-            label="Search"
+            label={t("search")}
             value={addressSearch}
             onChangeText={handleSearchChange}
-            placeholder="Search your address"
+            placeholder={t("searchYourAddress")}
             placeholderTextColor={theme.lightGreen2}
             returnKeyType="search"
             onClear={() => handleSearchChange("")}
@@ -805,7 +790,7 @@ export default function SetLocationScreen() {
               {!isLoadingSuggestions && predictions.length === 0 && (
                 <View style={{ paddingVertical: moderateHeightScale(12) }}>
                   <Text style={styles.infoText}>
-                    No results yet. Try refining your search.
+                    {t("noResultsRefineSearch")}
                   </Text>
                 </View>
               )}
@@ -820,7 +805,7 @@ export default function SetLocationScreen() {
               {isFetchingAddress ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={theme.darkGreen} />
-                  <Text style={styles.loadingText}>Fetching address...</Text>
+                  <Text style={styles.loadingText}>{t("fetchingAddress")}</Text>
                 </View>
               ) : (
                 <>
@@ -829,10 +814,11 @@ export default function SetLocationScreen() {
                     numberOfLines={2}
                     ellipsizeMode="tail"
                   >
-                    {tempLocation.locationName || "Location"}
+                    {tempLocation.locationName || t("location")}
                   </Text>
                   <Text style={styles.locationInfoSubtitle}>
-                    {tempLocation.lat.toFixed(6)}, {tempLocation.long.toFixed(6)}
+                    {tempLocation.lat.toFixed(6)},{" "}
+                    {tempLocation.long.toFixed(6)}
                   </Text>
                 </>
               )}
@@ -907,21 +893,26 @@ export default function SetLocationScreen() {
           ) : (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={theme.darkGreen} />
-              <Text style={styles.loadingText}>Loading map...</Text>
+              <Text style={styles.loadingText}>{t("loadingMap")}</Text>
             </View>
           )}
         </View>
       </TouchableWithoutFeedback>
 
-        <View style={styles.confirmButtonContainer}>
-          <Button
-            title={locationLoading ? "Get Current Location..." : "Confirm Location"}
-            onPress={handleConfirm}
-            disabled={
-              !tempLocation || isFetchingAddress || isFetchingPlaceDetails || locationLoading
-            }
-          />
-        </View>
+      <View style={styles.confirmButtonContainer}>
+        <Button
+          title={
+            locationLoading ? t("getCurrentLocation") : t("confirmLocation")
+          }
+          onPress={handleConfirm}
+          disabled={
+            !tempLocation ||
+            isFetchingAddress ||
+            isFetchingPlaceDetails ||
+            locationLoading
+          }
+        />
+      </View>
 
       <LocationEnableModal
         visible={showLocationModal}

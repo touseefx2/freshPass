@@ -19,6 +19,7 @@ import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -197,6 +198,7 @@ export default function LocationScreen() {
   const router = useRouter();
   const goBack = useCallback(() => router.back(), [router]);
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
@@ -393,8 +395,8 @@ export default function LocationScreen() {
         dispatch(setLocationLoading(false));
         Logger.error("Unable to get current position");
         showBanner(
-          "Location Error",
-          "Unable to get your current position. Please try again.",
+          t("locationError"),
+          t("unableToGetCurrentPosition"),
           "error",
         );
         return;
@@ -436,8 +438,8 @@ export default function LocationScreen() {
         dispatch(setLocationLoading(false));
         Logger.error("Unable to get current position");
         showBanner(
-          "Location Error",
-          "Unable to get your current position. Please try again.",
+          t("locationError"),
+          t("unableToGetCurrentPosition"),
           "error",
         );
         return;
@@ -456,11 +458,7 @@ export default function LocationScreen() {
     } catch (error) {
       dispatch(setLocationLoading(false));
       Logger.error("Error getting location:", error);
-      showBanner(
-        "Location Error",
-        "Unable to get your current location. Please try again.",
-        "error",
-      );
+      showBanner(t("locationError"), t("unableToGetCurrentLocation"), "error");
     }
   };
 
@@ -474,7 +472,7 @@ export default function LocationScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <StackHeader title="Location" />
+      <StackHeader title={t("location")} />
       <StatusBar backgroundColor={theme.white} barStyle="dark-content" />
       <ScrollView
         style={styles.container}
@@ -484,10 +482,10 @@ export default function LocationScreen() {
       >
         <View style={styles.searchRow}>
           <FloatingInput
-            label="Enter a new location"
+            label={t("enterNewLocation")}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Enter a new location"
+            placeholder={t("enterNewLocation")}
             placeholderTextColor={theme.lightGreen}
             containerStyle={styles.searchInputContainer}
             onClear={() => {
@@ -568,7 +566,9 @@ export default function LocationScreen() {
             color={theme.lightGreen}
           />
           <View style={styles.currentLocationLeft}>
-            <Text style={styles.currentLocationTitle}>Current location</Text>
+            <Text style={styles.currentLocationTitle}>
+              {t("currentLocation")}
+            </Text>
             <Text style={styles.currentLocationSubtitle}>
               {currentStatusText}
             </Text>
@@ -578,7 +578,7 @@ export default function LocationScreen() {
               onPress={() => setShowLocationModal(true)}
               style={styles.enableButton}
             >
-              <Text style={styles.enableButtonText}>Enable</Text>
+              <Text style={styles.enableButtonText}>{t("enable")}</Text>
             </Pressable>
           ) : (
             <Pressable
@@ -589,7 +589,7 @@ export default function LocationScreen() {
               {locationLoading ? (
                 <ActivityIndicator size="small" color={theme.darkGreen} />
               ) : (
-                <Text style={styles.enableButtonText}>Get</Text>
+                <Text style={styles.enableButtonText}>{t("get")}</Text>
               )}
             </Pressable>
           )}
@@ -630,7 +630,7 @@ export default function LocationScreen() {
             );
           })
         ) : (
-          <Text style={styles.recentEmpty}>No recent location found</Text>
+          <Text style={styles.recentEmpty}>{t("noRecentLocationFound")}</Text>
         )}
 
         <LocationEnableModal

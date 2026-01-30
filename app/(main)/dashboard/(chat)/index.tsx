@@ -8,6 +8,7 @@ import {
   Image,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -170,6 +171,7 @@ const createStyles = (theme: Theme) =>
 
 export default function ChatScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -296,15 +298,12 @@ export default function ChatScreen() {
               />
             </View>
 
-            <Text style={styles.guestTitle}>Guest Mode</Text>
+            <Text style={styles.guestTitle}>{t("guestMode")}</Text>
 
-            <Text style={styles.guestMessage}>
-              You are currently browsing as a guest. To access all features and
-              make bookings, please sign in to your account.
-            </Text>
+            <Text style={styles.guestMessage}>{t("guestModeMessage")}</Text>
 
             <View style={styles.buttonContainer}>
-              <Button title="Sign In" onPress={handleSignIn} />
+              <Button title={t("signIn")} onPress={handleSignIn} />
             </View>
           </View>
         </View>
@@ -325,7 +324,9 @@ export default function ChatScreen() {
         sections={sections}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={<Text style={styles.screenTitle}>Chat box</Text>}
+        ListHeaderComponent={
+          <Text style={styles.screenTitle}>{t("chatBox")}</Text>
+        }
         renderSectionHeader={({ section }) => (
           <Text style={styles.sectionHeader}>{section.title}</Text>
         )}

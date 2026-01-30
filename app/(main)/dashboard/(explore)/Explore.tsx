@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { FlatList, StatusBar, StyleSheet, Text, View } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import {
   moderateHeightScale,
@@ -77,6 +78,7 @@ const SUBSCRIPTION_TEMPLATES: Array<{ id: number; name: string }> = [
 
 export default function ExploreScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const listStyles = useMemo(() => createListStyles(theme), [colors]);
@@ -440,7 +442,7 @@ export default function ExploreScreen() {
             <>
               {(verifiedSalonsDeals.length > 0 || dealsLoading) && (
                 <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>FreshPass Deals</Text>
+                  <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
                   <ShowDeals
                     businessesLoading={dealsLoading}
                     businessesError={dealsError}

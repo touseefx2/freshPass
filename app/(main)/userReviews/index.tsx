@@ -9,6 +9,7 @@ import {
   StatusBar,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -184,6 +185,7 @@ const DEFAULT_AVATAR_URL =
 
 export default function UserReviewsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
@@ -249,8 +251,8 @@ export default function UserReviewsScreen() {
         }
       } catch (error: any) {
         showBanner(
-          "API Failed",
-          error?.message || "Failed to fetch reviews",
+          t("apiFailed"),
+          error?.message || t("failedToFetchReviews"),
           "error",
           2500,
         );
@@ -395,7 +397,7 @@ export default function UserReviewsScreen() {
     if (loading) return null;
     return (
       <View style={styles.emptyStateContainer}>
-        <Text style={styles.emptyStateText}>No any review</Text>
+        <Text style={styles.emptyStateText}>{t("noAnyReview")}</Text>
       </View>
     );
   };
@@ -418,7 +420,7 @@ export default function UserReviewsScreen() {
 
   return (
     <View style={styles.container}>
-      <StackHeader title="User reviews rate" />
+      <StackHeader title={t("userReviewsRate")} />
 
       {loading ? (
         <View style={styles.contentContainer}>

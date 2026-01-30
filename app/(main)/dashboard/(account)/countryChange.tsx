@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -466,13 +467,13 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(12),
       paddingTop: moderateHeightScale(4),
-      
     },
   });
 
 export default function CountryChangeScreen() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -481,10 +482,10 @@ export default function CountryChangeScreen() {
 
   // Initialize state from user slice
   const [selectedCountryName, setSelectedCountryName] = useState<string>(
-    user.countryName || ""
+    user.countryName || "",
   );
   const [selectedZipCode, setSelectedZipCode] = useState<string>(
-    user.countryZipCode || ""
+    user.countryZipCode || "",
   );
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -509,7 +510,7 @@ export default function CountryChangeScreen() {
         setSelectedZipCode("");
       }
     },
-    []
+    [],
   );
 
   const handleZipCodeChange = useCallback((value: string) => {
@@ -522,7 +523,7 @@ export default function CountryChangeScreen() {
   const selectedCountryData = useMemo(() => {
     if (!selectedCountryName) return null;
     return POPULAR_COUNTRIES.find(
-      (c) => c.name.toLowerCase() === selectedCountryName.toLowerCase()
+      (c) => c.name.toLowerCase() === selectedCountryName.toLowerCase(),
     );
   }, [selectedCountryName]);
 
@@ -531,7 +532,7 @@ export default function CountryChangeScreen() {
 
   const handleUpdateCountry = async () => {
     if (!selectedCountryName || selectedCountryName.trim().length === 0) {
-      showBanner("Error", "Please select a country", "error", 3000);
+      showBanner(t("error"), t("pleaseSelectCountry"), "error", 3000);
       return;
     }
 
@@ -564,32 +565,32 @@ export default function CountryChangeScreen() {
           setUserDetails({
             countryZipCode: selectedZipCode || "",
             countryName: selectedCountryName || "",
-          })
+          }),
         );
 
         showBanner(
-          "Success",
-          response.message || "Country updated successfully",
+          t("success"),
+          response.message || t("countryUpdatedSuccess"),
           "success",
-          3000
+          3000,
         );
 
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update country",
+          t("error"),
+          response.message || t("failedToUpdateCountry"),
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
       Logger.error("Failed to update country:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update country. Please try again.",
+        t("error"),
+        error.message || t("failedToUpdateCountryTryAgain"),
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
@@ -598,7 +599,7 @@ export default function CountryChangeScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Country" />
+      <StackHeader title={t("country")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -606,10 +607,8 @@ export default function CountryChangeScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.titleSec}>
-          <Text style={styles.title}>What&apos;s your country?</Text>
-          <Text style={styles.subtitle}>
-            Get the accurate information of services in your area.
-          </Text>
+          <Text style={styles.title}>{t("whatsYourCountry")}</Text>
+          <Text style={styles.subtitle}>{t("getAccurateInfoInArea")}</Text>
         </View>
 
         <ScrollView
@@ -619,8 +618,7 @@ export default function CountryChangeScreen() {
         >
           {POPULAR_COUNTRIES.map((country) => {
             const isSelected =
-              selectedCountryName?.toLowerCase() ===
-              country.name.toLowerCase();
+              selectedCountryName?.toLowerCase() === country.name.toLowerCase();
             return (
               <React.Fragment key={country.code}>
                 <TouchableOpacity
@@ -645,10 +643,10 @@ export default function CountryChangeScreen() {
                 {isSelected && (
                   <View style={styles.zipCodeContainer}>
                     <FloatingInput
-                      label="Zip code"
+                      label={t("zipCode")}
                       value={selectedZipCode}
                       onChangeText={handleZipCodeChange}
-                      placeholder={"Zip code" + ` ( ${country.zipCode} )`}
+                      placeholder={`${t("zipCode")} ( ${country.zipCode} )`}
                       keyboardType="number-pad"
                       onClear={() => {
                         setSelectedZipCode("");
@@ -664,7 +662,7 @@ export default function CountryChangeScreen() {
 
       <View style={styles.buttonContainer}>
         <Button
-          title="Update country"
+          title={t("updateCountry")}
           onPress={handleUpdateCountry}
           loading={isUpdating}
           disabled={!selectedCountryName || isUpdating}

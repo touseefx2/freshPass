@@ -1,12 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  Pressable,
-} from "react-native";
+import { StyleSheet, Text, View, ScrollView, Pressable } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -64,6 +59,7 @@ const createStyles = (theme: Theme) =>
 
 export default function ChangePasswordScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
@@ -76,7 +72,7 @@ export default function ChangePasswordScreen() {
   const [oldPasswordError, setOldPasswordError] = useState<string | null>(null);
   const [newPasswordError, setNewPasswordError] = useState<string | null>(null);
   const [retryPasswordError, setRetryPasswordError] = useState<string | null>(
-    null
+    null,
   );
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
@@ -132,7 +128,7 @@ export default function ChangePasswordScreen() {
     const newPasswordValidation = validatePassword(newPassword);
     const retryPasswordValidation = validatePasswordMatch(
       newPassword,
-      retryPassword
+      retryPassword,
     );
 
     return (
@@ -149,7 +145,7 @@ export default function ChangePasswordScreen() {
     const newPasswordValidation = validatePassword(newPassword);
     const retryPasswordValidation = validatePasswordMatch(
       newPassword,
-      retryPassword
+      retryPassword,
     );
 
     // Check old password is not empty
@@ -163,10 +159,7 @@ export default function ChangePasswordScreen() {
     setNewPasswordError(newPasswordValidation.error);
     setRetryPasswordError(retryPasswordValidation.error);
 
-    if (
-      !newPasswordValidation.isValid ||
-      !retryPasswordValidation.isValid
-    ) {
+    if (!newPasswordValidation.isValid || !retryPasswordValidation.isValid) {
       return;
     }
 
@@ -184,10 +177,10 @@ export default function ChangePasswordScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Password changed successfully",
+          t("success"),
+          response.message || t("passwordChangedSuccess"),
           "success",
-          3000
+          3000,
         );
 
         // Clear all fields after successful password change
@@ -199,35 +192,31 @@ export default function ChangePasswordScreen() {
         setRetryPasswordError(null);
 
         router.back();
-
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to change password",
+          t("error"),
+          response.message || t("failedToChangePassword"),
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
       Logger.error("Failed to change password:", error);
-      
+
       // Handle specific error cases
       if (error.status === 400 || error.status === 422) {
         // Validation error - might be wrong current password
-        const errorMessage = error.message || "Invalid password. Please check your current password.";
+        const errorMessage =
+          error.message ||
+          "Invalid password. Please check your current password.";
         setOldPasswordError(errorMessage);
-        showBanner(
-          "Error",
-          errorMessage,
-          "error",
-          3000
-        );
+        showBanner(t("error"), errorMessage, "error", 3000);
       } else {
         showBanner(
-          "Error",
-          error.message || "Failed to change password. Please try again.",
+          t("error"),
+          error.message || t("failedToChangePasswordTryAgain"),
           "error",
-          3000
+          3000,
         );
       }
     } finally {
@@ -236,8 +225,8 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <SafeAreaView  edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Change Password" />
+    <SafeAreaView edges={["bottom"]} style={styles.container}>
+      <StackHeader title={t("changePasswordTitle")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -245,10 +234,10 @@ export default function ChangePasswordScreen() {
       >
         <View style={styles.inputContainer}>
           <FloatingInput
-            label="Old password"
+            label={t("oldPassword")}
             value={oldPassword}
             onChangeText={setOldPassword}
-            placeholder="Old password"
+            placeholder={t("oldPassword")}
             secureTextEntry={!isOldPasswordVisible}
             autoCapitalize="none"
             onClear={handleClearOldPassword}
@@ -275,10 +264,10 @@ export default function ChangePasswordScreen() {
 
         <View style={styles.inputContainer}>
           <FloatingInput
-            label="New password"
+            label={t("newPassword")}
             value={newPassword}
             onChangeText={setNewPassword}
-            placeholder="New password"
+            placeholder={t("newPassword")}
             secureTextEntry={!isNewPasswordVisible}
             autoCapitalize="none"
             onClear={handleClearNewPassword}
@@ -305,10 +294,10 @@ export default function ChangePasswordScreen() {
 
         <View style={styles.inputContainer}>
           <FloatingInput
-            label="Retry password"
+            label={t("retryPassword")}
             value={retryPassword}
             onChangeText={setRetryPassword}
-            placeholder="Retry password"
+            placeholder={t("retryPassword")}
             secureTextEntry={!isRetryPasswordVisible}
             autoCapitalize="none"
             onClear={handleClearRetryPassword}
@@ -336,7 +325,7 @@ export default function ChangePasswordScreen() {
 
       <View style={styles.changePasswordButtonContainer}>
         <Button
-          title="Change Password"
+          title={t("changePasswordTitle")}
           onPress={handleChangePassword}
           disabled={!isFormValid || isChangingPassword}
         />
@@ -344,4 +333,3 @@ export default function ChangePasswordScreen() {
     </SafeAreaView>
   );
 }
-

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -326,6 +327,7 @@ const createStyles = (theme: Theme) =>
 
 export default function BookingScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const user = useAppSelector((state: any) => state.user);
   const userRole = user.userRole;
@@ -659,8 +661,8 @@ export default function BookingScreen() {
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to fetch appointments",
+        t("apiFailed"),
+        error?.message || t("failedToFetchAppointments"),
         "error",
         2500,
       );
@@ -782,7 +784,7 @@ export default function BookingScreen() {
       {/* <DashboardHeader /> */}
       <DashboardHeaderClient />
       <View style={styles.content}>
-        <Text style={styles.title}>Booking list</Text>
+        <Text style={styles.title}>{t("bookingList")}</Text>
 
         {/* Tabs */}
         <View style={styles.tabsContainer}>
@@ -796,7 +798,7 @@ export default function BookingScreen() {
                 selectedTab === "all" && styles.activeTabText,
               ]}
             >
-              All
+              {t("allTab")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -809,7 +811,7 @@ export default function BookingScreen() {
                 selectedTab === "complete" && styles.activeTabText,
               ]}
             >
-              Complete
+              {t("completeTab")}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -825,7 +827,7 @@ export default function BookingScreen() {
                 selectedTab === "cancelled" && styles.activeTabText,
               ]}
             >
-              Cancelled
+              {t("cancelledTab")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -849,7 +851,7 @@ export default function BookingScreen() {
                   : styles.toggleTextInactive,
               ]}
             >
-              Subscriptions list
+              {t("subscriptionsList")}
             </Text>
           </Pressable>
           <Pressable
@@ -869,7 +871,7 @@ export default function BookingScreen() {
                   : styles.toggleTextInactive,
               ]}
             >
-              Individual services
+              {t("individualServicesList")}
             </Text>
           </Pressable>
         </View>
@@ -893,7 +895,7 @@ export default function BookingScreen() {
             onEndReachedThreshold={0.3}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>No bookings found</Text>
+                <Text style={styles.emptyText}>{t("noBookingsFound")}</Text>
               </View>
             }
             ListFooterComponent={

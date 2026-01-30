@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import Logger from "@/src/services/logger";
 import { StyleSheet, Text, View, Platform, Image } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -76,6 +77,7 @@ const createStyles = (theme: Theme) =>
 
 export default function LocationScreen({ onNext }: LocationScreenProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const { showBanner } = useNotificationContext();
   const insets = useSafeAreaInsets();
@@ -88,7 +90,7 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
       if (!servicesEnabled) {
         const errorMsg = "Please turn on your phone location";
         // setErrorMessage(errorMsg);
-        showBanner("Location Error", errorMsg, "error");
+        showBanner(t("locationError"), errorMsg, "error");
         return;
       }
       onNext();
@@ -99,7 +101,7 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
           ? error.message
           : "Unable to get your location. Please make sure location services are enabled and try again.";
       // setErrorMessage(errorMsg);
-      showBanner("Location Error", errorMsg, "error");
+      showBanner(t("locationError"), errorMsg, "error");
     }
   };
 
@@ -121,11 +123,8 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
         </View>
 
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText}>See what's near you</Text>
-          <Text style={styles.subtitle}>
-            Turn on location services to find local businesses that matches your
-            vibe.
-          </Text>
+          <Text style={styles.titleText}>{t("seeWhatsNearYou")}</Text>
+          <Text style={styles.subtitle}>{t("turnOnLocationFindLocal")}</Text>
         </View>
 
         <View style={styles.illustrationContainer}>

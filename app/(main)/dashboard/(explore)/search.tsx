@@ -11,6 +11,7 @@ import {
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import {
   addToRecentSearches,
   setSearchState,
@@ -182,6 +183,7 @@ export default function SearchScreen() {
     [recentSearchesRaw],
   );
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const searchState = useAppSelector((state) => state.general.searchState);
@@ -257,7 +259,7 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <StackHeader title="Hi, what are you looking for?" />
+      <StackHeader title={t("hiWhatAreYouLookingFor")} />
       <StatusBar backgroundColor={theme.white} barStyle="dark-content" />
       <ScrollView
         style={styles.container}
@@ -282,7 +284,7 @@ export default function SearchScreen() {
             ]}
             numberOfLines={1}
           >
-            {hasSearchValue ? displayValue : "Search services or businesses"}
+            {hasSearchValue ? displayValue : t("searchServicesOrBusinesses")}
           </Text>
           {hasSearchValue && (
             <Pressable
@@ -299,7 +301,7 @@ export default function SearchScreen() {
           )}
         </TouchableOpacity>
 
-        <Text style={styles.recentSectionTitle}>Recent searches</Text>
+        <Text style={styles.recentSectionTitle}>{t("recentSearches")}</Text>
         {recentSearches.length > 0 ? (
           recentSearches.map((item, index) => {
             const isLast = index === recentSearches.length - 1;
@@ -332,12 +334,14 @@ export default function SearchScreen() {
             );
           })
         ) : (
-          <Text style={styles.recentEmpty}>No recent search found</Text>
+          <Text style={styles.recentEmpty}>{t("noRecentSearchFound")}</Text>
         )}
 
         {popularList.length > 0 && (
           <>
-            <Text style={styles.popularSectionTitle}>Popular Services</Text>
+            <Text style={styles.popularSectionTitle}>
+              {t("popularServices")}
+            </Text>
             <View style={styles.popularServicesContainer}>
               {popularList.map((service) => (
                 <TouchableOpacity
@@ -356,7 +360,7 @@ export default function SearchScreen() {
 
       <View style={styles.footer}>
         <Button
-          title="Search"
+          title={t("search")}
           onPress={handleSearch}
           disabled={!displayValue}
         />

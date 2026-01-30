@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -204,6 +205,7 @@ const createStyles = (theme: Theme) =>
 export default function CategorySelect({ onNext }: CategorySelectProps) {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const { showBanner } = useNotificationContext();
   const [searchTerm, setSearchTerm] = useState("");
@@ -245,7 +247,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
     } catch (error) {
       Logger.error("Failed to fetch categories:", error);
       setApiError(true);
-      showBanner("API Failed", "API failed to fetch categories", "error", 2500);
+      showBanner(t("apiFailed"), t("apiFailedFetchCategories"), "error", 2500);
     } finally {
       setCategoriesLoading(false);
     }
@@ -276,8 +278,8 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
           // Select (max 5)
           if (prev.length >= 5) {
             showBanner(
-              "Limit Reached",
-              "You can select up to 5 categories",
+              t("limitReached"),
+              t("youCanSelectUpTo5Categories"),
               "error",
               2000,
             );
@@ -379,20 +381,15 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
           onPress={handleSkip}
           activeOpacity={0.7}
         >
-          <Text style={styles.skipButtonText}>Skip</Text>
+          <Text style={styles.skipButtonText}>{t("skip")}</Text>
         </TouchableOpacity>
       </View>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <View style={styles.titleSec}>
-            <Text style={styles.title}>
-              What&apos;s on your self-care radar?
-            </Text>
-            <Text style={styles.subtitle}>
-              Select up to 5 categories you&apos;re interested in, and
-              we&apos;ll show you personalized picks?
-            </Text>
+            <Text style={styles.title}>{t("whatsOnSelfCareRadar")}</Text>
+            <Text style={styles.subtitle}>{t("selectUpTo5Categories")}</Text>
           </View>
 
           {categoriesLoading ? (
@@ -406,16 +403,18 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
             </View>
           ) : hasNoData ? (
             <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateText}>Category data not found</Text>
+              <Text style={styles.emptyStateText}>
+                {t("categoryDataNotFound")}
+              </Text>
             </View>
           ) : (
             <>
               <View style={styles.searchContainer}>
                 <FloatingInput
-                  label="Search"
+                  label={t("search")}
                   value={searchTerm}
                   onChangeText={handleSearchChange}
-                  placeholder="Search"
+                  placeholder={t("search")}
                   placeholderTextColor={(colors as Theme).lightGreen2}
                   onClear={() => setSearchTerm("")}
                   containerStyle={{
@@ -452,7 +451,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
               </View>
 
               <View style={styles.buttonContainer}>
-                <Button title="Continue" onPress={handleContinue} />
+                <Button title={t("continue")} onPress={handleContinue} />
               </View>
             </>
           )}

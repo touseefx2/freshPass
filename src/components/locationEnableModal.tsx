@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import Logger from "@/src/services/logger";
 import { Modal, StyleSheet, View, Text, TouchableOpacity } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -126,6 +127,7 @@ export default function LocationEnableModal({
   screenName,
 }: LocationEnableModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const [modalBanner, setModalBanner] = useState<{
@@ -203,11 +205,11 @@ export default function LocationEnableModal({
                 />
               </View>
               <View>
-                <Text style={styles.title}>Enable Location</Text>
+                <Text style={styles.title}>{t("enableLocation")}</Text>
                 <Text style={styles.subtitle}>
                   {screenName === "setLocation"
-                    ? "Get current location to show on map"
-                    : "Turn on location to discover businesses near you"}
+                    ? t("getCurrentLocationForMap")
+                    : t("turnOnLocationDiscover")}
                 </Text>
               </View>
             </View>
@@ -257,7 +259,7 @@ export default function LocationEnableModal({
 
           <View style={styles.buttonContainer}>
             <Button
-              title={"Enable Location"}
+              title={t("enableLocation")}
               onPress={handleContinue}
               textColor={theme.white}
             />
@@ -267,7 +269,7 @@ export default function LocationEnableModal({
               onPress={() => onClose(false)}
               activeOpacity={0.7}
             >
-              <Text style={styles.skipButtonText}>Skip for now</Text>
+              <Text style={styles.skipButtonText}>{t("skipForNow")}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -10,6 +10,7 @@ import {
   StatusBar,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -82,6 +83,7 @@ export default function AccountScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+  const { t } = useTranslation();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -94,12 +96,9 @@ export default function AccountScreen() {
   const countryName = user.countryName;
 
   const getLanguageName = (code: string) => {
-    const languages: { [key: string]: string } = {
-      en: "English",
-      fr: "French",
-      es: "Spanish",
-    };
-    return languages[code] || "English";
+    if (code === "en") return t("languagesEnName");
+    if (code === "fr") return t("languagesFrName");
+    return t("languagesEnName");
   };
 
   const handleLogout = async () => {
@@ -109,15 +108,15 @@ export default function AccountScreen() {
     }
 
     Alert.alert(
-      "Logout",
-      `Are you sure you want to logout ?`,
+      t("logout"),
+      t("areYouSureLogout"),
       [
         {
-          text: "Cancel",
+          text: t("cancel"),
           style: "cancel",
         },
         {
-          text: "Yes",
+          text: t("yes"),
           onPress: async () => {
             await ApiService.logout();
           },
@@ -129,15 +128,15 @@ export default function AccountScreen() {
 
   const handleDeleteAccount = async () => {
     Alert.alert(
-      "Delete Account",
-      "Are you sure you want to delete your account? This action cannot be undone.",
+      t("deleteAccountTitle"),
+      t("areYouSureDelete"),
       [
         {
-          text: "Cancel",
+          text: t("cancel"),
           style: "cancel",
         },
         {
-          text: "Delete",
+          text: t("delete"),
           style: "destructive",
           onPress: async () => {
             setDeleteLoading(true);
@@ -149,8 +148,8 @@ export default function AccountScreen() {
 
               if (response.success) {
                 showBanner(
-                  "Success",
-                  "Account deleted successfully",
+                  t("success"),
+                  t("accountDeletedSuccessfully"),
                   "success",
                   2500,
                 );
@@ -160,8 +159,8 @@ export default function AccountScreen() {
               }
             } catch (error: any) {
               showBanner(
-                "Error",
-                error?.message || "Failed to delete account",
+                t("error"),
+                error?.message || t("failedToDeleteAccount"),
                 "error",
                 2500,
               );
@@ -231,50 +230,52 @@ export default function AccountScreen() {
 
   const rows: Row[] = [
     ...(!isGuest
-      ? [{ key: "personal" as const, title: "Personal information" }]
+      ? [{ key: "personal" as const, title: t("personalInformation") }]
       : []),
     ...((userRole === "business" || userRole === "staff") &&
     !isGuest &&
     !isCustomer
       ? userRole === "staff"
-        ? [{ key: "availability" as const, title: "Set availability" }]
-        : [{ key: "business" as const, title: "Business profile settings" }]
+        ? [{ key: "availability" as const, title: t("setAvailability") }]
+        : [{ key: "business" as const, title: t("businessProfileSettings") }]
       : []),
     ...(isCustomer
       ? [
           {
             key: "country" as const,
-            title: "Country",
+            title: t("country"),
             subtitle:
               countryName && countryName.trim().length > 0
                 ? countryName
-                : "Set country",
+                : t("setCountry"),
           },
         ]
       : []),
     {
       key: "language",
-      title: "Language",
-      subtitle: `Current language (${getLanguageName(currentLanguage)})`,
+      title: t("language"),
+      subtitle: `${t("currentLanguageLabel")} (${getLanguageName(currentLanguage)})`,
     },
     ...(userRole === "business" || isCustomer
-      ? [{ key: "subscriptions" as const, title: "Subscription" }]
+      ? [{ key: "subscriptions" as const, title: t("subscription") }]
       : []),
     {
       key: "notifications",
-      title: "Notification settings",
-      subtitle: "Turned ON",
+      title: t("notificationSettings"),
+      subtitle: t("turnedOn"),
     },
-    ...(isCustomer ? [{ key: "reviews" as const, title: "Reviews" }] : []),
+    ...(isCustomer ? [{ key: "reviews" as const, title: t("reviews") }] : []),
     ...(userRole === "business" || userRole === "customer"
-      ? [{ key: "aiTools" as const, title: "Ai Tools" }]
+      ? [{ key: "aiTools" as const, title: t("aiTools") }]
       : []),
     {
       key: "rules" as const,
-      title: "Rules and terms",
+      title: t("rulesAndTerms"),
     },
-    { key: "logout", title: isGuest ? "Sign in" : "Log out" },
-    ...(!isGuest ? [{ key: "delete" as const, title: "Delete account" }] : []),
+    { key: "logout", title: isGuest ? t("signIn") : t("logOut") },
+    ...(!isGuest
+      ? [{ key: "delete" as const, title: t("deleteAccount") }]
+      : []),
   ];
 
   return (
@@ -289,7 +290,7 @@ export default function AccountScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Account settings</Text>
+        <Text style={styles.title}>{t("accountSettings")}</Text>
 
         <View style={styles.listContainer}>
           {rows.map((row, index) => {

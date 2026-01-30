@@ -1,4 +1,5 @@
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import React, { useMemo, useCallback, useEffect } from "react";
 import { View, Text, StatusBar, Platform, Linking, Alert } from "react-native";
 import {
@@ -47,6 +48,7 @@ const APPLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
 
 export default function SocialLogin() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const insets = useSafeAreaInsets();
   const isButtonMode = Platform.OS === "android" && insets.bottom > 30;
@@ -93,14 +95,14 @@ export default function SocialLogin() {
       const userInfo = await GoogleSignin.signIn();
 
       if (!userInfo.data) {
-        Alert.alert("Error", "Failed to get user information from Google");
+        Alert.alert(t("error"), t("failedToGetUserFromGoogle"));
         return;
       }
 
       // Get the ID token
       const idToken = userInfo.data.idToken;
       if (!idToken) {
-        Alert.alert("Error", "Failed to get ID token from Google");
+        Alert.alert(t("error"), t("failedToGetIdTokenFromGoogle"));
         return;
       }
 
@@ -162,8 +164,8 @@ export default function SocialLogin() {
         }
       } else {
         Alert.alert(
-          "Login Failed",
-          response.message || "Social login failed. Please try again.",
+          t("loginFailed"),
+          response.message || t("socialLoginFailedTryAgain"),
         );
       }
     } catch (error: any) {
@@ -177,15 +179,12 @@ export default function SocialLogin() {
         Logger.log("Google Sign-In already in progress");
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
         // Play services not available or outdated
-        Alert.alert(
-          "Error",
-          "Google Play Services is not available. Please update Google Play Services.",
-        );
+        Alert.alert(t("error"), t("googlePlayServicesNotAvailable"));
       } else {
         // Some other error happened
         Alert.alert(
-          "Google Sign-In Failed",
-          error.message || "An error occurred during Google Sign-In",
+          t("googleSignInFailed"),
+          error.message || t("errorDuringGoogleSignIn"),
         );
       }
     }
@@ -195,15 +194,12 @@ export default function SocialLogin() {
     try {
       // Check if Apple Sign-In is available (iOS 13+)
       if (Platform.OS !== "ios") {
-        Alert.alert("Error", "Apple Sign-In is only available on iOS devices");
+        Alert.alert(t("error"), t("appleSignInOnlyOnIos"));
         return;
       }
 
       if (!appleAuth.isSupported) {
-        Alert.alert(
-          "Error",
-          "Apple Sign-In is not available on this device. iOS 13+ is required.",
-        );
+        Alert.alert(t("error"), t("appleSignInNotAvailable"));
         return;
       }
 
@@ -215,7 +211,7 @@ export default function SocialLogin() {
 
       // Check if the request was successful
       if (!appleAuthRequestResponse.identityToken) {
-        Alert.alert("Error", "Failed to get identity token from Apple");
+        Alert.alert(t("error"), t("failedToGetIdentityTokenFromApple"));
         return;
       }
 
@@ -225,7 +221,7 @@ export default function SocialLogin() {
       );
 
       if (credentialState === AppleCredentialState.REVOKED) {
-        Alert.alert("Error", "Apple Sign-In credentials have been revoked");
+        Alert.alert(t("error"), t("appleCredentialsRevoked"));
         return;
       }
 
@@ -261,14 +257,14 @@ export default function SocialLogin() {
       } else if (error.code === AppleError.UNKNOWN) {
         // Unknown error occurred
         Alert.alert(
-          "Apple Sign-In Failed",
-          error.message || "An unknown error occurred during Apple Sign-In",
+          t("appleSignInFailed"),
+          error.message || t("unknownErrorDuringAppleSignIn"),
         );
       } else {
         // Some other error happened
         Alert.alert(
-          "Apple Sign-In Failed",
-          error.message || "An error occurred during Apple Sign-In",
+          t("appleSignInFailed"),
+          error.message || t("errorDuringAppleSignIn"),
         );
       }
     }
@@ -280,7 +276,7 @@ export default function SocialLogin() {
     } else if (provider === "apple") {
       await handleAppleLogin();
     } else if (provider === "facebook") {
-      Alert.alert("Coming Soon", "Facebook Sign-In will be available soon");
+      Alert.alert(t("comingSoon"), t("facebookSignInComingSoon"));
     }
   };
 
@@ -290,7 +286,7 @@ export default function SocialLogin() {
 
   const handleOpenLink = useCallback(async (url: string, title: string) => {
     if (!url) {
-      Alert.alert("Error", `${title} URL is not configured`);
+      Alert.alert(t("error"), `${title} ${t("urlNotConfigured")}`);
       return;
     }
 
@@ -299,11 +295,11 @@ export default function SocialLogin() {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert("Error", `Cannot open ${title}`);
+        Alert.alert(t("error"), `${t("cannotOpen")} ${title}`);
       }
     } catch (error) {
       Logger.error("Error opening link:", error);
-      Alert.alert("Error", `Failed to open ${title}`);
+      Alert.alert(t("error"), `${t("failedToOpenLink")} ${title}`);
     }
   }, []);
 
@@ -343,12 +339,15 @@ export default function SocialLogin() {
               color1={(colors as Theme).white}
               color2={(colors as Theme).white}
             />
-            <Text style={styles.logoText}>FRESHPASS</Text>
+            <Text style={styles.logoText}>{t("freshPass")}</Text>
           </View>
 
           <View style={styles.taglineContainer}>
             <Text style={styles.tagline1}>
-              Always Ready <Text style={styles.tagline2}>Always You</Text>
+              {t("alwaysReadyAlwaysYouShort").split(" ").slice(0, 2).join(" ")}{" "}
+              <Text style={styles.tagline2}>
+                {t("alwaysReadyAlwaysYouShort").split(" ").slice(2).join(" ")}
+              </Text>
             </Text>
           </View>
 
@@ -372,7 +371,10 @@ export default function SocialLogin() {
           !isGuest && { gap: moderateHeightScale(18) },
         ]}
       >
-        <Button title="Sign in or Register" onPress={handleSignInOrRegister} />
+        <Button
+          title={t("signInOrRegister")}
+          onPress={handleSignInOrRegister}
+        />
 
         <SectionSeparator />
 

@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -65,17 +66,17 @@ const formatTimeRange = (
   fromHours: number,
   fromMinutes: number,
   tillHours: number,
-  tillMinutes: number
+  tillMinutes: number,
 ): string => {
   return `${formatTime(fromHours, fromMinutes)} - ${formatTime(
     tillHours,
-    tillMinutes
+    tillMinutes,
   )}`;
 };
 
 // Convert HH:MM string to hours and minutes
 const parseTimeToHoursMinutes = (
-  timeString: string | null | undefined
+  timeString: string | null | undefined,
 ): { hours: number; minutes: number } => {
   if (!timeString || typeof timeString !== "string") {
     return { hours: 0, minutes: 0 };
@@ -119,8 +120,11 @@ const parseBusinessHoursFromAPI = (
       start: string;
       end: string;
     }>;
-  }>
-): { businessHours: BusinessHours; salonBusinessHours: BusinessHours | null } => {
+  }>,
+): {
+  businessHours: BusinessHours;
+  salonBusinessHours: BusinessHours | null;
+} => {
   const parsedStaffHours: BusinessHours = {};
   const parsedSalonHours: BusinessHours = {};
 
@@ -141,10 +145,10 @@ const parseBusinessHoursFromAPI = (
   (staffHours || []).forEach((dayData) => {
     const dayName = getDayDisplayFormat(dayData.day);
     const { hours: fromHours, minutes: fromMinutes } = parseTimeToHoursMinutes(
-      dayData.opening_time
+      dayData.opening_time,
     );
     const { hours: tillHours, minutes: tillMinutes } = parseTimeToHoursMinutes(
-      dayData.closing_time
+      dayData.closing_time,
     );
 
     const breaks = (dayData.break_hours || []).map((breakTime) => {
@@ -175,12 +179,10 @@ const parseBusinessHoursFromAPI = (
   if (businessHours && businessHours.length > 0) {
     businessHours.forEach((dayData) => {
       const dayName = getDayDisplayFormat(dayData.day);
-      const { hours: fromHours, minutes: fromMinutes } = parseTimeToHoursMinutes(
-        dayData.opening_time
-      );
-      const { hours: tillHours, minutes: tillMinutes } = parseTimeToHoursMinutes(
-        dayData.closing_time
-      );
+      const { hours: fromHours, minutes: fromMinutes } =
+        parseTimeToHoursMinutes(dayData.opening_time);
+      const { hours: tillHours, minutes: tillMinutes } =
+        parseTimeToHoursMinutes(dayData.closing_time);
 
       const breaks = (dayData.break_hours || []).map((breakTime) => {
         const { hours: breakFromHours, minutes: breakFromMinutes } =
@@ -209,7 +211,8 @@ const parseBusinessHoursFromAPI = (
 
   return {
     businessHours: parsedStaffHours,
-    salonBusinessHours: businessHours && businessHours.length > 0 ? parsedSalonHours : null,
+    salonBusinessHours:
+      businessHours && businessHours.length > 0 ? parsedSalonHours : null,
   };
 };
 
@@ -371,6 +374,7 @@ const createStyles = (theme: Theme) =>
 
 export default function StaffAvailabilityScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -426,11 +430,13 @@ export default function StaffAvailabilityScreen() {
       }>(staffEndpoints.availabilityHours);
 
       if (response.success && response.data) {
-        const { businessHours: parsedHours, salonBusinessHours: parsedSalonHours } =
-          parseBusinessHoursFromAPI(
-            response.data.staff_hours,
-            response.data.business_hours
-          );
+        const {
+          businessHours: parsedHours,
+          salonBusinessHours: parsedSalonHours,
+        } = parseBusinessHoursFromAPI(
+          response.data.staff_hours,
+          response.data.business_hours,
+        );
         // By default, screen should show staff hours
         setBusinessHours(parsedHours);
         setStaffBaseHours(parsedHours);
@@ -440,10 +446,10 @@ export default function StaffAvailabilityScreen() {
     } catch (error: any) {
       Logger.error("Failed to fetch availability:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to fetch availability. Please try again.",
+        t("error"),
+        error.message || t("failedToFetchAvailability"),
         "error",
-        3000
+        3000,
       );
     } finally {
       setLoading(false);
@@ -594,7 +600,7 @@ export default function StaffAvailabilityScreen() {
       tillMinutes: number;
     }>,
     copyHoursEnabled?: boolean,
-    selectedDays?: string[]
+    selectedDays?: string[],
   ) => {
     setBusinessHours((prev) => {
       const updated = { ...prev };
@@ -685,7 +691,7 @@ export default function StaffAvailabilityScreen() {
       dayData.fromHours,
       dayData.fromMinutes,
       dayData.tillHours,
-      dayData.tillMinutes
+      dayData.tillMinutes,
     );
 
     if (dayData.breaks && dayData.breaks.length > 0) {
@@ -699,7 +705,7 @@ export default function StaffAvailabilityScreen() {
                 breakTime.fromHours,
                 breakTime.fromMinutes,
                 breakTime.tillHours,
-                breakTime.tillMinutes
+                breakTime.tillMinutes,
               )}
             </Text>
           ))}
@@ -734,38 +740,37 @@ export default function StaffAvailabilityScreen() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          response.message || "Availability updated successfully",
+          t("success"),
+          response.message || t("availabilityUpdatedSuccess"),
           "success",
-          3000
+          3000,
         );
 
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update availability",
+          t("error"),
+          response.message || t("failedToUpdateAvailability"),
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
       Logger.error("Failed to update availability:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update availability. Please try again.",
+        t("error"),
+        error.message || t("failedToUpdateAvailabilityTryAgain"),
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
     }
   };
 
-
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Set availability" />
+      <StackHeader title={t("setAvailabilityTitle")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -776,10 +781,8 @@ export default function StaffAvailabilityScreen() {
         ) : (
           <>
             <View style={styles.titleSec}>
-              <Text style={styles.title}>Availability hours</Text>
-              <Text style={styles.subtitle}>
-                When clients can book staff member service.
-              </Text>
+              <Text style={styles.title}>{t("availabilityHours")}</Text>
+              <Text style={styles.subtitle}>{t("whenClientsCanBook")}</Text>
             </View>
 
             <View style={styles.daysContainer}>
@@ -847,11 +850,10 @@ export default function StaffAvailabilityScreen() {
                   </TouchableOpacity>
                   <View style={{ gap: 3, width: "90%" }}>
                     <Text style={styles.checkboxLabel}>
-                      Copy {businessName} business hours
+                      {t("copyBusinessHours", { name: businessName })}
                     </Text>
                     <Text style={styles.sectionDescription}>
-                      This automatically sets their schedule to match the salon's
-                      open hours.
+                      {t("copyBusinessHoursDescription")}
                     </Text>
                   </View>
                 </View>
@@ -864,7 +866,7 @@ export default function StaffAvailabilityScreen() {
       {!loading && (
         <View style={styles.buttonContainer}>
           <Button
-            title="Save"
+            title={t("save")}
             onPress={handleSave}
             disabled={isUpdating}
           />
@@ -892,4 +894,3 @@ export default function StaffAvailabilityScreen() {
     </SafeAreaView>
   );
 }
-

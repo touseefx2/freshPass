@@ -10,7 +10,8 @@ import {
   StatusBar,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useTheme, useAppDispatch,   } from "@/src/hooks/hooks";
+import { useTheme, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -167,6 +168,7 @@ export default function RegisterTermsModal({
   nonClosable = false,
 }: AcceptTermsModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
@@ -192,11 +194,11 @@ export default function RegisterTermsModal({
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
 
       return () => subscription.remove();
-    }, [visible, onClose, nonClosable])
+    }, [visible, onClose, nonClosable]),
   );
 
   const handleContinue = async () => {
@@ -211,7 +213,7 @@ export default function RegisterTermsModal({
           cityName: null,
           countryCode: null,
           zipCode: null,
-        })
+        }),
       );
       onContinue();
       return;
@@ -223,7 +225,7 @@ export default function RegisterTermsModal({
       if (!servicesEnabled) {
         const errorMsg = "Please turn on your phone location";
         // setErrorMessage(errorMsg);
-        showBanner("Location Error", errorMsg, "error");
+        showBanner(t("locationError"), errorMsg, "error");
         return;
       }
       onContinue();
@@ -234,7 +236,7 @@ export default function RegisterTermsModal({
           ? error.message
           : "Unable to get your location. Please make sure location services are enabled and try again.";
       // setErrorMessage(errorMsg);
-      showBanner("Location Error", errorMsg, "error");
+      showBanner(t("locationError"), errorMsg, "error");
     }
   };
 
@@ -255,7 +257,7 @@ export default function RegisterTermsModal({
       >
         <View style={styles.containerHeader}>
           <View style={styles.headerRow}>
-            <Text style={styles.logoText}>Registration complete</Text>
+            <Text style={styles.logoText}>{t("registrationComplete")}</Text>
           </View>
           <View style={styles.borderBottomLine} />
         </View>
@@ -271,11 +273,12 @@ export default function RegisterTermsModal({
               />
             </View>
 
-            <Text style={styles.title}>You're all set!</Text>
-            <Text style={styles.bodyText}>You've registered successfully.</Text>
+            <Text style={styles.title}>{t("youreAllSet")}</Text>
+            <Text style={styles.bodyText}>
+              {t("youveRegisteredSuccessfully")}
+            </Text>
             <Text style={styles.bodyText2}>
-              Your account is ready. Let's find you a perfect salon – enable
-              location to see the best options near you.
+              {t("registrationAccountReady")}
             </Text>
           </View>
 
@@ -304,7 +307,7 @@ export default function RegisterTermsModal({
             </TouchableOpacity>
 
             <Button
-              title="Lets go!"
+              title={t("letsGo")}
               onPress={handleContinue}
               backgroundColor={theme.orangeBrown}
               textColor={theme.darkGreen}

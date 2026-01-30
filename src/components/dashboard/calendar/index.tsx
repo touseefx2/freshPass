@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -355,6 +356,7 @@ const createStyles = (theme: Theme) =>
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -421,8 +423,8 @@ export default function CalendarScreen() {
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to fetch appointments",
+        t("apiFailed"),
+        error?.message || t("failedToFetchAppointments"),
         "error",
         2500,
       );
@@ -623,7 +625,7 @@ export default function CalendarScreen() {
         <View style={styles.agendaContainer}>
           <View style={styles.agendaHeader}>
             <View style={styles.allDayLabel}>
-              <Text style={styles.allDayText}>All Day</Text>
+              <Text style={styles.allDayText}>{t("allDay")}</Text>
             </View>
             <View style={styles.todayLabel}>
               <View style={styles.todayLabelRow}>

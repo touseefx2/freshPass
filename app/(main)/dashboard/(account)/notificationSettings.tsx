@@ -1,11 +1,7 @@
 import React, { useMemo, useState } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-} from "react-native";
+import { StyleSheet, Text, View, ScrollView } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -29,7 +25,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(24),
     },
     listContainer: {
-    //   marginTop: moderateHeightScale(24),
+      //   marginTop: moderateHeightScale(24),
     },
     row: {
       flexDirection: "row",
@@ -51,9 +47,10 @@ const createStyles = (theme: Theme) =>
 
 export default function NotificationSettingsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  
+
   const [showNotifications, setShowNotifications] = useState(true);
   const [notificationSound, setNotificationSound] = useState(true);
   const [showOnLockScreen, setShowOnLockScreen] = useState(false);
@@ -61,19 +58,19 @@ export default function NotificationSettingsScreen() {
   const settings = [
     {
       key: "showNotifications",
-      title: "Show notifications",
+      title: t("showNotifications"),
       value: showNotifications,
       onValueChange: setShowNotifications,
     },
     {
       key: "notificationSound",
-      title: "Notification sound",
+      title: t("notificationSound"),
       value: notificationSound,
       onValueChange: setNotificationSound,
     },
     {
       key: "showOnLockScreen",
-      title: "Show on Lock Screen",
+      title: t("showOnLockScreen"),
       value: showOnLockScreen,
       onValueChange: setShowOnLockScreen,
     },
@@ -81,7 +78,7 @@ export default function NotificationSettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <StackHeader title="Notification settings" />
+      <StackHeader title={t("notificationSettings")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -107,4 +104,3 @@ export default function NotificationSettingsScreen() {
     </View>
   );
 }
-

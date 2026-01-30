@@ -16,6 +16,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -60,7 +61,13 @@ type PortfolioPhoto = {
 type GridItem =
   | { type: "gallery"; id: string }
   | { type: "camera"; id: string }
-  | { type: "photo"; id: string; uri: string; isExisting: boolean; backendId?: number };
+  | {
+      type: "photo";
+      id: string;
+      uri: string;
+      isExisting: boolean;
+      backendId?: number;
+    };
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -149,9 +156,9 @@ const createStyles = (theme: Theme) =>
       zIndex: 1,
     },
     emptyState: {
-    position: "absolute",
-    top: "60%",
-    alignSelf: "center",
+      position: "absolute",
+      top: "60%",
+      alignSelf: "center",
     },
     emptyStateText: {
       fontSize: fontSize.size14,
@@ -168,6 +175,7 @@ const createStyles = (theme: Theme) =>
 
 export default function ManagePortfolioPhotosScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -176,9 +184,9 @@ export default function ManagePortfolioPhotosScreen() {
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [existingPhotos, setExistingPhotos] = useState<PortfolioPhoto[]>([]);
-  const [newPhotos, setNewPhotos] = useState<Array<{ id: string; uri: string }>>(
-    []
-  );
+  const [newPhotos, setNewPhotos] = useState<
+    Array<{ id: string; uri: string }>
+  >([]);
   const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
 
   const itemWidth = useMemo(() => calculateItemWidth(), []);
@@ -209,7 +217,7 @@ export default function ManagePortfolioPhotosScreen() {
         "Error",
         error?.message || "Failed to fetch portfolio photos. Please try again.",
         "error",
-        3000
+        3000,
       );
       setExistingPhotos([]);
     } finally {
@@ -253,7 +261,7 @@ export default function ManagePortfolioPhotosScreen() {
       Logger.error("Error selecting image from gallery:", error);
       Alert.alert(
         "Error",
-        "Failed to select image from gallery. Please try again."
+        "Failed to select image from gallery. Please try again.",
       );
     }
   }, []);
@@ -282,29 +290,26 @@ export default function ManagePortfolioPhotosScreen() {
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
-      Alert.alert("Error", "Failed to take photo. Please try again.");
+      Alert.alert(t("error"), t("failedToTakePhoto"));
     }
   }, []);
 
-  const handleDeletePhoto = useCallback(
-    (item: GridItem) => {
-      if (item.type !== "photo") {
-        return;
-      }
+  const handleDeletePhoto = useCallback((item: GridItem) => {
+    if (item.type !== "photo") {
+      return;
+    }
 
-      if (item.isExisting && item.backendId != null) {
-        setExistingPhotos((prev) => prev.filter((p) => p.id !== item.backendId));
-        setRemovedPhotoIds((prev) =>
-          prev.includes(item.backendId as number)
-            ? prev
-            : [...prev, item.backendId as number]
-        );
-      } else {
-        setNewPhotos((prev) => prev.filter((p) => p.id !== item.id));
-      }
-    },
-    []
-  );
+    if (item.isExisting && item.backendId != null) {
+      setExistingPhotos((prev) => prev.filter((p) => p.id !== item.backendId));
+      setRemovedPhotoIds((prev) =>
+        prev.includes(item.backendId as number)
+          ? prev
+          : [...prev, item.backendId as number],
+      );
+    } else {
+      setNewPhotos((prev) => prev.filter((p) => p.id !== item.id));
+    }
+  }, []);
 
   const gridData: GridItem[] = useMemo(() => {
     const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
@@ -390,7 +395,13 @@ export default function ManagePortfolioPhotosScreen() {
         </View>
       );
     },
-    [itemWidth, theme, handleSelectFromGallery, handleTakePhoto, handleDeletePhoto]
+    [
+      itemWidth,
+      theme,
+      handleSelectFromGallery,
+      handleTakePhoto,
+      handleDeletePhoto,
+    ],
   );
 
   const handleUpdate = async () => {
@@ -450,7 +461,7 @@ export default function ManagePortfolioPhotosScreen() {
           "Success",
           response.message || "Portfolio photos updated successfully",
           "success",
-          3000
+          3000,
         );
         router.back();
       } else {
@@ -458,16 +469,17 @@ export default function ManagePortfolioPhotosScreen() {
           "Error",
           response.message || "Failed to update portfolio photos",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
       Logger.error("Failed to update portfolio photos:", error);
       showBanner(
         "Error",
-        error?.message || "Failed to update portfolio photos. Please try again.",
+        error?.message ||
+          "Failed to update portfolio photos. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
@@ -530,5 +542,3 @@ export default function ManagePortfolioPhotosScreen() {
     </SafeAreaView>
   );
 }
-
-

@@ -10,6 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -57,6 +58,7 @@ const createStyles = (theme: Theme) =>
 
 export default function RulesAndTermsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
@@ -66,30 +68,30 @@ export default function RulesAndTermsScreen() {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert("Error", `Cannot open ${title}. URL: ${url}`);
+        Alert.alert(t("error"), `${t("cannotOpen")} ${title}. URL: ${url}`);
       }
     } catch (error) {
       Logger.error("Error opening link:", error);
-      Alert.alert("Error", `Failed to open ${title}`);
+      Alert.alert(t("error"), `${t("failedToOpen")} ${title}`);
     }
   };
 
   const rows = [
     {
       key: "terms",
-      title: "Terms and conditions",
+      title: t("termsAndConditions"),
       url: TERMS_AND_CONDITIONS_URL,
     },
     {
       key: "privacy",
-      title: "Privacy policy",
+      title: t("privacyPolicyLower"),
       url: PRIVACY_POLICY_URL,
     },
   ];
 
   return (
     <View style={styles.container}>
-      <StackHeader title="Rules and terms" />
+      <StackHeader title={t("rulesAndTerms")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

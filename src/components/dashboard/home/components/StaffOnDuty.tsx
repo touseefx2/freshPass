@@ -8,6 +8,7 @@ import {
   Image,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -127,6 +128,7 @@ interface StaffOnDutyProps {
 
 export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
@@ -137,7 +139,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   return (
     <View style={styles.staffContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Staff on duty</Text>
+        <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
         {data && data.length > 0 && (
           <TouchableOpacity activeOpacity={0.7}>
             <View style={styles.sectionRight}>
@@ -157,7 +159,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         <Skeleton screenType="StaffOnDuty" styles={styles} />
       ) : data.length === 0 ? (
         <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>No staff on duty</Text>
+          <Text style={styles.emptyStateText}>{t("noStaffOnDuty")}</Text>
         </View>
       ) : (
         <ScrollView

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import {
   setSelectedServices,
   setSelectedStaff,
@@ -301,6 +302,7 @@ const createStyles = (theme: Theme) =>
 
 export default function BookingNow() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
@@ -373,7 +375,7 @@ export default function BookingNow() {
 
         // Parse business hours from API format to Redux format
         const parseTimeToHoursMinutes = (
-          timeString: string | null | undefined
+          timeString: string | null | undefined,
         ): { hours: number; minutes: number } => {
           if (!timeString || typeof timeString !== "string") {
             return { hours: 0, minutes: 0 };
@@ -580,7 +582,7 @@ export default function BookingNow() {
           if (hasReduxData && reduxSelectedServices.length > 0) {
             // Keep existing selection from Redux (businessDetail case)
             const existingService = allServicesData.find(
-              (s: Service) => s.id === reduxSelectedServices[0].id
+              (s: Service) => s.id === reduxSelectedServices[0].id,
             );
             if (existingService) {
               dispatch(setSelectedServices([existingService]));
@@ -594,12 +596,7 @@ export default function BookingNow() {
         }
       } else {
         setError("Failed to load business details");
-        showBanner(
-          "Error",
-          "Failed to load business details. Please try again.",
-          "error",
-          4000
-        );
+        showBanner(t("error"), t("failedToLoadBusinessDetails"), "error", 4000);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load business details");
@@ -607,7 +604,7 @@ export default function BookingNow() {
         "Error",
         err.message || "Failed to load business details. Please try again.",
         "error",
-        4000
+        4000,
       );
     } finally {
       // Only set loading to false if we were showing loader
@@ -653,12 +650,12 @@ export default function BookingNow() {
   ];
   const totalPrice = selectedServices.reduce(
     (sum, service) => sum + service.price,
-    0
+    0,
   );
 
   const handleDeleteService = (serviceId: number) => {
     const updatedServices = selectedServices.filter(
-      (service) => service.id !== serviceId
+      (service) => service.id !== serviceId,
     );
     dispatch(setSelectedServices(updatedServices));
   };
@@ -675,13 +672,13 @@ export default function BookingNow() {
     (services: Service[]) => {
       dispatch(setSelectedServices(services));
     },
-    [dispatch]
+    [dispatch],
   );
 
   // Memoize selectedServiceIds to prevent infinite loops
   const selectedServiceIds = useMemo(
     () => selectedServices.map((s) => s.id),
-    [selectedServices]
+    [selectedServices],
   );
 
   // Show loading indicator while fetching data
@@ -916,10 +913,10 @@ export default function BookingNow() {
           onPress={() => {
             if (selectedServices.length === 0) {
               showBanner(
-                "No Service Selected",
-                "Please select at least one service to proceed with checkout.",
+                t("noServiceSelected"),
+                t("pleaseSelectAtLeastOneService"),
                 "warning",
-                4000
+                4000,
               );
               return;
             }

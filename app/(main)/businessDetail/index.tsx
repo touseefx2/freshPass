@@ -25,6 +25,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { setBusinessData as setBusinessDataAction } from "@/src/state/slices/bsnsSlice";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -1099,6 +1100,7 @@ const createStyles = (theme: Theme) =>
   });
 export default function BusinessDetailScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
@@ -1368,10 +1370,10 @@ export default function BusinessDetailScreen() {
       if (canOpen) {
         await Linking.openURL(phoneUrl);
       } else {
-        Alert.alert("Error", "Unable to make phone call");
+        Alert.alert(t("error"), t("unableToMakePhoneCall"));
       }
     } catch (error) {
-      Alert.alert("Error", "Unable to make phone call");
+      Alert.alert(t("error"), t("unableToMakePhoneCall"));
     }
   };
 
@@ -1390,18 +1392,18 @@ export default function BusinessDetailScreen() {
           const appleMapsUrl = `http://maps.apple.com/?ll=${businessLatitude},${businessLongitude}&q=${encodedName}`;
           await Linking.openURL(appleMapsUrl);
         } else {
-          Alert.alert("Error", "Unable to open maps");
+          Alert.alert(t("error"), t("unableToOpenMaps"));
         }
       }
     } catch (error) {
-      Alert.alert("Error", "Unable to open maps");
+      Alert.alert(t("error"), t("unableToOpenMaps"));
     }
   };
 
   // Handle navigation to Google Maps from review modal
   const handleReviewModalNavigate = async () => {
     if (!businessLatitude || !businessLongitude) {
-      Alert.alert("Error", "Location not available");
+      Alert.alert(t("error"), t("locationNotAvailable"));
       return;
     }
     const encodedName = encodeURIComponent(businessName);
@@ -1417,11 +1419,11 @@ export default function BusinessDetailScreen() {
           const appleMapsUrl = `http://maps.apple.com/?ll=${businessLatitude},${businessLongitude}&q=${encodedName}`;
           await Linking.openURL(appleMapsUrl);
         } else {
-          Alert.alert("Error", "Unable to open maps");
+          Alert.alert(t("error"), t("unableToOpenMaps"));
         }
       }
     } catch (error) {
-      Alert.alert("Error", "Unable to open maps");
+      Alert.alert(t("error"), t("unableToOpenMaps"));
     }
   };
 
@@ -1800,7 +1802,7 @@ export default function BusinessDetailScreen() {
       >
         {/* About me */}
         <View style={styles.sectionContentFullWidth}>
-          <Text style={styles.sectionTitle}>About me</Text>
+          <Text style={styles.sectionTitle}>{t("aboutMe")}</Text>
           <Text style={styles.aboutText}>
             {displayText}
             {shouldShowReadMore && !isAboutExpanded && (
@@ -1809,7 +1811,7 @@ export default function BusinessDetailScreen() {
                 onPress={() => setIsAboutExpanded(true)}
               >
                 {" "}
-                Read more salon
+                {t("readMoreSalon")}
               </Text>
             )}
           </Text>
@@ -1824,7 +1826,7 @@ export default function BusinessDetailScreen() {
               { marginTop: moderateHeightScale(24) },
             ]}
           >
-            Shop location
+            {t("shopLocation")}
           </Text>
           <View style={styles.shopLocationRow}>
             <Text style={styles.shopLocationText}>{businessAddress}</Text>
@@ -1852,7 +1854,7 @@ export default function BusinessDetailScreen() {
                   { marginTop: moderateHeightScale(24) },
                 ]}
               >
-                Contact
+                {t("contact")}
               </Text>
               <View style={styles.contactRow}>
                 <View style={styles.phoneIconContainer}>
@@ -1868,7 +1870,7 @@ export default function BusinessDetailScreen() {
                     style={styles.callNowButton}
                     onPress={handleCallNow}
                   >
-                    <Text style={styles.callNowButtonText}>Call now</Text>
+                    <Text style={styles.callNowButtonText}>{t("callNow")}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1887,7 +1889,7 @@ export default function BusinessDetailScreen() {
                   { marginTop: moderateHeightScale(24) },
                 ]}
               >
-                Owner
+                {t("owner")}
               </Text>
               <View style={styles.ownerRow}>
                 <View style={styles.ownerAvatar}>
@@ -1899,7 +1901,7 @@ export default function BusinessDetailScreen() {
                 </View>
                 <View style={styles.ownerInfo}>
                   <Text style={styles.ownerName}>
-                    {businessData.owner.name || "Owner"}
+                    {businessData.owner.name || t("owner")}
                   </Text>
                   {businessData.owner.email && (
                     <Text style={styles.ownerEmail}>
@@ -1926,10 +1928,10 @@ export default function BusinessDetailScreen() {
               { marginTop: moderateHeightScale(24) },
             ]}
           >
-            <Text style={styles.sectionTitle}>Business hours</Text>
+            <Text style={styles.sectionTitle}>{t("businessHours")}</Text>
           </View>
           {businessHours.length === 0 ? (
-            <Text style={styles.noHoursText}>No any hours added</Text>
+            <Text style={styles.noHoursText}>{t("noAnyHoursAdded")}</Text>
           ) : (
             <ScrollView
               horizontal
@@ -1937,7 +1939,8 @@ export default function BusinessDetailScreen() {
               contentContainerStyle={styles.hoursCardsContainer}
             >
               {sortedBusinessHours.map((item: any, index: number) => {
-                const displayDay = item.day === currentDay ? "Today" : item.day;
+                const displayDay =
+                  item.day === currentDay ? t("today") : item.day;
                 const breakHours = item.breakHours || [];
                 const hasBreaks = breakHours.length > 0;
                 const hasMultipleBreaks = breakHours.length > 1;
@@ -1949,7 +1952,8 @@ export default function BusinessDetailScreen() {
                     <Text style={styles.hoursTime}>{item.time}</Text>
                     {!isClosed && hasBreaks && !hasMultipleBreaks && (
                       <Text style={styles.hoursBreak}>
-                        Break: {breakHours[0].start} - {breakHours[0].end}
+                        {t("breakLabel")} {breakHours[0].start} -{" "}
+                        {breakHours[0].end}
                       </Text>
                     )}
                     {!isClosed && hasMultipleBreaks && (
@@ -1959,7 +1963,9 @@ export default function BusinessDetailScreen() {
                           setBreaksModalVisible(true);
                         }}
                       >
-                        <Text style={styles.viewBreaksLink}>View breaks</Text>
+                        <Text style={styles.viewBreaksLink}>
+                          {t("viewBreaks")}
+                        </Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1993,7 +1999,7 @@ export default function BusinessDetailScreen() {
           onPress={() => setIsMembershipExpanded(!isMembershipExpanded)}
         >
           <Text style={styles.serviceSectionTitle}>
-            Membership subscriptions list
+            {t("membershipSubscriptionsList")}
           </Text>
           {isMembershipExpanded ? (
             <ChevronUpIcon
@@ -2125,7 +2131,9 @@ export default function BusinessDetailScreen() {
                         });
                       }}
                     >
-                      <Text style={styles.bookNowButtonText}>Book Now</Text>
+                      <Text style={styles.bookNowButtonText}>
+                        {t("bookNow")}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -2145,7 +2153,9 @@ export default function BusinessDetailScreen() {
           ]}
           onPress={() => setIsIndividualExpanded(!isIndividualExpanded)}
         >
-          <Text style={styles.serviceSectionTitle}>Individual services</Text>
+          <Text style={styles.serviceSectionTitle}>
+            {t("individualServices")}
+          </Text>
           {isIndividualExpanded ? (
             <ChevronUpIcon
               width={widthScale(10)}
@@ -2395,7 +2405,7 @@ export default function BusinessDetailScreen() {
 
                             return {
                               id: staff.id || staff.user_id || 0,
-                              name: staff.name || "Staff Member",
+                              name: staff.name || t("staffMemberFallback"),
                               experience: staff?.description ?? null,
                               image: image,
                               working_hours: staffWorkingHours,
@@ -2420,7 +2430,9 @@ export default function BusinessDetailScreen() {
                         });
                       }}
                     >
-                      <Text style={styles.bookNowButtonText}>Book Now</Text>
+                      <Text style={styles.bookNowButtonText}>
+                        {t("bookNow")}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -2443,8 +2455,8 @@ export default function BusinessDetailScreen() {
           style={styles.contentContainer}
         >
           <View style={styles.sectionContentFullWidth}>
-            <Text style={styles.staffSectionTitle}>Staff members</Text>
-            <Text style={styles.noHoursText}>No staff found</Text>
+            <Text style={styles.staffSectionTitle}>{t("staffMembers")}</Text>
+            <Text style={styles.noHoursText}>{t("noStaffFound")}</Text>
           </View>
         </View>
       );
@@ -2465,7 +2477,7 @@ export default function BusinessDetailScreen() {
       >
         <View style={styles.sectionContentFullWidth}>
           <Text style={styles.staffSectionTitle}>
-            Staff members ({staffMembers.length})
+            {t("staffMembersCount", { count: staffMembers.length })}
           </Text>
           <View style={styles.staffGrid}>
             {displayedStaff.map((staff: any) => (
@@ -2492,7 +2504,9 @@ export default function BusinessDetailScreen() {
               style={styles.loadMoreButton}
               onPress={() => setShowAllStaff(true)}
             >
-              <Text style={styles.loadMoreText}>Load more staff members</Text>
+              <Text style={styles.loadMoreText}>
+                {t("loadMoreStaffMembers")}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -2539,7 +2553,7 @@ export default function BusinessDetailScreen() {
       >
         <View style={styles.ratingsSectionContent}>
           <View style={styles.sectionContentFullWidth}>
-            <Text style={styles.sectionTitle}>What other say</Text>
+            <Text style={styles.sectionTitle}>{t("whatOthersSay")}</Text>
           </View>
           {/* Rating Summary */}
           <View
@@ -2555,12 +2569,13 @@ export default function BusinessDetailScreen() {
                 color={theme.selectCard}
               />
               <Text style={styles.ratingBadgeText}>
-                {averageRatingToShow.toFixed(1)}/ {totalReviewsToShow} reviews
+                {averageRatingToShow.toFixed(1)}/{" "}
+                {t("reviewsCount", { count: totalReviewsToShow })}
               </Text>
             </View>
             <Text style={styles.averageRatingText}>
               {averageRatingToShow > 0 ? averageRatingToShow.toFixed(1) : "0"}{" "}
-              Average
+              {t("average")}
             </Text>
           </View>
 
@@ -2614,7 +2629,7 @@ export default function BusinessDetailScreen() {
             <View style={styles.writeReviewButtonContainer}>
               <Button
                 backgroundColor={theme.darkGreen}
-                title="Write a review"
+                title={t("writeAReview")}
                 onPress={() => {
                   const logoUrl = getBusinessLogoUrl();
                   router.push({
@@ -2648,7 +2663,7 @@ export default function BusinessDetailScreen() {
               }}
             >
               <Text style={styles.showAllReviewsText}>
-                Show all {totalReviewsToShow} reviews
+                {t("showAllReviews", { count: totalReviewsToShow })}
               </Text>
             </TouchableOpacity>
           )}
@@ -2664,7 +2679,7 @@ export default function BusinessDetailScreen() {
             ]}
           >
             <Text style={styles.policyItemText}>
-              Payment & cancelation policy
+              {t("paymentCancelationPolicy")}
             </Text>
             <ChevronRightIconBusinessDetail
               width={widthScale(6)}
@@ -2675,7 +2690,7 @@ export default function BusinessDetailScreen() {
 
           {/* Report */}
           <TouchableOpacity style={styles.policyItem}>
-            <Text style={styles.policyItemText}>Report</Text>
+            <Text style={styles.policyItemText}>{t("report")}</Text>
             <ChevronRightIconBusinessDetail
               width={widthScale(6)}
               height={heightScale(10)}
@@ -2764,7 +2779,7 @@ export default function BusinessDetailScreen() {
                   color1={theme.white}
                   color2={theme.white}
                 />
-                <Text style={styles.logoText}>FRESHPASS</Text>
+                <Text style={styles.logoText}>{t("freshPass")}</Text>
               </View>
             </View>
             <View style={styles.headerRight}>
@@ -2805,7 +2820,7 @@ export default function BusinessDetailScreen() {
                 height={heightScale(14)}
                 color={theme.white}
               />
-              <Text style={styles.openFullButtonText}>Open in full</Text>
+              <Text style={styles.openFullButtonText}>{t("openInFull")}</Text>
             </TouchableOpacity>
           </TouchableOpacity>
 
@@ -2853,7 +2868,7 @@ export default function BusinessDetailScreen() {
               </View>
               <View style={styles.discountBadge}>
                 <Text style={styles.discountBadgeText}>
-                  15% Off All Products
+                  {t("discountBadgeText")}
                 </Text>
               </View>
             </View>
@@ -2864,7 +2879,8 @@ export default function BusinessDetailScreen() {
                 color={theme.selectCard}
               />
               <Text style={styles.ratingText}>
-                {averageRating.toFixed(1)}/ {totalReviews} reviews
+                {averageRating.toFixed(1)}/{" "}
+                {t("reviewsCount", { count: totalReviews })}
               </Text>
             </View>
             <View
@@ -2905,32 +2921,38 @@ export default function BusinessDetailScreen() {
                 color={theme.selectCard}
               />
               <Text style={styles.staffText}>
-                {businessData?.staffCount || staffMembers.length} staff member
-                {businessData?.staffCount !== 1 ? "s" : ""}
+                {t("staffMembersCount", {
+                  count: businessData?.staffCount || staffMembers.length,
+                })}
               </Text>
             </View>
           </View>
 
           {/* Tabs */}
           <View style={styles.tabsContainer}>
-            {(["Details", "Service", "Staff", "Ratings"] as const).map(
-              (tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  style={styles.tab}
-                  onPress={() => handleTabPress(tab)}
+            {(
+              [
+                ["Details", t("tabDetails")],
+                ["Service", t("tabService")],
+                ["Staff", t("tabStaff")],
+                ["Ratings", t("tabRatings")],
+              ] as const
+            ).map(([tab, label]) => (
+              <TouchableOpacity
+                key={tab}
+                style={styles.tab}
+                onPress={() => handleTabPress(tab)}
+              >
+                <Text
+                  style={
+                    activeTab === tab ? styles.tabTextActive : styles.tabText
+                  }
                 >
-                  <Text
-                    style={
-                      activeTab === tab ? styles.tabTextActive : styles.tabText
-                    }
-                  >
-                    {tab}
-                  </Text>
-                  {activeTab === tab && <View style={styles.tabUnderline} />}
-                </TouchableOpacity>
-              ),
-            )}
+                  {label}
+                </Text>
+                {activeTab === tab && <View style={styles.tabUnderline} />}
+              </TouchableOpacity>
+            ))}
           </View>
 
           {/* Tab Content - All sections in one scroll */}
@@ -2966,7 +2988,7 @@ export default function BusinessDetailScreen() {
           (breakHour, index) =>
             `${index + 1}. Break: ${breakHour.start} - ${breakHour.end}`,
         )}
-        title="Break Hours"
+        title={t("breakHours")}
       />
 
       {/* Full Review Modal */}
@@ -2985,7 +3007,9 @@ export default function BusinessDetailScreen() {
             onPress={(e) => e.stopPropagation()}
           >
             <View style={[styles.reviewModalHeader, { paddingHorizontal: 0 }]}>
-              <Text style={styles.reviewModalTitle}>Review asas</Text>
+              <Text style={styles.reviewModalTitle}>
+                {t("reviewModalTitle")}
+              </Text>
               <TouchableOpacity
                 style={styles.reviewModalCloseButton}
                 onPress={() => setFullReviewModalVisible(false)}

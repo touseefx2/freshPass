@@ -2,6 +2,7 @@ import React, { useMemo, useEffect, useCallback, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -140,6 +141,7 @@ export const createStyles = (theme: Theme) =>
 export default function StepOne() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const { showBanner } = useNotificationContext();
   const { searchTerm, businessCategory, categories } = useAppSelector(
@@ -173,7 +175,7 @@ export default function StepOne() {
     } catch (error) {
       Logger.error("Failed to fetch categories:", error);
       setApiError(true);
-      showBanner("API Failed", "API failed to fetch categories", "error", 2500);
+      showBanner(t("apiFailed"), t("apiFailedFetchCategories"), "error", 2500);
     } finally {
       setCategoriesLoading(false);
     }
@@ -233,25 +235,22 @@ export default function StepOne() {
       ) : hasNoData ? (
         <View style={styles.emptyStateContainer}>
           <Text style={styles.emptyStateText}>
-            Business category data not found
+            {t("businessCategoryNotFound")}
           </Text>
         </View>
       ) : (
         <>
           <View style={styles.titleSec}>
-            <Text style={styles.title}>What&apos;s your business?</Text>
-            <Text style={styles.subtitle}>
-              Select the category that best represents your salon or service.
-              This helps customers find you.
-            </Text>
+            <Text style={styles.title}>{t("whatsYourBusiness")}</Text>
+            <Text style={styles.subtitle}>{t("selectCategorySubtitle")}</Text>
           </View>
 
           <View style={styles.searchContainer}>
             <FloatingInput
-              label="Search"
+              label={t("search")}
               value={searchTerm}
               onChangeText={handleSearchChange}
-              placeholder="Search"
+              placeholder={t("search")}
               placeholderTextColor={(colors as Theme).lightGreen2}
               onClear={() => dispatch(setSearchTerm(""))}
               containerStyle={{
@@ -310,7 +309,9 @@ export default function StepOne() {
           </View>
 
           <View style={styles.otherCategoriesContainer}>
-            <Text style={styles.otherCategoriesTitle}>Other categories</Text>
+            <Text style={styles.otherCategoriesTitle}>
+              {t("otherCategories")}
+            </Text>
 
             {filteredOther.map((category, index) => {
               const isSelected = businessCategory?.id === category.id;

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -88,6 +89,7 @@ const createStyles = (theme: Theme) =>
 export default function AcceptTerms() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const insets = useSafeAreaInsets();
   const userRole = useAppSelector((state) => state.user.userRole);
@@ -147,7 +149,7 @@ export default function AcceptTerms() {
               color1={(colors as Theme).white}
               color2={(colors as Theme).white}
             />
-            <Text style={styles.logoText}>FRESHPASS</Text>
+            <Text style={styles.logoText}>{t("freshPass")}</Text>
           </View>
 
           <View style={{ gap: moderateHeightScale(12) }}>

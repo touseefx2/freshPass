@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import LottieView from "lottie-react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import {
   moderateHeightScale,
@@ -92,6 +93,7 @@ interface DashboardStatsData {
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
@@ -120,8 +122,8 @@ export default function HomeScreen() {
       return true;
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error || "Failed to fetch business status",
+        t("apiFailed"),
+        error || t("failedToFetchBusinessStatus"),
         "error",
         2500,
       );
@@ -197,8 +199,8 @@ export default function HomeScreen() {
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to fetch dashboard stats",
+        t("apiFailed"),
+        error?.message || t("failedToFetchDashboardStats"),
         "error",
         2500,
       );
@@ -244,8 +246,8 @@ export default function HomeScreen() {
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to fetch staff details",
+        t("apiFailed"),
+        error?.message || t("failedToFetchStaffDetails"),
         "error",
         2500,
       );
@@ -300,8 +302,8 @@ export default function HomeScreen() {
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to fetch appointments",
+        t("apiFailed"),
+        error?.message || t("failedToFetchAppointments"),
         "error",
         2500,
       );
@@ -354,8 +356,8 @@ export default function HomeScreen() {
       }
     } catch (error: any) {
       showBanner(
-        "API Failed",
-        error?.message || "Failed to fetch work history",
+        t("apiFailed"),
+        error?.message || t("failedToFetchWorkHistory"),
         "error",
         2500,
       );
@@ -371,8 +373,8 @@ export default function HomeScreen() {
 
       if (!hasInternet) {
         showBanner(
-          "No Internet Connection",
-          "Please check your internet connection and try again.",
+          t("noInternetConnection"),
+          t("pleaseCheckInternetConnection"),
           "error",
           2500,
         );

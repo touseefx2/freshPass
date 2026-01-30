@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -372,6 +373,7 @@ export default function GeneratePostResultModal({
   toolType,
 }: GeneratePostResultModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const [downloading, setDownloading] = useState(false);
@@ -383,7 +385,7 @@ export default function GeneratePostResultModal({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -408,7 +410,7 @@ export default function GeneratePostResultModal({
       Clipboard.setString(text);
     } catch (error) {
       Logger.error("Error copying to clipboard:", error);
-      Alert.alert("Error", "Failed to copy to clipboard");
+      Alert.alert(t("error"), t("failedToCopyToClipboard"));
     }
   };
 
@@ -421,10 +423,10 @@ export default function GeneratePostResultModal({
 
     if (!uri) {
       Alert.alert(
-        "Error",
-        `No ${
-          toolType === "Generate Reel" ? "video" : "image"
-        } available to download`
+        t("error"),
+        toolType === "Generate Reel"
+          ? t("noVideoAvailableToDownload")
+          : t("noImageAvailableToDownload"),
       );
       return;
     }

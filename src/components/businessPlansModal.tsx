@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -211,6 +212,7 @@ function BusinessPlansModalContent({
   onSuccess,
 }: BusinessPlansModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
@@ -263,8 +265,8 @@ function BusinessPlansModalContent({
       setError(err.message || "Failed to load subscription plans");
       setApiError(true);
       showBanner(
-        "Error",
-        err.message || "Failed to load subscription plans",
+        t("error"),
+        err.message || t("failedToLoadSubscriptionPlans"),
         "error",
         2500,
       );
@@ -428,7 +430,7 @@ function BusinessPlansModalContent({
     >
       <View style={styles.modalContainer}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Business Plans</Text>
+          <Text style={styles.headerTitle}>{t("businessPlans")}</Text>
           <TouchableOpacity
             onPress={onClose}
             style={styles.closeButton}
@@ -452,7 +454,7 @@ function BusinessPlansModalContent({
         ) : plans.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
-              No subscription plans available
+              {t("noSubscriptionPlansAvailable")}
             </Text>
           </View>
         ) : (
@@ -480,7 +482,7 @@ function BusinessPlansModalContent({
                         style={styles.detailIcon}
                       />
                       <Text style={styles.detailText}>
-                        {plan.visits} visits included
+                        {plan.visits} {t("visitsIncluded")}
                       </Text>
                     </View>
                   )}
@@ -493,7 +495,7 @@ function BusinessPlansModalContent({
                         style={styles.detailIcon}
                       />
                       <Text style={styles.detailText}>
-                        {plan.services.length} services included
+                        {plan.services.length} {t("servicesIncluded")}
                       </Text>
                     </View>
                   )}
@@ -505,12 +507,12 @@ function BusinessPlansModalContent({
                       style={styles.detailIcon}
                     />
                     <Text style={styles.detailText}>
-                      Active plan - Ready to use
+                      {t("activePlanReady")}
                     </Text>
                   </View>
                 </View>
                 <Button
-                  title="Subscribe Now"
+                  title={t("subscribeNow")}
                   onPress={() => handleSubscribe(plan.id)}
                   loading={subscribingPlanId === plan.id}
                   disabled={subscribingPlanId !== null}

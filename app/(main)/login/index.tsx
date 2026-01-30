@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, FontAwesome5 } from "@expo/vector-icons";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -150,13 +151,14 @@ const DEFAULT_EMAIL = "";
 
 export default function Login() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const router = useRouter();
   const dispatch = useAppDispatch();
   // Get selected role from Redux (will be null initially, then "business", "client", or "staff")
   const selectedRole = useAppSelector((state) => state.general.role);
   const currentBusinessStatus = useAppSelector(
-    (state) => state.user.businessStatus
+    (state) => state.user.businessStatus,
   );
   const [data, setData] = useState<any>(null);
 
@@ -217,7 +219,7 @@ export default function Login() {
         profile_image_url: user?.profile_image_url || "",
         accessToken: token,
         userRole: user?.role?.toLowerCase() || null,
-      })
+      }),
     );
   };
 
@@ -327,7 +329,7 @@ export default function Login() {
               router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
             } else {
               router.replace(
-                `/(main)/${MAIN_ROUTES.COMPLETE_STAFF_PROFILE}` as any
+                `/(main)/${MAIN_ROUTES.COMPLETE_STAFF_PROFILE}` as any,
               );
             }
             if (currentBusinessStatus) {
@@ -335,25 +337,25 @@ export default function Login() {
                 setBusinessStatus({
                   ...currentBusinessStatus,
                   onboarding_completed: user?.is_onboarded || false,
-                })
+                }),
               );
             }
           }
         } else {
-          Alert.alert("Error", "Invalid response from server");
+          Alert.alert(t("error"), t("invalidResponseFromServer"));
         }
       } else {
-        Alert.alert("Error", response.message || "Login failed");
+        Alert.alert(t("error"), response.message || t("loginFailedMessage"));
       }
     } catch (error: any) {
       // Error message is already formatted by ApiService
-      Alert.alert("Login Failed", error.message || "An error occurred");
+      Alert.alert(t("loginFailed"), error.message || t("anErrorOccurred"));
     } finally {
       setIsLoading(false);
     }
   }, [email, password, savePassword, dispatch, router]);
 
-  const handleSocialLogin = useCallback((provider: SocialProvider) => { }, []);
+  const handleSocialLogin = useCallback((provider: SocialProvider) => {}, []);
 
   const handleForgetPassword = useCallback(() => {
     // TODO: Navigate to forget password screen
@@ -395,14 +397,16 @@ export default function Login() {
           <View style={styles.mainContent}>
             <View style={styles.content}>
               <View style={styles.titleSection}>
-                <Text style={styles.title}>Login to your {selectedRole} account</Text>
+                <Text style={styles.title}>
+                  {t("loginToYourAccount", { role: selectedRole })}
+                </Text>
               </View>
 
               <FloatingInput
-                label="Email"
+                label={t("email")}
                 value={email}
                 onChangeText={setEmail}
-                placeholder="Enter your email"
+                placeholder={t("enterYourEmail")}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -412,11 +416,11 @@ export default function Login() {
               {emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
               <FloatingInput
-                label="Password"
+                label={t("password")}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!isPasswordVisible}
-                placeholder="Enter your password"
+                placeholder={t("enterYourPassword")}
                 autoCapitalize="none"
                 onClear={handlePasswordClear}
                 renderRightAccessory={() =>
@@ -453,20 +457,20 @@ export default function Login() {
                       )}
                     </View>
                   </View>
-                  <Text style={styles.saveText}>Save password</Text>
+                  <Text style={styles.saveText}>{t("savePassword")}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleForgetPassword}
                   hitSlop={moderateWidthScale(8)}
                 >
                   <Text style={[styles.saveText, styles.forgetPasswordLink]}>
-                    Forget password?
+                    {t("forgetPassword")}
                   </Text>
                 </Pressable>
               </View>
 
               <Button
-                title="Continue"
+                title={t("continue")}
                 onPress={handleLogin}
                 disabled={!isFormValid}
                 loading={isLoading}
@@ -484,9 +488,9 @@ export default function Login() {
 
               <View style={styles.footer}>
                 <Text style={styles.footerText}>
-                  Doesn't have an account?{" "}
+                  {t("doesntHaveAccount")}{" "}
                   <Text style={styles.signupLink} onPress={handleSignup}>
-                    Signup
+                    {t("signup")}
                   </Text>
                 </Text>
               </View>
@@ -505,7 +509,6 @@ export default function Login() {
           screen="login"
         />
       )}
-
     </SafeAreaView>
   );
 }

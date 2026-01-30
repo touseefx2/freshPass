@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useCallback } from "react";
 import { StyleSheet, Text, View, ScrollView, Dimensions } from "react-native";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -503,6 +504,7 @@ interface VerifiedSalon {
 
 export default function DashboardContent() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
@@ -909,7 +911,7 @@ export default function DashboardContent() {
 
       {(verifiedSalonsDeals.length > 0 || dealsLoading) && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>FreshPass Deals</Text>
+          <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
           <ShowBusiness
             businessesLoading={dealsLoading}
             businessesError={dealsError}
@@ -920,7 +922,7 @@ export default function DashboardContent() {
       )}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recommended</Text>
+        <Text style={styles.sectionTitle}>{t("recommended")}</Text>
         <ShowBusiness
           businessesLoading={businessesLoading}
           businessesError={businessesError}

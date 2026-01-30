@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import {
   moderateWidthScale,
@@ -43,11 +44,15 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { reviewsEndpoints } from "@/src/services/endpoints";
 import { StatusBar } from "react-native";
-import { KeyboardAwareScrollView, KeyboardProvider } from "react-native-keyboard-controller";
+import {
+  KeyboardAwareScrollView,
+  KeyboardProvider,
+} from "react-native-keyboard-controller";
 
 export default function LeaveReview() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { showBanner } = useNotificationContext();
   const params = useLocalSearchParams<{
     business_id?: string;
@@ -65,7 +70,9 @@ export default function LeaveReview() {
   const [rating, setRating] = useState(0);
   const [reviewTitle, setReviewTitle] = useState("");
   const [reviewDetails, setReviewDetails] = useState("");
-  const [selectedSuggestionId, setSelectedSuggestionId] = useState<number | null>(null);
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState<
+    number | null
+  >(null);
   const [showSuggestionsDropdown, setShowSuggestionsDropdown] = useState(false);
   const [reviewSuggestions, setReviewSuggestions] = useState<
     Array<{ id: number; title: string }>
@@ -88,7 +95,7 @@ export default function LeaveReview() {
 
   const handleReviewModalNavigate = async () => {
     if (!businessLatitude || !businessLongitude) {
-      Alert.alert("Error", "Location not available");
+      Alert.alert(t("error"), t("locationNotAvailable"));
       return;
     }
     const encodedName = encodeURIComponent(businessName);
@@ -103,11 +110,11 @@ export default function LeaveReview() {
           const appleMapsUrl = `http://maps.apple.com/?ll=${businessLatitude},${businessLongitude}&q=${encodedName}`;
           await Linking.openURL(appleMapsUrl);
         } else {
-          Alert.alert("Error", "Unable to open maps");
+          Alert.alert(t("error"), t("unableToOpenMaps"));
         }
       }
     } catch (error) {
-      Alert.alert("Error", "Unable to open maps");
+      Alert.alert(t("error"), t("unableToOpenMaps"));
     }
   };
 
@@ -195,16 +202,16 @@ export default function LeaveReview() {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
 
       return () => subscription.remove();
-    }, [showRatingScreen, showSuccessScreen, router])
+    }, [showRatingScreen, showSuccessScreen, router]),
   );
 
   const handleContinue = async () => {
     if (!params.business_id) {
-      showBanner("Error", "Business ID is required", "error", 3000);
+      showBanner(t("error"), t("businessIdRequired"), "error", 3000);
       return;
     }
 
@@ -227,19 +234,19 @@ export default function LeaveReview() {
         setShowSuccessScreen(true);
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to submit review",
+          t("error"),
+          response.message || t("failedToSubmitReview"),
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
       Logger.error("Failed to submit review:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to submit review. Please try again.",
+        t("error"),
+        error.message || t("failedToSubmitReviewTryAgain"),
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsSubmitting(false);
@@ -281,17 +288,16 @@ export default function LeaveReview() {
             ))}
           </View>
 
-          <Text style={styles.rateServiceTitle}>Rate the service</Text>
+          <Text style={styles.rateServiceTitle}>{t("rateTheService")}</Text>
 
           <Text style={styles.ratingScreenDescription}>
-            Your opinion matters to us. If you have a moment, tell us how was your
-            experience?
+            {t("yourOpinionMatters")}
           </Text>
         </View>
       </ScrollView>
       <View style={styles.sendFeedbackButtonContainer}>
         <Button
-          title="Send feedback"
+          title={t("sendFeedback")}
           onPress={handleSendFeedback}
           disabled={rating === 0}
         />
@@ -311,16 +317,11 @@ export default function LeaveReview() {
         {renderBusineesInfo()}
 
         {/* Heading */}
-        <Text style={styles.heading}>Write your experience.</Text>
-        <Text style={styles.subheading}>
-          Help others discover the best services by sharing your visit.
-        </Text>
+        <Text style={styles.heading}>{t("writeYourExperience")}</Text>
+        <Text style={styles.subheading}>{t("helpOthersDiscover")}</Text>
 
         {/* Questions */}
-        <Text style={styles.questions}>
-          What did you love about the service? How was the stylist? Would you
-          recommend this salon to others?
-        </Text>
+        <Text style={styles.questions}>{t("whatDidYouLove")}</Text>
 
         {/* Review Title Input - Using FloatingInput with Dropdown */}
         <View style={styles.inputContainer}>
@@ -329,10 +330,10 @@ export default function LeaveReview() {
             onPress={() => setShowSuggestionsDropdown(true)}
           >
             <FloatingInput
-              label="Give your review a title."
+              label={t("giveYourReviewTitle")}
               value={reviewTitle}
-              onChangeText={() => { }}
-              placeholder="Enter review title"
+              onChangeText={() => {}}
+              placeholder={t("enterReviewTitle")}
               editable={false}
               renderRightAccessory={({ isFocused, hasValue }) => (
                 <View style={styles.dropdownArrowButton}>
@@ -357,13 +358,13 @@ export default function LeaveReview() {
 
         {/* Review Details Input - Using description style */}
         <View style={styles.inputContainer}>
-          <Text style={styles.questions}>Review details.</Text>
+          <Text style={styles.questions}>{t("reviewDetails")}</Text>
           <View style={styles.textInputContainer}>
             <TextInput
               style={styles.textInput}
               value={reviewDetails}
               onChangeText={setReviewDetails}
-              placeholder="Share your experience..."
+              placeholder={t("shareYourExperience")}
               placeholderTextColor={theme.lightGreen2}
               multiline
               textAlignVertical="top"
@@ -383,7 +384,7 @@ export default function LeaveReview() {
       </KeyboardAwareScrollView>
       <View style={styles.continueButtonContainer}>
         <Button
-          title="Continue"
+          title={t("continue")}
           onPress={handleContinue}
           disabled={isSubmitting}
           loading={isSubmitting}
@@ -426,30 +427,27 @@ export default function LeaveReview() {
         {/* Business Info */}
         {renderBusineesInfo()}
 
-
         <View style={styles.successContainer}>
-          <Text style={styles.successTitle}>Thank you for your review!</Text>
+          <Text style={styles.successTitle}>{t("thankYouForReview")}</Text>
 
           <Text style={styles.successDescription}>
-            Your feedback helps others discover the perfect salon and service. It
-            also helps our partner businesses continue to improve.
+            {t("thankYouDescription1")}
           </Text>
 
           <Text style={styles.successDescription}>
-            Reviews are typically posted within 24 hours but can sometimes take
-            longer - we're working to get your review live as soon as possible!
+            {t("thankYouDescription2")}
           </Text>
         </View>
       </ScrollView>
       <View style={styles.sendFeedbackButtonContainer}>
-        <Button title="Explore more" onPress={handleExploreMore} />
+        <Button title={t("exploreMore")} onPress={handleExploreMore} />
       </View>
     </>
   );
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
-      <StackHeader title="Leave review" onBack={handleBack} />
+      <StackHeader title={t("leaveReview")} onBack={handleBack} />
       <StatusBar barStyle={"dark-content"} />
       {showSuccessScreen
         ? renderSuccess()
@@ -457,6 +455,5 @@ export default function LeaveReview() {
           ? renderRatingScreen()
           : renderReviewForm()}
     </SafeAreaView>
-
   );
 }

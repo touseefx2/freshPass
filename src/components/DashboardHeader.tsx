@@ -10,6 +10,7 @@ import {
   Image,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { setToggleLoading } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -92,6 +93,7 @@ function DashboardHeader({
   onToggleAttempt,
 }: DashboardHeaderProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
@@ -114,8 +116,8 @@ function DashboardHeader({
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
       showBanner(
-        "No Internet Connection",
-        "Please check your internet connection and try again",
+        t("noInternetConnection"),
+        t("pleaseCheckInternetConnection"),
         "error",
         2500,
       );
@@ -138,28 +140,28 @@ function DashboardHeader({
           if (canOpen) {
             await Linking.openURL(businessData.stripe_onboarding_link);
           } else {
-            showBanner("Error", "Cannot open the link", "error", 2500);
+            showBanner(t("error"), t("cannotOpenLink"), "error", 2500);
           }
         } catch (error: any) {
           showBanner(
-            "Error",
-            error.message || "Failed to open link",
+            t("error"),
+            error.message || t("failedToOpenLink"),
             "error",
             2500,
           );
         }
       } else {
         showBanner(
-          "Stripe Connect",
-          "Stripe onboarding link is not available",
+          t("stripeConnect"),
+          t("stripeOnboardingNotAvailable"),
           "error",
           2500,
         );
       }
     } catch (error: any) {
       showBanner(
-        "Error",
-        error.message || "Failed to fetch Stripe onboarding link",
+        t("error"),
+        error.message || t("failedToFetchStripeLink"),
         "error",
         2500,
       );
@@ -252,7 +254,7 @@ function DashboardHeader({
           // API failed - show error banner
           const errorMessage =
             error?.message || error || "Failed to update online status";
-          showBanner("Error", errorMessage, "error", 2500);
+          showBanner(t("error"), errorMessage, "error", 2500);
           // Revert toggle to previous state on error
           // The toggle will automatically revert since businessStatus wasn't updated
         } finally {
@@ -319,13 +321,13 @@ function DashboardHeader({
                   }}
                 >
                   <ActivityIndicator size="small" color={theme.white} />
-                  <Text style={styles.stripeBannerText}>Loading...</Text>
+                  <Text style={styles.stripeBannerText}>{t("loading")}</Text>
                 </View>
               ) : (
                 <Text style={styles.stripeBannerText}>
                   {showStripeBanner
-                    ? "Please complete your business stripe connect onboarding"
-                    : "Please buy business plan"}
+                    ? t("pleaseCompleteStripe")
+                    : t("pleaseBuyBusinessPlan")}
                 </Text>
               )}
             </Animated.View>

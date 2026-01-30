@@ -12,6 +12,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -133,6 +134,7 @@ export default function CategorySection({
   onRetry,
 }: CategorySectionProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
@@ -273,7 +275,7 @@ export default function CategorySection({
             },
           ]}
         >
-          <Text style={styles.errorText}>Failed to load categories</Text>
+          <Text style={styles.errorText}>{t("failedToLoadCategories")}</Text>
           <RetryButton onPress={onRetry} loading={categoriesLoading} />
         </View>
       ) : categories.length > 0 ? (
@@ -325,7 +327,7 @@ export default function CategorySection({
             },
           ]}
         >
-          <Text style={styles.emptyText}>No category found</Text>
+          <Text style={styles.emptyText}>{t("noCategoryFound")}</Text>
         </View>
       )}
     </ScrollView>

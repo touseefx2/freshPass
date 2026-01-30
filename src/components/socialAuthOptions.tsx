@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import { Platform, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { moderateHeightScale } from "@/src/theme/dimensions";
 import SocialLoginButton from "@/src/components/socialLoginButton";
 import { GoogleIcon, AppleIcon, FacebookIcon, GuestIcon } from "@/assets/icons";
@@ -35,6 +36,7 @@ export default function SocialAuthOptions({
   containerStyle,
 }: SocialAuthOptionsProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
 
   return (
@@ -42,23 +44,23 @@ export default function SocialAuthOptions({
       <View style={styles.buttonWrapper}>
         <SocialLoginButton
           icon={<GoogleIcon width={30} height={30} />}
-          title="Continue with Google"
+          title={t("continueWithGoogle")}
           onPress={onGoogle}
         />
       </View>
       {/* {Platform.OS === "ios" && ( */}
-        <View style={styles.buttonWrapper}>
-          <SocialLoginButton
-            icon={<AppleIcon width={30} height={30} />}
-            title="Continue with Apple"
-            onPress={onApple}
-          />
-        </View>
-      
+      <View style={styles.buttonWrapper}>
+        <SocialLoginButton
+          icon={<AppleIcon width={30} height={30} />}
+          title={t("continueWithApple")}
+          onPress={onApple}
+        />
+      </View>
+
       <View style={styles.buttonWrapper}>
         <SocialLoginButton
           icon={<FacebookIcon width={30} height={30} />}
-          title="Continue with Facebook"
+          title={t("continueWithFacebook")}
           onPress={onFacebook}
         />
       </View>
@@ -67,7 +69,7 @@ export default function SocialAuthOptions({
         <View style={styles.buttonWrapper}>
           <SocialLoginButton
             icon={<GuestIcon width={30} height={30} />}
-            title="Login as guest"
+            title={t("loginAsGuest")}
             onPress={onGuest}
           />
         </View>

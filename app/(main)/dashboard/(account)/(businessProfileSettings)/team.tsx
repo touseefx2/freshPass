@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -175,12 +176,13 @@ interface TeamMember {
 export default function ManageTeamScreen() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
 
   const { staffInvitationEmail } = useAppSelector(
-    (state) => state.completeProfile
+    (state) => state.completeProfile,
   );
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -224,10 +226,10 @@ export default function ManageTeamScreen() {
     } catch (error: any) {
       Logger.error("Failed to fetch team module data:", error);
       showBanner(
-        "Error",
-        error?.message || "Failed to fetch team. Please try again.",
+        t("error"),
+        error?.message || t("failedToFetchTeam"),
         "error",
-        3000
+        3000,
       );
       setTeamMembers([]);
     } finally {
@@ -238,7 +240,7 @@ export default function ManageTeamScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchTeam();
-    }, [])
+    }, []),
   );
 
   const handleClearEmail = () => {
@@ -268,26 +270,26 @@ export default function ManageTeamScreen() {
         dispatch(setStaffInvitationEmail(""));
 
         showBanner(
-          "Success",
-          response.message || "Staff invitation sent successfully",
+          t("success"),
+          response.message || t("staffInvitationSentSuccess"),
           "success",
-          3000
+          3000,
         );
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to send invitation",
+          t("error"),
+          response.message || t("failedToSendInvitation"),
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
       Logger.error("Failed to send invitation:", error);
       showBanner(
-        "Error",
-        error?.message || "Failed to send invitation. Please try again.",
+        t("error"),
+        error?.message || t("failedToSendInvitationTryAgain"),
         "error",
-        3000
+        3000,
       );
     } finally {
       dispatch(setActionLoader(false));
@@ -296,33 +298,30 @@ export default function ManageTeamScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Manage team" />
+      <StackHeader title={t("manageTeam")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {loading && teamMembers.length ===  0 ? (
+        {loading && teamMembers.length === 0 ? (
           <Skeleton screenType="Team" styles={styles} />
         ) : (
           <>
             <View style={styles.titleSec}>
-              <Text style={styles.title}>Add staff members</Text>
-              <Text style={styles.subtitle}>
-                Invite your staff by email. They'll be able to manage their
-                schedule and appointments.
-              </Text>
+              <Text style={styles.title}>{t("addStaffMembers")}</Text>
+              <Text style={styles.subtitle}>{t("inviteStaffSubtitle")}</Text>
             </View>
 
             <View style={styles.inputSection}>
               <View style={styles.inputRowContainer}>
                 <FloatingInput
-                  label="Email"
+                  label={t("email")}
                   value={staffInvitationEmail}
                   onChangeText={(value) =>
                     dispatch(setStaffInvitationEmail(value))
                   }
-                  placeholder="Enter email"
+                  placeholder={t("enterEmail")}
                   placeholderTextColor={theme.lightGreen2}
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -338,7 +337,7 @@ export default function ManageTeamScreen() {
                   ]}
                   activeOpacity={canInvite ? 0.7 : 1}
                 >
-                  <Text style={styles.inviteButtonText}>Invite</Text>
+                  <Text style={styles.inviteButtonText}>{t("invite")}</Text>
                 </TouchableOpacity>
               </View>
               {emailError && <Text style={styles.errorText}>{emailError}</Text>}
@@ -347,12 +346,14 @@ export default function ManageTeamScreen() {
             {teamMembers.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
-                  You haven't added any team member yet
+                  {t("noTeamMemberYet")}
                 </Text>
               </View>
             ) : (
               <>
-                <Text style={styles.invitationsTitle}>invitations send:</Text>
+                <Text style={styles.invitationsTitle}>
+                  {t("invitationsSend")}
+                </Text>
                 {teamMembers.map((member, index) => {
                   return (
                     <React.Fragment key={member.id}>

@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { AntDesign, MaterialIcons, Feather } from "@expo/vector-icons";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -497,6 +498,7 @@ const parseDateOfBirth = (
 
 export default function EditProfileScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
@@ -1104,8 +1106,8 @@ export default function EditProfileScreen() {
         }
 
         showBanner(
-          "Success",
-          response.message || "Profile updated successfully",
+          t("success"),
+          response.message || t("profileUpdatedSuccess"),
           "success",
           3000,
         );
@@ -1113,8 +1115,8 @@ export default function EditProfileScreen() {
         router.back();
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to update profile",
+          t("error"),
+          response.message || t("failedToUpdateProfile"),
           "error",
           3000,
         );
@@ -1122,8 +1124,8 @@ export default function EditProfileScreen() {
     } catch (error: any) {
       Logger.error("Failed to update profile:", error);
       showBanner(
-        "Error",
-        error.message || "Failed to update profile. Please try again.",
+        t("error"),
+        error.message || t("failedToUpdateProfileTryAgain"),
         "error",
         3000,
       );
@@ -1134,7 +1136,7 @@ export default function EditProfileScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Edit Profile" />
+      <StackHeader title={t("editProfile")} />
       <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -1151,7 +1153,7 @@ export default function EditProfileScreen() {
             />
           </View>
           <View style={styles.uploadSection}>
-            <Text style={styles.uploadText}>Add your new image</Text>
+            <Text style={styles.uploadText}>{t("addYourNewImage")}</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleUploadPhoto}
@@ -1162,7 +1164,7 @@ export default function EditProfileScreen() {
                 size={moderateWidthScale(18)}
                 color={theme.darkGreen}
               />
-              <Text style={styles.uploadButtonText}>Upload photo</Text>
+              <Text style={styles.uploadButtonText}>{t("uploadPhoto")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               disabled
@@ -1178,10 +1180,10 @@ export default function EditProfileScreen() {
 
         <View style={styles.inputContainer}>
           <FloatingInput
-            label="Your full name"
+            label={t("yourFullName")}
             value={fullName}
             onChangeText={setFullName}
-            placeholder="Your full name"
+            placeholder={t("yourFullName")}
             autoCapitalize="words"
             onClear={handleClearFullName}
           />
@@ -1196,7 +1198,7 @@ export default function EditProfileScreen() {
               style={styles.textArea}
               value={aboutYourself}
               onChangeText={setAboutYourself}
-              placeholder="Write about yourself"
+              placeholder={t("writeAboutYourself")}
               placeholderTextColor={theme.lightGreen2}
               multiline
               numberOfLines={6}
@@ -1220,7 +1222,7 @@ export default function EditProfileScreen() {
           <>
             <View style={styles.phoneField}>
               <View style={styles.phoneFieldContainer}>
-                <Text style={styles.inputLabel}>Phone number</Text>
+                <Text style={styles.inputLabel}>{t("phoneNumber")}</Text>
                 <View style={styles.phoneInputContainer}>
                   <Pressable
                     onPress={() => setPickerVisible(true)}
@@ -1267,7 +1269,9 @@ export default function EditProfileScreen() {
                 </View>
               </View>
               {isPhoneInvalid && (
-                <Text style={styles.errorText}>Enter a valid phone number</Text>
+                <Text style={styles.errorText}>
+                  {t("enterValidPhoneNumber")}
+                </Text>
               )}
               <CountryPicker
                 show={pickerVisible}
@@ -1289,7 +1293,7 @@ export default function EditProfileScreen() {
         {user?.userRole === "customer" && (
           <View style={styles.dateOfBirthContainer}>
             <View style={styles.dateOfBirthLabelContainer}>
-              <Text style={styles.dateOfBirthLabel}>Date of birth</Text>
+              <Text style={styles.dateOfBirthLabel}>{t("dateOfBirth")}</Text>
               {(hasDate || hasMonth || hasYear) && (
                 <Pressable
                   onPress={() => {
@@ -1297,7 +1301,7 @@ export default function EditProfileScreen() {
                   }}
                   hitSlop={moderateWidthScale(10)}
                 >
-                  <Text style={styles.clearDateText}>Clear</Text>
+                  <Text style={styles.clearDateText}>{t("clear")}</Text>
                 </Pressable>
               )}
             </View>
@@ -1308,7 +1312,7 @@ export default function EditProfileScreen() {
                 onPress={() => setDateDropdownVisible("date")}
               >
                 <View style={styles.dateFieldContent}>
-                  <Text style={styles.dateFieldLabel}>Date</Text>
+                  <Text style={styles.dateFieldLabel}>{t("date")}</Text>
                   <Text
                     style={[
                       dateOfBirth?.date
@@ -1357,7 +1361,7 @@ export default function EditProfileScreen() {
                 onPress={() => setDateDropdownVisible("year")}
               >
                 <View style={styles.dateFieldContent}>
-                  <Text style={styles.dateFieldLabel}>Year</Text>
+                  <Text style={styles.dateFieldLabel}>{t("year")}</Text>
                   <Text
                     style={[
                       dateOfBirth?.year
@@ -1385,10 +1389,10 @@ export default function EditProfileScreen() {
 
         <View style={styles.inputContainer}>
           <FloatingInput
-            label="Email"
+            label={t("email")}
             value={email}
             onChangeText={setEmail}
-            placeholder="Email"
+            placeholder={t("email")}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -1403,7 +1407,7 @@ export default function EditProfileScreen() {
 
       <View style={styles.updateButtonContainer}>
         <Button
-          title="Update"
+          title={t("update")}
           onPress={handleUpdateProfile}
           disabled={!isFormValid || isUpdating}
         />

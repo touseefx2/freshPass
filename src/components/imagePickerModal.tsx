@@ -1,13 +1,9 @@
 import React, { useMemo, useCallback } from "react";
 import Logger from "@/src/services/logger";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  Alert,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, Alert } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -57,6 +53,7 @@ export default function ImagePickerModal({
   quality = 0.8,
 }: ImagePickerModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
@@ -82,7 +79,7 @@ export default function ImagePickerModal({
       Logger.error("Error selecting image from gallery:", error);
       Alert.alert(
         "Error",
-        "Failed to select image from gallery. Please try again."
+        "Failed to select image from gallery. Please try again.",
       );
     }
   }, [onClose, onImageSelected, allowsMultipleSelection, quality]);
@@ -106,7 +103,7 @@ export default function ImagePickerModal({
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
-      Alert.alert("Error", "Failed to take photo. Please try again.");
+      Alert.alert(t("error"), t("failedToTakePhoto"));
     }
   }, [onClose, onImageSelected, quality]);
 
@@ -114,7 +111,7 @@ export default function ImagePickerModal({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title="Select Photo"
+      title={t("selectPhoto")}
     >
       <TouchableOpacity
         style={styles.optionItem}
@@ -127,7 +124,7 @@ export default function ImagePickerModal({
           color={theme.darkGreen}
           style={styles.optionIcon}
         />
-        <Text style={styles.optionText}>From Gallery</Text>
+        <Text style={styles.optionText}>{t("fromGallery")}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -141,9 +138,8 @@ export default function ImagePickerModal({
           color={theme.darkGreen}
           style={styles.optionIcon}
         />
-        <Text style={styles.optionText}>From Camera</Text>
+        <Text style={styles.optionText}>{t("fromCamera")}</Text>
       </TouchableOpacity>
     </ModalizeBottomSheet>
   );
 }
-
