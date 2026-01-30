@@ -1110,7 +1110,7 @@ export default function BusinessDetailScreen() {
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentHeroImage, setCurrentHeroImage] = useState<string>(
-    "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=800&q=80"
+    "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=800&q=80",
   );
   const [isAboutExpanded, setIsAboutExpanded] = useState(false);
   const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
@@ -1191,7 +1191,7 @@ export default function BusinessDetailScreen() {
     useCallback(() => {
       fetchBusinessDetails();
       fetchReviews();
-    }, [])
+    }, []),
   );
 
   // Fetch reviews
@@ -1223,7 +1223,7 @@ export default function BusinessDetailScreen() {
           business_id: params.business_id,
           page: 1,
           per_page: 10,
-        })
+        }),
       );
 
       if (response.success && response.data) {
@@ -1275,7 +1275,7 @@ export default function BusinessDetailScreen() {
     lat1: number,
     lon1: number,
     lat2: number,
-    lon2: number
+    lon2: number,
   ): number => {
     const R = 6371; // Radius of the Earth in kilometers
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -1283,9 +1283,9 @@ export default function BusinessDetailScreen() {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c; // Distance in kilometers
     return distance;
@@ -1343,7 +1343,7 @@ export default function BusinessDetailScreen() {
       userLocation.lat,
       userLocation.long,
       businessLatitude,
-      businessLongitude
+      businessLongitude,
     );
 
     // Average speed: 30 km/h for city driving (0.5 km/min)
@@ -1543,7 +1543,7 @@ export default function BusinessDetailScreen() {
       originalPrice: parseFloat(plan.price) * 0.8, // Estimate original price
       inclusions:
         plan.services?.map(
-          (service: any, index: number) => `${index + 1}. ${service.name}`
+          (service: any, index: number) => `${index + 1}. ${service.name}`,
         ) || [],
     }));
   }, [businessData]);
@@ -1631,7 +1631,7 @@ export default function BusinessDetailScreen() {
 
   const measureSectionPosition = (
     sectionRef: React.RefObject<View | null>,
-    key: string
+    key: string,
   ) => {
     if (sectionRef.current && scrollContentRef.current) {
       sectionRef.current.measureLayout(
@@ -1641,7 +1641,7 @@ export default function BusinessDetailScreen() {
         },
         () => {
           // Fallback - use onLayout position if measureLayout fails
-        }
+        },
       );
     }
   };
@@ -1729,7 +1729,7 @@ export default function BusinessDetailScreen() {
                 color={theme.darkGreen}
                 style={styles.reviewStarIcon}
               />
-            )
+            ),
           )}
         </View>
 
@@ -2023,7 +2023,7 @@ export default function BusinessDetailScreen() {
                   style={[
                     styles.filterButton,
                     selectedMembershipFilter === filter &&
-                    styles.filterButtonActive,
+                      styles.filterButtonActive,
                   ]}
                   onPress={() => setSelectedMembershipFilter(filter)}
                 >
@@ -2031,7 +2031,7 @@ export default function BusinessDetailScreen() {
                     style={[
                       styles.filterButtonText,
                       selectedMembershipFilter === filter &&
-                      styles.filterButtonTextActive,
+                        styles.filterButtonTextActive,
                     ]}
                   >
                     {filter}
@@ -2085,7 +2085,7 @@ export default function BusinessDetailScreen() {
                             <Text key={index} style={styles.inclusionItem}>
                               {inclusion}
                             </Text>
-                          )
+                          ),
                         )
                       )}
                     </View>
@@ -2112,7 +2112,7 @@ export default function BusinessDetailScreen() {
                               subscription.originalPrice.toString(),
                             subscriptionVisits: subscription.visits,
                             subscriptionInclusions: JSON.stringify(
-                              subscription.inclusions
+                              subscription.inclusions,
                             ),
                             businessId:
                               businessData?.id?.toString() ||
@@ -2174,7 +2174,7 @@ export default function BusinessDetailScreen() {
                   style={[
                     styles.filterButton,
                     selectedServiceFilter === filter &&
-                    styles.filterButtonActive,
+                      styles.filterButtonActive,
                   ]}
                   onPress={() => setSelectedServiceFilter(filter)}
                 >
@@ -2182,7 +2182,7 @@ export default function BusinessDetailScreen() {
                     style={[
                       styles.filterButtonText,
                       selectedServiceFilter === filter &&
-                      styles.filterButtonTextActive,
+                        styles.filterButtonTextActive,
                     ]}
                   >
                     {filter}
@@ -2249,11 +2249,11 @@ export default function BusinessDetailScreen() {
                             originalPrice: s.originalPrice,
                             duration: s.duration,
                             label: s.label || null,
-                          })
+                          }),
                         );
                         // Parse business hours from API format to Redux format
                         const parseTimeToHoursMinutes = (
-                          timeString: string | null | undefined
+                          timeString: string | null | undefined,
                         ): { hours: number; minutes: number } => {
                           if (!timeString || typeof timeString !== "string") {
                             return { hours: 0, minutes: 0 };
@@ -2280,7 +2280,7 @@ export default function BusinessDetailScreen() {
                         };
 
                         const parseBusinessHours = (
-                          hoursArray: any[] | null | undefined
+                          hoursArray: any[] | null | undefined,
                         ) => {
                           if (
                             !hoursArray ||
@@ -2325,7 +2325,7 @@ export default function BusinessDetailScreen() {
 
                             if (dayData.opening_time) {
                               const parsed = parseTimeToHoursMinutes(
-                                dayData.opening_time
+                                dayData.opening_time,
                               );
                               fromHours = parsed.hours;
                               fromMinutes = parsed.minutes;
@@ -2333,7 +2333,7 @@ export default function BusinessDetailScreen() {
 
                             if (dayData.closing_time) {
                               const parsed = parseTimeToHoursMinutes(
-                                dayData.closing_time
+                                dayData.closing_time,
                               );
                               tillHours = parsed.hours;
                               tillMinutes = parsed.minutes;
@@ -2345,13 +2345,13 @@ export default function BusinessDetailScreen() {
                                   hours: breakFromHours,
                                   minutes: breakFromMinutes,
                                 } = parseTimeToHoursMinutes(
-                                  breakTime.start || "00:00"
+                                  breakTime.start || "00:00",
                                 );
                                 const {
                                   hours: breakTillHours,
                                   minutes: breakTillMinutes,
                                 } = parseTimeToHoursMinutes(
-                                  breakTime.end || "00:00"
+                                  breakTime.end || "00:00",
                                 );
                                 return {
                                   fromHours: breakFromHours,
@@ -2359,7 +2359,7 @@ export default function BusinessDetailScreen() {
                                   tillHours: breakTillHours,
                                   tillMinutes: breakTillMinutes,
                                 };
-                              }
+                              },
                             );
 
                             businessHours[dayName] = {
@@ -2377,7 +2377,10 @@ export default function BusinessDetailScreen() {
 
                         // Map staff members with working_hours
                         const staffMembersData = (businessData?.staff || [])
-                          .filter((staff: any) => staff.invitation_status === "accepted")
+                          .filter(
+                            (staff: any) =>
+                              staff.invitation_status === "accepted",
+                          )
                           .map((staff: any) => {
                             // Construct image URL from API response
                             let image = DEFAULT_AVATAR_URL;
@@ -2387,7 +2390,7 @@ export default function BusinessDetailScreen() {
 
                             // Parse working_hours if available (even if empty array)
                             const staffWorkingHours = parseBusinessHours(
-                              staff.working_hours
+                              staff.working_hours,
                             );
 
                             return {
@@ -2400,7 +2403,7 @@ export default function BusinessDetailScreen() {
                           });
 
                         const businessHoursData = parseBusinessHours(
-                          businessData?.hours
+                          businessData?.hours,
                         );
 
                         const businessPayload = {
@@ -2730,7 +2733,11 @@ export default function BusinessDetailScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-    <StatusBar backgroundColor={"transparent"} barStyle={"light-content"} translucent={true} />
+      <StatusBar
+        backgroundColor={"transparent"}
+        barStyle={"light-content"}
+        translucent={true}
+      />
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
@@ -2922,7 +2929,7 @@ export default function BusinessDetailScreen() {
                   </Text>
                   {activeTab === tab && <View style={styles.tabUnderline} />}
                 </TouchableOpacity>
-              )
+              ),
             )}
           </View>
 
@@ -2957,7 +2964,7 @@ export default function BusinessDetailScreen() {
         onClose={() => setBreaksModalVisible(false)}
         inclusions={selectedBreaks.map(
           (breakHour, index) =>
-            `${index + 1}. Break: ${breakHour.start} - ${breakHour.end}`
+            `${index + 1}. Break: ${breakHour.start} - ${breakHour.end}`,
         )}
         title="Break Hours"
       />
@@ -2999,7 +3006,7 @@ export default function BusinessDetailScreen() {
                     <Image
                       source={{
                         uri: getProfileImageUrl(
-                          selectedReview.user?.avatar || null
+                          selectedReview.user?.avatar || null,
                         ),
                       }}
                       style={styles.reviewAvatarImage}
@@ -3031,7 +3038,7 @@ export default function BusinessDetailScreen() {
                         color={theme.darkGreen}
                         style={styles.reviewStarIcon}
                       />
-                    )
+                    ),
                   )}
                 </View>
 

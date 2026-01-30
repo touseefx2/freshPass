@@ -195,9 +195,9 @@ export default function ExploreScreen() {
       setDealsLoading(true);
       setDealsError(false);
       let url = businessEndpoints.businesses();
-
+      url = `${url}?type=featured`;
       if (selectedCategory) {
-        url = `${url}?category_ids=${selectedCategory}`;
+        url = `${url}&category_ids=${selectedCategory}`;
       }
 
       // url = `${url}?sort=completed_appointments&direction=desc`;

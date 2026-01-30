@@ -1,16 +1,5 @@
-import React, {
-  useMemo,
-  useState,
-  useRef,
-  useCallback,
-} from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  Dimensions,
-} from "react-native";
+import React, { useMemo, useState, useRef, useCallback } from "react";
+import { StyleSheet, Text, View, ScrollView, Dimensions } from "react-native";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import dayjs from "dayjs";
 import { Theme } from "@/src/theme/colors";
@@ -432,7 +421,6 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-
 interface Appointment {
   id: number;
   businessId: number;
@@ -454,17 +442,17 @@ interface Appointment {
   services: any;
   totalPrice: number | {};
   subscriptionServices:
-  | Array<{
-    id: number;
-    name: string;
-    description: string;
-    price: string;
-    duration: {
-      hours: number;
-      minutes: number;
-    };
-  }>
-  | {};
+    | Array<{
+        id: number;
+        name: string;
+        description: string;
+        price: string;
+        duration: {
+          hours: number;
+          minutes: number;
+        };
+      }>
+    | {};
   subscriptionVisits: {
     used: number;
     upcoming: number;
@@ -522,25 +510,28 @@ export default function DashboardContent() {
   const userRole = useAppSelector((state: any) => state.user.userRole);
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
   const isCusotmerandGuest = isGuest || userRole === "customer";
-  const categories = useAppSelector((state: any) => state.categories.categories);
+  const categories = useAppSelector(
+    (state: any) => state.categories.categories,
+  );
   const selectedCategory = useAppSelector(
-    (state: any) => state.categories.selectedCategory
+    (state: any) => state.categories.selectedCategory,
   );
   const categoriesLoading = useAppSelector(
-    (state: any) => state.categories.categoriesLoading
+    (state: any) => state.categories.categoriesLoading,
   );
   const categoriesError = useAppSelector(
-    (state: any) => state.categories.categoriesError
+    (state: any) => state.categories.categoriesError,
   );
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
-  const [verifiedSalonsDeals, setVerifiedSalonsDeals] = useState<VerifiedSalon[]>([]);
+  const [verifiedSalonsDeals, setVerifiedSalonsDeals] = useState<
+    VerifiedSalon[]
+  >([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
-
 
   const fetchCategories = async () => {
     try {
@@ -575,13 +566,12 @@ export default function DashboardContent() {
     }
   };
 
-
   const fetchBusinessesDeals = async () => {
     try {
       setDealsLoading(true);
       setDealsError(false);
       let url = businessEndpoints.businesses();
-
+      url = `${url}?type=featured`;
       // url = `${url}?sort=completed_appointments&direction=desc`;
       // if (userLocation?.lat && userLocation?.long) {
       //   url += `&latitude=${userLocation.lat}`;
@@ -632,7 +622,6 @@ export default function DashboardContent() {
         });
 
         setVerifiedSalonsDeals(mappedSalons);
-
       }
     } catch (error) {
       Logger.error("Failed to fetch businesses deals:", error);
@@ -699,7 +688,6 @@ export default function DashboardContent() {
         });
 
         setVerifiedSalons(mappedSalons);
-
       }
     } catch (error) {
       Logger.error("Failed to fetch businesses:", error);
@@ -757,8 +745,9 @@ export default function DashboardContent() {
       if (appointment.subscriptionVisits) {
         const { remaining } = appointment.subscriptionVisits;
         const subscriptionName = "Subscription";
-        return `${subscriptionName} • ${remaining} visit${remaining !== 1 ? "s" : ""
-          } left`;
+        return `${subscriptionName} • ${remaining} visit${
+          remaining !== 1 ? "s" : ""
+        } left`;
       }
       return appointment.subscription || "Subscription";
     } else {
@@ -767,8 +756,9 @@ export default function DashboardContent() {
         Array.isArray(appointment.services) &&
         appointment.services.length > 0
       ) {
-        return `${appointment.services.length} service${appointment.services.length !== 1 ? "s" : ""
-          }`;
+        return `${appointment.services.length} service${
+          appointment.services.length !== 1 ? "s" : ""
+        }`;
       }
       return "Service";
     }
@@ -794,8 +784,6 @@ export default function DashboardContent() {
       const today = dayjs();
       params.from_date = today.format("YYYY-MM-DD");
       params.to_date = today.format("YYYY-MM-DD");
-
-
 
       const response = await ApiService.get<{
         success: boolean;
@@ -883,14 +871,20 @@ export default function DashboardContent() {
     }, []),
   );
 
-
   return (
-    <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      nestedScrollEnabled
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+    >
       <SearchBar />
 
       <CategorySection
         selectedCategory={selectedCategory}
-        onCategorySelect={(categoryId) => dispatch(setSelectedCategory(categoryId))}
+        onCategorySelect={(categoryId) =>
+          dispatch(setSelectedCategory(categoryId))
+        }
         onCategoryScrollingChange={(isScrolling) => {
           isCategoryScrollingRef.current = isScrolling;
         }}
@@ -902,21 +896,21 @@ export default function DashboardContent() {
 
       {userRole === "customer" && appointments.length > 0 && (
         <View style={styles.section}>
-          <ShowAppointments
-            appointments={appointments}
-          />
+          <ShowAppointments appointments={appointments} />
         </View>
       )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>FreshPass Deals</Text>
-        <ShowBusiness
-          businessesLoading={dealsLoading}
-          businessesError={dealsError}
-          verifiedSalons={verifiedSalonsDeals}
-          onRetry={fetchBusinessesDeals}
-        />
-      </View>
+      {(verifiedSalonsDeals.length > 0 || dealsLoading) && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>FreshPass Deals</Text>
+          <ShowBusiness
+            businessesLoading={dealsLoading}
+            businessesError={dealsError}
+            verifiedSalons={verifiedSalonsDeals}
+            onRetry={fetchBusinessesDeals}
+          />
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Recommended</Text>
@@ -927,7 +921,6 @@ export default function DashboardContent() {
           onRetry={fetchBusinesses}
         />
       </View>
-
     </ScrollView>
   );
 }

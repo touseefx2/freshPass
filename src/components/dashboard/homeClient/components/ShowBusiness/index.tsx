@@ -11,14 +11,8 @@ import {
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import {
-  heightScale,
-  widthScale,
-} from "@/src/theme/dimensions";
-import {
-  PlatformVerifiedStarIcon,
-  StarIconSmall,
-} from "@/assets/icons";
+import { heightScale, widthScale } from "@/src/theme/dimensions";
+import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import { createStyles } from "./styles";
 
@@ -60,7 +54,7 @@ export default function ShowBusiness({
       contentContainerStyle={styles.appointmentsScroll}
       nestedScrollEnabled={true}
     >
-      {(businessesLoading && verifiedSalons.length <= 0) ? (
+      {businessesLoading && verifiedSalons.length <= 0 ? (
         <View
           style={[
             styles.loadingContainer,
