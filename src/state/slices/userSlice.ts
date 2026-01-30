@@ -269,6 +269,6 @@ export const {
   setSelectBsnsCategory,
   setBusinessId,
   resetUser,
-  clearLocation
+  clearLocation,
 } = userSlice.actions;
 export default userSlice.reducer;

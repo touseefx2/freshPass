@@ -334,7 +334,7 @@ const sanitizePlaceholder = (value: string) =>
 const formatNationalNumber = (
   countryIso: string,
   dialCode: string,
-  nationalDigits: string
+  nationalDigits: string,
 ) => {
   const dialDigits = dialCode.replace(/\D/g, "");
   const digits = nationalDigits.replace(/\D/g, "");
@@ -368,7 +368,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
         return sanitizePlaceholder(formatted.slice(prefix.length));
       }
       return sanitizePlaceholder(
-        formatted.replace(`+${example.countryCallingCode}`, "")
+        formatted.replace(`+${example.countryCallingCode}`, ""),
       );
     }
   } catch (error) {
@@ -380,7 +380,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
   const formattedFallback = formatNationalNumber(
     countryIso,
     dialCode,
-    fallbackDigits
+    fallbackDigits,
   );
 
   const sanitizedFallback =
@@ -451,12 +451,12 @@ const MONTHS = [
 ];
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) =>
-  (CURRENT_YEAR - i).toString()
+  (CURRENT_YEAR - i).toString(),
 );
 
 // Helper function to parse date of birth from API format (YYYY-MM-DD) to our format
 const parseDateOfBirth = (
-  dateString: string | null | undefined
+  dateString: string | null | undefined,
 ): { date: string; month: string; year: string } | null => {
   if (!dateString) return null;
 
@@ -516,14 +516,14 @@ export default function EditProfileScreen() {
   const [email, setEmail] = useState(user.email || "");
   const [fullName, setFullName] = useState(user.name || "");
   const [profileImageUri, setProfileImageUri] = useState(
-    originalProfileImageUri
+    originalProfileImageUri,
   );
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [fullNameError, setFullNameError] = useState<string | null>(null);
   const [aboutYourself, setAboutYourself] = useState(user?.description ?? "");
   const [aboutYourselfError, setAboutYourselfError] = useState<string | null>(
-    null
+    null,
   );
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -531,7 +531,7 @@ export default function EditProfileScreen() {
   const [countryCode, setCountryCode] = useState(initialCountryCode);
   const [countryIso, setCountryIso] = useState(initialCountryIso);
   const [phonePlaceholder, setPhonePlaceholder] = useState(
-    getPlaceholderForCountry(initialCountryIso, initialCountryCode)
+    getPlaceholderForCountry(initialCountryIso, initialCountryCode),
   );
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber);
   const [phoneIsValid, setPhoneIsValid] = useState(false);
@@ -562,7 +562,7 @@ export default function EditProfileScreen() {
         const dialDigits = countryCode.replace(/\D/g, "");
         const parsed = parsePhoneNumberFromString(
           `+${dialDigits}${phoneNumber}`,
-          countryIso as PhoneCountryCode
+          countryIso as PhoneCountryCode,
         );
         if (parsed?.isValid()) {
           setPhoneIsValid(true);
@@ -633,7 +633,7 @@ export default function EditProfileScreen() {
 
   const maxDigits = useMemo(
     () => phonePlaceholder.replace(/\s+/g, "").length,
-    [phonePlaceholder]
+    [phonePlaceholder],
   );
 
   const formattedPhoneValue = useMemo(() => {
@@ -696,7 +696,7 @@ export default function EditProfileScreen() {
     setCountryCode(country.dial_code);
     setCountryIso(country.code);
     setPhonePlaceholder(
-      getPlaceholderForCountry(country.code, country.dial_code)
+      getPlaceholderForCountry(country.code, country.dial_code),
     );
     previousDigitCountRef.current = 0;
     setPickerVisible(false);
@@ -714,7 +714,7 @@ export default function EditProfileScreen() {
         try {
           const parsed = parsePhoneNumberFromString(
             `+${dialDigits}${limitedDigits}`,
-            countryIso as PhoneCountryCode
+            countryIso as PhoneCountryCode,
           );
           isValid = parsed?.isValid() ?? false;
           parsedDigits = parsed?.nationalNumber?.toString() ?? limitedDigits;
@@ -743,7 +743,7 @@ export default function EditProfileScreen() {
         const groupLength = groups[i].length;
         newFormatted += parsedDigits.slice(
           digitIndex,
-          digitIndex + groupLength
+          digitIndex + groupLength,
         );
         digitIndex += groupLength;
       }
@@ -766,7 +766,7 @@ export default function EditProfileScreen() {
         });
       }
     },
-    [countryCode, countryIso, maxDigits, phonePlaceholder]
+    [countryCode, countryIso, maxDigits, phonePlaceholder],
   );
 
   const handleSelectionChange = useCallback((event: any) => {
@@ -796,7 +796,7 @@ export default function EditProfileScreen() {
       setDateOfBirth(updated);
       setDateDropdownVisible(null);
     },
-    [dateOfBirth]
+    [dateOfBirth],
   );
 
   const pickerStyles = useMemo<CountryPickerStyle>(
@@ -856,7 +856,7 @@ export default function EditProfileScreen() {
         backgroundColor: "rgba(0, 0, 0, 0.6)",
       },
     }),
-    [theme, insets.bottom]
+    [theme, insets.bottom],
   );
 
   const isPhoneInvalid = phoneNumber.length > 0 && !phoneIsValid;
@@ -953,7 +953,7 @@ export default function EditProfileScreen() {
         // Staff: description is optional
         formData.append(
           "description",
-          aboutYourself.trim().length > 0 ? aboutYourself.trim() : ""
+          aboutYourself.trim().length > 0 ? aboutYourself.trim() : "",
         );
       } else {
         // Non-staff: Add phone number and country code separately
@@ -986,7 +986,8 @@ export default function EditProfileScreen() {
           };
 
           if (dateOfBirth?.date && dateOfBirth?.month && dateOfBirth?.year) {
-            const monthNumber = monthMap[dateOfBirth.month] || dateOfBirth.month;
+            const monthNumber =
+              monthMap[dateOfBirth.month] || dateOfBirth.month;
             const formattedDate = `${
               dateOfBirth.year
             }-${monthNumber}-${dateOfBirth.date.padStart(2, "0")}`;
@@ -1015,10 +1016,10 @@ export default function EditProfileScreen() {
             fileExtension === "jpg" || fileExtension === "jpeg"
               ? "image/jpeg"
               : fileExtension === "png"
-              ? "image/png"
-              : fileExtension === "webp"
-              ? "image/webp"
-              : "image/jpeg";
+                ? "image/png"
+                : fileExtension === "webp"
+                  ? "image/webp"
+                  : "image/jpeg";
 
           // Use staff-specific field name when updating staff profile
           const imageFieldName =
@@ -1095,7 +1096,7 @@ export default function EditProfileScreen() {
                   : response.data.profile_image_url,
               description: response.data.description ?? "",
               dateOfBirth: parsedDateOfBirth,
-            })
+            }),
           );
         }
 
@@ -1103,7 +1104,7 @@ export default function EditProfileScreen() {
           "Success",
           response.message || "Profile updated successfully",
           "success",
-          3000
+          3000,
         );
 
         router.back();
@@ -1112,7 +1113,7 @@ export default function EditProfileScreen() {
           "Error",
           response.message || "Failed to update profile",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -1121,7 +1122,7 @@ export default function EditProfileScreen() {
         "Error",
         error.message || "Failed to update profile. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
