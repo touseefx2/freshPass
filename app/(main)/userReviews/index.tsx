@@ -293,6 +293,12 @@ export default function UserReviewsScreen() {
 
   const getProfileImageUrl = (profileImageUrl: string | null) => {
     if (profileImageUrl) {
+      if (
+        profileImageUrl.startsWith("http://") ||
+        profileImageUrl.startsWith("https://")
+      ) {
+        return profileImageUrl;
+      }
       return `${process.env.EXPO_PUBLIC_API_BASE_URL}${profileImageUrl}`;
     }
     return DEFAULT_AVATAR_URL;

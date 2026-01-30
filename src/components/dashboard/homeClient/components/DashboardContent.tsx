@@ -809,11 +809,18 @@ export default function DashboardContent() {
       const mappedAppointments: AppointmentCard[] = allAppointments.map(
         (appointment) => {
           const imageUrl = appointment.businessLogoUrl
-            ? process.env.EXPO_PUBLIC_API_BASE_URL + appointment.businessLogoUrl
+            ? appointment.businessLogoUrl.startsWith("http://") ||
+              appointment.businessLogoUrl.startsWith("https://")
+              ? appointment.businessLogoUrl
+              : process.env.EXPO_PUBLIC_API_BASE_URL +
+                appointment.businessLogoUrl
             : (process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "");
 
           const staffImageUrl = appointment.staffImage
-            ? process.env.EXPO_PUBLIC_API_BASE_URL + appointment.staffImage
+            ? appointment.staffImage.startsWith("http://") ||
+              appointment.staffImage.startsWith("https://")
+              ? appointment.staffImage
+              : process.env.EXPO_PUBLIC_API_BASE_URL + appointment.staffImage
             : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
 
           const dateTime = formatAppointmentDateTime(

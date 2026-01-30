@@ -258,7 +258,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
     }
     const term = searchTerm.toLowerCase();
     return categories.filter((category) =>
-      category.name.toLowerCase().includes(term)
+      category.name.toLowerCase().includes(term),
     );
   }, [categories, searchTerm]);
 
@@ -279,7 +279,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
               "Limit Reached",
               "You can select up to 5 categories",
               "error",
-              2000
+              2000,
             );
             return prev;
           }
@@ -287,7 +287,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
         }
       });
     },
-    [showBanner]
+    [showBanner],
   );
 
   const renderCategoryItem = useCallback(
@@ -313,7 +313,10 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
           <Image
             source={{
               uri: item?.imageUrl
-                ? process.env.EXPO_PUBLIC_API_BASE_URL + item?.imageUrl
+                ? item.imageUrl.startsWith("http://") ||
+                  item.imageUrl.startsWith("https://")
+                  ? item.imageUrl
+                  : process.env.EXPO_PUBLIC_API_BASE_URL + item.imageUrl
                 : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
             }}
             style={[
@@ -330,7 +333,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
         </Pressable>
       );
     },
-    [selectedCategories, handleSelectCategory]
+    [selectedCategories, handleSelectCategory],
   );
 
   const handleSkip = () => {
@@ -346,15 +349,15 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
         const category = categories.find((cat) => cat.id === categoryId);
         return category
           ? {
-            id: category.id,
-            name: category.name,
-          }
+              id: category.id,
+              name: category.name,
+            }
           : null;
       })
       .filter((cat) => cat !== null) as Array<{
-        id: number;
-        name: string;
-      }>;
+      id: number;
+      name: string;
+    }>;
 
     // Dispatch selected categories and set isGuest to true
     dispatch(setSelectBsnsCategory(selectedCategoriesData));
@@ -383,10 +386,12 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <View style={styles.titleSec}>
-            <Text style={styles.title}>What&apos;s on your self-care radar?</Text>
+            <Text style={styles.title}>
+              What&apos;s on your self-care radar?
+            </Text>
             <Text style={styles.subtitle}>
-              Select up to 5 categories you&apos;re interested in, and we&apos;ll
-              show you personalized picks?
+              Select up to 5 categories you&apos;re interested in, and
+              we&apos;ll show you personalized picks?
             </Text>
           </View>
 
@@ -394,7 +399,10 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
             <Skeleton screenType="CategorySelect" styles={styles} />
           ) : apiError ? (
             <View style={styles.emptyStateContainer}>
-              <RetryButton onPress={fetchCategories} loading={categoriesLoading} />
+              <RetryButton
+                onPress={fetchCategories}
+                loading={categoriesLoading}
+              />
             </View>
           ) : hasNoData ? (
             <View style={styles.emptyStateContainer}>

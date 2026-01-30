@@ -31,7 +31,7 @@ const createStyles = (theme: Theme) =>
     },
     categoriesScroll: {
       paddingHorizontal: moderateWidthScale(20),
-      gap: moderateWidthScale(14)
+      gap: moderateWidthScale(14),
     },
     categoryItem: {
       alignItems: "center",
@@ -253,7 +253,7 @@ export default function CategorySection({
         }, 200);
       }}
     >
-      {(categoriesLoading && categories.length === 0) ? (
+      {categoriesLoading && categories.length === 0 ? (
         <View
           style={[
             styles.loadingContainer,
@@ -287,7 +287,10 @@ export default function CategorySection({
             <Image
               source={{
                 uri: category?.image
-                  ? process.env.EXPO_PUBLIC_API_BASE_URL + category?.image
+                  ? category.image.startsWith("http://") ||
+                    category.image.startsWith("https://")
+                    ? category.image
+                    : process.env.EXPO_PUBLIC_API_BASE_URL + category.image
                   : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
               }}
               style={[
@@ -295,7 +298,7 @@ export default function CategorySection({
                 selectedCategory === category.id && styles.categoryImageActive,
                 {
                   borderWidth: moderateWidthScale(
-                    selectedCategory === category.id ? 3 : 1
+                    selectedCategory === category.id ? 3 : 1,
                   ),
                 },
               ]}

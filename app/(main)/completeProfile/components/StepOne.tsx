@@ -143,7 +143,7 @@ export default function StepOne() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const { showBanner } = useNotificationContext();
   const { searchTerm, businessCategory, categories } = useAppSelector(
-    (state) => state.completeProfile
+    (state) => state.completeProfile,
   );
 
   const [categoriesLoading, setCategoriesLoading] = useState(true);
@@ -194,7 +194,7 @@ export default function StepOne() {
     }
     const term = searchTerm.toLowerCase();
     return popularCategories.filter((category) =>
-      category.name.toLowerCase().includes(term)
+      category.name.toLowerCase().includes(term),
     );
   }, [popularCategories, searchTerm]);
 
@@ -204,7 +204,7 @@ export default function StepOne() {
     }
     const term = searchTerm.toLowerCase();
     return otherCategories.filter((category) =>
-      category.name.toLowerCase().includes(term)
+      category.name.toLowerCase().includes(term),
     );
   }, [otherCategories, searchTerm]);
 
@@ -216,7 +216,7 @@ export default function StepOne() {
     (categoryId: number, categoryName: string) => {
       dispatch(setBusinessCategory({ id: categoryId, name: categoryName }));
     },
-    [dispatch]
+    [dispatch],
   );
 
   const hasNoData = !categoriesLoading && !apiError && categories.length === 0;
@@ -284,8 +284,11 @@ export default function StepOne() {
                     <Image
                       source={{
                         uri: item?.imageUrl
-                          ? process.env.EXPO_PUBLIC_API_BASE_URL +
-                            item?.imageUrl
+                          ? item.imageUrl.startsWith("http://") ||
+                            item.imageUrl.startsWith("https://")
+                            ? item.imageUrl
+                            : process.env.EXPO_PUBLIC_API_BASE_URL +
+                              item.imageUrl
                           : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
                       }}
                       style={[

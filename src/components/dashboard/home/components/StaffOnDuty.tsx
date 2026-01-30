@@ -175,9 +175,12 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
                 <Image
                   source={{
                     uri: staff.user?.profile_image_url
-                      ? process.env.EXPO_PUBLIC_API_BASE_URL +
-                        staff.user.profile_image_url
-                      : process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "",
+                      ? staff.user.profile_image_url.startsWith("http://") ||
+                        staff.user.profile_image_url.startsWith("https://")
+                        ? staff.user.profile_image_url
+                        : process.env.EXPO_PUBLIC_API_BASE_URL +
+                          staff.user.profile_image_url
+                      : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
                   }}
                   style={styles.staffAvatarImage}
                 />

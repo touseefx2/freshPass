@@ -666,7 +666,10 @@ export default function bookingDetailsById() {
     const planName = apiData.subscription || "---";
 
     const businessLogo = apiData.businessLogoUrl
-      ? process.env.EXPO_PUBLIC_API_BASE_URL + apiData.businessLogoUrl
+      ? apiData.businessLogoUrl.startsWith("http://") ||
+        apiData.businessLogoUrl.startsWith("https://")
+        ? apiData.businessLogoUrl
+        : process.env.EXPO_PUBLIC_API_BASE_URL + apiData.businessLogoUrl
       : (process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "");
 
     return {
