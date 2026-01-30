@@ -7,6 +7,7 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
@@ -30,6 +31,7 @@ import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { fetchUserStatus } from "../state/thunks/businessThunks";
+import { Status } from "@stripe/stripe-react-native/lib/typescript/src/types/PaymentIntent";
 
 interface SubscriptionPlan {
   id: number;
@@ -220,7 +222,7 @@ function BusinessPlansModalContent({
   const [error, setError] = useState<string | null>(null);
   const [apiError, setApiError] = useState(false);
   const [subscribingPlanId, setSubscribingPlanId] = useState<number | null>(
-    null
+    null,
   );
   const [processingPayment, setProcessingPayment] = useState(false);
   const [isSetupIntent, setIsSetupIntent] = useState(false);
@@ -264,7 +266,7 @@ function BusinessPlansModalContent({
         "Error",
         err.message || "Failed to load subscription plans",
         "error",
-        2500
+        2500,
       );
     } finally {
       setLoading(false);
@@ -311,7 +313,7 @@ function BusinessPlansModalContent({
         paymentConfig.customerEphemeralKeySecret = ephemeralKey;
       } else {
         throw new Error(
-          "Either customerSessionClientSecret or ephemeralKey must be provided"
+          "Either customerSessionClientSecret or ephemeralKey must be provided",
         );
       }
 
@@ -330,7 +332,7 @@ function BusinessPlansModalContent({
         // SetupIntent exists but is not in client secret format
         throw new Error(
           "SetupIntent must be in client secret format (seti_xxxxx_secret_xxxxx). " +
-            "The backend returned just the setup intent ID. Please update the backend to return the full client secret."
+            "The backend returned just the setup intent ID. Please update the backend to return the full client secret.",
         );
       } else {
         throw new Error("Either setupIntent or paymentIntent must be provided");
@@ -376,7 +378,7 @@ function BusinessPlansModalContent({
         onClose();
 
         dispatch(fetchUserStatus({ showError: true })).unwrap();
-        
+
         // Call onSuccess callback if provided
         if (onSuccess) {
           onSuccess();
@@ -562,7 +564,11 @@ export default function BusinessPlansModal({
       <StripeProvider
         publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
       >
-        <BusinessPlansModalContent visible={visible} onClose={onClose} onSuccess={onSuccess} />
+        <BusinessPlansModalContent
+          visible={visible}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />
       </StripeProvider>
     </Modal>
   );
