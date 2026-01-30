@@ -133,29 +133,30 @@ export default function SocialLogin() {
       });
 
       if (response.success && response.data) {
-        const { user, token, isNewCretared } = response.data;
+        const { user, token, isNewCreated } = response.data;
         if (user && token) {
-          // if (user?.role?.toLowerCase() === "customer") {
-          //   dispatch(
-          //     setUser({
-          //       id: user.id,
-          //       name: user.name || "",
-          //       email: user.email || "",
-          //       description: "",
-          //       phone: user.phone || "",
-          //       country_code: user.country_code || "",
-          //       profile_image_url: user.profile_image_url || "",
-          //       accessToken: token,
-          //       userRole: (user.role?.toLowerCase() as UserRole) || null,
-          //     }),
-          //   );
-          //   if (isNewCretared) {
-          //     dispatch(setFullName(user.name || ""));
-          //     router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
-          //   } else {
-          //     router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-          //   }
-          // }
+          if (user?.role?.toLowerCase() === "customer") {
+            dispatch(
+              setUser({
+                id: user.id,
+                name: user.name || "",
+                email: user.email || "",
+                description: "",
+                phone: user.phone || "",
+                country_code: user.country_code || "",
+                profile_image_url: user.profile_image_url || "",
+                accessToken: token,
+                userRole: (user.role?.toLowerCase() as UserRole) || null,
+              }),
+            );
+
+            if (isNewCreated) {
+              dispatch(setFullName(user.name || ""));
+              router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+            } else {
+              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+            }
+          }
           // if (user?.role?.toLowerCase() === "business") {
           // }
         }
