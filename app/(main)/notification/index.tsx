@@ -37,6 +37,7 @@ import { useFocusEffect } from "expo-router";
 import { setUnreadCount } from "@/src/state/slices/userSlice";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import StackHeader from "@/src/components/StackHeader";
 
 dayjs.extend(relativeTime);
 
@@ -249,6 +250,7 @@ export default function NotificationsScreen() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const user = useAppSelector((state) => state.user);
+  const userRole = user.userRole;
   const isGuest = user.isGuest;
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -636,7 +638,11 @@ export default function NotificationsScreen() {
 
   return (
     <View style={styles.container}>
-      <DashboardHeader />
+      {userRole === "customer" || isGuest ? (
+        <StackHeader title={t("Notifications")} />
+      ) : (
+        <DashboardHeader />
+      )}
       {loading && notifications.length === 0 ? (
         <View style={styles.content}>
           <Skeleton screenType="Notifications" styles={styles} />

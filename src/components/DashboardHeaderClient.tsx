@@ -1,11 +1,7 @@
 import React, { useMemo } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Image } from "expo-image";
-import { useAppSelector, useTheme, } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
   moderateHeightScale,
@@ -17,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IMAGES } from "@/src/constant/images";
 import { NotificationIcon } from "@/assets/icons";
 import { fontSize, fonts } from "../theme/fonts";
+import { router } from "expo-router";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -25,16 +22,14 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(12),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.darkGreen
+      backgroundColor: theme.darkGreen,
     },
     logoImage: {
       width: widthScale(156),
       height: heightScale(36),
       resizeMode: "contain",
     },
-    notificationContainer: {
-
-    },
+    notificationContainer: {},
     iconContainer: {
       alignItems: "center",
       justifyContent: "center",
@@ -63,7 +58,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
     },
-
   });
 
 export default function DashboardHeaderClient() {
@@ -77,15 +71,15 @@ export default function DashboardHeaderClient() {
     <View
       style={[
         styles.headerContainer,
-        { paddingTop: insets.top + moderateHeightScale(10), },
+        { paddingTop: insets.top + moderateHeightScale(10) },
       ]}
     >
-      <Image
-        source={IMAGES.logo3d}
-        style={styles.logoImage}
-      />
+      <Image source={IMAGES.logo3d} style={styles.logoImage} />
 
-      <View style={styles.iconContainer} >
+      <TouchableOpacity
+        onPress={() => router.push("/notification" as any)}
+        style={styles.iconContainer}
+      >
         <NotificationIcon width={24} height={22} color={theme.white} />
         {unreadCount > 0 && (
           <View style={styles.badgeContainer}>
@@ -94,8 +88,7 @@ export default function DashboardHeaderClient() {
             </Text>
           </View>
         )}
-      </View>
-
+      </TouchableOpacity>
     </View>
   );
 }
