@@ -510,7 +510,10 @@ export default function EditProfileScreen() {
   const initialCountryIso = getCountryIsoFromDialCode(initialCountryCode);
   const initialPhoneNumber = user.phone || "";
   const originalProfileImageUri = user?.profile_image_url
-    ? process.env.EXPO_PUBLIC_API_BASE_URL + user.profile_image_url
+    ? user.profile_image_url.startsWith("http://") ||
+      user.profile_image_url.startsWith("https://")
+      ? user.profile_image_url
+      : process.env.EXPO_PUBLIC_API_BASE_URL + user.profile_image_url
     : "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
 
   const [email, setEmail] = useState(user.email || "");

@@ -28,7 +28,6 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flex: 1,
-     
     },
     contentContainer: {
       paddingVertical: moderateHeightScale(24),
@@ -56,7 +55,7 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(5),
       marginHorizontal: moderateWidthScale(20),
-      textAlign:"center"
+      textAlign: "center",
     },
     emailText: {
       fontSize: fontSize.size14,
@@ -64,7 +63,7 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(24),
       marginHorizontal: moderateWidthScale(20),
-      textAlign:"center"
+      textAlign: "center",
     },
     staffInfoCard: {
       width: "100%",
@@ -147,13 +146,13 @@ export default function ProfileScreen() {
   };
 
   const profileImageUri = user?.profile_image_url
-    ? process.env.EXPO_PUBLIC_API_BASE_URL + user.profile_image_url
+    ? user.profile_image_url.startsWith("http://") ||
+      user.profile_image_url.startsWith("https://")
+      ? user.profile_image_url
+      : process.env.EXPO_PUBLIC_API_BASE_URL + user.profile_image_url
     : "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
   const userName = user.name || "";
   const userEmail = user.email || "";
-
-
-  Logger.log("profileImageUri :",user?.profile_image_url)
 
   return (
     <View style={styles.container}>
