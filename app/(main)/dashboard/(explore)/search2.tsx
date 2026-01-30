@@ -186,46 +186,17 @@ export default function Search2Screen() {
     setSelectedServiceName(initialServiceName);
   }, [initialQuery, initialServiceId, initialServiceName]);
 
-  const handleSearch = () => {
-    const query = searchQuery.trim();
-    if (!query) return;
-    const payload: SearchState = {
-      search: query,
-      serviceId: selectedServiceId ?? null,
-      businessId: "",
-      businessName: "",
-      businessLocationName: "",
-      ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
-    };
-    dispatch(addToRecentSearches(payload));
-    dispatch(setSearchState(payload));
-    router.back();
-  };
-
-  const handleRecentSearchPress = (item: SearchState) => {
-    setSearchQuery(item.search);
-    setSelectedServiceId(item.serviceId ?? null);
-    setSelectedServiceName(item.serviceName ?? "");
-  };
-
-  const handlePopularServicePress = (service: {
-    id: number | null;
-    name: string;
-  }) => {
-    setSearchQuery(service.name);
-    setSelectedServiceId(service.id ?? null);
-    setSelectedServiceName(service.name);
-  };
-
   const handleSearchInputChange = (text: string) => {
     setSearchQuery(text);
     setSelectedServiceId(null);
     setSelectedServiceName("");
   };
 
+  const handleSearch = () => {};
+
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <StackHeader title="Hi, what are you looking for?" />
+      <StackHeader title="Services or Businesses" />
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         style={styles.container}
@@ -245,6 +216,8 @@ export default function Search2Screen() {
             placeholder="Search services or businesses"
             placeholderTextColor={theme.lightGreen}
             containerStyle={styles.searchInputContainer}
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
             onClear={() => {
               setSearchQuery("");
               setSelectedServiceId(null);
@@ -258,71 +231,7 @@ export default function Search2Screen() {
               />
             )}
           />
-
-          <Text style={styles.recentSectionTitle}>Recent searches</Text>
-          {recentSearches.length > 0 ? (
-            recentSearches.map((item, index) => {
-              const isLast = index === recentSearches.length - 1;
-              const key = `${item.search}-${item.serviceId ?? "n"}-${index}`;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  style={[styles.recentItem, isLast && styles.recentItemLast]}
-                  onPress={() => handleRecentSearchPress(item)}
-                  activeOpacity={0.7}
-                >
-                  <SearchIcon
-                    width={widthScale(18)}
-                    height={heightScale(18)}
-                    color={theme.lightGreen}
-                  />
-                  <View style={styles.recentItemContent}>
-                    <Text style={styles.recentItemText} numberOfLines={1}>
-                      {item.search}
-                    </Text>
-                    {(item.serviceName || item.serviceId != null) && (
-                      <Text style={styles.recentItemSubtitle} numberOfLines={1}>
-                        {item.serviceName
-                          ? `Service: ${item.serviceName}`
-                          : `Service ID: ${item.serviceId}`}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          ) : (
-            <Text style={styles.recentEmpty}>No recent search found</Text>
-          )}
-
-          {popularList.length > 0 && (
-            <>
-              <Text style={styles.popularSectionTitle}>Popular Services</Text>
-              <View style={styles.popularServicesContainer}>
-                {popularList.map((service) => (
-                  <TouchableOpacity
-                    key={service.id ?? service.name}
-                    style={styles.popularServiceTag}
-                    onPress={() => handlePopularServicePress(service)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.popularServiceText}>
-                      {service.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
         </ScrollView>
-
-        <View style={styles.footer}>
-          <Button
-            title="Search"
-            onPress={handleSearch}
-            disabled={!searchQuery.trim()}
-          />
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
