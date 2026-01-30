@@ -888,7 +888,9 @@ export default function DashboardContent() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
-      <SearchBar />
+      <SearchBar
+        onSearchPress={() => router.push("/dashboard/(explore)" as any)}
+      />
 
       <CategorySection
         selectedCategory={selectedCategory}
