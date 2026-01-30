@@ -40,6 +40,7 @@ import {
   BookAgainIcon,
   WalletIcon,
 } from "@/assets/icons";
+import StackHeader from "@/src/components/StackHeader";
 
 // Back Arrow Icon SVG
 const backArrowIconSvg = `
@@ -484,11 +485,11 @@ export default function bookingDetailsById() {
 
   const bookingId = params.bookingId as string;
   const userRole = useAppSelector((state) => state.user.userRole);
-  let staffClientname=""
-  if(userRole==="customer"){
-    staffClientname=booking?.staffName ?? "Anyone"
-  }else{
-    staffClientname=booking?.user ?? "User"
+  let staffClientname = "";
+  if (userRole === "customer") {
+    staffClientname = booking?.staffName ?? "Anyone";
+  } else {
+    staffClientname = booking?.user ?? "User";
   }
 
   const mapApiStatusToBookingStatus = (apiStatus: string): BookingStatus => {
@@ -508,7 +509,7 @@ export default function bookingDetailsById() {
 
   const formatDuration = (
     services: ApiBookingResponse["services"],
-    subscriptionServices: any
+    subscriptionServices: any,
   ): string => {
     let allServices: any[] = [];
 
@@ -637,7 +638,7 @@ export default function bookingDetailsById() {
   };
 
   const mapApiResponseToBookingItem = (
-    apiData: ApiBookingResponse
+    apiData: ApiBookingResponse,
   ): BookingItem => {
     const services = Array.isArray(apiData.services) ? apiData.services : [];
     const subscriptionServices = Array.isArray(apiData.subscriptionServices)
@@ -658,7 +659,7 @@ export default function bookingDetailsById() {
 
     const dateTime = formatAppointmentDateTime(
       apiData.appointmentDate,
-      apiData.appointmentTime
+      apiData.appointmentTime,
     );
 
     const price = getPrice(apiData);
@@ -666,7 +667,7 @@ export default function bookingDetailsById() {
 
     const businessLogo = apiData.businessLogoUrl
       ? process.env.EXPO_PUBLIC_API_BASE_URL + apiData.businessLogoUrl
-      : process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+      : (process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "");
 
     return {
       id: apiData.id.toString(),
@@ -676,11 +677,11 @@ export default function bookingDetailsById() {
       location: apiData.businessAddress || "Business address",
       dateTime: dateTime,
       duration: duration,
-      user:apiData.user ?? "User",
+      user: apiData.user ?? "User",
       price: formatPrice(price),
       status: mapApiStatusToBookingStatus(apiData.status),
       businessName: apiData.businessTitle || "---",
-      businessAddress:apiData.businessAddress || "Business address",
+      businessAddress: apiData.businessAddress || "Business address",
       businessLatitude: apiData.businessLatitude || undefined,
       businessLongitude: apiData.businessLongitude || undefined,
       businessLogoUrl: businessLogo,
@@ -726,7 +727,7 @@ export default function bookingDetailsById() {
   useFocusEffect(
     useCallback(() => {
       fetchBookingDetails();
-    }, [])
+    }, []),
   );
 
   // Loading state
@@ -936,7 +937,7 @@ export default function bookingDetailsById() {
           "Success",
           "Booking cancelled successfully",
           "success",
-          2500
+          2500,
         );
         // Fetch booking details again to update the UI
         await fetchBookingDetails();
@@ -945,7 +946,7 @@ export default function bookingDetailsById() {
           "Error",
           response.message || "Failed to cancel booking",
           "error",
-          2500
+          2500,
         );
       }
     } catch (error: any) {
@@ -953,7 +954,7 @@ export default function bookingDetailsById() {
         "Error",
         error?.message || "Failed to cancel booking",
         "error",
-        2500
+        2500,
       );
     } finally {
       dispatch(setActionLoader(false));
@@ -961,27 +962,9 @@ export default function bookingDetailsById() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={["bottom"]} style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => {
-              router.back();
-            }}
-          >
-            <BackArrowIcon
-              width={widthScale(25)}
-              height={heightScale(25)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-          <Text style={styles.logoText}>Booking Detail</Text>
-        </View>
-      </View>
-
-      <View style={styles.line} />
+      <StackHeader title="Booking Detail" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1059,7 +1042,9 @@ export default function bookingDetailsById() {
                   />
                 </View>
                 <View style={styles.detailTextContainer}>
-                  <Text style={styles.detailLabel}>My {userRole==="customer"?"barber":"Customer"}</Text>
+                  <Text style={styles.detailLabel}>
+                    My {userRole === "customer" ? "barber" : "Customer"}
+                  </Text>
                   <Text style={styles.detailValue} numberOfLines={2}>
                     {staffClientname}
                   </Text>
@@ -1075,8 +1060,7 @@ export default function bookingDetailsById() {
           <View style={styles.businessImageContainer}>
             <Image
               source={{
-                uri: booking.businessLogoUrl
-                  
+                uri: booking.businessLogoUrl,
               }}
               style={styles.businessImage}
             />
@@ -1096,9 +1080,7 @@ export default function bookingDetailsById() {
               )}
           </View>
           <View style={styles.businessInfo}>
-            <Text style={styles.businessName}>
-              {booking.businessName }
-            </Text>
+            <Text style={styles.businessName}>{booking.businessName}</Text>
             <Text style={styles.businessAddress}>
               {booking.businessAddress}
             </Text>
@@ -1213,7 +1195,7 @@ export default function bookingDetailsById() {
         <View style={styles.line} />
 
         {/* Policy Link (only for ongoing bookings) */}
-        {!isCancelled && userRole==="customer" && (
+        {!isCancelled && userRole === "customer" && (
           <TouchableOpacity style={styles.policyLink}>
             <Text style={styles.policyText}>Booking cancel policy</Text>
             <Entypo
@@ -1226,8 +1208,8 @@ export default function bookingDetailsById() {
       </ScrollView>
 
       {/* Bottom Button */}
-       
-      {!isCancelled && userRole==="customer" && (
+
+      {!isCancelled && userRole === "customer" && (
         <View style={styles.bottomButton}>
           <Button
             title={"Cancel this booking"}

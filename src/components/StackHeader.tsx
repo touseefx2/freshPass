@@ -9,7 +9,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {   MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 type StackHeaderProps = {
@@ -22,6 +22,7 @@ const createStyles = (theme: Theme) =>
     headerContainer: {
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(12),
+      backgroundColor: theme.darkGreen,
     },
     header: {
       flexDirection: "row",
@@ -35,7 +36,7 @@ const createStyles = (theme: Theme) =>
     headerTitle: {
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     line: {
       width: "100%",
@@ -76,7 +77,7 @@ export default function StackHeader({ title, onBack }: StackHeaderProps) {
             <MaterialIcons
               name="keyboard-backspace"
               size={moderateWidthScale(24)}
-              color={theme.darkGreen}
+              color={theme.white}
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{title}</Text>
