@@ -1,20 +1,20 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   StatusBar,
+  Pressable,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import {
   addToRecentSearches,
   setSearchState,
+  clearSearchState,
   type SearchState,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
@@ -25,10 +25,9 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
-import FloatingInput from "@/src/components/floatingInput";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
-import { SearchIcon } from "@/assets/icons";
+import { SearchIcon, CloseIcon } from "@/assets/icons";
 
 export type PopularServiceItem = { id: number | null; name: string };
 
@@ -43,10 +42,33 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(24),
       paddingTop: moderateHeightScale(12),
     },
-    searchInputContainer: {
+    searchBox: {
+      flexDirection: "row",
+      alignItems: "center",
       width: "100%",
+      minHeight: moderateHeightScale(48),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
       marginTop: moderateHeightScale(10),
       marginBottom: moderateHeightScale(20),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      borderRadius: moderateWidthScale(12),
+      gap: moderateWidthScale(12),
+    },
+    searchBoxText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
+    searchBoxPlaceholder: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    searchBoxClear: {
+      padding: moderateWidthScale(4),
     },
     recentSectionTitle: {
       fontSize: fontSize.size14,
@@ -162,22 +184,59 @@ export default function SearchScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const searchState = useAppSelector((state) => state.general.searchState);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
     null,
   );
   const [selectedServiceName, setSelectedServiceName] = useState("");
 
+  useFocusEffect(
+    useCallback(() => {
+      const q = (searchState.search ?? "").trim();
+      if (q) {
+        setSearchQuery(searchState.search ?? "");
+        setSelectedServiceId(searchState.serviceId ?? null);
+        setSelectedServiceName(searchState.serviceName ?? "");
+      }
+    }, [searchState.search, searchState.serviceId, searchState.serviceName]),
+  );
+
+  const displayValue = (searchQuery || (searchState.search ?? "")).trim();
+  const hasSearchValue = displayValue !== "";
+
+  const handleSearchBoxPress = () => {
+    const sid = selectedServiceId ?? searchState.serviceId ?? null;
+    router.push({
+      pathname: "./search2",
+      params: {
+        popularServices: params.popularServices ?? "",
+        searchQuery: (searchQuery || (searchState.search ?? "")).trim(),
+        serviceId: sid != null ? String(sid) : "",
+        serviceName: selectedServiceName || (searchState.serviceName ?? ""),
+      },
+    });
+  };
+
+  const handleSearchBoxClear = () => {
+    setSearchQuery("");
+    setSelectedServiceId(null);
+    setSelectedServiceName("");
+    dispatch(clearSearchState());
+  };
+
   const handleSearch = () => {
-    const query = searchQuery.trim();
+    const query = displayValue;
     if (!query) return;
+    const sid = selectedServiceId ?? searchState.serviceId ?? null;
+    const sname = selectedServiceName || (searchState.serviceName ?? "");
     const payload: SearchState = {
       search: query,
-      serviceId: selectedServiceId ?? null,
+      serviceId: sid,
       businessId: "",
       businessName: "",
       businessLocationName: "",
-      ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
+      ...(sname ? { serviceName: sname } : {}),
     };
     dispatch(addToRecentSearches(payload));
     dispatch(setSearchState(payload));
@@ -199,113 +258,112 @@ export default function SearchScreen() {
     setSelectedServiceName(service.name);
   };
 
-  const handleSearchInputChange = (text: string) => {
-    setSearchQuery(text);
-    setSelectedServiceId(null);
-    setSelectedServiceName("");
-  };
-
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <StackHeader title="Hi, what are you looking for?" />
       <StatusBar barStyle="dark-content" />
-      <KeyboardAvoidingView
+      <ScrollView
         style={styles.container}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <TouchableOpacity
+          style={styles.searchBox}
+          onPress={handleSearchBoxPress}
+          activeOpacity={0.8}
         >
-          <FloatingInput
-            label="Search services or businesses"
-            value={searchQuery}
-            onChangeText={handleSearchInputChange}
-            placeholder="Search services or businesses"
-            placeholderTextColor={theme.lightGreen}
-            containerStyle={styles.searchInputContainer}
-            onClear={() => {
-              setSearchQuery("");
-              setSelectedServiceId(null);
-              setSelectedServiceName("");
-            }}
-            renderLeftAccessory={() => (
-              <SearchIcon
+          <SearchIcon
+            width={widthScale(18)}
+            height={heightScale(18)}
+            color={theme.darkGreen}
+          />
+          <Text
+            style={[
+              styles.searchBoxText,
+              !hasSearchValue && styles.searchBoxPlaceholder,
+            ]}
+            numberOfLines={1}
+          >
+            {hasSearchValue ? displayValue : "Search services or businesses"}
+          </Text>
+          {hasSearchValue && (
+            <Pressable
+              onPress={handleSearchBoxClear}
+              style={styles.searchBoxClear}
+              hitSlop={moderateWidthScale(8)}
+            >
+              <CloseIcon
                 width={widthScale(18)}
                 height={heightScale(18)}
                 color={theme.darkGreen}
               />
-            )}
-          />
+            </Pressable>
+          )}
+        </TouchableOpacity>
 
-          <Text style={styles.recentSectionTitle}>Recent searches</Text>
-          {recentSearches.length > 0 ? (
-            recentSearches.map((item, index) => {
-              const isLast = index === recentSearches.length - 1;
-              const key = `${item.search}-${item.serviceId ?? "n"}-${index}`;
-              return (
+        <Text style={styles.recentSectionTitle}>Recent searches</Text>
+        {recentSearches.length > 0 ? (
+          recentSearches.map((item, index) => {
+            const isLast = index === recentSearches.length - 1;
+            const key = `${item.search}-${item.serviceId ?? "n"}-${index}`;
+            return (
+              <TouchableOpacity
+                key={key}
+                style={[styles.recentItem, isLast && styles.recentItemLast]}
+                onPress={() => handleRecentSearchPress(item)}
+                activeOpacity={0.7}
+              >
+                <SearchIcon
+                  width={widthScale(18)}
+                  height={heightScale(18)}
+                  color={theme.lightGreen}
+                />
+                <View style={styles.recentItemContent}>
+                  <Text style={styles.recentItemText} numberOfLines={1}>
+                    {item.search}
+                  </Text>
+                  {(item.serviceName || item.serviceId != null) && (
+                    <Text style={styles.recentItemSubtitle} numberOfLines={1}>
+                      {item.serviceName
+                        ? `Service: ${item.serviceName}`
+                        : `Service ID: ${item.serviceId}`}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <Text style={styles.recentEmpty}>No recent search found</Text>
+        )}
+
+        {popularList.length > 0 && (
+          <>
+            <Text style={styles.popularSectionTitle}>Popular Services</Text>
+            <View style={styles.popularServicesContainer}>
+              {popularList.map((service) => (
                 <TouchableOpacity
-                  key={key}
-                  style={[styles.recentItem, isLast && styles.recentItemLast]}
-                  onPress={() => handleRecentSearchPress(item)}
+                  key={service.id ?? service.name}
+                  style={styles.popularServiceTag}
+                  onPress={() => handlePopularServicePress(service)}
                   activeOpacity={0.7}
                 >
-                  <SearchIcon
-                    width={widthScale(18)}
-                    height={heightScale(18)}
-                    color={theme.lightGreen}
-                  />
-                  <View style={styles.recentItemContent}>
-                    <Text style={styles.recentItemText} numberOfLines={1}>
-                      {item.search}
-                    </Text>
-                    {(item.serviceName || item.serviceId != null) && (
-                      <Text style={styles.recentItemSubtitle} numberOfLines={1}>
-                        {item.serviceName
-                          ? `Service: ${item.serviceName}`
-                          : `Service ID: ${item.serviceId}`}
-                      </Text>
-                    )}
-                  </View>
+                  <Text style={styles.popularServiceText}>{service.name}</Text>
                 </TouchableOpacity>
-              );
-            })
-          ) : (
-            <Text style={styles.recentEmpty}>No recent search found</Text>
-          )}
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
 
-          {popularList.length > 0 && (
-            <>
-              <Text style={styles.popularSectionTitle}>Popular Services</Text>
-              <View style={styles.popularServicesContainer}>
-                {popularList.map((service) => (
-                  <TouchableOpacity
-                    key={service.id ?? service.name}
-                    style={styles.popularServiceTag}
-                    onPress={() => handlePopularServicePress(service)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.popularServiceText}>
-                      {service.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
-        </ScrollView>
-
-        <View style={styles.footer}>
-          <Button
-            title="Search"
-            onPress={handleSearch}
-            disabled={!searchQuery.trim()}
-          />
-        </View>
-      </KeyboardAvoidingView>
+      <View style={styles.footer}>
+        <Button
+          title="Search"
+          onPress={handleSearch}
+          disabled={!displayValue}
+        />
+      </View>
     </SafeAreaView>
   );
 }
