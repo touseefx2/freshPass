@@ -103,11 +103,11 @@ export default function AcceptTerms() {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
 
       return () => subscription.remove();
-    }, [])
+    }, []),
   );
 
   const handleGetStarted = useCallback(() => {
@@ -118,9 +118,15 @@ export default function AcceptTerms() {
 
   return (
     <View style={styles.container}>
-      <StatusBar backgroundColor={"transparent"} barStyle={"light-content"} translucent={true} />
+      <StatusBar
+        backgroundColor={"transparent"}
+        barStyle={"light-content"}
+        translucent={true}
+      />
       <ImageBackground
-        source={IMAGES.acceptTermBack}
+        source={
+          userRole === "staff" ? IMAGES.acceptTermBackS : IMAGES.acceptTermBackB
+        }
         style={styles.backgroundImage}
         resizeMode="cover"
       >
