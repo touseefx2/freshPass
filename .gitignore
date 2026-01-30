@@ -51,6 +51,10 @@ web-build/
 android/
 ios/
 
+
+/android
+/ios
+
 # IDE
 .vscode/
 .idea/
