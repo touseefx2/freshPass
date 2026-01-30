@@ -39,7 +39,7 @@ export default function Screen1({ onNext, onSkip }: Screen1Props) {
       headline="Never miss a customer"
       features={features}
       buttonTitle="Turn on notifications"
-      backgroundImage={IMAGES.introductionBack1}
+      backgroundImage={IMAGES.introductionBack1B}
       footerText="Stop notifications anytime if you change you mind."
       onNext={onNext}
       onSkip={onSkip}

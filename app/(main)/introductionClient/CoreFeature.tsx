@@ -38,7 +38,7 @@ export default function Screen2({ onNext }: Screen2Props) {
       headline="Discover & book instantly."
       features={features}
       buttonTitle="Continue"
-      backgroundImage={IMAGES.introductionBack1}
+      backgroundImage={IMAGES.introductionBack2C}
       onNext={onNext}
     />
   );

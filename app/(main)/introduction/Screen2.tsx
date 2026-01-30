@@ -1,11 +1,7 @@
 import React from "react";
 import CoreFeatureScreen from "@/src/components/CoreFeatureScreen";
 import { IMAGES } from "@/src/constant/images";
-import {
-  DashboardIcon,
-  CRMIcon,
-  RevenueReportingIcon,
-} from "@/assets/icons";
+import { DashboardIcon, CRMIcon, RevenueReportingIcon } from "@/assets/icons";
 
 interface Screen2Props {
   onNext: () => void;
@@ -38,7 +34,7 @@ export default function Screen2({ onNext }: Screen2Props) {
       headline="Discover & book instantly"
       features={features}
       buttonTitle="Next"
-      backgroundImage={IMAGES.introductionBack2}
+      backgroundImage={IMAGES.introductionBack2B}
       onNext={onNext}
     />
   );

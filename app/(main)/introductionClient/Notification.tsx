@@ -23,7 +23,7 @@ export default function Notification({ onNext, onSkip }: NotificationProps) {
     {
       icon: AppointmentRemindersIcon,
       title: "Appointment reminders",
-      description: 
+      description:
         "Get notified before your appointment so you're always on time.",
     },
     {
@@ -39,7 +39,7 @@ export default function Notification({ onNext, onSkip }: NotificationProps) {
       headline="Never miss an appointment"
       features={features}
       buttonTitle="Turn on notifications"
-      backgroundImage={IMAGES.acceptTermBack}
+      backgroundImage={IMAGES.introductionBack1C}
       footerText="Stop notifications anytime if you change you mind."
       onNext={onNext}
       onSkip={onSkip}

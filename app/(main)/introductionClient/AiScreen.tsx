@@ -38,7 +38,7 @@ export default function AiScreen({ onNext }: AiScreenProps) {
       headline="AI-Powered Experience"
       features={features}
       buttonTitle="Continue"
-      backgroundImage={IMAGES.aiFeatureBack}
+      backgroundImage={IMAGES.aiFeatureBackC}
       onNext={onNext}
     />
   );

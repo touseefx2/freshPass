@@ -38,7 +38,7 @@ export default function Screen3({ onNext }: Screen2Props) {
       headline="AI-Powered Experience"
       features={features}
       buttonTitle="Continue"
-      backgroundImage={IMAGES.aiFeatureBack}
+      backgroundImage={IMAGES.aiFeatureBackB}
       onNext={onNext}
     />
   );
