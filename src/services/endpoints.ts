@@ -229,3 +229,11 @@ export const hairTryonEndpoints = {
 export const clientChatEndpoints = {
   chatStream: `/api/client_chat/chat/stream`,
 };
+
+/**
+ * Explore / search endpoints
+ */
+export const exploreEndpoints = {
+  serviceBusinessList: (search: string) =>
+    `/api/service-business-list?search=${encodeURIComponent(search)}`,
+};

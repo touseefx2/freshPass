@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import {
   StyleSheet,
   Text,
@@ -9,13 +15,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  ActivityIndicator,
+  Pressable,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { Ionicons } from "@expo/vector-icons";
+import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import {
-  addToRecentSearches,
   setSearchState,
   clearSearchState,
   type SearchState,
@@ -30,9 +38,48 @@ import {
 } from "@/src/theme/dimensions";
 import FloatingInput from "@/src/components/floatingInput";
 import StackHeader from "@/src/components/StackHeader";
-import Button from "@/src/components/button";
 import { SearchIcon } from "@/assets/icons";
+import { ApiService } from "@/src/services/api";
+import { exploreEndpoints } from "@/src/services/endpoints";
 import type { PopularServiceItem } from "./search";
+
+const DEBOUNCE_MS = 400;
+
+export type ServiceTemplateItem = {
+  id: number;
+  name: string;
+  category_id: number;
+  category: string;
+  base_price: number;
+  duration_hours: number;
+  duration_minutes: number;
+  active: boolean;
+  createdAt: string;
+};
+
+export type BusinessSearchItem = {
+  id: number;
+  slug: string;
+  title: string;
+  street_address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  phone: string;
+  country_code: string;
+  category: { id: number; name: string };
+  owner: { id: number; name: string };
+  createdAt: string;
+};
+
+type ServiceBusinessListResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    service_templates: ServiceTemplateItem[];
+    businesses: BusinessSearchItem[];
+  };
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -45,18 +92,35 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(24),
       paddingTop: moderateHeightScale(12),
     },
+    searchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    searchInputWrapper: {
+      flex: 1,
+    },
     searchInputContainer: {
       width: "100%",
       marginTop: moderateHeightScale(10),
       marginBottom: moderateHeightScale(20),
     },
-    recentSectionTitle: {
+    cancelButton: {
+      paddingVertical: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(4),
+    },
+    cancelText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
+    sectionHeading: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
-      color: theme.text,
+      color: theme.lightGreen,
       marginBottom: moderateHeightScale(12),
     },
-    recentItem: {
+    serviceItem: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
@@ -64,57 +128,66 @@ const createStyles = (theme: Theme) =>
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
     },
-    recentItemLast: {
+    serviceItemLast: {
       borderBottomWidth: 0,
     },
-    recentItemContent: {
+    serviceItemText: {
+      flex: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
+    businessItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    businessItemLast: {
+      borderBottomWidth: 0,
+    },
+    businessPlaceholder: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.borderLight,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    businessContent: {
       flex: 1,
     },
-    recentItemText: {
+    businessTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    businessAddress: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.text,
-    },
-    recentItemSubtitle: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
       marginTop: moderateHeightScale(2),
     },
-    recentEmpty: {
-      fontSize: fontSize.size12,
+    emptyState: {
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
+    },
+    emptyStateText: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      paddingVertical: moderateHeightScale(15),
     },
-    popularSectionTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-      marginTop: moderateHeightScale(24),
-      marginBottom: moderateHeightScale(12),
+    loadingContainer: {
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
     },
-    popularServicesContainer: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(12),
-      marginBottom: moderateHeightScale(24),
+    servicesSection: {
+      marginBottom: moderateHeightScale(8),
     },
-    popularServiceTag: {
-      backgroundColor: theme.borderLight,
-      borderRadius: moderateWidthScale(20),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(8),
-    },
-    popularServiceText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
-    },
-    footer: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(24),
+    businessesSection: {
+      marginTop: moderateHeightScale(8),
     },
   });
 
@@ -144,29 +217,7 @@ export default function Search2Screen() {
     () => parsePopularServices(params as Record<string, string | undefined>),
     [params.popularServices],
   );
-  const popularList = useMemo(
-    () => popularServices.filter((s) => s.id !== null),
-    [popularServices],
-  );
   const dispatch = useAppDispatch();
-  const recentSearchesRaw = useAppSelector(
-    (state) => state.general.recentSearches,
-  );
-  const recentSearches = useMemo(
-    (): SearchState[] =>
-      recentSearchesRaw.map((item) =>
-        typeof item === "string"
-          ? {
-              search: item,
-              serviceId: null,
-              businessId: "",
-              businessName: "",
-              businessLocationName: "",
-            }
-          : item,
-      ),
-    [recentSearchesRaw],
-  );
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -184,6 +235,12 @@ export default function Search2Screen() {
   );
   const [selectedServiceName, setSelectedServiceName] =
     useState(initialServiceName);
+  const [serviceTemplates, setServiceTemplates] = useState<
+    ServiceTemplateItem[]
+  >([]);
+  const [businesses, setBusinesses] = useState<BusinessSearchItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     setSearchQuery(initialQuery);
@@ -192,11 +249,53 @@ export default function Search2Screen() {
   }, [initialQuery, initialServiceId, initialServiceName]);
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       inputRef.current?.focus();
     }, 300);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, []);
+
+  const fetchServiceBusinessList = useCallback(async (search: string) => {
+    const trimmed = search.trim();
+    if (!trimmed) {
+      setServiceTemplates([]);
+      setBusinesses([]);
+      setHasSearched(false);
+      return;
+    }
+    setLoading(true);
+    setHasSearched(true);
+    try {
+      const url = exploreEndpoints.serviceBusinessList(trimmed);
+      const res = (await ApiService.get(url)) as ServiceBusinessListResponse;
+      if (res?.success && res?.data) {
+        setServiceTemplates(res.data.service_templates ?? []);
+        setBusinesses(res.data.businesses ?? []);
+      } else {
+        setServiceTemplates([]);
+        setBusinesses([]);
+      }
+    } catch {
+      setServiceTemplates([]);
+      setBusinesses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setServiceTemplates([]);
+      setBusinesses([]);
+      setHasSearched(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchServiceBusinessList(searchQuery);
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchServiceBusinessList]);
 
   const handleSearchInputChange = (text: string) => {
     setSearchQuery(text);
@@ -219,7 +318,6 @@ export default function Search2Screen() {
       businessLocationName: "",
       ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
     };
-    // dispatch(addToRecentSearches(payload));
     dispatch(setSearchState(payload));
     router.back();
   };
@@ -228,10 +326,52 @@ export default function Search2Screen() {
     setSearchQuery("");
     setSelectedServiceId(null);
     setSelectedServiceName("");
+    setServiceTemplates([]);
+    setBusinesses([]);
+    setHasSearched(false);
     setTimeout(() => {
       inputRef.current?.focus();
     }, 0);
   };
+
+  const handleCancel = () => {
+    router.back();
+  };
+
+  const onServicePress = (item: ServiceTemplateItem) => {
+    const query = searchQuery.trim();
+    const payload: SearchState = {
+      search: query || "",
+      serviceId: item.id,
+      businessId: "",
+      businessName: "",
+      businessLocationName: "",
+      serviceName: item.name,
+    };
+    dispatch(setSearchState(payload));
+    router.back();
+  };
+
+  const onBusinessPress = (item: BusinessSearchItem) => {
+    const address = [item.street_address, item.city, item.state, item.zip_code]
+      .filter(Boolean)
+      .join(", ");
+    const payload: SearchState = {
+      search: searchQuery.trim(),
+      serviceId: selectedServiceId ?? null,
+      businessId: String(item.id),
+      businessName: item.title,
+      businessLocationName: address,
+      ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
+    };
+    dispatch(setSearchState(payload));
+    router.back();
+  };
+
+  const hasServices = serviceTemplates.length > 0;
+  const hasBusinesses = businesses.length > 0;
+  const showEmptyState =
+    hasSearched && !loading && !hasServices && !hasBusinesses;
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
@@ -242,31 +382,130 @@ export default function Search2Screen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputWrapper}>
+            <FloatingInput
+              ref={inputRef}
+              label={t("searchServicesOrBusinesses")}
+              value={searchQuery}
+              onChangeText={handleSearchInputChange}
+              placeholder={t("searchServicesOrBusinesses")}
+              placeholderTextColor={theme.lightGreen}
+              containerStyle={styles.searchInputContainer}
+              returnKeyType="search"
+              onSubmitEditing={handleSearch}
+              onClear={handleClear}
+              showClearButton
+              renderLeftAccessory={() => (
+                <SearchIcon
+                  width={widthScale(18)}
+                  height={heightScale(18)}
+                  color={theme.darkGreen}
+                />
+              )}
+            />
+          </View>
+          <Pressable
+            style={styles.cancelButton}
+            onPress={handleCancel}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.cancelText}>{t("cancel")}</Text>
+          </Pressable>
+        </View>
+
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <FloatingInput
-            ref={inputRef}
-            label={t("searchServicesOrBusinesses")}
-            value={searchQuery}
-            onChangeText={handleSearchInputChange}
-            placeholder={t("searchServicesOrBusinesses")}
-            placeholderTextColor={theme.lightGreen}
-            containerStyle={styles.searchInputContainer}
-            returnKeyType="search"
-            onSubmitEditing={handleSearch}
-            onClear={handleClear}
-            renderLeftAccessory={() => (
-              <SearchIcon
-                width={widthScale(18)}
-                height={heightScale(18)}
-                color={theme.darkGreen}
-              />
-            )}
-          />
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={theme.darkGreen} />
+            </View>
+          )}
+
+          {!loading && hasServices && (
+            <View style={styles.servicesSection}>
+              <Text style={styles.sectionHeading}>{t("services")}</Text>
+              {serviceTemplates.map((item, index) => (
+                <TouchableOpacity
+                  key={`service-${item.id}`}
+                  style={[
+                    styles.serviceItem,
+                    index === serviceTemplates.length - 1 &&
+                      styles.serviceItemLast,
+                  ]}
+                  onPress={() => onServicePress(item)}
+                  activeOpacity={0.7}
+                >
+                  <SearchIcon
+                    width={widthScale(20)}
+                    height={heightScale(20)}
+                    color={theme.darkGreen}
+                  />
+                  <Text style={styles.serviceItemText} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {!loading && hasBusinesses && (
+            <View style={styles.businessesSection}>
+              <Text style={styles.sectionHeading}>{t("businesses")}</Text>
+              {businesses.map((item, index) => {
+                const address = [
+                  item.street_address,
+                  item.city,
+                  item.state,
+                  item.zip_code,
+                ]
+                  .filter(Boolean)
+                  .join(", ");
+                return (
+                  <TouchableOpacity
+                    key={`business-${item.id}`}
+                    style={[
+                      styles.businessItem,
+                      index === businesses.length - 1 &&
+                        styles.businessItemLast,
+                    ]}
+                    onPress={() => onBusinessPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.businessPlaceholder}>
+                      <Ionicons
+                        name="person-outline"
+                        size={moderateWidthScale(22)}
+                        color={theme.lightGreen}
+                      />
+                    </View>
+                    <View style={styles.businessContent}>
+                      <Text style={styles.businessTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      {address ? (
+                        <Text style={styles.businessAddress} numberOfLines={1}>
+                          {address}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {showEmptyState && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
+                {t("noAnyServiceOrBusinessFound")}
+              </Text>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

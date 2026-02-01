@@ -498,5 +498,8 @@
   "tabService": "Service",
   "tabStaff": "Staff",
   "tabRatings": "Ratings",
-  "staffMemberFallback": "Staff Member"
+  "staffMemberFallback": "Staff Member",
+  "services": "Services",
+  "businesses": "Businesses",
+  "noAnyServiceOrBusinessFound": "No any service or business found"
 }

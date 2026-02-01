@@ -498,5 +498,8 @@
   "tabService": "Servicios",
   "tabStaff": "Personal",
   "tabRatings": "Reseñas",
-  "staffMemberFallback": "Miembro del personal"
+  "staffMemberFallback": "Miembro del personal",
+  "services": "Servicios",
+  "businesses": "Negocios",
+  "noAnyServiceOrBusinessFound": "No se encontró ningún servicio o negocio"
 }
