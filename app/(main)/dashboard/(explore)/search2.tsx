@@ -93,13 +93,9 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateHeightScale(12),
     },
     searchRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(20),
     },
-    searchInputWrapper: {
-      flex: 1,
-    },
+
     searchInputContainer: {
       width: "100%",
       marginTop: moderateHeightScale(10),
@@ -334,10 +330,6 @@ export default function Search2Screen() {
     }, 0);
   };
 
-  const handleCancel = () => {
-    router.back();
-  };
-
   const onServicePress = (item: ServiceTemplateItem) => {
     const query = searchQuery.trim();
     const payload: SearchState = {
@@ -383,35 +375,26 @@ export default function Search2Screen() {
         keyboardVerticalOffset={0}
       >
         <View style={styles.searchRow}>
-          <View style={styles.searchInputWrapper}>
-            <FloatingInput
-              ref={inputRef}
-              label={t("searchServicesOrBusinesses")}
-              value={searchQuery}
-              onChangeText={handleSearchInputChange}
-              placeholder={t("searchServicesOrBusinesses")}
-              placeholderTextColor={theme.lightGreen}
-              containerStyle={styles.searchInputContainer}
-              returnKeyType="search"
-              onSubmitEditing={handleSearch}
-              onClear={handleClear}
-              showClearButton
-              renderLeftAccessory={() => (
-                <SearchIcon
-                  width={widthScale(18)}
-                  height={heightScale(18)}
-                  color={theme.darkGreen}
-                />
-              )}
-            />
-          </View>
-          <Pressable
-            style={styles.cancelButton}
-            onPress={handleCancel}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.cancelText}>{t("cancel")}</Text>
-          </Pressable>
+          <FloatingInput
+            ref={inputRef}
+            label={t("searchServicesOrBusinesses")}
+            value={searchQuery}
+            onChangeText={handleSearchInputChange}
+            placeholder={t("searchServicesOrBusinesses")}
+            placeholderTextColor={theme.lightGreen}
+            containerStyle={styles.searchInputContainer}
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+            onClear={handleClear}
+            showClearButton
+            renderLeftAccessory={() => (
+              <SearchIcon
+                width={widthScale(18)}
+                height={heightScale(18)}
+                color={theme.darkGreen}
+              />
+            )}
+          />
         </View>
 
         <ScrollView
