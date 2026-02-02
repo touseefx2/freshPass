@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -50,6 +51,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function TryOnBanner({ onPress }: TryOnBanner) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -57,14 +59,16 @@ export default function TryOnBanner({ onPress }: TryOnBanner) {
   return (
     <View style={styles.container}>
       <View>
-        <Text style={styles.title}>Try AI Hair Try-On</Text>
-        <Text style={styles.description}>
-          Preview styles instantly. Book with confidence.{" "}
-        </Text>
+        <Text style={styles.title}>{t("tryAiHairTryOn")}</Text>
+        <Text style={styles.description}>{t("tryOnBannerDescription")}</Text>
       </View>
 
-      <TouchableOpacity style={styles.button} onPress={onPress} activeOpacity={0.7}>
-        <Text style={styles.buttonText}>Try Now</Text>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.buttonText}>{t("tryNow")}</Text>
       </TouchableOpacity>
     </View>
   );
