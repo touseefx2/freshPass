@@ -23,7 +23,7 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(5),
+      paddingVertical: moderateHeightScale(6),
       borderTopLeftRadius: 12,
       borderTopRightRadius: 12,
       width: "100%",
@@ -43,6 +43,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(6),
+      maxWidth: "32%",
     },
     buttonText: {
       fontSize: fontSize.size13,
@@ -59,7 +60,7 @@ export default function TryOnBanner({ onPress }: TryOnBanner) {
 
   return (
     <View style={styles.container}>
-      <View style={{ flex: 1 }}>
+      <View style={{ maxWidth: "65%" }}>
         <Text style={styles.title}>{t("tryAiHairTryOn")}</Text>
         <Text style={styles.description}>{t("tryOnBannerDescription")}</Text>
       </View>

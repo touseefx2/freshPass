@@ -155,7 +155,7 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       borderRadius: moderateWidthScale(999),
       paddingVertical: moderateHeightScale(6),
-      paddingHorizontal: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(6),
     },
     toggleOptionActive: {
       backgroundColor: theme.orangeBrown,
@@ -166,7 +166,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: "transparent",
     },
     toggleText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
     },
     toggleTextActive: {
       color: theme.darkGreen,
