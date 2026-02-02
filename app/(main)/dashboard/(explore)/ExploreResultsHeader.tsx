@@ -1,9 +1,13 @@
 import React, { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
+import {
+  moderateHeightScale,
+  moderateWidthScale,
+} from "@/src/theme/dimensions";
 import { fonts, fontSize } from "@/src/theme/fonts";
 
 const createStyles = (theme: Theme) =>
@@ -52,6 +56,7 @@ export default function ExploreResultsHeader({
   sortByLabel,
   onSortPress,
 }: ExploreResultsHeaderProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -59,18 +64,20 @@ export default function ExploreResultsHeader({
   return (
     <View style={styles.resultsHeader}>
       <Text style={styles.resultsText}>
-        Showing:
+        {t("showing")}
         <Text style={styles.resultsTextBold}>
           {" "}
-          {resultsCount} results
+          {t("resultsCount", { count: resultsCount })}
         </Text>
       </Text>
       <Pressable
         onPress={onSortPress}
         style={styles.sortByButton}
-        accessibilityLabel="Sort by"
+        accessibilityLabel={t("sortBy")}
       >
-        <Text style={styles.sortByLabel}>Sort by: {sortByLabel} </Text>
+        <Text style={styles.sortByLabel}>
+          {t("sortBy")}: {sortByLabel}{" "}
+        </Text>
         <Feather
           name="chevron-down"
           size={moderateWidthScale(14)}
