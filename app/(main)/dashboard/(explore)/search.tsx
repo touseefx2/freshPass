@@ -7,7 +7,9 @@ import {
   ScrollView,
   StatusBar,
   Pressable,
+  Image,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -102,6 +104,36 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       marginTop: moderateHeightScale(2),
     },
+    recentBusinessPlaceholder: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    recentBusinessLogoImage: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
+    },
+    recentBusinessContent: {
+      flex: 1,
+    },
+    recentBusinessTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    recentBusinessAddress: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      marginTop: moderateHeightScale(2),
+    },
     recentEmpty: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
@@ -138,6 +170,41 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(24),
     },
   });
+
+function RecentBusinessLogo({
+  logoUrl,
+  theme,
+  styles,
+}: {
+  logoUrl: string | undefined;
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const [imageError, setImageError] = useState(false);
+  const showPlaceholder =
+    !logoUrl ||
+    !(logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) ||
+    imageError;
+  if (showPlaceholder) {
+    return (
+      <View style={styles.recentBusinessPlaceholder}>
+        <Ionicons
+          name="person-outline"
+          size={moderateWidthScale(22)}
+          color={theme.lightGreen}
+        />
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri: logoUrl }}
+      style={styles.recentBusinessLogoImage}
+      resizeMode="cover"
+      onError={() => setImageError(true)}
+    />
+  );
+}
 
 function parsePopularServices(
   params: Record<string, string | undefined>,
@@ -182,6 +249,7 @@ export default function SearchScreen() {
       ),
     [recentSearchesRaw],
   );
+
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
@@ -243,6 +311,13 @@ export default function SearchScreen() {
   };
 
   const handleRecentSearchPress = (item: SearchState) => {
+    if (item.businessId) {
+      router.push({
+        pathname: "/(main)/businessDetail",
+        params: { business_id: item.businessId },
+      } as any);
+      return;
+    }
     setSearchQuery(item.search);
     setSelectedServiceId(item.serviceId ?? null);
     setSelectedServiceName(item.serviceName ?? "");
@@ -305,7 +380,39 @@ export default function SearchScreen() {
         {recentSearches.length > 0 ? (
           recentSearches.map((item, index) => {
             const isLast = index === recentSearches.length - 1;
-            const key = `${item.search}-${item.serviceId ?? "n"}-${index}`;
+            const hasBusiness = Boolean(item.businessId);
+            const key = hasBusiness
+              ? `b-${item.businessId}-${index}`
+              : `${item.search}-${item.serviceId ?? "n"}-${index}`;
+            if (hasBusiness) {
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.recentItem, isLast && styles.recentItemLast]}
+                  onPress={() => handleRecentSearchPress(item)}
+                  activeOpacity={0.7}
+                >
+                  <RecentBusinessLogo
+                    logoUrl={item.businessLogoUrl?.trim()}
+                    theme={theme}
+                    styles={styles}
+                  />
+                  <View style={styles.recentBusinessContent}>
+                    <Text style={styles.recentBusinessTitle} numberOfLines={1}>
+                      {item.businessName || item.search}
+                    </Text>
+                    {item.businessLocationName ? (
+                      <Text
+                        style={styles.recentBusinessAddress}
+                        numberOfLines={1}
+                      >
+                        {item.businessLocationName}
+                      </Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            }
             return (
               <TouchableOpacity
                 key={key}
