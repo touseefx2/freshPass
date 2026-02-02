@@ -13,10 +13,10 @@ import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 
 export type SortByOption = "recommended" | "distance" | "reviews";
 
-export const SORT_OPTIONS: { value: SortByOption; label: string }[] = [
-  { value: "recommended", label: "Recommended" },
-  { value: "distance", label: "Distance (nearest first)" },
-  { value: "reviews", label: "Reviews (top-rated first)" },
+export const SORT_OPTIONS: { value: SortByOption; labelKey: string }[] = [
+  { value: "recommended", labelKey: "sortByOptionRecommended" },
+  { value: "distance", labelKey: "sortByOptionDistance" },
+  { value: "reviews", labelKey: "sortByOptionReviews" },
 ];
 
 interface SortByBottomSheetProps {
@@ -87,7 +87,7 @@ export default function SortByBottomSheet({
                 isSelected && styles.sortOptionTextSelected,
               ]}
             >
-              {opt.label}
+              {t(opt.labelKey)}
             </Text>
             {isSelected && (
               <Feather

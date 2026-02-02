@@ -166,7 +166,7 @@ export default function TryOnModal({
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Text style={styles.skipButtonText}>Skip</Text>
+              <Text style={styles.skipButtonText}>{t("skip")}</Text>
             </TouchableOpacity>
 
             <View style={styles.topSection}>
@@ -181,17 +181,22 @@ export default function TryOnModal({
               </View>
 
               <Text style={styles.title}>
-                Try <Text style={styles.titleHighlight}>AI </Text>Hair{" "}
-                <Text style={styles.titleHighlight}>Try-On</Text>
+                {t("tryOnModalTitle1")}
+                <Text style={styles.titleHighlight}>
+                  {t("tryOnModalTitle2")}
+                </Text>
+                {t("tryOnModalTitle3")}
+                <Text style={styles.titleHighlight}>
+                  {t("tryOnModalTitle4")}
+                </Text>
               </Text>
 
               <Text style={styles.description1}>
-                Preview styles instantly. Book with confidence. See your new
-                look before you book.
+                {t("tryOnModalDescription1")}
               </Text>
 
               <Text style={styles.description2}>
-                Visualize and choose your perfect hairstyle.
+                {t("tryOnModalDescription2")}
               </Text>
             </View>
 
@@ -203,9 +208,7 @@ export default function TryOnModal({
                 textColor={theme.darkGreen}
                 containerStyle={styles.unlockButton}
               />
-              <Text style={styles.pricingText}>
-                Full access: $2.99 per try or with Premium
-              </Text>
+              <Text style={styles.pricingText}>{t("tryOnModalPricing")}</Text>
             </View>
           </View>
         </ImageBackground>

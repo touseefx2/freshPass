@@ -182,8 +182,10 @@ export default function ExploreScreen() {
     [serviceTemplates],
   );
 
-  const getSortByLabel = (value: SortByOption) =>
-    SORT_OPTIONS.find((o) => o.value === value)?.label ?? "Recommended";
+  const getSortByLabel = (value: SortByOption) => {
+    const opt = SORT_OPTIONS.find((o) => o.value === value);
+    return opt ? t(opt.labelKey) : t("sortByOptionRecommended");
+  };
 
   const fetchServiceTemplates = async (categoryId: number) => {
     try {

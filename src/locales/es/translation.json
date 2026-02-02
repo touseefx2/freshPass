@@ -504,5 +504,15 @@
   "staffMemberFallback": "Miembro del personal",
   "services": "Servicios",
   "businesses": "Negocios",
-  "noAnyServiceOrBusinessFound": "No se encontró ningún servicio o negocio"
+  "noAnyServiceOrBusinessFound": "No se encontró ningún servicio o negocio",
+  "sortByOptionRecommended": "Recomendado",
+  "sortByOptionDistance": "Distancia (más cercano primero)",
+  "sortByOptionReviews": "Reseñas (mejor valorados primero)",
+  "tryOnModalTitle1": "Prueba ",
+  "tryOnModalTitle2": "IA ",
+  "tryOnModalTitle3": "cabello ",
+  "tryOnModalTitle4": "Try-On",
+  "tryOnModalDescription1": "Vista previa de estilos al instante. Reserva con confianza. Ve tu nuevo look antes de reservar.",
+  "tryOnModalDescription2": "Visualiza y elige tu peinado perfecto.",
+  "tryOnModalPricing": "Acceso completo: $2.99 por prueba o con Premium"
 }

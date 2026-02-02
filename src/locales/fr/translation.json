@@ -504,5 +504,15 @@
   "staffMemberFallback": "Membre du personnel",
   "services": "Services",
   "businesses": "Entreprises",
-  "noAnyServiceOrBusinessFound": "Aucun service ou entreprise trouvé"
+  "noAnyServiceOrBusinessFound": "Aucun service ou entreprise trouvé",
+  "sortByOptionRecommended": "Recommandé",
+  "sortByOptionDistance": "Distance (le plus proche en premier)",
+  "sortByOptionReviews": "Avis (mieux notés en premier)",
+  "tryOnModalTitle1": "Essayez ",
+  "tryOnModalTitle2": "l'IA ",
+  "tryOnModalTitle3": "cheveux ",
+  "tryOnModalTitle4": "Try-On",
+  "tryOnModalDescription1": "Aperçu des styles instantanément. Réservez en toute confiance. Voyez votre nouvelle look avant de réserver.",
+  "tryOnModalDescription2": "Visualisez et choisissez votre coiffure parfaite.",
+  "tryOnModalPricing": "Accès complet : 2,99 $ par essai ou avec Premium"
 }

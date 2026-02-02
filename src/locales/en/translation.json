@@ -504,5 +504,15 @@
   "staffMemberFallback": "Staff Member",
   "services": "Services",
   "businesses": "Businesses",
-  "noAnyServiceOrBusinessFound": "No any service or business found"
+  "noAnyServiceOrBusinessFound": "No any service or business found",
+  "sortByOptionRecommended": "Recommended",
+  "sortByOptionDistance": "Distance (nearest first)",
+  "sortByOptionReviews": "Reviews (top-rated first)",
+  "tryOnModalTitle1": "Try ",
+  "tryOnModalTitle2": "AI ",
+  "tryOnModalTitle3": "Hair ",
+  "tryOnModalTitle4": "Try-On",
+  "tryOnModalDescription1": "Preview styles instantly. Book with confidence. See your new look before you book.",
+  "tryOnModalDescription2": "Visualize and choose your perfect hairstyle.",
+  "tryOnModalPricing": "Full access: $2.99 per try or with Premium"
 }
