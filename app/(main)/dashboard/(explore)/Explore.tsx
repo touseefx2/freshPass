@@ -91,7 +91,6 @@ export default function ExploreScreen() {
   const location = useAppSelector((state) => state.user.location);
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
 
-  console.log("----------->selectedDateISO", selectedDateISO);
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
   );
@@ -228,6 +227,10 @@ export default function ExploreScreen() {
         params.push("radius_km=100");
       }
       if (selectedDateISO) {
+        const availabilityDate = new Date(selectedDateISO)
+          .toISOString()
+          .slice(0, 10);
+        params.push(`availability_date=${availabilityDate}`);
       }
       const url =
         params.length > 0 ? `${baseUrl}?${params.join("&")}` : baseUrl;
@@ -310,6 +313,12 @@ export default function ExploreScreen() {
         params.push(`latitude=${location.lat}`);
         params.push(`longitude=${location.long}`);
         params.push("radius_km=100");
+      }
+      if (selectedDateISO) {
+        const availabilityDate = new Date(selectedDateISO)
+          .toISOString()
+          .slice(0, 10);
+        params.push(`availability_date=${availabilityDate}`);
       }
 
       if (params.length > 0) {
