@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
   Pressable,
   Image,
+  Keyboard,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -402,6 +403,7 @@ export default function Search2Screen() {
       businessLocationName: "",
       serviceName: item.name,
     };
+    Keyboard.dismiss();
     dispatch(addToRecentSearches(payload));
     dispatch(setSearchState(payload));
     router.back();
@@ -420,13 +422,12 @@ export default function Search2Screen() {
       ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
       businessLogoUrl: getBusinessLogoUrl(item.logo_url),
     };
+    Keyboard.dismiss();
     dispatch(addToRecentSearches(payload));
     router.push({
-      pathname: "./businessProfile",
-      params: {
-        businessId: String(item.id),
-      },
-    });
+      pathname: "/(main)/businessDetail",
+      params: { business_id: item.id.toString() },
+    } as any);
   };
 
   const hasServices = serviceTemplates.length > 0;
