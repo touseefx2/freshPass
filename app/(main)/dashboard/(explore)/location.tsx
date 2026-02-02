@@ -473,7 +473,7 @@ export default function LocationScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <StackHeader title={t("location")} />
-      <StatusBar backgroundColor={theme.white} barStyle="dark-content" />
+
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}

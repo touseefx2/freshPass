@@ -27,6 +27,7 @@ import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import {
   setSearchState,
   clearSearchState,
+  addToRecentSearches,
   type SearchState,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
@@ -401,6 +402,7 @@ export default function Search2Screen() {
       businessLocationName: "",
       serviceName: item.name,
     };
+    dispatch(addToRecentSearches(payload));
     dispatch(setSearchState(payload));
     router.back();
   };
@@ -416,9 +418,15 @@ export default function Search2Screen() {
       businessName: item.title,
       businessLocationName: address,
       ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
+      businessLogoUrl: getBusinessLogoUrl(item.logo_url),
     };
-    dispatch(setSearchState(payload));
-    router.back();
+    dispatch(addToRecentSearches(payload));
+    router.push({
+      pathname: "./businessProfile",
+      params: {
+        businessId: String(item.id),
+      },
+    });
   };
 
   const hasServices = serviceTemplates.length > 0;
@@ -429,7 +437,7 @@ export default function Search2Screen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <StackHeader title={t("servicesOrBusinesses")} />
-      <StatusBar backgroundColor={theme.white} barStyle="dark-content" />
+
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}

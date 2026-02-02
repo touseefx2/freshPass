@@ -10,6 +10,7 @@ export interface SearchState {
   businessName: string;
   businessLocationName: string;
   serviceName?: string;
+  businessLogoUrl?: string;
 }
 
 const initialSearchState: SearchState = {
@@ -18,6 +19,7 @@ const initialSearchState: SearchState = {
   businessId: "",
   businessName: "",
   businessLocationName: "",
+  businessLogoUrl: "",
 };
 
 function isSameLocation(a: Location, b: Location): boolean {
