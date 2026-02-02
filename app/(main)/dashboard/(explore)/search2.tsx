@@ -17,6 +17,7 @@ import {
   StatusBar,
   ActivityIndicator,
   Pressable,
+  Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -61,6 +62,7 @@ export type BusinessSearchItem = {
   id: number;
   slug: string;
   title: string;
+  logo_url?: string | null;
   street_address: string;
   city: string;
   state: string;
@@ -148,9 +150,17 @@ const createStyles = (theme: Theme) =>
       width: widthScale(44),
       height: heightScale(44),
       borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.borderLight,
+      backgroundColor: theme.lightGreen2,
       alignItems: "center",
       justifyContent: "center",
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    businessLogoImage: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
     },
     businessContent: {
       flex: 1,
@@ -187,6 +197,22 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
+const DEFAULT_BUSINESS_LOGO =
+  process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+
+function getBusinessLogoUrl(logo: string | null | undefined): string {
+  if (logo == null || logo.trim() === "") {
+    return DEFAULT_BUSINESS_LOGO;
+  }
+  const trimmed = logo.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const path = trimmed;
+  return `${BASE_URL}${path}`;
+}
+
 function parsePopularServices(
   params: Record<string, string | undefined>,
 ): PopularServiceItem[] {
@@ -198,6 +224,42 @@ function parsePopularServices(
   } catch {
     return [];
   }
+}
+
+function BusinessLogoImage({
+  logo,
+  theme,
+  styles,
+}: {
+  logo: string | null | undefined;
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const [imageError, setImageError] = useState(false);
+  const uri = getBusinessLogoUrl(logo);
+  const showPlaceholder = !uri || imageError;
+
+  if (showPlaceholder) {
+    return (
+      <View style={styles.businessPlaceholder}>
+        <Ionicons
+          name="person-outline"
+          size={moderateWidthScale(22)}
+          color={theme.lightGreen}
+        />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.businessPlaceholder}>
+      <Image
+        source={{ uri }}
+        style={styles.businessLogoImage}
+        onError={() => setImageError(true)}
+        resizeMode="cover"
+      />
+    </View>
+  );
 }
 
 export default function Search2Screen() {
@@ -459,13 +521,11 @@ export default function Search2Screen() {
                     onPress={() => onBusinessPress(item)}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.businessPlaceholder}>
-                      <Ionicons
-                        name="person-outline"
-                        size={moderateWidthScale(22)}
-                        color={theme.lightGreen}
-                      />
-                    </View>
+                    <BusinessLogoImage
+                      logo={item.logo_url}
+                      theme={theme}
+                      styles={styles}
+                    />
                     <View style={styles.businessContent}>
                       <Text style={styles.businessTitle} numberOfLines={1}>
                         {item.title}
