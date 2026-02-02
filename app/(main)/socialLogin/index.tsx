@@ -159,8 +159,14 @@ export default function SocialLogin() {
               router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
             }
           }
-          // if (user?.role?.toLowerCase() === "business") {
-          // }
+          if (user?.role?.toLowerCase() === "business") {
+            if (isNewCreated) {
+              // dispatch(setFullName(user.name || ""));
+              // router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+            } else {
+              // router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+            }
+          }
         }
       } else {
         Alert.alert(
