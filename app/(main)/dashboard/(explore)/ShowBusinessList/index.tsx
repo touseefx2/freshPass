@@ -166,6 +166,13 @@ export function BusinessCardType({
   const hasSubscriptions = (salon.subscriptions?.length ?? 0) > 0;
   const isIndividual = type === "individual";
 
+  const handleBusinessDetailPress = () => {
+    router.push({
+      pathname: "/(main)/businessDetail",
+      params: { business_id: salon.id.toString() },
+    } as any);
+  };
+
   return (
     <View>
       <View
@@ -178,17 +185,17 @@ export function BusinessCardType({
         ]}
       >
         <Text
-          onPress={() => {
-            router.push({
-              pathname: "/(main)/businessDetail",
-              params: { business_id: salon.id.toString() },
-            } as any);
-          }}
+          onPress={handleBusinessDetailPress}
           style={styles.sectionSubTitle}
         >
           {salon.businessName}
         </Text>
-        <Text style={styles.sectionSubTitle2}>{t("viewDetail")}</Text>
+        <Text
+          onPress={handleBusinessDetailPress}
+          style={styles.sectionSubTitle2}
+        >
+          {t("viewDetail")}
+        </Text>
       </View>
 
       {isIndividual && hasServices && (
