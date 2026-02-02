@@ -160,11 +160,25 @@ export default function SocialLogin() {
             }
           }
           if (user?.role?.toLowerCase() === "business") {
+            dispatch(
+              setUser({
+                id: user.id,
+                name: user.name || "",
+                email: user.email || "",
+                description: "",
+                phone: user.phone || "",
+                country_code: user.country_code || "",
+                profile_image_url: user.profile_image_url || "",
+                accessToken: token,
+                userRole: (user.role?.toLowerCase() as UserRole) || null,
+              }),
+            );
+
             if (isNewCreated) {
-              // dispatch(setFullName(user.name || ""));
-              // router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+              dispatch(setFullName(user.name || ""));
+              router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
             } else {
-              // router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
             }
           }
         }
