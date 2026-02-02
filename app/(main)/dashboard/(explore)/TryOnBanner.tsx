@@ -26,6 +26,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(5),
       borderTopLeftRadius: 12,
       borderTopRightRadius: 12,
+      width: "100%",
     },
     title: {
       fontSize: fontSize.size15,
@@ -58,7 +59,7 @@ export default function TryOnBanner({ onPress }: TryOnBanner) {
 
   return (
     <View style={styles.container}>
-      <View>
+      <View style={{ flex: 1 }}>
         <Text style={styles.title}>{t("tryAiHairTryOn")}</Text>
         <Text style={styles.description}>{t("tryOnBannerDescription")}</Text>
       </View>
