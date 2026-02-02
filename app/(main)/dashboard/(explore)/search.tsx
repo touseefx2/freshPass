@@ -250,6 +250,8 @@ export default function SearchScreen() {
     [recentSearchesRaw],
   );
 
+  console.log("------> recentSearches", recentSearches);
+
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;

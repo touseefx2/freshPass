@@ -379,6 +379,7 @@ export default function Search2Screen() {
       ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
     };
     dispatch(setSearchState(payload));
+    dispatch(addToRecentSearches(payload));
     router.back();
   };
 
