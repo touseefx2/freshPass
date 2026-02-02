@@ -393,9 +393,8 @@ export default function Search2Screen() {
   };
 
   const onServicePress = (item: ServiceTemplateItem) => {
-    const query = searchQuery.trim();
     const payload: SearchState = {
-      search: query || "",
+      search: item.name || "",
       serviceId: item.id,
       businessId: "",
       businessName: "",
