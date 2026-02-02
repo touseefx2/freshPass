@@ -197,12 +197,14 @@ function RecentBusinessLogo({
     );
   }
   return (
-    <Image
-      source={{ uri: logoUrl }}
-      style={styles.recentBusinessLogoImage}
-      resizeMode="cover"
-      onError={() => setImageError(true)}
-    />
+    <View style={styles.recentBusinessPlaceholder}>
+      <Image
+        source={{ uri: logoUrl }}
+        style={styles.recentBusinessLogoImage}
+        resizeMode="cover"
+        onError={() => setImageError(true)}
+      />
+    </View>
   );
 }
 
@@ -249,8 +251,6 @@ export default function SearchScreen() {
       ),
     [recentSearchesRaw],
   );
-
-  console.log("------> recentSearches", recentSearches);
 
   const { colors } = useTheme();
   const { t } = useTranslation();
