@@ -161,10 +161,14 @@ const createStyles = (theme: Theme) =>
 
 interface ExploreHeaderProps {
   popularServices?: PopularServiceItem[];
+  setSelectedServiceFilter: (
+    service: { id: number; name: string } | null,
+  ) => void;
 }
 
 export default function ExploreHeader({
   popularServices = [],
+  setSelectedServiceFilter,
 }: ExploreHeaderProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -265,7 +269,10 @@ export default function ExploreHeader({
         </View>
         {hasSearchValue && (
           <Pressable
-            onPress={() => dispatch(clearSearchState())}
+            onPress={() => {
+              dispatch(clearSearchState());
+              setSelectedServiceFilter(null);
+            }}
             style={styles.clearButton}
             hitSlop={moderateWidthScale(8)}
           >

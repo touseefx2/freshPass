@@ -177,16 +177,41 @@ export default function ExploreScreen() {
     [],
   );
 
-  const serviceFilters = useMemo(
-    () =>
+  const serviceFilters = useMemo(() => {
+    const baseList =
       serviceTemplates.length > 0
         ? ([{ id: null, name: "Services" }, ...serviceTemplates] as Array<{
             id: number | null;
             name: string;
           }>)
-        : [],
-    [serviceTemplates],
-  );
+        : [];
+    const searchIdInTemplates =
+      hasSearchId != null && serviceTemplates.some((t) => t.id === hasSearchId);
+    const searchName = (search.serviceName ?? search.search ?? "").trim();
+    if (
+      hasSearchId != null &&
+      !searchIdInTemplates &&
+      searchName !== "" &&
+      baseList.length > 0
+    ) {
+      const searchFilter = { id: hasSearchId, name: searchName };
+      return [baseList[0], searchFilter, ...baseList.slice(1)];
+    }
+    return baseList;
+  }, [serviceTemplates, hasSearchId, search.serviceName, search.search]);
+
+  useEffect(() => {
+    if (hasSearchId == null) return;
+    const filterWithSearchId = serviceFilters.find(
+      (f) => f.id !== null && f.id === hasSearchId,
+    );
+    if (filterWithSearchId && selectedServiceFilter?.id !== hasSearchId) {
+      setSelectedServiceFilter({
+        id: filterWithSearchId.id as number,
+        name: filterWithSearchId.name,
+      });
+    }
+  }, [hasSearchId, serviceFilters, selectedServiceFilter?.id]);
 
   const getSortByLabel = (value: SortByOption) => {
     const opt = SORT_OPTIONS.find((o) => o.value === value);
@@ -475,7 +500,10 @@ export default function ExploreScreen() {
           barStyle="light-content"
           translucent
         />
-        <ExploreHeader popularServices={serviceFilters} />
+        <ExploreHeader
+          popularServices={serviceFilters}
+          setSelectedServiceFilter={setSelectedServiceFilter}
+        />
 
         <FlatList
           data={verifiedSalons}
