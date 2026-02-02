@@ -90,6 +90,12 @@ export default function ExploreScreen() {
   const user = useAppSelector((state) => state.user);
   const location = useAppSelector((state) => state.user.location);
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
+  const search = useAppSelector((state) => state.general.searchState);
+  const hasSearchValue = (search.search ?? "").trim() !== "";
+  const hasSearchId = search.serviceId ?? null;
+
+  console.log("------> hasSearchValue", hasSearchValue);
+  console.log("------> hasSearchId", hasSearchId);
 
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
