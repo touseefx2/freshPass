@@ -35,7 +35,11 @@ import type {
   SubscriptionItem,
 } from "@/src/components/businessList";
 import TryOnModal from "./TryOnModal";
-import { setIsFirstShowTryOn } from "@/src/state/slices/generalSlice";
+import {
+  setIsFirstShowTryOn,
+  setSearchState,
+  clearSearchState,
+} from "@/src/state/slices/generalSlice";
 import TryOnBanner from "./TryOnBanner";
 
 const createStyles = (theme: Theme) =>
@@ -127,13 +131,26 @@ export default function ExploreScreen() {
     setSelectedSubscriptionFilter(null);
   }, [selectedCategory]);
 
-  const handleServiceFilterSelect = useCallback(
-    (value: { id: number; name: string } | null) => {
-      setSelectedServiceFilter(value);
-      setSelectedSubscriptionFilter(null);
-    },
-    [],
-  );
+  const handleServiceFilterSelect = (
+    value: { id: number; name: string } | null,
+  ) => {
+    setSelectedServiceFilter(value);
+    setSelectedSubscriptionFilter(null);
+    if (value) {
+      dispatch(
+        setSearchState({
+          search: value.name,
+          serviceId: value.id,
+          serviceName: value.name,
+          businessId: "",
+          businessName: "",
+          businessLocationName: "",
+        }),
+      );
+    } else {
+      dispatch(clearSearchState());
+    }
+  };
 
   const handleSubscriptionFilterSelect = useCallback(
     (value: { id: number; name: string } | null) => {
