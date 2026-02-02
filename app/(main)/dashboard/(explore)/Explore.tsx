@@ -353,10 +353,15 @@ export default function ExploreScreen() {
           .slice(0, 10);
         params.push(`availability_date=${availabilityDate}`);
       }
+      if (search?.search.trim() !== "") {
+        params.push(`serch=${search.search}`);
+      }
 
       if (params.length > 0) {
         url = `${url}?${params.join("&")}`;
       }
+
+      console.log("--------->url : ", url);
 
       const response = await ApiService.get<{
         success: boolean;
@@ -489,6 +494,7 @@ export default function ExploreScreen() {
       selectedSubscriptionFilter,
       location,
       selectedDateISO,
+      search,
     ]),
   );
 
