@@ -889,7 +889,15 @@ export default function DashboardContent() {
       contentContainerStyle={styles.contentContainer}
     >
       <SearchBar
-        onSearchPress={() => router.push("/dashboard/(explore)" as any)}
+        onSearchPress={() => {
+          router.push("/dashboard/(explore)" as any);
+          setTimeout(() => {
+            router.push({
+              pathname: "./search",
+              params: { popularServices: [] },
+            });
+          }, 300);
+        }}
       />
 
       <CategorySection
