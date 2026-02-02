@@ -27,6 +27,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import {
   setSearchState,
+  setSearchReturnFromSearch2,
   clearSearchState,
   addToRecentSearches,
   type SearchState,
@@ -272,6 +273,7 @@ export default function Search2Screen() {
     searchQuery?: string;
     serviceId?: string;
     serviceName?: string;
+    fromSearchScreen?: string;
   }>();
   const popularServices = useMemo(
     () => parsePopularServices(params as Record<string, string | undefined>),
@@ -378,8 +380,16 @@ export default function Search2Screen() {
       businessLocationName: "",
       ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
     };
-    dispatch(setSearchState(payload));
     dispatch(addToRecentSearches(payload));
+    if (params.fromSearchScreen === "1") {
+      dispatch(
+        setSearchReturnFromSearch2({
+          search: query,
+          serviceId: selectedServiceId ?? null,
+          serviceName: selectedServiceName ?? "",
+        }),
+      );
+    }
     router.back();
   };
 
@@ -406,7 +416,15 @@ export default function Search2Screen() {
     };
     Keyboard.dismiss();
     dispatch(addToRecentSearches(payload));
-    dispatch(setSearchState(payload));
+    if (params.fromSearchScreen === "1") {
+      dispatch(
+        setSearchReturnFromSearch2({
+          search: item.name || "",
+          serviceId: selectedServiceId ?? null,
+          serviceName: selectedServiceName ?? "",
+        }),
+      );
+    }
     router.back();
   };
 

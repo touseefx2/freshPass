@@ -13,6 +13,12 @@ export interface SearchState {
   businessLogoUrl?: string;
 }
 
+export interface SearchReturnFromSearch2 {
+  search: string;
+  serviceId: number | null;
+  serviceName: string;
+}
+
 const initialSearchState: SearchState = {
   search: "",
   serviceId: null,
@@ -53,6 +59,7 @@ export interface GeneralState {
   currentLocation: Location; // Current location (lat, long, locationName)
   recentLocations: Location[]; // Recent locations (persisted)
   recentSearches: SearchState[]; // Recent searches as objects (persisted, max 4)
+  searchReturnFromSearch2: SearchReturnFromSearch2 | null; // When search2 returns to search screen (not persisted)
 }
 
 const initialState: GeneralState = {
@@ -82,6 +89,7 @@ const initialState: GeneralState = {
   },
   recentLocations: [],
   recentSearches: [],
+  searchReturnFromSearch2: null,
 };
 
 const generalSlice = createSlice({
@@ -134,6 +142,15 @@ const generalSlice = createSlice({
     },
     clearSearchState(state) {
       state.searchState = { ...initialSearchState };
+    },
+    setSearchReturnFromSearch2(
+      state,
+      action: PayloadAction<SearchReturnFromSearch2>,
+    ) {
+      state.searchReturnFromSearch2 = action.payload;
+    },
+    clearSearchReturnFromSearch2(state) {
+      state.searchReturnFromSearch2 = null;
     },
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
@@ -210,6 +227,7 @@ const generalSlice = createSlice({
       state.currentLocation = initialState.currentLocation;
       state.recentLocations = initialState.recentLocations;
       state.recentSearches = initialState.recentSearches;
+      state.searchReturnFromSearch2 = null;
     },
   },
 });
@@ -230,6 +248,8 @@ export const {
   clearSelectedDate,
   setSearchState,
   clearSearchState,
+  setSearchReturnFromSearch2,
+  clearSearchReturnFromSearch2,
   setGuestModeModalVisible,
   setIsFirstShowTryOn,
   setCurrentLocation,

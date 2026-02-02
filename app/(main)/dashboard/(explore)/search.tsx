@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -18,6 +18,7 @@ import {
   addToRecentSearches,
   setSearchState,
   clearSearchState,
+  clearSearchReturnFromSearch2,
   type SearchState,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
@@ -257,18 +258,40 @@ export default function SearchScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const searchState = useAppSelector((state) => state.general.searchState);
+  const searchReturnFromSearch2 = useAppSelector(
+    (state) => state.general.searchReturnFromSearch2,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedServiceId, setSelectedServiceId] = useState<number | null>(
     null,
   );
   const [selectedServiceName, setSelectedServiceName] = useState("");
+  const justAppliedReturnRef = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
-      setSearchQuery(searchState.search ?? "");
-      setSelectedServiceId(searchState.serviceId ?? null);
-      setSelectedServiceName(searchState.serviceName ?? "");
-    }, [searchState.search, searchState.serviceId, searchState.serviceName]),
+      if (searchReturnFromSearch2) {
+        setSearchQuery(searchReturnFromSearch2.search ?? "");
+        setSelectedServiceId(searchReturnFromSearch2.serviceId ?? null);
+        setSelectedServiceName(searchReturnFromSearch2.serviceName ?? "");
+        dispatch(clearSearchReturnFromSearch2());
+        justAppliedReturnRef.current = true;
+      } else {
+        if (justAppliedReturnRef.current) {
+          justAppliedReturnRef.current = false;
+        } else {
+          setSearchQuery(searchState.search ?? "");
+          setSelectedServiceId(searchState.serviceId ?? null);
+          setSelectedServiceName(searchState.serviceName ?? "");
+        }
+      }
+    }, [
+      searchReturnFromSearch2,
+      searchState.search,
+      searchState.serviceId,
+      searchState.serviceName,
+      dispatch,
+    ]),
   );
 
   const displayValue = (searchQuery || (searchState.search ?? "")).trim();
@@ -276,13 +299,15 @@ export default function SearchScreen() {
 
   const handleSearchBoxPress = () => {
     const sid = selectedServiceId ?? searchState.serviceId ?? null;
+    const query = (searchQuery || (searchState.search ?? "")).trim();
     router.push({
       pathname: "./search2",
       params: {
         popularServices: params.popularServices ?? "",
-        searchQuery: (searchQuery || (searchState.search ?? "")).trim(),
+        searchQuery: query,
         serviceId: sid != null ? String(sid) : "",
         serviceName: selectedServiceName || (searchState.serviceName ?? ""),
+        fromSearchScreen: "1",
       },
     });
   };
