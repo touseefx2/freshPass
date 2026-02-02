@@ -86,10 +86,12 @@ export default function ExploreScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const listStyles = useMemo(() => createListStyles(theme), [colors]);
-  const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
-  const router = useRouter();
   const user = useAppSelector((state) => state.user);
+  const location = useAppSelector((state) => state.user.location);
+  const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
+
+  console.log("----------->selectedDateISO", selectedDateISO);
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
   );
@@ -129,6 +131,7 @@ export default function ExploreScreen() {
   useEffect(() => {
     setSelectedServiceFilter(null);
     setSelectedSubscriptionFilter(null);
+    dispatch(clearSearchState());
   }, [selectedCategory]);
 
   const handleServiceFilterSelect = (
@@ -213,13 +216,21 @@ export default function ExploreScreen() {
     try {
       setDealsLoading(true);
       setDealsError(false);
-      let url = businessEndpoints.businesses();
-      url = `${url}?type=featured`;
+      const baseUrl = businessEndpoints.businesses();
+      const params: string[] = [];
+      params.push("type=featured");
       if (selectedCategory) {
-        url = `${url}&category_ids=${selectedCategory}`;
+        params.push(`category_ids=${selectedCategory}`);
       }
-
-      // url = `${url}?sort=completed_appointments&direction=desc`;
+      if (location?.lat && location?.long) {
+        params.push(`latitude=${location.lat}`);
+        params.push(`longitude=${location.long}`);
+        params.push("radius_km=100");
+      }
+      if (selectedDateISO) {
+      }
+      const url =
+        params.length > 0 ? `${baseUrl}?${params.join("&")}` : baseUrl;
 
       const response = await ApiService.get<{
         success: boolean;
@@ -295,17 +306,15 @@ export default function ExploreScreen() {
       if (sortBy === "recommended") {
         params.push(`sort=completed_appointments`, `direction=desc`);
       }
+      if (location?.lat && location?.long) {
+        params.push(`latitude=${location.lat}`);
+        params.push(`longitude=${location.long}`);
+        params.push("radius_km=100");
+      }
 
       if (params.length > 0) {
         url = `${url}?${params.join("&")}`;
       }
-      // if (userLocation?.lat && userLocation?.long) {
-      //   url += `&latitude=${userLocation.lat}`;
-      //   url += `&longitude=${userLocation.long}`;
-      //   url += `&radius_km=20`;
-      // }
-
-      console.log("----------->url", url);
 
       const response = await ApiService.get<{
         success: boolean;
@@ -432,7 +441,13 @@ export default function ExploreScreen() {
           selectedCategory ? Number(selectedCategory) : categories?.[0]?.id,
         );
       }
-    }, [selectedCategory, selectedServiceFilter, selectedSubscriptionFilter]),
+    }, [
+      selectedCategory,
+      selectedServiceFilter,
+      selectedSubscriptionFilter,
+      location,
+      selectedDateISO,
+    ]),
   );
 
   return (
