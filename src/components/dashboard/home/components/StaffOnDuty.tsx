@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -129,6 +130,7 @@ interface StaffOnDutyProps {
 export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const router = useRouter();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
@@ -169,7 +171,13 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
           contentContainerStyle={styles.staffScrollContent}
         >
           {data.slice(0, 8).map((staff, index) => (
-            <View
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/(main)/staffDetail",
+                  params: { id: String(staff.id) },
+                })
+              }
               key={staff.id}
               style={[styles.staffItem, index === 0 && styles.staffItemFirst]}
             >
@@ -182,7 +190,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
                         ? staff.user.profile_image_url
                         : process.env.EXPO_PUBLIC_API_BASE_URL +
                           staff.user.profile_image_url
-                      : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
+                      : process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "",
                   }}
                   style={styles.staffAvatarImage}
                 />
@@ -190,7 +198,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
               <Text numberOfLines={1} style={styles.staffName}>
                 {staff?.name ?? ""}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       )}

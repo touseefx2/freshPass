@@ -736,7 +736,7 @@ export default function StaffAvailabilityScreen() {
         success: boolean;
         message: string;
         data?: any;
-      }>(staffEndpoints.details, requestBody, config);
+      }>(staffEndpoints.profile, requestBody, config);
 
       if (response.success) {
         showBanner(

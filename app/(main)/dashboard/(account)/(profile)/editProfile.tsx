@@ -1021,10 +1021,10 @@ export default function EditProfileScreen() {
             fileExtension === "jpg" || fileExtension === "jpeg"
               ? "image/jpeg"
               : fileExtension === "png"
-                ? "image/png"
-                : fileExtension === "webp"
-                  ? "image/webp"
-                  : "image/jpeg";
+              ? "image/png"
+              : fileExtension === "webp"
+              ? "image/webp"
+              : "image/jpeg";
 
           // Use staff-specific field name when updating staff profile
           const imageFieldName =
@@ -1046,7 +1046,7 @@ export default function EditProfileScreen() {
 
       // Staff profile uses staff endpoints
       if (user.userRole === "staff") {
-        endpoint = staffEndpoints.details;
+        endpoint = staffEndpoints.profile;
       }
 
       // API call with FormData

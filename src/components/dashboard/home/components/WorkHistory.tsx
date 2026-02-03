@@ -144,7 +144,7 @@ export default function WorkHistory({
           </TouchableOpacity>
         )}
       </View>
-      {!data  ? (
+      {!data ? (
         <Skeleton screenType="WorkHistory" styles={styles} />
       ) : displayedItems.length > 0 ? (
         displayedItems.map((item, index) => (

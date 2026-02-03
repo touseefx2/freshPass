@@ -90,7 +90,7 @@ export default function CompleteStaffProfile() {
         // Description is optional; backend expects field, send empty string if not provided
         formData.append(
           "description",
-          aboutYourself.trim().length > 0 ? aboutYourself.trim() : ""
+          aboutYourself.trim().length > 0 ? aboutYourself.trim() : "",
         );
 
         // Profile image is optional; only append if user selected one
@@ -111,7 +111,7 @@ export default function CompleteStaffProfile() {
             type: mimeType,
             name: fileName,
           } as any);
-        }else{
+        } else {
           formData.append("remove_image", "true");
         }
 
@@ -137,11 +137,11 @@ export default function CompleteStaffProfile() {
             closed: !dayData.isOpen,
             opening_time: formatTimeToHHMM(
               dayData.fromHours,
-              dayData.fromMinutes
+              dayData.fromMinutes,
             ),
             closing_time: formatTimeToHHMM(
               dayData.tillHours,
-              dayData.tillMinutes
+              dayData.tillMinutes,
             ),
             break_hours: breakHours,
           };
@@ -156,7 +156,7 @@ export default function CompleteStaffProfile() {
         success: boolean;
         message: string;
         data?: any;
-      }>(staffEndpoints.details, requestBody, config);
+      }>(staffEndpoints.profile, requestBody, config);
 
       if (response.success) {
         if (currentStep <= 1) {
@@ -166,7 +166,7 @@ export default function CompleteStaffProfile() {
               description: response.data?.description ?? "",
               profile_image_url:
                 (response.data as any)?.profile_image_url ?? null,
-            })
+            }),
           );
           dispatch(goToNextStep());
         } else if (currentStep > 1) {
@@ -178,7 +178,7 @@ export default function CompleteStaffProfile() {
           "Error",
           response.message || "Failed to save step data",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -187,7 +187,7 @@ export default function CompleteStaffProfile() {
         "Error",
         error.message || "Failed to save step data. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsSubmitting(false);
@@ -195,7 +195,7 @@ export default function CompleteStaffProfile() {
   };
 
   useEffect(() => {
-    ApiService.post(staffEndpoints.details, { is_onboarded: true });
+    ApiService.post(staffEndpoints.profile, { is_onboarded: true });
   }, []);
 
   useFocusEffect(
@@ -216,11 +216,11 @@ export default function CompleteStaffProfile() {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onHardwareBackPress
+        onHardwareBackPress,
       );
 
       return () => subscription.remove();
-    }, [currentStep, dispatch])
+    }, [currentStep, dispatch]),
   );
 
   const isContinueDisabled = useMemo(() => {
