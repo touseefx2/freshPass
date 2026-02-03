@@ -225,6 +225,8 @@ export const socialMediaEndpoints = {
 export const hairTryonEndpoints = {
   generateWithReplicate: `/api/hair_tryon/generate_with_replicate`,
   hairPipeline: `/api/hair_tryon/hair_pipeline`,
+  hairPipelineStatus: (jobId: string) =>
+    `/api/hair_tryon/hair_pipeline/status/${jobId}`,
 };
 
 /**

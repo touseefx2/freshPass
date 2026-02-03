@@ -593,5 +593,8 @@
   "useAnotherRequest": "Use another request",
   "seeYourApiStatus": "See your API status",
   "aiRequests": "AI Requests",
-  "jobId": "Job ID"
+  "jobId": "Job ID",
+  "aiResults": "AI Result",
+  "noDataFound": "No data found",
+  "download": "Download"
 }

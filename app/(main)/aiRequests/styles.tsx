@@ -119,9 +119,9 @@ export const createStyles = (theme: Theme) =>
     jobCardSeeResult: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.primary,
+      color: theme.lightGreen,
       textDecorationLine: "underline",
-      textDecorationColor: theme.primary,
+      textDecorationColor: theme.lightGreen,
       alignSelf: "flex-end",
     },
   });

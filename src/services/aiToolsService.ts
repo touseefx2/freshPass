@@ -272,6 +272,41 @@ export class AiToolsService {
   }
 
   /**
+   * Get hair pipeline job status and result
+   * @param jobId - Job ID from submitHairPipeline response
+   * @returns Promise with status, attributes, recommendations, images
+   */
+  static async getHairPipelineStatus(jobId: string): Promise<any> {
+    const hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      const error = new Error("No internet connection");
+      (error as any).isNoInternet = true;
+      logAiToolError(
+        "GET",
+        hairTryonEndpoints.hairPipelineStatus(jobId),
+        error,
+      );
+      throw error;
+    }
+
+    const endpoint = hairTryonEndpoints.hairPipelineStatus(jobId);
+
+    try {
+      const response: AxiosResponse = await aiToolClient.get(endpoint);
+      logAiToolResponse("GET", endpoint, response.status, response.data);
+      return response.data;
+    } catch (error: any) {
+      logAiToolError("GET", endpoint, error);
+      const errorMessage = getErrorMessage(error);
+      const customError = new Error(errorMessage);
+      (customError as any).status = error.response?.status;
+      (customError as any).data = error.response?.data;
+      (customError as any).isNoInternet = error.isNoInternet;
+      throw customError;
+    }
+  }
+
+  /**
    * Generate Hair Tryon
    * @param sourceImageUri - URI of the source image
    * @param prompt - Hairstyle description prompt

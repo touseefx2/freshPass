@@ -72,7 +72,10 @@ export default function AiRequests() {
                 <Text
                   style={styles.jobCardSeeResult}
                   onPress={() => {
-                    router.push("/aiResults");
+                    router.push({
+                      pathname: "/aiResults",
+                      params: { jobId: job.job_id },
+                    });
                   }}
                 >
                   {t("seeResult")}
