@@ -6,19 +6,19 @@ interface NotificationContextType {
     title: string,
     message: string,
     type: "success" | "error" | "warning" | "info",
-    duration?: number
+    duration?: number,
   ) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export const useNotificationContext = () => {
   const context = useContext(NotificationContext);
   if (!context) {
     throw new Error(
-      "useNotificationContext must be used within a NotificationProvider"
+      "useNotificationContext must be used within a NotificationProvider",
     );
   }
   return context;
@@ -43,7 +43,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     title: string,
     message: string,
     type: "success" | "error" | "warning" | "info",
-    duration: number = 4000
+    duration: number = 4000,
   ) => {
     setBannerTitle(title);
     setBannerMessage(message);
@@ -70,4 +70,3 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     </NotificationContext.Provider>
   );
 };
-

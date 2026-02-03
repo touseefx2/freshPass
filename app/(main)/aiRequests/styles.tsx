@@ -17,7 +17,6 @@ export const createStyles = (theme: Theme) =>
       flexGrow: 1,
       paddingVertical: moderateHeightScale(24),
       paddingHorizontal: moderateWidthScale(20),
-      justifyContent: "center",
     },
     headerContainer: {
       alignItems: "center",
@@ -72,16 +71,49 @@ export const createStyles = (theme: Theme) =>
       color: theme.white,
       textAlign: "center",
     },
-    seeRequestsHistoryButton: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(16),
+    jobCard: {
+      flexDirection: "row",
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(12),
+      overflow: "hidden",
     },
-    seeRequestsHistoryText: {
-      fontSize: fontSize.size14,
+    jobCardImageWrap: {
+      width: heightScale(72),
+      height: heightScale(72),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      overflow: "hidden",
+      backgroundColor: theme.lightGreen2,
+    },
+    jobCardImage: {
+      width: "100%",
+      height: "100%",
+    },
+    jobCardContent: {
+      flex: 1,
+      marginLeft: moderateWidthScale(12),
+      justifyContent: "center",
+    },
+    jobCardLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen4,
+      marginBottom: moderateHeightScale(2),
+    },
+    jobCardValue: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+      marginBottom: moderateHeightScale(4),
+    },
+    jobCardPrompt: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textDecorationLine: "underline",
-      textDecorationColor: theme.lightGreen,
-      textAlign: "right",
+      color: theme.lightGreen4,
     },
   });

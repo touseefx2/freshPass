@@ -82,6 +82,8 @@ export default function DashboardLayout() {
     segments.includes("userReviews");
   const isStaffDetailScreen =
     Array.isArray(segments) && segments.includes("staffDetail");
+  const isAiRequestsScreen =
+    Array.isArray(segments) && segments.includes("aiRequests");
   const isAppointmentDetailScreen =
     Array.isArray(segments) &&
     segments.includes("(home)") &&
@@ -156,6 +158,7 @@ export default function DashboardLayout() {
   const shouldHideAiChat =
     isUserReviewsScreen ||
     isStaffDetailScreen ||
+    isAiRequestsScreen ||
     isAppointmentDetailScreen ||
     isCalendarAppointmentDetailScreen ||
     isProfileScreen ||

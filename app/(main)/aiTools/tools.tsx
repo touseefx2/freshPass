@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import {
   ScrollView,
   View,
@@ -36,6 +42,10 @@ import {
 } from "react-native-safe-area-context";
 import GeneratePostResultModal from "@/src/components/GeneratePostResultModal";
 import FullImageModal from "@/src/components/fullImageModal";
+import HairPipelineProcessingModal, {
+  type HairPipelineModalState,
+  INITIAL_HAIR_PIPELINE_STATE,
+} from "@/src/components/HairPipelineProcessingModal";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
@@ -97,12 +107,68 @@ export default function Tools() {
   const [resultModalVisible, setResultModalVisible] = useState(false);
   const [fullImageModalVisible, setFullImageModalVisible] = useState(false);
 
+  // Hair pipeline processing modal state (single object)
+  const [hairPipelineState, setHairPipelineState] =
+    useState<HairPipelineModalState>(INITIAL_HAIR_PIPELINE_STATE);
+  const hairPipelineStartTimeRef = useRef<number | null>(null);
+  const hairPipelineIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedResult, setGeneratedResult] = useState<any>(null);
 
   const generateId = () => {
     return `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // Hair pipeline: progress bar over estimated time
+  useEffect(() => {
+    if (!hairPipelineState.visible || hairPipelineState.complete) return;
+    const totalMs = hairPipelineState.estimatedMinutes * 60 * 1000;
+    const start = hairPipelineStartTimeRef.current ?? Date.now();
+    hairPipelineStartTimeRef.current = start;
+
+    const tick = () => {
+      const elapsed = Date.now() - start;
+      const pct = Math.min(100, (elapsed / totalMs) * 100);
+      setHairPipelineState((prev) => ({ ...prev, progress: pct }));
+      if (pct >= 100) {
+        setHairPipelineState((prev) => ({ ...prev, complete: true }));
+        if (hairPipelineIntervalRef.current) {
+          clearInterval(hairPipelineIntervalRef.current);
+          hairPipelineIntervalRef.current = null;
+        }
+      }
+    };
+
+    tick();
+    hairPipelineIntervalRef.current = setInterval(tick, 500);
+    return () => {
+      if (hairPipelineIntervalRef.current) {
+        clearInterval(hairPipelineIntervalRef.current);
+        hairPipelineIntervalRef.current = null;
+      }
+    };
+  }, [
+    hairPipelineState.visible,
+    hairPipelineState.estimatedMinutes,
+    hairPipelineState.complete,
+  ]);
+
+  const closeHairPipelineModal = useCallback(() => {
+    if (hairPipelineIntervalRef.current) {
+      clearInterval(hairPipelineIntervalRef.current);
+      hairPipelineIntervalRef.current = null;
+    }
+    setHairPipelineState(INITIAL_HAIR_PIPELINE_STATE);
+    hairPipelineStartTimeRef.current = null;
+  }, []);
+
+  const handleHairPipelineSeeStatus = () => {
+    closeHairPipelineModal();
+    router.push("/aiRequests");
   };
 
   const handleSelectFromGallery = useCallback(async () => {
@@ -420,15 +486,28 @@ export default function Tools() {
       let response;
 
       if (toolType === "Hair Tryon") {
-        // Generate Hair Tryon (prompt required only for withPromptAndImage)
-        const prompt =
-          hairTryonSelectedType === "withPromptAndImage"
-            ? hairTryonPrompt.trim()
-            : "";
+        if (hairTryonSelectedType === "processing") {
+          // Hair pipeline: start background job and show processing modal
+          const pipelineResponse = await AiToolsService.startHairPipeline(
+            hairTryonSourceImage!,
+          );
+          hairPipelineStartTimeRef.current = Date.now();
+          setHairPipelineState({
+            visible: true,
+            jobId: pipelineResponse.job_id,
+            estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
+            progress: 0,
+            imageUri: hairTryonSourceImage,
+            complete: false,
+          });
+          return;
+        }
+        // With prompt and image: use existing generateHairTryon
+        const prompt = hairTryonPrompt.trim();
         response = await AiToolsService.generateHairTryon(
           hairTryonSourceImage!,
           prompt,
-          true, // generate_all_views = true
+          true,
         );
       } else if (toolType === "Generate Post") {
         // Generate Post
@@ -1125,6 +1204,12 @@ export default function Tools() {
         visible={fullImageModalVisible}
         onClose={() => setFullImageModalVisible(false)}
         imageUri={hairTryonSourceImage || null}
+      />
+
+      <HairPipelineProcessingModal
+        state={hairPipelineState}
+        onClose={closeHairPipelineModal}
+        onSeeStatus={handleHairPipelineSeeStatus}
       />
     </SafeAreaView>
   );

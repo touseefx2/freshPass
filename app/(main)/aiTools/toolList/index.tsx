@@ -142,6 +142,14 @@ export default function ToolList() {
     <View style={styles.safeArea}>
       <StackHeader title={t("aiTools")} />
 
+      <TouchableOpacity
+        style={styles.seeRequestsHistoryButton}
+        activeOpacity={0.7}
+        onPress={() => router.push("/aiRequests")}
+      >
+        <Text style={styles.seeRequestsHistoryText}>Ai Requests</Text>
+      </TouchableOpacity>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

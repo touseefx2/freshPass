@@ -585,5 +585,13 @@
   "failedToGenerate": "Failed to generate. Please try again.",
   "hairTryon": "Hair Tryon",
   "socialMediaAiTool": "Social Media AI Tool",
-  "aiTool": "AI Tool"
+  "aiTool": "AI Tool",
+  "yourApiIsProcessing": "Your API is processing",
+  "estimatedTimeMinutes": "~{{count}} min",
+  "whenDoneYouWillGetNotification": "When processing is done, you'll get a notification.",
+  "seeResult": "See result",
+  "useAnotherRequest": "Use another request",
+  "seeYourApiStatus": "See your API status",
+  "aiRequests": "AI Requests",
+  "jobId": "Job ID"
 }

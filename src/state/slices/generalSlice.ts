@@ -181,9 +181,9 @@ const generalSlice = createSlice({
       const itemSearch = (item.search ?? "").toLowerCase();
       const idx = state.recentSearches.findIndex((s) => {
         const searchStr =
-          typeof s === "string" ? s : ((s as SearchState).search ?? "");
+          typeof s === "string" ? s : (s as SearchState).search ?? "";
         const sid =
-          typeof s === "string" ? null : ((s as SearchState).serviceId ?? null);
+          typeof s === "string" ? null : (s as SearchState).serviceId ?? null;
         return (
           searchStr.toLowerCase() === itemSearch &&
           sid === (item.serviceId ?? null)
