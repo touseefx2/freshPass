@@ -629,11 +629,11 @@ export default function subscriptionCustomer() {
 
       try {
         const statusParam = filterStatus === "all" ? undefined : filterStatus;
-        const baseUrl = businessEndpoints.subscriptions(statusParam);
+        const baseUrl = businessEndpoints.subscriptions(statusParam, "user");
         // Use ? if no query params exist, otherwise use &
         const separator = baseUrl.includes("?") ? "&" : "?";
         const response = await ApiService.get<SubscriptionResponse>(
-          `${baseUrl}${separator}page=${page}&per_page=10`
+          `${baseUrl}${separator}page=${page}&per_page=10`,
         );
 
         if (response.success && response.data?.data) {
@@ -658,7 +658,7 @@ export default function subscriptionCustomer() {
             "Error",
             err.message || "Failed to load subscriptions",
             "error",
-            2500
+            2500,
           );
         }
       } finally {
@@ -666,7 +666,7 @@ export default function subscriptionCustomer() {
         setLoadingMore(false);
       }
     },
-    [showBanner, statusFilter]
+    [showBanner, statusFilter],
   );
 
   useEffect(() => {
@@ -694,7 +694,7 @@ export default function subscriptionCustomer() {
       params: {
         businessId: subscription.businessId.toString(),
         subscriptionId: subscription.id.toString(),
-        item:JSON.stringify(subscription)
+        item: JSON.stringify(subscription),
       },
     });
   };
@@ -704,7 +704,7 @@ export default function subscriptionCustomer() {
       setSelectedSubscription(subscription);
       setCancelModalVisible(true);
     },
-    []
+    [],
   );
 
   const handleConfirmCancellation = useCallback(async () => {
@@ -723,7 +723,7 @@ export default function subscriptionCustomer() {
           "Success",
           "Subscription cancelled successfully",
           "success",
-          2500
+          2500,
         );
         setCancelModalVisible(false);
         setSelectedSubscription(null);
@@ -738,7 +738,7 @@ export default function subscriptionCustomer() {
           "Error",
           response.message || "Failed to cancel subscription",
           "error",
-          2500
+          2500,
         );
       }
     } catch (err: any) {
@@ -746,7 +746,7 @@ export default function subscriptionCustomer() {
         "Error",
         err.message || "Failed to cancel subscription",
         "error",
-        2500
+        2500,
       );
     } finally {
       setIsCancelling(false);
@@ -947,7 +947,7 @@ export default function subscriptionCustomer() {
       handleCancelSubscription,
       handleBookAppointment,
       formatEndsAtDate,
-    ]
+    ],
   );
 
   const renderFooter = useCallback(() => {
@@ -984,7 +984,7 @@ export default function subscriptionCustomer() {
         </View>
       );
     },
-    [statusFilter, styles]
+    [statusFilter, styles],
   );
 
   const renderHeader = useCallback(() => {
