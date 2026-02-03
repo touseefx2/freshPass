@@ -88,8 +88,8 @@ export default function OnboardingModal({
             <Button
               title={t("logout")}
               onPress={handleLogout}
-              backgroundColor={(colors as Theme).secondary}
-              textColor={(colors as Theme).text}
+              backgroundColor={(colors as Theme).lightBeige}
+              textColor={(colors as Theme).darkGreen}
             />
           </View>
         </View>
