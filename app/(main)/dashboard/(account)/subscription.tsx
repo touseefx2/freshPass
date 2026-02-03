@@ -19,6 +19,7 @@ import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { LinearGradient } from "expo-linear-gradient";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
+import { setActionLoader } from "@/src/state/slices/generalSlice";
 
 interface SubscriptionData {
   id: number;
@@ -456,6 +457,10 @@ export default function SubscriptionScreen() {
       fetchSubscription();
     }, []),
   );
+
+  const cancelTrialSubscription = async () => {
+    dispatch(setActionLoader(true));
+  };
 
   const handleCancel = () => {
     if (!subscription) return;
