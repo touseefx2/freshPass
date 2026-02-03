@@ -809,6 +809,9 @@ export default function Tools() {
               <Text style={styles.hairTryonOptionTitle}>
                 With prompt and image
               </Text>
+              <View style={styles.hairTryonOptionBadge}>
+                <Text style={styles.hairTryonOptionBadgeText}>~5 min</Text>
+              </View>
             </View>
             <Text style={styles.hairTryonOptionSubtitle}>
               Describe + upload

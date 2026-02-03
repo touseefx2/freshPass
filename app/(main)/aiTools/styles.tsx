@@ -274,8 +274,10 @@ export const createStyles = (theme: Theme) =>
       color: theme.text,
     },
     hairTryonChangeSelectionText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.primary,
+      color: theme.lightGreen,
+      textDecorationLine: "underline",
+      textDecorationColor: theme.lightGreen,
     },
   });
