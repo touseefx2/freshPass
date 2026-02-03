@@ -512,209 +512,185 @@ export default function SubscriptionScreen() {
     }
   };
 
-  if (loading && !subscription) {
-    return (
-      <SafeAreaView edges={["bottom"]} style={styles.container}>
-        <StackHeader title="Subscription" />
+  return (
+    <SafeAreaView edges={["bottom"]} style={styles.container}>
+      <StackHeader title="Subscription" />
+      {loading && !subscription ? (
         <View style={styles.content}>
           <Skeleton screenType="BusinessPlans" styles={styles} />
         </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (apiError) {
-    return (
-      <SafeAreaView edges={["bottom"]} style={styles.container}>
-        <StackHeader title="Subscription" />
+      ) : apiError ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <RetryButton onPress={fetchSubscription} loading={loading} />
         </View>
-      </SafeAreaView>
-    );
-  }
+      ) : !subscription ? (
+        <>
+          <View style={styles.emptyContainer}>
+            <Feather
+              name="credit-card"
+              size={moderateWidthScale(64)}
+              color={theme.lightGreen}
+              style={styles.emptyIcon}
+            />
+            <Text style={styles.emptyText}>No active subscription found</Text>
+          </View>
+          <View style={styles.buttonContainer}>
+            <Button
+              title="Buy Plan"
+              onPress={() => setBusinessPlansModalVisible(true)}
+            />
+          </View>
+        </>
+      ) : (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Trial Status Banner */}
+          {isTrialing && (
+            <View style={styles.trialBanner}>
+              <LinearGradient
+                colors={[theme.darkGreenLight, theme.darkGreen]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.trialBannerGradient}
+              >
+                <View style={styles.trialBannerLeft}>
+                  <Text style={styles.trialBannerTitle}>
+                    🎉 Free Trial Active
+                  </Text>
+                  <Text style={styles.trialBannerSubtitle}>
+                    Your trial ends on{" "}
+                    {formatTrialEndDate(subscription.trialEndsAt)}
+                  </Text>
+                </View>
+                <View style={styles.trialBannerIcon}>
+                  <Feather
+                    name="gift"
+                    size={moderateWidthScale(24)}
+                    color={theme.white}
+                  />
+                </View>
+              </LinearGradient>
+            </View>
+          )}
 
-  if (!subscription) {
-    return (
-      <SafeAreaView edges={["bottom"]} style={styles.container}>
-        <StackHeader title="Subscription" />
-        <View style={styles.emptyContainer}>
-          <Feather
-            name="credit-card"
-            size={moderateWidthScale(64)}
-            color={theme.lightGreen}
-            style={styles.emptyIcon}
-          />
-          <Text style={styles.emptyText}>No active subscription found</Text>
-        </View>
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Buy Plan"
-            onPress={() => setBusinessPlansModalVisible(true)}
-          />
-        </View>
-        <BusinessPlansModal
-          visible={businessPlansModalVisible}
-          onClose={() => setBusinessPlansModalVisible(false)}
-          onSuccess={fetchSubscription}
-        />
-      </SafeAreaView>
-    );
-  }
+          {/* Header Card with Gradient */}
+          <View style={styles.headerCard}>
+            <LinearGradient
+              colors={[theme.darkGreen, theme.darkGreenLight]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerGradient}
+            >
+              <View style={styles.headerTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.planName}>
+                    {subscription.subscriptionPlan}
+                  </Text>
+                  <View style={styles.planPriceContainer}>
+                    <Text style={styles.currencySymbol}>$</Text>
+                    <Text style={styles.planPrice}>
+                      {subscription.subscriptionPlanPrice}
+                    </Text>
+                    <Text style={styles.pricePeriod}>/month</Text>
+                  </View>
+                </View>
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusText}>
+                    {subscription.status.toUpperCase()}
+                  </Text>
+                </View>
+              </View>
+              {subscription.subscriptionPlanDescription && (
+                <Text style={styles.planDescription}>
+                  {capitalizeFirstLetter(
+                    subscription.subscriptionPlanDescription,
+                  )}
+                </Text>
+              )}
+            </LinearGradient>
+          </View>
 
-  return (
-    <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Subscription" />
-      <ScrollView
-        style={styles.content}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Trial Status Banner */}
-        {isTrialing && (
-          <View style={styles.trialBanner}>
+          {/* Card Last 4 Digits Card */}
+          <View style={styles.daysRemainingCard}>
             <LinearGradient
               colors={[theme.darkGreenLight, theme.darkGreen]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.trialBannerGradient}
+              style={styles.cardGradient}
             >
-              <View style={styles.trialBannerLeft}>
-                <Text style={styles.trialBannerTitle}>
-                  🎉 Free Trial Active
-                </Text>
-                <Text style={styles.trialBannerSubtitle}>
-                  Your trial ends on{" "}
-                  {formatTrialEndDate(subscription.trialEndsAt)}
-                </Text>
-              </View>
-              <View style={styles.trialBannerIcon}>
-                <Feather
-                  name="gift"
-                  size={moderateWidthScale(24)}
-                  color={theme.white}
-                />
+              <View style={styles.cardMiddle}>
+                <Text style={styles.cardLabel}>Card Last 4 Digits</Text>
+                <View style={styles.cardNumberContainer}>
+                  <Text style={styles.cardNumberText}>
+                    {formatCardNumber(subscription.cardLastFour)}
+                  </Text>
+                </View>
               </View>
             </LinearGradient>
           </View>
-        )}
 
-        {/* Header Card with Gradient */}
-        <View style={styles.headerCard}>
-          <LinearGradient
-            colors={[theme.darkGreen, theme.darkGreenLight]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <View style={styles.headerTop}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.planName}>
-                  {subscription.subscriptionPlan}
-                </Text>
-                <View style={styles.planPriceContainer}>
-                  <Text style={styles.currencySymbol}>$</Text>
-                  <Text style={styles.planPrice}>
-                    {subscription.subscriptionPlanPrice}
+          {/* Subscription Details */}
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle}>Subscription Details</Text>
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconContainer}>
+                  <Feather
+                    name="calendar"
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreenLight}
+                  />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Days Remaining</Text>
+                  <Text style={styles.infoValue}>
+                    {subscription.remainingDays}
                   </Text>
-                  <Text style={styles.pricePeriod}>/month</Text>
                 </View>
               </View>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>
-                  {subscription.status.toUpperCase()}
-                </Text>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconContainer}>
+                  <Feather
+                    name="clock"
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreenLight}
+                  />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>
+                    {isTrialing ? "Trial Started" : "Subscription Started"}
+                  </Text>
+                  <Text style={styles.infoValue}>
+                    {subscription.createdAt || "N/A"}
+                  </Text>
+                </View>
               </View>
-            </View>
-            {subscription.subscriptionPlanDescription && (
-              <Text style={styles.planDescription}>
-                {capitalizeFirstLetter(
-                  subscription.subscriptionPlanDescription,
-                )}
-              </Text>
-            )}
-          </LinearGradient>
-        </View>
-
-        {/* Card Last 4 Digits Card */}
-        <View style={styles.daysRemainingCard}>
-          <LinearGradient
-            colors={[theme.darkGreenLight, theme.darkGreen]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardGradient}
-          >
-            <View style={styles.cardMiddle}>
-              <Text style={styles.cardLabel}>Card Last 4 Digits</Text>
-              <View style={styles.cardNumberContainer}>
-                <Text style={styles.cardNumberText}>
-                  {formatCardNumber(subscription.cardLastFour)}
-                </Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* Subscription Details */}
-        <View style={styles.infoSection}>
-          <Text style={styles.sectionTitle}>Subscription Details</Text>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconContainer}>
-                <Feather
-                  name="calendar"
-                  size={moderateWidthScale(20)}
-                  color={theme.darkGreenLight}
-                />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Days Remaining</Text>
-                <Text style={styles.infoValue}>
-                  {subscription.remainingDays}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconContainer}>
-                <Feather
-                  name="clock"
-                  size={moderateWidthScale(20)}
-                  color={theme.darkGreenLight}
-                />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>
-                  {isTrialing ? "Trial Started" : "Subscription Started"}
-                </Text>
-                <Text style={styles.infoValue}>
-                  {subscription.createdAt || "N/A"}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.infoRow}>
-              <View style={styles.infoIconContainer}>
-                <Feather
-                  name="calendar"
-                  size={moderateWidthScale(20)}
-                  color={theme.darkGreenLight}
-                />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoLabel}>Next Payment Date</Text>
-                <Text style={styles.infoValue}>
-                  {subscription.nextPaymentDate || "N/A"}
-                </Text>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconContainer}>
+                  <Feather
+                    name="calendar"
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreenLight}
+                  />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Next Payment Date</Text>
+                  <Text style={styles.infoValue}>
+                    {subscription.nextPaymentDate || "N/A"}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
 
-        {/* Cancel Trial Button */}
-        {isTrialing ||
-          (isActive && (
+          {/* Cancel Trial Button */}
+          {(isTrialing || isActive) && (
             <View style={styles.buttonContainer}>
               <Button
                 title={isTrialing ? "Cancel Trial" : "Cancel Subscription"}
@@ -724,8 +700,16 @@ export default function SubscriptionScreen() {
                 backgroundColor={theme.buttonBack}
               />
             </View>
-          ))}
-      </ScrollView>
+          )}
+        </ScrollView>
+      )}
+      {!subscription && (
+        <BusinessPlansModal
+          visible={businessPlansModalVisible}
+          onClose={() => setBusinessPlansModalVisible(false)}
+          onSuccess={fetchSubscription}
+        />
+      )}
     </SafeAreaView>
   );
 }
