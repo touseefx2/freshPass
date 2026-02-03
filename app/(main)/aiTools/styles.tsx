@@ -86,7 +86,8 @@ export const createStyles = (theme: Theme) =>
     },
     mediaItem: {
       position: "relative",
-      width: (SCREEN_WIDTH - moderateWidthScale(40) - moderateWidthScale(24)) / 3,
+      width:
+        (SCREEN_WIDTH - moderateWidthScale(40) - moderateWidthScale(24)) / 3,
       aspectRatio: 1,
       borderRadius: moderateWidthScale(8),
       overflow: "hidden",
@@ -181,5 +182,100 @@ export const createStyles = (theme: Theme) =>
       fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
       textAlignVertical: "top",
+    },
+    hairTryonOptionsContainer: {
+      flexDirection: "column",
+      gap: moderateHeightScale(16),
+      marginVertical: moderateHeightScale(24),
+    },
+    hairTryonOptionCard: {
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 2,
+      borderColor: theme.borderLine,
+      padding: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
+    },
+    hairTryonOptionCardSelected: {
+      borderColor: theme.primary,
+      backgroundColor: theme.lightGreen1,
+    },
+    hairTryonOptionCardDisabled: {
+      borderColor: theme.borderLine,
+      opacity: 0.7,
+    },
+    hairTryonOptionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(8),
+    },
+    hairTryonOptionTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    hairTryonOptionBadge: {
+      backgroundColor: theme.lightGreen4,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(20),
+    },
+    hairTryonOptionBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    hairTryonOptionSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      marginBottom: moderateHeightScale(8),
+    },
+    hairTryonOptionDesc: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(12),
+      lineHeight: 20,
+    },
+    hairTryonOptionButton: {
+      alignSelf: "flex-start",
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(8),
+      marginTop: moderateHeightScale(4),
+    },
+    hairTryonOptionButtonActive: {
+      backgroundColor: theme.primary,
+    },
+    hairTryonOptionButtonInactive: {
+      backgroundColor: theme.grey15,
+    },
+    hairTryonOptionButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+    },
+    hairTryonOptionButtonTextActive: {
+      color: theme.white,
+    },
+    hairTryonOptionButtonTextInactive: {
+      color: theme.lightGreen,
+    },
+    hairTryonChangeSelectionRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginVertical: moderateHeightScale(16),
+    },
+    hairTryonSelectedTypeLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
+    hairTryonChangeSelectionText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.primary,
     },
   });

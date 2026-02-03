@@ -29,7 +29,10 @@ import {
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import GeneratePostResultModal from "@/src/components/GeneratePostResultModal";
 import FullImageModal from "@/src/components/fullImageModal";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
@@ -50,6 +53,8 @@ interface AudioFile {
   name: string;
 }
 
+export type HairTryonType = "processing" | "withPromptAndImage";
+
 export default function Tools() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -61,9 +66,7 @@ export default function Tools() {
   const theme = colors as Theme;
   const toolType = params.toolType || "";
   const headerTitle = toolType || "Ai Tools";
-const businessId = user?.business_id ?? ""
- 
-   
+  const businessId = user?.business_id ?? "";
 
   // State for Post (single image)
   const [postImage, setPostImage] = useState<string | null>(null);
@@ -74,12 +77,16 @@ const businessId = user?.business_id ?? ""
   // State for Reel (3-15 media files + optional audio)
   const [reelMedia, setReelMedia] = useState<MediaFile[]>([]);
   const [backgroundMusic, setBackgroundMusic] = useState<AudioFile | null>(
-    null
+    null,
   );
 
   // State for Hair Tryon (source image + prompt)
-  const [hairTryonSourceImage, setHairTryonSourceImage] = useState<string | null>(null);
+  const [hairTryonSourceImage, setHairTryonSourceImage] = useState<
+    string | null
+  >(null);
   const [hairTryonPrompt, setHairTryonPrompt] = useState<string>("");
+  const [hairTryonSelectedType, setHairTryonSelectedType] =
+    useState<HairTryonType | null>(null);
 
   // Modal states
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
@@ -91,7 +98,7 @@ const businessId = user?.business_id ?? ""
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedResult, setGeneratedResult] = useState<any>(null);
-  
+
   const generateId = () => {
     return `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
@@ -140,7 +147,7 @@ const businessId = user?.business_id ?? ""
               "Limit Exceeded",
               "You can select maximum 6 images. Only first 6 will be added.",
               "warning",
-              3000
+              3000,
             );
             const remaining = 6 - collageImages.length;
             setCollageImages([
@@ -171,7 +178,7 @@ const businessId = user?.business_id ?? ""
               "Limit Exceeded",
               "You can select maximum 15 media files. Only first 15 will be added.",
               "warning",
-              3000
+              3000,
             );
             const remaining = 15 - reelMedia.length;
             setReelMedia([...reelMedia, ...newMedia.slice(0, remaining)]);
@@ -186,7 +193,7 @@ const businessId = user?.business_id ?? ""
         "Error",
         "Failed to select media. Please try again.",
         "error",
-        3000
+        3000,
       );
     }
   }, [toolType, collageImages, reelMedia]);
@@ -221,7 +228,7 @@ const businessId = user?.business_id ?? ""
               "Limit Exceeded",
               "You can select maximum 6 images.",
               "warning",
-              3000
+              3000,
             );
             return;
           }
@@ -239,7 +246,7 @@ const businessId = user?.business_id ?? ""
               "Limit Exceeded",
               "You can select maximum 15 media files.",
               "warning",
-              3000
+              3000,
             );
             return;
           }
@@ -263,7 +270,7 @@ const businessId = user?.business_id ?? ""
         "Error",
         "Failed to take photo. Please try again.",
         "error",
-        3000
+        3000,
       );
     }
   }, [toolType, collageImages, reelMedia]);
@@ -276,7 +283,7 @@ const businessId = user?.business_id ?? ""
         setReelMedia(reelMedia.filter((media) => media.id !== id));
       }
     },
-    [toolType, collageImages, reelMedia]
+    [toolType, collageImages, reelMedia],
   );
 
   const handleDeletePostImage = useCallback(() => {
@@ -311,7 +318,7 @@ const businessId = user?.business_id ?? ""
             "Invalid File Type",
             "Please select an audio file in MP3, WAV, or M4A format.",
             "warning",
-            3000
+            3000,
           );
           return;
         }
@@ -328,7 +335,7 @@ const businessId = user?.business_id ?? ""
         "Error",
         "Failed to select audio file. Please try again.",
         "error",
-        3000
+        3000,
       );
     }
   }, []);
@@ -341,26 +348,38 @@ const businessId = user?.business_id ?? ""
           "Validation Error",
           "Please select an image.",
           "warning",
-          3000
+          3000,
         );
         return;
       }
     } else if (toolType === "Hair Tryon") {
+      if (!hairTryonSelectedType) {
+        showBanner(
+          "Validation Error",
+          "Please select a try-on type (Processing or With prompt and image).",
+          "warning",
+          3000,
+        );
+        return;
+      }
       if (!hairTryonSourceImage) {
         showBanner(
           "Validation Error",
           "Please select a source image.",
           "warning",
-          3000
+          3000,
         );
         return;
       }
-      if (!hairTryonPrompt.trim()) {
+      if (
+        hairTryonSelectedType === "withPromptAndImage" &&
+        !hairTryonPrompt.trim()
+      ) {
         showBanner(
           "Validation Error",
           "Please enter a hairstyle description.",
           "warning",
-          3000
+          3000,
         );
         return;
       }
@@ -370,7 +389,7 @@ const businessId = user?.business_id ?? ""
           "Validation Error",
           "Please select at least 2 images (maximum 6).",
           "warning",
-          3000
+          3000,
         );
         return;
       }
@@ -385,7 +404,7 @@ const businessId = user?.business_id ?? ""
           "Invalid File Type",
           "All images must be in JPEG, PNG, or JPG format.",
           "warning",
-          3000
+          3000,
         );
         return;
       }
@@ -395,7 +414,7 @@ const businessId = user?.business_id ?? ""
           "Validation Error",
           "Please select 3-15 media files (images or videos).",
           "warning",
-          3000
+          3000,
         );
         return;
       }
@@ -407,7 +426,7 @@ const businessId = user?.business_id ?? ""
         "Error",
         "Business ID not found. Please complete your business profile.",
         "error",
-        3000
+        3000,
       );
       return;
     }
@@ -419,24 +438,28 @@ const businessId = user?.business_id ?? ""
       let response;
 
       if (toolType === "Hair Tryon") {
-        // Generate Hair Tryon
+        // Generate Hair Tryon (prompt required only for withPromptAndImage)
+        const prompt =
+          hairTryonSelectedType === "withPromptAndImage"
+            ? hairTryonPrompt.trim()
+            : "";
         response = await AiToolsService.generateHairTryon(
           hairTryonSourceImage!,
-          hairTryonPrompt.trim(),
-          true // generate_all_views = true
+          prompt,
+          true, // generate_all_views = true
         );
       } else if (toolType === "Generate Post") {
         // Generate Post
         response = await AiToolsService.generatePost(
           businessId.toString(),
-          postImage!
+          postImage!,
         );
       } else if (toolType === "Generate Collage") {
         // Generate Collage
         const imageUris = collageImages.map((img) => img.uri);
         response = await AiToolsService.generateCollage(
           businessId.toString(),
-          imageUris
+          imageUris,
         );
       } else if (toolType === "Generate Reel") {
         // Generate Reel
@@ -448,7 +471,7 @@ const businessId = user?.business_id ?? ""
           businessId.toString(),
           mediaFiles,
           backgroundMusic?.uri,
-          backgroundMusic?.name
+          backgroundMusic?.name,
         );
       } else {
         throw new Error("Invalid tool type");
@@ -459,14 +482,14 @@ const businessId = user?.business_id ?? ""
       setResultModalVisible(true);
     } catch (error: any) {
       Logger.error(`Error generating ${toolType.toLowerCase()}:`, error);
-      
+
       // Handle no internet error
       if (error.isNoInternet) {
         showBanner(
           "No Internet Connection",
           "Please check your internet connection and try again.",
           "error",
-          2000
+          2000,
         );
         return;
       }
@@ -706,54 +729,194 @@ const businessId = user?.business_id ?? ""
     </>
   );
 
-  const renderHairTryonContent = () => (
-    <>
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>
-          Source Image <Text style={styles.required}>*</Text>
-        </Text>
-        <TouchableOpacity
-          style={styles.fileInput}
-          onPress={openImagePicker}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.fileInputText}>
-            {hairTryonSourceImage ? "Image Selected" : "Choose File"}
+  const renderHairTryonContent = () => {
+    const isProcessing = hairTryonSelectedType === "processing";
+    const isWithPrompt = hairTryonSelectedType === "withPromptAndImage";
+    const isProcessingDisabled = hairTryonSelectedType === "withPromptAndImage";
+    const isWithPromptDisabled = hairTryonSelectedType === "processing";
+    const hasSelection = hairTryonSelectedType !== null;
+
+    // No selection: show only the two option cards
+    if (!hasSelection) {
+      return (
+        <View style={styles.hairTryonOptionsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.hairTryonOptionCard,
+              isProcessing && styles.hairTryonOptionCardSelected,
+              isProcessingDisabled && styles.hairTryonOptionCardDisabled,
+            ]}
+            onPress={() =>
+              !isProcessingDisabled && setHairTryonSelectedType("processing")
+            }
+            activeOpacity={0.8}
+            disabled={isProcessingDisabled}
+          >
+            <View style={styles.hairTryonOptionHeader}>
+              <Text style={styles.hairTryonOptionTitle}>Processing</Text>
+              <View style={styles.hairTryonOptionBadge}>
+                <Text style={styles.hairTryonOptionBadgeText}>~5 min</Text>
+              </View>
+            </View>
+            <Text style={styles.hairTryonOptionDesc}>
+              Polling strategy: initial delay 3-5s, poll every 5-10s while
+              processing. Jobs expire after 24 hours.
+            </Text>
+            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
+              • Validate image (JPG/PNG, ≤10MB)
+            </Text>
+            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
+              • Handle network retries and rate limits
+            </Text>
+            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
+              • Show progress using step and current_recommendation
+            </Text>
+            <View
+              style={[
+                styles.hairTryonOptionButton,
+                isProcessing
+                  ? styles.hairTryonOptionButtonActive
+                  : styles.hairTryonOptionButtonInactive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.hairTryonOptionButtonText,
+                  isProcessing
+                    ? styles.hairTryonOptionButtonTextActive
+                    : styles.hairTryonOptionButtonTextInactive,
+                ]}
+              >
+                Try Hair Try-On
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.hairTryonOptionCard,
+              isWithPrompt && styles.hairTryonOptionCardSelected,
+              isWithPromptDisabled && styles.hairTryonOptionCardDisabled,
+            ]}
+            onPress={() =>
+              !isWithPromptDisabled &&
+              setHairTryonSelectedType("withPromptAndImage")
+            }
+            activeOpacity={0.8}
+            disabled={isWithPromptDisabled}
+          >
+            <View style={styles.hairTryonOptionHeader}>
+              <Text style={styles.hairTryonOptionTitle}>
+                With prompt and image
+              </Text>
+            </View>
+            <Text style={styles.hairTryonOptionSubtitle}>
+              Describe + upload
+            </Text>
+            <Text style={styles.hairTryonOptionDesc}>
+              Provide a text description and a source photo. Replicate returns
+              front, left, right, and back views.
+            </Text>
+            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
+              • Validate image (JPG/PNG, ≤10MB)
+            </Text>
+            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
+              • Handle network retries and rate limits
+            </Text>
+            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
+              • Show progress using step and current_recommendation
+            </Text>
+            <View
+              style={[
+                styles.hairTryonOptionButton,
+                isWithPrompt
+                  ? styles.hairTryonOptionButtonActive
+                  : styles.hairTryonOptionButtonInactive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.hairTryonOptionButtonText,
+                  isWithPrompt
+                    ? styles.hairTryonOptionButtonTextActive
+                    : styles.hairTryonOptionButtonTextInactive,
+                ]}
+              >
+                With prompt Try-on
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Has selection: show selected type name (left) + "Change selection" (right), then form
+    const selectedTypeLabel =
+      hairTryonSelectedType === "processing"
+        ? "Processing"
+        : "With prompt and image";
+    return (
+      <>
+        <View style={styles.hairTryonChangeSelectionRow}>
+          <Text style={styles.hairTryonSelectedTypeLabel}>
+            {selectedTypeLabel}
           </Text>
-          <MaterialIcons
-            name="arrow-drop-down"
-            size={moderateWidthScale(24)}
-            color={theme.text}
-          />
-        </TouchableOpacity>
-     
-      </View>
+          <TouchableOpacity
+            onPress={() => setHairTryonSelectedType(null)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.hairTryonChangeSelectionText}>
+              Change selection
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>
-          Hairstyle Description <Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={[
-            styles.textArea,
-            {
-              backgroundColor: theme.background,
-              borderColor: theme.borderLine,
-              color: theme.text,
-            },
-          ]}
-          placeholder="e.g., Short bob haircut with side-swept bangs, blonde highlights."
-          placeholderTextColor={theme.lightGreen4}
-          value={hairTryonPrompt}
-          onChangeText={setHairTryonPrompt}
-          multiline
-          numberOfLines={6}
-          textAlignVertical="top"
-        />
-      </View>
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>
+            Source Image <Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            style={styles.fileInput}
+            onPress={openImagePicker}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.fileInputText}>
+              {hairTryonSourceImage ? "Image Selected" : "Choose File"}
+            </Text>
+            <MaterialIcons
+              name="arrow-drop-down"
+              size={moderateWidthScale(24)}
+              color={theme.text}
+            />
+          </TouchableOpacity>
+        </View>
 
+        {hairTryonSelectedType === "withPromptAndImage" && (
+          <View style={styles.fieldContainer}>
+            <Text style={styles.label}>
+              Hairstyle Description <Text style={styles.required}>*</Text>
+            </Text>
+            <TextInput
+              style={[
+                styles.textArea,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.borderLine,
+                  color: theme.text,
+                },
+              ]}
+              placeholder="e.g., Short bob haircut with side-swept bangs, blonde highlights."
+              placeholderTextColor={theme.lightGreen4}
+              value={hairTryonPrompt}
+              onChangeText={setHairTryonPrompt}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+            />
+          </View>
+        )}
 
-         {hairTryonSourceImage && (
+        {hairTryonSourceImage && (
           <View style={styles.imagePreviewContainer}>
             <TouchableOpacity
               onPress={() => setFullImageModalVisible(true)}
@@ -778,8 +941,9 @@ const businessId = user?.business_id ?? ""
             </TouchableOpacity>
           </View>
         )}
-    </>
-  );
+      </>
+    );
+  };
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
@@ -803,53 +967,64 @@ const businessId = user?.business_id ?? ""
       </KeyboardAvoidingView>
 
       <View style={styles.buttonContainer}>
-        {/* Show previous result button if result exists */}
-        {generatedResult && (
-          <TouchableOpacity
-            style={{
-              backgroundColor: theme.orangeBrown30,
-              borderRadius: moderateWidthScale(8),
-              padding: moderateWidthScale(16),
-              marginBottom: moderateHeightScale(16),
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-            onPress={() => setResultModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <View
-              style={{ flexDirection: "row", alignItems: "center", flex: 1 }}
-            >
-              <MaterialIcons
-                name="visibility"
-                size={moderateWidthScale(20)}
-                color={theme.darkGreen}
-                style={{ marginRight: moderateWidthScale(12) }}
-              />
-              <Text
+        {/* For Hair Tryon: show button area only after user selects a type */}
+        {!(toolType === "Hair Tryon" && !hairTryonSelectedType) && (
+          <>
+            {generatedResult && (
+              <TouchableOpacity
                 style={{
-                  fontSize: fontSize.size14,
-                  fontFamily: fonts.fontMedium,
-                  color: theme.darkGreen,
-                  flex: 1,
+                  backgroundColor: theme.orangeBrown30,
+                  borderRadius: moderateWidthScale(8),
+                  padding: moderateWidthScale(16),
+                  marginBottom: moderateHeightScale(16),
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
                 }}
+                onPress={() => setResultModalVisible(true)}
+                activeOpacity={0.7}
               >
-                View Previous Result
-              </Text>
-            </View>
-            <MaterialIcons
-              name="chevron-right"
-              size={moderateWidthScale(20)}
-              color={theme.darkGreen}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flex: 1,
+                  }}
+                >
+                  <MaterialIcons
+                    name="visibility"
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreen}
+                    style={{ marginRight: moderateWidthScale(12) }}
+                  />
+                  <Text
+                    style={{
+                      fontSize: fontSize.size14,
+                      fontFamily: fonts.fontMedium,
+                      color: theme.darkGreen,
+                      flex: 1,
+                    }}
+                  >
+                    View Previous Result
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(20)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            )}
+            <Button
+              title={`Generate ${toolType.replace("Generate ", "")}`}
+              onPress={handleGenerate}
+              disabled={
+                isGenerating ||
+                (toolType === "Hair Tryon" ? !hairTryonSelectedType : false)
+              }
             />
-          </TouchableOpacity>
+          </>
         )}
-        <Button
-          title={`Generate ${toolType.replace("Generate ", "")}`}
-          onPress={handleGenerate}
-          disabled={isGenerating}
-        />
       </View>
 
       {/* Image Picker Modal for Post and Collage */}
