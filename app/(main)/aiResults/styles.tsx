@@ -97,7 +97,7 @@ export const createStyles = (theme: Theme) =>
     jobCardContent: {
       flex: 1,
       marginLeft: moderateWidthScale(12),
-      justifyContent: "space-between",
+      justifyContent: "center",
     },
     jobCardLabel: {
       fontSize: fontSize.size11,
@@ -115,13 +115,5 @@ export const createStyles = (theme: Theme) =>
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen4,
-    },
-    jobCardSeeResult: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.primary,
-      textDecorationLine: "underline",
-      textDecorationColor: theme.primary,
-      alignSelf: "flex-end",
     },
   });

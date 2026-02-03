@@ -36,6 +36,16 @@ export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
   complete: false,
 };
 
+// export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
+//   complete: false,
+//   estimatedMinutes: 5,
+//   imageUri:
+//     "file:///Users/touseef/Library/Developer/CoreSimulator/Devices/A80F36A4-78FF-4772-8FFC-FDAC4131C5F0/data/Containers/Data/Application/97A97AD2-404B-4A4E-8235-7F5FE4ACC27F/Library/Caches/ImagePicker/CC3F2926-B120-4258-9C20-D4E2D5A91FE6.jpg",
+//   jobId: "1a7ddec2-9e7",
+//   progress: 58.31966666666667,
+//   visible: true,
+// };
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     overlay: {
@@ -228,33 +238,22 @@ export default function HairPipelineProcessingModal({
             />
           </View>
 
-          {state.complete ? (
-            <>
-              <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-                <Text style={styles.seeResult}>{t("seeResult")}</Text>
-              </TouchableOpacity>
-              <View style={styles.bottomRow}>
-                <TouchableOpacity
-                  style={styles.btnSecondary}
-                  onPress={onClose}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.btnTextSecondary}>
-                    {t("useAnotherRequest")}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.btnPrimary}
-                  onPress={onSeeStatus}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.btnTextPrimary}>
-                    {t("seeYourApiStatus")}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : null}
+          <View style={styles.bottomRow}>
+            <TouchableOpacity
+              style={styles.btnSecondary}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.btnTextSecondary}>Another Request</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.btnPrimary}
+              onPress={onSeeStatus}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.btnTextPrimary}>Ai Results</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>

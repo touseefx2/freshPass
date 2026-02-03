@@ -5,6 +5,7 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
+import { router } from "expo-router";
 
 const DEFAULT_AI_REQUESTS_IMAGE =
   process.env.EXPO_PUBLIC_DEFAULT_AI_REQUESTS_IMAGE || "";
@@ -24,7 +25,7 @@ function getJobImageUrl(images: (string | null)[] | undefined): string {
 }
 
 const STATIC_JOBS = [
-  { job_id: "7eb35c21-5aa", images: [] as string[], prompt: "" },
+  { job_id: "1a7ddec2-9e7", images: [] as string[], prompt: "" },
   {
     job_id: "7eb35c21-5ab",
     images: [] as string[],
@@ -59,13 +60,23 @@ export default function AiRequests() {
                 />
               </View>
               <View style={styles.jobCardContent}>
-                <Text style={styles.jobCardLabel}>{t("jobId")}</Text>
-                <Text style={styles.jobCardValue}>{job.job_id}</Text>
-                {job.prompt ? (
-                  <Text style={styles.jobCardPrompt} numberOfLines={2}>
-                    {job.prompt}
-                  </Text>
-                ) : null}
+                <View>
+                  <Text style={styles.jobCardLabel}>{t("jobId")}</Text>
+                  <Text style={styles.jobCardValue}>{job.job_id}</Text>
+                  {job.prompt ? (
+                    <Text style={styles.jobCardPrompt} numberOfLines={2}>
+                      {job.prompt}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text
+                  style={styles.jobCardSeeResult}
+                  onPress={() => {
+                    router.push("/aiResults");
+                  }}
+                >
+                  {t("seeResult")}
+                </Text>
               </View>
             </View>
           );

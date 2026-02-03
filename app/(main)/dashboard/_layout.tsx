@@ -84,6 +84,8 @@ export default function DashboardLayout() {
     Array.isArray(segments) && segments.includes("staffDetail");
   const isAiRequestsScreen =
     Array.isArray(segments) && segments.includes("aiRequests");
+  const isAiResultsScreen =
+    Array.isArray(segments) && segments.includes("aiResults");
   const isAppointmentDetailScreen =
     Array.isArray(segments) &&
     segments.includes("(home)") &&
@@ -159,6 +161,7 @@ export default function DashboardLayout() {
     isUserReviewsScreen ||
     isStaffDetailScreen ||
     isAiRequestsScreen ||
+    isAiResultsScreen ||
     isAppointmentDetailScreen ||
     isCalendarAppointmentDetailScreen ||
     isProfileScreen ||

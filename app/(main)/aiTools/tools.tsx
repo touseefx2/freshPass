@@ -115,6 +115,8 @@ export default function Tools() {
     null,
   );
 
+  // console.log("hairPipelineState: ", hairPipelineState);
+
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedResult, setGeneratedResult] = useState<any>(null);
