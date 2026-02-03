@@ -412,6 +412,7 @@ export default function SubscriptionScreen() {
 
   console.log("----->isTrialing", isTrialing);
   console.log("------>isActive", isActive);
+  console.log("------>sub", subscription);
 
   const fetchSubscription = async () => {
     setLoading(true);
@@ -419,7 +420,7 @@ export default function SubscriptionScreen() {
     setApiError(false);
     try {
       const response = await ApiService.get<SubscriptionResponse>(
-        businessEndpoints.subscriptions("active"),
+        businessEndpoints.subscriptions("active", "business"),
       );
 
       if (

@@ -67,11 +67,12 @@ export const businessEndpoints = {
   additionalServices: (type: "customer" | "business" = "business") =>
     `/api/additional-services?type=${type}`,
   subscribe: (planId: number) => `/api/subscription-plans/${planId}/subscribe`,
-  subscriptions: (status?: string) => {
-    if (status) {
-      return `/api/subscriptions?status=${status}`;
-    }
-    return `/api/subscriptions`;
+  subscriptions: (status?: string, type?: string) => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (type) params.set("type", type);
+    const query = params.toString();
+    return query ? `/api/subscriptions?${query}` : `/api/subscriptions`;
   },
   cancelTrial: (subscriptionId: number) =>
     `/api/subscriptions/${subscriptionId}/cancel-trial`,
