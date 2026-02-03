@@ -96,6 +96,8 @@ const languages = [
   { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
   { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
   { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },
+  { code: "de", name: "German", nativeName: "Deutsch", flag: "🇩🇪" },
+  { code: "ja", name: "Japanese", nativeName: "日本語", flag: "🇯🇵" },
 ];
 
 export default function LanguageChangeScreen() {

@@ -3,11 +3,15 @@ import { initReactI18next } from "react-i18next";
 import en from "@/src/locales/en/translation.json";
 import fr from "@/src/locales/fr/translation.json";
 import es from "@/src/locales/es/translation.json";
+import de from "@/src/locales/de/translation.json";
+import ja from "@/src/locales/ja/translation.json";
 
 const resources = {
   en: { translation: en },
   fr: { translation: fr },
   es: { translation: es },
+  de: { translation: de },
+  ja: { translation: ja },
 };
 
 export const initI18n = async () => {

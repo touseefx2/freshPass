@@ -7,7 +7,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, router } from "expo-router";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import ExploreHeader from "./ExploreHeader";
 import { fonts, fontSize } from "@/src/theme/fonts";
@@ -598,7 +598,13 @@ export default function ExploreScreen() {
           }
         />
 
-        {isFirstTryon && <TryOnBanner onPress={() => {}} />}
+        {isFirstTryon && (
+          <TryOnBanner
+            onPress={() => {
+              router.push("/(main)/aiTools/toolList");
+            }}
+          />
+        )}
       </View>
 
       <SortByBottomSheet
@@ -613,7 +619,10 @@ export default function ExploreScreen() {
           visible={!isFirstTryon}
           // visible={true}
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
-          onUnlockPress={() => {}}
+          onUnlockPress={() => {
+            dispatch(setIsFirstShowTryOn(true));
+            router.push("/(main)/aiTools/toolList");
+          }}
         />
       )}
     </>
