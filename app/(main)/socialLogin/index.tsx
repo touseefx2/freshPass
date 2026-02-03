@@ -38,7 +38,6 @@ import { setFullName } from "@/src/state/slices/completeProfileSlice";
 type SocialProvider = "google" | "apple" | "facebook";
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
-// Get Google Web Client ID from environment
 // IMPORTANT:
 // 1. Android Client ID: Google Cloud Console mein Android OAuth client banayein (package name + SHA-1 ke saath) - ye Google Cloud Console mein configure hota hai
 // 2. Web Client ID: Google Cloud Console mein Web Application OAuth client banayein - ye code mein use hoga

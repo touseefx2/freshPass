@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { Modal, StyleSheet, View, Text } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -9,6 +10,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
+import { ApiService } from "@/src/services/api";
 
 interface OnboardingModalProps {
   visible: boolean;
@@ -19,9 +21,13 @@ const createStyles = (theme: Theme) =>
   StyleSheet.create({
     modalOverlay: {
       flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
       justifyContent: "center",
       alignItems: "center",
+    },
+    modalBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.black,
+      opacity: 0.5,
     },
     modalContainer: {
       backgroundColor: theme.background,
@@ -47,6 +53,9 @@ const createStyles = (theme: Theme) =>
     buttonContainer: {
       width: "100%",
     },
+    buttonSpacer: {
+      height: moderateHeightScale(12),
+    },
   });
 
 export default function OnboardingModal({
@@ -54,7 +63,12 @@ export default function OnboardingModal({
   onContinue,
 }: OnboardingModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+
+  const handleLogout = async () => {
+    await ApiService.logout();
+  };
 
   return (
     <Modal
@@ -64,13 +78,19 @@ export default function OnboardingModal({
       statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
+        <View style={styles.modalBackdrop} />
         <View style={styles.modalContainer}>
-          <Text style={styles.title}>Complete Your Onboarding</Text>
-          <Text style={styles.message}>
-            Please complete your business onboarding to continue using the app.
-          </Text>
+          <Text style={styles.title}>{t("completeYourOnboarding")}</Text>
+          <Text style={styles.message}>{t("completeOnboardingMessage")}</Text>
           <View style={styles.buttonContainer}>
-            <Button title="Continue" onPress={onContinue} />
+            <Button title={t("continue")} onPress={onContinue} />
+            <View style={styles.buttonSpacer} />
+            <Button
+              title={t("logout")}
+              onPress={handleLogout}
+              backgroundColor={(colors as Theme).secondary}
+              textColor={(colors as Theme).text}
+            />
           </View>
         </View>
       </View>
