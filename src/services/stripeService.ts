@@ -25,14 +25,16 @@ interface PaymentSheetApiResponse {
 }
 
 export const fetchPaymentSheetParams = async (
-  planId: number
+  planId: number,
+  additionalServiceIds: number[] = [],
 ): Promise<PaymentSheetParams> => {
   try {
     const response = await ApiService.post<PaymentSheetApiResponse>(
       stripeEndpoints.paymentSheet,
       {
         subscription_plan_id: planId,
-      }
+        additional_service_ids: additionalServiceIds,
+      },
     );
 
     // Extract data from nested response structure
@@ -48,7 +50,7 @@ export const fetchPaymentSheetParams = async (
     }
 
     throw new Error(
-      response.message || "Failed to fetch payment sheet parameters"
+      response.message || "Failed to fetch payment sheet parameters",
     );
   } catch (error) {
     throw error;
@@ -63,19 +65,19 @@ interface AppointmentPaymentSheetApiResponse {
     customerSessionClientSecret?: string;
     ephemeralKey?: string;
     paymentIntent: string;
-    setupIntent:string
+    setupIntent: string;
   };
 }
 
 export const fetchAppointmentPaymentSheetParams = async (
-  appointmentId: number
+  appointmentId: number,
 ): Promise<PaymentSheetParams> => {
   try {
     const response = await ApiService.post<AppointmentPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheet,
       {
         appointment_id: appointmentId,
-      }
+      },
     );
 
     // Extract data from nested response structure
@@ -90,7 +92,7 @@ export const fetchAppointmentPaymentSheetParams = async (
     }
 
     throw new Error(
-      response.message || "Failed to fetch payment sheet parameters"
+      response.message || "Failed to fetch payment sheet parameters",
     );
   } catch (error) {
     throw error;

@@ -405,6 +405,10 @@ function BusinessPlansModalContent({
     setIsSetupIntent(false);
 
     try {
+      const selectedAddOns = selectedServicesByPlanId[planId] ?? [];
+      console.log("selectedServicesByPlanId", selectedServicesByPlanId);
+      console.log("selectedAddOns", selectedAddOns);
+
       // Step 1: Fetch payment sheet parameters from backend
       const {
         paymentIntent,
@@ -412,7 +416,7 @@ function BusinessPlansModalContent({
         ephemeralKey,
         customer,
         setupIntent,
-      } = await fetchPaymentSheetParams(planId);
+      } = await fetchPaymentSheetParams(planId, selectedAddOns);
 
       // Step 2: Initialize payment sheet directly
       const paymentConfig: any = {
