@@ -46,6 +46,15 @@ interface SubscriptionPlan {
   services: any[];
 }
 
+interface AdditionalService {
+  id: number;
+  name: string;
+  price: string;
+  type: string;
+  active: boolean;
+  createdAt: string;
+}
+
 interface BusinessPlansModalProps {
   visible: boolean;
   onClose: () => void;
@@ -165,6 +174,64 @@ const createStyles = (theme: Theme) =>
     subscribeButton: {
       marginTop: moderateHeightScale(8),
     },
+    addOnSection: {
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(16),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    addOnTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(12),
+    },
+    serviceCheckboxRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    checkbox: {
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 2,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: moderateWidthScale(12),
+    },
+    checkboxUnchecked: {
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+    },
+    checkboxChecked: {
+      borderColor: theme.buttonBack,
+      backgroundColor: theme.buttonBack,
+    },
+    serviceRowContent: {
+      flex: 1,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    serviceName: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      flex: 1,
+    },
+    servicePrice: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+    },
     emptyContainer: {
       flex: 1,
       justifyContent: "center",
@@ -228,6 +295,14 @@ function BusinessPlansModalContent({
   );
   const [processingPayment, setProcessingPayment] = useState(false);
   const [isSetupIntent, setIsSetupIntent] = useState(false);
+  const [additionalServices, setAdditionalServices] = useState<
+    AdditionalService[]
+  >([]);
+  const [loadingAdditionalServices, setLoadingAdditionalServices] =
+    useState(false);
+  const [selectedServicesByPlanId, setSelectedServicesByPlanId] = useState<
+    Record<number, number[]>
+  >({});
   const dispatch = useAppDispatch();
 
   const [localBanner, setLocalBanner] = useState<{
@@ -275,9 +350,53 @@ function BusinessPlansModalContent({
     }
   };
 
+  const fetchAdditionalServices = async () => {
+    setLoadingAdditionalServices(true);
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: AdditionalService[];
+      }>(businessEndpoints.additionalServices("business"));
+
+      if (response.success && response.data) {
+        setAdditionalServices(response.data);
+      }
+    } catch {
+      // Silent fail; add-ons section will just be empty
+    } finally {
+      setLoadingAdditionalServices(false);
+    }
+  };
+
+  const toggleServiceForPlan = (planId: number, serviceId: number) => {
+    setSelectedServicesByPlanId((prev) => {
+      const current = prev[planId] ?? [];
+      const isSelected = current.includes(serviceId);
+      const next = isSelected
+        ? current.filter((id) => id !== serviceId)
+        : [...current, serviceId];
+      return { ...prev, [planId]: next };
+    });
+  };
+
+  const isServiceSelectedForPlan = (planId: number, serviceId: number) =>
+    (selectedServicesByPlanId[planId] ?? []).includes(serviceId);
+
+  const getTotalPriceForPlan = (plan: SubscriptionPlan): string => {
+    const planPriceNum = parseFloat(plan.price) || 0;
+    const selectedIds = selectedServicesByPlanId[plan.id] ?? [];
+    const addOnTotal = additionalServices
+      .filter((s) => selectedIds.includes(s.id))
+      .reduce((sum, s) => sum + (parseFloat(s.price) || 0), 0);
+    const total = planPriceNum + addOnTotal;
+    return total.toFixed(2);
+  };
+
   useEffect(() => {
     if (visible) {
       fetchPlans();
+      fetchAdditionalServices();
     }
   }, [visible]);
 
@@ -467,7 +586,9 @@ function BusinessPlansModalContent({
               <View key={plan.id} style={[styles.planCard, styles.shadow]}>
                 <View style={styles.planHeader}>
                   <Text style={styles.planName}>{plan.name}</Text>
-                  <Text style={styles.planPrice}>${plan.price}</Text>
+                  <Text style={styles.planPrice}>
+                    ${getTotalPriceForPlan(plan)}
+                  </Text>
                 </View>
                 {plan.description && (
                   <Text style={styles.planDescription}>{plan.description}</Text>
@@ -511,6 +632,60 @@ function BusinessPlansModalContent({
                     </Text>
                   </View>
                 </View>
+                {!loadingAdditionalServices &&
+                  additionalServices.length > 0 && (
+                    <View style={styles.addOnSection}>
+                      <Text style={styles.addOnTitle}>
+                        {t("addOnServices") || "Add-on services"}
+                      </Text>
+                      {additionalServices
+                        .filter((s) => s.active)
+                        .map((service) => {
+                          const isSelected = isServiceSelectedForPlan(
+                            plan.id,
+                            service.id,
+                          );
+                          return (
+                            <TouchableOpacity
+                              key={service.id}
+                              style={styles.serviceCheckboxRow}
+                              onPress={() =>
+                                toggleServiceForPlan(plan.id, service.id)
+                              }
+                              activeOpacity={0.7}
+                            >
+                              <View
+                                style={[
+                                  styles.checkbox,
+                                  isSelected
+                                    ? styles.checkboxChecked
+                                    : styles.checkboxUnchecked,
+                                ]}
+                              >
+                                {isSelected && (
+                                  <Feather
+                                    name="check"
+                                    size={moderateWidthScale(14)}
+                                    color={theme.white}
+                                  />
+                                )}
+                              </View>
+                              <View style={styles.serviceRowContent}>
+                                <Text
+                                  style={styles.serviceName}
+                                  numberOfLines={2}
+                                >
+                                  {service.name}
+                                </Text>
+                                <Text style={styles.servicePrice}>
+                                  +${service.price}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                    </View>
+                  )}
                 <Button
                   title={t("subscribeNow")}
                   onPress={() => handleSubscribe(plan.id)}

@@ -64,6 +64,8 @@ export const businessEndpoints = {
     direction: string = "asc",
   ) =>
     `/api/subscription-plans?plan_type=${planType}&status=${status}&sort=${sort}&direction=${direction}`,
+  additionalServices: (type: "customer" | "business" = "business") =>
+    `/api/additional-services?type=${type}`,
   subscribe: (planId: number) => `/api/subscription-plans/${planId}/subscribe`,
   subscriptions: (status?: string) => {
     if (status) {
