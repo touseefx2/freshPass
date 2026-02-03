@@ -96,9 +96,10 @@ export default function AccountScreen() {
   const countryName = user.countryName;
 
   const getLanguageName = (code: string) => {
-    if (code === "en") return t("languagesEnName");
-    if (code === "fr") return t("languagesFrName");
-    return t("languagesEnName");
+    if (code === "en") return "English";
+    if (code === "fr") return "French";
+    if (code === "es") return "Spanish";
+    return "English";
   };
 
   const handleLogout = async () => {
@@ -254,7 +255,7 @@ export default function AccountScreen() {
     {
       key: "language",
       title: t("language"),
-      subtitle: `${t("currentLanguageLabel")} (${getLanguageName(currentLanguage)})`,
+      subtitle: getLanguageName(currentLanguage),
     },
     ...(userRole === "business" || isCustomer
       ? [{ key: "subscriptions" as const, title: t("subscription") }]
