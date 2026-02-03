@@ -61,7 +61,7 @@ export default function AiResults() {
 
   const fetchStatus = useCallback(async () => {
     if (!jobId) {
-      setError("Missing job ID");
+      setError(t("missingJobId"));
       setLoading(false);
       return;
     }
@@ -72,15 +72,15 @@ export default function AiResults() {
       const result = await AiToolsService.getHairPipelineStatus(jobId);
       setData(result);
     } catch (e: any) {
-      setError(e?.message || "Something went wrong");
+      setError(e?.message || t("somethingWentWrong"));
     } finally {
       setLoading(false);
     }
-  }, [jobId]);
+  }, [jobId, t]);
 
   useEffect(() => {
     fetchStatus();
-  }, [fetchStatus]);
+  }, []);
 
   const handleDownload = async (uri: string) => {
     try {
@@ -145,10 +145,26 @@ export default function AiResults() {
           const section = data.images?.[key];
           if (!section?.views) return null;
           const views = [
-            { key: "front" as const, label: "Front", url: section.views.front },
-            { key: "left" as const, label: "Left", url: section.views.left },
-            { key: "right" as const, label: "Right", url: section.views.right },
-            { key: "back" as const, label: "Back", url: section.views.back },
+            {
+              key: "front" as const,
+              labelKey: "front" as const,
+              url: section.views.front,
+            },
+            {
+              key: "left" as const,
+              labelKey: "left" as const,
+              url: section.views.left,
+            },
+            {
+              key: "right" as const,
+              labelKey: "right" as const,
+              url: section.views.right,
+            },
+            {
+              key: "back" as const,
+              labelKey: "back" as const,
+              url: section.views.back,
+            },
           ].filter((v) => v.url);
           if (views.length === 0) return null;
           return (
@@ -160,7 +176,7 @@ export default function AiResults() {
                 </Text>
               ) : null}
               <View style={styles.imageGrid}>
-                {views.map(({ key: viewKey, label, url }) => (
+                {views.map(({ key: viewKey, labelKey, url }) => (
                   <View key={viewKey} style={styles.imageCard}>
                     <View style={styles.imageCardInner}>
                       <Image
@@ -169,7 +185,7 @@ export default function AiResults() {
                         resizeMode="cover"
                       />
                       <View style={styles.imageLabel}>
-                        <Text style={styles.imageLabelText}>{label}</Text>
+                        <Text style={styles.imageLabelText}>{t(labelKey)}</Text>
                       </View>
                       <TouchableOpacity
                         style={styles.downloadButton}

@@ -147,7 +147,7 @@ export default function ToolList() {
         activeOpacity={0.7}
         onPress={() => router.push("/aiRequests")}
       >
-        <Text style={styles.seeRequestsHistoryText}>Ai Requests</Text>
+        <Text style={styles.seeRequestsHistoryText}>{t("aiRequests")}</Text>
       </TouchableOpacity>
 
       <ScrollView

@@ -9,9 +9,7 @@
   "type": "Type",
   "language": "Language",
   "freshPassDeals": "FreshPass Deals",
-  "tryAiHairTryOn": "Try AI Hair Try-On",
   "tryOnBannerDescription": "Preview styles instantly. Book with confidence.",
-  "tryNow": "Try Now",
   "recommended": "Recommended",
   "staffOnDuty": "Staff on duty",
   "noStaffOnDuty": "No staff on duty",
@@ -542,10 +540,7 @@
   "collageMax6Images": "You can select maximum 6 images.",
   "reelMax15Files": "You can select maximum 15 media files.",
   "businessIdNotFound": "Business ID not found. Please complete your business profile.",
-  "noInternetConnection": "No Internet Connection",
-  "pleaseCheckInternetConnection": "Please check your internet connection and try again.",
   "failedToSelectMedia": "Failed to select media. Please try again.",
-  "failedToTakePhoto": "Failed to take photo. Please try again.",
   "failedToSelectAudio": "Failed to select audio file. Please try again.",
   "invalidAudioFileType": "Please select an audio file in MP3, WAV, or M4A format.",
   "chooseFile": "Choose File",
@@ -579,8 +574,6 @@
   "generateCollage": "Generate Collage",
   "generateReel": "Generate Reel",
   "generateHairTryon": "Generate Hair Tryon",
-  "selectMedia": "Select Media",
-  "selectAudioFile": "Select Audio File",
   "chooseAudioFile": "Choose Audio File",
   "failedToGenerate": "Failed to generate. Please try again.",
   "hairTryon": "Hair Tryon",
@@ -596,5 +589,7 @@
   "jobId": "Job ID",
   "aiResults": "AI Result",
   "noDataFound": "No data found",
-  "download": "Download"
+  "download": "Download",
+  "missingJobId": "Missing job ID",
+  "somethingWentWrong": "Something went wrong"
 }
