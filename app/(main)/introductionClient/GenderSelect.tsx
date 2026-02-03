@@ -1,11 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  StatusBar,
-  Platform,
-} from "react-native";
+import { StyleSheet, Text, View, StatusBar, Platform } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -15,7 +9,10 @@ import {
 } from "@/src/theme/dimensions";
 import { LeafLogo } from "@/assets/icons";
 import Button from "@/src/components/button";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import RadioOption from "@/src/components/radioOption";
 import { setDiscover, DiscoverType } from "@/src/state/slices/userSlice";
 
@@ -54,12 +51,11 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
     optionsContainer: {
-        gap: moderateHeightScale(14),
+      gap: moderateHeightScale(14),
       marginBottom: moderateHeightScale(60),
-      flex:1,
-      alignItems:"flex-end",
-      justifyContent:"flex-end",
-     
+      flex: 1,
+      alignItems: "flex-end",
+      justifyContent: "flex-end",
     },
   });
 
@@ -86,7 +82,7 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
       <StatusBar barStyle="dark-content" />
       <View
         style={{
-          flex:1,
+          flex: 1,
           // paddingBottom:
           //   Platform.OS === "android" && insets.bottom > 30
           //     ? moderateHeightScale(30) + insets.bottom
@@ -99,11 +95,10 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.titleText}>
-            Discover services just <Text style={styles.titleHighlight}>right for you</Text>
+            Discover services just{" "}
+            <Text style={styles.titleHighlight}>right for you</Text>
           </Text>
-          <Text style={styles.subtitle}>
-            Show services designed for...
-          </Text>
+          <Text style={styles.subtitle}>Show services designed for...</Text>
         </View>
 
         <View style={styles.optionsContainer}>
@@ -123,13 +118,13 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
             onPress={handleOptionSelect}
           />
 
-          <RadioOption
+          {/* <RadioOption
             title="Both"
             subtitle=""
             option="both"
             selectedOption={selectedGender}
             onPress={handleOptionSelect}
-          />
+          /> */}
 
           <RadioOption
             title="Other"
