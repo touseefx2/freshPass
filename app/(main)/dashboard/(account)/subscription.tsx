@@ -393,7 +393,7 @@ export default function SubscriptionScreen() {
   const { showBanner } = useNotificationContext();
 
   const [subscription, setSubscription] = useState<SubscriptionData | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -402,7 +402,15 @@ export default function SubscriptionScreen() {
   const [businessPlansModalVisible, setBusinessPlansModalVisible] =
     useState(false);
 
-  const isTrial = subscription?.cardLastFour === null;
+  const isTrialing =
+    subscription?.status === "active" &&
+    subscription?.stripeStatus === "trialing";
+  const isActive =
+    subscription?.status === "active" &&
+    subscription?.stripeStatus === "active";
+
+  console.log("----->isTrialing", isTrialing);
+  console.log("------>isActive", isActive);
 
   const fetchSubscription = async () => {
     setLoading(true);
@@ -410,7 +418,7 @@ export default function SubscriptionScreen() {
     setApiError(false);
     try {
       const response = await ApiService.get<SubscriptionResponse>(
-        businessEndpoints.subscriptions("active")
+        businessEndpoints.subscriptions("active"),
       );
 
       if (
@@ -436,7 +444,7 @@ export default function SubscriptionScreen() {
         "Error",
         err.message || "Failed to load subscription",
         "error",
-        2500
+        2500,
       );
     } finally {
       setLoading(false);
@@ -446,15 +454,17 @@ export default function SubscriptionScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchSubscription();
-    }, [])
+    }, []),
   );
 
-  const handleCancelTrial = () => {
+  const handleCancel = () => {
     if (!subscription) return;
 
     Alert.alert(
-      "Cancel Trial",
-      "Are you sure you want to cancel your free trial? This action cannot be undone.",
+      isTrialing ? "Cancel Trial" : "Cancel Subscription",
+      isTrialing
+        ? "Are you sure you want to cancel your free trial? This action cannot be undone."
+        : "Are you sure you want to cancel your subscription? This action cannot be undone.",
       [
         {
           text: "No",
@@ -463,36 +473,10 @@ export default function SubscriptionScreen() {
         {
           text: "Yes, Cancel Trial",
           style: "destructive",
-          onPress: async () => {
-            // setCancelling(true);
-            // try {
-            //   const response = await ApiService.post<{
-            //     success: boolean;
-            //     message: string;
-            //   }>(businessEndpoints.cancelTrial(subscription.id), {});
-            //   if (response.success) {
-            //     showBanner(
-            //       "Success",
-            //       "Trial cancelled successfully",
-            //       "success",
-            //       2500
-            //     );
-            //     await fetchSubscription();
-            //   }
-            // } catch (err: any) {
-            //   showBanner(
-            //     "Error",
-            //     err.message || "Failed to cancel trial",
-            //     "error",
-            //     2500
-            //   );
-            // } finally {
-            //   setCancelling(false);
-            // }
-          },
+          onPress: async () => {},
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -522,8 +506,6 @@ export default function SubscriptionScreen() {
       return dateString;
     }
   };
-
-  const isTrialing = subscription?.stripeStatus === "trialing" && subscription?.trialEndsAt;
 
   if (loading && !subscription) {
     return (
@@ -598,7 +580,8 @@ export default function SubscriptionScreen() {
                   🎉 Free Trial Active
                 </Text>
                 <Text style={styles.trialBannerSubtitle}>
-                  Your trial ends on {formatTrialEndDate(subscription.trialEndsAt)}
+                  Your trial ends on{" "}
+                  {formatTrialEndDate(subscription.trialEndsAt)}
                 </Text>
               </View>
               <View style={styles.trialBannerIcon}>
@@ -642,7 +625,7 @@ export default function SubscriptionScreen() {
             {subscription.subscriptionPlanDescription && (
               <Text style={styles.planDescription}>
                 {capitalizeFirstLetter(
-                  subscription.subscriptionPlanDescription
+                  subscription.subscriptionPlanDescription,
                 )}
               </Text>
             )}
@@ -721,22 +704,22 @@ export default function SubscriptionScreen() {
                 </Text>
               </View>
             </View>
-            
           </View>
         </View>
 
         {/* Cancel Trial Button */}
-        {isTrial && (
-          <View style={styles.buttonContainer}>
-            <Button
-              title="Cancel Trial"
-              onPress={handleCancelTrial}
-              loading={cancelling}
-              disabled={cancelling}
-              backgroundColor={theme.buttonBack}
-            />
-          </View>
-        )}
+        {isTrialing ||
+          (isActive && (
+            <View style={styles.buttonContainer}>
+              <Button
+                title={isTrialing ? "Cancel Trial" : "Cancel Subscription"}
+                onPress={handleCancel}
+                loading={cancelling}
+                disabled={cancelling}
+                backgroundColor={theme.buttonBack}
+              />
+            </View>
+          ))}
       </ScrollView>
     </SafeAreaView>
   );
