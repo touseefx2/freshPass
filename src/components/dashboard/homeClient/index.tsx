@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Logger from "@/src/services/logger";
 import { StyleSheet, View, StatusBar } from "react-native";
 import { useAppSelector, useTheme, useAppDispatch } from "@/src/hooks/hooks";
@@ -9,11 +9,14 @@ import SearchBar from "./components/SearchBar";
 import DashboardContent from "./components/DashboardContent";
 import * as Location from "expo-location";
 import LocationEnableModal from "@/src/components/locationEnableModal";
-import { setLocation } from "@/src/state/slices/userSlice";
+import { setLocation, setUnreadCount } from "@/src/state/slices/userSlice";
 import { tryGetPosition } from "@/src/constant/functions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { setLocationLoading } from "@/src/state/slices/generalSlice";
 import { handleLocationPermission } from "@/src/services/locationPermissionService";
+import { ApiService } from "@/src/services/api";
+import { notificationsEndpoints } from "@/src/services/endpoints";
+import { useFocusEffect } from "expo-router";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -168,6 +171,30 @@ export default function HomeScreen() {
       showBanner(t("locationError"), t("unableToGetCurrentLocation"), "error");
     }
   };
+
+  const handleFetchUnreadCount = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          unread_count: number;
+        };
+      }>(notificationsEndpoints.unreadCount);
+
+      if (response.success && response.data) {
+        dispatch(setUnreadCount(response.data.unread_count));
+      }
+    } catch (error: any) {
+      // Silent fail - no banner or console
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      handleFetchUnreadCount();
+    }, []),
+  );
 
   return (
     <>
