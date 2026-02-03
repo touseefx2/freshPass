@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -24,6 +25,7 @@ export default function ToolList() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const user = useAppSelector((state) => state.user);
   const userRole = user?.userRole;
 
@@ -35,21 +37,24 @@ export default function ToolList() {
   const boxesTranslateY = useRef(new Animated.Value(300)).current;
   const boxesOpacity = useRef(new Animated.Value(0)).current;
 
-  // Business features
+  // Business features (paramTitle is passed to tools screen and must match expected values)
   const businessFeatures = [
     {
       id: "generatePost",
-      title: "Generate Post",
+      titleKey: "generatePost" as const,
+      paramTitle: "Generate Post",
       icon: GeneratePostIcon,
     },
     {
       id: "generateCollage",
-      title: "Generate Collage",
+      titleKey: "generateCollage" as const,
+      paramTitle: "Generate Collage",
       icon: GenerateCollageIcon,
     },
     {
       id: "generateReel",
-      title: "Generate Reel",
+      titleKey: "generateReel" as const,
+      paramTitle: "Generate Reel",
       icon: GenerateReelIcon,
     },
   ];
@@ -58,17 +63,20 @@ export default function ToolList() {
   const customerFeatures = [
     {
       id: "hairTryon",
-      title: "Hair Tryon",
+      titleKey: "hairTryon" as const,
+      paramTitle: "Hair Tryon",
       icon: PersonScissorsIcon,
     },
   ];
 
   // Select features based on user role
   // Business users see social media tools, customers/staff/others see Hair Tryon
-  const features = userRole === "business" ? businessFeatures : customerFeatures;
-  
-  // Header title based on role
-  const headerTitle = userRole === "business" ? "Social Media AI Tool" : "AI Tool";
+  const features =
+    userRole === "business" ? businessFeatures : customerFeatures;
+
+  // Header title based on role (localized)
+  const headerTitle =
+    userRole === "business" ? t("socialMediaAiTool") : t("aiTool");
 
   useEffect(() => {
     if (isExpanded) {
@@ -123,16 +131,16 @@ export default function ToolList() {
     setIsExpanded(!isExpanded);
   };
 
-  const handleFeaturePress = (featureId: string, featureTitle: string) => {
+  const handleFeaturePress = (paramTitle: string) => {
     router.push({
       pathname: "/(main)/aiTools/tools",
-      params: { toolType: featureTitle },
+      params: { toolType: paramTitle },
     });
   };
 
   return (
     <View style={styles.safeArea}>
-      <StackHeader title="Ai Tools" />
+      <StackHeader title={t("aiTools")} />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -181,7 +189,7 @@ export default function ToolList() {
               <TouchableOpacity
                 key={feature.id}
                 style={styles.featureBox}
-                onPress={() => handleFeaturePress(feature.id, feature.title)}
+                onPress={() => handleFeaturePress(feature.paramTitle)}
                 activeOpacity={0.7}
               >
                 <LinearGradient
@@ -200,7 +208,7 @@ export default function ToolList() {
                       color={(colors as Theme).white}
                     />
                   </View>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
+                  <Text style={styles.featureTitle}>{t(feature.titleKey)}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             );

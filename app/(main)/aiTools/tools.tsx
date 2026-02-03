@@ -10,6 +10,7 @@ import {
   TextInput,
   Keyboard,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -59,13 +60,14 @@ export default function Tools() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((state) => state.user);
   const params = useLocalSearchParams<{ toolType?: string }>();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const toolType = params.toolType || "";
-  const headerTitle = toolType || "Ai Tools";
+  const headerTitle = toolType || t("aiTools");
   const businessId = user?.business_id ?? "";
 
   // State for Post (single image)
@@ -144,8 +146,8 @@ export default function Tools() {
           const totalImages = collageImages.length + newImages.length;
           if (totalImages > 6) {
             showBanner(
-              "Limit Exceeded",
-              "You can select maximum 6 images. Only first 6 will be added.",
+              t("limitExceeded"),
+              t("collageLimitMessage"),
               "warning",
               3000,
             );
@@ -175,8 +177,8 @@ export default function Tools() {
           const totalMedia = reelMedia.length + newMedia.length;
           if (totalMedia > 15) {
             showBanner(
-              "Limit Exceeded",
-              "You can select maximum 15 media files. Only first 15 will be added.",
+              t("limitExceeded"),
+              t("reelLimitMessage"),
               "warning",
               3000,
             );
@@ -189,14 +191,9 @@ export default function Tools() {
       }
     } catch (error) {
       Logger.error("Error selecting media:", error);
-      showBanner(
-        "Error",
-        "Failed to select media. Please try again.",
-        "error",
-        3000,
-      );
+      showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [toolType, collageImages, reelMedia]);
+  }, [toolType, collageImages, reelMedia, t]);
 
   const handleTakePhoto = useCallback(async () => {
     setImagePickerVisible(false);
@@ -225,8 +222,8 @@ export default function Tools() {
         } else if (toolType === "Generate Collage") {
           if (collageImages.length >= 6) {
             showBanner(
-              "Limit Exceeded",
-              "You can select maximum 6 images.",
+              t("limitExceeded"),
+              t("collageMax6Images"),
               "warning",
               3000,
             );
@@ -243,8 +240,8 @@ export default function Tools() {
         } else if (toolType === "Generate Reel") {
           if (reelMedia.length >= 15) {
             showBanner(
-              "Limit Exceeded",
-              "You can select maximum 15 media files.",
+              t("limitExceeded"),
+              t("reelMax15Files"),
               "warning",
               3000,
             );
@@ -266,14 +263,9 @@ export default function Tools() {
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
-      showBanner(
-        "Error",
-        "Failed to take photo. Please try again.",
-        "error",
-        3000,
-      );
+      showBanner(t("error"), t("failedToTakePhoto"), "error", 3000);
     }
-  }, [toolType, collageImages, reelMedia]);
+  }, [toolType, collageImages, reelMedia, t]);
 
   const handleDeleteImage = useCallback(
     (id: string) => {
@@ -315,8 +307,8 @@ export default function Tools() {
         const allowedExtensions = ["mp3", "wav", "m4a"];
         if (fileExtension && !allowedExtensions.includes(fileExtension)) {
           showBanner(
-            "Invalid File Type",
-            "Please select an audio file in MP3, WAV, or M4A format.",
+            t("invalidFileType"),
+            t("invalidAudioFileType"),
             "warning",
             3000,
           );
@@ -331,22 +323,17 @@ export default function Tools() {
       }
     } catch (error) {
       Logger.error("Error selecting audio file:", error);
-      showBanner(
-        "Error",
-        "Failed to select audio file. Please try again.",
-        "error",
-        3000,
-      );
+      showBanner(t("error"), t("failedToSelectAudio"), "error", 3000);
     }
-  }, []);
+  }, [t]);
 
   const handleGenerate = async () => {
     // Validation
     if (toolType === "Generate Post") {
       if (!postImage) {
         showBanner(
-          "Validation Error",
-          "Please select an image.",
+          t("validationError"),
+          t("pleaseSelectImage"),
           "warning",
           3000,
         );
@@ -355,8 +342,8 @@ export default function Tools() {
     } else if (toolType === "Hair Tryon") {
       if (!hairTryonSelectedType) {
         showBanner(
-          "Validation Error",
-          "Please select a try-on type (Processing or With prompt and image).",
+          t("validationError"),
+          t("pleaseSelectTryonType"),
           "warning",
           3000,
         );
@@ -364,8 +351,8 @@ export default function Tools() {
       }
       if (!hairTryonSourceImage) {
         showBanner(
-          "Validation Error",
-          "Please select a source image.",
+          t("validationError"),
+          t("pleaseSelectSourceImage"),
           "warning",
           3000,
         );
@@ -376,8 +363,8 @@ export default function Tools() {
         !hairTryonPrompt.trim()
       ) {
         showBanner(
-          "Validation Error",
-          "Please enter a hairstyle description.",
+          t("validationError"),
+          t("pleaseEnterHairstyleDescription"),
           "warning",
           3000,
         );
@@ -386,8 +373,8 @@ export default function Tools() {
     } else if (toolType === "Generate Collage") {
       if (collageImages.length < 2) {
         showBanner(
-          "Validation Error",
-          "Please select at least 2 images (maximum 6).",
+          t("validationError"),
+          t("pleaseSelectAtLeast2Images"),
           "warning",
           3000,
         );
@@ -401,8 +388,8 @@ export default function Tools() {
       });
       if (invalidImages.length > 0) {
         showBanner(
-          "Invalid File Type",
-          "All images must be in JPEG, PNG, or JPG format.",
+          t("invalidFileType"),
+          t("allImagesMustBeJpeg"),
           "warning",
           3000,
         );
@@ -411,8 +398,8 @@ export default function Tools() {
     } else if (toolType === "Generate Reel") {
       if (reelMedia.length < 3 || reelMedia.length > 15) {
         showBanner(
-          "Validation Error",
-          "Please select 3-15 media files (images or videos).",
+          t("validationError"),
+          t("pleaseSelect3To15Media"),
           "warning",
           3000,
         );
@@ -422,12 +409,7 @@ export default function Tools() {
 
     // Check if business_id is available (only for social media tools)
     if (toolType !== "Hair Tryon" && !businessId) {
-      showBanner(
-        "Error",
-        "Business ID not found. Please complete your business profile.",
-        "error",
-        3000,
-      );
+      showBanner(t("error"), t("businessIdNotFound"), "error", 3000);
       return;
     }
 
@@ -486,8 +468,8 @@ export default function Tools() {
       // Handle no internet error
       if (error.isNoInternet) {
         showBanner(
-          "No Internet Connection",
-          "Please check your internet connection and try again.",
+          t("noInternetConnection"),
+          t("pleaseCheckInternetConnection"),
           "error",
           2000,
         );
@@ -495,10 +477,8 @@ export default function Tools() {
       }
 
       // Handle other errors
-      const errorMessage =
-        error.message ||
-        `Failed to generate ${toolType.toLowerCase()}. Please try again.`;
-      showBanner("Error", errorMessage, "error", 4000);
+      const errorMessage = error.message || t("failedToGenerate");
+      showBanner(t("error"), errorMessage, "error", 4000);
     } finally {
       setIsGenerating(false);
       dispatch(setActionLoader(false));
@@ -520,14 +500,14 @@ export default function Tools() {
 
   const renderPostContent = () => (
     <View style={styles.fieldContainer}>
-      <Text style={styles.label}>Image</Text>
+      <Text style={styles.label}>{t("image")}</Text>
       <TouchableOpacity
         style={styles.fileInput}
         onPress={openImagePicker}
         activeOpacity={0.7}
       >
         <Text style={styles.fileInputText}>
-          {postImage ? "Image Selected" : "Choose File"}
+          {postImage ? t("imageSelected") : t("chooseFile")}
         </Text>
         <MaterialIcons
           name="arrow-drop-down"
@@ -557,7 +537,7 @@ export default function Tools() {
   const renderCollageContent = () => (
     <View style={styles.fieldContainer}>
       <Text style={styles.label}>
-        Images (2-6 images) <Text style={styles.required}>*</Text>
+        {t("images2To6")} <Text style={styles.required}>*</Text>
       </Text>
       <TouchableOpacity
         style={styles.fileInput}
@@ -566,8 +546,8 @@ export default function Tools() {
       >
         <Text style={styles.fileInputText}>
           {collageImages.length > 0
-            ? `${collageImages.length} image(s) selected`
-            : "Choose Files"}
+            ? t("imagesSelectedCount", { count: collageImages.length })
+            : t("chooseFiles")}
         </Text>
         <MaterialIcons
           name="arrow-drop-down"
@@ -600,7 +580,7 @@ export default function Tools() {
       )}
       {collageImages.length > 0 && (
         <Text style={styles.hintText}>
-          {collageImages.length}/6 images selected
+          {t("collageImagesCountHint", { count: collageImages.length })}
         </Text>
       )}
     </View>
@@ -610,8 +590,7 @@ export default function Tools() {
     <>
       <View style={styles.fieldContainer}>
         <Text style={styles.label}>
-          Media Files (3-15 images/videos){" "}
-          <Text style={styles.required}>*</Text>
+          {t("mediaFiles3To15")} <Text style={styles.required}>*</Text>
         </Text>
         <TouchableOpacity
           style={styles.fileInput}
@@ -620,8 +599,8 @@ export default function Tools() {
         >
           <Text style={styles.fileInputText}>
             {reelMedia.length > 0
-              ? `${reelMedia.length} file(s) selected`
-              : "Choose Files"}
+              ? t("filesSelectedCount", { count: reelMedia.length })
+              : t("chooseFiles")}
           </Text>
           <MaterialIcons
             name="arrow-drop-down"
@@ -680,21 +659,21 @@ export default function Tools() {
         )}
         {reelMedia.length > 0 && (
           <Text style={styles.hintText}>
-            {reelMedia.length}/15 files selected. The order of media files in
-            the generated reel will be the same as the order you upload them.
+            {t("reelFilesCountHint", { count: reelMedia.length })}{" "}
+            {t("reelMediaOrderHint")}
           </Text>
         )}
       </View>
 
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Background Music (MP3, WAV, M4A)</Text>
+        <Text style={styles.label}>{t("backgroundMusicLabel")}</Text>
         <TouchableOpacity
           style={styles.fileInput}
           onPress={openAudioPicker}
           activeOpacity={0.7}
         >
           <Text style={styles.fileInputText}>
-            {backgroundMusic ? backgroundMusic.name : "Choose File"}
+            {backgroundMusic ? backgroundMusic.name : t("chooseFile")}
           </Text>
           <MaterialIcons
             name="arrow-drop-down"
@@ -753,23 +732,24 @@ export default function Tools() {
             disabled={isProcessingDisabled}
           >
             <View style={styles.hairTryonOptionHeader}>
-              <Text style={styles.hairTryonOptionTitle}>Processing</Text>
+              <Text style={styles.hairTryonOptionTitle}>{t("processing")}</Text>
               <View style={styles.hairTryonOptionBadge}>
-                <Text style={styles.hairTryonOptionBadgeText}>~5 min</Text>
+                <Text style={styles.hairTryonOptionBadgeText}>
+                  {t("hairTryonEstTime")}
+                </Text>
               </View>
             </View>
             <Text style={styles.hairTryonOptionDesc}>
-              Polling strategy: initial delay 3-5s, poll every 5-10s while
-              processing. Jobs expire after 24 hours.
+              {t("pollingStrategyDesc")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • Validate image (JPG/PNG, ≤10MB)
+              • {t("validateImageHint")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • Handle network retries and rate limits
+              • {t("handleRetriesHint")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • Show progress using step and current_recommendation
+              • {t("showProgressHint")}
             </Text>
             <View
               style={[
@@ -787,7 +767,7 @@ export default function Tools() {
                     : styles.hairTryonOptionButtonTextInactive,
                 ]}
               >
-                Try Hair Try-On
+                {t("tryHairTryOn")}
               </Text>
             </View>
           </TouchableOpacity>
@@ -807,27 +787,28 @@ export default function Tools() {
           >
             <View style={styles.hairTryonOptionHeader}>
               <Text style={styles.hairTryonOptionTitle}>
-                With prompt and image
+                {t("withPromptAndImage")}
               </Text>
               <View style={styles.hairTryonOptionBadge}>
-                <Text style={styles.hairTryonOptionBadgeText}>~5 min</Text>
+                <Text style={styles.hairTryonOptionBadgeText}>
+                  {t("hairTryonEstTime")}
+                </Text>
               </View>
             </View>
             <Text style={styles.hairTryonOptionSubtitle}>
-              Describe + upload
+              {t("describeAndUpload")}
             </Text>
             <Text style={styles.hairTryonOptionDesc}>
-              Provide a text description and a source photo. Replicate returns
-              front, left, right, and back views.
+              {t("withPromptDescription")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • Validate image (JPG/PNG, ≤10MB)
+              • {t("validateImageHint")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • Handle network retries and rate limits
+              • {t("handleRetriesHint")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • Show progress using step and current_recommendation
+              • {t("showProgressHint")}
             </Text>
             <View
               style={[
@@ -845,7 +826,7 @@ export default function Tools() {
                     : styles.hairTryonOptionButtonTextInactive,
                 ]}
               >
-                With prompt Try-on
+                {t("withPromptTryon")}
               </Text>
             </View>
           </TouchableOpacity>
@@ -856,8 +837,8 @@ export default function Tools() {
     // Has selection: show selected type name (left) + "Change selection" (right), then form
     const selectedTypeLabel =
       hairTryonSelectedType === "processing"
-        ? "Processing"
-        : "With prompt and image";
+        ? t("processing")
+        : t("withPromptAndImage");
     return (
       <>
         <View style={styles.hairTryonChangeSelectionRow}>
@@ -869,14 +850,14 @@ export default function Tools() {
             activeOpacity={0.7}
           >
             <Text style={styles.hairTryonChangeSelectionText}>
-              Change selection
+              {t("changeSelection")}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>
-            Source Image <Text style={styles.required}>*</Text>
+            {t("sourceImage")} <Text style={styles.required}>*</Text>
           </Text>
           <TouchableOpacity
             style={styles.fileInput}
@@ -884,7 +865,7 @@ export default function Tools() {
             activeOpacity={0.7}
           >
             <Text style={styles.fileInputText}>
-              {hairTryonSourceImage ? "Image Selected" : "Choose File"}
+              {hairTryonSourceImage ? t("imageSelected") : t("chooseFile")}
             </Text>
             <MaterialIcons
               name="arrow-drop-down"
@@ -897,7 +878,7 @@ export default function Tools() {
         {hairTryonSelectedType === "withPromptAndImage" && (
           <View style={styles.fieldContainer}>
             <Text style={styles.label}>
-              Hairstyle Description <Text style={styles.required}>*</Text>
+              {t("hairstyleDescription")} <Text style={styles.required}>*</Text>
             </Text>
             <TextInput
               style={[
@@ -908,7 +889,7 @@ export default function Tools() {
                   color: theme.text,
                 },
               ]}
-              placeholder="e.g., Short bob haircut with side-swept bangs, blonde highlights."
+              placeholder={t("hairstylePlaceholder")}
               placeholderTextColor={theme.lightGreen4}
               value={hairTryonPrompt}
               onChangeText={setHairTryonPrompt}
@@ -1008,7 +989,7 @@ export default function Tools() {
                       flex: 1,
                     }}
                   >
-                    View Previous Result
+                    {t("viewPreviousResult")}
                   </Text>
                 </View>
                 <MaterialIcons
@@ -1019,7 +1000,17 @@ export default function Tools() {
               </TouchableOpacity>
             )}
             <Button
-              title={`Generate ${toolType.replace("Generate ", "")}`}
+              title={
+                toolType === "Generate Post"
+                  ? t("generatePost")
+                  : toolType === "Generate Collage"
+                  ? t("generateCollage")
+                  : toolType === "Generate Reel"
+                  ? t("generateReel")
+                  : toolType === "Hair Tryon"
+                  ? t("generateHairTryon")
+                  : `Generate ${toolType.replace("Generate ", "")}`
+              }
               onPress={handleGenerate}
               disabled={
                 isGenerating ||
@@ -1034,7 +1025,7 @@ export default function Tools() {
       <ModalizeBottomSheet
         visible={imagePickerVisible}
         onClose={() => setImagePickerVisible(false)}
-        title="Select Photo"
+        title={t("selectPhoto")}
       >
         <TouchableOpacity
           style={styles.optionItem}
@@ -1047,7 +1038,7 @@ export default function Tools() {
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>From Gallery</Text>
+          <Text style={styles.optionText}>{t("fromGallery")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -1061,7 +1052,7 @@ export default function Tools() {
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>From Camera</Text>
+          <Text style={styles.optionText}>{t("fromCamera")}</Text>
         </TouchableOpacity>
       </ModalizeBottomSheet>
 
@@ -1069,7 +1060,7 @@ export default function Tools() {
       <ModalizeBottomSheet
         visible={mediaPickerVisible}
         onClose={() => setMediaPickerVisible(false)}
-        title="Select Media"
+        title={t("selectMedia")}
       >
         <TouchableOpacity
           style={styles.optionItem}
@@ -1082,7 +1073,7 @@ export default function Tools() {
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>From Gallery</Text>
+          <Text style={styles.optionText}>{t("fromGallery")}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -1096,7 +1087,7 @@ export default function Tools() {
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>From Camera</Text>
+          <Text style={styles.optionText}>{t("fromCamera")}</Text>
         </TouchableOpacity>
       </ModalizeBottomSheet>
 
@@ -1104,7 +1095,7 @@ export default function Tools() {
       <ModalizeBottomSheet
         visible={audioPickerVisible}
         onClose={() => setAudioPickerVisible(false)}
-        title="Select Audio File"
+        title={t("selectAudioFile")}
       >
         <TouchableOpacity
           style={styles.optionItem}
@@ -1117,7 +1108,7 @@ export default function Tools() {
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>Choose Audio File</Text>
+          <Text style={styles.optionText}>{t("chooseAudioFile")}</Text>
         </TouchableOpacity>
       </ModalizeBottomSheet>
 
