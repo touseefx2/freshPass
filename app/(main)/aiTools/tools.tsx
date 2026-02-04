@@ -485,7 +485,7 @@ export default function Tools() {
     dispatch(setActionLoader(true));
 
     try {
-      let response;
+      // let response;
 
       if (toolType === "Hair Tryon") {
         if (hairTryonSelectedType === "processing") {
@@ -523,39 +523,84 @@ export default function Tools() {
           });
           return;
         }
-        return;
       } else if (toolType === "Generate Post") {
-        // Generate Post
-        response = await AiToolsService.generatePost(
+        const postResponse = await AiToolsService.generatePost(
           businessId.toString(),
           postImage!,
         );
+        if (postResponse?.job_id) {
+          const estimatedMinutes = postResponse.estimated_time_seconds
+            ? Math.max(1, Math.ceil(postResponse.estimated_time_seconds / 60))
+            : 5;
+          hairPipelineStartTimeRef.current = Date.now();
+          setHairPipelineState({
+            visible: true,
+            jobId: postResponse.job_id,
+            estimatedMinutes,
+            progress: 0,
+            imageUri: postImage,
+            complete: false,
+          });
+          return;
+        }
       } else if (toolType === "Generate Collage") {
-        // Generate Collage
         const imageUris = collageImages.map((img) => img.uri);
-        response = await AiToolsService.generateCollage(
+        const collageResponse = await AiToolsService.generateCollage(
           businessId.toString(),
           imageUris,
         );
+        if (collageResponse?.job_id) {
+          const estimatedMinutes = collageResponse.estimated_time_seconds
+            ? Math.max(
+                1,
+                Math.ceil(collageResponse.estimated_time_seconds / 60),
+              )
+            : 5;
+          hairPipelineStartTimeRef.current = Date.now();
+          setHairPipelineState({
+            visible: true,
+            jobId: collageResponse.job_id,
+            estimatedMinutes,
+            progress: 0,
+            imageUri: imageUris[0] ?? null,
+            complete: false,
+          });
+          return;
+        }
       } else if (toolType === "Generate Reel") {
-        // Generate Reel
         const mediaFiles = reelMedia.map((media) => ({
           uri: media.uri,
           type: media.type,
         }));
-        response = await AiToolsService.generateReel(
+        const reelResponse = await AiToolsService.generateReel(
           businessId.toString(),
           mediaFiles,
           backgroundMusic?.uri,
           backgroundMusic?.name,
         );
+        if (reelResponse?.job_id) {
+          const estimatedMinutes = reelResponse.estimated_time_seconds
+            ? Math.max(1, Math.ceil(reelResponse.estimated_time_seconds / 60))
+            : 5;
+          hairPipelineStartTimeRef.current = Date.now();
+          setHairPipelineState({
+            visible: true,
+            jobId: reelResponse.job_id,
+            estimatedMinutes,
+            progress: 0,
+            imageUri: mediaFiles[0]?.uri ?? null,
+            complete: false,
+          });
+          return;
+        }
       } else {
         throw new Error("Invalid tool type");
       }
 
-      // Save the result
-      // setGeneratedResult(response);
-      // setResultModalVisible(true);
+      // if (response != null) {
+      //   setGeneratedResult(response);
+      //   setResultModalVisible(true);
+      // }
     } catch (error: any) {
       Logger.error(`Error generating ${toolType.toLowerCase()}:`, error);
 
