@@ -6,8 +6,7 @@ import { Theme } from "@/src/theme/colors";
 import LottieView from "lottie-react-native";
 import { IMAGES } from "@/src/constant/images";
 import { moderateWidthScale } from "@/src/theme/dimensions";
-import { useMemo } from "react";
-
+import { useEffect, useMemo } from "react";
 
 export default function Index() {
   const { colors } = useTheme();
@@ -21,19 +20,25 @@ export default function Index() {
     console.log("----> accessToken", accessToken);
 
     if (accessToken || isGuest) {
-      router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+      // router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+      router.replace(`/(main)/aiRequests` as any);
     } else {
       router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
     }
   };
 
+  useEffect(() => {
+    handleNavigation();
+  }, []);
 
   return (
-    <View
-      style={styles.container}
-    >
-      <StatusBar barStyle="light-content" backgroundColor={theme.darkGreen} translucent />
-      <LottieView
+    <View style={styles.container}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={theme.darkGreen}
+        translucent
+      />
+      {/* <LottieView
         source={IMAGES.welcomeLogo}
         autoPlay
         // loop={true}
@@ -43,11 +48,11 @@ export default function Index() {
           console.error("Animation failed:", error);
           handleNavigation();
         }}
-        style={styles.logo} />
+        style={styles.logo}
+      /> */}
     </View>
   );
 }
-
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -59,7 +64,6 @@ const createStyles = (theme: Theme) =>
     },
     logo: {
       width: moderateWidthScale(500),
-      height: moderateWidthScale(500)
-    }
-
+      height: moderateWidthScale(500),
+    },
   });
