@@ -218,9 +218,13 @@ export class AiToolsService {
   /**
    * Start Hair Pipeline (background job for haircut recommendations)
    * @param sourceImageUri - URI of the source image
+   * @param userId - User ID for tracking the request
    * @returns Promise with { status, job_id, message, estimated_time_minutes }
    */
-  static async startHairPipeline(sourceImageUri: string): Promise<{
+  static async startHairPipeline(
+    sourceImageUri: string,
+    userId: number,
+  ): Promise<{
     status: string;
     job_id: string;
     message: string;
@@ -252,6 +256,8 @@ export class AiToolsService {
       type: mimeType,
       name: fileName,
     } as any);
+
+    formData.append("user_id", userId.toString());
 
     logAiToolRequest("POST", endpoint, formData);
 
@@ -313,12 +319,14 @@ export class AiToolsService {
    * @param sourceImageUri - URI of the source image
    * @param prompt - Hairstyle description prompt
    * @param generateAllViews - Whether to generate all views (default: true)
+   * @param userId - User ID for tracking the request
    * @returns Promise with response data
    */
   static async generateHairTryon(
     sourceImageUri: string,
     prompt: string,
     generateAllViews: boolean = true,
+    userId: number,
   ): Promise<any> {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
@@ -355,6 +363,8 @@ export class AiToolsService {
     // Add generate_all_views
     formData.append("generate_all_views", generateAllViews.toString());
 
+    formData.append("user_id", userId.toString());
+
     logAiToolRequest("POST", endpoint, formData);
 
     try {
@@ -379,11 +389,13 @@ export class AiToolsService {
    * Generate Post
    * @param businessId - Business ID
    * @param imageUri - URI of the image
+   * @param userId - User ID for tracking the request
    * @returns Promise with response data
    */
   static async generatePost(
     businessId: string,
     imageUri: string,
+    userId: number,
   ): Promise<any> {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
@@ -399,6 +411,8 @@ export class AiToolsService {
 
     // Add business_id
     formData.append("business_id", businessId.toString());
+
+    formData.append("user_id", userId.toString());
 
     // Add image
     const fileExtension = imageUri.split(".").pop()?.toLowerCase() || "jpg";
@@ -440,11 +454,13 @@ export class AiToolsService {
    * Generate Collage
    * @param businessId - Business ID
    * @param imageUris - Array of image URIs
+   * @param userId - User ID for tracking the request
    * @returns Promise with response data
    */
   static async generateCollage(
     businessId: string,
     imageUris: string[],
+    userId: number,
   ): Promise<any> {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
@@ -460,6 +476,8 @@ export class AiToolsService {
 
     // Add business_id
     formData.append("business_id", businessId.toString());
+
+    formData.append("user_id", userId.toString());
 
     // Add images
     imageUris.forEach((imageUri, index) => {
@@ -503,6 +521,7 @@ export class AiToolsService {
    * Generate Reel
    * @param businessId - Business ID
    * @param mediaFiles - Array of media file objects with uri and type
+   * @param userId - User ID for tracking the request
    * @param backgroundMusicUri - Optional background music URI
    * @param backgroundMusicName - Optional background music name
    * @returns Promise with response data
@@ -510,6 +529,7 @@ export class AiToolsService {
   static async generateReel(
     businessId: string,
     mediaFiles: Array<{ uri: string; type: "image" | "video" }>,
+    userId: number,
     backgroundMusicUri?: string,
     backgroundMusicName?: string,
   ): Promise<any> {
@@ -527,6 +547,8 @@ export class AiToolsService {
 
     // Add business_id
     formData.append("business_id", businessId.toString());
+
+    formData.append("user_id", userId.toString());
 
     // Add media_files
     mediaFiles.forEach((media, index) => {

@@ -79,6 +79,7 @@ export default function Tools() {
   const toolType = params.toolType || "";
   const headerTitle = toolType || t("aiTools");
   const businessId = user?.business_id ?? "";
+  const userId = Number(user?.id) ?? 0;
 
   // State for Post (single image)
   const [postImage, setPostImage] = useState<string | null>(null);
@@ -486,12 +487,12 @@ export default function Tools() {
 
     try {
       // let response;
-
       if (toolType === "Hair Tryon") {
         if (hairTryonSelectedType === "processing") {
           // Hair pipeline: start background job and show processing modal
           const pipelineResponse = await AiToolsService.startHairPipeline(
             hairTryonSourceImage!,
+            userId,
           );
           hairPipelineStartTimeRef.current = Date.now();
           setHairPipelineState({
@@ -511,6 +512,7 @@ export default function Tools() {
           hairTryonSourceImage!,
           prompt,
           true,
+          userId,
         );
         if (pipelineResponse?.job_id) {
           hairPipelineStartTimeRef.current = Date.now();
@@ -529,6 +531,7 @@ export default function Tools() {
         const postResponse = await AiToolsService.generatePost(
           businessId.toString(),
           postImage!,
+          userId,
         );
         if (postResponse?.job_id) {
           const estimatedMinutes = postResponse.estimated_time_seconds
@@ -551,6 +554,7 @@ export default function Tools() {
         const collageResponse = await AiToolsService.generateCollage(
           businessId.toString(),
           imageUris,
+          userId,
         );
         if (collageResponse?.job_id) {
           const estimatedMinutes = collageResponse.estimated_time_seconds
@@ -579,6 +583,7 @@ export default function Tools() {
         const reelResponse = await AiToolsService.generateReel(
           businessId.toString(),
           mediaFiles,
+          userId,
           backgroundMusic?.uri,
           backgroundMusic?.name,
         );
