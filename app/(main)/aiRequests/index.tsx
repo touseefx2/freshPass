@@ -26,11 +26,11 @@ function getJobImageUrl(images: (string | null)[] | undefined): string {
 
 const STATIC_JOBS = [
   { job_id: "1a7ddec2-9e7", images: [] as string[], prompt: "" },
-  {
-    job_id: "7eb35c21-5ab",
-    images: [] as string[],
-    prompt: "please cut my hair",
-  },
+  // {
+  //   job_id: "7eb35c21-5ab",
+  //   images: [] as string[],
+  //   prompt: "",
+  // },
 ];
 
 export default function AiRequests() {

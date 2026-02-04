@@ -182,7 +182,9 @@ const getErrorMessage = (error: any): string => {
     case 403:
       return "You don't have permission to perform this action.";
     case 404:
-      return "Resource not found.";
+      return (
+        data?.detail || data?.message || data?.error || "Resource not found."
+      );
     case 422:
       return (
         data?.detail ||
