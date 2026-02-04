@@ -256,4 +256,5 @@ export const aiRequestsEndpoints = {
     const query = queryParams.toString();
     return `/api/ai-requests${query ? `?${query}` : ""}`;
   },
+  getByJobId: (jobId: string) => `/api/ai-requests/${jobId}`,
 };

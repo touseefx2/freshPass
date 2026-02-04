@@ -6,7 +6,9 @@ import {
   socialMediaEndpoints,
   businessEndpoints,
   clientChatEndpoints,
+  aiRequestsEndpoints,
 } from "./endpoints";
+import { ApiService } from "./api";
 import Logger from "./logger";
 
 // Get AI Tool base URL and token from environment
@@ -312,6 +314,37 @@ export class AiToolsService {
       (customError as any).isNoInternet = error.isNoInternet;
       throw customError;
     }
+  }
+
+  /**
+   * Get AI request by Job ID (main FreshPass API: GET /api/ai-requests/{job_id})
+   * @param jobId - Job ID
+   * @returns Promise with { data: { job_id, status, response?, ... } }
+   */
+  static async getAiRequestByJobId(jobId: string): Promise<{
+    data: {
+      job_id: string;
+      status: string;
+      response?: {
+        images?: {
+          front?: { url?: string };
+          left?: { url?: string };
+          right?: { url?: string };
+          back?: { url?: string };
+        };
+        job_type?: string;
+      };
+      message?: string;
+    };
+  }> {
+    const hasInternet = await checkInternetConnection();
+    if (!hasInternet) {
+      const error = new Error("No internet connection");
+      (error as any).isNoInternet = true;
+      throw error;
+    }
+    const endpoint = aiRequestsEndpoints.getByJobId(jobId);
+    return ApiService.get(endpoint);
   }
 
   /**
