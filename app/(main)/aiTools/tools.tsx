@@ -504,13 +504,26 @@ export default function Tools() {
           });
           return;
         }
-        // With prompt and image: use existing generateHairTryon
+        // With prompt and image: start Replicate job, same modal as processing
         const prompt = hairTryonPrompt.trim();
-        response = await AiToolsService.generateHairTryon(
+        const pipelineResponse = await AiToolsService.generateHairTryon(
           hairTryonSourceImage!,
           prompt,
           true,
         );
+        if (pipelineResponse?.job_id) {
+          hairPipelineStartTimeRef.current = Date.now();
+          setHairPipelineState({
+            visible: true,
+            jobId: pipelineResponse.job_id,
+            estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
+            progress: 0,
+            imageUri: hairTryonSourceImage,
+            complete: false,
+          });
+          return;
+        }
+        return;
       } else if (toolType === "Generate Post") {
         // Generate Post
         response = await AiToolsService.generatePost(
