@@ -18,9 +18,16 @@ import {
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 
+export type PipelineJobType =
+  | "Hair Tryon"
+  | "Generate Post"
+  | "Generate Collage"
+  | "Generate Reel";
+
 export type HairPipelineModalState = {
   visible: boolean;
   jobId: string | null;
+  jobType: PipelineJobType | null;
   estimatedMinutes: number;
   progress: number;
   imageUri: string | null;
@@ -30,6 +37,7 @@ export type HairPipelineModalState = {
 export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
   visible: false,
   jobId: null,
+  jobType: null,
   estimatedMinutes: 5,
   progress: 0,
   imageUri: null,
@@ -211,7 +219,19 @@ export default function HairPipelineProcessingModal({
               color={theme.primary}
             />
           </View>
-          <Text style={styles.title}>{t("yourApiIsProcessing")}</Text>
+          <Text style={styles.title}>
+            {state.jobType
+              ? `${t(
+                  state.jobType === "Hair Tryon"
+                    ? "hairTryon"
+                    : state.jobType === "Generate Post"
+                    ? "generatePost"
+                    : state.jobType === "Generate Collage"
+                    ? "generateCollage"
+                    : "generateReel",
+                )} - ${t("yourApiIsProcessing")}`
+              : t("yourApiIsProcessing")}
+          </Text>
           <Text style={styles.estTime}>
             {t("estimatedTimeMinutes", {
               count: state.estimatedMinutes,

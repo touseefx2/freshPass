@@ -497,6 +497,7 @@ export default function Tools() {
           setHairPipelineState({
             visible: true,
             jobId: pipelineResponse.job_id,
+            jobType: "Hair Tryon",
             estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
             progress: 0,
             imageUri: hairTryonSourceImage,
@@ -516,6 +517,7 @@ export default function Tools() {
           setHairPipelineState({
             visible: true,
             jobId: pipelineResponse.job_id,
+            jobType: "Hair Tryon",
             estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
             progress: 0,
             imageUri: hairTryonSourceImage,
@@ -536,6 +538,7 @@ export default function Tools() {
           setHairPipelineState({
             visible: true,
             jobId: postResponse.job_id,
+            jobType: "Generate Post",
             estimatedMinutes,
             progress: 0,
             imageUri: postImage,
@@ -560,6 +563,7 @@ export default function Tools() {
           setHairPipelineState({
             visible: true,
             jobId: collageResponse.job_id,
+            jobType: "Generate Collage",
             estimatedMinutes,
             progress: 0,
             imageUri: imageUris[0] ?? null,
@@ -586,6 +590,7 @@ export default function Tools() {
           setHairPipelineState({
             visible: true,
             jobId: reelResponse.job_id,
+            jobType: "Generate Reel",
             estimatedMinutes,
             progress: 0,
             imageUri: mediaFiles[0]?.uri ?? null,
