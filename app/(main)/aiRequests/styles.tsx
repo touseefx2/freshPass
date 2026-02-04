@@ -118,6 +118,19 @@ export const createStyles = (theme: Theme) =>
       color: theme.text,
       flex: 1,
     },
+    jobCardTypeTitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.primary,
+      textTransform: "capitalize",
+      flex: 1,
+    },
+    jobCardJobIdMuted: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(4),
+    },
     jobCardStatusBadge: {
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(4),
@@ -168,7 +181,7 @@ export const createStyles = (theme: Theme) =>
     jobCardMetaLabel: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.borderMedium,
+      color: theme.lightGreen,
     },
     jobCardMetaValue: {
       fontSize: fontSize.size11,
@@ -211,6 +224,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.lightGreen4,
     },
     listContent: {
+      flexGrow: 1,
       paddingVertical: moderateHeightScale(32),
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(40),

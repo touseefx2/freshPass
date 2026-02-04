@@ -172,11 +172,11 @@ export default function AiRequests() {
             <View style={styles.jobCardContent}>
               <View style={styles.jobCardHeader}>
                 <Text
-                  style={styles.jobCardId}
+                  style={styles.jobCardTypeTitle}
                   numberOfLines={1}
                   ellipsizeMode="middle"
                 >
-                  {item.job_id}
+                  {jobType}
                 </Text>
                 <View style={[styles.jobCardStatusBadge, statusBadgeStyle]}>
                   <Text
@@ -186,10 +186,13 @@ export default function AiRequests() {
                   </Text>
                 </View>
               </View>
-              <View style={styles.jobCardTypeRow}>
-                <Text style={styles.jobCardLabel}>Job type</Text>
-                <Text style={styles.jobCardTypeValue}>{jobType}</Text>
-              </View>
+              <Text
+                style={styles.jobCardJobIdMuted}
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {t("jobId")}: {item.job_id}
+              </Text>
               <View style={styles.jobCardMetaRow}>
                 <View style={styles.jobCardMetaItem}>
                   <Text style={styles.jobCardMetaLabel}>Created</Text>
