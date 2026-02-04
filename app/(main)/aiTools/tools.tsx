@@ -116,7 +116,7 @@ export default function Tools() {
     null,
   );
 
-  // console.log("hairPipelineState: ", hairPipelineState);
+  console.log("hairPipelineState: ", hairPipelineState);
 
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -489,6 +489,7 @@ export default function Tools() {
       // let response;
       if (toolType === "Hair Tryon") {
         if (hairTryonSelectedType === "processing") {
+          console.log("--------> userId: ", userId);
           // Hair pipeline: start background job and show processing modal
           const pipelineResponse = await AiToolsService.startHairPipeline(
             hairTryonSourceImage!,
