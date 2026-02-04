@@ -160,6 +160,8 @@ export default function AiRequests() {
     ({ item }: { item: AiRequestJob }) => {
       const jobType =
         item.request_payload?.job_type ?? item.response?.job_type ?? "—";
+      const jobTypeDisplay =
+        typeof jobType === "string" ? jobType.replace(/_/g, " ") : jobType;
       const statusLabel =
         item.status?.charAt(0).toUpperCase() + (item.status?.slice(1) ?? "");
       const statusBadgeStyle = getStatusBadgeStyle(item.status);
@@ -176,7 +178,7 @@ export default function AiRequests() {
                   numberOfLines={1}
                   ellipsizeMode="middle"
                 >
-                  {jobType}
+                  {jobTypeDisplay}
                 </Text>
                 <View style={[styles.jobCardStatusBadge, statusBadgeStyle]}>
                   <Text
