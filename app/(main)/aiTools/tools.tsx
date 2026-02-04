@@ -554,8 +554,8 @@ export default function Tools() {
       }
 
       // Save the result
-      setGeneratedResult(response);
-      setResultModalVisible(true);
+      // setGeneratedResult(response);
+      // setResultModalVisible(true);
     } catch (error: any) {
       Logger.error(`Error generating ${toolType.toLowerCase()}:`, error);
 
