@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -34,25 +35,26 @@ export type HairPipelineModalState = {
   complete: boolean;
 };
 
-export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
-  visible: false,
-  jobId: null,
-  jobType: null,
-  estimatedMinutes: 5,
-  progress: 0,
-  imageUri: null,
-  complete: false,
-};
-
 // export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
-//   complete: false,
+//   visible: false,
+//   jobId: null,
+//   jobType: null,
 //   estimatedMinutes: 5,
-//   imageUri:
-//     "file:///Users/touseef/Library/Developer/CoreSimulator/Devices/A80F36A4-78FF-4772-8FFC-FDAC4131C5F0/data/Containers/Data/Application/97A97AD2-404B-4A4E-8235-7F5FE4ACC27F/Library/Caches/ImagePicker/CC3F2926-B120-4258-9C20-D4E2D5A91FE6.jpg",
-//   jobId: "1a7ddec2-9e7",
-//   progress: 58.31966666666667,
-//   visible: true,
+//   progress: 0,
+//   imageUri: null,
+//   complete: false,
 // };
+
+export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
+  complete: false,
+  estimatedMinutes: 5,
+  imageUri:
+    "file:///Users/touseef/Library/Developer/CoreSimulator/Devices/A80F36A4-78FF-4772-8FFC-FDAC4131C5F0/data/Containers/Data/Application/C0B78EED-D1ED-46A1-B22E-CA2E089E9F02/Library/Caches/ImagePicker/99190096-D140-4780-94CA-124C7C34F407.jpg",
+  jobId: "ee040ee5-ad3",
+  jobType: "Hair Tryon",
+  progress: 28.747666666666667,
+  visible: true,
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -134,20 +136,23 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(4),
       backgroundColor: theme.primary,
     },
-    seeResult: {
+    barFillComplete: {
+      backgroundColor: theme.green,
+    },
+    viewResultText: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.primary,
       marginBottom: moderateHeightScale(16),
+      textDecorationLine: "underline",
     },
-    bottomRow: {
-      flexDirection: "row",
-      gap: moderateWidthScale(12),
+    bottomCol: {
       width: "100%",
       marginTop: moderateHeightScale(8),
+      gap: moderateWidthScale(12),
     },
     btnSecondary: {
-      flex: 1,
+      width: "100%",
       paddingVertical: moderateHeightScale(12),
       borderRadius: moderateWidthScale(12),
       borderWidth: 1,
@@ -156,7 +161,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     btnPrimary: {
-      flex: 1,
+      width: "100%",
       paddingVertical: moderateHeightScale(12),
       borderRadius: moderateWidthScale(12),
       backgroundColor: theme.primary,
@@ -196,11 +201,11 @@ export default function HairPipelineProcessingModal({
       visible={state.visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      // onRequestClose={onClose}
     >
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.closeBtn}
             onPress={onClose}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -210,7 +215,7 @@ export default function HairPipelineProcessingModal({
               size={moderateWidthScale(24)}
               color={theme.text}
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <View style={styles.iconWrap}>
             <MaterialIcons
@@ -229,11 +234,11 @@ export default function HairPipelineProcessingModal({
                     : state.jobType === "Generate Collage"
                     ? "generateCollage"
                     : "generateReel",
-                )} - ${t("yourApiIsProcessing")}`
-              : t("yourApiIsProcessing")}
+                )} - ${t("aiIsProcessing")}`
+              : t("aiIsProcessing")}
           </Text>
           <Text style={styles.estTime}>
-            {t("estimatedTimeMinutes", {
+            {t("pleaseWaitForMinutes", {
               count: state.estimatedMinutes,
             })}
           </Text>
@@ -251,27 +256,41 @@ export default function HairPipelineProcessingModal({
             <View
               style={[
                 styles.barFill,
+                state.progress >= 100 && styles.barFillComplete,
                 {
-                  width: `${state.progress}%`,
+                  width: `${Math.min(state.progress, 100)}%`,
                 },
               ]}
             />
           </View>
 
-          <View style={styles.bottomRow}>
+          {state.progress >= 100 && (
+            <TouchableOpacity onPress={onSeeStatus} activeOpacity={0.7}>
+              <Text style={styles.viewResultText}>{t("viewResult")}</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.bottomCol}>
             <TouchableOpacity
               style={styles.btnSecondary}
-              onPress={onClose}
+              onPress={() => {
+                Alert.alert(t("close"), t("closeAiProcessAlertMessage"), [
+                  { text: t("cancel"), onPress: () => {} },
+                  { text: t("ok"), onPress: onClose },
+                ]);
+              }}
               activeOpacity={0.7}
             >
-              <Text style={styles.btnTextSecondary}>Another Request</Text>
+              <Text style={styles.btnTextSecondary}>{t("close")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.btnPrimary}
               onPress={onSeeStatus}
               activeOpacity={0.7}
             >
-              <Text style={styles.btnTextPrimary}>Ai Results</Text>
+              <Text style={styles.btnTextPrimary}>
+                {t("goToAiRequestsList")}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
