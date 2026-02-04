@@ -170,8 +170,8 @@ export default function Tools() {
   }, []);
 
   const handleHairPipelineSeeStatus = () => {
-    closeHairPipelineModal();
     router.push("/aiRequests");
+    closeHairPipelineModal();
   };
 
   const handleSelectFromGallery = useCallback(async () => {

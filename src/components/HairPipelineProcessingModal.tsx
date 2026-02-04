@@ -18,6 +18,7 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
+import { router } from "expo-router";
 
 export type PipelineJobType =
   | "Hair Tryon"
@@ -35,26 +36,26 @@ export type HairPipelineModalState = {
   complete: boolean;
 };
 
-// export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
-//   visible: false,
-//   jobId: null,
-//   jobType: null,
-//   estimatedMinutes: 5,
-//   progress: 0,
-//   imageUri: null,
-//   complete: false,
-// };
-
 export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
-  complete: false,
+  visible: false,
+  jobId: null,
+  jobType: null,
   estimatedMinutes: 5,
-  imageUri:
-    "file:///Users/touseef/Library/Developer/CoreSimulator/Devices/A80F36A4-78FF-4772-8FFC-FDAC4131C5F0/data/Containers/Data/Application/C0B78EED-D1ED-46A1-B22E-CA2E089E9F02/Library/Caches/ImagePicker/99190096-D140-4780-94CA-124C7C34F407.jpg",
-  jobId: "ee040ee5-ad3",
-  jobType: "Hair Tryon",
-  progress: 28.747666666666667,
-  visible: true,
+  progress: 0,
+  imageUri: null,
+  complete: false,
 };
+
+// export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
+//   complete: false,
+//   estimatedMinutes: 5,
+//   imageUri:
+//     "file:///Users/touseef/Library/Developer/CoreSimulator/Devices/A80F36A4-78FF-4772-8FFC-FDAC4131C5F0/data/Containers/Data/Application/C0B78EED-D1ED-46A1-B22E-CA2E089E9F02/Library/Caches/ImagePicker/99190096-D140-4780-94CA-124C7C34F407.jpg",
+//   jobId: "ee040ee5-ad3",
+//   jobType: "Hair Tryon",
+//   progress: 28.747666666666667,
+//   visible: true,
+// };
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -274,10 +275,12 @@ export default function HairPipelineProcessingModal({
             <TouchableOpacity
               style={styles.btnSecondary}
               onPress={() => {
-                Alert.alert(t("close"), t("closeAiProcessAlertMessage"), [
-                  { text: t("cancel"), onPress: () => {} },
-                  { text: t("ok"), onPress: onClose },
-                ]);
+                state.progress >= 100
+                  ? onClose()
+                  : Alert.alert(t("close"), t("closeAiProcessAlertMessage"), [
+                      { text: t("cancel"), onPress: () => {} },
+                      { text: t("ok"), onPress: onClose },
+                    ]);
               }}
               activeOpacity={0.7}
             >
@@ -285,7 +288,10 @@ export default function HairPipelineProcessingModal({
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.btnPrimary}
-              onPress={onSeeStatus}
+              onPress={() => {
+                onClose();
+                router.push("/aiRequests");
+              }}
               activeOpacity={0.7}
             >
               <Text style={styles.btnTextPrimary}>
