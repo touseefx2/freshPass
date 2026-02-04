@@ -596,6 +596,8 @@
   "jobId": "Auftrags-ID",
   "aiResults": "KI-Ergebnis",
   "noDataFound": "Keine Daten gefunden",
+  "aiStillProcessing": "KI wird noch verarbeitet",
+  "resultNotFound": "Ergebnis nicht gefunden",
   "download": "Herunterladen",
   "missingJobId": "Auftrags-ID fehlt",
   "somethingWentWrong": "Etwas ist schiefgelaufen"

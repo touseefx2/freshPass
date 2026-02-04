@@ -596,6 +596,8 @@
   "jobId": "ID de trabajo",
   "aiResults": "Resultado IA",
   "noDataFound": "No se encontraron datos",
+  "aiStillProcessing": "La IA sigue procesando",
+  "resultNotFound": "Resultado no encontrado",
   "download": "Descargar",
   "missingJobId": "Falta el ID del trabajo",
   "somethingWentWrong": "Algo salió mal"

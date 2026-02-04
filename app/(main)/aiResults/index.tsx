@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   ScrollView,
   View,
@@ -14,28 +20,45 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
-import { AiToolsService } from "@/src/services/aiToolsService";
+import { ApiService } from "@/src/services/api";
+import { aiRequestsEndpoints } from "@/src/services/endpoints";
 import { Feather } from "@expo/vector-icons";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 
-export interface HairPipelineStatusResponse {
-  job_id: string;
-  status: string;
-  created_at?: string;
-  updated_at?: string;
-  completed_at?: string;
-  attributes?: Record<string, unknown>;
-  recommendations?: Record<string, { name: string; description: string }>;
-  images?:
-    | {
-        face_match?: HairPipelineImageSet;
-        trending_celebrity?: HairPipelineImageSet;
-        ai_suggested?: HairPipelineImageSet;
-      }
-    | HairPipelineFlatImages;
-  message?: string;
-  prompt?: string;
-  generate_all_views?: boolean;
+/** API: GET /api/ai-requests/{job_id} - response can be processing, replicate, or hair_pipeline */
+export interface AiRequestByJobIdResponse {
+  data: {
+    job_id: string;
+    status: string;
+    /** Empty array when processing; object when completed */
+    response?:
+      | []
+      | {
+          images?: ReplicateImages | HairPipelineImages;
+          job_type?: string;
+          attributes?: Record<string, unknown>;
+          recommendations?: Record<
+            string,
+            { name: string; description: string }
+          >;
+        };
+    message?: string;
+  };
+}
+
+/** Replicate format: front/left/right/back with url */
+interface ReplicateImages {
+  front?: { url?: string } | string;
+  left?: { url?: string } | string;
+  right?: { url?: string } | string;
+  back?: { url?: string } | string;
+}
+
+/** Hair pipeline format: face_match, trending_celebrity, ai_suggested */
+interface HairPipelineImages {
+  face_match?: HairPipelineImageSet;
+  trending_celebrity?: HairPipelineImageSet;
+  ai_suggested?: HairPipelineImageSet;
 }
 
 interface HairPipelineImageSet {
@@ -49,55 +72,101 @@ interface HairPipelineImageSet {
   };
 }
 
-/** Flat format: images.front.url, images.left.url, etc. */
-export interface HairPipelineFlatImages {
-  front?: { url?: string };
-  left?: { url?: string };
-  right?: { url?: string };
-  back?: { url?: string };
+/** Normalized section for UI */
+interface NormalizedSection {
+  name: string;
+  description?: string;
+  views: Array<{
+    key: "front" | "left" | "right" | "back";
+    labelKey: string;
+    url: string;
+  }>;
 }
 
-const IMAGE_SECTIONS: ("face_match" | "trending_celebrity" | "ai_suggested")[] =
-  ["face_match", "trending_celebrity", "ai_suggested"];
-
-const FLAT_VIEW_KEYS = ["front", "left", "right", "back"] as const;
-
-function isFlatImages(
-  images: HairPipelineStatusResponse["images"],
-): images is HairPipelineFlatImages {
-  if (!images || typeof images !== "object") return false;
-  const first = (images as Record<string, unknown>)["front"];
-  return (
-    first != null &&
-    typeof first === "object" &&
-    "url" in first &&
-    typeof (first as { url?: string }).url === "string"
-  );
+/** Normalized result: status + sections for completed */
+interface NormalizedResult {
+  status: string;
+  sections: NormalizedSection[];
 }
 
-function normalizePayload(raw: unknown): HairPipelineStatusResponse | null {
-  if (!raw || typeof raw !== "object") return null;
-  const obj = raw as Record<string, unknown>;
-  if (typeof obj.job_id === "string" && typeof obj.status === "string") {
-    return raw as HairPipelineStatusResponse;
+const VIEW_KEYS = [
+  { key: "front" as const, labelKey: "front" },
+  { key: "left" as const, labelKey: "left" },
+  { key: "right" as const, labelKey: "right" },
+  { key: "back" as const, labelKey: "back" },
+];
+
+const HAIR_PIPELINE_SECTION_KEYS: (keyof HairPipelineImages)[] = [
+  "face_match",
+  "trending_celebrity",
+  "ai_suggested",
+];
+
+function getUrl(
+  value: { url?: string } | string | undefined,
+): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === "string") return value;
+  return value?.url;
+}
+
+function isReplicateImages(
+  imgs: ReplicateImages | HairPipelineImages | undefined,
+): imgs is ReplicateImages {
+  if (!imgs) return false;
+  const r = imgs as ReplicateImages;
+  return "front" in r || "left" in r || "right" in r || "back" in r;
+}
+
+/** Normalize API response: handles processing, replicate, and hair_pipeline shapes */
+function normalizeAiRequestResponse(
+  raw: AiRequestByJobIdResponse,
+): NormalizedResult {
+  const d = raw?.data;
+  const status = d?.status ?? "failed";
+  const sections: NormalizedSection[] = [];
+
+  const res = d?.response;
+  if (Array.isArray(res) || !res || status !== "completed") {
+    return { status, sections };
   }
-  if (typeof obj.data === "string") {
-    try {
-      const parsed = JSON.parse(obj.data) as HairPipelineStatusResponse;
-      return parsed?.job_id && parsed?.status ? parsed : null;
-    } catch {
-      return null;
+
+  const imgs = res.images;
+  if (!imgs) return { status, sections };
+
+  if (isReplicateImages(imgs)) {
+    const views = VIEW_KEYS.map(({ key, labelKey }) => ({
+      key,
+      labelKey,
+      url: getUrl(imgs[key]),
+    })).filter((v): v is typeof v & { url: string } => Boolean(v.url));
+    if (views.length > 0) {
+      sections.push({ name: "Results", views });
+    }
+    return { status, sections };
+  }
+
+  for (const key of HAIR_PIPELINE_SECTION_KEYS) {
+    const section = (imgs as HairPipelineImages)[key];
+    if (!section?.views) continue;
+    const views = VIEW_KEYS.map(({ key: viewKey, labelKey }) => ({
+      key: viewKey,
+      labelKey,
+      url: section.views[viewKey],
+    })).filter((v): v is typeof v & { url: string } => Boolean(v.url));
+    if (views.length > 0) {
+      sections.push({
+        name: section.name,
+        description: section.description,
+        views,
+      });
     }
   }
-  if (
-    obj.data &&
-    typeof obj.data === "object" &&
-    (obj.data as Record<string, unknown>).job_id
-  ) {
-    return obj.data as HairPipelineStatusResponse;
-  }
-  return null;
+
+  return { status, sections };
 }
+
+const POLL_INTERVAL_MS = 3000;
 
 export default function AiResults() {
   const { colors } = useTheme();
@@ -107,31 +176,51 @@ export default function AiResults() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<HairPipelineStatusResponse | null>(null);
+  const [normalized, setNormalized] = useState<NormalizedResult | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchStatus = useCallback(async () => {
-    if (!jobId) {
-      setError(t("missingJobId"));
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    setData(null);
-    try {
-      const result = await AiToolsService.getHairPipelineStatus(jobId);
-      const payload = normalizePayload(result);
-      setData(payload ?? (result as HairPipelineStatusResponse));
-    } catch (e: any) {
-      setError(e?.message || t("somethingWentWrong"));
-    } finally {
-      setLoading(false);
-    }
-  }, [jobId, t]);
+  const fetchStatus = useCallback(
+    async (isPolling = false) => {
+      if (!jobId) {
+        setError(t("missingJobId"));
+        setLoading(false);
+        setNormalized(null);
+        return;
+      }
+      if (!isPolling) {
+        setLoading(true);
+        setError(null);
+        setNormalized(null);
+      }
+      try {
+        const result = await ApiService.get<AiRequestByJobIdResponse>(
+          aiRequestsEndpoints.getByJobId(jobId),
+        );
+        setNormalized(normalizeAiRequestResponse(result));
+      } catch (e: any) {
+        setError(e?.message || t("somethingWentWrong"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [jobId, t],
+  );
 
   useEffect(() => {
     fetchStatus();
-  }, []);
+  }, [fetchStatus]);
+
+  useEffect(() => {
+    if (!normalized || normalized.status !== "processing" || !jobId) return;
+    const poll = () => fetchStatus(true);
+    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [normalized?.status, jobId, fetchStatus]);
 
   const handleDownload = async (uri: string) => {
     try {
@@ -143,13 +232,13 @@ export default function AiResults() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
 
-  if (loading) {
+  if (loading && !normalized) {
     return (
       <View style={styles.safeArea}>
         <StackHeader title={t("aiResults")} />
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>{t("yourApiIsProcessing")}</Text>
+          <Text style={styles.loadingText}>{t("aiStillProcessing")}</Text>
         </View>
       </View>
     );
@@ -163,7 +252,7 @@ export default function AiResults() {
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={fetchStatus}
+            onPress={() => fetchStatus()}
             activeOpacity={0.7}
           >
             <Text style={styles.retryButtonText}>{t("retry")}</Text>
@@ -173,59 +262,50 @@ export default function AiResults() {
     );
   }
 
-  if (!data || data.status !== "completed" || !data.images) {
+  if (normalized?.status === "processing") {
     return (
       <View style={styles.safeArea}>
         <StackHeader title={t("aiResults")} />
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>{t("noDataFound")}</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>{t("aiStillProcessing")}</Text>
         </View>
       </View>
     );
   }
 
-  const flatImages = isFlatImages(data.images);
-  const viewsFromFlat = flatImages
-    ? (FLAT_VIEW_KEYS.map((key) => ({
-        key,
-        labelKey: key,
-        url: data.images && (data.images as HairPipelineFlatImages)[key]?.url,
-      })).filter((v) => !!v.url) as {
-        key: "front" | "left" | "right" | "back";
-        labelKey: "front" | "left" | "right" | "back";
-        url: string;
-      }[])
-    : [];
-
-  const renderImageCard = (
-    viewKey: "front" | "left" | "right" | "back",
-    url: string,
-  ) => (
-    <View key={viewKey} style={styles.imageCard}>
-      <View style={styles.imageCardInner}>
-        <Image
-          source={{ uri: url }}
-          style={styles.resultImage}
-          resizeMode="cover"
-        />
-        <View style={styles.imageLabel}>
-          <Text style={styles.imageLabelText}>{t(viewKey)}</Text>
+  if (normalized?.status === "failed") {
+    return (
+      <View style={styles.safeArea}>
+        <StackHeader title={t("aiResults")} />
+        <View style={styles.centerContainer}>
+          <Text style={styles.errorText}>{t("somethingWentWrong")}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchStatus()}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.retryButtonText}>{t("retry")}</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.downloadButton}
-          onPress={() => handleDownload(url)}
-          activeOpacity={0.7}
-        >
-          <Feather
-            name="download"
-            size={moderateWidthScale(12)}
-            color={theme.white}
-          />
-          <Text style={styles.downloadButtonText}>{t("download")}</Text>
-        </TouchableOpacity>
       </View>
-    </View>
-  );
+    );
+  }
+
+  if (
+    !normalized ||
+    normalized.status !== "completed" ||
+    normalized.sections.length === 0
+  ) {
+    return (
+      <View style={styles.safeArea}>
+        <StackHeader title={t("aiResults")} />
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>{t("resultNotFound")}</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.safeArea}>
@@ -235,67 +315,46 @@ export default function AiResults() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {flatImages ? (
-          <View style={styles.section}>
-            {data.prompt ? (
-              <Text style={styles.sectionDescription}>{data.prompt}</Text>
+        {normalized.sections.map((section, idx) => (
+          <View key={idx} style={styles.section}>
+            <Text style={styles.sectionTitle}>{section.name}</Text>
+            {section.description ? (
+              <Text style={styles.sectionDescription}>
+                {section.description}
+              </Text>
             ) : null}
             <View style={styles.imageGrid}>
-              {viewsFromFlat.map(({ key: viewKey, url }) =>
-                renderImageCard(viewKey, url),
-              )}
+              {section.views.map(({ key: viewKey, labelKey, url }) => (
+                <View key={viewKey} style={styles.imageCard}>
+                  <View style={styles.imageCardInner}>
+                    <Image
+                      source={{ uri: url }}
+                      style={styles.resultImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.imageLabel}>
+                      <Text style={styles.imageLabelText}>{t(labelKey)}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.downloadButton}
+                      onPress={() => handleDownload(url)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather
+                        name="download"
+                        size={moderateWidthScale(12)}
+                        color={theme.white}
+                      />
+                      <Text style={styles.downloadButtonText}>
+                        {t("download")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
             </View>
           </View>
-        ) : (
-          IMAGE_SECTIONS.map((key) => {
-            const section = (
-              data.images as {
-                face_match?: HairPipelineImageSet;
-                trending_celebrity?: HairPipelineImageSet;
-                ai_suggested?: HairPipelineImageSet;
-              }
-            )?.[key];
-            if (!section?.views) return null;
-            const views = [
-              {
-                key: "front" as const,
-                labelKey: "front" as const,
-                url: section.views.front,
-              },
-              {
-                key: "left" as const,
-                labelKey: "left" as const,
-                url: section.views.left,
-              },
-              {
-                key: "right" as const,
-                labelKey: "right" as const,
-                url: section.views.right,
-              },
-              {
-                key: "back" as const,
-                labelKey: "back" as const,
-                url: section.views.back,
-              },
-            ].filter((v) => !!v.url);
-            if (views.length === 0) return null;
-            return (
-              <View key={key} style={styles.section}>
-                <Text style={styles.sectionTitle}>{section.name}</Text>
-                {section.description ? (
-                  <Text style={styles.sectionDescription}>
-                    {section.description}
-                  </Text>
-                ) : null}
-                <View style={styles.imageGrid}>
-                  {views.map(({ key: viewKey, url }) =>
-                    renderImageCard(viewKey, url!),
-                  )}
-                </View>
-              </View>
-            );
-          })
-        )}
+        ))}
       </ScrollView>
     </View>
   );

@@ -596,6 +596,8 @@
   "jobId": "Job ID",
   "aiResults": "AI Result",
   "noDataFound": "No data found",
+  "aiStillProcessing": "AI is still processing",
+  "resultNotFound": "Result not found",
   "download": "Download",
   "missingJobId": "Missing job ID",
   "somethingWentWrong": "Something went wrong"

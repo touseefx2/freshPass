@@ -596,6 +596,8 @@
   "jobId": "ジョブID",
   "aiResults": "AI結果",
   "noDataFound": "データが見つかりません",
+  "aiStillProcessing": "AIはまだ処理中です",
+  "resultNotFound": "結果が見つかりません",
   "download": "ダウンロード",
   "missingJobId": "ジョブIDがありません",
   "somethingWentWrong": "問題が発生しました"

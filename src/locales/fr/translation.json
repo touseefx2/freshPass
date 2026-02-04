@@ -596,6 +596,8 @@
   "jobId": "ID de tâche",
   "aiResults": "Résultat IA",
   "noDataFound": "Aucune donnée trouvée",
+  "aiStillProcessing": "L'IA est encore en cours de traitement",
+  "resultNotFound": "Résultat introuvable",
   "download": "Télécharger",
   "missingJobId": "ID du travail manquant",
   "somethingWentWrong": "Une erreur s'est produite"
