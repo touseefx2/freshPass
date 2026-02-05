@@ -41,8 +41,8 @@ const createStyles = (theme: Theme) =>
       right: moderateWidthScale(20),
       zIndex: 10,
       width: widthScale(40),
-      height: heightScale(40),
-      borderRadius: moderateWidthScale(20),
+      height: widthScale(40),
+      borderRadius: widthScale(40 / 2),
       backgroundColor: "rgba(255, 255, 255, 0.2)",
       alignItems: "center",
       justifyContent: "center",
@@ -70,9 +70,13 @@ export default function FullImageModal({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.imageModal}>
-        <StatusBar barStyle="light-content"  />
+        <StatusBar barStyle="light-content" />
         <Pressable style={styles.modalCloseButton} onPress={onClose}>
-          <CloseIcon width={widthScale(24)} height={heightScale(24)} color={theme.white} />
+          <CloseIcon
+            width={widthScale(24)}
+            height={heightScale(24)}
+            color={theme.white}
+          />
         </Pressable>
         {imageUri && (
           <Image
@@ -85,4 +89,3 @@ export default function FullImageModal({
     </Modal>
   );
 }
-

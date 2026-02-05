@@ -15,6 +15,7 @@ import {
   Linking,
   Clipboard,
   Alert,
+  StyleSheet,
 } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useTranslation } from "react-i18next";
@@ -281,7 +282,7 @@ export default function AiResults() {
   const [error, setError] = useState<string | null>(null);
   const [normalized, setNormalized] = useState<NormalizedResult | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [fullImageModalVisible, setFullImageModalVisible] = useState(false);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -393,380 +394,346 @@ export default function AiResults() {
     }
   };
 
+  const openFullImage = (uri: string) => setSelectedImageUri(uri);
+  const closeFullImage = () => setSelectedImageUri(null);
+
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
 
+  let content: React.ReactNode;
+
   if (loading && !normalized) {
-    return (
-      <View style={styles.safeArea}>
-        <StackHeader title={t("aiResults")} />
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>{t("aiStillProcessing")}</Text>
-        </View>
+    content = (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>{t("aiStillProcessing")}</Text>
       </View>
     );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.safeArea}>
-        <StackHeader title={t("aiResults")} />
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => fetchStatus()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.retryButtonText}>{t("retry")}</Text>
-          </TouchableOpacity>
-        </View>
+  } else if (error) {
+    content = (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => fetchStatus()}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.retryButtonText}>{t("retry")}</Text>
+        </TouchableOpacity>
       </View>
     );
-  }
-
-  if (normalized?.status === "processing") {
-    return (
-      <View style={styles.safeArea}>
-        <StackHeader title={t("aiResults")} />
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>{t("aiStillProcessing")}</Text>
-        </View>
+  } else if (normalized?.status === "processing") {
+    content = (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={styles.loadingText}>{t("aiStillProcessing")}</Text>
       </View>
     );
-  }
-
-  if (normalized?.status === "failed") {
-    return (
-      <View style={styles.safeArea}>
-        <StackHeader title={t("aiResults")} />
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>{t("somethingWentWrong")}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => fetchStatus()}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.retryButtonText}>{t("retry")}</Text>
-          </TouchableOpacity>
-        </View>
+  } else if (normalized?.status === "failed") {
+    content = (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{t("somethingWentWrong")}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => fetchStatus()}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.retryButtonText}>{t("retry")}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   // Social media result: generate_post, generate_collage, generate_reel
-  if (normalized?.status === "completed" && normalized.socialMedia) {
+  else if (normalized?.status === "completed" && normalized.socialMedia) {
     const sm = normalized.socialMedia;
     const isReel = sm.jobType === "generate_reel";
     const downloadUri = isReel ? sm.video?.url : sm.images?.processed;
 
-    return (
-      <View style={styles.safeArea}>
-        <StackHeader title={t("aiResults")} />
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {downloadUri && (
-            <View style={styles.headerContainer}>
+    content = (
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {downloadUri && (
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              style={styles.downloadButtonPrimary}
+              onPress={() => handleDownloadPrimary(downloadUri)}
+              disabled={downloading}
+              activeOpacity={0.7}
+            >
+              {downloading ? (
+                <ActivityIndicator size="small" color={theme.white} />
+              ) : (
+                <>
+                  <Feather
+                    name="download"
+                    size={moderateWidthScale(16)}
+                    color={theme.white}
+                  />
+                  <Text style={styles.downloadButtonPrimaryText}>
+                    {t("download")} {isReel ? t("video") : t("image")}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {isReel && sm.video?.url && (
+          <View style={styles.videoContainer}>
+            <Video
+              ref={videoRef}
+              source={{ uri: sm.video.url }}
+              style={styles.video}
+              resizeMode={ResizeMode.CONTAIN}
+              isLooping={false}
+              shouldPlay={false}
+              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+            />
+            {!isVideoReady ? (
+              <View style={styles.playButton}>
+                <ActivityIndicator size="large" color={theme.white} />
+              </View>
+            ) : (
               <TouchableOpacity
-                style={styles.downloadButtonPrimary}
-                onPress={() => handleDownloadPrimary(downloadUri)}
-                disabled={downloading}
+                style={styles.playButton}
+                onPress={handlePlayPause}
                 activeOpacity={0.7}
               >
-                {downloading ? (
-                  <ActivityIndicator size="small" color={theme.white} />
-                ) : (
-                  <>
-                    <Feather
-                      name="download"
-                      size={moderateWidthScale(16)}
+                <View style={styles.playButtonInner}>
+                  {isPlaying ? (
+                    <MaterialIcons
+                      name="pause"
+                      size={moderateWidthScale(40)}
                       color={theme.white}
                     />
-                    <Text style={styles.downloadButtonPrimaryText}>
-                      {t("download")} {isReel ? t("video") : t("image")}
+                  ) : (
+                    <MaterialIcons
+                      name="play-arrow"
+                      size={moderateWidthScale(40)}
+                      color={theme.white}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+            )}
+            <View style={styles.videoInfoContainer}>
+              {sm.video.duration != null && (
+                <Text style={styles.videoInfoText}>
+                  {sm.video.duration.toFixed(1)}s
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {isReel && sm.video && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitleUppercase}>
+              {t("videoDetails")}
+            </Text>
+            <View style={styles.videoDetailsGrid}>
+              {sm.video.duration != null && (
+                <View style={styles.videoDetailCard}>
+                  <View style={styles.videoDetailIconContainer}>
+                    <MaterialIcons
+                      name="timer"
+                      size={moderateWidthScale(20)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <View style={styles.videoDetailContent}>
+                    <Text style={styles.videoDetailLabel}>{t("duration")}</Text>
+                    <Text style={styles.videoDetailValue}>
+                      {sm.video.duration.toFixed(1)}s
                     </Text>
-                  </>
-                )}
+                  </View>
+                </View>
+              )}
+              {sm.video.resolution && (
+                <View style={styles.videoDetailCard}>
+                  <View style={styles.videoDetailIconContainer}>
+                    <MaterialIcons
+                      name="high-quality"
+                      size={moderateWidthScale(20)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <View style={styles.videoDetailContent}>
+                    <Text style={styles.videoDetailLabel}>
+                      {t("resolution")}
+                    </Text>
+                    <Text style={styles.videoDetailValue}>
+                      {sm.video.resolution}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {sm.video.format && (
+                <View style={styles.videoDetailCard}>
+                  <View style={styles.videoDetailIconContainer}>
+                    <MaterialIcons
+                      name="video-file"
+                      size={moderateWidthScale(20)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <View style={styles.videoDetailContent}>
+                    <Text style={styles.videoDetailLabel}>{t("format")}</Text>
+                    <Text style={styles.videoDetailValue}>
+                      {sm.video.format.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {sm.video.file_size_mb != null && (
+                <View style={styles.videoDetailCard}>
+                  <View style={styles.videoDetailIconContainer}>
+                    <MaterialIcons
+                      name="storage"
+                      size={moderateWidthScale(20)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <View style={styles.videoDetailContent}>
+                    <Text style={styles.videoDetailLabel}>{t("fileSize")}</Text>
+                    <Text style={styles.videoDetailValue}>
+                      {sm.video.file_size_mb.toFixed(2)} MB
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {sm.media_count != null && (
+                <View style={styles.videoDetailCard}>
+                  <View style={styles.videoDetailIconContainer}>
+                    <MaterialIcons
+                      name="collections"
+                      size={moderateWidthScale(20)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <View style={styles.videoDetailContent}>
+                    <Text style={styles.videoDetailLabel}>
+                      {t("mediaCount")}
+                    </Text>
+                    <Text style={styles.videoDetailValue}>
+                      {String(sm.media_count)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {!isReel && sm.images?.processed && (
+          <TouchableOpacity
+            style={styles.singleImageContainer}
+            onPress={() =>
+              sm.images?.processed && openFullImage(sm.images.processed)
+            }
+            activeOpacity={1}
+          >
+            <Image
+              source={{ uri: sm.images.processed }}
+              style={styles.singleImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        )}
+
+        {sm.content?.caption && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitleUppercase}>{t("caption")}</Text>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={() => handleCopy(sm.content!.caption!)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="content-copy"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
               </TouchableOpacity>
             </View>
-          )}
+            <View style={styles.sectionContent}>
+              <Text style={styles.captionText}>{sm.content.caption}</Text>
+            </View>
+          </View>
+        )}
 
-          {isReel && sm.video?.url && (
-            <View style={styles.videoContainer}>
-              <Video
-                ref={videoRef}
-                source={{ uri: sm.video.url }}
-                style={styles.video}
-                resizeMode={ResizeMode.CONTAIN}
-                isLooping={false}
-                shouldPlay={false}
-                onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-              />
-              {!isVideoReady ? (
-                <View style={styles.playButton}>
-                  <ActivityIndicator size="large" color={theme.white} />
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.playButton}
-                  onPress={handlePlayPause}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.playButtonInner}>
-                    {isPlaying ? (
-                      <MaterialIcons
-                        name="pause"
-                        size={moderateWidthScale(40)}
-                        color={theme.white}
-                      />
-                    ) : (
-                      <MaterialIcons
-                        name="play-arrow"
-                        size={moderateWidthScale(40)}
-                        color={theme.white}
-                      />
-                    )}
+        {sm.content?.hashtags && sm.content.hashtags.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitleUppercase}>{t("hashtags")}</Text>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={() => handleCopy(sm.content!.hashtags!.join(" "))}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="content-copy"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.sectionContent}>
+              <View style={styles.hashtagsContainer}>
+                {sm.content.hashtags.map((hashtag, index) => (
+                  <View key={index} style={styles.hashtagChip}>
+                    <Text style={styles.hashtagText}>{hashtag}</Text>
                   </View>
-                </TouchableOpacity>
-              )}
-              <View style={styles.videoInfoContainer}>
-                {sm.video.duration != null && (
-                  <Text style={styles.videoInfoText}>
-                    {sm.video.duration.toFixed(1)}s
-                  </Text>
-                )}
+                ))}
               </View>
             </View>
-          )}
+          </View>
+        )}
 
-          {isReel && sm.video && (
-            <View style={styles.section}>
+        {sm.content?.complete_post && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitleUppercase}>
-                {t("videoDetails")}
+                {t("completePostText")}
               </Text>
-              <View style={styles.videoDetailsGrid}>
-                {sm.video.duration != null && (
-                  <View style={styles.videoDetailCard}>
-                    <View style={styles.videoDetailIconContainer}>
-                      <MaterialIcons
-                        name="timer"
-                        size={moderateWidthScale(20)}
-                        color={theme.white}
-                      />
-                    </View>
-                    <View style={styles.videoDetailContent}>
-                      <Text style={styles.videoDetailLabel}>
-                        {t("duration")}
-                      </Text>
-                      <Text style={styles.videoDetailValue}>
-                        {sm.video.duration.toFixed(1)}s
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {sm.video.resolution && (
-                  <View style={styles.videoDetailCard}>
-                    <View style={styles.videoDetailIconContainer}>
-                      <MaterialIcons
-                        name="high-quality"
-                        size={moderateWidthScale(20)}
-                        color={theme.white}
-                      />
-                    </View>
-                    <View style={styles.videoDetailContent}>
-                      <Text style={styles.videoDetailLabel}>
-                        {t("resolution")}
-                      </Text>
-                      <Text style={styles.videoDetailValue}>
-                        {sm.video.resolution}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {sm.video.format && (
-                  <View style={styles.videoDetailCard}>
-                    <View style={styles.videoDetailIconContainer}>
-                      <MaterialIcons
-                        name="video-file"
-                        size={moderateWidthScale(20)}
-                        color={theme.white}
-                      />
-                    </View>
-                    <View style={styles.videoDetailContent}>
-                      <Text style={styles.videoDetailLabel}>{t("format")}</Text>
-                      <Text style={styles.videoDetailValue}>
-                        {sm.video.format.toUpperCase()}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {sm.video.file_size_mb != null && (
-                  <View style={styles.videoDetailCard}>
-                    <View style={styles.videoDetailIconContainer}>
-                      <MaterialIcons
-                        name="storage"
-                        size={moderateWidthScale(20)}
-                        color={theme.white}
-                      />
-                    </View>
-                    <View style={styles.videoDetailContent}>
-                      <Text style={styles.videoDetailLabel}>
-                        {t("fileSize")}
-                      </Text>
-                      <Text style={styles.videoDetailValue}>
-                        {sm.video.file_size_mb.toFixed(2)} MB
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {sm.media_count != null && (
-                  <View style={styles.videoDetailCard}>
-                    <View style={styles.videoDetailIconContainer}>
-                      <MaterialIcons
-                        name="collections"
-                        size={moderateWidthScale(20)}
-                        color={theme.white}
-                      />
-                    </View>
-                    <View style={styles.videoDetailContent}>
-                      <Text style={styles.videoDetailLabel}>
-                        {t("mediaCount")}
-                      </Text>
-                      <Text style={styles.videoDetailValue}>
-                        {String(sm.media_count)}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </View>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={() => handleCopy(sm.content!.complete_post!)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="content-copy"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
             </View>
-          )}
-
-          {!isReel && sm.images?.processed && (
-            <TouchableOpacity
-              style={styles.singleImageContainer}
-              onPress={() => setFullImageModalVisible(true)}
-              activeOpacity={1}
-            >
-              <Image
-                source={{ uri: sm.images.processed }}
-                style={styles.singleImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          )}
-
-          {sm.content?.caption && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitleUppercase}>{t("caption")}</Text>
-                <TouchableOpacity
-                  style={styles.copyButton}
-                  onPress={() => handleCopy(sm.content!.caption!)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="content-copy"
-                    size={moderateWidthScale(18)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.sectionContent}>
-                <Text style={styles.captionText}>{sm.content.caption}</Text>
-              </View>
+            <View style={styles.sectionContent}>
+              <Text style={styles.completePostText}>
+                {sm.content.complete_post}
+              </Text>
             </View>
-          )}
-
-          {sm.content?.hashtags && sm.content.hashtags.length > 0 && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitleUppercase}>
-                  {t("hashtags")}
-                </Text>
-                <TouchableOpacity
-                  style={styles.copyButton}
-                  onPress={() => handleCopy(sm.content!.hashtags!.join(" "))}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="content-copy"
-                    size={moderateWidthScale(18)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.sectionContent}>
-                <View style={styles.hashtagsContainer}>
-                  {sm.content.hashtags.map((hashtag, index) => (
-                    <View key={index} style={styles.hashtagChip}>
-                      <Text style={styles.hashtagText}>{hashtag}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-
-          {sm.content?.complete_post && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitleUppercase}>
-                  {t("completePostText")}
-                </Text>
-                <TouchableOpacity
-                  style={styles.copyButton}
-                  onPress={() => handleCopy(sm.content!.complete_post!)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="content-copy"
-                    size={moderateWidthScale(18)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.sectionContent}>
-                <Text style={styles.completePostText}>
-                  {sm.content.complete_post}
-                </Text>
-              </View>
-            </View>
-          )}
-        </ScrollView>
-
-        <FullImageModal
-          visible={fullImageModalVisible}
-          onClose={() => setFullImageModalVisible(false)}
-          imageUri={sm.images?.processed ?? null}
-        />
-      </View>
+          </View>
+        )}
+      </ScrollView>
     );
-  }
-
-  if (
+  } else if (
     !normalized ||
     normalized.status !== "completed" ||
     (normalized.sections.length === 0 && !normalized.socialMedia)
   ) {
-    return (
-      <View style={styles.safeArea}>
-        <StackHeader title={t("aiResults")} />
-        <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>{t("resultNotFound")}</Text>
-        </View>
+    content = (
+      <View style={styles.centerContainer}>
+        <Text style={styles.emptyText}>{t("resultNotFound")}</Text>
       </View>
     );
-  }
-
-  return (
-    <View style={styles.safeArea}>
-      <StackHeader title={t("aiResults")} />
+  } else {
+    content = (
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -784,11 +751,17 @@ export default function AiResults() {
               {section.views.map(({ key: viewKey, labelKey, url }) => (
                 <View key={viewKey} style={styles.imageCard}>
                   <View style={styles.imageCardInner}>
-                    <Image
-                      source={{ uri: url }}
-                      style={styles.resultImage}
-                      resizeMode="cover"
-                    />
+                    <TouchableOpacity
+                      style={StyleSheet.absoluteFill}
+                      onPress={() => openFullImage(url)}
+                      activeOpacity={1}
+                    >
+                      <Image
+                        source={{ uri: url }}
+                        style={styles.resultImage}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
                     <View style={styles.imageLabel}>
                       <Text style={styles.imageLabelText}>{t(labelKey)}</Text>
                     </View>
@@ -813,6 +786,18 @@ export default function AiResults() {
           </View>
         ))}
       </ScrollView>
+    );
+  }
+
+  return (
+    <View style={styles.safeArea}>
+      <StackHeader title={t("aiResults")} />
+      {content}
+      <FullImageModal
+        visible={selectedImageUri != null}
+        onClose={closeFullImage}
+        imageUri={selectedImageUri}
+      />
     </View>
   );
 }
