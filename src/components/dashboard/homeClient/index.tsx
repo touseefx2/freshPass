@@ -16,10 +16,14 @@ import {
 } from "@/src/state/slices/userSlice";
 import { tryGetPosition } from "@/src/constant/functions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { setLocationLoading } from "@/src/state/slices/generalSlice";
+import {
+  setAiService,
+  setLocationLoading,
+} from "@/src/state/slices/generalSlice";
 import { handleLocationPermission } from "@/src/services/locationPermissionService";
 import { ApiService } from "@/src/services/api";
 import {
+  businessEndpoints,
   notificationsEndpoints,
   userEndpoints,
 } from "@/src/services/endpoints";
@@ -44,8 +48,6 @@ export default function HomeScreen() {
   const isGuest = user.isGuest;
   const [showLocationModal, setShowLocationModal] = useState(false);
   const { showBanner } = useNotificationContext();
-
-  console.log("--->ai quota  : ", user?.ai_quota);
 
   useEffect(() => {
     // if (
@@ -238,6 +240,34 @@ export default function HomeScreen() {
       }
     } catch (error: any) {}
   };
+
+  const fetchAdditionalServices = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: Array<{
+          id: number;
+          name: string;
+          price: string;
+          ai_requests: number | null;
+          type: string;
+          active: boolean;
+          createdAt: string;
+        }>;
+      }>(businessEndpoints.additionalServices("customer"));
+
+      if (response.success && response.data) {
+        dispatch(setAiService(response.data));
+      }
+    } catch (error) {
+      Logger.error("Fetch additional services error:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdditionalServices();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {

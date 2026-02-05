@@ -19,6 +19,16 @@ export interface SearchReturnFromSearch2 {
   serviceName: string;
 }
 
+export interface AdditionalServiceItem {
+  id: number;
+  name: string;
+  price: string;
+  ai_requests: number | null;
+  type: string;
+  active: boolean;
+  createdAt: string;
+}
+
 const initialSearchState: SearchState = {
   search: "",
   serviceId: null,
@@ -60,6 +70,7 @@ export interface GeneralState {
   recentLocations: Location[]; // Recent locations (persisted)
   recentSearches: SearchState[]; // Recent searches as objects (persisted, max 4)
   searchReturnFromSearch2: SearchReturnFromSearch2 | null; // When search2 returns to search screen (not persisted)
+  aiService: AdditionalServiceItem[] | null; // Additional services by type (not persisted)
 }
 
 const initialState: GeneralState = {
@@ -90,6 +101,7 @@ const initialState: GeneralState = {
   recentLocations: [],
   recentSearches: [],
   searchReturnFromSearch2: null,
+  aiService: null,
 };
 
 const generalSlice = createSlice({
@@ -151,6 +163,9 @@ const generalSlice = createSlice({
     },
     clearSearchReturnFromSearch2(state) {
       state.searchReturnFromSearch2 = null;
+    },
+    setAiService(state, action: PayloadAction<AdditionalServiceItem[] | null>) {
+      state.aiService = action.payload;
     },
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
@@ -228,6 +243,7 @@ const generalSlice = createSlice({
       state.recentLocations = initialState.recentLocations;
       state.recentSearches = initialState.recentSearches;
       state.searchReturnFromSearch2 = null;
+      state.aiService = null;
     },
   },
 });
@@ -250,6 +266,7 @@ export const {
   clearSearchState,
   setSearchReturnFromSearch2,
   clearSearchReturnFromSearch2,
+  setAiService,
   setGuestModeModalVisible,
   setIsFirstShowTryOn,
   setCurrentLocation,

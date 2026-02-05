@@ -93,9 +93,13 @@ export default function ExploreScreen() {
   const search = useAppSelector((state) => state.general.searchState);
   const hasSearchValue = (search.search ?? "").trim() !== "";
   const hasSearchId = search.serviceId ?? null;
+  const aiQuota = useAppSelector((state) => state.user.ai_quota);
+  const aiService = useAppSelector((state) => state.general.aiService);
 
-  console.log("------> hasSearchValue", hasSearchValue);
-  console.log("------> hasSearchId", hasSearchId);
+  console.log("------> aiQuota", aiQuota);
+  console.log("------> aiService", aiService);
+  // console.log("------> hasSearchValue", hasSearchValue);
+  // console.log("------> hasSearchId", hasSearchId);
 
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
