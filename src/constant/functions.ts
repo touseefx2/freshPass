@@ -14,8 +14,16 @@ export const getLangLabel = (code: string) => {
   switch (code) {
     case "ur":
       return "اردو";
+    case "ar":
+      return "العربية";
     case "fr":
       return "Français";
+    case "es":
+      return "Español";
+    case "de":
+      return "Deutsch";
+    case "ja":
+      return "日本語";
     default:
       return "English";
   }
@@ -29,7 +37,7 @@ export const getLangLabel = (code: string) => {
 export const isRTL = (language?: string): boolean => {
   // Check language first if provided
   if (language) {
-    return language === "ur";
+    return language === "ur" || language === "ar";
   }
 
   // For native platforms, check I18nManager
@@ -51,7 +59,7 @@ export const isRTL = (language?: string): boolean => {
  * @returns boolean - true if app reload is needed (for native platforms), false otherwise
  */
 export const setupRTL = (language: string): boolean => {
-  const needsRTL = language === "ur";
+  const needsRTL = language === "ur" || language === "ar";
 
   // Handle RTL for native platforms
   if (Platform.OS !== "web") {
@@ -72,13 +80,8 @@ export const setupRTL = (language: string): boolean => {
   } else {
     // Handle RTL for web
     if (typeof document !== "undefined") {
-      if (needsRTL) {
-        document.documentElement.dir = "rtl";
-        document.documentElement.setAttribute("lang", "ur");
-      } else {
-        document.documentElement.dir = "ltr";
-        document.documentElement.setAttribute("lang", language);
-      }
+      document.documentElement.dir = needsRTL ? "rtl" : "ltr";
+      document.documentElement.setAttribute("lang", language);
     }
     return false; // No reload needed for web
   }
@@ -87,14 +90,14 @@ export const setupRTL = (language: string): boolean => {
 export const buildAddressSummary = (
   street?: string,
   area?: string,
-  postal?: string
+  postal?: string,
 ) => {
   const parts = [street, area, postal].filter((value) => !!value?.trim());
   return parts.join(", ");
 };
 
 export const parseAddressComponents = (
-  components: GoogleGeocodeComponent[] = []
+  components: GoogleGeocodeComponent[] = [],
 ): ParsedAddress => {
   let streetNumber = "";
   let route = "";
@@ -147,7 +150,6 @@ export const parseAddressComponents = (
   };
 };
 
-
 export const tryGetPosition = async (): Promise<Location.LocationObject> => {
   const attempts: Array<{ accuracy: Location.Accuracy; timeout: number }> = [
     { accuracy: Location.Accuracy.High, timeout: 10000 },
@@ -174,25 +176,25 @@ export const tryGetPosition = async (): Promise<Location.LocationObject> => {
 
 export const resolveAddressViaGoogle = async (
   coordinates: Coordinates,
-  apiKey: string
+  apiKey: string,
 ) => {
   try {
     const response = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coordinates.latitude},${coordinates.longitude}&key=${apiKey}`
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${coordinates.latitude},${coordinates.longitude}&key=${apiKey}`,
     );
     const payload = (await response.json()) as GoogleGeocodeResponse;
     if (payload.status !== "OK" || !payload.results?.length) {
       Logger.warn(
         "Google geocode did not return results",
         payload.status,
-        payload.error_message
+        payload.error_message,
       );
       return null;
     }
 
     const primaryResult = payload.results[0];
     const parsedComponents = parseAddressComponents(
-      primaryResult.address_components ?? []
+      primaryResult.address_components ?? [],
     );
 
     // Extract country code from address components
@@ -306,7 +308,7 @@ export const resolveCurrentLocation = async ({
             .filter(Boolean)
             .join(", ")
         : undefined);
-    
+
     // Get country code from Google geocode (reverse geocode doesn't provide country code in type)
     const countryCode = googleParsed?.countryCode;
 
