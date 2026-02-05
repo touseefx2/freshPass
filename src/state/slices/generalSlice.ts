@@ -71,6 +71,7 @@ export interface GeneralState {
   recentSearches: SearchState[]; // Recent searches as objects (persisted, max 4)
   searchReturnFromSearch2: SearchReturnFromSearch2 | null; // When search2 returns to search screen (not persisted)
   aiService: AdditionalServiceItem[] | null; // Additional services by type (not persisted)
+  tryOnBannerDismissed: boolean; // User closed try-on banner this session (not persisted, reset on app open)
 }
 
 const initialState: GeneralState = {
@@ -102,6 +103,7 @@ const initialState: GeneralState = {
   recentSearches: [],
   searchReturnFromSearch2: null,
   aiService: null,
+  tryOnBannerDismissed: false,
 };
 
 const generalSlice = createSlice({
@@ -166,6 +168,9 @@ const generalSlice = createSlice({
     },
     setAiService(state, action: PayloadAction<AdditionalServiceItem[] | null>) {
       state.aiService = action.payload;
+    },
+    setTryOnBannerDismissed(state, action: PayloadAction<boolean>) {
+      state.tryOnBannerDismissed = action.payload;
     },
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
@@ -244,6 +249,7 @@ const generalSlice = createSlice({
       state.recentSearches = initialState.recentSearches;
       state.searchReturnFromSearch2 = null;
       state.aiService = null;
+      state.tryOnBannerDismissed = false;
     },
   },
 });
@@ -267,6 +273,7 @@ export const {
   setSearchReturnFromSearch2,
   clearSearchReturnFromSearch2,
   setAiService,
+  setTryOnBannerDismissed,
   setGuestModeModalVisible,
   setIsFirstShowTryOn,
   setCurrentLocation,

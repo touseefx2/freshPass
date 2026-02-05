@@ -20,6 +20,7 @@ import {
   GenerateReelIcon,
   PersonScissorsIcon,
 } from "@/assets/icons";
+import UnlockAIFeaturesModal from "@/src/components/UnlockAIFeaturesModal";
 
 export default function ToolList() {
   const router = useRouter();
@@ -29,8 +30,22 @@ export default function ToolList() {
   const user = useAppSelector((state) => state.user);
   const userRole = user?.userRole;
 
+  const aiQuota = useAppSelector((state) => state.user.ai_quota);
+  const aiService = useAppSelector((state) => state.general.aiService);
+  const isCusotmerandGuest = user.isGuest || user.userRole === "customer";
+  const isCusotmer = user.userRole === "customer";
+  const isGuest = user.isGuest;
+
+  const hairTryOnService =
+    aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
+  const showUnlockModal =
+    isCusotmerandGuest &&
+    !!hairTryOnService &&
+    (aiQuota === 0 || aiQuota == null);
+
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [unlockModalVisible, setUnlockModalVisible] = useState(false);
 
   // Animation values
   const headerTranslateY = useRef(new Animated.Value(0)).current;
@@ -132,6 +147,10 @@ export default function ToolList() {
   };
 
   const handleFeaturePress = (paramTitle: string) => {
+    if (paramTitle === "Hair Tryon" && showUnlockModal) {
+      setUnlockModalVisible(true);
+      return;
+    }
     router.push({
       pathname: "/(main)/aiTools/tools",
       params: { toolType: paramTitle },
@@ -140,15 +159,24 @@ export default function ToolList() {
 
   return (
     <View style={styles.safeArea}>
+      <UnlockAIFeaturesModal
+        visible={unlockModalVisible}
+        onBack={() => setUnlockModalVisible(false)}
+        onUpgradePress={() => {
+          // setUnlockModalVisible(false);
+        }}
+      />
       <StackHeader title={t("aiTools")} />
 
-      <TouchableOpacity
-        style={styles.seeRequestsHistoryButton}
-        activeOpacity={0.7}
-        onPress={() => router.push("/aiRequests")}
-      >
-        <Text style={styles.seeRequestsHistoryText}>{t("aiRequests")}</Text>
-      </TouchableOpacity>
+      {!isGuest && (
+        <TouchableOpacity
+          style={styles.seeRequestsHistoryButton}
+          activeOpacity={0.7}
+          onPress={() => router.push("/aiRequests")}
+        >
+          <Text style={styles.seeRequestsHistoryText}>{t("aiRequests")}</Text>
+        </TouchableOpacity>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}

@@ -24,11 +24,13 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 
 interface TryOnModalProps {
   visible: boolean;
   onClose: () => void;
   onUnlockPress: () => void;
+  service?: AdditionalServiceItem | null;
 }
 
 const createStyles = (theme: Theme) =>
@@ -130,6 +132,7 @@ export default function TryOnModal({
   visible,
   onClose,
   onUnlockPress,
+  service,
 }: TryOnModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();

@@ -37,6 +37,7 @@ import type {
 import TryOnModal from "./TryOnModal";
 import {
   setIsFirstShowTryOn,
+  setTryOnBannerDismissed,
   setSearchState,
   clearSearchState,
 } from "@/src/state/slices/generalSlice";
@@ -95,12 +96,9 @@ export default function ExploreScreen() {
   const hasSearchId = search.serviceId ?? null;
   const aiQuota = useAppSelector((state) => state.user.ai_quota);
   const aiService = useAppSelector((state) => state.general.aiService);
-
-  console.log("------> aiQuota", aiQuota);
-  console.log("------> aiService", aiService);
-  // console.log("------> hasSearchValue", hasSearchValue);
-  // console.log("------> hasSearchId", hasSearchId);
-
+  const tryOnBannerDismissed = useAppSelector(
+    (state) => state.general.tryOnBannerDismissed,
+  );
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
   );
@@ -111,6 +109,20 @@ export default function ExploreScreen() {
     (state: any) => state.categories.selectedCategory,
   );
   const isCusotmerandGuest = user.isGuest || user.userRole === "customer";
+
+  const hairTryOnService =
+    aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
+  const showTryOnBanner =
+    (aiQuota === 0 || aiQuota == null) &&
+    !!hairTryOnService &&
+    isCusotmerandGuest &&
+    isFirstTryon &&
+    !tryOnBannerDismissed;
+  const showTryOnModal =
+    !isFirstTryon &&
+    !!hairTryOnService &&
+    (aiQuota === 0 || aiQuota == null) &&
+    isCusotmerandGuest;
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
@@ -602,11 +614,13 @@ export default function ExploreScreen() {
           }
         />
 
-        {isFirstTryon && (
+        {showTryOnBanner && (
           <TryOnBanner
+            service={hairTryOnService}
             onPress={() => {
               router.push("/(main)/aiTools/toolList");
             }}
+            onDismiss={() => dispatch(setTryOnBannerDismissed(true))}
           />
         )}
       </View>
@@ -618,10 +632,10 @@ export default function ExploreScreen() {
         setSortBy={setSortBy}
       />
 
-      {!isFirstTryon && (
+      {showTryOnModal && (
         <TryOnModal
-          visible={!isFirstTryon}
-          // visible={true}
+          service={hairTryOnService}
+          visible={showTryOnModal}
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
           onUnlockPress={() => {
             dispatch(setIsFirstShowTryOn(true));

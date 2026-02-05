@@ -7,12 +7,15 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
 } from "@/src/theme/dimensions";
 import { Text } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 
-interface TryOnBanner {
+interface TryOnBannerProps {
   onPress: () => void;
+  onDismiss: () => void;
+  service?: AdditionalServiceItem | null;
 }
 
 const createStyles = (theme: Theme) =>
@@ -24,9 +27,17 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(6),
-      borderTopLeftRadius: 12,
-      borderTopRightRadius: 12,
+      borderTopLeftRadius: moderateWidthScale(12),
+      borderTopRightRadius: moderateWidthScale(12),
       width: "100%",
+      position: "relative",
+    },
+    closeButton: {
+      position: "absolute",
+      // top: moderateHeightScale(8),
+      // left: moderateWidthScale(12),
+      zIndex: 1,
+      padding: moderateWidthScale(4),
     },
     title: {
       fontSize: fontSize.size15,
@@ -52,7 +63,11 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function TryOnBanner({ onPress }: TryOnBanner) {
+export default function TryOnBanner({
+  onPress,
+  onDismiss,
+  service,
+}: TryOnBannerProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -60,7 +75,20 @@ export default function TryOnBanner({ onPress }: TryOnBanner) {
 
   return (
     <View style={styles.container}>
-      <View style={{ maxWidth: "65%" }}>
+      <TouchableOpacity
+        style={styles.closeButton}
+        onPress={onDismiss}
+        activeOpacity={0.7}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons
+          name="close"
+          size={moderateWidthScale(20)}
+          color={theme.white}
+        />
+      </TouchableOpacity>
+
+      <View style={{ maxWidth: "65%", marginLeft: moderateWidthScale(18) }}>
         <Text style={styles.title}>{t("tryAiHairTryOn")}</Text>
         <Text style={styles.description}>{t("tryOnBannerDescription")}</Text>
       </View>
