@@ -45,6 +45,8 @@ export default function HomeScreen() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const { showBanner } = useNotificationContext();
 
+  console.log("--->ai quota  : ", user?.ai_quota);
+
   useEffect(() => {
     // if (
     //   (userRole === "customer" || isGuest) &&
