@@ -99,4 +99,40 @@ export const fetchAppointmentPaymentSheetParams = async (
   }
 };
 
+interface AiToolsPaymentSheetApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    customer: string;
+    paymentIntent: string;
+    customerSessionClientSecret?: string;
+    serviceId: number;
+  };
+}
+
+export const fetchAiToolsPaymentSheetParams = async (
+  serviceId: number,
+): Promise<PaymentSheetParams> => {
+  try {
+    const response = await ApiService.post<AiToolsPaymentSheetApiResponse>(
+      stripeEndpoints.paymentSheetAiTools,
+      { service_id: serviceId },
+    );
+
+    if (response.success && response.data) {
+      return {
+        customer: response.data.customer,
+        paymentIntent: response.data.paymentIntent || "",
+        customerSessionClientSecret: response.data.customerSessionClientSecret,
+      };
+    }
+
+    throw new Error(
+      response.message || "Failed to fetch payment sheet parameters",
+    );
+  } catch (error) {
+    throw error;
+  }
+};
+
 export { StripeProvider, useStripe };

@@ -142,22 +142,18 @@ export default function LanguageChangeScreen() {
 
     // If layout direction (RTL/LTR) will change, ask user to confirm restart
     if (willChangeDirection) {
-      Alert.alert(
-        "Restart required",
-        "To fully apply this language's layout direction, the app needs to restart. Do you want to restart now?",
-        [
-          {
-            text: "Cancel",
-            style: "cancel",
+      Alert.alert(t("restartRequired"), t("restartRequiredMessage"), [
+        {
+          text: t("cancel"),
+          style: "cancel",
+        },
+        {
+          text: t("restart"),
+          onPress: () => {
+            void applyLanguageChange(langCode);
           },
-          {
-            text: "Restart",
-            onPress: () => {
-              void applyLanguageChange(langCode);
-            },
-          },
-        ],
-      );
+        },
+      ]);
       return;
     }
 

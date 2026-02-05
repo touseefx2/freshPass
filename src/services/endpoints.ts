@@ -99,6 +99,7 @@ export const userEndpoints = {
  */
 export const stripeEndpoints = {
   paymentSheet: `/api/payment-sheet`,
+  paymentSheetAiTools: `/api/payment-sheet/ai-tools`,
   profile: `/api/staff/details`,
 };
 

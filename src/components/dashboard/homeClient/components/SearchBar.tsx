@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -72,6 +73,7 @@ export default function SearchBar({
   onFilterPress,
   location: initialLocation = "",
 }: SearchBarProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -90,11 +92,8 @@ export default function SearchBar({
         />
       </View>
       <View style={styles.searchTextContainer}>
-        <Text
-          style={styles.searchPlaceholder}
-          numberOfLines={1}
-        >
-          Find services to book in
+        <Text style={styles.searchPlaceholder} numberOfLines={1}>
+          {t("findServicesToBookIn")}
         </Text>
       </View>
       <TouchableOpacity
@@ -108,6 +107,6 @@ export default function SearchBar({
           color={theme.darkGreen}
         />
       </TouchableOpacity>
-    </TouchableOpacity >
+    </TouchableOpacity>
   );
 }

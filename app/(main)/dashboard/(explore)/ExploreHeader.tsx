@@ -26,6 +26,7 @@ import {
   CloseIcon,
 } from "@/assets/icons";
 import { fontSize, fonts } from "@/src/theme/fonts";
+import { useTranslation } from "react-i18next";
 import {
   setSelectedCategory,
   Category,
@@ -170,6 +171,7 @@ export default function ExploreHeader({
   popularServices = [],
   setSelectedServiceFilter,
 }: ExploreHeaderProps) {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -264,7 +266,7 @@ export default function ExploreHeader({
           >
             {hasSearchValue
               ? (search.search ?? "").trim()
-              : "Find services to book in"}
+              : t("findServicesToBookIn")}
           </Text>
         </View>
         {hasSearchValue && (
@@ -319,7 +321,7 @@ export default function ExploreHeader({
                 }
                 numberOfLines={1}
               >
-                {location?.lat ? location.countryName : "Where?"}
+                {location?.lat ? location.countryName : t("where")}
               </Text>
             </View>
           </View>
@@ -359,7 +361,9 @@ export default function ExploreHeader({
                 }
                 numberOfLines={1}
               >
-                {selectedDate ? formatSelectedDateLabel(selectedDate) : "When?"}
+                {selectedDate
+                  ? formatSelectedDateLabel(selectedDate)
+                  : t("when")}
               </Text>
             </View>
           </View>

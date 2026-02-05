@@ -25,6 +25,9 @@ interface UnlockAIFeaturesModalProps {
   visible: boolean;
   onUpgradePress: () => void;
   onBack?: () => void;
+  errorMessage?: string | null;
+  purchaseSuccess?: boolean;
+  onUseHaritryon?: () => void;
 }
 
 const createStyles = (theme: Theme) =>
@@ -94,18 +97,31 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       maxWidth: widthScale(280),
     },
+    errorText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.red,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(8),
+    },
   });
 
 export default function UnlockAIFeaturesModal({
   visible,
   onUpgradePress,
   onBack,
+  errorMessage,
+  purchaseSuccess,
+  onUseHaritryon,
 }: UnlockAIFeaturesModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [colors]);
+
+  const isSuccess = Boolean(purchaseSuccess);
 
   return (
     <Modal
@@ -145,18 +161,29 @@ export default function UnlockAIFeaturesModal({
         <View style={styles.modalCard}>
           <View style={styles.iconCircle}>
             <Ionicons
-              name="lock-closed"
+              name={isSuccess ? "checkmark-circle" : "lock-closed"}
               size={moderateWidthScale(36)}
               color={theme.darkGreen}
             />
           </View>
-          <Text style={styles.title}>{t("unlockAIFeatures")}</Text>
-          <Text style={styles.description}>
-            {t("unlockAIFeaturesDescription")}
+          <Text style={styles.title}>
+            {isSuccess ? t("aiToolPlanPurchased") : t("unlockAIFeatures")}
           </Text>
+          {!isSuccess && (
+            <Text style={styles.description}>
+              {t("unlockAIFeaturesDescription")}
+            </Text>
+          )}
+          {errorMessage ? (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          ) : null}
           <Button
-            title={t("upgradePlan")}
-            onPress={onUpgradePress}
+            title={isSuccess ? t("useHaritryon") : t("upgradePlan")}
+            onPress={
+              isSuccess
+                ? onUseHaritryon ?? onBack ?? (() => {})
+                : onUpgradePress
+            }
             containerStyle={styles.upgradeButton}
           />
         </View>
