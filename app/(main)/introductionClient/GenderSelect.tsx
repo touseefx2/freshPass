@@ -15,6 +15,7 @@ import {
 } from "react-native-safe-area-context";
 import RadioOption from "@/src/components/radioOption";
 import { setDiscover, DiscoverType } from "@/src/state/slices/userSlice";
+import { useTranslation } from "react-i18next";
 
 interface GenderSelectProps {
   onNext: () => void;
@@ -65,6 +66,7 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
   const dispatch = useAppDispatch();
   const selectedGender = useAppSelector((state) => state.user.discover);
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const handleOptionSelect = (option: DiscoverType) => {
     dispatch(setDiscover(option));
@@ -95,15 +97,17 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
 
         <View style={styles.titleContainer}>
           <Text style={styles.titleText}>
-            Discover services just{" "}
-            <Text style={styles.titleHighlight}>right for you</Text>
+            {t("discoverServicesJust")}{" "}
+            <Text style={[styles.titleText, styles.titleHighlight]}>
+              {t("rightForYou")}
+            </Text>
           </Text>
-          <Text style={styles.subtitle}>Show services designed for...</Text>
+          <Text style={styles.subtitle}>{t("showServicesDesignedFor")}</Text>
         </View>
 
         <View style={styles.optionsContainer}>
           <RadioOption
-            title="Women"
+            title={t("women")}
             subtitle=""
             option="women"
             selectedOption={selectedGender}
@@ -111,7 +115,7 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
           />
 
           <RadioOption
-            title="Men"
+            title={t("men")}
             subtitle=""
             option="men"
             selectedOption={selectedGender}
@@ -127,7 +131,7 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
           /> */}
 
           <RadioOption
-            title="Other"
+            title={t("other")}
             subtitle=""
             option="other"
             selectedOption={selectedGender}
@@ -136,7 +140,7 @@ export default function GenderSelect({ onNext }: GenderSelectProps) {
         </View>
 
         <Button
-          title="Continue"
+          title={t("continue")}
           onPress={handleContinue}
           disabled={!selectedGender}
         />

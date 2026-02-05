@@ -31,6 +31,7 @@ import {
 } from "react-native-country-codes-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -65,7 +66,7 @@ const sanitizePlaceholder = (value: string) =>
 const formatNationalNumber = (
   countryIso: string,
   dialCode: string,
-  nationalDigits: string
+  nationalDigits: string,
 ) => {
   const dialDigits = dialCode.replace(/\D/g, "");
   const digits = nationalDigits.replace(/\D/g, "");
@@ -99,7 +100,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
         return sanitizePlaceholder(formatted.slice(prefix.length));
       }
       return sanitizePlaceholder(
-        formatted.replace(`+${example.countryCallingCode}`, "")
+        formatted.replace(`+${example.countryCallingCode}`, ""),
       );
     }
   } catch (error) {
@@ -111,7 +112,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
   const formattedFallback = formatNationalNumber(
     countryIso,
     dialCode,
-    fallbackDigits
+    fallbackDigits,
   );
 
   const sanitizedFallback =
@@ -246,6 +247,7 @@ export default function StepTwo() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const {
     businessName,
     fullName,
@@ -260,11 +262,13 @@ export default function StepTwo() {
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const previousDigitCountRef = useRef(0);
   const isSettingCursorRef = useRef(false);
-  const [businessNameError, setBusinessNameError] = useState<string | null>(null);
+  const [businessNameError, setBusinessNameError] = useState<string | null>(
+    null,
+  );
   const [fullNameError, setFullNameError] = useState<string | null>(null);
   const maxDigits = useMemo(
     () => phonePlaceholder.replace(/\s+/g, "").length,
-    [phonePlaceholder]
+    [phonePlaceholder],
   );
   const formattedPhoneValue = useMemo(() => {
     if (!phoneNumber) return "";
@@ -330,14 +334,14 @@ export default function StepTwo() {
           countryIso: country.code,
           phonePlaceholder: getPlaceholderForCountry(
             country.code,
-            country.dial_code
+            country.dial_code,
           ),
-        })
+        }),
       );
       previousDigitCountRef.current = 0;
       setPickerVisible(false);
     },
-    [dispatch]
+    [dispatch],
   );
 
   const handlePhoneChange = useCallback(
@@ -352,7 +356,7 @@ export default function StepTwo() {
         try {
           const parsed = parsePhoneNumberFromString(
             `+${dialDigits}${limitedDigits}`,
-            countryIso as PhoneCountryCode
+            countryIso as PhoneCountryCode,
           );
           isValid = parsed?.isValid() ?? false;
           parsedDigits = parsed?.nationalNumber?.toString() ?? limitedDigits;
@@ -370,7 +374,7 @@ export default function StepTwo() {
         setPhoneNumber({
           value: parsedDigits,
           isValid,
-        })
+        }),
       );
 
       // Calculate formatted value for cursor positioning
@@ -387,7 +391,7 @@ export default function StepTwo() {
         const groupLength = groups[i].length;
         newFormatted += parsedDigits.slice(
           digitIndex,
-          digitIndex + groupLength
+          digitIndex + groupLength,
         );
         digitIndex += groupLength;
       }
@@ -419,7 +423,7 @@ export default function StepTwo() {
         });
       }
     },
-    [countryCode, countryIso, dispatch, maxDigits, phonePlaceholder]
+    [countryCode, countryIso, dispatch, maxDigits, phonePlaceholder],
   );
 
   const handleSelectionChange = useCallback((event: any) => {
@@ -492,7 +496,7 @@ export default function StepTwo() {
         backgroundColor: "rgba(0, 0, 0, 0.6)",
       },
     }),
-    [colors, insets.bottom]
+    [colors, insets.bottom],
   );
   const isPhoneInvalid = phoneNumber.length > 0 && !phoneIsValid;
 
@@ -519,19 +523,19 @@ export default function StepTwo() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>Tell us more about you</Text>
+        <Text style={styles.title}>{t("tellUsMoreAboutYou")}</Text>
         <Text style={styles.subtitle}>
-          Tell us more about you and your business.
+          {t("tellUsMoreAboutYouAndBusiness")}
         </Text>
       </View>
 
       <View style={styles.formGroup}>
         <View style={styles.field}>
           <FloatingInput
-            label="Business name"
+            label={t("businessName")}
             value={businessName}
             onChangeText={(value) => dispatch(setBusinessName(value))}
-            placeholder="Business name"
+            placeholder={t("businessName")}
             onClear={() => {
               dispatch(setBusinessName(""));
               setBusinessNameError(null);
@@ -544,10 +548,10 @@ export default function StepTwo() {
 
         <View style={styles.field}>
           <FloatingInput
-            label="Your full name"
+            label={t("yourFullName")}
             value={fullName}
             onChangeText={(value) => dispatch(setFullName(value))}
-            placeholder="Your full name"
+            placeholder={t("yourFullName")}
             onClear={() => {
               dispatch(setFullName(""));
               setFullNameError(null);
@@ -560,7 +564,7 @@ export default function StepTwo() {
 
         <View style={[styles.field, styles.phoneField]}>
           <View style={styles.phoneFieldContainer}>
-            <Text style={styles.inputLabel}>Phone number</Text>
+            <Text style={styles.inputLabel}>{t("phoneNumber")}</Text>
             <View style={styles.phoneInputContainer}>
               <Pressable
                 onPress={() => setPickerVisible(true)}
@@ -609,16 +613,16 @@ export default function StepTwo() {
           </View>
 
           {isPhoneInvalid && (
-            <Text style={styles.errorText}>Enter a valid phone number</Text>
+            <Text style={styles.errorText}>{t("enterValidPhoneNumber")}</Text>
           )}
           <CountryPicker
             show={pickerVisible}
             pickerButtonOnPress={handleCountrySelect}
             onBackdropPress={() => setPickerVisible(false)}
             onRequestClose={() => setPickerVisible(false)}
-            inputPlaceholder="Search country"
+            inputPlaceholder={t("searchCountry")}
             inputPlaceholderTextColor={(colors as Theme).lightGreen2}
-            searchMessage="No country found"
+            searchMessage={t("noCountryFound")}
             style={pickerStyles}
             popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
             // initialState={countryCode}

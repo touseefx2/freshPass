@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   Text,
@@ -12,6 +18,7 @@ import {
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -25,7 +32,10 @@ import Button from "@/src/components/button";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import { validateName } from "@/src/services/validationService";
 import Logger from "@/src/services/logger";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -212,8 +222,8 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
-  },
-});
+    },
+  });
 
 const FALLBACK_PHONE_PLACEHOLDERS: Record<string, string> = {
   US: "2015550123",
@@ -235,7 +245,7 @@ const sanitizePlaceholder = (value: string) =>
 const formatNationalNumber = (
   countryIso: string,
   dialCode: string,
-  nationalDigits: string
+  nationalDigits: string,
 ) => {
   const dialDigits = dialCode.replace(/\D/g, "");
   const digits = nationalDigits.replace(/\D/g, "");
@@ -269,7 +279,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
         return sanitizePlaceholder(formatted.slice(prefix.length));
       }
       return sanitizePlaceholder(
-        formatted.replace(`+${example.countryCallingCode}`, "")
+        formatted.replace(`+${example.countryCallingCode}`, ""),
       );
     }
   } catch (error) {
@@ -281,7 +291,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
   const formattedFallback = formatNationalNumber(
     countryIso,
     dialCode,
-    fallbackDigits
+    fallbackDigits,
   );
 
   const sanitizedFallback =
@@ -341,6 +351,7 @@ export default function EditBusinessProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{
     title?: string;
     slogan?: string;
@@ -355,17 +366,18 @@ export default function EditBusinessProfileScreen() {
       return `${baseUrl}${params.logo_url}`;
     }
     return "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
-
   };
 
   const originalLogoImageUri = getInitialLogoUri();
-  
+
   const [businessName, setBusinessName] = useState(params.title || "");
   const [slogan, setSlogan] = useState(params.slogan || "");
-  const [logoImageUri, setLogoImageUri] = useState<string | null>(originalLogoImageUri);
+  const [logoImageUri, setLogoImageUri] = useState<string | null>(
+    originalLogoImageUri,
+  );
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [businessNameError, setBusinessNameError] = useState<string | null>(
-    null
+    null,
   );
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -376,7 +388,7 @@ export default function EditBusinessProfileScreen() {
   const [countryCode, setCountryCode] = useState(initialCountryCode);
   const [countryIso, setCountryIso] = useState(initialCountryIso);
   const [phonePlaceholder, setPhonePlaceholder] = useState(
-    getPlaceholderForCountry(initialCountryIso, initialCountryCode)
+    getPlaceholderForCountry(initialCountryIso, initialCountryCode),
   );
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber);
   const [phoneIsValid, setPhoneIsValid] = useState(false);
@@ -393,7 +405,7 @@ export default function EditBusinessProfileScreen() {
         const dialDigits = countryCode.replace(/\D/g, "");
         const parsed = parsePhoneNumberFromString(
           `+${dialDigits}${phoneNumber}`,
-          countryIso as PhoneCountryCode
+          countryIso as PhoneCountryCode,
         );
         if (parsed?.isValid()) {
           setPhoneIsValid(true);
@@ -432,7 +444,7 @@ export default function EditBusinessProfileScreen() {
 
   const maxDigits = useMemo(
     () => phonePlaceholder.replace(/\s+/g, "").length,
-    [phonePlaceholder]
+    [phonePlaceholder],
   );
 
   const formattedPhoneValue = useMemo(() => {
@@ -495,7 +507,7 @@ export default function EditBusinessProfileScreen() {
     setCountryCode(country.dial_code);
     setCountryIso(country.code);
     setPhonePlaceholder(
-      getPlaceholderForCountry(country.code, country.dial_code)
+      getPlaceholderForCountry(country.code, country.dial_code),
     );
     previousDigitCountRef.current = 0;
     setPickerVisible(false);
@@ -513,7 +525,7 @@ export default function EditBusinessProfileScreen() {
         try {
           const parsed = parsePhoneNumberFromString(
             `+${dialDigits}${limitedDigits}`,
-            countryIso as PhoneCountryCode
+            countryIso as PhoneCountryCode,
           );
           isValid = parsed?.isValid() ?? false;
           parsedDigits = parsed?.nationalNumber?.toString() ?? limitedDigits;
@@ -542,7 +554,7 @@ export default function EditBusinessProfileScreen() {
         const groupLength = groups[i].length;
         newFormatted += parsedDigits.slice(
           digitIndex,
-          digitIndex + groupLength
+          digitIndex + groupLength,
         );
         digitIndex += groupLength;
       }
@@ -565,7 +577,7 @@ export default function EditBusinessProfileScreen() {
         });
       }
     },
-    [countryCode, countryIso, maxDigits, phonePlaceholder]
+    [countryCode, countryIso, maxDigits, phonePlaceholder],
   );
 
   const handleSelectionChange = useCallback((event: any) => {
@@ -636,11 +648,10 @@ export default function EditBusinessProfileScreen() {
         backgroundColor: "rgba(0, 0, 0, 0.6)",
       },
     }),
-    [theme, insets.bottom]
+    [theme, insets.bottom],
   );
 
   const isPhoneInvalid = phoneNumber.length > 0 && !phoneIsValid;
-
 
   const handleUploadPhoto = () => {
     setShowImagePickerModal(true);
@@ -684,7 +695,7 @@ export default function EditBusinessProfileScreen() {
 
       // Add slogan if provided
       // if (slogan.trim()) {
-        formData.append("slogan", slogan.trim());
+      formData.append("slogan", slogan.trim());
       // }
 
       // Add phone number and country code
@@ -709,7 +720,8 @@ export default function EditBusinessProfileScreen() {
           logoImageUri.startsWith("ph://")
         ) {
           // It's a local file, append it
-          const fileExtension = logoImageUri.split(".").pop()?.toLowerCase() || "jpg";
+          const fileExtension =
+            logoImageUri.split(".").pop()?.toLowerCase() || "jpg";
           const fileName = `business_logo.${fileExtension}`;
           const mimeType =
             fileExtension === "jpg" || fileExtension === "jpeg"
@@ -747,7 +759,7 @@ export default function EditBusinessProfileScreen() {
           "Success",
           response.message || "Business profile updated successfully",
           "success",
-          3000
+          3000,
         );
 
         router.back();
@@ -756,7 +768,7 @@ export default function EditBusinessProfileScreen() {
           "Error",
           response.message || "Failed to update business profile",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -765,7 +777,7 @@ export default function EditBusinessProfileScreen() {
         "Error",
         error.message || "Failed to update business profile. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
@@ -774,7 +786,7 @@ export default function EditBusinessProfileScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Edit business profile" />
+      <StackHeader title={t("editBusinessProfileTitle")} />
       <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -793,7 +805,7 @@ export default function EditBusinessProfileScreen() {
             </View>
           )}
           <View style={styles.uploadSection}>
-            <Text style={styles.uploadText}>Add your business logo</Text>
+            <Text style={styles.uploadText}>{t("addYourBusinessLogo")}</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={handleUploadPhoto}
@@ -804,10 +816,10 @@ export default function EditBusinessProfileScreen() {
                 size={moderateWidthScale(18)}
                 color={theme.darkGreen}
               />
-              <Text style={styles.uploadButtonText}>Upload photo</Text>
+              <Text style={styles.uploadButtonText}>{t("uploadPhoto")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-            disabled
+              disabled
               activeOpacity={0.7}
               onPress={handleImportFromGoogleDrive}
             >
@@ -820,10 +832,10 @@ export default function EditBusinessProfileScreen() {
 
         <View style={styles.inputContainer}>
           <FloatingInput
-            label="Business name"
+            label={t("businessName")}
             value={businessName}
             onChangeText={setBusinessName}
-            placeholder="Business name *"
+            placeholder={t("businessNameRequired")}
             autoCapitalize="words"
             onClear={handleClearBusinessName}
           />
@@ -834,7 +846,7 @@ export default function EditBusinessProfileScreen() {
 
         <View style={styles.phoneField}>
           <View style={styles.phoneFieldContainer}>
-            <Text style={styles.inputLabel}>Phone number</Text>
+            <Text style={styles.inputLabel}>{t("phoneNumber")}</Text>
             <View style={styles.phoneInputContainer}>
               <Pressable
                 onPress={() => setPickerVisible(true)}
@@ -881,16 +893,16 @@ export default function EditBusinessProfileScreen() {
             </View>
           </View>
           {isPhoneInvalid && (
-            <Text style={styles.errorText}>Enter a valid phone number</Text>
+            <Text style={styles.errorText}>{t("enterValidPhoneNumber")}</Text>
           )}
           <CountryPicker
             show={pickerVisible}
             pickerButtonOnPress={handleCountrySelect}
             onBackdropPress={() => setPickerVisible(false)}
             onRequestClose={() => setPickerVisible(false)}
-            inputPlaceholder="Search country"
+            inputPlaceholder={t("searchCountry")}
             inputPlaceholderTextColor={theme.lightGreen2}
-            searchMessage="No country found"
+            searchMessage={t("noCountryFound")}
             style={pickerStyles}
             popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
             enableModalAvoiding
@@ -900,10 +912,10 @@ export default function EditBusinessProfileScreen() {
 
         <View style={styles.inputContainer}>
           <FloatingInput
-            label="Slogan (optional)"
+            label={t("sloganOptional")}
             value={slogan}
             onChangeText={setSlogan}
-            placeholder="Slogan (optional)"
+            placeholder={t("sloganOptional")}
             autoCapitalize="sentences"
             onClear={() => setSlogan("")}
           />
@@ -912,7 +924,7 @@ export default function EditBusinessProfileScreen() {
 
       <View style={styles.continueButtonContainer}>
         <Button
-          title="Update"
+          title={t("update")}
           onPress={handleContinue}
           disabled={!isFormValid || isUpdating}
         />

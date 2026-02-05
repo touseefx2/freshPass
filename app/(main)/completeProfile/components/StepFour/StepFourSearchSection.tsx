@@ -16,6 +16,7 @@ import {
 } from "@/src/theme/dimensions";
 import { PlacePrediction } from "@/src/types/location";
 import FloatingInput from "@/src/components/floatingInput";
+import { useTranslation } from "react-i18next";
 
 interface StepFourSearchSectionProps {
   addressSearch: string;
@@ -107,15 +108,16 @@ export default function StepFourSearchSection({
 }: StepFourSearchSectionProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
       <View className="flex-1">
         <FloatingInput
-          label="Search"
+          label={t("search")}
           value={addressSearch}
           onChangeText={onChangeSearch}
-          placeholder="Search your address"
+          placeholder={t("searchYourAddress")}
           placeholderTextColor={(colors as Theme).lightGreen2}
           returnKeyType="search"
           onClear={() => onChangeSearch("")}

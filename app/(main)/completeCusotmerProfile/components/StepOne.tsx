@@ -32,6 +32,7 @@ import {
 } from "react-native-country-codes-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -66,7 +67,7 @@ const sanitizePlaceholder = (value: string) =>
 const formatNationalNumber = (
   countryIso: string,
   dialCode: string,
-  nationalDigits: string
+  nationalDigits: string,
 ) => {
   const dialDigits = dialCode.replace(/\D/g, "");
   const digits = nationalDigits.replace(/\D/g, "");
@@ -100,7 +101,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
         return sanitizePlaceholder(formatted.slice(prefix.length));
       }
       return sanitizePlaceholder(
-        formatted.replace(`+${example.countryCallingCode}`, "")
+        formatted.replace(`+${example.countryCallingCode}`, ""),
       );
     }
   } catch (error) {
@@ -112,7 +113,7 @@ const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
   const formattedFallback = formatNationalNumber(
     countryIso,
     dialCode,
-    fallbackDigits
+    fallbackDigits,
   );
 
   const sanitizedFallback =
@@ -139,7 +140,7 @@ const MONTHS = [
 ];
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 100 }, (_, i) =>
-  (CURRENT_YEAR - i).toString()
+  (CURRENT_YEAR - i).toString(),
 );
 
 const createStyles = (theme: Theme) =>
@@ -157,13 +158,13 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      alignSelf:"center"
+      alignSelf: "center",
     },
     subtitle: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-         alignSelf:"center"
+      alignSelf: "center",
     },
     formGroup: {
       gap: moderateHeightScale(16),
@@ -321,6 +322,7 @@ export default function StepOne() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const {
     fullName,
     countryCode,
@@ -344,7 +346,7 @@ export default function StepOne() {
   const yearFieldRef = useRef<View>(null);
   const maxDigits = useMemo(
     () => phonePlaceholder.replace(/\s+/g, "").length,
-    [phonePlaceholder]
+    [phonePlaceholder],
   );
   const formattedPhoneValue = useMemo(() => {
     if (!phoneNumber) return "";
@@ -410,14 +412,14 @@ export default function StepOne() {
           countryIso: country.code,
           phonePlaceholder: getPlaceholderForCountry(
             country.code,
-            country.dial_code
+            country.dial_code,
           ),
-        })
+        }),
       );
       previousDigitCountRef.current = 0;
       setPickerVisible(false);
     },
-    [dispatch]
+    [dispatch],
   );
 
   const handlePhoneChange = useCallback(
@@ -432,7 +434,7 @@ export default function StepOne() {
         try {
           const parsed = parsePhoneNumberFromString(
             `+${dialDigits}${limitedDigits}`,
-            countryIso as PhoneCountryCode
+            countryIso as PhoneCountryCode,
           );
           isValid = parsed?.isValid() ?? false;
           parsedDigits = parsed?.nationalNumber?.toString() ?? limitedDigits;
@@ -448,7 +450,7 @@ export default function StepOne() {
         setPhoneNumber({
           value: parsedDigits,
           isValid,
-        })
+        }),
       );
 
       const groups = phonePlaceholder.split(" ").filter(Boolean);
@@ -464,7 +466,7 @@ export default function StepOne() {
         const groupLength = groups[i].length;
         newFormatted += parsedDigits.slice(
           digitIndex,
-          digitIndex + groupLength
+          digitIndex + groupLength,
         );
         digitIndex += groupLength;
       }
@@ -487,7 +489,7 @@ export default function StepOne() {
         });
       }
     },
-    [countryCode, countryIso, dispatch, maxDigits, phonePlaceholder]
+    [countryCode, countryIso, dispatch, maxDigits, phonePlaceholder],
   );
 
   const handleSelectionChange = useCallback((event: any) => {
@@ -518,7 +520,7 @@ export default function StepOne() {
       dispatch(setDateOfBirth(updated));
       setDateDropdownVisible(null);
     },
-    [dateOfBirth, dispatch]
+    [dateOfBirth, dispatch],
   );
 
   const pickerStyles = useMemo<CountryPickerStyle>(
@@ -578,7 +580,7 @@ export default function StepOne() {
         backgroundColor: "rgba(0, 0, 0, 0.6)",
       },
     }),
-    [colors, insets.bottom]
+    [colors, insets.bottom],
   );
   const isPhoneInvalid = phoneNumber.length > 0 && !phoneIsValid;
 
@@ -601,17 +603,17 @@ export default function StepOne() {
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>What’s your name?</Text>
-        <Text style={styles.subtitle}>Personalize your experience</Text>
+        <Text style={styles.title}>{t("whatsYourName")}</Text>
+        <Text style={styles.subtitle}>{t("personalizeYourExperience")}</Text>
       </View>
 
       <View style={styles.formGroup}>
         <View style={styles.field}>
           <FloatingInput
-            label="Full name"
+            label={t("fullName")}
             value={fullName}
             onChangeText={(value) => dispatch(setFullName(value))}
-            placeholder="Full name"
+            placeholder={t("fullName")}
             onClear={() => {
               dispatch(setFullName(""));
               setFullNameError(null);
@@ -624,7 +626,7 @@ export default function StepOne() {
 
         <View style={[styles.field, styles.phoneField]}>
           <View style={styles.phoneFieldContainer}>
-            <Text style={styles.inputLabel}>Phone number</Text>
+            <Text style={styles.inputLabel}>{t("phoneNumber")}</Text>
             <View style={styles.phoneInputContainer}>
               <Pressable
                 onPress={() => setPickerVisible(true)}
@@ -671,16 +673,16 @@ export default function StepOne() {
           </View>
 
           {isPhoneInvalid && (
-            <Text style={styles.errorText}>Enter a valid phone number</Text>
+            <Text style={styles.errorText}>{t("enterValidPhoneNumber")}</Text>
           )}
           <CountryPicker
             show={pickerVisible}
             pickerButtonOnPress={handleCountrySelect}
             onBackdropPress={() => setPickerVisible(false)}
             onRequestClose={() => setPickerVisible(false)}
-            inputPlaceholder="Search country"
+            inputPlaceholder={t("searchCountry")}
             inputPlaceholderTextColor={(colors as Theme).lightGreen2}
-            searchMessage="No country found"
+            searchMessage={t("noCountryFound")}
             style={pickerStyles}
             popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
             enableModalAvoiding
@@ -690,7 +692,7 @@ export default function StepOne() {
 
         <View style={styles.dateOfBirthContainer}>
           <View style={styles.dateOfBirthLabelContainer}>
-            <Text style={styles.dateOfBirthLabel}>Date of birth</Text>
+            <Text style={styles.dateOfBirthLabel}>{t("dateOfBirth")}</Text>
             {(hasDate || hasMonth || hasYear) && (
               <Pressable
                 onPress={() => {
@@ -698,7 +700,7 @@ export default function StepOne() {
                 }}
                 hitSlop={moderateWidthScale(10)}
               >
-                <Text style={styles.clearDateText}>Clear</Text>
+                <Text style={styles.clearDateText}>{t("clear")}</Text>
               </Pressable>
             )}
           </View>
@@ -709,7 +711,7 @@ export default function StepOne() {
               onPress={() => setDateDropdownVisible("date")}
             >
               <View style={styles.dateFieldContent}>
-                <Text style={styles.dateFieldLabel}>Date</Text>
+                <Text style={styles.dateFieldLabel}>{t("date")}</Text>
                 <Text
                   style={[
                     dateOfBirth?.date
@@ -732,7 +734,7 @@ export default function StepOne() {
               onPress={() => setDateDropdownVisible("month")}
             >
               <View style={styles.dateFieldContent}>
-                <Text style={styles.dateFieldLabel}>Month</Text>
+                <Text style={styles.dateFieldLabel}>{t("month")}</Text>
                 <Text
                   style={[
                     dateOfBirth?.month
@@ -758,7 +760,7 @@ export default function StepOne() {
               onPress={() => setDateDropdownVisible("year")}
             >
               <View style={styles.dateFieldContent}>
-                <Text style={styles.dateFieldLabel}>Year</Text>
+                <Text style={styles.dateFieldLabel}>{t("year")}</Text>
                 <Text
                   style={[
                     dateOfBirth?.year
@@ -778,7 +780,7 @@ export default function StepOne() {
           </View>
           {isDateOfBirthPartial && (
             <Text style={styles.errorText}>
-              Please complete all date fields or leave them empty
+              {t("completeAllDateFieldsOrEmpty")}
             </Text>
           )}
         </View>

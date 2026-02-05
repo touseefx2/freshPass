@@ -414,13 +414,13 @@ export default function SocialLogin() {
         />
 
         <Text style={styles.legalText}>
-          By continuing to use FreshPass, you agree to our{" "}
+          {t("byContinuingYouAgree")}{" "}
           <Text style={styles.legalLink} onPress={handleTermsPress}>
-            Terms of Services
+            {t("termsOfService")}
           </Text>{" "}
           &{" "}
           <Text style={styles.legalLink} onPress={handlePrivacyPress}>
-            Privacy Policy
+            {t("privacyPolicy")}
           </Text>
         </Text>
       </View>

@@ -601,5 +601,16 @@
   "resultNotFound": "Result not found",
   "download": "Download",
   "missingJobId": "Missing job ID",
-  "somethingWentWrong": "Something went wrong"
+  "somethingWentWrong": "Something went wrong",
+  "discoverServicesJust": "Discover services just",
+  "rightForYou": "right for you",
+  "showServicesDesignedFor": "Show services designed for...",
+  "byContinuingYouAgree": "By continuing to use FreshPass, you agree to our",
+  "searchCountry": "Search country",
+  "noCountryFound": "No country found",
+  "tellUsMoreAboutYou": "Tell us more about you",
+  "tellUsMoreAboutYouAndBusiness": "Tell us more about you and your business.",
+  "whatsYourName": "What’s your name?",
+  "personalizeYourExperience": "Personalize your experience",
+  "completeAllDateFieldsOrEmpty": "Please complete all date fields or leave them empty"
 }

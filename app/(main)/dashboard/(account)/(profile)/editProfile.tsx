@@ -1278,9 +1278,9 @@ export default function EditProfileScreen() {
                 pickerButtonOnPress={handleCountrySelect}
                 onBackdropPress={() => setPickerVisible(false)}
                 onRequestClose={() => setPickerVisible(false)}
-                inputPlaceholder="Search country"
+                inputPlaceholder={t("searchCountry")}
                 inputPlaceholderTextColor={theme.lightGreen2}
-                searchMessage="No country found"
+                searchMessage={t("noCountryFound")}
                 style={pickerStyles}
                 popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
                 enableModalAvoiding

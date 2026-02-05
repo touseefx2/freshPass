@@ -20,6 +20,7 @@ import RetryButton from "@/src/components/retryButton";
 import { LinearGradient } from "expo-linear-gradient";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
+import { useTranslation } from "react-i18next";
 
 interface SubscriptionData {
   id: number;
@@ -392,6 +393,7 @@ export default function SubscriptionScreen() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
+  const { t } = useTranslation();
 
   const [subscription, setSubscription] = useState<SubscriptionData | null>(
     null,
@@ -440,11 +442,11 @@ export default function SubscriptionScreen() {
         setApiError(false);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load subscription");
+      setError(err.message || t("failedToLoadSubscription"));
       setApiError(true);
       showBanner(
-        "Error",
-        err.message || "Failed to load subscription",
+        t("error"),
+        err.message || t("failedToLoadSubscription"),
         "error",
         2500,
       );
@@ -467,17 +469,15 @@ export default function SubscriptionScreen() {
     if (!subscription) return;
 
     Alert.alert(
-      isTrialing ? "Cancel Trial" : "Cancel Subscription",
-      isTrialing
-        ? "Are you sure you want to cancel your free trial? This action cannot be undone."
-        : "Are you sure you want to cancel your subscription? This action cannot be undone.",
+      isTrialing ? t("cancelTrial") : t("cancelSubscription"),
+      isTrialing ? t("cancelTrialConfirm") : t("cancelSubscriptionConfirm"),
       [
         {
-          text: "No",
+          text: t("no"),
           style: "cancel",
         },
         {
-          text: "Yes, Cancel Trial",
+          text: t("yesCancelTrial"),
           style: "destructive",
           onPress: async () => {},
         },
@@ -515,7 +515,7 @@ export default function SubscriptionScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Subscription" />
+      <StackHeader title={t("subscription")} />
       {loading && !subscription ? (
         <View style={styles.content}>
           <Skeleton screenType="BusinessPlans" styles={styles} />
@@ -534,11 +534,13 @@ export default function SubscriptionScreen() {
               color={theme.lightGreen}
               style={styles.emptyIcon}
             />
-            <Text style={styles.emptyText}>No active subscription found</Text>
+            <Text style={styles.emptyText}>
+              {t("noActiveSubscriptionFound")}
+            </Text>
           </View>
           <View style={styles.buttonContainer}>
             <Button
-              title="Buy Plan"
+              title={t("buyPlan")}
               onPress={() => setBusinessPlansModalVisible(true)}
             />
           </View>
@@ -560,10 +562,10 @@ export default function SubscriptionScreen() {
               >
                 <View style={styles.trialBannerLeft}>
                   <Text style={styles.trialBannerTitle}>
-                    🎉 Free Trial Active
+                    {t("freeTrialActive")}
                   </Text>
                   <Text style={styles.trialBannerSubtitle}>
-                    Your trial ends on{" "}
+                    {t("yourTrialEndsOn")}{" "}
                     {formatTrialEndDate(subscription.trialEndsAt)}
                   </Text>
                 </View>
@@ -596,7 +598,7 @@ export default function SubscriptionScreen() {
                     <Text style={styles.planPrice}>
                       {subscription.subscriptionPlanPrice}
                     </Text>
-                    <Text style={styles.pricePeriod}>/month</Text>
+                    <Text style={styles.pricePeriod}>{t("perMonth")}</Text>
                   </View>
                 </View>
                 <View style={styles.statusBadge}>
@@ -624,7 +626,7 @@ export default function SubscriptionScreen() {
               style={styles.cardGradient}
             >
               <View style={styles.cardMiddle}>
-                <Text style={styles.cardLabel}>Card Last 4 Digits</Text>
+                <Text style={styles.cardLabel}>{t("cardLast4Digits")}</Text>
                 <View style={styles.cardNumberContainer}>
                   <Text style={styles.cardNumberText}>
                     {formatCardNumber(subscription.cardLastFour)}
@@ -636,7 +638,7 @@ export default function SubscriptionScreen() {
 
           {/* Subscription Details */}
           <View style={styles.infoSection}>
-            <Text style={styles.sectionTitle}>Subscription Details</Text>
+            <Text style={styles.sectionTitle}>{t("subscriptionDetails")}</Text>
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
@@ -647,7 +649,7 @@ export default function SubscriptionScreen() {
                   />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Days Remaining</Text>
+                  <Text style={styles.infoLabel}>{t("daysRemaining")}</Text>
                   <Text style={styles.infoValue}>
                     {subscription.remainingDays}
                   </Text>
@@ -664,7 +666,7 @@ export default function SubscriptionScreen() {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>
-                    {isTrialing ? "Trial Started" : "Subscription Started"}
+                    {isTrialing ? t("trialStarted") : t("subscriptionStarted")}
                   </Text>
                   <Text style={styles.infoValue}>
                     {subscription.createdAt || "N/A"}
@@ -681,7 +683,7 @@ export default function SubscriptionScreen() {
                   />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Next Payment Date</Text>
+                  <Text style={styles.infoLabel}>{t("nextPaymentDate")}</Text>
                   <Text style={styles.infoValue}>
                     {subscription.nextPaymentDate || "N/A"}
                   </Text>
@@ -694,7 +696,7 @@ export default function SubscriptionScreen() {
           {(isTrialing || isActive) && (
             <View style={styles.buttonContainer}>
               <Button
-                title={isTrialing ? "Cancel Trial" : "Cancel Subscription"}
+                title={isTrialing ? t("cancelTrial") : t("cancelSubscription")}
                 onPress={handleCancel}
                 loading={cancelling}
                 disabled={cancelling}

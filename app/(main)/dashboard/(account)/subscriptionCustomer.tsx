@@ -27,6 +27,7 @@ import { Feather } from "@expo/vector-icons";
 import RetryButton from "@/src/components/retryButton";
 import { Dropdown } from "react-native-element-dropdown";
 import subscription from "./subscription";
+import { useTranslation } from "react-i18next";
 
 interface SubscriptionData {
   id: number;
@@ -601,6 +602,7 @@ export default function subscriptionCustomer() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
+  const { t } = useTranslation();
 
   const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
   const [loading, setLoading] = useState(false);
@@ -646,17 +648,17 @@ export default function subscriptionCustomer() {
           setTotalPages(response.data.meta.last_page);
         } else {
           if (!append) {
-            setError("No subscriptions found");
+            setError(t("noSubscriptionsFound"));
             setApiError(true);
           }
         }
       } catch (err: any) {
-        setError(err.message || "Failed to load subscriptions");
+        setError(err.message || t("failedToLoadSubscriptions"));
         setApiError(true);
         if (!append) {
           showBanner(
-            "Error",
-            err.message || "Failed to load subscriptions",
+            t("error"),
+            err.message || t("failedToLoadSubscriptions"),
             "error",
             2500,
           );
@@ -720,8 +722,8 @@ export default function subscriptionCustomer() {
 
       if (response.success) {
         showBanner(
-          "Success",
-          "Subscription cancelled successfully",
+          t("success"),
+          t("subscriptionCancelledSuccessfully"),
           "success",
           2500,
         );
@@ -735,16 +737,16 @@ export default function subscriptionCustomer() {
         await fetchSubscriptions(1, false);
       } else {
         showBanner(
-          "Error",
-          response.message || "Failed to cancel subscription",
+          t("error"),
+          response.message || t("failedToCancelSubscription"),
           "error",
           2500,
         );
       }
     } catch (err: any) {
       showBanner(
-        "Error",
-        err.message || "Failed to cancel subscription",
+        t("error"),
+        err.message || t("failedToCancelSubscription"),
         "error",
         2500,
       );
