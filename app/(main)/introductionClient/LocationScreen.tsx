@@ -88,7 +88,7 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
     try {
       const servicesEnabled = await Location.hasServicesEnabledAsync();
       if (!servicesEnabled) {
-        const errorMsg = "Please turn on your phone location";
+        const errorMsg = t("turnOnLocationFindLocal");
         // setErrorMessage(errorMsg);
         showBanner(t("locationError"), errorMsg, "error");
         return;
@@ -99,7 +99,7 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
       const errorMsg =
         error instanceof Error
           ? error.message
-          : "Unable to get your location. Please make sure location services are enabled and try again.";
+          : t("unableToGetCurrentLocation");
       // setErrorMessage(errorMsg);
       showBanner(t("locationError"), errorMsg, "error");
     }
@@ -149,7 +149,7 @@ export default function LocationScreen({ onNext }: LocationScreenProps) {
       </View>
 
       <View style={styles.buttonContainer}>
-        <Button title={"Continue"} onPress={handleContinue} />
+        <Button title={t("continue")} onPress={handleContinue} />
       </View>
     </SafeAreaView>
   );
