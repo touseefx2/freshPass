@@ -180,6 +180,9 @@ export default function SocialLogin() {
               router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
             }
           }
+
+          if (user?.role?.toLowerCase() === "staff") {
+          }
         }
       } else {
         Alert.alert(
