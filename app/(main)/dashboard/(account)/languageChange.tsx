@@ -1,11 +1,12 @@
 import React, { useMemo } from "react";
 import Logger from "@/src/services/logger";
 import {
+  Alert,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
-  ScrollView,
   TouchableOpacity,
+  View,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -18,7 +19,7 @@ import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { setLanguage } from "@/src/state/slices/generalSlice";
-import { setupRTL } from "@/src/constant/functions";
+import { isRTL, setupRTL } from "@/src/constant/functions";
 import * as Updates from "expo-updates";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -110,9 +111,7 @@ export default function LanguageChangeScreen() {
   const { t, i18n } = useTranslation();
   const currentLanguage = useAppSelector((state) => state.general.language);
 
-  const changeLang = async (langCode: string) => {
-    if (langCode === currentLanguage) return;
-
+  const applyLanguageChange = async (langCode: string) => {
     await i18n.changeLanguage(langCode);
     dispatch(setLanguage(langCode));
 
@@ -132,6 +131,38 @@ export default function LanguageChangeScreen() {
         );
       }
     }
+  };
+
+  const changeLang = async (langCode: string) => {
+    if (langCode === currentLanguage) return;
+
+    const targetIsRTL = isRTL(langCode);
+    const currentIsRTL = isRTL(currentLanguage);
+    const willChangeDirection = targetIsRTL !== currentIsRTL;
+
+    // If layout direction (RTL/LTR) will change, ask user to confirm restart
+    if (willChangeDirection) {
+      Alert.alert(
+        "Restart required",
+        "To fully apply this language's layout direction, the app needs to restart. Do you want to restart now?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Restart",
+            onPress: () => {
+              void applyLanguageChange(langCode);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    // No direction change – apply immediately without extra confirmation
+    await applyLanguageChange(langCode);
   };
 
   return (
