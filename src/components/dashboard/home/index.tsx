@@ -147,6 +147,7 @@ export default function HomeScreen() {
             id: number;
             title: string;
           };
+          ai_quota?: number;
         };
       }>(userEndpoints.details);
 
@@ -161,6 +162,9 @@ export default function HomeScreen() {
             profile_image_url: response.data.profile_image_url,
             business_id: response.data.business.id ?? "",
             business_name: response.data.business.title ?? "",
+            ...(response.data.ai_quota !== undefined && {
+              ai_quota: response.data.ai_quota,
+            }),
           }),
         );
       }

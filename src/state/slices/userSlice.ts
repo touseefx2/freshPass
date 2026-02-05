@@ -64,6 +64,7 @@ export interface UserState {
   countryName: string;
   business_id?: number;
   business_name?: string;
+  ai_quota: number;
 }
 
 const initialState: UserState = {
@@ -99,6 +100,7 @@ const initialState: UserState = {
   countryName: "",
   business_id: undefined,
   business_name: undefined,
+  ai_quota: 0,
 };
 
 const userSlice = createSlice({
@@ -175,6 +177,7 @@ const userSlice = createSlice({
         countryName?: string;
         business_id?: number;
         business_name?: string;
+        ai_quota?: number;
       }>,
     ) {
       if (action.payload.name !== undefined) {
@@ -212,6 +215,9 @@ const userSlice = createSlice({
       }
       if (action.payload.business_name !== undefined) {
         state.business_name = action.payload.business_name;
+      }
+      if (action.payload.ai_quota !== undefined) {
+        state.ai_quota = action.payload.ai_quota;
       }
     },
     setUnreadCount(state, action: PayloadAction<number>) {

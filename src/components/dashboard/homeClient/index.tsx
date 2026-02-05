@@ -9,13 +9,20 @@ import SearchBar from "./components/SearchBar";
 import DashboardContent from "./components/DashboardContent";
 import * as Location from "expo-location";
 import LocationEnableModal from "@/src/components/locationEnableModal";
-import { setLocation, setUnreadCount } from "@/src/state/slices/userSlice";
+import {
+  setLocation,
+  setUnreadCount,
+  setUserDetails,
+} from "@/src/state/slices/userSlice";
 import { tryGetPosition } from "@/src/constant/functions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { setLocationLoading } from "@/src/state/slices/generalSlice";
 import { handleLocationPermission } from "@/src/services/locationPermissionService";
 import { ApiService } from "@/src/services/api";
-import { notificationsEndpoints } from "@/src/services/endpoints";
+import {
+  notificationsEndpoints,
+  userEndpoints,
+} from "@/src/services/endpoints";
 import { useFocusEffect } from "expo-router";
 
 const createStyles = (theme: Theme) =>
@@ -190,9 +197,50 @@ export default function HomeScreen() {
     }
   };
 
+  const handleFetchUserDetails = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          name: string;
+          email: string;
+          phone: string | null;
+          country_code: string | null;
+          email_notifications: boolean | null;
+          profile_image_url: string | null;
+          business: {
+            id: number;
+            title: string;
+          };
+          ai_quota?: number;
+        };
+      }>(userEndpoints.details);
+
+      if (response.success && response.data) {
+        dispatch(
+          setUserDetails({
+            name: response.data.name,
+            email: response.data.email,
+            phone: response.data.phone,
+            country_code: response.data.country_code,
+            email_notifications: response.data.email_notifications,
+            profile_image_url: response.data.profile_image_url,
+            business_id: response.data.business.id ?? "",
+            business_name: response.data.business.title ?? "",
+            ...(response.data.ai_quota !== undefined && {
+              ai_quota: response.data.ai_quota,
+            }),
+          }),
+        );
+      }
+    } catch (error: any) {}
+  };
+
   useFocusEffect(
     useCallback(() => {
       handleFetchUnreadCount();
+      handleFetchUserDetails();
     }, []),
   );
 
