@@ -35,7 +35,7 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { setUser, UserRole } from "@/src/state/slices/userSlice";
 import { setFullName } from "@/src/state/slices/completeProfileSlice";
-import { LoginManager, AccessToken } from "react-native-fbsdk-next";
+// import { LoginManager, AccessToken } from "react-native-fbsdk-next";
 type SocialProvider = "google" | "apple" | "facebook";
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -421,7 +421,7 @@ export default function SocialLogin() {
     } else if (provider === "apple") {
       await handleAppleLogin();
     } else if (provider === "facebook") {
-      await handleFacebookLogin();
+      // await handleFacebookLogin();
     }
   };
 
