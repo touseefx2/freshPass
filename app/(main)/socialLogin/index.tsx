@@ -35,6 +35,7 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { setUser, UserRole } from "@/src/state/slices/userSlice";
 import { setFullName } from "@/src/state/slices/completeProfileSlice";
+import { LoginManager, AccessToken } from "react-native-fbsdk-next";
 type SocialProvider = "google" | "apple" | "facebook";
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -292,13 +293,135 @@ export default function SocialLogin() {
     }
   };
 
+  const handleFacebookLogin = async () => {
+    try {
+      // Login dialog open karo
+      const result = await LoginManager.logInWithPermissions([
+        "public_profile",
+        "email",
+      ]);
+
+      if (result.isCancelled) {
+        Logger.log("User cancelled Facebook login");
+        return;
+      }
+
+      // Access token lo
+      const data = await AccessToken.getCurrentAccessToken();
+
+      if (!data || !data.accessToken) {
+        Alert.alert(t("error"), t("failedToGetUserFromFacebook"));
+        return;
+      }
+
+      const fbAccessToken = data.accessToken.toString();
+
+      Logger.log("Facebook Access Token:", fbAccessToken);
+      Logger.log("role", selectedRole);
+
+      // // Yahan Google jaisa hi backend call kar do
+      // const response = await ApiService.post<{
+      //   success: boolean;
+      //   message: string;
+      //   data: {
+      //     user: {
+      //       id: number;
+      //       name: string;
+      //       email?: string;
+      //       phone?: string;
+      //       country_code?: string;
+      //       profile_image_url?: string;
+      //       role: string;
+      //       rolesCount?: number;
+      //       createdAt?: string;
+      //     };
+      //     token: string;
+      //     isNewCreated?: boolean;
+      //   };
+      // }>(businessEndpoints.socialLogin, {
+      //   provider: "facebook",
+      //   token: fbAccessToken,
+      //   role: selectedRole?.toLowerCase() ?? "",
+      // });
+
+      // if (response.success && response.data) {
+      //   const { user, token, isNewCreated } = response.data;
+
+      //   if (user && token) {
+      //     // Yahan bilkul Google jaisi hi user set / navigation logic reuse kar sakte ho
+      //     // Example: (same as Google customer/business blocks)
+      //     if (user?.role?.toLowerCase() === "customer") {
+      //       dispatch(
+      //         setUser({
+      //           id: user.id,
+      //           name: user.name || "",
+      //           email: user.email || "",
+      //           description: "",
+      //           phone: user.phone || "",
+      //           country_code: user.country_code || "",
+      //           profile_image_url: user.profile_image_url || "",
+      //           accessToken: token,
+      //           userRole: (user.role?.toLowerCase() as UserRole) || null,
+      //         }),
+      //       );
+
+      //       if (isNewCreated) {
+      //         dispatch(setFullName(user.name || ""));
+      //         router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+      //       } else {
+      //         router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+      //       }
+      //     }
+
+      //     if (user?.role?.toLowerCase() === "business") {
+      //       dispatch(
+      //         setUser({
+      //           id: user.id,
+      //           name: user.name || "",
+      //           email: user.email || "",
+      //           description: "",
+      //           phone: user.phone || "",
+      //           country_code: user.country_code || "",
+      //           profile_image_url: user.profile_image_url || "",
+      //           accessToken: token,
+      //           userRole: (user.role?.toLowerCase() as UserRole) || null,
+      //         }),
+      //       );
+
+      //       if (isNewCreated) {
+      //         dispatch(setFullName(user.name || ""));
+      //         router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
+      //       } else {
+      //         router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+      //       }
+      //     }
+
+      //     if (user?.role?.toLowerCase() === "staff") {
+      //       // TODO: staff ke liye bhi yahan logic add karo agar chahiye
+      //     }
+      //   }
+      // } else {
+      //   Alert.alert(
+      //     t("loginFailed"),
+      //     response.message || t("socialLoginFailedTryAgain"),
+      //   );
+      // }
+    } catch (error: any) {
+      Logger.error("Facebook Login Error:", error);
+      Alert.alert(
+        t("facebookSignInFailed"),
+        error.message || t("errorDuringFacebookSignIn"),
+      );
+    }
+  };
+
   const handleSocialLogin = async (provider: SocialProvider) => {
     if (provider === "google") {
       await handleGoogleLogin();
     } else if (provider === "apple") {
       await handleAppleLogin();
     } else if (provider === "facebook") {
-      Alert.alert(t("comingSoon"), t("facebookSignInComingSoon"));
+      await handleFacebookLogin();
     }
   };
 
