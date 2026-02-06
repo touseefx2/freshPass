@@ -27,10 +27,7 @@ import {
 } from "react-native-safe-area-context";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
-import {
-  initPaymentSheet,
-  presentPaymentSheet,
-} from "@stripe/stripe-react-native";
+import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import NotificationBanner from "@/src/components/notificationBanner";
 
 interface TryOnModalProps {
@@ -155,13 +152,14 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function TryOnModal({
+function TryOnModalContent({
   visible,
   onClose,
   service,
 }: TryOnModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state) => state.user);
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -198,7 +196,7 @@ export default function TryOnModal({
     try {
       const { customer, paymentIntent, customerSessionClientSecret } =
         await fetchAiToolsPaymentSheetParams(service.id);
-
+        setLocalActionLoader(false);
       const paymentConfig: Record<string, unknown> = {
         merchantDisplayName: "Fresh Pass",
         customerId: customer,
@@ -216,7 +214,6 @@ export default function TryOnModal({
       if (paymentIntent && paymentIntent.trim() !== "") {
         paymentConfig.paymentIntentClientSecret = paymentIntent;
       } else {
-        setLocalActionLoader(false);
         setLocalBanner({
           visible: true,
           title: t("error"),
@@ -244,7 +241,7 @@ export default function TryOnModal({
       const { error: presentError } = await presentPaymentSheet();
 
       if (presentError) {
-        setLocalActionLoader(false);
+       
         if (!presentError.code?.includes("Canceled")) {
           setLocalBanner({
             visible: true,
@@ -256,7 +253,7 @@ export default function TryOnModal({
         return;
       }
 
-      setLocalActionLoader(false);
+   
       setLocalBanner({
         visible: true,
         title: t("success"),
@@ -279,14 +276,15 @@ export default function TryOnModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      transparent={false}
-      onRequestClose={onClose}
-      statusBarTranslucent
-    >
-      <SafeAreaView edges={["bottom"]} style={styles.container}>
+    <>
+      <Modal
+        visible={visible}
+        animationType="fade"
+        transparent={false}
+        onRequestClose={onClose}
+        statusBarTranslucent
+      >
+        <SafeAreaView edges={["bottom"]} style={styles.container}>
         <StatusBar barStyle="light-content" translucent />
         <ImageBackground
           source={IMAGES.tryOnBack}
@@ -373,7 +371,18 @@ export default function TryOnModal({
             </View>
           </View>
         </Modal>
-      </SafeAreaView>
-    </Modal>
+        </SafeAreaView>
+      </Modal>
+    </>
+  );
+}
+
+export default function TryOnModal(props: TryOnModalProps) {
+  return (
+    <StripeProvider
+      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
+    >
+      <TryOnModalContent {...props} />
+    </StripeProvider>
   );
 }
