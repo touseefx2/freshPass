@@ -152,11 +152,7 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-function TryOnModalContent({
-  visible,
-  onClose,
-  service,
-}: TryOnModalProps) {
+function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -196,7 +192,7 @@ function TryOnModalContent({
     try {
       const { customer, paymentIntent, customerSessionClientSecret } =
         await fetchAiToolsPaymentSheetParams(service.id);
-        setLocalActionLoader(false);
+      setLocalActionLoader(false);
       const paymentConfig: Record<string, unknown> = {
         merchantDisplayName: "Fresh Pass",
         customerId: customer,
@@ -241,7 +237,6 @@ function TryOnModalContent({
       const { error: presentError } = await presentPaymentSheet();
 
       if (presentError) {
-       
         if (!presentError.code?.includes("Canceled")) {
           setLocalBanner({
             visible: true,
@@ -253,7 +248,6 @@ function TryOnModalContent({
         return;
       }
 
-   
       setLocalBanner({
         visible: true,
         title: t("success"),
@@ -285,92 +279,92 @@ function TryOnModalContent({
         statusBarTranslucent
       >
         <SafeAreaView edges={["bottom"]} style={styles.container}>
-        <StatusBar barStyle="light-content" translucent />
-        <ImageBackground
-          source={IMAGES.tryOnBack}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-        >
-          <View style={styles.content}>
-            <TouchableOpacity
-              style={[
-                styles.skipButton,
-                { top: insets.top + moderateHeightScale(12) },
-              ]}
-              onPress={onClose}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.skipButtonText}>{t("skip")}</Text>
-            </TouchableOpacity>
+          <StatusBar barStyle="light-content" translucent />
+          <ImageBackground
+            source={IMAGES.tryOnBack}
+            style={styles.backgroundImage}
+            resizeMode="cover"
+          >
+            <View style={styles.content}>
+              <TouchableOpacity
+                style={[
+                  styles.skipButton,
+                  { top: insets.top + moderateHeightScale(12) },
+                ]}
+                onPress={onClose}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.skipButtonText}>{t("skip")}</Text>
+              </TouchableOpacity>
 
-            <View style={styles.topSection}>
-              <View style={styles.logoContainer}>
-                <LeafLogo
-                  width={moderateWidthScale(25)}
-                  height={moderateWidthScale(33)}
-                  color1={theme.white}
-                  color2={theme.white}
-                />
-                <Text style={styles.logoText}>FRESHPASS</Text>
+              <View style={styles.topSection}>
+                <View style={styles.logoContainer}>
+                  <LeafLogo
+                    width={moderateWidthScale(25)}
+                    height={moderateWidthScale(33)}
+                    color1={theme.white}
+                    color2={theme.white}
+                  />
+                  <Text style={styles.logoText}>FRESHPASS</Text>
+                </View>
+
+                <Text style={styles.title}>
+                  {t("tryOnModalTitle1")}
+                  <Text style={styles.titleHighlight}>
+                    {t("tryOnModalTitle2")}
+                  </Text>
+                  {t("tryOnModalTitle3")}
+                  <Text style={styles.titleHighlight}>
+                    {t("tryOnModalTitle4")}
+                  </Text>
+                </Text>
+
+                <Text style={styles.description1}>
+                  {t("tryOnModalDescription1")}
+                </Text>
+
+                <Text style={styles.description2}>
+                  {t("tryOnModalDescription2")}
+                </Text>
               </View>
 
-              <Text style={styles.title}>
-                {t("tryOnModalTitle1")}
-                <Text style={styles.titleHighlight}>
-                  {t("tryOnModalTitle2")}
+              <View style={styles.bottomSection}>
+                <Button
+                  title={t("unlockAiTryOn")}
+                  onPress={handleUpgradePress}
+                  backgroundColor={theme.orangeBrown}
+                  textColor={theme.darkGreen}
+                  containerStyle={styles.unlockButton}
+                />
+                <Text style={styles.pricingText}>{pricingText}</Text>
+              </View>
+            </View>
+          </ImageBackground>
+          <NotificationBanner
+            visible={localBanner.visible}
+            title={localBanner.title}
+            message={localBanner.message}
+            type={localBanner.type}
+            duration={3000}
+            onDismiss={() =>
+              setLocalBanner((prev) => ({ ...prev, visible: false }))
+            }
+          />
+          <Modal
+            transparent
+            visible={localActionLoader}
+            animationType="fade"
+            statusBarTranslucent
+          >
+            <View style={styles.loaderModalOverlay}>
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={styles.loaderTitleText}>
+                  {t("processing") || "Processing..."}
                 </Text>
-                {t("tryOnModalTitle3")}
-                <Text style={styles.titleHighlight}>
-                  {t("tryOnModalTitle4")}
-                </Text>
-              </Text>
-
-              <Text style={styles.description1}>
-                {t("tryOnModalDescription1")}
-              </Text>
-
-              <Text style={styles.description2}>
-                {t("tryOnModalDescription2")}
-              </Text>
+              </View>
             </View>
-
-            <View style={styles.bottomSection}>
-              <Button
-                title={t("unlockAiTryOn")}
-                onPress={handleUpgradePress}
-                backgroundColor={theme.orangeBrown}
-                textColor={theme.darkGreen}
-                containerStyle={styles.unlockButton}
-              />
-              <Text style={styles.pricingText}>{pricingText}</Text>
-            </View>
-          </View>
-        </ImageBackground>
-        <NotificationBanner
-          visible={localBanner.visible}
-          title={localBanner.title}
-          message={localBanner.message}
-          type={localBanner.type}
-          duration={3000}
-          onDismiss={() =>
-            setLocalBanner((prev) => ({ ...prev, visible: false }))
-          }
-        />
-        <Modal
-          transparent
-          visible={localActionLoader}
-          animationType="fade"
-          statusBarTranslucent
-        >
-          <View style={styles.loaderModalOverlay}>
-            <View style={styles.loaderContainer}>
-              <ActivityIndicator size="large" color={theme.primary} />
-              <Text style={styles.loaderTitleText}>
-                {t("processing") || "Processing..."}
-              </Text>
-            </View>
-          </View>
-        </Modal>
+          </Modal>
         </SafeAreaView>
       </Modal>
     </>
