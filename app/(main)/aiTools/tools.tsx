@@ -40,7 +40,6 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import GeneratePostResultModal from "@/src/components/GeneratePostResultModal";
 import FullImageModal from "@/src/components/fullImageModal";
 import HairPipelineProcessingModal, {
   type HairPipelineModalState,
@@ -127,7 +126,6 @@ export default function Tools() {
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
   const [audioPickerVisible, setAudioPickerVisible] = useState(false);
-  const [resultModalVisible, setResultModalVisible] = useState(false);
   const [fullImageModalVisible, setFullImageModalVisible] = useState(false);
 
   // Unlock AI features modal (Hair Tryon – when no quota)
@@ -147,7 +145,14 @@ export default function Tools() {
 
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedResult, setGeneratedResult] = useState<any>(null);
+
+  const showCreditBanner =
+    !!hairTryOnService &&
+    (aiQuota === 0 || aiQuota === 1) &&
+    toolType === "Hair Tryon";
+
+  const creditBannerMessage =
+    aiQuota === 0 ? "You have no credits." : "You have 1 credit remaining.";
 
   const generateId = () => {
     return `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -721,11 +726,6 @@ export default function Tools() {
       } else {
         throw new Error("Invalid tool type");
       }
-
-      // if (response != null) {
-      //   setGeneratedResult(response);
-      //   setResultModalVisible(true);
-      // }
     } catch (error: any) {
       Logger.error(`Error generating ${toolType.toLowerCase()}:`, error);
 
@@ -1208,6 +1208,12 @@ export default function Tools() {
     <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
       <StackHeader title={headerTitle} />
 
+      {/* {showCreditBanner && (
+        <View style={styles.creditBanner}>
+          <Text style={styles.creditBannerText}>{creditBannerMessage}</Text>
+        </View>
+      )} */}
+
       <KeyboardAvoidingView
         style={styles.contentContainer}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1229,51 +1235,6 @@ export default function Tools() {
         {/* For Hair Tryon: show button area only after user selects a type */}
         {!(toolType === "Hair Tryon" && !hairTryonSelectedType) && (
           <>
-            {generatedResult && (
-              <TouchableOpacity
-                style={{
-                  backgroundColor: theme.orangeBrown30,
-                  borderRadius: moderateWidthScale(8),
-                  padding: moderateWidthScale(16),
-                  marginBottom: moderateHeightScale(16),
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-                onPress={() => setResultModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    flex: 1,
-                  }}
-                >
-                  <MaterialIcons
-                    name="visibility"
-                    size={moderateWidthScale(20)}
-                    color={theme.darkGreen}
-                    style={{ marginRight: moderateWidthScale(12) }}
-                  />
-                  <Text
-                    style={{
-                      fontSize: fontSize.size14,
-                      fontFamily: fonts.fontMedium,
-                      color: theme.darkGreen,
-                      flex: 1,
-                    }}
-                  >
-                    {t("viewPreviousResult")}
-                  </Text>
-                </View>
-                <MaterialIcons
-                  name="chevron-right"
-                  size={moderateWidthScale(20)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            )}
             <Button
               title={
                 toolType === "Generate Post"
@@ -1386,14 +1347,6 @@ export default function Tools() {
           <Text style={styles.optionText}>{t("chooseAudioFile")}</Text>
         </TouchableOpacity>
       </ModalizeBottomSheet>
-
-      {/* Result Modal */}
-      <GeneratePostResultModal
-        visible={resultModalVisible}
-        onClose={() => setResultModalVisible(false)}
-        result={generatedResult}
-        toolType={toolType}
-      />
 
       {/* Full Image Modal for Hair Tryon Source Image */}
       <FullImageModal

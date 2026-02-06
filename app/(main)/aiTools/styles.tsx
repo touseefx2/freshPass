@@ -280,4 +280,18 @@ export const createStyles = (theme: Theme) =>
       textDecorationLine: "underline",
       textDecorationColor: theme.lightGreen,
     },
+    creditBanner: {
+      width: "100%",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(6),
+      backgroundColor: theme.darkGreen,
+      // borderBottomWidth: 1,
+      // borderBottomColor: theme.borderLine,
+    },
+    creditBannerText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white80,
+      textAlign: "center",
+    },
   });
