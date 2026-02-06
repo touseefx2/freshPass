@@ -537,6 +537,7 @@
   "tryOnModalDescription1": "Preview styles instantly. Book with confidence. See your new look before you book.",
   "tryOnModalDescription2": "Visualize and choose your perfect hairstyle.",
   "tryOnModalPricing": "Full access: $2.99 per try or with Premium",
+  "tryOnModalDynamicPricing": "Unlock AI Hair Try-On with {{credits}} credits for ${{price}}.",
   "limitExceeded": "Limit Exceeded",
   "collageLimitMessage": "You can select maximum 6 images. Only first 6 will be added.",
   "validationError": "Validation Error",

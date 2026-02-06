@@ -636,11 +636,8 @@ export default function ExploreScreen() {
         <TryOnModal
           service={hairTryOnService}
           visible={showTryOnModal}
+          // visible={true}
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
-          onUnlockPress={() => {
-            dispatch(setIsFirstShowTryOn(true));
-            router.push("/(main)/aiTools/toolList");
-          }}
         />
       )}
     </>

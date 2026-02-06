@@ -20,8 +20,8 @@ export default function Index() {
     console.log("----> accessToken", accessToken);
 
     if (accessToken || isGuest) {
-      // router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-      router.replace(`/(main)/aiTools/toolList` as any);
+      router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+      // router.replace(`/(main)/aiTools/toolList` as any);
     } else {
       router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
     }

@@ -55,6 +55,7 @@ import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import UnlockAIFeaturesModal from "@/src/components/UnlockAIFeaturesModal";
+import TryOnModal from "../dashboard/(explore)/TryOnModal";
 
 interface MediaFile {
   id: string;
@@ -97,7 +98,7 @@ export default function Tools() {
     !!hairTryOnService &&
     (aiQuota === 0 || aiQuota == null);
 
-  console.log("------> aiService", aiService);
+  console.log("------> hairTryOnService", hairTryOnService);
   console.log("------> aiQuota", aiQuota);
 
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
@@ -154,6 +155,12 @@ export default function Tools() {
   const creditBannerMessage =
     aiQuota === 0 ? "You have no credits." : "You have 1 credit remaining.";
 
+  // Has selection: show selected type name (left) + "Change selection" (right), then form
+  const selectedTypeLabel =
+    hairTryonSelectedType === "processing"
+      ? t("processing")
+      : t("withPromptAndImage");
+
   const generateId = () => {
     return `file_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   };
@@ -205,93 +212,6 @@ export default function Tools() {
     router.push("/aiRequests");
     closeHairPipelineModal();
   };
-
-  const handleUpgradePress = useCallback(async () => {
-    setUnlockModalError(null);
-    if (!hairTryOnService?.id) {
-      setUnlockModalError("Service not available.");
-      return;
-    }
-    try {
-      const { customer, paymentIntent, customerSessionClientSecret } =
-        await fetchAiToolsPaymentSheetParams(hairTryOnService.id);
-
-      const paymentConfig: Record<string, unknown> = {
-        merchantDisplayName: "Fresh Pass",
-        customerId: customer,
-        allowsDelayedPaymentMethods: true,
-        defaultBillingDetails: {
-          name: user?.name ?? undefined,
-          email: user?.email ?? undefined,
-        },
-        customFlow: false,
-      };
-
-      if (customerSessionClientSecret) {
-        paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
-      }
-      if (paymentIntent && paymentIntent.trim() !== "") {
-        paymentConfig.paymentIntentClientSecret = paymentIntent;
-      } else {
-        setUnlockModalError("Payment setup failed. Please try again.");
-        return;
-      }
-
-      const { error: initError } = await initPaymentSheet(
-        paymentConfig as Parameters<typeof initPaymentSheet>[0],
-      );
-
-      if (initError) {
-        setUnlockModalError(
-          initError.message ?? "Failed to initialize payment",
-        );
-        return;
-      }
-
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        if (!presentError.code?.includes("Canceled")) {
-          setUnlockModalError(
-            presentError.message ?? "Payment could not be completed",
-          );
-        }
-        return;
-      }
-
-      setPurchaseSuccess(true);
-
-      try {
-        const response = await ApiService.get<{
-          success: boolean;
-          data?: { ai_quota?: number };
-        }>(userEndpoints.details);
-        if (response.success && response.data?.ai_quota !== undefined) {
-          dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
-        }
-      } catch {
-        // Ignore refresh error; purchase success still shown
-      }
-    } catch (err: unknown) {
-      const ax = err as { message?: string; data?: { message?: string } };
-      const message =
-        ax.data?.message ?? ax.message ?? "Failed to start payment.";
-      setUnlockModalError(message);
-    }
-  }, [
-    hairTryOnService?.id,
-    user?.name,
-    user?.email,
-    initPaymentSheet,
-    presentPaymentSheet,
-    dispatch,
-  ]);
-
-  const handleUseHaritryon = useCallback(() => {
-    setUnlockModalVisible(false);
-    setPurchaseSuccess(false);
-    setUnlockModalError(null);
-  }, []);
 
   const handleSelectFromGallery = useCallback(async () => {
     setImagePickerVisible(false);
@@ -556,6 +476,10 @@ export default function Tools() {
           "warning",
           3000,
         );
+        return;
+      }
+      if (showUnlockModal) {
+        setUnlockModalVisible(true);
         return;
       }
     } else if (toolType === "Generate Collage") {
@@ -990,11 +914,7 @@ export default function Tools() {
               isProcessingDisabled && styles.hairTryonOptionCardDisabled,
             ]}
             onPress={() => {
-              if (showUnlockModal) {
-                setUnlockModalError(null);
-                setPurchaseSuccess(false);
-                setUnlockModalVisible(true);
-              } else if (!isProcessingDisabled) {
+              if (!isProcessingDisabled) {
                 setHairTryonSelectedType("processing");
               }
             }}
@@ -1049,11 +969,7 @@ export default function Tools() {
               isWithPromptDisabled && styles.hairTryonOptionCardDisabled,
             ]}
             onPress={() => {
-              if (showUnlockModal) {
-                setUnlockModalError(null);
-                setPurchaseSuccess(false);
-                setUnlockModalVisible(true);
-              } else if (!isWithPromptDisabled) {
+              if (!isWithPromptDisabled) {
                 setHairTryonSelectedType("withPromptAndImage");
               }
             }}
@@ -1109,11 +1025,6 @@ export default function Tools() {
       );
     }
 
-    // Has selection: show selected type name (left) + "Change selection" (right), then form
-    const selectedTypeLabel =
-      hairTryonSelectedType === "processing"
-        ? t("processing")
-        : t("withPromptAndImage");
     return (
       <>
         <View style={styles.hairTryonChangeSelectionRow}>
@@ -1208,11 +1119,11 @@ export default function Tools() {
     <SafeAreaView edges={["bottom"]} style={styles.safeArea}>
       <StackHeader title={headerTitle} />
 
-      {/* {showCreditBanner && (
+      {showCreditBanner && hairTryonSelectedType && (
         <View style={styles.creditBanner}>
           <Text style={styles.creditBannerText}>{creditBannerMessage}</Text>
         </View>
-      )} */}
+      )}
 
       <KeyboardAvoidingView
         style={styles.contentContainer}
@@ -1361,18 +1272,13 @@ export default function Tools() {
         onSeeStatus={handleHairPipelineSeeStatus}
       />
 
-      <UnlockAIFeaturesModal
-        visible={unlockModalVisible}
-        onBack={() => {
-          setUnlockModalVisible(false);
-          setUnlockModalError(null);
-          setPurchaseSuccess(false);
-        }}
-        onUpgradePress={handleUpgradePress}
-        errorMessage={unlockModalError}
-        purchaseSuccess={purchaseSuccess}
-        onUseHaritryon={handleUseHaritryon}
-      />
+      {unlockModalVisible && (
+        <TryOnModal
+          service={hairTryOnService}
+          visible={unlockModalVisible}
+          onClose={() => setUnlockModalVisible(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }

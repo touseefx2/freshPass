@@ -1,5 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   ImageBackground,
   Modal,
   StatusBar,
@@ -9,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { IMAGES } from "@/src/constant/images";
 import { LeafLogo } from "@/assets/icons";
@@ -25,11 +26,16 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
+import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
+import {
+  initPaymentSheet,
+  presentPaymentSheet,
+} from "@stripe/stripe-react-native";
+import NotificationBanner from "@/src/components/notificationBanner";
 
 interface TryOnModalProps {
   visible: boolean;
   onClose: () => void;
-  onUnlockPress: () => void;
   service?: AdditionalServiceItem | null;
 }
 
@@ -113,7 +119,7 @@ const createStyles = (theme: Theme) =>
     },
     bottomSection: {
       alignItems: "center",
-      paddingBottom: moderateHeightScale(20),
+      paddingBottom: moderateHeightScale(32),
     },
     unlockButton: {
       width: "100%",
@@ -126,23 +132,150 @@ const createStyles = (theme: Theme) =>
       color: theme.white70,
       textAlign: "center",
     },
+    loaderModalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    loaderContainer: {
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(24),
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: moderateWidthScale(120),
+    },
+    loaderTitleText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+      marginTop: moderateHeightScale(16),
+      textAlign: "center",
+    },
   });
 
 export default function TryOnModal({
   visible,
   onClose,
-  onUnlockPress,
   service,
 }: TryOnModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const user = useAppSelector((state) => state.user);
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
 
-  const handleUnlock = () => {
-    onUnlockPress();
-    onClose();
+  const [localActionLoader, setLocalActionLoader] = useState(false);
+  const [localBanner, setLocalBanner] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: "success" | "error" | "warning" | "info";
+  }>({
+    visible: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const pricingText =
+    service && service.price && service.ai_requests
+      ? t("tryOnModalDynamicPricing", {
+          credits: service.ai_requests,
+          price: service.price.startsWith("$")
+            ? service.price.slice(1)
+            : service.price,
+        })
+      : t("tryOnModalPricing");
+
+  const handleUpgradePress = async () => {
+    if (!service?.id) {
+      return;
+    }
+    setLocalActionLoader(true);
+    try {
+      const { customer, paymentIntent, customerSessionClientSecret } =
+        await fetchAiToolsPaymentSheetParams(service.id);
+
+      const paymentConfig: Record<string, unknown> = {
+        merchantDisplayName: "Fresh Pass",
+        customerId: customer,
+        allowsDelayedPaymentMethods: true,
+        defaultBillingDetails: {
+          name: user?.name ?? undefined,
+          email: user?.email ?? undefined,
+        },
+        customFlow: false,
+      };
+
+      if (customerSessionClientSecret) {
+        paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
+      }
+      if (paymentIntent && paymentIntent.trim() !== "") {
+        paymentConfig.paymentIntentClientSecret = paymentIntent;
+      } else {
+        setLocalActionLoader(false);
+        setLocalBanner({
+          visible: true,
+          title: t("error"),
+          message: "Failed to start payment.",
+          type: "error",
+        });
+        return;
+      }
+
+      const { error: initError } = await initPaymentSheet(
+        paymentConfig as Parameters<typeof initPaymentSheet>[0],
+      );
+
+      if (initError) {
+        setLocalActionLoader(false);
+        setLocalBanner({
+          visible: true,
+          title: t("error"),
+          message: initError.message ?? "Failed to initialize payment",
+          type: "error",
+        });
+        return;
+      }
+
+      const { error: presentError } = await presentPaymentSheet();
+
+      if (presentError) {
+        setLocalActionLoader(false);
+        if (!presentError.code?.includes("Canceled")) {
+          setLocalBanner({
+            visible: true,
+            title: t("error"),
+            message: presentError.message ?? "Payment could not be completed",
+            type: "error",
+          });
+        }
+        return;
+      }
+
+      setLocalActionLoader(false);
+      setLocalBanner({
+        visible: true,
+        title: t("success"),
+        message: t("paymentSuccessful") ?? "Payment successful!",
+        type: "success",
+      });
+      onClose();
+    } catch (err: unknown) {
+      setLocalActionLoader(false);
+      const ax = err as { message?: string; data?: { message?: string } };
+      const message =
+        ax.data?.message ?? ax.message ?? "Failed to start payment.";
+      setLocalBanner({
+        visible: true,
+        title: t("error"),
+        message,
+        type: "error",
+      });
+    }
   };
 
   return (
@@ -206,15 +339,40 @@ export default function TryOnModal({
             <View style={styles.bottomSection}>
               <Button
                 title={t("unlockAiTryOn")}
-                onPress={handleUnlock}
+                onPress={handleUpgradePress}
                 backgroundColor={theme.orangeBrown}
                 textColor={theme.darkGreen}
                 containerStyle={styles.unlockButton}
               />
-              <Text style={styles.pricingText}>{t("tryOnModalPricing")}</Text>
+              <Text style={styles.pricingText}>{pricingText}</Text>
             </View>
           </View>
         </ImageBackground>
+        <NotificationBanner
+          visible={localBanner.visible}
+          title={localBanner.title}
+          message={localBanner.message}
+          type={localBanner.type}
+          duration={3000}
+          onDismiss={() =>
+            setLocalBanner((prev) => ({ ...prev, visible: false }))
+          }
+        />
+        <Modal
+          transparent
+          visible={localActionLoader}
+          animationType="fade"
+          statusBarTranslucent
+        >
+          <View style={styles.loaderModalOverlay}>
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={theme.primary} />
+              <Text style={styles.loaderTitleText}>
+                {t("processing") || "Processing..."}
+              </Text>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </Modal>
   );
