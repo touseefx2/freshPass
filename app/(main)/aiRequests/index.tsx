@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
+  TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -168,7 +169,16 @@ export default function AiRequests() {
       const statusColor = getStatusTextColor(item.status);
 
       return (
-        <View style={[styles.jobCard, styles.shadow]}>
+        <TouchableOpacity
+          style={[styles.jobCard, styles.shadow]}
+          activeOpacity={0.7}
+          onPress={() => {
+            router.push({
+              pathname: "/aiResults",
+              params: { jobId: item.job_id },
+            });
+          }}
+        >
           <View style={styles.jobCardInner}>
             <View style={styles.jobCardAccent} />
             <View style={styles.jobCardContent}>
@@ -209,22 +219,9 @@ export default function AiRequests() {
                   </Text>
                 </View>
               </View>
-              <View style={styles.jobCardFooter}>
-                <Text
-                  style={styles.jobCardSeeResult}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/aiResults",
-                      params: { jobId: item.job_id },
-                    });
-                  }}
-                >
-                  {t("seeResult")} →
-                </Text>
-              </View>
             </View>
           </View>
-        </View>
+        </TouchableOpacity>
       );
     },
     [styles, t, getStatusBadgeStyle, getStatusTextColor],
