@@ -6,8 +6,6 @@ import es from "@/src/locales/es/translation.json";
 import de from "@/src/locales/de/translation.json";
 import ja from "@/src/locales/ja/translation.json";
 import ar from "@/src/locales/ar/translation.json";
-import ur from "@/src/locales/ur/translation.json";
-
 const resources = {
   en: { translation: en },
   fr: { translation: fr },
@@ -15,7 +13,6 @@ const resources = {
   de: { translation: de },
   ja: { translation: ja },
   ar: { translation: ar },
-  ur: { translation: ur },
 };
 
 export const initI18n = async () => {

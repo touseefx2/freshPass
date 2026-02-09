@@ -12,8 +12,6 @@ import {
 
 export const getLangLabel = (code: string) => {
   switch (code) {
-    case "ur":
-      return "اردو";
     case "ar":
       return "العربية";
     case "fr":
@@ -37,7 +35,7 @@ export const getLangLabel = (code: string) => {
 export const isRTL = (language?: string): boolean => {
   // Check language first if provided
   if (language) {
-    return language === "ur" || language === "ar";
+    return language === "ar";
   }
 
   // For native platforms, check I18nManager
@@ -55,11 +53,11 @@ export const isRTL = (language?: string): boolean => {
 
 /**
  * Sets up RTL (Right-to-Left) direction based on language
- * @param language - Language code (e.g., "ur" for Urdu)
+ * @param language - Language code (e.g., "ar" for Arabic)
  * @returns boolean - true if app reload is needed (for native platforms), false otherwise
  */
 export const setupRTL = (language: string): boolean => {
-  const needsRTL = language === "ur" || language === "ar";
+  const needsRTL = language === "ar";
 
   // Handle RTL for native platforms
   if (Platform.OS !== "web") {

@@ -100,7 +100,6 @@ const languages = [
   { code: "de", name: "German", nativeName: "Deutsch", flag: "🇩🇪" },
   { code: "ja", name: "Japanese", nativeName: "日本語", flag: "🇯🇵" },
   { code: "ar", name: "Arabic", nativeName: "العربية", flag: "🇸🇦" },
-  { code: "ur", name: "Urdu", nativeName: "اردو", flag: "🇵🇰" },
 ];
 
 export default function LanguageChangeScreen() {
