@@ -175,16 +175,18 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(20),
       marginTop: moderateHeightScale(2),
+      width: "100%",
     },
     jobCardMetaItem: {
       flexDirection: "row",
       alignItems: "center",
       flex: 1,
+      flexWrap: "wrap",
     },
     jobCardMetaLabel: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
+      color: theme.lightGreen,
       marginRight: moderateWidthScale(4),
     },
     jobCardMetaValue: {
