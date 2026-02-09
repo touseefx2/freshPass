@@ -148,12 +148,12 @@ export default function Tools() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const showCreditBanner =
-    !!hairTryOnService &&
-    (aiQuota === 0 || aiQuota === 1) &&
-    toolType === "Hair Tryon";
+    !!hairTryOnService && aiQuota >= 0 && toolType === "Hair Tryon";
 
   const creditBannerMessage =
-    aiQuota === 0 ? "You have no credits." : "You have 1 credit remaining.";
+    aiQuota === 0
+      ? "You have no credits."
+      : `You have ${aiQuota} credit remaining`;
 
   // Has selection: show selected type name (left) + "Change selection" (right), then form
   const selectedTypeLabel =
