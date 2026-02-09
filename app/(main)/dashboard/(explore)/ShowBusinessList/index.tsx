@@ -53,7 +53,16 @@ export function BusinessCard({
   const router = useRouter();
 
   return (
-    <View style={styles.verifiedSalonCardNew}>
+    <TouchableOpacity
+      onPress={() => {
+        router.push({
+          pathname: "/(main)/businessDetail",
+          params: { business_id: salon.id.toString() },
+        } as any);
+      }}
+      activeOpacity={0.9}
+      style={styles.verifiedSalonCardNew}
+    >
       <Image
         source={{ uri: salon.image ?? "" }}
         style={styles.verifiedSalonImage}
@@ -88,7 +97,7 @@ export function BusinessCard({
               {salon.rating || 0}/ {salon.reviewCount || 0} reviews
             </Text>
           </View>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.verifiedSalonViewDetail}
             onPress={() => {
               router.push({
@@ -100,10 +109,10 @@ export function BusinessCard({
             <Text style={styles.verifiedSalonViewDetailText}>
               {t("viewDetail")}
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 

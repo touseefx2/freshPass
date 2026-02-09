@@ -79,7 +79,17 @@ export default function ShowBusiness({
         </View>
       ) : verifiedSalons.length > 0 ? (
         verifiedSalons.map((salon) => (
-          <View key={salon.id} style={[styles.verifiedSalonCardNew]}>
+          <TouchableOpacity
+            onPress={() => {
+              router.push({
+                pathname: "/(main)/businessDetail",
+                params: { business_id: salon.id.toString() },
+              } as any);
+            }}
+            activeOpacity={0.9}
+            key={salon.id}
+            style={[styles.verifiedSalonCardNew]}
+          >
             <Image
               source={{
                 uri: salon.image ?? "",
@@ -120,7 +130,7 @@ export default function ShowBusiness({
                     {salon.rating || 0}/ {salon.reviewCount || 0} reviews
                   </Text>
                 </View>
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.verifiedSalonViewDetail}
                   onPress={() => {
                     router.push({
@@ -132,10 +142,10 @@ export default function ShowBusiness({
                   <Text style={styles.verifiedSalonViewDetailText}>
                     View detail
                   </Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))
       ) : (
         <View

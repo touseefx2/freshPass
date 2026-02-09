@@ -11,14 +11,8 @@ import {
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import {
-  heightScale,
-  widthScale,
-} from "@/src/theme/dimensions";
-import {
-  PlatformVerifiedStarIcon,
-  StarIconSmall,
-} from "@/assets/icons";
+import { heightScale, widthScale } from "@/src/theme/dimensions";
+import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
 import RetryButton from "@/src/components/retryButton";
 import { createStyles } from "./styles";
 
@@ -60,7 +54,7 @@ export default function ShowDeals({
       contentContainerStyle={styles.appointmentsScroll}
       nestedScrollEnabled={true}
     >
-      {(businessesLoading && verifiedSalons.length <= 0) ? (
+      {businessesLoading && verifiedSalons.length <= 0 ? (
         <View
           style={[
             styles.loadingContainer,
@@ -85,7 +79,17 @@ export default function ShowDeals({
         </View>
       ) : verifiedSalons.length > 0 ? (
         verifiedSalons.map((salon) => (
-          <View key={salon.id} style={styles.verifiedSalonCardNew}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              router.push({
+                pathname: "/(main)/businessDetail",
+                params: { business_id: salon.id.toString() },
+              } as any);
+            }}
+            key={salon.id}
+            style={styles.verifiedSalonCardNew}
+          >
             <Image
               source={{
                 uri: salon.image ?? "",
@@ -126,7 +130,7 @@ export default function ShowDeals({
                     {salon.rating || 0}/ {salon.reviewCount || 0} reviews
                   </Text>
                 </View>
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={styles.verifiedSalonViewDetail}
                   onPress={() => {
                     router.push({
@@ -138,10 +142,10 @@ export default function ShowDeals({
                   <Text style={styles.verifiedSalonViewDetailText}>
                     View detail
                   </Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))
       ) : (
         <View
