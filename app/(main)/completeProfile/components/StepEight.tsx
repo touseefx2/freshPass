@@ -128,15 +128,32 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       flex: 1,
     },
+    selectButtonWrapper: {
+      position: "relative",
+      alignSelf: "flex-start",
+    },
+    selectButtonShadow: {
+      position: "absolute",
+      top: moderateHeightScale(3),
+      left: moderateWidthScale(3),
+      right: moderateWidthScale(-3),
+      bottom: moderateHeightScale(-3),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen2,
+    },
     selectButton: {
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(6),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
+      borderBottomWidth: moderateWidthScale(2),
+      borderRightWidth: moderateWidthScale(2),
+      backgroundColor: theme.background,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
+      zIndex: 1,
     },
     selectButtonText: {
       fontSize: fontSize.size12,
@@ -232,11 +249,9 @@ export default function StepEight() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { showBanner } = useNotificationContext();
-  const {
-    services,
-    businessCategory,
-    serviceTemplates,
-  } = useAppSelector((state) => state.completeProfile);
+  const { services, businessCategory, serviceTemplates } = useAppSelector(
+    (state) => state.completeProfile,
+  );
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
 
   const [serviceListVisible, setServiceListVisible] = useState(false);
@@ -245,7 +260,8 @@ export default function StepEight() {
   const [serviceTemplatesLoading, setServiceTemplatesLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
 
-  const businessCatId = businessCategory?.id || businessStatus?.business_category?.id;
+  const businessCatId =
+    businessCategory?.id || businessStatus?.business_category?.id;
 
   useEffect(() => {
     if (businessCatId) {
@@ -287,7 +303,7 @@ export default function StepEight() {
         "API Failed",
         "API failed to fetch service templates",
         "error",
-        2500
+        2500,
       );
     } finally {
       setServiceTemplatesLoading(false);
@@ -408,7 +424,7 @@ export default function StepEight() {
           tillHours: 0,
           tillMinutes: 0,
           breaks: [],
-        })
+        }),
       );
     });
 
@@ -511,7 +527,7 @@ export default function StepEight() {
           {(() => {
             // Filter out selected services from popular suggestions
             const unselectedSuggestions = popularSuggestions.filter(
-              (s) => !services.some((service) => service.id === s.id)
+              (s) => !services.some((service) => service.id === s.id),
             );
 
             if (unselectedSuggestions.length === 0) return null;
@@ -532,8 +548,11 @@ export default function StepEight() {
                         <Text style={styles.suggestionText}>
                           {suggestion.name}
                         </Text>
-                        <View style={styles.selectButton}>
-                          <Text style={styles.selectButtonText}>Select</Text>
+                        <View style={styles.selectButtonWrapper}>
+                          <View style={styles.selectButtonShadow} />
+                          <View style={styles.selectButton}>
+                            <Text style={styles.selectButtonText}>Select</Text>
+                          </View>
                         </View>
                       </TouchableOpacity>
                       <View style={styles.suggestionSeparator} />

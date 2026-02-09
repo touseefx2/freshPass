@@ -1,5 +1,11 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Animated } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Animated,
+} from "react-native";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -28,7 +34,7 @@ import { Portal } from "@gorhom/portal";
 
 // Popular starting points suggestions - will be populated with first 2 services from Step 8
 const getPopularSuggestions = (
-  services: Array<{ id: string; name: string }>
+  services: Array<{ id: string; name: string }>,
 ) => {
   const firstTwoServiceIds = services.slice(0, 2).map((s) => s.id);
 
@@ -104,15 +110,32 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       flex: 1,
     },
+    selectButtonWrapper: {
+      position: "relative",
+      alignSelf: "flex-start",
+    },
+    selectButtonShadow: {
+      position: "absolute",
+      top: moderateHeightScale(3),
+      left: moderateWidthScale(3),
+      right: moderateWidthScale(-3),
+      bottom: moderateHeightScale(-3),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen2,
+    },
     selectButton: {
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(6),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
+      borderBottomWidth: moderateWidthScale(2),
+      borderRightWidth: moderateWidthScale(2),
+      backgroundColor: theme.background,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
+      zIndex: 1,
     },
     selectButtonText: {
       fontSize: fontSize.size12,
@@ -231,7 +254,7 @@ const createStyles = (theme: Theme) =>
       zIndex: 1000,
       position: "absolute",
       right: moderateWidthScale(20),
-      opacity:0.9 
+      opacity: 0.9,
     },
     aiToolButton: {
       width: moderateWidthScale(56),
@@ -260,9 +283,9 @@ export default function StepNine() {
   const user = useAppSelector((state) => state.user);
   const businessId = user?.business_id ?? "";
   const { subscriptions, businessServices } = useAppSelector(
-    (state) => state.completeProfile
+    (state) => state.completeProfile,
   );
-  
+
   // Button bottom offset for fixed positioning
   const buttonBottomOffset = moderateHeightScale(40);
   const [editSubscriptionVisible, setEditSubscriptionVisible] = useState(false);
@@ -292,7 +315,7 @@ export default function StepNine() {
       opacity: new Animated.Value(0),
       scale: new Animated.Value(0),
       rotate: new Animated.Value(0),
-    }))
+    })),
   ).current;
 
   // Start animations when component mounts
@@ -310,7 +333,7 @@ export default function StepNine() {
           duration: 1000,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
     // Rotate animation for icon
@@ -319,7 +342,7 @@ export default function StepNine() {
         toValue: 1,
         duration: 3000,
         useNativeDriver: true,
-      })
+      }),
     );
 
     // Sparkling stars animation
@@ -372,7 +395,7 @@ export default function StepNine() {
               useNativeDriver: true,
             }),
           ]),
-        ])
+        ]),
       );
     });
 
@@ -436,17 +459,17 @@ export default function StepNine() {
   // Get popular suggestions with first 2 services from business services
   const predefinedSuggestions = useMemo(
     () => getPopularSuggestions(services),
-    [services]
+    [services],
   );
 
   // Combine predefined and custom suggestions
   const popularSuggestions = useMemo(
     () => [...predefinedSuggestions, ...customSuggestions],
-    [predefinedSuggestions, customSuggestions]
+    [predefinedSuggestions, customSuggestions],
   );
 
   const handleSelectSuggestion = (
-    suggestion: (typeof popularSuggestions)[0]
+    suggestion: (typeof popularSuggestions)[0],
   ) => {
     const isSelected = subscriptions.some((s) => s.id === suggestion.id);
     if (isSelected) {
@@ -455,7 +478,7 @@ export default function StepNine() {
       dispatch(addSubscription(suggestion));
       // If it's a custom suggestion, remove it from customSuggestions
       setCustomSuggestions((prev) =>
-        prev.filter((custom) => custom.id !== suggestion.id)
+        prev.filter((custom) => custom.id !== suggestion.id),
       );
     }
   };
@@ -505,7 +528,7 @@ export default function StepNine() {
 
   // Filter out selected subscriptions from popular suggestions
   const unselectedSuggestions = popularSuggestions.filter(
-    (s) => !subscriptions.some((sub) => sub.id === s.id)
+    (s) => !subscriptions.some((sub) => sub.id === s.id),
   );
 
   const onClickAi = async () => {
@@ -517,7 +540,7 @@ export default function StepNine() {
           "Error",
           "Business ID not found. Please complete your business profile.",
           "error",
-          3000
+          3000,
         );
         return;
       }
@@ -527,7 +550,7 @@ export default function StepNine() {
 
       try {
         const response = await AiToolsService.generateSubscription(
-          Number(businessId)
+          Number(businessId),
         );
 
         if (response.status === "success" && response.generated_plans) {
@@ -538,7 +561,7 @@ export default function StepNine() {
             "Error",
             "Failed to generate subscription plans. Please try again.",
             "error",
-            3000
+            3000,
           );
         }
       } catch (error: any) {
@@ -548,7 +571,7 @@ export default function StepNine() {
           error?.message ||
             "Failed to generate subscription plans. Please try again.",
           "error",
-          3000
+          3000,
         );
       } finally {
         dispatch(setActionLoader(false));
@@ -672,7 +695,7 @@ export default function StepNine() {
           <>
             {unselectedSuggestions.map((suggestion) => {
               const isSelected = subscriptions.some(
-                (s) => s.id === suggestion.id
+                (s) => s.id === suggestion.id,
               );
               return (
                 <View key={suggestion.id}>
@@ -684,22 +707,25 @@ export default function StepNine() {
                     <Text style={styles.suggestionText}>
                       {suggestion.packageName}
                     </Text>
-                    <View
-                      style={[
-                        styles.selectButton,
-                        isSelected && styles.selectedButton,
-                      ]}
-                    >
-                      {isSelected && (
-                        <Feather
-                          name="check"
-                          size={moderateWidthScale(12)}
-                          color={theme.darkGreen}
-                        />
-                      )}
-                      <Text style={[styles.selectButtonText]}>
-                        {isSelected ? "Selected" : "Select"}
-                      </Text>
+                    <View style={styles.selectButtonWrapper}>
+                      <View style={styles.selectButtonShadow} />
+                      <View
+                        style={[
+                          styles.selectButton,
+                          isSelected && styles.selectedButton,
+                        ]}
+                      >
+                        {isSelected && (
+                          <Feather
+                            name="check"
+                            size={moderateWidthScale(12)}
+                            color={theme.darkGreen}
+                          />
+                        )}
+                        <Text style={[styles.selectButtonText]}>
+                          {isSelected ? "Selected" : "Select"}
+                        </Text>
+                      </View>
                     </View>
                   </TouchableOpacity>
                   <View style={styles.suggestionSeparator} />
@@ -729,7 +755,7 @@ export default function StepNine() {
           style={[
             styles.aiToolButtonContainer,
             {
-              bottom: buttonBottomOffset+180,
+              bottom: buttonBottomOffset + 180,
             },
           ]}
           pointerEvents="box-none"
@@ -810,7 +836,7 @@ export default function StepNine() {
             // Check if a subscription with the same name already exists
             const existingSubscription = subscriptions.find(
               (sub: { packageName: string }) =>
-                sub.packageName.toLowerCase() === plan.name.toLowerCase()
+                sub.packageName.toLowerCase() === plan.name.toLowerCase(),
             );
 
             if (existingSubscription) {
@@ -852,14 +878,14 @@ export default function StepNine() {
                 addedCount > 1 ? "s" : ""
               } added successfully`,
               "success",
-              3000
+              3000,
             );
           } else if (selectedPlans.length > 0) {
             showBanner(
               "Info",
               "Selected plans are already in your subscription list",
               "info",
-              3000
+              3000,
             );
           }
         }}

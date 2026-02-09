@@ -172,12 +172,13 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         >
           {data.slice(0, 8).map((staff, index) => (
             <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: "/(main)/staffDetail",
-                  params: { id: String(staff.id) },
-                })
-              }
+              activeOpacity={0.9}
+              // onPress={() =>
+              //   router.push({
+              //     pathname: "/(main)/staffDetail",
+              //     params: { id: String(staff.id) },
+              //   })
+              // }
               key={staff.id}
               style={[styles.staffItem, index === 0 && styles.staffItemFirst]}
             >
