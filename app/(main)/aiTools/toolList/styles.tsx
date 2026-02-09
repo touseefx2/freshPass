@@ -72,10 +72,7 @@ export const createStyles = (theme: Theme) =>
       color: theme.white,
       textAlign: "center",
     },
-    seeRequestsHistoryButton: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(16),
-    },
+    seeRequestsHistoryButton: {},
     seeRequestsHistoryText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
