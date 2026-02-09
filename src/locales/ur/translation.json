@@ -616,5 +616,14 @@
   "tellUsMoreAboutYouAndBusiness": "اپنے اور اپنے بزنس کے بارے میں ہمیں مزید بتائیں۔",
   "whatsYourName": "آپ کا نام کیا ہے؟",
   "personalizeYourExperience": "اپنے تجربے کو ذاتی بنائیں",
-  "completeAllDateFieldsOrEmpty": "براہ کرم تمام تاریخ والے خانے مکمل کریں یا سب کو خالی چھوڑ دیں"
+  "completeAllDateFieldsOrEmpty": "براہ کرم تمام تاریخ والے خانے مکمل کریں یا سب کو خالی چھوڑ دیں",
+  "aiTransactions": "اے آئی ٹرانزیکشنز",
+  "transcations": "ٹرانزیکشنز",
+  "noAiTransactions": "ابھی تک کوئی اے آئی ٹرانزیکشن نہیں ہوئی",
+  "credit": "کریڈٹ",
+  "debit": "ڈیبٹ",
+  "credits": "کریڈٹس",
+  "price": "قیمت",
+  "createdAt": "بنایا گیا",
+  "viewInvoice": "انوائس دیکھیں"
 }

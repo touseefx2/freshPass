@@ -604,5 +604,14 @@
   "resultNotFound": "Resultado no encontrado",
   "download": "Descargar",
   "missingJobId": "Falta el ID del trabajo",
-  "somethingWentWrong": "Algo salió mal"
+  "somethingWentWrong": "Algo salió mal",
+  "aiTransactions": "Transacciones de IA",
+  "transcations": "Transacciones",
+  "noAiTransactions": "Aún no hay transacciones de IA",
+  "credit": "Crédito",
+  "debit": "Débito",
+  "credits": "Créditos",
+  "price": "Precio",
+  "createdAt": "Creado el",
+  "viewInvoice": "Ver factura"
 }

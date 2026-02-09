@@ -10,7 +10,10 @@ import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import { moderateWidthScale } from "@/src/theme/dimensions";
+import {
+  moderateHeightScale,
+  moderateWidthScale,
+} from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import { LinearGradient } from "expo-linear-gradient";
@@ -29,6 +32,7 @@ export default function ToolList() {
   const userRole = user?.userRole;
 
   const isGuest = user.isGuest;
+  const isCustomer = userRole === "customer";
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -144,13 +148,36 @@ export default function ToolList() {
       <StackHeader title={t("aiTools")} />
 
       {!isGuest && (
-        <TouchableOpacity
-          style={styles.seeRequestsHistoryButton}
-          activeOpacity={0.7}
-          onPress={() => router.push("/aiRequests")}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingHorizontal: moderateWidthScale(20),
+            paddingVertical: moderateHeightScale(16),
+          }}
         >
-          <Text style={styles.seeRequestsHistoryText}>{t("aiRequests")}</Text>
-        </TouchableOpacity>
+          {isCustomer ? (
+            <TouchableOpacity
+              style={styles.seeRequestsHistoryButton}
+              activeOpacity={0.7}
+              onPress={() => router.push("/aiTransactions")}
+            >
+              <Text style={styles.seeRequestsHistoryText}>
+                {t("transcations")}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 10 }} />
+          )}
+
+          <TouchableOpacity
+            style={styles.seeRequestsHistoryButton}
+            activeOpacity={0.7}
+            onPress={() => router.push("/aiRequests")}
+          >
+            <Text style={styles.seeRequestsHistoryText}>{t("aiRequests")}</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       <ScrollView

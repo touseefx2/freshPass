@@ -259,3 +259,17 @@ export const aiRequestsEndpoints = {
   },
   getByJobId: (jobId: string) => `/api/ai-requests/${jobId}`,
 };
+
+/**
+ * AI transactions endpoints
+ */
+export const aiTransactionsEndpoints = {
+  list: (params?: { page?: number; per_page?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.per_page)
+      queryParams.append("per_page", params.per_page.toString());
+    const query = queryParams.toString();
+    return `/api/ai/transactions${query ? `?${query}` : ""}`;
+  },
+};

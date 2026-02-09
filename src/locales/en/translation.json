@@ -624,5 +624,14 @@
   "tellUsMoreAboutYouAndBusiness": "Tell us more about you and your business.",
   "whatsYourName": "What’s your name?",
   "personalizeYourExperience": "Personalize your experience",
-  "completeAllDateFieldsOrEmpty": "Please complete all date fields or leave them empty"
+  "completeAllDateFieldsOrEmpty": "Please complete all date fields or leave them empty",
+  "aiTransactions": "AI Transactions",
+  "transcations": "Transactions",
+  "noAiTransactions": "No AI transactions yet",
+  "credit": "Credit",
+  "debit": "Debit",
+  "credits": "Credits",
+  "price": "Price",
+  "createdAt": "Created at",
+  "viewInvoice": "View invoice"
 }

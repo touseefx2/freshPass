@@ -604,5 +604,14 @@
   "resultNotFound": "結果が見つかりません",
   "download": "ダウンロード",
   "missingJobId": "ジョブIDがありません",
-  "somethingWentWrong": "問題が発生しました"
+  "somethingWentWrong": "問題が発生しました",
+  "aiTransactions": "AIトランザクション",
+  "transcations": "トランザクション",
+  "noAiTransactions": "AIトランザクションはまだありません",
+  "credit": "クレジット",
+  "debit": "デビット",
+  "credits": "クレジット数",
+  "price": "価格",
+  "createdAt": "作成日",
+  "viewInvoice": "請求書を表示"
 }

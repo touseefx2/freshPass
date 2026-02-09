@@ -604,5 +604,14 @@
   "resultNotFound": "Ergebnis nicht gefunden",
   "download": "Herunterladen",
   "missingJobId": "Auftrags-ID fehlt",
-  "somethingWentWrong": "Etwas ist schiefgelaufen"
+  "somethingWentWrong": "Etwas ist schiefgelaufen",
+  "aiTransactions": "KI-Transaktionen",
+  "transcations": "Transaktionen",
+  "noAiTransactions": "Noch keine KI-Transaktionen",
+  "credit": "Gutschrift",
+  "debit": "Lastschrift",
+  "credits": "Credits",
+  "price": "Preis",
+  "createdAt": "Erstellt am",
+  "viewInvoice": "Rechnung anzeigen"
 }

@@ -616,5 +616,14 @@
   "tellUsMoreAboutYouAndBusiness": "أخبرنا المزيد عنك وعن نشاطك التجاري.",
   "whatsYourName": "ما اسمك؟",
   "personalizeYourExperience": "شخص تجربتك",
-  "completeAllDateFieldsOrEmpty": "يرجى إكمال جميع حقول التاريخ أو تركها فارغة"
+  "completeAllDateFieldsOrEmpty": "يرجى إكمال جميع حقول التاريخ أو تركها فارغة",
+  "aiTransactions": "معاملات الذكاء الاصطناعي",
+  "transcations": "المعاملات",
+  "noAiTransactions": "لا توجد معاملات ذكاء اصطناعي حتى الآن",
+  "credit": "رصيد",
+  "debit": "خصم",
+  "credits": "الأرصدة",
+  "price": "السعر",
+  "createdAt": "تاريخ الإنشاء",
+  "viewInvoice": "عرض الفاتورة"
 }

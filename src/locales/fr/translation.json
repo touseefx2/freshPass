@@ -604,5 +604,14 @@
   "resultNotFound": "Résultat introuvable",
   "download": "Télécharger",
   "missingJobId": "ID du travail manquant",
-  "somethingWentWrong": "Une erreur s'est produite"
+  "somethingWentWrong": "Une erreur s'est produite",
+  "aiTransactions": "Transactions IA",
+  "transcations": "Transactions",
+  "noAiTransactions": "Aucune transaction IA pour le moment",
+  "credit": "Crédit",
+  "debit": "Débit",
+  "credits": "Crédits",
+  "price": "Prix",
+  "createdAt": "Créé le",
+  "viewInvoice": "Voir la facture"
 }
