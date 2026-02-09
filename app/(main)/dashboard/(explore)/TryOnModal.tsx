@@ -211,6 +211,7 @@ function TryOnModalContent({
         merchantDisplayName: "Fresh Pass",
         customerId: customer,
         allowsDelayedPaymentMethods: true,
+        // returnURL: "com.freshpass://stripe-redirect",
         defaultBillingDetails: {
           name: user?.name ?? undefined,
           email: user?.email ?? undefined,
