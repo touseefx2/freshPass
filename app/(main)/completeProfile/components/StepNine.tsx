@@ -31,6 +31,7 @@ import {
   setActionLoaderTitle,
 } from "@/src/state/slices/generalSlice";
 import { Portal } from "@gorhom/portal";
+import { useTranslation } from "react-i18next";
 
 // Popular starting points suggestions - will be populated with first 2 services from Step 8
 const getPopularSuggestions = (
@@ -247,14 +248,43 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
     aiToolButtonContainer: {
-      width: moderateWidthScale(50),
-      height: moderateWidthScale(50),
+      minWidth: moderateWidthScale(50),
       alignItems: "center",
       justifyContent: "center",
       zIndex: 1000,
       position: "absolute",
       right: moderateWidthScale(20),
       opacity: 0.9,
+    },
+    aiTooltipOverlayBox: {
+      position: "absolute",
+      bottom: moderateHeightScale(56 + 14),
+      right: 0,
+      left: moderateWidthScale(-200),
+      minWidth: moderateWidthScale(220),
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingRight: moderateWidthScale(32),
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 8,
+    },
+    aiTooltipOverlayText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    aiTooltipOverlayClose: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+      padding: moderateWidthScale(4),
     },
     aiToolButton: {
       width: moderateWidthScale(56),
@@ -277,6 +307,7 @@ const createStyles = (theme: Theme) =>
 export default function StepNine() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { showBanner } = useNotificationContext();
@@ -295,6 +326,7 @@ export default function StepNine() {
   >(null);
   const [generatedResult, setGeneratedResult] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [showAiTooltipOverlay, setShowAiTooltipOverlay] = useState(true);
   // Store custom suggestions added via "+" button (not in Redux subscriptions)
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
@@ -317,6 +349,10 @@ export default function StepNine() {
       rotate: new Animated.Value(0),
     })),
   ).current;
+
+  const dismissAiTooltipOverlay = () => {
+    setShowAiTooltipOverlay(false);
+  };
 
   // Start animations when component mounts
   useEffect(() => {
@@ -532,6 +568,7 @@ export default function StepNine() {
   );
 
   const onClickAi = async () => {
+    if (showAiTooltipOverlay) dismissAiTooltipOverlay();
     if (generatedResult) {
       setModalVisible(true);
     } else {
@@ -796,6 +833,26 @@ export default function StepNine() {
               </Animated.View>
             );
           })}
+
+          {/* First-time overlay: tap to create subscription with AI */}
+          {showAiTooltipOverlay && (
+            <View style={styles.aiTooltipOverlayBox} pointerEvents="box-none">
+              <TouchableOpacity
+                style={styles.aiTooltipOverlayClose}
+                onPress={dismissAiTooltipOverlay}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Feather
+                  name="x"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+              <Text style={styles.aiTooltipOverlayText}>
+                {t("tapToCreateSubscriptionWithAi")}
+              </Text>
+            </View>
+          )}
 
           {/* Ai Tool Button with Zoom Animation */}
           <TouchableOpacity activeOpacity={0.8} onPress={onClickAi}>

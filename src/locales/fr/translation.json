@@ -204,6 +204,7 @@
   "description": "Description",
   "businessProfile": "Profil entreprise",
   "subscriptionPlans": "Forfaits d'abonnement",
+  "tapToCreateSubscriptionWithAi": "Appuyez pour créer votre abonnement avec l'IA",
   "retry": "Réessayer",
   "viewSubscriptions": "Voir les abonnements",
   "subscribe": "S'abonner",

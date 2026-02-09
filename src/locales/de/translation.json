@@ -204,6 +204,7 @@
   "description": "Beschreibung",
   "businessProfile": "Geschäftsprofil",
   "subscriptionPlans": "Abonnementpläne",
+  "tapToCreateSubscriptionWithAi": "Tippen, um Ihr Abo mit KI zu erstellen",
   "retry": "Erneut versuchen",
   "viewSubscriptions": "Abonnements anzeigen",
   "subscribe": "Abonnieren",

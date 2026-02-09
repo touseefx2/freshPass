@@ -204,6 +204,7 @@
   "description": "الوصف",
   "businessProfile": "ملف النشاط التجاري",
   "subscriptionPlans": "خطط الاشتراك",
+  "tapToCreateSubscriptionWithAi": "اضغط لإنشاء اشتراكك بالذكاء الاصطناعي",
   "retry": "إعادة المحاولة",
   "viewSubscriptions": "عرض الاشتراكات",
   "subscribe": "اشتراك",

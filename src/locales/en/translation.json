@@ -209,6 +209,7 @@
   "description": "Description",
   "businessProfile": "Business profile",
   "subscriptionPlans": "Subscription Plans",
+  "tapToCreateSubscriptionWithAi": "Tap to create your subscription with AI",
   "retry": "Retry",
   "viewSubscriptions": "View Subscriptions",
   "subscribe": "Subscribe",

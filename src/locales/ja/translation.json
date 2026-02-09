@@ -204,6 +204,7 @@
   "description": "説明",
   "businessProfile": "ビジネスプロフィール",
   "subscriptionPlans": "サブスクリプションプラン",
+  "tapToCreateSubscriptionWithAi": "タップしてAIでサブスクリプションを作成",
   "retry": "再試行",
   "viewSubscriptions": "サブスクリプションを見る",
   "subscribe": "サブスクライブ",
