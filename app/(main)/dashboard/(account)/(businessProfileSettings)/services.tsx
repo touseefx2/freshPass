@@ -180,15 +180,32 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       flex: 1,
     },
+    selectButtonWrapper: {
+      position: "relative",
+      alignSelf: "flex-start",
+    },
+    selectButtonShadow: {
+      position: "absolute",
+      top: moderateHeightScale(3),
+      left: moderateWidthScale(3),
+      right: moderateWidthScale(-3),
+      bottom: moderateHeightScale(-3),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen2,
+    },
     selectButton: {
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(6),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
+      borderBottomWidth: moderateWidthScale(2),
+      borderRightWidth: moderateWidthScale(2),
+      backgroundColor: theme.background,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
+      zIndex: 1,
     },
     selectButtonText: {
       fontSize: fontSize.size12,
@@ -239,7 +256,7 @@ export default function ManageServicesScreen() {
   const { showBanner } = useNotificationContext();
 
   const { services, businessCategory, serviceTemplates } = useAppSelector(
-    (state) => state.completeProfile
+    (state) => state.completeProfile,
   );
 
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
@@ -252,7 +269,9 @@ export default function ManageServicesScreen() {
 
   // Map of local service id (template_id as string) -> backend service id
   const [serviceIdMap, setServiceIdMap] = useState<Record<string, number>>({});
-  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(null);
+  const [deletingServiceId, setDeletingServiceId] = useState<string | null>(
+    null,
+  );
   const [serviceTemplatesLoading, setServiceTemplatesLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
 
@@ -297,14 +316,13 @@ export default function ManageServicesScreen() {
         "Error",
         error?.message || "Failed to fetch services. Please try again.",
         "error",
-        3000
+        3000,
       );
       dispatch(setServices([]));
     } finally {
       setLoading(false);
     }
   };
-
 
   const fetchServiceTemplates = async () => {
     if (!businessCatId) {
@@ -340,7 +358,7 @@ export default function ManageServicesScreen() {
     } finally {
       setServiceTemplatesLoading(false);
     }
-  } 
+  };
 
   useEffect(() => {
     fetchServices();
@@ -415,7 +433,7 @@ export default function ManageServicesScreen() {
           style: "destructive",
           onPress: () => handleDeleteService(serviceId),
         },
-      ]
+      ],
     );
   };
 
@@ -442,14 +460,14 @@ export default function ManageServicesScreen() {
             "Success",
             response.message || "Service deleted successfully.",
             "success",
-            3000
+            3000,
           );
         } else {
           showBanner(
             "Error",
             response.message || "Failed to delete service.",
             "error",
-            3000
+            3000,
           );
         }
       } catch (error: any) {
@@ -458,7 +476,7 @@ export default function ManageServicesScreen() {
           "Error",
           error?.message || "Failed to delete service. Please try again.",
           "error",
-          3000
+          3000,
         );
       } finally {
         setDeletingServiceId(null);
@@ -513,7 +531,7 @@ export default function ManageServicesScreen() {
           "Success",
           response.message || "Services updated successfully",
           "success",
-          3000
+          3000,
         );
         router.back();
       } else {
@@ -521,7 +539,7 @@ export default function ManageServicesScreen() {
           "Error",
           response.message || "Failed to update services",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -530,14 +548,13 @@ export default function ManageServicesScreen() {
         "Error",
         error?.message || "Failed to update services. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
     }
   };
 
- 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title="Manage services list" />
@@ -579,10 +596,7 @@ export default function ManageServicesScreen() {
                         style={styles.deleteButton}
                       >
                         {deletingServiceId === service.id ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={theme.red}
-                          />
+                          <ActivityIndicator size="small" color={theme.red} />
                         ) : (
                           <MaterialIcons
                             name="delete-outline"
@@ -627,7 +641,7 @@ export default function ManageServicesScreen() {
                   </Text>
                   {popularSuggestions
                     .filter(
-                      (s) => !services.some((service) => service.id === s.id)
+                      (s) => !services.some((service) => service.id === s.id),
                     )
                     .map((suggestion) => (
                       <View key={suggestion.id}>
@@ -639,8 +653,13 @@ export default function ManageServicesScreen() {
                           <Text style={styles.suggestionText}>
                             {suggestion.name}
                           </Text>
-                          <View style={styles.selectButton}>
-                            <Text style={styles.selectButtonText}>Select</Text>
+                          <View style={styles.selectButtonWrapper}>
+                            <View style={styles.selectButtonShadow} />
+                            <View style={styles.selectButton}>
+                              <Text style={styles.selectButtonText}>
+                                Select
+                              </Text>
+                            </View>
                           </View>
                         </TouchableOpacity>
                         <View style={styles.suggestionSeparator} />

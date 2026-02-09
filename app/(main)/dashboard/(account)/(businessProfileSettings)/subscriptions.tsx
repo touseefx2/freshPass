@@ -40,6 +40,7 @@ import {
   setActionLoader,
   setActionLoaderTitle,
 } from "@/src/state/slices/generalSlice";
+import { Portal } from "@gorhom/portal";
 
 interface ModuleSubscriptionService {
   id: number;
@@ -228,15 +229,32 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       flex: 1,
     },
+    selectButtonWrapper: {
+      position: "relative",
+      alignSelf: "flex-start",
+    },
+    selectButtonShadow: {
+      position: "absolute",
+      top: moderateHeightScale(3),
+      left: moderateWidthScale(3),
+      right: moderateWidthScale(-3),
+      bottom: moderateHeightScale(-3),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen2,
+    },
     selectButton: {
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(6),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
+      borderBottomWidth: moderateWidthScale(2),
+      borderRightWidth: moderateWidthScale(2),
+      backgroundColor: theme.background,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
+      zIndex: 1,
     },
     selectButtonText: {
       fontSize: fontSize.size12,
@@ -271,14 +289,44 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(12),
     },
     aiToolButtonContainer: {
-      width: moderateWidthScale(50),
-      height: moderateWidthScale(50),
+      minWidth: moderateWidthScale(50),
       alignItems: "center",
       justifyContent: "center",
       zIndex: 1000,
       position: "absolute",
       bottom: moderateHeightScale(160),
       right: moderateWidthScale(20),
+      opacity: 0.9,
+    },
+    aiTooltipOverlayBox: {
+      position: "absolute",
+      bottom: moderateHeightScale(56 + 14),
+      right: 0,
+      left: moderateWidthScale(-200),
+      minWidth: moderateWidthScale(220),
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingRight: moderateWidthScale(32),
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 8,
+    },
+    aiTooltipOverlayText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    aiTooltipOverlayClose: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+      padding: moderateWidthScale(4),
     },
     aiToolButton: {
       width: moderateWidthScale(56),
@@ -339,6 +387,7 @@ export default function ManageSubscriptionsScreen() {
     string | null
   >(null);
   const [addSubscriptionVisible, setAddSubscriptionVisible] = useState(false);
+  const [showAiTooltipOverlay, setShowAiTooltipOverlay] = useState(true);
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
       id: string;
@@ -349,6 +398,10 @@ export default function ManageSubscriptionsScreen() {
       serviceIds: string[];
     }>
   >([]);
+
+  const dismissAiTooltipOverlay = () => {
+    setShowAiTooltipOverlay(false);
+  };
 
   // Animation values for AI tool button
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -764,6 +817,7 @@ export default function ManageSubscriptionsScreen() {
   );
 
   const onClickAi = async () => {
+    if (showAiTooltipOverlay) dismissAiTooltipOverlay();
     if (generatedResult) {
       setModalVisible(true);
     } else {
@@ -966,22 +1020,25 @@ export default function ManageSubscriptionsScreen() {
                         <Text style={styles.suggestionText}>
                           {suggestion.packageName}
                         </Text>
-                        <View
-                          style={[
-                            styles.selectButton,
-                            isSelected && styles.selectedButton,
-                          ]}
-                        >
-                          {isSelected && (
-                            <Feather
-                              name="check"
-                              size={moderateWidthScale(12)}
-                              color={theme.darkGreen}
-                            />
-                          )}
-                          <Text style={styles.selectButtonText}>
-                            {isSelected ? "Selected" : "Select"}
-                          </Text>
+                        <View style={styles.selectButtonWrapper}>
+                          <View style={styles.selectButtonShadow} />
+                          <View
+                            style={[
+                              styles.selectButton,
+                              isSelected && styles.selectedButton,
+                            ]}
+                          >
+                            {isSelected && (
+                              <Feather
+                                name="check"
+                                size={moderateWidthScale(12)}
+                                color={theme.darkGreen}
+                              />
+                            )}
+                            <Text style={styles.selectButtonText}>
+                              {isSelected ? "Selected" : "Select"}
+                            </Text>
+                          </View>
                         </View>
                       </TouchableOpacity>
                       <View style={styles.suggestionSeparator} />
@@ -993,72 +1050,94 @@ export default function ManageSubscriptionsScreen() {
         )}
       </ScrollView>
 
-      {/* AI Tool Button - Absolutely Positioned with Animations */}
+      {/* AI Tool Button - Portal + Overlay (same as Step Nine) */}
       {!loading && (
-        <View style={styles.aiToolButtonContainer}>
-          {/* Sparkling Stars */}
-          {starAnimations.map((star, index) => {
-            const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
-            const radius = moderateWidthScale(35);
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
+        <Portal>
+          <View style={styles.aiToolButtonContainer} pointerEvents="box-none">
+            {/* Sparkling Stars */}
+            {starAnimations.map((star, index) => {
+              const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
+              const radius = moderateWidthScale(35);
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
 
-            const rotateInterpolate = star.rotate.interpolate({
-              inputRange: [0, 1],
-              outputRange: ["0deg", "360deg"],
-            });
+              const rotateInterpolate = star.rotate.interpolate({
+                inputRange: [0, 1],
+                outputRange: ["0deg", "360deg"],
+              });
 
-            return (
+              return (
+                <Animated.View
+                  key={index}
+                  style={[
+                    {
+                      position: "absolute",
+                      left: moderateWidthScale(28) + x - moderateWidthScale(6),
+                      top: moderateHeightScale(28) + y - moderateHeightScale(6),
+                      transform: [
+                        { scale: star.scale },
+                        { rotate: rotateInterpolate },
+                      ],
+                      opacity: star.opacity,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="star"
+                    size={moderateWidthScale(12)}
+                    color={theme.white}
+                  />
+                </Animated.View>
+              );
+            })}
+
+            {/* First-time overlay: tap to create subscription with AI */}
+            {showAiTooltipOverlay && (
+              <View style={styles.aiTooltipOverlayBox} pointerEvents="box-none">
+                <TouchableOpacity
+                  style={styles.aiTooltipOverlayClose}
+                  onPress={dismissAiTooltipOverlay}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Feather
+                    name="x"
+                    size={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+                <Text style={styles.aiTooltipOverlayText}>
+                  {t("tapToCreateSubscriptionWithAi")}
+                </Text>
+              </View>
+            )}
+
+            {/* Ai Tool Button with Zoom Animation */}
+            <TouchableOpacity activeOpacity={0.8} onPress={onClickAi}>
               <Animated.View
-                key={index}
                 style={[
+                  styles.aiToolButton,
                   {
-                    position: "absolute",
-                    left: moderateWidthScale(28) + x - moderateWidthScale(6),
-                    top: moderateHeightScale(28) + y - moderateHeightScale(6),
                     transform: [
-                      { scale: star.scale },
-                      { rotate: rotateInterpolate },
+                      { scale: scaleAnim },
+                      {
+                        rotate: rotateAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["0deg", "360deg"],
+                        }),
+                      },
                     ],
-                    opacity: star.opacity,
                   },
                 ]}
               >
                 <MaterialIcons
-                  name="star"
-                  size={moderateWidthScale(12)}
+                  name="auto-awesome"
+                  size={moderateWidthScale(28)}
                   color={theme.white}
                 />
               </Animated.View>
-            );
-          })}
-
-          {/* Ai Tool Button with Zoom Animation */}
-          <TouchableOpacity activeOpacity={0.8} onPress={onClickAi}>
-            <Animated.View
-              style={[
-                styles.aiToolButton,
-                {
-                  transform: [
-                    { scale: scaleAnim },
-                    {
-                      rotate: rotateAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ["0deg", "360deg"],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <MaterialIcons
-                name="auto-awesome"
-                size={moderateWidthScale(28)}
-                color={theme.white}
-              />
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </View>
+        </Portal>
       )}
 
       {!loading && (
