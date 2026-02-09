@@ -143,20 +143,6 @@ export default function AiTransactions() {
                 >
                   {item.description || "-"}
                 </Text>
-                <View style={[styles.jobCardStatusBadge, badgeStyle]}>
-                  <Text
-                    style={[
-                      styles.jobCardStatusText,
-                      {
-                        color: isCredit
-                          ? theme.darkGreen
-                          : theme.appointmentStatusText,
-                      },
-                    ]}
-                  >
-                    {statusLabel}
-                  </Text>
-                </View>
               </View>
 
               <View style={styles.jobCardMetaRow}>
@@ -164,6 +150,12 @@ export default function AiTransactions() {
                   <Text style={styles.jobCardMetaLabel}>{t("price")}</Text>
                   <Text style={styles.jobCardMetaValue}>
                     {item.price ? `$${item.price}` : "-"}
+                  </Text>
+                </View>
+                <View style={styles.jobCardMetaItem}>
+                  <Text style={styles.jobCardMetaLabel}>{t("credits")}</Text>
+                  <Text style={styles.jobCardMetaValue}>
+                    {item.credits != null ? String(item.credits) : "-"}
                   </Text>
                 </View>
                 <View style={styles.jobCardMetaItem}>
