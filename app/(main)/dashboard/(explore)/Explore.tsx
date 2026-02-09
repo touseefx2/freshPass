@@ -636,8 +636,8 @@ export default function ExploreScreen() {
         <TryOnModal
           service={hairTryOnService}
           visible={showTryOnModal}
-          // visible={true}
           onClose={() => dispatch(setIsFirstShowTryOn(true))}
+          screen="explore"
         />
       )}
     </>

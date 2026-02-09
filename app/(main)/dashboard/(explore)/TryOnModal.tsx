@@ -10,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { IMAGES } from "@/src/constant/images";
 import { LeafLogo } from "@/assets/icons";
@@ -29,11 +29,17 @@ import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
 import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import NotificationBanner from "@/src/components/notificationBanner";
+import { ApiService } from "@/src/services/api";
+import { userEndpoints } from "@/src/services/endpoints";
+import { setUserDetails } from "@/src/state/slices/userSlice";
+import { router } from "expo-router";
 
 interface TryOnModalProps {
   visible: boolean;
   onClose: () => void;
   service?: AdditionalServiceItem | null;
+  /** Optional screen name (e.g. "explore"). Default empty. */
+  screen?: string;
 }
 
 const createStyles = (theme: Theme) =>
@@ -152,9 +158,15 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
+function TryOnModalContent({
+  visible,
+  onClose,
+  service,
+  screen = "",
+}: TryOnModalProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
+  const dispatch = useAppDispatch();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state) => state.user);
   const theme = colors as Theme;
@@ -162,6 +174,7 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
   const insets = useSafeAreaInsets();
 
   const [localActionLoader, setLocalActionLoader] = useState(false);
+  const [localLoaderMessage, setLocalLoaderMessage] = useState("");
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
     title: string;
@@ -189,6 +202,7 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
       return;
     }
     setLocalActionLoader(true);
+    setLocalLoaderMessage(t("paymentprocessing"));
     try {
       const { customer, paymentIntent, customerSessionClientSecret } =
         await fetchAiToolsPaymentSheetParams(service.id);
@@ -224,7 +238,6 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
       );
 
       if (initError) {
-        setLocalActionLoader(false);
         setLocalBanner({
           visible: true,
           title: t("error"),
@@ -254,9 +267,25 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
         message: t("paymentSuccessful") ?? "Payment successful!",
         type: "success",
       });
-      onClose();
+
+      setLocalActionLoader(true);
+      setLocalLoaderMessage(t("pleaseWait"));
+      try {
+        const response = await ApiService.get<{
+          success: boolean;
+          data?: { ai_quota?: number };
+        }>(userEndpoints.details);
+        if (response.success && response.data?.ai_quota !== undefined) {
+          dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
+        }
+      } catch {
+        // ignore – close modal either way
+      } finally {
+        setLocalActionLoader(false);
+        onClose();
+        screen === "explore" && router.push("/(main)/aiTools/toolList" as any);
+      }
     } catch (err: unknown) {
-      setLocalActionLoader(false);
       const ax = err as { message?: string; data?: { message?: string } };
       const message =
         ax.data?.message ?? ax.message ?? "Failed to start payment.";
@@ -266,6 +295,8 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
         message,
         type: "error",
       });
+    } finally {
+      setLocalActionLoader(false);
     }
   };
 
@@ -273,7 +304,7 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
     <>
       <Modal
         visible={visible}
-        animationType="fade"
+        animationType="slide"
         transparent={false}
         onRequestClose={onClose}
         statusBarTranslucent
@@ -340,6 +371,21 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
               </View>
             </View>
           </ImageBackground>
+
+          <Modal
+            transparent
+            visible={localActionLoader}
+            animationType="fade"
+            statusBarTranslucent
+          >
+            <View style={styles.loaderModalOverlay}>
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color={theme.primary} />
+                <Text style={styles.loaderTitleText}>{localLoaderMessage}</Text>
+              </View>
+            </View>
+          </Modal>
+
           <NotificationBanner
             visible={localBanner.visible}
             title={localBanner.title}
@@ -350,21 +396,6 @@ function TryOnModalContent({ visible, onClose, service }: TryOnModalProps) {
               setLocalBanner((prev) => ({ ...prev, visible: false }))
             }
           />
-          <Modal
-            transparent
-            visible={localActionLoader}
-            animationType="fade"
-            statusBarTranslucent
-          >
-            <View style={styles.loaderModalOverlay}>
-              <View style={styles.loaderContainer}>
-                <ActivityIndicator size="large" color={theme.primary} />
-                <Text style={styles.loaderTitleText}>
-                  {t("processing") || "Processing..."}
-                </Text>
-              </View>
-            </View>
-          </Modal>
         </SafeAreaView>
       </Modal>
     </>

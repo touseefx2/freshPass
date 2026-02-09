@@ -925,21 +925,15 @@ export default function Tools() {
               <Text style={styles.hairTryonOptionTitle}>{t("processing")}</Text>
               <View style={styles.hairTryonOptionBadge}>
                 <Text style={styles.hairTryonOptionBadgeText}>
-                  {t("hairTryonEstTime")}
+                  {t("hairTryonCreditsThree")}
                 </Text>
               </View>
             </View>
             <Text style={styles.hairTryonOptionDesc}>
-              {t("pollingStrategyDesc")}
+              {t("hairTryonPipelineDesc")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • {t("validateImageHint")}
-            </Text>
-            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • {t("handleRetriesHint")}
-            </Text>
-            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • {t("showProgressHint")}
+              • {t("hairTryonImageRequirement")}
             </Text>
             <View
               style={[
@@ -982,24 +976,15 @@ export default function Tools() {
               </Text>
               <View style={styles.hairTryonOptionBadge}>
                 <Text style={styles.hairTryonOptionBadgeText}>
-                  {t("hairTryonEstTime")}
+                  {t("hairTryonCreditsOne")}
                 </Text>
               </View>
             </View>
-            <Text style={styles.hairTryonOptionSubtitle}>
-              {t("describeAndUpload")}
-            </Text>
             <Text style={styles.hairTryonOptionDesc}>
-              {t("withPromptDescription")}
+              {t("hairTryonPromptDesc")}
             </Text>
             <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • {t("validateImageHint")}
-            </Text>
-            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • {t("handleRetriesHint")}
-            </Text>
-            <Text style={[styles.hairTryonOptionDesc, { marginBottom: 0 }]}>
-              • {t("showProgressHint")}
+              • {t("hairTryonImageRequirement")}
             </Text>
             <View
               style={[
