@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
-  StatusBar,
+  Platform,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -16,9 +16,10 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import { ApiService } from "@/src/services/api";
@@ -26,6 +27,9 @@ import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
+
+const CARD_GAP = 12;
+const CARD_WIDTH_PERCENT = "48%";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -39,43 +43,105 @@ const createStyles = (theme: Theme) =>
     contentContainer: {
       paddingVertical: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
+      paddingBottom: moderateHeightScale(32),
     },
     title: {
       fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    placeholderText: {
-      fontSize: fontSize.size16,
+    gridContainer: {
+      marginTop: moderateHeightScale(24),
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(CARD_GAP),
+    },
+    gridItem: {
+      width: CARD_WIDTH_PERCENT as any,
+      maxWidth: widthScale(180),
+    },
+    shadow: {
+      shadowColor: theme.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+      shadowOpacity: 0.22,
+      shadowRadius: 2.22,
+      elevation: 3,
+    },
+    card: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      minHeight: moderateHeightScale(120),
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: moderateWidthScale(8),
+        },
+        android: {
+          elevation: 3,
+        },
+      }),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(8),
+    },
+    iconWrap: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    cardSubtitle: {
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      textAlign: "center",
-      marginTop: moderateHeightScale(40),
     },
-    listContainer: {
-      marginTop: moderateHeightScale(24),
-    },
-    row: {
-      paddingVertical: moderateHeightScale(14),
-    },
-    rowHeader: {
+    cardHeaderRight: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
     },
-    rowTitle: {
-      fontSize: fontSize.size15,
+    arrowCircle: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    newBadge: {
+      backgroundColor: theme.green,
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(6),
+      marginRight: moderateWidthScale(6),
+    },
+    newBadgeText: {
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white,
     },
-    rowSubtitle: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+    cardContent: {
+      flex: 1,
     },
-    rowDivider: {
-      height: 1.1,
-      backgroundColor: theme.borderLight,
+    deleteCardTitle: {
+      color: theme.red,
     },
   });
 
@@ -279,6 +345,82 @@ export default function AccountScreen() {
       : []),
   ];
 
+  const getIconForRow = (key: Row["key"]) => {
+    const iconSize = moderateWidthScale(24);
+    const iconColor = theme.darkGreen;
+    const redColor = theme.red;
+    switch (key) {
+      case "personal":
+        return (
+          <MaterialIcons name="person" size={iconSize} color={iconColor} />
+        );
+      case "business":
+        return <MaterialIcons name="store" size={iconSize} color={iconColor} />;
+      case "availability":
+        return (
+          <MaterialIcons
+            name="event-available"
+            size={iconSize}
+            color={iconColor}
+          />
+        );
+      case "country":
+        return (
+          <MaterialIcons name="public" size={iconSize} color={iconColor} />
+        );
+      case "language":
+        return (
+          <MaterialIcons name="language" size={iconSize} color={iconColor} />
+        );
+      case "subscriptions":
+        return (
+          <MaterialCommunityIcons
+            name="crown"
+            size={iconSize}
+            color={theme.orangeBrown}
+          />
+        );
+      case "notifications":
+        return (
+          <MaterialIcons
+            name="notifications"
+            size={iconSize}
+            color={iconColor}
+          />
+        );
+      case "reviews":
+        return (
+          <MaterialIcons
+            name="star"
+            size={iconSize}
+            color={theme.orangeBrown}
+          />
+        );
+      case "aiTools":
+        return (
+          <MaterialIcons name="smart-toy" size={iconSize} color={iconColor} />
+        );
+      case "rules":
+        return (
+          <MaterialIcons name="description" size={iconSize} color={iconColor} />
+        );
+      case "logout":
+        return <MaterialIcons name="login" size={iconSize} color={iconColor} />;
+      case "delete":
+        return (
+          <MaterialIcons
+            name="delete-outline"
+            size={iconSize}
+            color={redColor}
+          />
+        );
+      default:
+        return (
+          <MaterialIcons name="settings" size={iconSize} color={iconColor} />
+        );
+    }
+  };
+
   return (
     <View style={styles.container}>
       {userRole === "customer" || isGuest ? (
@@ -293,46 +435,59 @@ export default function AccountScreen() {
       >
         <Text style={styles.title}>{t("accountSettings")}</Text>
 
-        <View style={styles.listContainer}>
-          {rows.map((row, index) => {
+        <View style={styles.gridContainer}>
+          {rows.map((row) => {
             const isDelete = row.key === "delete";
             const isLogout = row.key === "logout";
+            const showNewBadge = row.key === "subscriptions";
             return (
-              <View key={row.key}>
+              <View key={row.key} style={styles.gridItem}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => handleRowPress(row.key)}
-                  style={styles.row}
+                  style={[styles.card, styles.shadow]}
                   disabled={isDelete && deleteLoading}
                 >
-                  <View style={styles.rowHeader}>
-                    <View>
-                      <Text
-                        style={[
-                          styles.rowTitle,
-                          isDelete && { color: theme.red },
-                        ]}
-                      >
-                        {row.title}
-                      </Text>
-                      {row.subtitle ? (
-                        <Text style={styles.rowSubtitle}>{row.subtitle}</Text>
-                      ) : null}
+                  <View style={styles.cardHeader}>
+                    <View style={styles.iconWrap}>
+                      {getIconForRow(row.key)}
                     </View>
-                    {isDelete && deleteLoading ? (
-                      <ActivityIndicator size="small" color={theme.red} />
-                    ) : !isDelete && !isLogout ? (
-                      <MaterialIcons
-                        name="keyboard-arrow-right"
-                        size={moderateWidthScale(18)}
-                        color={theme.darkGreen}
-                      />
+                    {/* <View style={styles.cardHeaderRight}>
+                      {showNewBadge && (
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                      )}
+                      <View style={styles.arrowCircle}>
+                        {isDelete && deleteLoading ? (
+                          <ActivityIndicator size="small" color={theme.red} />
+                        ) : !isDelete && !isLogout ? (
+                          <MaterialIcons
+                            name="keyboard-arrow-right"
+                            size={moderateWidthScale(18)}
+                            color={theme.darkGreen}
+                          />
+                        ) : null}
+                      </View>
+                    </View> */}
+                  </View>
+                  <View style={styles.cardContent}>
+                    <Text
+                      style={[
+                        styles.cardTitle,
+                        isDelete && styles.deleteCardTitle,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {row.title}
+                    </Text>
+                    {row.subtitle ? (
+                      <Text style={styles.cardSubtitle} numberOfLines={2}>
+                        {row.subtitle}
+                      </Text>
                     ) : null}
                   </View>
                 </TouchableOpacity>
-                {index !== rows.length - 1 && (
-                  <View style={styles.rowDivider} />
-                )}
               </View>
             );
           })}

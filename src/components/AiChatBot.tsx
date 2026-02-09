@@ -594,98 +594,30 @@ const AiChatBot: React.FC = () => {
   // Check if input should be disabled (loading or streaming)
   const isInputDisabled = isLoading || isStreaming;
 
-  // Animation refs
-  const bounceAnim = useRef(new Animated.Value(0)).current;
+  // Animation refs - only spin in place (no bounce, no scale)
   const rotateAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
   const chatBoxAnim = useRef(new Animated.Value(0)).current;
 
-  // Smooth bouncy float + wiggle + heartbeat animation
+  // Continuous 360° spin in place (same position, no up/down)
   useEffect(() => {
-    // Bouncy floating (elastic feel)
-    const bounceAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: -12,
-          duration: 1200,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-        Animated.timing(bounceAnim, {
-          toValue: 0,
-          duration: 1200,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.cubic),
-        }),
-      ]),
-    );
-
-    // Subtle wiggle rotation
-    const rotateAnimation = Animated.loop(
+    const spinAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(rotateAnim, {
           toValue: 1,
-          duration: 2500,
+          duration: 6000,
           useNativeDriver: true,
-          easing: Easing.inOut(Easing.sin),
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: -1,
-          duration: 2500,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.sin),
+          easing: Easing.linear,
         }),
         Animated.timing(rotateAnim, {
           toValue: 0,
-          duration: 2500,
+          duration: 0,
           useNativeDriver: true,
-          easing: Easing.inOut(Easing.sin),
         }),
       ]),
     );
-
-    // Heartbeat scale pulse
-    const scaleAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scaleAnim, {
-          toValue: 1.1,
-          duration: 600,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-          easing: Easing.in(Easing.cubic),
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1.05,
-          duration: 400,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.cubic),
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-          easing: Easing.in(Easing.cubic),
-        }),
-        Animated.delay(1500), // Pause between heartbeats
-      ]),
-    );
-
-    // Start all animations
-    bounceAnimation.start();
-    rotateAnimation.start();
-    scaleAnimation.start();
-
-    return () => {
-      bounceAnimation.stop();
-      rotateAnimation.stop();
-      scaleAnimation.stop();
-    };
-  }, [bounceAnim, rotateAnim, scaleAnim]);
+    spinAnimation.start();
+    return () => spinAnimation.stop();
+  }, [rotateAnim]);
 
   // Animate chat box open/close
   useEffect(() => {
@@ -1088,21 +1020,19 @@ const AiChatBot: React.FC = () => {
         </Animated.View>
       )}
 
-      {/* Floating AI Button - Smooth bounce + wiggle + heartbeat */}
+      {/* Floating AI Button - Spin in place (no up/down) */}
       <Animated.View
         style={[
           styles.floatingButton,
           styles.shadow,
           {
             transform: [
-              { translateY: bounceAnim },
               {
                 rotate: rotateAnim.interpolate({
-                  inputRange: [-1, 0, 1],
-                  outputRange: ["-8deg", "0deg", "8deg"],
+                  inputRange: [0, 1],
+                  outputRange: ["0deg", "360deg"],
                 }),
               },
-              { scale: scaleAnim },
             ],
           },
         ]}

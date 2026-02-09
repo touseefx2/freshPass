@@ -27,9 +27,9 @@ export default function Index() {
     }
   };
 
-  useEffect(() => {
-    handleNavigation();
-  }, []);
+  // useEffect(() => {
+  //   handleNavigation();
+  // }, []);
 
   return (
     <View style={styles.container}>
@@ -38,7 +38,7 @@ export default function Index() {
         backgroundColor={theme.darkGreen}
         translucent
       />
-      {/* <LottieView
+      <LottieView
         source={IMAGES.welcomeLogo}
         autoPlay
         // loop={true}
@@ -49,7 +49,7 @@ export default function Index() {
           handleNavigation();
         }}
         style={styles.logo}
-      /> */}
+      />
     </View>
   );
 }
