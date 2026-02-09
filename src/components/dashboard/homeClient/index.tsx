@@ -46,6 +46,7 @@ export default function HomeScreen() {
   const user = useAppSelector((state) => state.user);
   const userRole = user.userRole;
   const isGuest = user.isGuest;
+  const isCustomer = userRole === "customer";
   const [showLocationModal, setShowLocationModal] = useState(false);
   const { showBanner } = useNotificationContext();
 
@@ -266,13 +267,17 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    fetchAdditionalServices();
+    if (isCustomer) {
+      fetchAdditionalServices();
+      handleFetchUserDetails();
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      handleFetchUnreadCount();
-      handleFetchUserDetails();
+      if (isCustomer) {
+        handleFetchUnreadCount();
+      }
     }, []),
   );
 
