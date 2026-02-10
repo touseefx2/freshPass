@@ -120,11 +120,6 @@ export default function Tools() {
   const hairTryOnService =
     aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
   const isCustomerOrGuest = user.isGuest || user.userRole === "customer";
-  const showUnlockModal =
-    toolType === "Hair Tryon" &&
-    isCustomerOrGuest &&
-    !!hairTryOnService &&
-    (aiQuota === 0 || aiQuota == null);
 
   // console.log("------> hairTryOnService", hairTryOnService);
   // console.log("------> aiQuota", aiQuota);
@@ -150,6 +145,19 @@ export default function Tools() {
   const [hairTryonPrompt, setHairTryonPrompt] = useState<string>("");
   const [hairTryonSelectedType, setHairTryonSelectedType] =
     useState<HairTryonType | null>(null);
+
+  // Processing = 3 credits, With Prompt = 1 credit. Show unlock when quota < required.
+  const hairTryonCreditsRequired =
+    hairTryonSelectedType === "processing"
+      ? 3
+      : hairTryonSelectedType === "withPromptAndImage"
+        ? 1
+        : 3;
+  const showUnlockModal =
+    toolType === "Hair Tryon" &&
+    isCustomerOrGuest &&
+    !!hairTryOnService &&
+    (aiQuota == null || aiQuota < hairTryonCreditsRequired);
 
   // Modal states
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
