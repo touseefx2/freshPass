@@ -6,7 +6,10 @@ import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
-import { appleAuth } from "@invertase/react-native-apple-authentication";
+import {
+  appleAuth,
+  appleAuthAndroid,
+} from "@invertase/react-native-apple-authentication";
 import { Image } from "expo-image";
 import {
   SafeAreaView,
@@ -40,6 +43,10 @@ const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 // Web Client ID code mein chahiye kyunki ID token backend verify karta hai, aur Web Client ID se hi ID token milta hai
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 const APPLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
+const APPLE_ANDROID_CLIENT_ID =
+  process.env.EXPO_PUBLIC_APPLE_ANDROID_CLIENT_ID || "";
+const APPLE_ANDROID_REDIRECT_URI =
+  process.env.EXPO_PUBLIC_APPLE_ANDROID_REDIRECT_URI || "";
 
 export default function SocialLogin() {
   const { colors } = useTheme();
@@ -51,6 +58,9 @@ export default function SocialLogin() {
   const dispatch = useAppDispatch();
   const selectedRole = useAppSelector((state) => state.general.role);
   console.log("selectedRole", selectedRole);
+
+  const generateRandomString = () =>
+    Math.random().toString(36).substring(2) + Date.now().toString(36);
 
   useEffect(() => {
     if (Platform.OS !== "web") {
@@ -288,6 +298,49 @@ export default function SocialLogin() {
     }
   };
 
+  const handleAppleLoginAndroid = async () => {
+    try {
+      if (!appleAuthAndroid.isSupported) {
+        Alert.alert(t("error"), t("appleSignInNotAvailable"));
+        return;
+      }
+
+      const rawNonce = generateRandomString();
+      const state = generateRandomString();
+
+      if (!APPLE_ANDROID_CLIENT_ID || !APPLE_ANDROID_REDIRECT_URI) {
+        Logger.error("Apple Android config missing", {
+          APPLE_ANDROID_CLIENT_ID_SET: !!APPLE_ANDROID_CLIENT_ID,
+          APPLE_ANDROID_REDIRECT_URI_SET: !!APPLE_ANDROID_REDIRECT_URI,
+        });
+        Alert.alert(t("error"), t("appleSignInNotAvailable"));
+        return;
+      }
+
+      appleAuthAndroid.configure({
+        clientId: APPLE_ANDROID_CLIENT_ID,
+        redirectUri: APPLE_ANDROID_REDIRECT_URI,
+        responseType: appleAuthAndroid.ResponseType.ALL,
+        scope: appleAuthAndroid.Scope.ALL,
+        nonce: rawNonce,
+        state,
+      });
+
+      const response = await appleAuthAndroid.signIn();
+
+      Logger.log("Apple Android Sign-In response:", response);
+
+      // TODO: Send response.authorizationCode / response.id_token to backend
+      // similar to Google social login flow when backend for Apple is ready.
+    } catch (error: any) {
+      Logger.error("Apple Android Sign-In Error:", error);
+      Alert.alert(
+        t("appleSignInFailed"),
+        error.message || t("errorDuringAppleSignIn"),
+      );
+    }
+  };
+
   const handleFacebookLogin = async () => {
     try {
       // Login dialog open karo
@@ -414,7 +467,11 @@ export default function SocialLogin() {
     if (provider === "google") {
       await handleGoogleLogin();
     } else if (provider === "apple") {
-      await handleAppleLogin();
+      if (Platform.OS === "ios") {
+        await handleAppleLogin();
+      } else if (Platform.OS === "android") {
+        await handleAppleLoginAndroid();
+      }
     } else if (provider === "facebook") {
       // await handleFacebookLogin();
     }
