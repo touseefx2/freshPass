@@ -16,6 +16,7 @@ import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { MAIN_ROUTES } from "@/src/constant/routes";
+import { setActionLoader, setActionLoaderTitle } from "@/src/state/slices/generalSlice";
 import {
   setBusinessStatus,
   setUser,
@@ -245,16 +246,21 @@ export function useSocialLogin() {
         return;
       }
 
-      const response = await ApiService.post<SocialLoginApiResponse>(
-        businessEndpoints.socialLogin,
-        {
-          provider: "google",
-          token: idToken,
-          role: selectedRole?.toLowerCase() ?? "",
-        },
-      );
-
-      handleSocialLoginResponse(response);
+      dispatch(setActionLoader(true));
+      dispatch(setActionLoaderTitle(t("pleaseWait")));
+      try {
+        const response = await ApiService.post<SocialLoginApiResponse>(
+          businessEndpoints.socialLogin,
+          {
+            provider: "google",
+            token: idToken,
+            role: selectedRole?.toLowerCase() ?? "",
+          },
+        );
+        handleSocialLoginResponse(response);
+      } finally {
+        dispatch(setActionLoader(false));
+      }
     } catch (error: any) {
       Logger.error("Google Sign-In Error:", error);
 
@@ -307,16 +313,21 @@ export function useSocialLogin() {
       const { identityToken } = appleAuthRequestResponse;
 
       if (identityToken) {
-        const response = await ApiService.post<SocialLoginApiResponse>(
-          businessEndpoints.socialLogin,
-          {
-            provider: "apple",
-            token: identityToken,
-            role: selectedRole?.toLowerCase() ?? "",
-          },
-        );
-
-        handleSocialLoginResponse(response);
+        dispatch(setActionLoader(true));
+        dispatch(setActionLoaderTitle(t("pleaseWait")));
+        try {
+          const response = await ApiService.post<SocialLoginApiResponse>(
+            businessEndpoints.socialLogin,
+            {
+              provider: "apple",
+              token: identityToken,
+              role: selectedRole?.toLowerCase() ?? "",
+            },
+          );
+          handleSocialLoginResponse(response);
+        } finally {
+          dispatch(setActionLoader(false));
+        }
       }
     } catch (error: any) {
       Logger.error("Apple Sign-In Error:", error);
@@ -376,16 +387,21 @@ export function useSocialLogin() {
         return;
       }
 
-      const apiResponse = await ApiService.post<SocialLoginApiResponse>(
-        businessEndpoints.socialLogin,
-        {
-          provider: "apple",
-          token: idToken,
-          role: selectedRole?.toLowerCase() ?? "",
-        },
-      );
-
-      handleSocialLoginResponse(apiResponse);
+      dispatch(setActionLoader(true));
+      dispatch(setActionLoaderTitle(t("pleaseWait")));
+      try {
+        const apiResponse = await ApiService.post<SocialLoginApiResponse>(
+          businessEndpoints.socialLogin,
+          {
+            provider: "apple",
+            token: idToken,
+            role: selectedRole?.toLowerCase() ?? "",
+          },
+        );
+        handleSocialLoginResponse(apiResponse);
+      } finally {
+        dispatch(setActionLoader(false));
+      }
     } catch (error: any) {
       Logger.error("Apple Android Sign-In Error:", error);
       Alert.alert(
@@ -416,16 +432,21 @@ export function useSocialLogin() {
 
       const fbAccessToken = data.accessToken.toString();
 
-      const response = await ApiService.post<SocialLoginApiResponse>(
-        businessEndpoints.socialLogin,
-        {
-          provider: "facebook",
-          token: fbAccessToken,
-          role: selectedRole?.toLowerCase() ?? "",
-        },
-      );
-
-      handleSocialLoginResponse(response);
+      dispatch(setActionLoader(true));
+      dispatch(setActionLoaderTitle(t("pleaseWait")));
+      try {
+        const response = await ApiService.post<SocialLoginApiResponse>(
+          businessEndpoints.socialLogin,
+          {
+            provider: "facebook",
+            token: fbAccessToken,
+            role: selectedRole?.toLowerCase() ?? "",
+          },
+        );
+        handleSocialLoginResponse(response);
+      } finally {
+        dispatch(setActionLoader(false));
+      }
     } catch (error: any) {
       Logger.error("Facebook Login Error:", error);
       Alert.alert(
