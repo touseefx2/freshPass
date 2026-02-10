@@ -83,6 +83,8 @@
   "enableLocation": "Enable Location",
   "skipForNow": "Skip for now",
   "aiAssistant": "AI Assistant",
+  "aiChatBot": "AI Chat Bot",
+  "aiReceptionist": "AI Receptionist",
   "selectYourLocation": "Select your location",
   "fetchingAddress": "Fetching address...",
   "loadingMap": "Loading map...",

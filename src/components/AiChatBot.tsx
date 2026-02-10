@@ -33,9 +33,15 @@ import {
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSegments } from "expo-router";
-import { SendIcon, CloseIcon, AiRobotIcon } from "@/assets/icons";
+import {
+  SendIcon,
+  CloseIcon,
+  AiRobotIcon,
+  AiReceptionistIcon,
+} from "@/assets/icons";
 import {
   toggleChat,
+  openChat,
   closeChat,
   clearMessages,
   setSessionId,
@@ -115,6 +121,41 @@ const createStyles = (
     aiIconContainer: {
       alignItems: "center",
       justifyContent: "center",
+    },
+    menuOptionsContainer: {
+      position: "absolute",
+      bottom:
+        moderateHeightScale(chatBottomOffset) +
+        bottomInset +
+        widthScale(45) +
+        moderateHeightScale(12),
+      right: moderateWidthScale(16),
+      alignItems: "flex-end",
+      gap: moderateHeightScale(10),
+      zIndex: 1000,
+    },
+    menuOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      backgroundColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 0.5,
+      borderColor: theme.white85,
+      minWidth: widthScale(140),
+    },
+    menuOptionIcon: {
+      width: widthScale(24),
+      height: widthScale(24),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    menuOptionLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
     },
     chatBoxContainer: {
       position: "absolute",
@@ -590,6 +631,10 @@ const AiChatBot: React.FC = () => {
     useAppSelector((state) => state.chat);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
+  const [menuExpanded, setMenuExpanded] = useState(false);
+  const [chatMode, setChatMode] = useState<"ai_chat_bot" | "ai_receptionist">(
+    "ai_chat_bot",
+  );
 
   // Check if input should be disabled (loading or streaming)
   const isInputDisabled = isLoading || isStreaming;
@@ -598,8 +643,12 @@ const AiChatBot: React.FC = () => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const chatBoxAnim = useRef(new Animated.Value(0)).current;
 
-  // Continuous 360° spin in place (same position, no up/down)
+  // Continuous 360° spin in place when menu is not expanded
   useEffect(() => {
+    if (menuExpanded) {
+      rotateAnim.setValue(0);
+      return;
+    }
     const spinAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(rotateAnim, {
@@ -617,7 +666,7 @@ const AiChatBot: React.FC = () => {
     );
     spinAnimation.start();
     return () => spinAnimation.stop();
-  }, [rotateAnim]);
+  }, [rotateAnim, menuExpanded]);
 
   // Animate chat box open/close
   useEffect(() => {
@@ -629,9 +678,23 @@ const AiChatBot: React.FC = () => {
     }).start();
   }, [isOpen, chatBoxAnim]);
 
-  const handleToggleChat = useCallback(() => {
-    dispatch(toggleChat());
-  }, [dispatch]);
+  const handleFloatingButtonPress = useCallback(() => {
+    if (menuExpanded) return;
+    setMenuExpanded(true);
+  }, [menuExpanded]);
+
+  const handleCloseMenu = useCallback(() => {
+    setMenuExpanded(false);
+  }, []);
+
+  const handleSelectOption = useCallback(
+    (mode: "ai_chat_bot" | "ai_receptionist") => {
+      setChatMode(mode);
+      dispatch(openChat());
+      setMenuExpanded(false);
+    },
+    [dispatch],
+  );
 
   const handleCloseChat = useCallback(() => {
     Keyboard.dismiss();
@@ -819,7 +882,11 @@ const AiChatBot: React.FC = () => {
                 <View style={styles.aiAvatarHeader}>
                   <AiRobotIcon width={24} height={24} color={theme.white} />
                 </View>
-                <Text style={styles.headerTitle}>{t("aiAssistant")}</Text>
+                <Text style={styles.headerTitle}>
+                  {chatMode === "ai_chat_bot"
+                    ? t("aiChatBot")
+                    : t("aiReceptionist")}
+                </Text>
               </View>
               <View style={styles.headerRightButtons}>
                 {/* Delete button - clears all messages (only show when messages exist) */}
@@ -1020,33 +1087,70 @@ const AiChatBot: React.FC = () => {
         </Animated.View>
       )}
 
-      {/* Floating AI Button - Spin in place (no up/down) */}
-      <Animated.View
-        style={[
-          styles.floatingButton,
-          styles.shadow,
-          {
-            transform: [
-              {
-                rotate: rotateAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ["0deg", "360deg"],
-                }),
-              },
-            ],
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.buttonInner}
-          onPress={handleToggleChat}
-          activeOpacity={0.9}
-        >
-          <View style={styles.aiIconContainer}>
-            <AiRobotIcon width={22} height={22} color={theme.white} />
+      {/* Expanded menu - two options above the button */}
+      {menuExpanded && !isOpen && (
+        <>
+          <TouchableWithoutFeedback onPress={handleCloseMenu}>
+            <View style={[StyleSheet.absoluteFill, { zIndex: 997 }]} />
+          </TouchableWithoutFeedback>
+          <View style={styles.menuOptionsContainer}>
+            <TouchableOpacity
+              style={[styles.menuOption, styles.shadow]}
+              onPress={() => handleSelectOption("ai_chat_bot")}
+              activeOpacity={0.9}
+            >
+              <View style={styles.menuOptionIcon}>
+                <AiRobotIcon width={22} height={22} color={theme.white} />
+              </View>
+              <Text style={styles.menuOptionLabel}>{t("aiChatBot")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.menuOption, styles.shadow]}
+              onPress={() => handleSelectOption("ai_receptionist")}
+              activeOpacity={0.9}
+            >
+              <View style={styles.menuOptionIcon}>
+                <AiReceptionistIcon width={22} height={22} />
+              </View>
+              <Text style={styles.menuOptionLabel}>{t("aiReceptionist")}</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      </Animated.View>
+        </>
+      )}
+
+      {/* Floating AI Button - robot icon or cross when menu expanded */}
+      {!isOpen && (
+        <Animated.View
+          style={[
+            styles.floatingButton,
+            styles.shadow,
+            {
+              transform: [
+                {
+                  rotate: rotateAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["0deg", "360deg"],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.buttonInner}
+            onPress={menuExpanded ? handleCloseMenu : handleFloatingButtonPress}
+            activeOpacity={0.9}
+          >
+            <View style={styles.aiIconContainer}>
+              {menuExpanded ? (
+                <CloseIcon width={22} height={22} color={theme.white} />
+              ) : (
+                <AiRobotIcon width={22} height={22} color={theme.white} />
+              )}
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </>
   );
 };
