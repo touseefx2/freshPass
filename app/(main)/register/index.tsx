@@ -7,6 +7,7 @@ import {
   Pressable,
   Keyboard,
   TouchableWithoutFeedback,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FontAwesome5 } from "@expo/vector-icons";
@@ -42,11 +43,16 @@ const createStyles = (theme: Theme) =>
     mainContent: {
       flex: 1,
       paddingHorizontal: moderateWidthScale(24),
-      paddingBottom: moderateHeightScale(15),
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingBottom: moderateHeightScale(32),
     },
     content: {
-      flexGrow: 1,
-      gap: moderateHeightScale(20),
+      gap: moderateHeightScale(16),
     },
     titleSection: {
       gap: moderateHeightScale(8),
@@ -97,8 +103,9 @@ const createStyles = (theme: Theme) =>
     },
     socialList: {},
     footer: {
-      // marginTop: moderateHeightScale(20),
       alignItems: "center",
+      marginTop: moderateHeightScale(16),
+      flexShrink: 0,
     },
     footerText: {
       fontSize: fontSize.size13,
@@ -190,77 +197,86 @@ export default function Register() {
           <RegisterHeader onBack={handleBack} />
 
           <View style={styles.mainContent}>
-            <View style={styles.content}>
-              <View style={styles.titleSection}>
-                <Text style={styles.title}>
-                  Create your {userRole} profile
-                </Text>
-                <Text style={styles.description}>
-                  Upload your photo and enter your details to get started with
-                  FreshPass.
-                </Text>
-              </View>
-
-              <FloatingInput
-                label="Email"
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onClear={handleClear}
-              />
-
-              {emailError && <Text style={styles.errorText}>{emailError}</Text>}
-
-              <Pressable
-                onPress={handleToggleNewsletter}
-                style={styles.newsletterRow}
-                hitSlop={moderateWidthScale(8)}
-              >
-                <View style={styles.newsletterIconWrapper}>
-                  <View style={styles.checkbox}>
-                    {isSubscribed && (
-                      <FontAwesome5
-                        name="check"
-                        size={moderateWidthScale(14)}
-                        color={(colors as Theme).orangeBrown}
-                      />
-                    )}
-                  </View>
-                </View>
-                <Text style={styles.newsletterText}>
-                  I would like to receive newsletter and promotion on email by
-                  FreshPass
-                </Text>
-              </Pressable>
-
-              <Button
-                title="Continue"
-                onPress={handleContinue}
-                disabled={!isFormValid}
-                containerStyle={styles.primaryButtonWrapper}
-              />
-
-              <SectionSeparator />
-
-              <SocialAuthOptions
-                onGoogle={() => handleSocialLogin("google")}
-                onApple={() => handleSocialLogin("apple")}
-                onFacebook={() => handleSocialLogin("facebook")}
-                containerStyle={styles.socialList}
-              />
-
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                  Already have an account?{" "}
-                  <Text style={styles.loginLink} onPress={handleLogin}>
-                    Login
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.content}>
+                <View style={styles.titleSection}>
+                  <Text style={styles.title}>
+                    Create your {userRole} profile
                   </Text>
-                </Text>
+                  <Text style={styles.description}>
+                    Upload your photo and enter your details to get started with
+                    FreshPass.
+                  </Text>
+                </View>
+
+                <FloatingInput
+                  label="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onClear={handleClear}
+                />
+
+                {emailError && (
+                  <Text style={styles.errorText}>{emailError}</Text>
+                )}
+
+                <Pressable
+                  onPress={handleToggleNewsletter}
+                  style={styles.newsletterRow}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <View style={styles.newsletterIconWrapper}>
+                    <View style={styles.checkbox}>
+                      {isSubscribed && (
+                        <FontAwesome5
+                          name="check"
+                          size={moderateWidthScale(14)}
+                          color={(colors as Theme).orangeBrown}
+                        />
+                      )}
+                    </View>
+                  </View>
+                  <Text style={styles.newsletterText}>
+                    I would like to receive newsletter and promotion on email by
+                    FreshPass
+                  </Text>
+                </Pressable>
+
+                <Button
+                  title="Continue"
+                  onPress={handleContinue}
+                  disabled={!isFormValid}
+                  containerStyle={styles.primaryButtonWrapper}
+                />
+
+                <SectionSeparator />
+
+                <SocialAuthOptions
+                  onGoogle={() => handleSocialLogin("google")}
+                  onApple={() => handleSocialLogin("apple")}
+                  onFacebook={() => handleSocialLogin("facebook")}
+                  containerStyle={styles.socialList}
+                />
+
+                <View style={styles.footer}>
+                  <Text style={styles.footerText}>
+                    Already have an account?{" "}
+                    <Text style={styles.loginLink} onPress={handleLogin}>
+                      Login
+                    </Text>
+                  </Text>
+                </View>
               </View>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </TouchableWithoutFeedback>

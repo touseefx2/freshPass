@@ -8,6 +8,7 @@ import {
   Alert,
   Keyboard,
   TouchableWithoutFeedback,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, FontAwesome5 } from "@expo/vector-icons";
@@ -59,11 +60,16 @@ const createStyles = (theme: Theme) =>
     mainContent: {
       flex: 1,
       paddingHorizontal: moderateWidthScale(24),
-      paddingBottom: moderateHeightScale(15),
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingBottom: moderateHeightScale(32),
     },
     content: {
-      flexGrow: 1,
-      gap: moderateHeightScale(20),
+      gap: moderateHeightScale(16),
     },
     titleSection: {
       gap: moderateHeightScale(8),
@@ -122,8 +128,9 @@ const createStyles = (theme: Theme) =>
     },
     socialList: {},
     footer: {
-      marginTop: moderateHeightScale(0),
+      marginTop: moderateHeightScale(16),
       alignItems: "center",
+      flexShrink: 0,
     },
     footerText: {
       fontSize: fontSize.size13,
@@ -394,106 +401,115 @@ export default function Login() {
           <RegisterHeader onBack={handleBack} />
 
           <View style={styles.mainContent}>
-            <View style={styles.content}>
-              <View style={styles.titleSection}>
-                <Text style={styles.title}>
-                  {t("loginToYourAccount", { role: selectedRole })}
-                </Text>
-              </View>
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.content}>
+                <View style={styles.titleSection}>
+                  <Text style={styles.title}>
+                    {t("loginToYourAccount", { role: selectedRole })}
+                  </Text>
+                </View>
 
-              <FloatingInput
-                label={t("email")}
-                value={email}
-                onChangeText={setEmail}
-                placeholder={t("enterYourEmail")}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onClear={handleEmailClear}
-              />
+                <FloatingInput
+                  label={t("email")}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder={t("enterYourEmail")}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onClear={handleEmailClear}
+                />
 
-              {emailError && <Text style={styles.errorText}>{emailError}</Text>}
+                {emailError && (
+                  <Text style={styles.errorText}>{emailError}</Text>
+                )}
 
-              <FloatingInput
-                label={t("password")}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!isPasswordVisible}
-                placeholder={t("enterYourPassword")}
-                autoCapitalize="none"
-                onClear={handlePasswordClear}
-                renderRightAccessory={() =>
-                  password.length > 0 ? (
-                    <Pressable
-                      onPress={handleToggleVisibility}
-                      style={styles.toggleButton}
-                      hitSlop={moderateWidthScale(8)}
-                    >
-                      <Feather
-                        name={isPasswordVisible ? "eye-off" : "eye"}
-                        size={moderateWidthScale(20)}
-                        color={(colors as Theme).darkGreen}
-                      />
-                    </Pressable>
-                  ) : null
-                }
-              />
-
-              <View style={styles.savePasswordRow}>
-                <Pressable
-                  onPress={handleToggleSavePassword}
-                  style={styles.savePasswordLeft}
-                  hitSlop={moderateWidthScale(8)}
-                >
-                  <View style={styles.saveIconWrapper}>
-                    <View style={styles.checkbox}>
-                      {savePassword && (
-                        <FontAwesome5
-                          name="check"
-                          size={moderateWidthScale(14)}
-                          color={(colors as Theme).orangeBrown}
+                <FloatingInput
+                  label={t("password")}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!isPasswordVisible}
+                  placeholder={t("enterYourPassword")}
+                  autoCapitalize="none"
+                  onClear={handlePasswordClear}
+                  renderRightAccessory={() =>
+                    password.length > 0 ? (
+                      <Pressable
+                        onPress={handleToggleVisibility}
+                        style={styles.toggleButton}
+                        hitSlop={moderateWidthScale(8)}
+                      >
+                        <Feather
+                          name={isPasswordVisible ? "eye-off" : "eye"}
+                          size={moderateWidthScale(20)}
+                          color={(colors as Theme).darkGreen}
                         />
-                      )}
+                      </Pressable>
+                    ) : null
+                  }
+                />
+
+                <View style={styles.savePasswordRow}>
+                  <Pressable
+                    onPress={handleToggleSavePassword}
+                    style={styles.savePasswordLeft}
+                    hitSlop={moderateWidthScale(8)}
+                  >
+                    <View style={styles.saveIconWrapper}>
+                      <View style={styles.checkbox}>
+                        {savePassword && (
+                          <FontAwesome5
+                            name="check"
+                            size={moderateWidthScale(14)}
+                            color={(colors as Theme).orangeBrown}
+                          />
+                        )}
+                      </View>
                     </View>
-                  </View>
-                  <Text style={styles.saveText}>{t("savePassword")}</Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleForgetPassword}
-                  hitSlop={moderateWidthScale(8)}
-                >
-                  <Text style={[styles.saveText, styles.forgetPasswordLink]}>
-                    {t("forgetPassword")}
+                    <Text style={styles.saveText}>{t("savePassword")}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleForgetPassword}
+                    hitSlop={moderateWidthScale(8)}
+                  >
+                    <Text style={[styles.saveText, styles.forgetPasswordLink]}>
+                      {t("forgetPassword")}
+                    </Text>
+                  </Pressable>
+                </View>
+
+                <Button
+                  title={t("continue")}
+                  onPress={handleLogin}
+                  disabled={!isFormValid}
+                  loading={isLoading}
+                  containerStyle={styles.primaryButtonWrapper}
+                />
+
+                <SectionSeparator />
+
+                <SocialAuthOptions
+                  onGoogle={() => handleSocialLogin("google")}
+                  onApple={() => handleSocialLogin("apple")}
+                  onFacebook={() => handleSocialLogin("facebook")}
+                  containerStyle={styles.socialList}
+                />
+
+                <View style={styles.footer}>
+                  <Text style={styles.footerText}>
+                    {t("doesntHaveAccount")}{" "}
+                    <Text style={styles.signupLink} onPress={handleSignup}>
+                      {t("signup")}
+                    </Text>
                   </Text>
-                </Pressable>
+                </View>
               </View>
-
-              <Button
-                title={t("continue")}
-                onPress={handleLogin}
-                disabled={!isFormValid}
-                loading={isLoading}
-                containerStyle={styles.primaryButtonWrapper}
-              />
-
-              <SectionSeparator />
-
-              <SocialAuthOptions
-                onGoogle={() => handleSocialLogin("google")}
-                onApple={() => handleSocialLogin("apple")}
-                onFacebook={() => handleSocialLogin("facebook")}
-                containerStyle={styles.socialList}
-              />
-
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>
-                  {t("doesntHaveAccount")}{" "}
-                  <Text style={styles.signupLink} onPress={handleSignup}>
-                    {t("signup")}
-                  </Text>
-                </Text>
-              </View>
-            </View>
+            </ScrollView>
           </View>
         </View>
       </TouchableWithoutFeedback>
