@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Image,
   Keyboard,
+  StatusBar,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -45,11 +46,11 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     header: {
-      paddingVertical: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(20),
-      backgroundColor: theme.background,
+      backgroundColor: theme.darkGreen,
       flexDirection: "row",
       alignItems: "center",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingBottom: moderateHeightScale(12),
     },
     backButton: {
       marginRight: moderateWidthScale(12),
@@ -78,12 +79,12 @@ const createStyles = (theme: Theme) =>
     headerInitials: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     headerName: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     sepLine: {
       width: "100%",
@@ -286,13 +287,13 @@ export default function ChatBoxScreen() {
         "keyboardDidShow",
         (e) => {
           setKeyboardHeight(e.endCoordinates.height);
-        }
+        },
       );
       const keyboardWillHideListener = Keyboard.addListener(
         "keyboardDidHide",
         () => {
           setKeyboardHeight(0);
-        }
+        },
       );
 
       return () => {
@@ -373,8 +374,18 @@ export default function ChatBoxScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.main} edges={["top"]}>
-      <View style={styles.header}>
+    <View style={styles.main}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={theme.darkGreen}
+        translucent
+      />
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top + moderateHeightScale(12) },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -383,7 +394,7 @@ export default function ChatBoxScreen() {
           <MaterialIcons
             name="keyboard-backspace"
             size={moderateWidthScale(24)}
-            color={theme.darkGreen}
+            color={theme.white}
           />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
@@ -432,6 +443,6 @@ export default function ChatBoxScreen() {
           />
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
