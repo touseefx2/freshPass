@@ -167,8 +167,6 @@ export default function Tools() {
 
   // Unlock AI features modal (Hair Tryon – when no quota)
   const [unlockModalVisible, setUnlockModalVisible] = useState(false);
-  const [unlockModalError, setUnlockModalError] = useState<string | null>(null);
-  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
 
   // Hair pipeline processing modal state (single object)
   const [hairPipelineState, setHairPipelineState] =
