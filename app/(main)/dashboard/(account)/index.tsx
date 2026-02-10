@@ -28,7 +28,7 @@ import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 
-const CARD_GAP = 12;
+const CARD_GAP = 10;
 const CARD_WIDTH_PERCENT = "48%";
 
 const createStyles = (theme: Theme) =>
@@ -41,50 +41,47 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     contentContainer: {
-      paddingVertical: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(32),
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingBottom: moderateHeightScale(28),
     },
     title: {
-      fontSize: fontSize.size22,
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     gridContainer: {
-      marginTop: moderateHeightScale(24),
+      marginTop: moderateHeightScale(18),
       flexDirection: "row",
       flexWrap: "wrap",
       gap: moderateWidthScale(CARD_GAP),
     },
     gridItem: {
       width: CARD_WIDTH_PERCENT as any,
-      maxWidth: widthScale(180),
+      maxWidth: widthScale(168),
     },
     shadow: {
       shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.22,
-      shadowRadius: 2.22,
-      elevation: 3,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: moderateWidthScale(4),
+      elevation: 2,
     },
     card: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(14),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      minHeight: moderateHeightScale(120),
+      borderRadius: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      minHeight: moderateHeightScale(88),
       ...Platform.select({
         ios: {
           shadowColor: theme.shadow,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.08,
-          shadowRadius: moderateWidthScale(8),
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.06,
+          shadowRadius: moderateWidthScale(4),
         },
         android: {
-          elevation: 3,
+          elevation: 2,
         },
       }),
     },
@@ -92,24 +89,24 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "flex-start",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(6),
     },
     iconWrap: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(10),
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(8),
       backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
     },
     cardTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(1),
     },
     cardSubtitle: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
@@ -118,19 +115,19 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
     },
     arrowCircle: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
-      borderRadius: moderateWidthScale(14),
+      width: moderateWidthScale(24),
+      height: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(12),
       backgroundColor: theme.lightGreen1,
       alignItems: "center",
       justifyContent: "center",
     },
     newBadge: {
       backgroundColor: theme.green,
-      paddingHorizontal: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(5),
       paddingVertical: moderateHeightScale(2),
-      borderRadius: moderateWidthScale(6),
-      marginRight: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(4),
+      marginRight: moderateWidthScale(4),
     },
     newBadgeText: {
       fontSize: fontSize.size10,
@@ -346,7 +343,7 @@ export default function AccountScreen() {
   ];
 
   const getIconForRow = (key: Row["key"]) => {
-    const iconSize = moderateWidthScale(24);
+    const iconSize = moderateWidthScale(20);
     const iconColor = theme.darkGreen;
     const redColor = theme.red;
     switch (key) {
@@ -452,7 +449,7 @@ export default function AccountScreen() {
                     <View style={styles.iconWrap}>
                       {getIconForRow(row.key)}
                     </View>
-                    {/* <View style={styles.cardHeaderRight}>
+                    <View style={styles.cardHeaderRight}>
                       {showNewBadge && (
                         <View style={styles.newBadge}>
                           <Text style={styles.newBadgeText}>NEW</Text>
@@ -464,12 +461,12 @@ export default function AccountScreen() {
                         ) : !isDelete && !isLogout ? (
                           <MaterialIcons
                             name="keyboard-arrow-right"
-                            size={moderateWidthScale(18)}
+                            size={moderateWidthScale(14)}
                             color={theme.darkGreen}
                           />
                         ) : null}
                       </View>
-                    </View> */}
+                    </View>
                   </View>
                   <View style={styles.cardContent}>
                     <Text
