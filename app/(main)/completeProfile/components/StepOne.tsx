@@ -23,6 +23,7 @@ import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { sortCategoriesByMalePriority } from "@/src/constant/functions";
 
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -170,7 +171,8 @@ export default function StepOne() {
       }>(businessEndpoints.categories);
 
       if (response.success && response.data) {
-        dispatch(setCategories(response.data));
+        const sortedCategories = sortCategoriesByMalePriority(response.data);
+        dispatch(setCategories(sortedCategories));
       }
     } catch (error) {
       Logger.error("Failed to fetch categories:", error);

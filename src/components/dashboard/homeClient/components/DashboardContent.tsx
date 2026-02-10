@@ -29,6 +29,7 @@ import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
 import ShowAppointments from "./ShowAppointments";
+import { sortCategoriesByMalePriority } from "@/src/constant/functions";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const createStyles = (theme: Theme) =>
@@ -551,8 +552,10 @@ export default function DashboardContent() {
       }>(businessEndpoints.categories);
 
       if (response.success && response.data) {
+        const sortedCategories = sortCategoriesByMalePriority(response.data);
+
         // Map API response to component format (imageUrl -> image)
-        const mappedCategories: Category[] = response.data.map((item) => ({
+        const mappedCategories: Category[] = sortedCategories.map((item) => ({
           id: item.id,
           name: item.name,
           image: item.imageUrl,

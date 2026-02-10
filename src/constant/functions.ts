@@ -337,3 +337,28 @@ export const resolveCurrentLocation = async ({
     };
   }
 };
+
+const MALE_CATEGORY_SLUGS = new Set([
+  "barbershop",
+  "hair-salon",
+  "massage",
+  "spa",
+  "tattoo-shop",
+  "health-fitness",
+  "wellness-day-spa",
+  "piercing",
+]);
+
+export function sortCategoriesByMalePriority(categories: any) {
+  return [...categories].sort((a, b) => {
+    const aIsMale = MALE_CATEGORY_SLUGS.has(a.slug);
+    const bIsMale = MALE_CATEGORY_SLUGS.has(b.slug);
+
+    // male categories first
+    if (aIsMale && !bIsMale) return -1;
+    if (!aIsMale && bIsMale) return 1;
+
+    // otherwise keep original order or sort by name
+    return a.name.localeCompare(b.name);
+  });
+}

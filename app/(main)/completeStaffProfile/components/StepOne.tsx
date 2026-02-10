@@ -26,7 +26,10 @@ import {
   setProfileImageUri,
   setAboutYourself,
 } from "@/src/state/slices/completeProfileSlice";
-import { validateName, validateDescription } from "@/src/services/validationService";
+import {
+  validateName,
+  validateDescription,
+} from "@/src/services/validationService";
 import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
@@ -151,14 +154,14 @@ export default function StepOne() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
   const { fullName, profileImageUri, aboutYourself } = useAppSelector(
-    (state) => state.completeProfile
+    (state) => state.completeProfile,
   );
-
- 
 
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [fullNameError, setFullNameError] = useState<string | null>(null);
-  const [aboutYourselfError, setAboutYourselfError] = useState<string | null>(null);
+  const [aboutYourselfError, setAboutYourselfError] = useState<string | null>(
+    null,
+  );
 
   const handleAboutYourselfChange = (text: string) => {
     dispatch(setAboutYourself(text));
@@ -193,7 +196,6 @@ export default function StepOne() {
     dispatch(setProfileImageUri(uri));
   };
 
-
   const handleUploadPhoto = () => {
     setShowImagePickerModal(true);
   };
@@ -208,7 +210,8 @@ export default function StepOne() {
       <View style={styles.titleSec}>
         <Text style={styles.title}>Create your personal profile</Text>
         <Text style={styles.subtitle}>
-          Upload your photo and enter your details to get started with FreshPass.
+          Upload your photo and enter your details to get started with
+          FreshPass.
         </Text>
       </View>
 
@@ -273,9 +276,7 @@ export default function StepOne() {
           placeholder="Full name"
           autoCapitalize="words"
         />
-        {fullNameError && (
-          <Text style={styles.errorText}>{fullNameError}</Text>
-        )}
+        {fullNameError && <Text style={styles.errorText}>{fullNameError}</Text>}
       </View>
 
       <View style={styles.textAreaContainer}>
@@ -310,4 +311,3 @@ export default function StepOne() {
     </View>
   );
 }
-
