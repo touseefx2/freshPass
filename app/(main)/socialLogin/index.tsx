@@ -31,10 +31,50 @@ import SectionSeparator from "@/src/components/sectionSeparator";
 import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
-import { setUser, UserRole } from "@/src/state/slices/userSlice";
-import { setFullName } from "@/src/state/slices/completeProfileSlice";
-// import { LoginManager, AccessToken } from "react-native-fbsdk-next";
+import {
+  setBusinessStatus,
+  setUser,
+  UserRole,
+} from "@/src/state/slices/userSlice";
+import {
+  setAboutYourself,
+  setBusinessName,
+  setFullName,
+  setSalonBusinessHours,
+} from "@/src/state/slices/completeProfileSlice";
+import { LoginManager, AccessToken } from "react-native-fbsdk-next";
 type SocialProvider = "google" | "apple" | "facebook";
+type SocialLoginApiResponse = {
+  success: boolean;
+  message: string;
+  data?: {
+    user: {
+      id: number;
+      name: string;
+      email?: string;
+      phone?: string;
+      country_code?: string;
+      profile_image_url?: string;
+      role: string;
+      rolesCount?: number;
+      createdAt?: string;
+      business_hours?: Array<{
+        day: string;
+        opening_time: string;
+        closing_time: string;
+        break_hours: Array<{
+          start: string;
+          end: string;
+        }>;
+      }>;
+      is_onboarded?: boolean;
+      business_name?: string;
+      description?: string;
+    };
+    token: string;
+    isNewCreated?: boolean;
+  };
+};
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 // IMPORTANT:
@@ -57,7 +97,167 @@ export default function SocialLogin() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const selectedRole = useAppSelector((state) => state.general.role);
+  const currentBusinessStatus = useAppSelector(
+    (state) => state.user.businessStatus
+  );
   console.log("selectedRole", selectedRole);
+
+  const handleSocialLoginResponse = (response: SocialLoginApiResponse) => {
+    if (response.success && response.data) {
+      const { user, token, isNewCreated } = response.data;
+
+      if (user && token) {
+        const userRoleLower = user.role?.toLowerCase();
+
+        if (userRoleLower === "customer") {
+          dispatch(
+            setUser({
+              id: user.id,
+              name: user.name || "",
+              email: user.email || "",
+              description: "",
+              phone: user.phone || "",
+              country_code: user.country_code || "",
+              profile_image_url: user.profile_image_url || "",
+              accessToken: token,
+              userRole: (userRoleLower as UserRole) || null,
+            })
+          );
+
+          if (isNewCreated) {
+            dispatch(setFullName(user.name || ""));
+            router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+          } else {
+            router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+          }
+        }
+
+        if (userRoleLower === "business") {
+          dispatch(
+            setUser({
+              id: user.id,
+              name: user.name || "",
+              email: user.email || "",
+              description: "",
+              phone: user.phone || "",
+              country_code: user.country_code || "",
+              profile_image_url: user.profile_image_url || "",
+              accessToken: token,
+              userRole: (userRoleLower as UserRole) || null,
+            })
+          );
+
+          if (isNewCreated) {
+            dispatch(setFullName(user.name || ""));
+            router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
+          } else {
+            router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+          }
+        }
+
+        if (userRoleLower === "staff") {
+          dispatch(
+            setUser({
+              id: user.id,
+              name: user.name || "",
+              email: user.email || "",
+              description: "",
+              phone: user.phone || "",
+              country_code: user.country_code || "",
+              profile_image_url: user.profile_image_url || "",
+              accessToken: token,
+              userRole: (userRoleLower as UserRole) || null,
+            })
+          );
+
+          if (user?.business_hours && Array.isArray(user.business_hours)) {
+            const parsedBusinessHours: {
+              [key: string]: {
+                isOpen: boolean;
+                fromHours: number;
+                fromMinutes: number;
+                tillHours: number;
+                tillMinutes: number;
+                breaks: Array<{
+                  fromHours: number;
+                  fromMinutes: number;
+                  tillHours: number;
+                  tillMinutes: number;
+                }>;
+              };
+            } = {};
+            user.business_hours.forEach((bh: any) => {
+              // Convert day name to capitalized format (e.g., "monday" -> "Monday")
+              const dayName =
+                bh.day.charAt(0).toUpperCase() + bh.day.slice(1).toLowerCase();
+
+              // Parse opening_time (HH:MM format) - handle null values
+              const [openingHours, openingMinutes] = bh.opening_time
+                ? bh.opening_time.split(":").map(Number)
+                : [0, 0];
+
+              // Parse closing_time (HH:MM format) - handle null values
+              const [closingHours, closingMinutes] = bh.closing_time
+                ? bh.closing_time.split(":").map(Number)
+                : [0, 0];
+
+              // Parse break_hours
+              const breaks = (bh.break_hours || []).map((breakTime: any) => {
+                const [breakStartHours, breakStartMinutes] = breakTime.start
+                  ? breakTime.start.split(":").map(Number)
+                  : [0, 0];
+                const [breakEndHours, breakEndMinutes] = breakTime.end
+                  ? breakTime.end.split(":").map(Number)
+                  : [0, 0];
+
+                return {
+                  fromHours: breakStartHours,
+                  fromMinutes: breakStartMinutes,
+                  tillHours: breakEndHours,
+                  tillMinutes: breakEndMinutes,
+                };
+              });
+
+              parsedBusinessHours[dayName] = {
+                isOpen: !bh.closed,
+                fromHours: openingHours,
+                fromMinutes: openingMinutes,
+                tillHours: closingHours,
+                tillMinutes: closingMinutes,
+                breaks,
+              };
+            });
+
+            dispatch(setSalonBusinessHours(parsedBusinessHours));
+          }
+          dispatch(setFullName(user?.name || ""));
+          dispatch(setAboutYourself(user?.description || ""));
+          dispatch(setBusinessName(user?.business_name || ""));
+
+          if (user?.is_onboarded) {
+            router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+          } else {
+            router.replace(
+              `/(main)/${MAIN_ROUTES.COMPLETE_STAFF_PROFILE}` as any
+            );
+          }
+          if (currentBusinessStatus) {
+            dispatch(
+              setBusinessStatus({
+                ...currentBusinessStatus,
+                onboarding_completed: user?.is_onboarded || false,
+              })
+            );
+          }
+        }
+      }
+    } else {
+      Alert.alert(
+        t("loginFailed"),
+        response.message || t("socialLoginFailedTryAgain")
+      );
+    }
+  };
 
   const generateRandomString = () =>
     Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -115,87 +315,16 @@ export default function SocialLogin() {
       Logger.log("idToken", idToken);
       Logger.log("role", selectedRole);
 
-      const response = await ApiService.post<{
-        success: boolean;
-        message: string;
-        data: {
-          user: {
-            id: number;
-            name: string;
-            email?: string;
-            phone?: string;
-            country_code?: string;
-            profile_image_url?: string;
-            role: string;
-            rolesCount?: number;
-            createdAt?: string;
-          };
-          token: string;
-          isNewCreated?: boolean;
-        };
-      }>(businessEndpoints.socialLogin, {
-        provider: "google",
-        token: idToken,
-        role: selectedRole?.toLowerCase() ?? "",
-      });
-
-      if (response.success && response.data) {
-        const { user, token, isNewCreated } = response.data;
-        if (user && token) {
-          if (user?.role?.toLowerCase() === "customer") {
-            dispatch(
-              setUser({
-                id: user.id,
-                name: user.name || "",
-                email: user.email || "",
-                description: "",
-                phone: user.phone || "",
-                country_code: user.country_code || "",
-                profile_image_url: user.profile_image_url || "",
-                accessToken: token,
-                userRole: (user.role?.toLowerCase() as UserRole) || null,
-              }),
-            );
-
-            if (isNewCreated) {
-              dispatch(setFullName(user.name || ""));
-              router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
-            } else {
-              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-            }
-          }
-          if (user?.role?.toLowerCase() === "business") {
-            dispatch(
-              setUser({
-                id: user.id,
-                name: user.name || "",
-                email: user.email || "",
-                description: "",
-                phone: user.phone || "",
-                country_code: user.country_code || "",
-                profile_image_url: user.profile_image_url || "",
-                accessToken: token,
-                userRole: (user.role?.toLowerCase() as UserRole) || null,
-              }),
-            );
-
-            if (isNewCreated) {
-              dispatch(setFullName(user.name || ""));
-              router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
-            } else {
-              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-            }
-          }
-
-          if (user?.role?.toLowerCase() === "staff") {
-          }
+      const response = await ApiService.post<SocialLoginApiResponse>(
+        businessEndpoints.socialLogin,
+        {
+          provider: "google",
+          token: idToken,
+          role: selectedRole?.toLowerCase() ?? "",
         }
-      } else {
-        Alert.alert(
-          t("loginFailed"),
-          response.message || t("socialLoginFailedTryAgain"),
-        );
-      }
+      );
+
+      handleSocialLoginResponse(response);
     } catch (error: any) {
       Logger.error("Google Sign-In Error:", error);
 
@@ -212,7 +341,7 @@ export default function SocialLogin() {
         // Some other error happened
         Alert.alert(
           t("googleSignInFailed"),
-          error.message || t("errorDuringGoogleSignIn"),
+          error.message || t("errorDuringGoogleSignIn")
         );
       }
     }
@@ -245,7 +374,7 @@ export default function SocialLogin() {
 
       // Get credential state to check if user is authenticated
       const credentialState = await appleAuth.getCredentialStateForUser(
-        appleAuthRequestResponse.user,
+        appleAuthRequestResponse.user
       );
 
       if (credentialState === appleAuth.State.REVOKED) {
@@ -273,6 +402,19 @@ export default function SocialLogin() {
       if (authorizationCode) {
         Logger.log("Apple Authorization Code:", authorizationCode);
       }
+
+      if (identityToken) {
+        const response = await ApiService.post<SocialLoginApiResponse>(
+          businessEndpoints.socialLogin,
+          {
+            provider: "apple",
+            token: identityToken,
+            role: selectedRole?.toLowerCase() ?? "",
+          }
+        );
+
+        handleSocialLoginResponse(response);
+      }
     } catch (error: any) {
       Logger.error("Apple Sign-In Error:", error);
 
@@ -286,13 +428,13 @@ export default function SocialLogin() {
         // Unknown error occurred
         Alert.alert(
           t("appleSignInFailed"),
-          error.message || t("unknownErrorDuringAppleSignIn"),
+          error.message || t("unknownErrorDuringAppleSignIn")
         );
       } else {
         // Some other error happened
         Alert.alert(
           t("appleSignInFailed"),
-          error.message || t("errorDuringAppleSignIn"),
+          error.message || t("errorDuringAppleSignIn")
         );
       }
     }
@@ -330,13 +472,28 @@ export default function SocialLogin() {
 
       Logger.log("Apple Android Sign-In response:", response);
 
-      // TODO: Send response.authorizationCode / response.id_token to backend
-      // similar to Google social login flow when backend for Apple is ready.
+      const idToken = response.id_token;
+
+      if (!idToken) {
+        Alert.alert(t("error"), t("failedToGetIdentityTokenFromApple"));
+        return;
+      }
+
+      const apiResponse = await ApiService.post<SocialLoginApiResponse>(
+        businessEndpoints.socialLogin,
+        {
+          provider: "apple",
+          token: idToken,
+          role: selectedRole?.toLowerCase() ?? "",
+        }
+      );
+
+      handleSocialLoginResponse(apiResponse);
     } catch (error: any) {
       Logger.error("Apple Android Sign-In Error:", error);
       Alert.alert(
         t("appleSignInFailed"),
-        error.message || t("errorDuringAppleSignIn"),
+        error.message || t("errorDuringAppleSignIn")
       );
     }
   };
@@ -367,98 +524,21 @@ export default function SocialLogin() {
       Logger.log("Facebook Access Token:", fbAccessToken);
       Logger.log("role", selectedRole);
 
-      // // Yahan Google jaisa hi backend call kar do
-      // const response = await ApiService.post<{
-      //   success: boolean;
-      //   message: string;
-      //   data: {
-      //     user: {
-      //       id: number;
-      //       name: string;
-      //       email?: string;
-      //       phone?: string;
-      //       country_code?: string;
-      //       profile_image_url?: string;
-      //       role: string;
-      //       rolesCount?: number;
-      //       createdAt?: string;
-      //     };
-      //     token: string;
-      //     isNewCreated?: boolean;
-      //   };
-      // }>(businessEndpoints.socialLogin, {
-      //   provider: "facebook",
-      //   token: fbAccessToken,
-      //   role: selectedRole?.toLowerCase() ?? "",
-      // });
+      const response = await ApiService.post<SocialLoginApiResponse>(
+        businessEndpoints.socialLogin,
+        {
+          provider: "facebook",
+          token: fbAccessToken,
+          role: selectedRole?.toLowerCase() ?? "",
+        }
+      );
 
-      // if (response.success && response.data) {
-      //   const { user, token, isNewCreated } = response.data;
-
-      //   if (user && token) {
-      //     // Yahan bilkul Google jaisi hi user set / navigation logic reuse kar sakte ho
-      //     // Example: (same as Google customer/business blocks)
-      //     if (user?.role?.toLowerCase() === "customer") {
-      //       dispatch(
-      //         setUser({
-      //           id: user.id,
-      //           name: user.name || "",
-      //           email: user.email || "",
-      //           description: "",
-      //           phone: user.phone || "",
-      //           country_code: user.country_code || "",
-      //           profile_image_url: user.profile_image_url || "",
-      //           accessToken: token,
-      //           userRole: (user.role?.toLowerCase() as UserRole) || null,
-      //         }),
-      //       );
-
-      //       if (isNewCreated) {
-      //         dispatch(setFullName(user.name || ""));
-      //         router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
-      //       } else {
-      //         router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-      //       }
-      //     }
-
-      //     if (user?.role?.toLowerCase() === "business") {
-      //       dispatch(
-      //         setUser({
-      //           id: user.id,
-      //           name: user.name || "",
-      //           email: user.email || "",
-      //           description: "",
-      //           phone: user.phone || "",
-      //           country_code: user.country_code || "",
-      //           profile_image_url: user.profile_image_url || "",
-      //           accessToken: token,
-      //           userRole: (user.role?.toLowerCase() as UserRole) || null,
-      //         }),
-      //       );
-
-      //       if (isNewCreated) {
-      //         dispatch(setFullName(user.name || ""));
-      //         router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
-      //       } else {
-      //         router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-      //       }
-      //     }
-
-      //     if (user?.role?.toLowerCase() === "staff") {
-      //       // TODO: staff ke liye bhi yahan logic add karo agar chahiye
-      //     }
-      //   }
-      // } else {
-      //   Alert.alert(
-      //     t("loginFailed"),
-      //     response.message || t("socialLoginFailedTryAgain"),
-      //   );
-      // }
+      handleSocialLoginResponse(response);
     } catch (error: any) {
       Logger.error("Facebook Login Error:", error);
       Alert.alert(
         t("facebookSignInFailed"),
-        error.message || t("errorDuringFacebookSignIn"),
+        error.message || t("errorDuringFacebookSignIn")
       );
     }
   };
@@ -473,7 +553,7 @@ export default function SocialLogin() {
         await handleAppleLoginAndroid();
       }
     } else if (provider === "facebook") {
-      // await handleFacebookLogin();
+      await handleFacebookLogin();
     }
   };
 
