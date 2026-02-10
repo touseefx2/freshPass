@@ -52,8 +52,6 @@ import {
   PeopleIcon,
   CloseIconBusinessDetail,
   BackArrowIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
   ChevronRightIconBusinessDetail,
 } from "@/assets/icons";
 import InclusionsModal from "@/src/components/inclusionsModal";
@@ -62,6 +60,9 @@ import Button from "@/src/components/button";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
 import RetryButton from "@/src/components/retryButton";
+import ExploreSegmentToggle, {
+  type ExploreSegmentValue,
+} from "../dashboard/(explore)/ExploreSegmentToggle";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -442,7 +443,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
       marginBottom: moderateHeightScale(16),
-      paddingVertical: moderateWidthScale(16),
+      // paddingVertical: moderateWidthScale(16),
     },
     serviceSectionHeader: {
       flexDirection: "row",
@@ -462,6 +463,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightGreen05,
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(12),
+      borderTopRightRadius: moderateWidthScale(12),
+      borderTopLeftRadius: moderateWidthScale(12),
     },
     filterButton: {
       paddingHorizontal: moderateWidthScale(16),
@@ -716,6 +719,74 @@ const createStyles = (theme: Theme) =>
       color: theme.selectCard,
       textDecorationLine: "underline",
       textDecorationColor: theme.selectCard,
+    },
+    noServiceContainer: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    noServiceText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
+    seeMoreCard: {
+      marginHorizontal: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(16),
+      overflow: "hidden",
+      backgroundColor: theme.white,
+    },
+    seeMorePreviewContainer: {
+      opacity: 0.3,
+    },
+    seeMoreTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(8),
+    },
+    seeMoreBottomRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: moderateHeightScale(4),
+      gap: moderateWidthScale(8),
+    },
+    seeMoreOverlayCard: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+    },
+    seeMoreTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "right",
+    },
+    seeMoreSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "right",
+    },
+    seeMorePreviewTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      flex: 1,
+    },
+    seeMorePreviewSubtitle: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     ratingsSectionContent: {
       // No padding here - let scroll be full width
@@ -1115,8 +1186,12 @@ export default function BusinessDetailScreen() {
     "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=800&q=80",
   );
   const [isAboutExpanded, setIsAboutExpanded] = useState(false);
-  const [isMembershipExpanded, setIsMembershipExpanded] = useState(false);
-  const [isIndividualExpanded, setIsIndividualExpanded] = useState(false);
+  const [serviceSegment, setServiceSegment] =
+    useState<ExploreSegmentValue>("individual");
+  const [showAllIndividualServices, setShowAllIndividualServices] =
+    useState(false);
+  const [showAllMembershipSubscriptions, setShowAllMembershipSubscriptions] =
+    useState(false);
   const [selectedMembershipFilter, setSelectedMembershipFilter] =
     useState("All");
   const [selectedServiceFilter, setSelectedServiceFilter] = useState("All");
@@ -1978,471 +2053,614 @@ export default function BusinessDetailScreen() {
     );
   };
 
-  const renderServiceContent = () => (
-    <View
-      ref={serviceSectionRef}
-      onLayout={() => {
-        measureSectionPosition(serviceSectionRef, "service");
-      }}
-      style={[
-        styles.contentContainer,
-        { paddingHorizontal: moderateWidthScale(20) },
-      ]}
-    >
-      {/* Membership Subscriptions Section */}
-      <View style={[styles.serviceSection, styles.shadow]}>
-        <TouchableOpacity
+  const renderServiceContent = () => {
+    const hasMemberships = membershipSubscriptions.length > 0;
+    const hasIndividualServices = individualServices.length > 0;
+
+    const shouldShowMembershipMoreCard =
+      !showAllMembershipSubscriptions && membershipSubscriptions.length > 3;
+    const shouldShowIndividualMoreCard =
+      !showAllIndividualServices && individualServices.length > 3;
+
+    const displayedMembershipSubscriptions = showAllMembershipSubscriptions
+      ? membershipSubscriptions
+      : shouldShowMembershipMoreCard
+      ? membershipSubscriptions.slice(0, 3)
+      : membershipSubscriptions;
+
+    const displayedIndividualServices = showAllIndividualServices
+      ? individualServices
+      : shouldShowIndividualMoreCard
+      ? individualServices.slice(0, 3)
+      : individualServices;
+
+    const membershipPreview =
+      !showAllMembershipSubscriptions && membershipSubscriptions.length > 3
+        ? membershipSubscriptions[3]
+        : null;
+
+    const individualPreview =
+      !showAllIndividualServices && individualServices.length > 3
+        ? individualServices[3]
+        : null;
+
+    return (
+      <View
+        ref={serviceSectionRef}
+        onLayout={() => {
+          measureSectionPosition(serviceSectionRef, "service");
+        }}
+        style={[
+          styles.contentContainer,
+          { paddingHorizontal: moderateWidthScale(20) },
+        ]}
+      >
+        <ExploreSegmentToggle
+          value={serviceSegment}
+          onSelect={setServiceSegment}
+        />
+
+        {/* Membership Subscriptions Section */}
+        <View
           style={[
-            styles.serviceSectionHeader,
-            isMembershipExpanded && { marginBottom: moderateHeightScale(16) },
+            styles.serviceSection,
+            styles.shadow,
+            serviceSegment !== "subscriptions" && { display: "none" },
           ]}
-          onPress={() => setIsMembershipExpanded(!isMembershipExpanded)}
         >
-          <Text style={styles.serviceSectionTitle}>
-            {t("membershipSubscriptionsList")}
-          </Text>
-          {isMembershipExpanded ? (
-            <ChevronUpIcon
-              width={widthScale(10)}
-              height={heightScale(6)}
-              color={theme.darkGreen}
-            />
-          ) : (
-            <ChevronDownIcon
-              width={widthScale(10)}
-              height={heightScale(6)}
-              color={theme.darkGreen}
-            />
-          )}
-        </TouchableOpacity>
-
-        {isMembershipExpanded && (
           <>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterContainer}
-            >
-              {membershipFilters.map((filter) => (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.filterButton,
-                    selectedMembershipFilter === filter &&
-                      styles.filterButtonActive,
-                  ]}
-                  onPress={() => setSelectedMembershipFilter(filter)}
+            {hasMemberships ? (
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterContainer}
                 >
-                  <Text
-                    style={[
-                      styles.filterButtonText,
-                      selectedMembershipFilter === filter &&
-                        styles.filterButtonTextActive,
-                    ]}
-                  >
-                    {filter}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  {membershipFilters.map((filter) => (
+                    <TouchableOpacity
+                      key={filter}
+                      style={[
+                        styles.filterButton,
+                        selectedMembershipFilter === filter &&
+                          styles.filterButtonActive,
+                      ]}
+                      onPress={() => setSelectedMembershipFilter(filter)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterButtonText,
+                          selectedMembershipFilter === filter &&
+                            styles.filterButtonTextActive,
+                        ]}
+                      >
+                        {filter}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
 
-            {membershipSubscriptions.map((subscription: any, index: number) => (
-              <View
-                key={subscription.id}
-                style={[
-                  styles.membershipCard,
-                  index === membershipSubscriptions.length - 1 && {
-                    borderBottomWidth: 0,
-                  },
-                ]}
-              >
-                <View style={styles.membershipCardContent}>
-                  <View style={styles.membershipCardLeft}>
-                    <Text style={styles.membershipTitle}>
-                      {subscription.title}
-                    </Text>
-                    <Text style={styles.membershipVisits}>
-                      {subscription.visits}
-                    </Text>
-                    <View style={styles.membershipInclusions}>
-                      {subscription.inclusions.length > 2 ? (
-                        <>
-                          {subscription.inclusions
-                            .slice(0, 2)
-                            .map((inclusion: string, index: number) => (
-                              <Text key={index} style={styles.inclusionItem}>
-                                {inclusion}
-                              </Text>
-                            ))}
+                {displayedMembershipSubscriptions.map(
+                  (subscription: any, index: number) => (
+                    <View
+                      key={subscription.id}
+                      style={[
+                        styles.membershipCard,
+                        index ===
+                          displayedMembershipSubscriptions.length - 1 && {
+                          borderBottomWidth: 0,
+                        },
+                      ]}
+                    >
+                      <View style={styles.membershipCardContent}>
+                        <View style={styles.membershipCardLeft}>
+                          <Text style={styles.membershipTitle}>
+                            {subscription.title}
+                          </Text>
+                          <Text style={styles.membershipVisits}>
+                            {subscription.visits}
+                          </Text>
+                          <View style={styles.membershipInclusions}>
+                            {subscription.inclusions.length > 2 ? (
+                              <>
+                                {subscription.inclusions
+                                  .slice(0, 2)
+                                  .map(
+                                    (
+                                      inclusion: string,
+                                      inclusionIndex: number,
+                                    ) => (
+                                      <Text
+                                        key={inclusionIndex}
+                                        style={styles.inclusionItem}
+                                      >
+                                        {inclusion}
+                                      </Text>
+                                    ),
+                                  )}
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    setSelectedInclusions(
+                                      subscription.inclusions,
+                                    );
+                                    setInclusionsModalVisible(true);
+                                  }}
+                                >
+                                  <Text style={styles.moreText}>
+                                    and +{subscription.inclusions.length - 2}{" "}
+                                    more
+                                  </Text>
+                                </TouchableOpacity>
+                              </>
+                            ) : (
+                              subscription.inclusions.map(
+                                (inclusion: string, inclusionIndex: number) => (
+                                  <Text
+                                    key={inclusionIndex}
+                                    style={styles.inclusionItem}
+                                  >
+                                    {inclusion}
+                                  </Text>
+                                ),
+                              )
+                            )}
+                          </View>
+                        </View>
+                        <View style={styles.membershipCardRight}>
+                          <View style={styles.membershipPriceLeft}>
+                            <Text style={styles.membershipPrice}>
+                              ${subscription.price.toFixed(2)} USD
+                            </Text>
+                            <Text style={styles.membershipOriginalPrice}>
+                              ${subscription.originalPrice.toFixed(2)}
+                            </Text>
+                          </View>
                           <TouchableOpacity
+                            style={styles.bookNowButton}
                             onPress={() => {
-                              setSelectedInclusions(subscription.inclusions);
-                              setInclusionsModalVisible(true);
+                              router.push({
+                                pathname:
+                                  "/(main)/bookingNow/checkoutSubscription",
+                                params: {
+                                  subscriptionId: subscription.id.toString(),
+                                  subscriptionName: subscription.title,
+                                  subscriptionPrice:
+                                    subscription.price.toString(),
+                                  subscriptionOriginalPrice:
+                                    subscription.originalPrice.toString(),
+                                  subscriptionVisits: subscription.visits,
+                                  subscriptionInclusions: JSON.stringify(
+                                    subscription.inclusions,
+                                  ),
+                                  businessId:
+                                    businessData?.id?.toString() ||
+                                    params.business_id ||
+                                    "",
+                                  businessName: businessData?.name || "",
+                                  businessLogo: businessData?.logo_url || "",
+                                  screenName: "businessDetail",
+                                },
+                              });
                             }}
                           >
-                            <Text style={styles.moreText}>
-                              and +{subscription.inclusions.length - 2} more
+                            <Text style={styles.bookNowButtonText}>
+                              {t("bookNow")}
                             </Text>
                           </TouchableOpacity>
-                        </>
-                      ) : (
-                        subscription.inclusions.map(
-                          (inclusion: string, index: number) => (
-                            <Text key={index} style={styles.inclusionItem}>
-                              {inclusion}
-                            </Text>
-                          ),
-                        )
-                      )}
+                        </View>
+                      </View>
                     </View>
-                  </View>
-                  <View style={styles.membershipCardRight}>
-                    <View style={styles.membershipPriceLeft}>
-                      <Text style={styles.membershipPrice}>
-                        ${subscription.price.toFixed(2)} USD
-                      </Text>
-                      <Text style={styles.membershipOriginalPrice}>
-                        ${subscription.originalPrice.toFixed(2)}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.bookNowButton}
-                      onPress={() => {
-                        router.push({
-                          pathname: "/(main)/bookingNow/checkoutSubscription",
-                          params: {
-                            subscriptionId: subscription.id.toString(),
-                            subscriptionName: subscription.title,
-                            subscriptionPrice: subscription.price.toString(),
-                            subscriptionOriginalPrice:
-                              subscription.originalPrice.toString(),
-                            subscriptionVisits: subscription.visits,
-                            subscriptionInclusions: JSON.stringify(
-                              subscription.inclusions,
-                            ),
-                            businessId:
-                              businessData?.id?.toString() ||
-                              params.business_id ||
-                              "",
-                            businessName: businessData?.name || "",
-                            businessLogo: businessData?.logo_url || "",
-                            screenName: "businessDetail",
-                          },
-                        });
-                      }}
-                    >
-                      <Text style={styles.bookNowButtonText}>
-                        {t("bookNow")}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </>
-        )}
-      </View>
+                  ),
+                )}
 
-      {/* Individual Services Section */}
-      <View style={[styles.serviceSection, styles.shadow]}>
-        <TouchableOpacity
-          style={[
-            styles.serviceSectionHeader,
-            isIndividualExpanded && { marginBottom: moderateHeightScale(16) },
-            styles.shadow,
-          ]}
-          onPress={() => setIsIndividualExpanded(!isIndividualExpanded)}
-        >
-          <Text style={styles.serviceSectionTitle}>
-            {t("individualServices")}
-          </Text>
-          {isIndividualExpanded ? (
-            <ChevronUpIcon
-              width={widthScale(10)}
-              height={heightScale(6)}
-              color={theme.darkGreen}
-            />
-          ) : (
-            <ChevronDownIcon
-              width={widthScale(10)}
-              height={heightScale(6)}
-              color={theme.darkGreen}
-            />
-          )}
-        </TouchableOpacity>
-
-        {isIndividualExpanded && (
-          <>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterContainer}
-            >
-              {serviceFilters.map((filter) => (
-                <TouchableOpacity
-                  key={filter}
-                  style={[
-                    styles.filterButton,
-                    selectedServiceFilter === filter &&
-                      styles.filterButtonActive,
-                  ]}
-                  onPress={() => setSelectedServiceFilter(filter)}
-                >
-                  <Text
-                    style={[
-                      styles.filterButtonText,
-                      selectedServiceFilter === filter &&
-                        styles.filterButtonTextActive,
-                    ]}
+                {shouldShowMembershipMoreCard && membershipPreview && (
+                  <TouchableOpacity
+                    style={[styles.seeMoreCard, styles.shadow]}
+                    onPress={() => setShowAllMembershipSubscriptions(true)}
                   >
-                    {filter}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {individualServices.map((service: any, index: number) => (
-              <View
-                key={service.id}
-                style={[
-                  styles.serviceCard,
-                  index === individualServices.length - 1 && {
-                    borderBottomWidth: 0,
-                  },
-                ]}
-              >
-                <View style={styles.serviceCardContent}>
-                  <View style={styles.serviceCardLeft}>
-                    {service.label && (
-                      <View style={styles.serviceLabel}>
-                        <Text style={styles.serviceLabelText}>
-                          {service.label}
+                    <View
+                      style={[
+                        styles.membershipCardContent,
+                        styles.seeMorePreviewContainer,
+                      ]}
+                    >
+                      <View style={styles.membershipCardLeft}>
+                        <Text style={styles.membershipTitle}>
+                          {membershipPreview.title}
+                        </Text>
+                        <Text style={styles.membershipVisits}>
+                          {membershipPreview.visits}
                         </Text>
                       </View>
-                    )}
-                    <Text style={styles.serviceName}>{service.name}</Text>
-                    <Text style={styles.serviceDescription}>
-                      {service.description}
-                    </Text>
-                  </View>
-                  <View style={styles.serviceCardRight}>
-                    <View style={styles.servicePriceContainer}>
-                      <Text style={styles.serviceOriginalPrice}>
-                        ${service.originalPrice.toFixed(2)}
+                      <View style={styles.membershipCardRight}>
+                        <View style={styles.membershipPriceLeft}>
+                          <Text style={styles.membershipPrice}>
+                            ${membershipPreview.price.toFixed(2)} USD
+                          </Text>
+                          <Text style={styles.membershipOriginalPrice}>
+                            ${membershipPreview.originalPrice.toFixed(2)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    <View style={styles.seeMoreOverlayCard}>
+                      <Text style={styles.seeMoreTitle}>
+                        {t("exploreMore")}
                       </Text>
-                      <Text style={styles.servicePrice}>
-                        ${service.price.toFixed(2)} USD
+                      <Text style={styles.seeMoreSubtitle}>
+                        {t("resultsCount_other", {
+                          count: membershipSubscriptions.length,
+                        })}
                       </Text>
                     </View>
-                    <Text style={styles.serviceDuration}>
-                      {service.duration}
-                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <View style={styles.noServiceContainer}>
+                <Text style={styles.noServiceText}>
+                  {t("noSubscriptionListFound")}
+                </Text>
+              </View>
+            )}
+          </>
+        </View>
+
+        {/* Individual Services Section */}
+        <View
+          style={[
+            styles.serviceSection,
+            styles.shadow,
+            serviceSegment !== "individual" && { display: "none" },
+          ]}
+        >
+          <>
+            {hasIndividualServices ? (
+              <>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterContainer}
+                >
+                  {serviceFilters.map((filter) => (
                     <TouchableOpacity
-                      style={styles.bookNowButton}
-                      onPress={() => {
-                        // Set business data in Redux
-                        const serviceData = {
-                          id: service.id,
-                          name: service.name,
-                          description: service.description,
-                          price: service.price,
-                          originalPrice: service.originalPrice,
-                          duration: service.duration,
-                          label: service.label || null,
-                        };
-                        const allServicesData = individualServices.map(
-                          (s: any) => ({
-                            id: s.id,
-                            name: s.name,
-                            description: s.description,
-                            price: s.price,
-                            originalPrice: s.originalPrice,
-                            duration: s.duration,
-                            label: s.label || null,
-                          }),
-                        );
-                        // Parse business hours from API format to Redux format
-                        const parseTimeToHoursMinutes = (
-                          timeString: string | null | undefined,
-                        ): { hours: number; minutes: number } => {
-                          if (!timeString || typeof timeString !== "string") {
-                            return { hours: 0, minutes: 0 };
-                          }
-                          const [hours, minutes] = timeString
-                            .split(":")
-                            .map(Number);
-                          return { hours: hours || 0, minutes: minutes || 0 };
-                        };
-
-                        const getDayDisplayFormat = (day: string): string => {
-                          if (!day) return day;
-                          const dayLower = day.toLowerCase();
-                          const dayMap: { [key: string]: string } = {
-                            monday: "Monday",
-                            tuesday: "Tuesday",
-                            wednesday: "Wednesday",
-                            thursday: "Thursday",
-                            friday: "Friday",
-                            saturday: "Saturday",
-                            sunday: "Sunday",
-                          };
-                          return dayMap[dayLower] || day;
-                        };
-
-                        const parseBusinessHours = (
-                          hoursArray: any[] | null | undefined,
-                        ) => {
-                          if (
-                            !hoursArray ||
-                            !Array.isArray(hoursArray) ||
-                            hoursArray.length === 0
-                          ) {
-                            return null;
-                          }
-
-                          const businessHours: { [key: string]: any } = {};
-
-                          // Initialize all days with default closed state
-                          const DAYS = [
-                            "Monday",
-                            "Tuesday",
-                            "Wednesday",
-                            "Thursday",
-                            "Friday",
-                            "Saturday",
-                            "Sunday",
-                          ];
-                          DAYS.forEach((day) => {
-                            businessHours[day] = {
-                              isOpen: false,
-                              fromHours: 0,
-                              fromMinutes: 0,
-                              tillHours: 0,
-                              tillMinutes: 0,
-                              breaks: [],
-                            };
-                          });
-
-                          // Parse API hours
-                          hoursArray.forEach((dayData: any) => {
-                            const dayName = getDayDisplayFormat(dayData.day);
-                            if (!DAYS.includes(dayName)) return;
-
-                            let fromHours = 0;
-                            let fromMinutes = 0;
-                            let tillHours = 0;
-                            let tillMinutes = 0;
-
-                            if (dayData.opening_time) {
-                              const parsed = parseTimeToHoursMinutes(
-                                dayData.opening_time,
-                              );
-                              fromHours = parsed.hours;
-                              fromMinutes = parsed.minutes;
-                            }
-
-                            if (dayData.closing_time) {
-                              const parsed = parseTimeToHoursMinutes(
-                                dayData.closing_time,
-                              );
-                              tillHours = parsed.hours;
-                              tillMinutes = parsed.minutes;
-                            }
-
-                            const breaks = (dayData.break_hours || []).map(
-                              (breakTime: any) => {
-                                const {
-                                  hours: breakFromHours,
-                                  minutes: breakFromMinutes,
-                                } = parseTimeToHoursMinutes(
-                                  breakTime.start || "00:00",
-                                );
-                                const {
-                                  hours: breakTillHours,
-                                  minutes: breakTillMinutes,
-                                } = parseTimeToHoursMinutes(
-                                  breakTime.end || "00:00",
-                                );
-                                return {
-                                  fromHours: breakFromHours,
-                                  fromMinutes: breakFromMinutes,
-                                  tillHours: breakTillHours,
-                                  tillMinutes: breakTillMinutes,
-                                };
-                              },
-                            );
-
-                            businessHours[dayName] = {
-                              isOpen: !dayData.closed,
-                              fromHours,
-                              fromMinutes,
-                              tillHours,
-                              tillMinutes,
-                              breaks,
-                            };
-                          });
-
-                          return businessHours;
-                        };
-
-                        // Map staff members with working_hours
-                        const staffMembersData = (businessData?.staff || [])
-                          .filter(
-                            (staff: any) =>
-                              staff.invitation_status === "accepted",
-                          )
-                          .map((staff: any) => {
-                            // Construct image URL from API response
-                            let image = DEFAULT_AVATAR_URL;
-                            if (staff.avatar) {
-                              image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
-                            }
-
-                            // Parse working_hours if available (even if empty array)
-                            const staffWorkingHours = parseBusinessHours(
-                              staff.working_hours,
-                            );
-
-                            return {
-                              id: staff.id || staff.user_id || 0,
-                              name: staff.name || t("staffMemberFallback"),
-                              experience: staff?.description ?? null,
-                              image: image,
-                              working_hours: staffWorkingHours,
-                            };
-                          });
-
-                        const businessHoursData = parseBusinessHours(
-                          businessData?.hours,
-                        );
-
-                        const businessPayload = {
-                          selectedService: serviceData,
-                          allServices: allServicesData,
-                          staffMembers: staffMembersData,
-                          businessId: params.business_id || "",
-                          businessHours: businessHoursData,
-                        };
-                        dispatch(setBusinessDataAction(businessPayload));
-                        // Navigate to bookingNow without params
-                        router.push({
-                          pathname: "/(main)/bookingNow",
-                        });
-                      }}
+                      key={filter}
+                      style={[
+                        styles.filterButton,
+                        selectedServiceFilter === filter &&
+                          styles.filterButtonActive,
+                      ]}
+                      onPress={() => setSelectedServiceFilter(filter)}
                     >
-                      <Text style={styles.bookNowButtonText}>
-                        {t("bookNow")}
+                      <Text
+                        style={[
+                          styles.filterButtonText,
+                          selectedServiceFilter === filter &&
+                            styles.filterButtonTextActive,
+                        ]}
+                      >
+                        {filter}
                       </Text>
                     </TouchableOpacity>
-                  </View>
-                </View>
+                  ))}
+                </ScrollView>
+
+                {displayedIndividualServices.map(
+                  (service: any, index: number) => (
+                    <View
+                      key={service.id}
+                      style={[
+                        styles.serviceCard,
+                        index === displayedIndividualServices.length - 1 && {
+                          borderBottomWidth: 0,
+                        },
+                      ]}
+                    >
+                      <View style={styles.serviceCardContent}>
+                        <View style={styles.serviceCardLeft}>
+                          {service.label && (
+                            <View style={styles.serviceLabel}>
+                              <Text style={styles.serviceLabelText}>
+                                {service.label}
+                              </Text>
+                            </View>
+                          )}
+                          <Text style={styles.serviceName}>{service.name}</Text>
+                          <Text style={styles.serviceDescription}>
+                            {service.description}
+                          </Text>
+                        </View>
+                        <View style={styles.serviceCardRight}>
+                          <View style={styles.servicePriceContainer}>
+                            <Text style={styles.serviceOriginalPrice}>
+                              ${service.originalPrice.toFixed(2)}
+                            </Text>
+                            <Text style={styles.servicePrice}>
+                              ${service.price.toFixed(2)} USD
+                            </Text>
+                          </View>
+                          <Text style={styles.serviceDuration}>
+                            {service.duration}
+                          </Text>
+                          <TouchableOpacity
+                            style={styles.bookNowButton}
+                            onPress={() => {
+                              // Set business data in Redux
+                              const serviceData = {
+                                id: service.id,
+                                name: service.name,
+                                description: service.description,
+                                price: service.price,
+                                originalPrice: service.originalPrice,
+                                duration: service.duration,
+                                label: service.label || null,
+                              };
+                              const allServicesData = individualServices.map(
+                                (s: any) => ({
+                                  id: s.id,
+                                  name: s.name,
+                                  description: s.description,
+                                  price: s.price,
+                                  originalPrice: s.originalPrice,
+                                  duration: s.duration,
+                                  label: s.label || null,
+                                }),
+                              );
+                              // Parse business hours from API format to Redux format
+                              const parseTimeToHoursMinutes = (
+                                timeString: string | null | undefined,
+                              ): { hours: number; minutes: number } => {
+                                if (
+                                  !timeString ||
+                                  typeof timeString !== "string"
+                                ) {
+                                  return { hours: 0, minutes: 0 };
+                                }
+                                const [hours, minutes] = timeString
+                                  .split(":")
+                                  .map(Number);
+                                return {
+                                  hours: hours || 0,
+                                  minutes: minutes || 0,
+                                };
+                              };
+
+                              const getDayDisplayFormat = (
+                                day: string,
+                              ): string => {
+                                if (!day) return day;
+                                const dayLower = day.toLowerCase();
+                                const dayMap: { [key: string]: string } = {
+                                  monday: "Monday",
+                                  tuesday: "Tuesday",
+                                  wednesday: "Wednesday",
+                                  thursday: "Thursday",
+                                  friday: "Friday",
+                                  saturday: "Saturday",
+                                  sunday: "Sunday",
+                                };
+                                return dayMap[dayLower] || day;
+                              };
+
+                              const parseBusinessHours = (
+                                hoursArray: any[] | null | undefined,
+                              ) => {
+                                if (
+                                  !hoursArray ||
+                                  !Array.isArray(hoursArray) ||
+                                  hoursArray.length === 0
+                                ) {
+                                  return null;
+                                }
+
+                                const businessHours: { [key: string]: any } =
+                                  {};
+
+                                // Initialize all days with default closed state
+                                const DAYS = [
+                                  "Monday",
+                                  "Tuesday",
+                                  "Wednesday",
+                                  "Thursday",
+                                  "Friday",
+                                  "Saturday",
+                                  "Sunday",
+                                ];
+                                DAYS.forEach((day) => {
+                                  businessHours[day] = {
+                                    isOpen: false,
+                                    fromHours: 0,
+                                    fromMinutes: 0,
+                                    tillHours: 0,
+                                    tillMinutes: 0,
+                                    breaks: [],
+                                  };
+                                });
+
+                                // Parse API hours
+                                hoursArray.forEach((dayData: any) => {
+                                  const dayName = getDayDisplayFormat(
+                                    dayData.day,
+                                  );
+                                  if (!DAYS.includes(dayName)) return;
+
+                                  let fromHours = 0;
+                                  let fromMinutes = 0;
+                                  let tillHours = 0;
+                                  let tillMinutes = 0;
+
+                                  if (dayData.opening_time) {
+                                    const parsed = parseTimeToHoursMinutes(
+                                      dayData.opening_time,
+                                    );
+                                    fromHours = parsed.hours;
+                                    fromMinutes = parsed.minutes;
+                                  }
+
+                                  if (dayData.closing_time) {
+                                    const parsed = parseTimeToHoursMinutes(
+                                      dayData.closing_time,
+                                    );
+                                    tillHours = parsed.hours;
+                                    tillMinutes = parsed.minutes;
+                                  }
+
+                                  const breaks = (
+                                    dayData.break_hours || []
+                                  ).map((breakTime: any) => {
+                                    const {
+                                      hours: breakFromHours,
+                                      minutes: breakFromMinutes,
+                                    } = parseTimeToHoursMinutes(
+                                      breakTime.start || "00:00",
+                                    );
+                                    const {
+                                      hours: breakTillHours,
+                                      minutes: breakTillMinutes,
+                                    } = parseTimeToHoursMinutes(
+                                      breakTime.end || "00:00",
+                                    );
+                                    return {
+                                      fromHours: breakFromHours,
+                                      fromMinutes: breakFromMinutes,
+                                      tillHours: breakTillHours,
+                                      tillMinutes: breakTillMinutes,
+                                    };
+                                  });
+
+                                  businessHours[dayName] = {
+                                    isOpen: !dayData.closed,
+                                    fromHours,
+                                    fromMinutes,
+                                    tillHours,
+                                    tillMinutes,
+                                    breaks,
+                                  };
+                                });
+
+                                return businessHours;
+                              };
+
+                              // Map staff members with working_hours
+                              const staffMembersData = (
+                                businessData?.staff || []
+                              )
+                                .filter(
+                                  (staff: any) =>
+                                    staff.invitation_status === "accepted",
+                                )
+                                .map((staff: any) => {
+                                  // Construct image URL from API response
+                                  let image = DEFAULT_AVATAR_URL;
+                                  if (staff.avatar) {
+                                    image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+                                  }
+
+                                  // Parse working_hours if available (even if empty array)
+                                  const staffWorkingHours = parseBusinessHours(
+                                    staff.working_hours,
+                                  );
+
+                                  return {
+                                    id: staff.id || staff.user_id || 0,
+                                    name:
+                                      staff.name || t("staffMemberFallback"),
+                                    experience: staff?.description ?? null,
+                                    image: image,
+                                    working_hours: staffWorkingHours,
+                                  };
+                                });
+
+                              const businessHoursData = parseBusinessHours(
+                                businessData?.hours,
+                              );
+
+                              const businessPayload = {
+                                selectedService: serviceData,
+                                allServices: allServicesData,
+                                staffMembers: staffMembersData,
+                                businessId: params.business_id || "",
+                                businessHours: businessHoursData,
+                              };
+                              dispatch(setBusinessDataAction(businessPayload));
+                              // Navigate to bookingNow without params
+                              router.push({
+                                pathname: "/(main)/bookingNow",
+                              });
+                            }}
+                          >
+                            <Text style={styles.bookNowButtonText}>
+                              {t("bookNow")}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  ),
+                )}
+
+                {shouldShowIndividualMoreCard && individualPreview && (
+                  <TouchableOpacity
+                    style={[styles.seeMoreCard, styles.shadow]}
+                    onPress={() => setShowAllIndividualServices(true)}
+                  >
+                    <View
+                      style={[
+                        styles.serviceCardContent,
+                        styles.seeMorePreviewContainer,
+                      ]}
+                    >
+                      <View style={styles.serviceCardLeft}>
+                        {individualPreview.label && (
+                          <View style={styles.serviceLabel}>
+                            <Text style={styles.serviceLabelText}>
+                              {individualPreview.label}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={styles.serviceName}>
+                          {individualPreview.name}
+                        </Text>
+                        <Text style={styles.serviceDescription}>
+                          {individualPreview.description}
+                        </Text>
+                      </View>
+                      <View style={styles.serviceCardRight}>
+                        <View style={styles.servicePriceContainer}>
+                          <Text style={styles.serviceOriginalPrice}>
+                            ${individualPreview.originalPrice.toFixed(2)}
+                          </Text>
+                          <Text style={styles.servicePrice}>
+                            ${individualPreview.price.toFixed(2)} USD
+                          </Text>
+                        </View>
+                        <Text style={styles.serviceDuration}>
+                          {individualPreview.duration}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.seeMoreOverlayCard}>
+                      <Text style={styles.seeMoreTitle}>
+                        {t("exploreMore")}
+                      </Text>
+                      <Text style={styles.seeMoreSubtitle}>
+                        {t("resultsCount_other", {
+                          count: individualServices.length,
+                        })}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <View style={styles.noServiceContainer}>
+                <Text style={styles.noServiceText}>{t("noServicesFound")}</Text>
               </View>
-            ))}
+            )}
           </>
-        )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderStaffContent = () => {
     if (staffMembers.length === 0) {
