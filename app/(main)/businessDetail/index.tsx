@@ -76,7 +76,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingTop: moderateHeightScale(35),
+      paddingTop: moderateHeightScale(Platform.OS === "ios" ? 45 : 35),
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(12),
       position: "absolute",
@@ -107,7 +107,7 @@ const createStyles = (theme: Theme) =>
     logoText: {
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.darkGreen,
     },
     headerRight: {
       flexDirection: "row",
@@ -1108,7 +1108,7 @@ export default function BusinessDetailScreen() {
   const params = useLocalSearchParams<{ business_id?: string }>();
   const [activeTab, setActiveTab] = useState<
     "Details" | "Service" | "Ratings" | "Staff"
-  >("Details");
+  >("Service");
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentHeroImage, setCurrentHeroImage] = useState<string>(
@@ -1778,8 +1778,8 @@ export default function BusinessDetailScreen() {
     const displayText = isAboutExpanded
       ? aboutText
       : shouldShowReadMore
-        ? aboutText.substring(0, 220) + "..."
-        : aboutText;
+      ? aboutText.substring(0, 220) + "..."
+      : aboutText;
 
     // Sort business hours so current day appears first
     const currentDay = getCurrentDayName();
@@ -2764,20 +2764,21 @@ export default function BusinessDetailScreen() {
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <TouchableOpacity
-                style={styles.backButton}
+                style={styles.iconButton}
                 onPress={() => router.back()}
               >
                 <BackArrowIcon
                   width={widthScale(16)}
                   height={heightScale(16)}
+                  color={theme.darkGreen}
                 />
               </TouchableOpacity>
               <View style={styles.logoContainer}>
                 <LeafLogo
                   width={widthScale(22)}
                   height={heightScale(22)}
-                  color1={theme.white}
-                  color2={theme.white}
+                  color1={theme.darkGreen}
+                  color2={theme.darkGreen}
                 />
                 <Text style={styles.logoText}>{t("freshPass")}</Text>
               </View>
@@ -2790,13 +2791,13 @@ export default function BusinessDetailScreen() {
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
-              {/* <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity style={styles.iconButton}>
                 <BookmarkIcon
                   width={widthScale(16)}
                   height={heightScale(16)}
                   color={theme.darkGreen}
                 />
-              </TouchableOpacity> */}
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -2811,17 +2812,6 @@ export default function BusinessDetailScreen() {
               style={styles.heroImage}
               resizeMode="cover"
             />
-            <TouchableOpacity
-              style={styles.openFullButton}
-              onPress={handleOpenFullImage}
-            >
-              <OpenFullIcon
-                width={widthScale(14)}
-                height={heightScale(14)}
-                color={theme.white}
-              />
-              <Text style={styles.openFullButtonText}>{t("openInFull")}</Text>
-            </TouchableOpacity>
           </TouchableOpacity>
 
           {/* Thumbnail Carousel */}
@@ -2932,8 +2922,8 @@ export default function BusinessDetailScreen() {
           <View style={styles.tabsContainer}>
             {(
               [
-                ["Details", t("tabDetails")],
                 ["Service", t("tabService")],
+                ["Details", t("tabDetails")],
                 ["Staff", t("tabStaff")],
                 ["Ratings", t("tabRatings")],
               ] as const
@@ -2956,9 +2946,10 @@ export default function BusinessDetailScreen() {
           </View>
 
           {/* Tab Content - All sections in one scroll */}
-          {renderDetailsContent()}
-          <View style={styles.divider} />
+
           {renderServiceContent()}
+          <View style={styles.divider} />
+          {renderDetailsContent()}
           <View style={styles.divider} />
           {renderStaffContent()}
           <View style={styles.divider} />
