@@ -6,12 +6,7 @@ import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
-import appleAuth, {
-  AppleRequestOperation,
-  AppleRequestScope,
-  AppleCredentialState,
-  AppleError,
-} from "@invertase/react-native-apple-authentication";
+import { appleAuth } from "@invertase/react-native-apple-authentication";
 import { Image } from "expo-image";
 import {
   SafeAreaView,
@@ -228,8 +223,8 @@ export default function SocialLogin() {
 
       // Perform Apple Sign-In request
       const appleAuthRequestResponse = await appleAuth.performRequest({
-        requestedOperation: AppleRequestOperation.LOGIN,
-        requestedScopes: [AppleRequestScope.EMAIL, AppleRequestScope.FULL_NAME],
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
 
       // Check if the request was successful
@@ -243,7 +238,7 @@ export default function SocialLogin() {
         appleAuthRequestResponse.user,
       );
 
-      if (credentialState === AppleCredentialState.REVOKED) {
+      if (credentialState === appleAuth.State.REVOKED) {
         Alert.alert(t("error"), t("appleCredentialsRevoked"));
         return;
       }
@@ -271,13 +266,13 @@ export default function SocialLogin() {
     } catch (error: any) {
       Logger.error("Apple Sign-In Error:", error);
 
-      if (error.code === AppleError.CANCELED) {
+      if (error.code === appleAuth.Error.CANCELED) {
         // User cancelled the login flow
         Logger.log("User cancelled Apple Sign-In");
-      } else if (error.code === AppleError.NOT_HANDLED) {
+      } else if (error.code === appleAuth.Error.NOT_HANDLED) {
         // Sign-In request was not handled
         Logger.log("Apple Sign-In request was not handled");
-      } else if (error.code === AppleError.UNKNOWN) {
+      } else if (error.code === appleAuth.Error.UNKNOWN) {
         // Unknown error occurred
         Alert.alert(
           t("appleSignInFailed"),

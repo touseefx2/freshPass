@@ -16,6 +16,9 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.applesignin": ["Default"]
       }
     },
     "android": {
@@ -31,9 +34,7 @@
           "apiKey": "AIzaSyCVenDT7Q0jMPj-x5tLh4gFO3aF_rP5i7c"
         }
       },
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ],
+      "permissions": ["android.permission.RECORD_AUDIO"],
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
