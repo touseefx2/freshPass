@@ -450,11 +450,11 @@ export default function AccountScreen() {
                       {getIconForRow(row.key)}
                     </View>
                     <View style={styles.cardHeaderRight}>
-                      {showNewBadge && (
+                      {/* {showNewBadge && (
                         <View style={styles.newBadge}>
                           <Text style={styles.newBadgeText}>NEW</Text>
                         </View>
-                      )}
+                      )} */}
                       <View style={styles.arrowCircle}>
                         {isDelete && deleteLoading ? (
                           <ActivityIndicator size="small" color={theme.red} />
