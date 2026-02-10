@@ -1,9 +1,9 @@
 import React, {
-  useMemo,
-  useState,
   useCallback,
-  useEffect,
+  useMemo,
   useRef,
+  useState,
+  useEffect,
 } from "react";
 import {
   ScrollView,
@@ -17,7 +17,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -88,6 +88,34 @@ export default function Tools() {
   const headerTitle = toolType || t("aiTools");
   const businessId = user?.business_id ?? "";
   const userId = Number(user?.id) ?? 0;
+
+  // Refresh user details (including ai_quota) when this screen is focused so quota is up-to-date
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      const fetchQuota = async () => {
+        try {
+          const response = await ApiService.get<{
+            success: boolean;
+            data?: { ai_quota?: number };
+          }>(userEndpoints.details);
+          if (
+            !cancelled &&
+            response?.success &&
+            response.data?.ai_quota !== undefined
+          ) {
+            dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
+          }
+        } catch {
+          // Silent fail
+        }
+      };
+      fetchQuota();
+      return () => {
+        cancelled = true;
+      };
+    }, [dispatch]),
+  );
 
   const hairTryOnService =
     aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
@@ -1136,12 +1164,12 @@ export default function Tools() {
                 toolType === "Generate Post"
                   ? t("generatePost")
                   : toolType === "Generate Collage"
-                  ? t("generateCollage")
-                  : toolType === "Generate Reel"
-                  ? t("generateReel")
-                  : toolType === "Hair Tryon"
-                  ? t("generateHairTryon")
-                  : `Generate ${toolType.replace("Generate ", "")}`
+                    ? t("generateCollage")
+                    : toolType === "Generate Reel"
+                      ? t("generateReel")
+                      : toolType === "Hair Tryon"
+                        ? t("generateHairTryon")
+                        : `Generate ${toolType.replace("Generate ", "")}`
               }
               onPress={handleGenerate}
               disabled={

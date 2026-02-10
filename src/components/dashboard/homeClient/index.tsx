@@ -223,6 +223,7 @@ export default function HomeScreen() {
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
+        console.log("------> ai_quota", response.data.ai_quota);
         dispatch(
           setUserDetails({
             name: response.data.name,
@@ -233,9 +234,7 @@ export default function HomeScreen() {
             profile_image_url: response.data.profile_image_url,
             business_id: response.data.business.id ?? "",
             business_name: response.data.business.title ?? "",
-            ...(response.data.ai_quota !== undefined && {
-              ai_quota: response.data.ai_quota,
-            }),
+            ai_quota: response.data.ai_quota ?? 0,
           }),
         );
       }
