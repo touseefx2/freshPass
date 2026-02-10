@@ -630,6 +630,7 @@ const AiChatBot: React.FC = () => {
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
   );
+  const { userRole, isGuest } = useAppSelector((state) => state.user);
   const chatBottomOffset =
     isFirstTryon && isOnExploreScreen
       ? CHAT_BOTTOM_OFFSET_TRYON
@@ -644,6 +645,7 @@ const AiChatBot: React.FC = () => {
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const [menuExpanded, setMenuExpanded] = useState(false);
+  const canShowMenu = userRole === "customer" || isGuest;
   const [chatMode, setChatMode] = useState<"ai_chat_bot" | "ai_receptionist">(
     "ai_chat_bot",
   );
@@ -692,8 +694,16 @@ const AiChatBot: React.FC = () => {
 
   const handleFloatingButtonPress = useCallback(() => {
     if (menuExpanded) return;
-    setMenuExpanded(true);
-  }, [menuExpanded]);
+
+    // Only show menu for customer or guest users
+    if (canShowMenu) {
+      setMenuExpanded(true);
+    } else {
+      // For other roles, open AI chat bot directly
+      setChatMode("ai_chat_bot");
+      dispatch(openChat());
+    }
+  }, [menuExpanded, canShowMenu, dispatch]);
 
   const handleCloseMenu = useCallback(() => {
     setMenuExpanded(false);
@@ -1099,8 +1109,8 @@ const AiChatBot: React.FC = () => {
         </Animated.View>
       )}
 
-      {/* Expanded menu - two options above the button */}
-      {menuExpanded && !isOpen && (
+      {/* Expanded menu - two options above the button (only for customer/guest) */}
+      {canShowMenu && menuExpanded && !isOpen && (
         <>
           <TouchableWithoutFeedback onPress={handleCloseMenu}>
             <View style={[StyleSheet.absoluteFill, { zIndex: 997 }]} />
