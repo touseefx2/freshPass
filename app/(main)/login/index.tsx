@@ -24,6 +24,7 @@ import Button from "@/src/components/button";
 import FloatingInput from "@/src/components/floatingInput";
 import RegisterHeader from "@/src/components/registerHeader";
 import SocialAuthOptions from "@/src/components/socialAuthOptions";
+import { useSocialLogin } from "@/src/hooks/useSocialLogin";
 import SectionSeparator from "@/src/components/sectionSeparator";
 import VerificationCodeModal from "@/src/components/verificationCodeModal";
 import { validateEmail } from "@/src/services/validationService";
@@ -43,8 +44,6 @@ import {
   setFullName,
   setSalonBusinessHours,
 } from "@/src/state/slices/completeProfileSlice";
-
-type SocialProvider = "google" | "apple" | "facebook";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -355,7 +354,7 @@ export default function Login() {
     }
   }, [email, password, savePassword, dispatch, router]);
 
-  const handleSocialLogin = useCallback((provider: SocialProvider) => {}, []);
+  const { handleSocialLogin } = useSocialLogin();
 
   const handleForgetPassword = useCallback(() => {
     // TODO: Navigate to forget password screen

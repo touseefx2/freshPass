@@ -22,12 +22,11 @@ import Button from "@/src/components/button";
 import FloatingInput from "@/src/components/floatingInput";
 import RegisterHeader from "@/src/components/registerHeader";
 import SocialAuthOptions from "@/src/components/socialAuthOptions";
+import { useSocialLogin } from "@/src/hooks/useSocialLogin";
 import SectionSeparator from "@/src/components/sectionSeparator";
 import { validateEmail } from "@/src/services/validationService";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
-
-type SocialProvider = "google" | "apple" | "facebook";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -173,8 +172,7 @@ export default function Register() {
     router.back();
   }, [router]);
 
-  const handleSocialLoginClick = useCallback((provider: SocialProvider) => {},
-  []);
+  const { handleSocialLogin } = useSocialLogin();
 
   const isFormValid = email.length > 0 && validateEmail(email).isValid;
 
@@ -248,9 +246,9 @@ export default function Register() {
               <SectionSeparator />
 
               <SocialAuthOptions
-                onGoogle={() => handleSocialLoginClick("google")}
-                onApple={() => handleSocialLoginClick("apple")}
-                onFacebook={() => handleSocialLoginClick("facebook")}
+                onGoogle={() => handleSocialLogin("google")}
+                onApple={() => handleSocialLogin("apple")}
+                onFacebook={() => handleSocialLogin("facebook")}
                 containerStyle={styles.socialList}
               />
 
