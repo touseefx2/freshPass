@@ -1194,7 +1194,9 @@ export default function BusinessDetailScreen() {
     useState(false);
   const [selectedMembershipFilter, setSelectedMembershipFilter] =
     useState("All");
-  const [selectedServiceFilter, setSelectedServiceFilter] = useState("All");
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState<
+    string | null
+  >(null);
   const [inclusionsModalVisible, setInclusionsModalVisible] = useState(false);
   const [selectedInclusions, setSelectedInclusions] = useState<string[]>([]);
   const [breaksModalVisible, setBreaksModalVisible] = useState(false);
@@ -1225,6 +1227,20 @@ export default function BusinessDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [businessData, setBusinessData] = useState<any>(null);
+
+  const [serviceTemplates, setServiceTemplates] = useState<
+    Array<{
+      id: number;
+      name: string;
+      category_id: number;
+      category: string;
+      base_price: number;
+      duration_hours: number;
+      duration_minutes: number;
+      active: boolean;
+      createdAt: string;
+    }>
+  >([]);
 
   // Reviews API state
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -1270,6 +1286,53 @@ export default function BusinessDetailScreen() {
       fetchReviews();
     }, []),
   );
+
+  // Fetch service templates for this business category
+  useEffect(() => {
+    const categoryId = businessData?.category?.id;
+
+    if (!categoryId) {
+      setServiceTemplates([]);
+      // Reset filter to show all services
+      setSelectedServiceFilter(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const fetchServiceTemplates = async () => {
+      try {
+        const response = await ApiService.get<{
+          success: boolean;
+          message: string;
+          data: Array<{
+            id: number;
+            name: string;
+            category_id: number;
+            category: string;
+            base_price: number;
+            duration_hours: number;
+            duration_minutes: number;
+            active: boolean;
+            createdAt: string;
+          }>;
+        }>(businessEndpoints.serviceTemplates(categoryId));
+
+        if (!isCancelled && response.success && response.data) {
+          setServiceTemplates(response.data);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to fetch service templates:", e);
+      }
+    };
+
+    fetchServiceTemplates();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [businessData?.category?.id]);
 
   // Fetch reviews
   const fetchReviews = useCallback(async () => {
@@ -1654,6 +1717,23 @@ export default function BusinessDetailScreen() {
     });
   }, [businessData]);
 
+  const filteredIndividualServices = useMemo(() => {
+    if (!individualServices || individualServices.length === 0) {
+      return [];
+    }
+
+    if (!selectedServiceFilter || selectedServiceFilter === "All") {
+      return individualServices;
+    }
+
+    const targetName = selectedServiceFilter.trim().toLowerCase();
+
+    return individualServices.filter((service: any) => {
+      const name = (service.name ?? "").toString().trim().toLowerCase();
+      return name === targetName;
+    });
+  }, [individualServices, selectedServiceFilter]);
+
   const membershipFilters = [
     "All",
     "Classic Care",
@@ -1661,13 +1741,24 @@ export default function BusinessDetailScreen() {
     "VIP Elite",
     "Platinum",
   ];
-  const serviceFilters = [
-    "All",
-    "Beard Trim",
-    "Hair blow dry",
-    "Haircut",
-    "Manicure",
-  ];
+  const serviceFilters = useMemo(() => {
+    if (!serviceTemplates || serviceTemplates.length === 0) {
+      return ["All"];
+    }
+
+    const uniqueNames = Array.from(
+      new Set(
+        serviceTemplates
+          .map((template) => template.name)
+          .filter(
+            (name): name is string =>
+              typeof name === "string" && name.trim().length > 0,
+          ),
+      ),
+    );
+
+    return ["All", ...uniqueNames];
+  }, [serviceTemplates]);
 
   const DEFAULT_AVATAR_URL = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
 
@@ -2055,12 +2146,13 @@ export default function BusinessDetailScreen() {
 
   const renderServiceContent = () => {
     const hasMemberships = membershipSubscriptions.length > 0;
-    const hasIndividualServices = individualServices.length > 0;
+    const hasAnyIndividualServices = individualServices.length > 0;
+    const hasFilteredIndividualServices = filteredIndividualServices.length > 0;
 
     const shouldShowMembershipMoreCard =
       !showAllMembershipSubscriptions && membershipSubscriptions.length > 3;
     const shouldShowIndividualMoreCard =
-      !showAllIndividualServices && individualServices.length > 3;
+      !showAllIndividualServices && filteredIndividualServices.length > 3;
 
     const displayedMembershipSubscriptions = showAllMembershipSubscriptions
       ? membershipSubscriptions
@@ -2069,10 +2161,10 @@ export default function BusinessDetailScreen() {
       : membershipSubscriptions;
 
     const displayedIndividualServices = showAllIndividualServices
-      ? individualServices
+      ? filteredIndividualServices
       : shouldShowIndividualMoreCard
-      ? individualServices.slice(0, 3)
-      : individualServices;
+      ? filteredIndividualServices.slice(0, 3)
+      : filteredIndividualServices;
 
     const membershipPreview =
       !showAllMembershipSubscriptions && membershipSubscriptions.length > 3
@@ -2080,8 +2172,8 @@ export default function BusinessDetailScreen() {
         : null;
 
     const individualPreview =
-      !showAllIndividualServices && individualServices.length > 3
-        ? individualServices[3]
+      !showAllIndividualServices && filteredIndividualServices.length > 3
+        ? filteredIndividualServices[3]
         : null;
 
     return (
@@ -2314,7 +2406,7 @@ export default function BusinessDetailScreen() {
           ]}
         >
           <>
-            {hasIndividualServices ? (
+            {hasAnyIndividualServices ? (
               <>
                 <ScrollView
                   horizontal
@@ -2344,311 +2436,326 @@ export default function BusinessDetailScreen() {
                   ))}
                 </ScrollView>
 
-                {displayedIndividualServices.map(
-                  (service: any, index: number) => (
-                    <View
-                      key={service.id}
-                      style={[
-                        styles.serviceCard,
-                        index === displayedIndividualServices.length - 1 && {
-                          borderBottomWidth: 0,
-                        },
-                      ]}
-                    >
-                      <View style={styles.serviceCardContent}>
-                        <View style={styles.serviceCardLeft}>
-                          {service.label && (
-                            <View style={styles.serviceLabel}>
-                              <Text style={styles.serviceLabelText}>
-                                {service.label}
+                {hasFilteredIndividualServices ? (
+                  <>
+                    {displayedIndividualServices.map(
+                      (service: any, index: number) => (
+                        <View
+                          key={service.id}
+                          style={[
+                            styles.serviceCard,
+                            index ===
+                              displayedIndividualServices.length - 1 && {
+                              borderBottomWidth: 0,
+                            },
+                          ]}
+                        >
+                          <View style={styles.serviceCardContent}>
+                            <View style={styles.serviceCardLeft}>
+                              {service.label && (
+                                <View style={styles.serviceLabel}>
+                                  <Text style={styles.serviceLabelText}>
+                                    {service.label}
+                                  </Text>
+                                </View>
+                              )}
+                              <Text style={styles.serviceName}>
+                                {service.name}
+                              </Text>
+                              <Text style={styles.serviceDescription}>
+                                {service.description}
                               </Text>
                             </View>
-                          )}
-                          <Text style={styles.serviceName}>{service.name}</Text>
-                          <Text style={styles.serviceDescription}>
-                            {service.description}
-                          </Text>
-                        </View>
-                        <View style={styles.serviceCardRight}>
-                          <View style={styles.servicePriceContainer}>
-                            <Text style={styles.serviceOriginalPrice}>
-                              ${service.originalPrice.toFixed(2)}
-                            </Text>
-                            <Text style={styles.servicePrice}>
-                              ${service.price.toFixed(2)} USD
-                            </Text>
-                          </View>
-                          <Text style={styles.serviceDuration}>
-                            {service.duration}
-                          </Text>
-                          <TouchableOpacity
-                            style={styles.bookNowButton}
-                            onPress={() => {
-                              // Set business data in Redux
-                              const serviceData = {
-                                id: service.id,
-                                name: service.name,
-                                description: service.description,
-                                price: service.price,
-                                originalPrice: service.originalPrice,
-                                duration: service.duration,
-                                label: service.label || null,
-                              };
-                              const allServicesData = individualServices.map(
-                                (s: any) => ({
-                                  id: s.id,
-                                  name: s.name,
-                                  description: s.description,
-                                  price: s.price,
-                                  originalPrice: s.originalPrice,
-                                  duration: s.duration,
-                                  label: s.label || null,
-                                }),
-                              );
-                              // Parse business hours from API format to Redux format
-                              const parseTimeToHoursMinutes = (
-                                timeString: string | null | undefined,
-                              ): { hours: number; minutes: number } => {
-                                if (
-                                  !timeString ||
-                                  typeof timeString !== "string"
-                                ) {
-                                  return { hours: 0, minutes: 0 };
-                                }
-                                const [hours, minutes] = timeString
-                                  .split(":")
-                                  .map(Number);
-                                return {
-                                  hours: hours || 0,
-                                  minutes: minutes || 0,
-                                };
-                              };
-
-                              const getDayDisplayFormat = (
-                                day: string,
-                              ): string => {
-                                if (!day) return day;
-                                const dayLower = day.toLowerCase();
-                                const dayMap: { [key: string]: string } = {
-                                  monday: "Monday",
-                                  tuesday: "Tuesday",
-                                  wednesday: "Wednesday",
-                                  thursday: "Thursday",
-                                  friday: "Friday",
-                                  saturday: "Saturday",
-                                  sunday: "Sunday",
-                                };
-                                return dayMap[dayLower] || day;
-                              };
-
-                              const parseBusinessHours = (
-                                hoursArray: any[] | null | undefined,
-                              ) => {
-                                if (
-                                  !hoursArray ||
-                                  !Array.isArray(hoursArray) ||
-                                  hoursArray.length === 0
-                                ) {
-                                  return null;
-                                }
-
-                                const businessHours: { [key: string]: any } =
-                                  {};
-
-                                // Initialize all days with default closed state
-                                const DAYS = [
-                                  "Monday",
-                                  "Tuesday",
-                                  "Wednesday",
-                                  "Thursday",
-                                  "Friday",
-                                  "Saturday",
-                                  "Sunday",
-                                ];
-                                DAYS.forEach((day) => {
-                                  businessHours[day] = {
-                                    isOpen: false,
-                                    fromHours: 0,
-                                    fromMinutes: 0,
-                                    tillHours: 0,
-                                    tillMinutes: 0,
-                                    breaks: [],
+                            <View style={styles.serviceCardRight}>
+                              <View style={styles.servicePriceContainer}>
+                                <Text style={styles.serviceOriginalPrice}>
+                                  ${service.originalPrice.toFixed(2)}
+                                </Text>
+                                <Text style={styles.servicePrice}>
+                                  ${service.price.toFixed(2)} USD
+                                </Text>
+                              </View>
+                              <Text style={styles.serviceDuration}>
+                                {service.duration}
+                              </Text>
+                              <TouchableOpacity
+                                style={styles.bookNowButton}
+                                onPress={() => {
+                                  // Set business data in Redux
+                                  const serviceData = {
+                                    id: service.id,
+                                    name: service.name,
+                                    description: service.description,
+                                    price: service.price,
+                                    originalPrice: service.originalPrice,
+                                    duration: service.duration,
+                                    label: service.label || null,
                                   };
-                                });
-
-                                // Parse API hours
-                                hoursArray.forEach((dayData: any) => {
-                                  const dayName = getDayDisplayFormat(
-                                    dayData.day,
-                                  );
-                                  if (!DAYS.includes(dayName)) return;
-
-                                  let fromHours = 0;
-                                  let fromMinutes = 0;
-                                  let tillHours = 0;
-                                  let tillMinutes = 0;
-
-                                  if (dayData.opening_time) {
-                                    const parsed = parseTimeToHoursMinutes(
-                                      dayData.opening_time,
-                                    );
-                                    fromHours = parsed.hours;
-                                    fromMinutes = parsed.minutes;
-                                  }
-
-                                  if (dayData.closing_time) {
-                                    const parsed = parseTimeToHoursMinutes(
-                                      dayData.closing_time,
-                                    );
-                                    tillHours = parsed.hours;
-                                    tillMinutes = parsed.minutes;
-                                  }
-
-                                  const breaks = (
-                                    dayData.break_hours || []
-                                  ).map((breakTime: any) => {
-                                    const {
-                                      hours: breakFromHours,
-                                      minutes: breakFromMinutes,
-                                    } = parseTimeToHoursMinutes(
-                                      breakTime.start || "00:00",
-                                    );
-                                    const {
-                                      hours: breakTillHours,
-                                      minutes: breakTillMinutes,
-                                    } = parseTimeToHoursMinutes(
-                                      breakTime.end || "00:00",
-                                    );
+                                  const allServicesData =
+                                    individualServices.map((s: any) => ({
+                                      id: s.id,
+                                      name: s.name,
+                                      description: s.description,
+                                      price: s.price,
+                                      originalPrice: s.originalPrice,
+                                      duration: s.duration,
+                                      label: s.label || null,
+                                    }));
+                                  // Parse business hours from API format to Redux format
+                                  const parseTimeToHoursMinutes = (
+                                    timeString: string | null | undefined,
+                                  ): { hours: number; minutes: number } => {
+                                    if (
+                                      !timeString ||
+                                      typeof timeString !== "string"
+                                    ) {
+                                      return { hours: 0, minutes: 0 };
+                                    }
+                                    const [hours, minutes] = timeString
+                                      .split(":")
+                                      .map(Number);
                                     return {
-                                      fromHours: breakFromHours,
-                                      fromMinutes: breakFromMinutes,
-                                      tillHours: breakTillHours,
-                                      tillMinutes: breakTillMinutes,
+                                      hours: hours || 0,
+                                      minutes: minutes || 0,
                                     };
-                                  });
-
-                                  businessHours[dayName] = {
-                                    isOpen: !dayData.closed,
-                                    fromHours,
-                                    fromMinutes,
-                                    tillHours,
-                                    tillMinutes,
-                                    breaks,
                                   };
-                                });
 
-                                return businessHours;
-                              };
+                                  const getDayDisplayFormat = (
+                                    day: string,
+                                  ): string => {
+                                    if (!day) return day;
+                                    const dayLower = day.toLowerCase();
+                                    const dayMap: { [key: string]: string } = {
+                                      monday: "Monday",
+                                      tuesday: "Tuesday",
+                                      wednesday: "Wednesday",
+                                      thursday: "Thursday",
+                                      friday: "Friday",
+                                      saturday: "Saturday",
+                                      sunday: "Sunday",
+                                    };
+                                    return dayMap[dayLower] || day;
+                                  };
 
-                              // Map staff members with working_hours
-                              const staffMembersData = (
-                                businessData?.staff || []
-                              )
-                                .filter(
-                                  (staff: any) =>
-                                    staff.invitation_status === "accepted",
-                                )
-                                .map((staff: any) => {
-                                  // Construct image URL from API response
-                                  let image = DEFAULT_AVATAR_URL;
-                                  if (staff.avatar) {
-                                    image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
-                                  }
+                                  const parseBusinessHours = (
+                                    hoursArray: any[] | null | undefined,
+                                  ) => {
+                                    if (
+                                      !hoursArray ||
+                                      !Array.isArray(hoursArray) ||
+                                      hoursArray.length === 0
+                                    ) {
+                                      return null;
+                                    }
 
-                                  // Parse working_hours if available (even if empty array)
-                                  const staffWorkingHours = parseBusinessHours(
-                                    staff.working_hours,
+                                    const businessHours: {
+                                      [key: string]: any;
+                                    } = {};
+
+                                    // Initialize all days with default closed state
+                                    const DAYS = [
+                                      "Monday",
+                                      "Tuesday",
+                                      "Wednesday",
+                                      "Thursday",
+                                      "Friday",
+                                      "Saturday",
+                                      "Sunday",
+                                    ];
+                                    DAYS.forEach((day) => {
+                                      businessHours[day] = {
+                                        isOpen: false,
+                                        fromHours: 0,
+                                        fromMinutes: 0,
+                                        tillHours: 0,
+                                        tillMinutes: 0,
+                                        breaks: [],
+                                      };
+                                    });
+
+                                    // Parse API hours
+                                    hoursArray.forEach((dayData: any) => {
+                                      const dayName = getDayDisplayFormat(
+                                        dayData.day,
+                                      );
+                                      if (!DAYS.includes(dayName)) return;
+
+                                      let fromHours = 0;
+                                      let fromMinutes = 0;
+                                      let tillHours = 0;
+                                      let tillMinutes = 0;
+
+                                      if (dayData.opening_time) {
+                                        const parsed = parseTimeToHoursMinutes(
+                                          dayData.opening_time,
+                                        );
+                                        fromHours = parsed.hours;
+                                        fromMinutes = parsed.minutes;
+                                      }
+
+                                      if (dayData.closing_time) {
+                                        const parsed = parseTimeToHoursMinutes(
+                                          dayData.closing_time,
+                                        );
+                                        tillHours = parsed.hours;
+                                        tillMinutes = parsed.minutes;
+                                      }
+
+                                      const breaks = (
+                                        dayData.break_hours || []
+                                      ).map((breakTime: any) => {
+                                        const {
+                                          hours: breakFromHours,
+                                          minutes: breakFromMinutes,
+                                        } = parseTimeToHoursMinutes(
+                                          breakTime.start || "00:00",
+                                        );
+                                        const {
+                                          hours: breakTillHours,
+                                          minutes: breakTillMinutes,
+                                        } = parseTimeToHoursMinutes(
+                                          breakTime.end || "00:00",
+                                        );
+                                        return {
+                                          fromHours: breakFromHours,
+                                          fromMinutes: breakFromMinutes,
+                                          tillHours: breakTillHours,
+                                          tillMinutes: breakTillMinutes,
+                                        };
+                                      });
+
+                                      businessHours[dayName] = {
+                                        isOpen: !dayData.closed,
+                                        fromHours,
+                                        fromMinutes,
+                                        tillHours,
+                                        tillMinutes,
+                                        breaks,
+                                      };
+                                    });
+
+                                    return businessHours;
+                                  };
+
+                                  // Map staff members with working_hours
+                                  const staffMembersData = (
+                                    businessData?.staff || []
+                                  )
+                                    .filter(
+                                      (staff: any) =>
+                                        staff.invitation_status === "accepted",
+                                    )
+                                    .map((staff: any) => {
+                                      // Construct image URL from API response
+                                      let image = DEFAULT_AVATAR_URL;
+                                      if (staff.avatar) {
+                                        image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+                                      }
+
+                                      // Parse working_hours if available (even if empty array)
+                                      const staffWorkingHours =
+                                        parseBusinessHours(staff.working_hours);
+
+                                      return {
+                                        id: staff.id || staff.user_id || 0,
+                                        name:
+                                          staff.name ||
+                                          t("staffMemberFallback"),
+                                        experience: staff?.description ?? null,
+                                        image: image,
+                                        working_hours: staffWorkingHours,
+                                      };
+                                    });
+
+                                  const businessHoursData = parseBusinessHours(
+                                    businessData?.hours,
                                   );
 
-                                  return {
-                                    id: staff.id || staff.user_id || 0,
-                                    name:
-                                      staff.name || t("staffMemberFallback"),
-                                    experience: staff?.description ?? null,
-                                    image: image,
-                                    working_hours: staffWorkingHours,
+                                  const businessPayload = {
+                                    selectedService: serviceData,
+                                    allServices: allServicesData,
+                                    staffMembers: staffMembersData,
+                                    businessId: params.business_id || "",
+                                    businessHours: businessHoursData,
                                   };
-                                });
-
-                              const businessHoursData = parseBusinessHours(
-                                businessData?.hours,
-                              );
-
-                              const businessPayload = {
-                                selectedService: serviceData,
-                                allServices: allServicesData,
-                                staffMembers: staffMembersData,
-                                businessId: params.business_id || "",
-                                businessHours: businessHoursData,
-                              };
-                              dispatch(setBusinessDataAction(businessPayload));
-                              // Navigate to bookingNow without params
-                              router.push({
-                                pathname: "/(main)/bookingNow",
-                              });
-                            }}
-                          >
-                            <Text style={styles.bookNowButtonText}>
-                              {t("bookNow")}
-                            </Text>
-                          </TouchableOpacity>
+                                  dispatch(
+                                    setBusinessDataAction(businessPayload),
+                                  );
+                                  // Navigate to bookingNow without params
+                                  router.push({
+                                    pathname: "/(main)/bookingNow",
+                                  });
+                                }}
+                              >
+                                <Text style={styles.bookNowButtonText}>
+                                  {t("bookNow")}
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
                         </View>
-                      </View>
-                    </View>
-                  ),
-                )}
+                      ),
+                    )}
 
-                {shouldShowIndividualMoreCard && individualPreview && (
-                  <TouchableOpacity
-                    style={[styles.seeMoreCard, styles.shadow]}
-                    onPress={() => setShowAllIndividualServices(true)}
-                  >
-                    <View
-                      style={[
-                        styles.serviceCardContent,
-                        styles.seeMorePreviewContainer,
-                      ]}
-                    >
-                      <View style={styles.serviceCardLeft}>
-                        {individualPreview.label && (
-                          <View style={styles.serviceLabel}>
-                            <Text style={styles.serviceLabelText}>
-                              {individualPreview.label}
+                    {shouldShowIndividualMoreCard && individualPreview && (
+                      <TouchableOpacity
+                        style={[styles.seeMoreCard, styles.shadow]}
+                        onPress={() => setShowAllIndividualServices(true)}
+                      >
+                        <View
+                          style={[
+                            styles.serviceCardContent,
+                            styles.seeMorePreviewContainer,
+                          ]}
+                        >
+                          <View style={styles.serviceCardLeft}>
+                            {individualPreview.label && (
+                              <View style={styles.serviceLabel}>
+                                <Text style={styles.serviceLabelText}>
+                                  {individualPreview.label}
+                                </Text>
+                              </View>
+                            )}
+                            <Text style={styles.serviceName}>
+                              {individualPreview.name}
+                            </Text>
+                            <Text style={styles.serviceDescription}>
+                              {individualPreview.description}
                             </Text>
                           </View>
-                        )}
-                        <Text style={styles.serviceName}>
-                          {individualPreview.name}
-                        </Text>
-                        <Text style={styles.serviceDescription}>
-                          {individualPreview.description}
-                        </Text>
-                      </View>
-                      <View style={styles.serviceCardRight}>
-                        <View style={styles.servicePriceContainer}>
-                          <Text style={styles.serviceOriginalPrice}>
-                            ${individualPreview.originalPrice.toFixed(2)}
+                          <View style={styles.serviceCardRight}>
+                            <View style={styles.servicePriceContainer}>
+                              <Text style={styles.serviceOriginalPrice}>
+                                ${individualPreview.originalPrice.toFixed(2)}
+                              </Text>
+                              <Text style={styles.servicePrice}>
+                                ${individualPreview.price.toFixed(2)} USD
+                              </Text>
+                            </View>
+                            <Text style={styles.serviceDuration}>
+                              {individualPreview.duration}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.seeMoreOverlayCard}>
+                          <Text style={styles.seeMoreTitle}>
+                            {t("exploreMore")}
                           </Text>
-                          <Text style={styles.servicePrice}>
-                            ${individualPreview.price.toFixed(2)} USD
+                          <Text style={styles.seeMoreSubtitle}>
+                            {t("resultsCount_other", {
+                              count: individualServices.length,
+                            })}
                           </Text>
                         </View>
-                        <Text style={styles.serviceDuration}>
-                          {individualPreview.duration}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.seeMoreOverlayCard}>
-                      <Text style={styles.seeMoreTitle}>
-                        {t("exploreMore")}
-                      </Text>
-                      <Text style={styles.seeMoreSubtitle}>
-                        {t("resultsCount_other", {
-                          count: individualServices.length,
-                        })}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                ) : (
+                  <View style={styles.noServiceContainer}>
+                    <Text style={styles.noServiceText}>
+                      {t("noServicesFound")}
+                    </Text>
+                  </View>
                 )}
               </>
             ) : (
