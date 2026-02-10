@@ -142,9 +142,21 @@ const createStyles = (
       paddingHorizontal: moderateWidthScale(14),
       backgroundColor: theme.darkGreen,
       borderRadius: moderateWidthScale(12),
-      borderWidth: 0.5,
-      borderColor: theme.white85,
+      borderWidth: 1,
+      borderTopColor: theme.white85,
+      borderLeftColor: theme.white85,
+      borderRightColor: theme.shadow,
+      borderBottomColor: theme.shadow,
       minWidth: widthScale(140),
+      // 3D raised effect – stronger shadow
+      shadowColor: theme.shadow,
+      shadowOffset: {
+        width: 0,
+        height: moderateHeightScale(4),
+      },
+      shadowOpacity: 0.38,
+      shadowRadius: moderateWidthScale(6),
+      elevation: 8,
     },
     menuOptionIcon: {
       width: widthScale(24),
@@ -1095,7 +1107,7 @@ const AiChatBot: React.FC = () => {
           </TouchableWithoutFeedback>
           <View style={styles.menuOptionsContainer}>
             <TouchableOpacity
-              style={[styles.menuOption, styles.shadow]}
+              style={styles.menuOption}
               onPress={() => handleSelectOption("ai_chat_bot")}
               activeOpacity={0.9}
             >
@@ -1105,7 +1117,7 @@ const AiChatBot: React.FC = () => {
               <Text style={styles.menuOptionLabel}>{t("aiChatBot")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.menuOption, styles.shadow]}
+              style={styles.menuOption}
               onPress={() => handleSelectOption("ai_receptionist")}
               activeOpacity={0.9}
             >
