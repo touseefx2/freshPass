@@ -126,8 +126,8 @@ export default function Tools() {
     !!hairTryOnService &&
     (aiQuota === 0 || aiQuota == null);
 
-  console.log("------> hairTryOnService", hairTryOnService);
-  console.log("------> aiQuota", aiQuota);
+  // console.log("------> hairTryOnService", hairTryOnService);
+  // console.log("------> aiQuota", aiQuota);
 
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
