@@ -1378,7 +1378,7 @@ export default function BusinessDetailScreen() {
 
   const handleShareBusiness = async () => {
     try {
-      const shareUrl = `https://getfreshpass.com/business/${businessData?.name ?? ""}`;
+      const shareUrl = `https://getfreshpass.com/business/${businessData?.slug ?? ""}`;
       const message = `Discover ${businessName} on FreshPass.\n\nAddress: ${businessAddress}\n\nView details & book here:\n${shareUrl}\n\nImage preview:\n${currentHeroImage}`;
 
       await Share.share({
