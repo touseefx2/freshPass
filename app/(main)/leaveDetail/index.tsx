@@ -14,7 +14,10 @@ import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import Button from "@/src/components/button";
+
+dayjs.extend(utc);
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 const createStyles = (theme: Theme) =>
@@ -99,11 +102,9 @@ export default function LeaveDetail() {
   const reason = params.reason ?? "";
   const createdAt = params.createdAt ?? "";
 
-  console.log("-----> params", params);
-
   const formatDateTime = (iso: string) => {
     if (!iso) return "—";
-    const d = dayjs(iso);
+    const d = dayjs.utc(iso);
     return d.format("MMM D, YYYY · h:mm a");
   };
 
