@@ -27,8 +27,11 @@ import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons } from "@expo/vector-icons";
 import { PersonIcon } from "@/assets/icons";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
+
+dayjs.extend(utc);
 import { ApiService } from "@/src/services/api";
 import {
   appointmentsEndpoints,
@@ -282,6 +285,19 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.primary,
     },
+    breakSlotBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+
+      alignSelf: "flex-start",
+      marginBottom: moderateHeightScale(20),
+    },
+    breakSlotText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.selectCard,
+    },
     timeSlotRow: {
       flexDirection: "row",
       borderBottomWidth: 1,
@@ -459,6 +475,32 @@ export default function CalendarScreen() {
       setLeaves([]);
     }
   };
+
+  const leaveForSelectedDate = useMemo(() => {
+    const dateStr = selectedDate.format("YYYY-MM-DD");
+    return leaves.find(
+      (l) => dayjs.utc(l.start_time).format("YYYY-MM-DD") === dateStr,
+    );
+  }, [leaves, selectedDate]);
+
+  const getBreaksForSlot = useCallback(
+    (slotHour: number): StaffLeave[] => {
+      const dateStr = selectedDate.format("YYYY-MM-DD");
+      const slotStart = dayjs.utc(
+        `${dateStr}T${String(slotHour).padStart(2, "0")}:00:00.000Z`,
+      );
+      const slotEnd = slotStart.add(1, "hour");
+      return leaves.filter((l) => {
+        if (l.type !== "break") return false;
+        const bStart = dayjs.utc(l.start_time);
+        const bEnd = dayjs.utc(l.end_time);
+        return (
+          !slotStart.isAfter(bEnd) && slotEnd.isAfter(bStart)
+        );
+      });
+    },
+    [leaves, selectedDate],
+  );
 
   const fetchAppointments = async () => {
     if (week.length === 0) return;
@@ -750,9 +792,11 @@ export default function CalendarScreen() {
                 )}
                 {isStaff && !selectedDate.isBefore(today, "day") && (
                   <>
-                    {leaves.length > 0 ? (
+                    {leaveForSelectedDate ? (
                       <TouchableOpacity
-                        onPress={() => navigateToLeaveDetail(leaves[0])}
+                        onPress={() =>
+                          navigateToLeaveDetail(leaveForSelectedDate)
+                        }
                         style={styles.leaveBox}
                         activeOpacity={0.7}
                       >
@@ -762,7 +806,9 @@ export default function CalendarScreen() {
                           color={theme.primary}
                         />
                         <Text style={styles.leaveBoxText}>
-                          {leaves[0].type === "leave" ? "LEAVE" : "BREAK"}
+                          {leaveForSelectedDate.type === "leave"
+                            ? "LEAVE"
+                            : "BREAK"}
                         </Text>
                       </TouchableOpacity>
                     ) : (
@@ -798,6 +844,8 @@ export default function CalendarScreen() {
           >
             {TIME_SLOTS.map((time) => {
               const timeSlot24h = convertTo24Hour(time);
+              const [slotHour] = timeSlot24h.split(":").map(Number);
+              const breaksInSlot = getBreaksForSlot(slotHour);
               const filteredAppointments = appointments.filter(
                 (appointment) => {
                   if (!appointment.scheduled_at) return false;
@@ -839,6 +887,7 @@ export default function CalendarScreen() {
                   <View style={styles.timeSlot}>
                     {isStaff ? (
                       <TouchableOpacity
+                        disabled={leaves.length > 0}
                         style={styles.timeSlotClickable}
                         onPress={() => navigateToApplyLeave("break", time)}
                         activeOpacity={0.7}
@@ -847,6 +896,21 @@ export default function CalendarScreen() {
                       </TouchableOpacity>
                     ) : (
                       <Text style={styles.timeSlotText}>{time}</Text>
+                    )}
+                    {breaksInSlot.length > 0 && (
+                      <TouchableOpacity
+                        disabled
+                        style={styles.breakSlotBox}
+                        onPress={() => navigateToLeaveDetail(breaksInSlot[0])}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialIcons
+                          name="free-breakfast"
+                          size={moderateWidthScale(12)}
+                          color={theme.selectCard}
+                        />
+                        <Text style={styles.breakSlotText}>BREAK</Text>
+                      </TouchableOpacity>
                     )}
                   </View>
                   <View style={styles.appointmentsContainer}>
