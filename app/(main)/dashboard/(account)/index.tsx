@@ -253,6 +253,8 @@ export default function AccountScreen() {
       router.push("./(businessProfileSettings)");
     } else if (key === "availability") {
       router.push("./staffAvailability");
+    } else if (key === "leaveRequest") {
+      router.push("/(main)/leaveList");
     } else if (key === "reviews") {
       if (user.id) {
         router.push({
@@ -289,6 +291,7 @@ export default function AccountScreen() {
       | "personal"
       | "business"
       | "availability"
+      | "leaveRequest"
       | "language"
       | "country"
       | "notifications"
@@ -313,7 +316,13 @@ export default function AccountScreen() {
     !isGuest &&
     !isCustomer
       ? userRole === "staff"
-        ? [{ key: "availability" as const, title: t("setAvailability") }]
+        ? [
+            { key: "availability" as const, title: t("setAvailability") },
+            {
+              key: "leaveRequest" as const,
+              title: t("leaveRequest") || "Leave Request",
+            },
+          ]
         : [{ key: "business" as const, title: t("businessProfileSettings") }]
       : []),
     ...(isCustomer
@@ -381,6 +390,10 @@ export default function AccountScreen() {
             size={iconSize}
             color={iconColor}
           />
+        );
+      case "leaveRequest":
+        return (
+          <MaterialIcons name="event-busy" size={iconSize} color={iconColor} />
         );
       case "country":
         return (
