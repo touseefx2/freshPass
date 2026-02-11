@@ -19,6 +19,8 @@ export const staffEndpoints = {
     }
     return `/api/staff`;
   },
+  leaves: `/api/staff/leaves`,
+  breaks: `/api/staff/breaks`,
 };
 
 /**

@@ -352,6 +352,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    timeSlotClickable: {
+      flex: 1,
+    },
   });
 
 export default function CalendarScreen() {
@@ -369,6 +372,8 @@ export default function CalendarScreen() {
   const [week, setWeek] = useState(getWeekDays(today));
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const isStaff = userRole === "staff";
 
   // Set to current week on mount
   useEffect(() => {
@@ -558,6 +563,29 @@ export default function CalendarScreen() {
     return `${date.format("M/D/YYYY")} - ${date.format("h:mm a")}`;
   };
 
+  const navigateToApplyLeave = (type: "leave" | "break", slotTime12h?: string) => {
+    const dateStr = selectedDate.format("YYYY-MM-DD");
+    if (type === "leave") {
+      router.push({
+        pathname: "/(main)/applyLeave",
+        params: { type: "leave", date: dateStr },
+      });
+    } else {
+      const slotHour = slotTime12h
+        ? parseInt(convertTo24Hour(slotTime12h).split(":")[0], 10)
+        : 9;
+      router.push({
+        pathname: "/(main)/applyLeave",
+        params: {
+          type: "break",
+          date: dateStr,
+          slotStartHour: String(slotHour),
+          slotEndHour: String(slotHour + 1),
+        },
+      });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <DashboardHeader />
@@ -633,6 +661,26 @@ export default function CalendarScreen() {
                 {loading && (
                   <ActivityIndicator size="small" color={theme.primary} />
                 )}
+                {isStaff && (
+                  <TouchableOpacity
+                    onPress={() => navigateToApplyLeave("leave")}
+                    style={{ marginLeft: moderateWidthScale(8) }}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.todayText,
+                        {
+                          color: theme.primary,
+                          fontFamily: fonts.fontMedium,
+                          fontSize: fontSize.size12,
+                        },
+                      ]}
+                    >
+                      Apply for Leave / Break
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
@@ -683,7 +731,17 @@ export default function CalendarScreen() {
                   ]}
                 >
                   <View style={styles.timeSlot}>
-                    <Text style={styles.timeSlotText}>{time}</Text>
+                    {isStaff ? (
+                      <TouchableOpacity
+                        style={styles.timeSlotClickable}
+                        onPress={() => navigateToApplyLeave("break", time)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.timeSlotText}>{time}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.timeSlotText}>{time}</Text>
+                    )}
                   </View>
                   <View style={styles.appointmentsContainer}>
                     {filteredAppointments.length > 0 ? (
