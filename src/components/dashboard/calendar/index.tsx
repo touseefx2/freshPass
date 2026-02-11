@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import {
   StyleSheet,
   Text,
@@ -29,7 +35,7 @@ import {
   staffEndpoints,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
@@ -259,6 +265,23 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.text,
     },
+    leaveBox: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.primary,
+      marginLeft: moderateWidthScale(8),
+    },
+    leaveBoxText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.primary,
+    },
     timeSlotRow: {
       flexDirection: "row",
       borderBottomWidth: 1,
@@ -407,12 +430,14 @@ export default function CalendarScreen() {
     }
   }, [week]);
 
-  // Fetch leaves for selected date (staff/business only)
-  useEffect(() => {
-    if (isStaff) {
-      fetchLeaves();
-    }
-  }, [selectedDate]);
+  // Refetch leaves when screen comes into focus (staff only)
+  useFocusEffect(
+    useCallback(() => {
+      if (isStaff) {
+        fetchLeaves();
+      }
+    }, [isStaff, selectedDate]),
+  );
 
   const fetchLeaves = async () => {
     try {
@@ -711,24 +736,41 @@ export default function CalendarScreen() {
                   <ActivityIndicator size="small" color={theme.primary} />
                 )}
                 {isStaff && !selectedDate.isBefore(today, "day") && (
-                  <TouchableOpacity
-                    onPress={() => navigateToApplyLeave("leave")}
-                    style={{ marginLeft: moderateWidthScale(8) }}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.todayText,
-                        {
-                          color: theme.primary,
-                          fontFamily: fonts.fontMedium,
-                          fontSize: fontSize.size12,
-                        },
-                      ]}
-                    >
-                      Apply for Leave / Break
-                    </Text>
-                  </TouchableOpacity>
+                  <>
+                    {leaves.length > 0 ? (
+                      <TouchableOpacity
+                        onPress={() => navigateToApplyLeave("leave")}
+                        style={styles.leaveBox}
+                        activeOpacity={0.7}
+                      >
+                        <MaterialIcons
+                          name="event"
+                          size={moderateWidthScale(16)}
+                          color={theme.primary}
+                        />
+                        <Text style={styles.leaveBoxText}>LEAVE</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        onPress={() => navigateToApplyLeave("leave")}
+                        style={{ marginLeft: moderateWidthScale(8) }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.todayText,
+                            {
+                              color: theme.primary,
+                              fontFamily: fonts.fontMedium,
+                              fontSize: fontSize.size12,
+                            },
+                          ]}
+                        >
+                          Apply for Leave / Break
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
                 )}
               </View>
             </View>
