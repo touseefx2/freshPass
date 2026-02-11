@@ -1,10 +1,5 @@
 import React, { useMemo, useState } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  StatusBar,
-} from "react-native";
+import { StyleSheet, View, Text, StatusBar } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -112,7 +107,15 @@ export default function LeaveDetail() {
 
   const formatDateOnly = (iso: string) => {
     if (!iso) return "—";
-    return dayjs(iso).format("MMM D, YYYY");
+    const datePart = iso.slice(0, 10);
+    return dayjs(datePart).format("MMM D, YYYY");
+  };
+
+  const formatStartEnd = (iso: string) => {
+    if (!iso) return "—";
+    return leaveType === "leave"
+      ? formatDateOnly(iso)
+      : formatDateTime(iso);
   };
 
   const handleCancelLeave = async () => {
@@ -166,11 +169,11 @@ export default function LeaveDetail() {
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>Start</Text>
-            <Text style={styles.value}>{formatDateTime(startTime)}</Text>
+            <Text style={styles.value}>{formatStartEnd(startTime)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>End</Text>
-            <Text style={styles.value}>{formatDateTime(endTime)}</Text>
+            <Text style={styles.value}>{formatStartEnd(endTime)}</Text>
           </View>
           {reason ? (
             <View style={styles.row}>

@@ -440,6 +440,7 @@ export default function CalendarScreen() {
   );
 
   const fetchLeaves = async () => {
+    setLeaves([]);
     try {
       const dateStr = selectedDate.format("YYYY-MM-DD");
       const start_time = `${dateStr} 00:00:00`;
@@ -456,7 +457,9 @@ export default function CalendarScreen() {
       } else {
         setLeaves([]);
       }
-    } catch {}
+    } catch {
+      setLeaves([]);
+    }
   };
 
   const fetchAppointments = async () => {
