@@ -401,7 +401,7 @@ export default function HomeScreen() {
       handleFetchUnreadCount();
       handleFetchDashboardStats();
       if (userRole === "business") {
-        handleFetchStaff("active");
+        handleFetchStaff();
       }
       handleFetchAppointments();
       handleFetchWorkHistory();
@@ -482,10 +482,7 @@ export default function HomeScreen() {
 
           {/* Staff on Duty - Only for Business role */}
           {userRole === "business" && (
-            <StaffOnDuty
-              data={staffData}
-              callApi={() => handleFetchStaff("active")}
-            />
+            <StaffOnDuty data={staffData} callApi={() => handleFetchStaff()} />
           )}
 
           {/* Appointments - All roles */}
