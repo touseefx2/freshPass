@@ -1900,13 +1900,17 @@ function CheckoutContent() {
                     <>
                       <Image
                         source={{
-                          uri:
-                            process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "",
+                          uri: "https://www.w3schools.com/howto/img_avatar2.png",
                         }}
                         style={styles.serviceDetailsStaffImage}
                         resizeMode="cover"
                       />
-                      <Text style={styles.serviceDetailsStaffName}>
+                      <Text
+                        style={[
+                          styles.serviceDetailsStaffName,
+                          { marginLeft: 8 },
+                        ]}
+                      >
                         Anyone available
                       </Text>
                     </>
@@ -1941,7 +1945,12 @@ function CheckoutContent() {
                         style={styles.serviceDetailsStaffImage}
                         resizeMode="cover"
                       />
-                      <Text style={styles.serviceDetailsStaffName}>
+                      <Text
+                        style={[
+                          styles.serviceDetailsStaffName,
+                          { marginLeft: 8 },
+                        ]}
+                      >
                         Anyone available
                       </Text>
                     </>
