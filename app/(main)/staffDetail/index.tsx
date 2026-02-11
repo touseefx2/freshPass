@@ -140,6 +140,41 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       fontStyle: "italic",
     },
+    hoursScroll: {
+      marginTop: moderateHeightScale(8),
+    },
+    hoursCardsContainer: {
+      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(4),
+      gap: moderateWidthScale(12),
+    },
+    hoursCard: {
+      minWidth: widthScale(110),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      justifyContent: "center",
+      gap: moderateHeightScale(4),
+    },
+    hoursDay: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
+    hoursTime: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    hoursBreak: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(4),
+    },
     statusDot: {
       position: "absolute",
       right: 12,
@@ -186,6 +221,16 @@ export interface StaffDetailData {
 
 function capitalizeDay(day: string): string {
   return day.charAt(0).toUpperCase() + day.slice(1);
+}
+
+function formatTime(time: string | null | undefined): string {
+  if (!time) return "--";
+  const [hours, minutes] = time.split(":");
+  const hourNum = parseInt(hours, 10);
+  if (Number.isNaN(hourNum)) return time;
+  const ampm = hourNum >= 12 ? "PM" : "AM";
+  const displayHour = hourNum % 12 || 12;
+  return `${displayHour}:${minutes} ${ampm}`;
 }
 
 export default function StaffDetail() {
@@ -358,24 +403,45 @@ export default function StaffDetail() {
         {sortedHours.length > 0 ? (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{t("workingHours")}</Text>
-            {sortedHours.map((wh, index) => (
-              <View
-                key={wh.id}
-                style={[
-                  styles.workingDayRow,
-                  index === sortedHours.length - 1 && styles.workingDayRowLast,
-                ]}
-              >
-                <Text style={styles.dayText}>{capitalizeDay(wh.day)}</Text>
-                {wh.closed ? (
-                  <Text style={styles.closedText}>{t("closed")}</Text>
-                ) : (
-                  <Text style={styles.timeText}>
-                    {wh.opening_time} – {wh.closing_time}
-                  </Text>
-                )}
-              </View>
-            ))}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.hoursScroll}
+              contentContainerStyle={styles.hoursCardsContainer}
+            >
+              {sortedHours.map((wh) => {
+                const breakHours = wh.break_hours || [];
+                const hasBreaks = breakHours.length > 0;
+
+                return (
+                  <View key={wh.id} style={styles.hoursCard}>
+                    <Text style={styles.hoursDay}>{capitalizeDay(wh.day)}</Text>
+                    {wh.closed ? (
+                      <Text style={styles.closedText}>{t("closed")}</Text>
+                    ) : (
+                      <>
+                        <Text style={styles.hoursTime}>
+                          {formatTime(wh.opening_time)} –{" "}
+                          {formatTime(wh.closing_time)}
+                        </Text>
+                        {hasBreaks && (
+                          <Text style={styles.hoursBreak}>
+                            {/* Show first break; if more exist, append indicator */}
+                            {`Break: ${formatTime(
+                              breakHours[0].start,
+                            )} – ${formatTime(breakHours[0].end)}${
+                              breakHours.length > 1
+                                ? ` (+${breakHours.length - 1} more)`
+                                : ""
+                            }`}
+                          </Text>
+                        )}
+                      </>
+                    )}
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
         ) : null}
       </ScrollView>
