@@ -17,6 +17,7 @@ interface StaffMember {
   name: string;
   experience: number | null;
   image: string | null;
+  active?: boolean | null;
 }
 
 interface StaffSelectionBottomSheetProps {
@@ -136,12 +137,14 @@ export default function StaffSelectionBottomSheet({
       name: "Anyone who's available",
       experience: null,
       image: null,
+      active: null,
     },
     ...staffMembers.map((staff) => ({
       id: staff.id.toString(),
       name: staff.name,
       experience: staff.experience,
       image: staff.image,
+      active: staff.active,
     })),
   ];
 
