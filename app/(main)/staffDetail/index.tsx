@@ -59,15 +59,17 @@ const createStyles = (theme: Theme) =>
     avatar: {
       width: widthScale(100),
       height: widthScale(100),
-      borderRadius: widthScale(50),
+      borderRadius: widthScale(100 / 2),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      overflow: "hidden",
+      // overflow: "hidden",
       marginBottom: moderateHeightScale(12),
+      position: "relative",
     },
     avatarImage: {
       width: "100%",
       height: "100%",
+      borderRadius: widthScale(100 / 2),
     },
     staffName: {
       fontSize: fontSize.size22,
@@ -138,26 +140,14 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       fontStyle: "italic",
     },
-    statusBadge: {
-      marginTop: moderateHeightScale(12),
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.lightGreen1,
-      gap: moderateWidthScale(6),
-    },
     statusDot: {
-      width: widthScale(10),
-      height: widthScale(10),
-      borderRadius: widthScale(5),
-      backgroundColor: theme.toggleActive,
-    },
-    statusText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
+      position: "absolute",
+      right: 12,
+      bottom: 5,
+      width: widthScale(12),
+      height: widthScale(12),
+      borderRadius: widthScale(6),
+      zIndex: 9999,
     },
   });
 
@@ -326,12 +316,6 @@ export default function StaffDetail() {
               style={styles.avatarImage}
               resizeMode="cover"
             />
-          </View>
-          <Text style={styles.staffName}>{data.name}</Text>
-          {data.description ? (
-            <Text style={styles.description}>{data.description}</Text>
-          ) : null}
-          <View style={styles.statusBadge}>
             <View
               style={[
                 styles.statusDot,
@@ -342,10 +326,11 @@ export default function StaffDetail() {
                 },
               ]}
             />
-            <Text style={styles.statusText}>
-              {isActive ? "Available for appointments" : "Not available"}
-            </Text>
           </View>
+          <Text style={styles.staffName}>{data.name}</Text>
+          {data.description ? (
+            <Text style={styles.description}>{data.description}</Text>
+          ) : null}
         </View>
 
         <View style={styles.card}>
@@ -362,15 +347,11 @@ export default function StaffDetail() {
           ) : null}
           <View style={styles.row}>
             <Text style={styles.label}>{t("completedAppointmentsCount")}</Text>
-            <Text style={styles.value}>
-              {String(totalAppointments)}
-            </Text>
+            <Text style={styles.value}>{String(totalAppointments)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>{t("status")}</Text>
-            <Text style={styles.value}>
-              {isActive ? "Active" : "Inactive"}
-            </Text>
+            <Text style={styles.value}>{isActive ? "Active" : "Inactive"}</Text>
           </View>
         </View>
 
