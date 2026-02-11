@@ -744,9 +744,7 @@ export default function DashboardContent() {
       }>(generalEndpoints.proTipCards);
 
       if (response.success && response.data?.cards?.length) {
-        // setProTipData(response.data);
-        setProTipData(null);
-        setProTipError(true);
+        setProTipData(response.data);
       }
     } catch (error) {
       Logger.error("Failed to fetch pro tip cards:", error);
@@ -1006,19 +1004,20 @@ export default function DashboardContent() {
 
       {(proTipData?.cards?.length ?? 0) > 0 || proTipLoading || proTipError ? (
         <View style={styles.section}>
-          {proTipData && (
-            <ShowProTips
-              heading={proTipData.heading}
-              subheading={proTipData.subheading}
-              actionLabel={proTipData.action_label}
-              benefitLabel={proTipData.benefit_label}
-              standardLabel={proTipData.standard_label}
-              cards={proTipData.cards}
-              loading={proTipLoading}
-              error={proTipError}
-              onRetry={fetchProTipCards}
-            />
-          )}
+          <ShowProTips
+            heading={proTipData?.heading ?? "Pro Tips"}
+            subheading={
+              proTipData?.subheading ??
+              "Expert advice to keep you and your clients looking and feeling great."
+            }
+            actionLabel={proTipData?.action_label ?? "Action"}
+            benefitLabel={proTipData?.benefit_label ?? "Benefit"}
+            standardLabel={proTipData?.standard_label ?? "Standard"}
+            cards={proTipData?.cards ?? []}
+            loading={proTipLoading}
+            error={proTipError}
+            onRetry={fetchProTipCards}
+          />
         </View>
       ) : null}
     </ScrollView>

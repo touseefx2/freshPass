@@ -16,7 +16,7 @@ const createStyles = (theme: Theme) =>
       width: widthScale(280),
       borderRadius: moderateWidthScale(12),
       overflow: "hidden",
-      backgroundColor: theme.background,
+      backgroundColor: theme.darkGreen,
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: moderateHeightScale(2) },
       shadowOpacity: 0.1,
@@ -34,7 +34,7 @@ const createStyles = (theme: Theme) =>
       resizeMode: "cover",
     },
     content: {
-      backgroundColor: theme.buttonBack,
+      backgroundColor: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(12),
       paddingBottom: moderateHeightScale(16),
