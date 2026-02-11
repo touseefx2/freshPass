@@ -526,19 +526,17 @@ const createStyles = (theme: Theme) =>
     },
     serviceDetailsStaffStatusDot: {
       position: "absolute",
-      bottom: moderateHeightScale(-2),
-      right: moderateWidthScale(-2),
-      width: moderateWidthScale(8),
-      height: moderateWidthScale(8),
-      borderRadius: moderateWidthScale(8) / 2,
-      borderWidth: 1,
-      borderColor: theme.white,
+      bottom: 2,
+      right: 0,
+      width: moderateWidthScale(7),
+      height: moderateWidthScale(7),
+      borderRadius: moderateWidthScale(7) / 2,
     },
     serviceDetailsStaffStatusDotActive: {
-      backgroundColor: theme.green,
+      backgroundColor: theme.toggleActive,
     },
     serviceDetailsStaffStatusDotInactive: {
-      backgroundColor: theme.grey30,
+      backgroundColor: theme.lightGreen5,
     },
     serviceDetailsStaffName: {
       flex: 1,
