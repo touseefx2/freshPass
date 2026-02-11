@@ -686,14 +686,37 @@ const createStyles = (theme: Theme) =>
       shadowRadius: 1.0,
       elevation: 1,
     },
+    staffImageWrapper: {
+      position: "relative",
+      width: widthScale(35),
+      height: widthScale(35),
+      justifyContent: "center",
+      alignItems: "center",
+    },
     staffProfileImage: {
-      width: 35,
-      height: 35,
-      borderRadius: 35 / 2,
+      width: widthScale(35),
+      height: widthScale(35),
+      borderRadius: widthScale(35) / 2,
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 1,
       borderColor: theme.borderLight,
       overflow: "hidden",
+    },
+    staffStatusDot: {
+      position: "absolute",
+      bottom: moderateHeightScale(-2),
+      right: moderateWidthScale(-2),
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(10) / 2,
+      borderWidth: 1,
+      borderColor: theme.white,
+    },
+    staffStatusDotActive: {
+      backgroundColor: theme.toggleActive,
+    },
+    staffStatusDotInactive: {
+      backgroundColor: theme.lightGreen5,
     },
     staffInfo: {
       flex: 1,
@@ -1853,6 +1876,7 @@ export default function BusinessDetailScreen() {
           name: staff.name || "Staff Member",
           experience: staff?.description || null,
           image: image,
+          active: staff.active,
         };
       });
   }, [businessData]);
@@ -2892,10 +2916,20 @@ export default function BusinessDetailScreen() {
           <View style={styles.staffGrid}>
             {displayedStaff.map((staff: any) => (
               <View key={staff.id} style={[styles.staffCard, styles.shadow]}>
-                <Image
-                  source={{ uri: staff.image }}
-                  style={styles.staffProfileImage}
-                />
+                <View style={styles.staffImageWrapper}>
+                  <Image
+                    source={{ uri: staff.image }}
+                    style={styles.staffProfileImage}
+                  />
+                  <View
+                    style={[
+                      styles.staffStatusDot,
+                      staff.active
+                        ? styles.staffStatusDotActive
+                        : styles.staffStatusDotInactive,
+                    ]}
+                  />
+                </View>
                 <View style={styles.staffInfo}>
                   <Text style={styles.staffName} numberOfLines={1}>
                     {staff.name}
