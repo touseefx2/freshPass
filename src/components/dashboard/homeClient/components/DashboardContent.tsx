@@ -17,6 +17,7 @@ import Logger from "@/src/services/logger";
 import {
   businessEndpoints,
   appointmentsEndpoints,
+  generalEndpoints,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
@@ -29,6 +30,7 @@ import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
 import ShowAppointments from "./ShowAppointments";
+import ShowProTips from "./ShowProTips";
 import { sortCategoriesByMalePriority } from "@/src/constant/functions";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -536,6 +538,20 @@ export default function DashboardContent() {
   const [dealsError, setDealsError] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
+  const [proTipData, setProTipData] = useState<{
+    heading: string;
+    subheading: string;
+    action_label: string;
+    benefit_label: string;
+    standard_label: string;
+    cards: Array<{
+      image: string;
+      title: string;
+      action: string;
+      benefit: string;
+      standard: string;
+    }>;
+  } | null>(null);
 
   const fetchCategories = async () => {
     try {
@@ -700,6 +716,37 @@ export default function DashboardContent() {
       verifiedSalons.length <= 0 && setBusinessesError(true);
     } finally {
       setBusinessesLoading(false);
+    }
+  };
+
+  const fetchProTipCards = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        data: {
+          heading: string;
+          subheading: string;
+          action_label: string;
+          benefit_label: string;
+          standard_label: string;
+          cards: Array<{
+            image: string;
+            title: string;
+            action: string;
+            benefit: string;
+            standard: string;
+          }>;
+        };
+      }>(generalEndpoints.proTipCards);
+
+      if (response.success && response.data?.cards?.length) {
+        setProTipData(response.data);
+      } else {
+        setProTipData(null);
+      }
+    } catch (error) {
+      Logger.error("Failed to fetch pro tip cards:", error);
+      setProTipData(null);
     }
   };
 
@@ -880,6 +927,7 @@ export default function DashboardContent() {
         fetchCategories();
         fetchBusinesses();
         fetchBusinessesDeals();
+        fetchProTipCards();
       }
     }, []),
   );
@@ -945,6 +993,19 @@ export default function DashboardContent() {
           onRetry={fetchBusinesses}
         />
       </View>
+
+      {proTipData && proTipData.cards.length > 0 && (
+        <View style={styles.section}>
+          <ShowProTips
+            heading={proTipData.heading}
+            subheading={proTipData.subheading}
+            actionLabel={proTipData.action_label}
+            benefitLabel={proTipData.benefit_label}
+            standardLabel={proTipData.standard_label}
+            cards={proTipData.cards}
+          />
+        </View>
+      )}
     </ScrollView>
   );
 }

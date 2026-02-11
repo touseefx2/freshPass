@@ -289,3 +289,10 @@ export const favoritesEndpoints = {
     return `/api/favorites${query ? `?${query}` : ""}`;
   },
 };
+
+/**
+ * General / landing endpoints
+ */
+export const generalEndpoints = {
+  proTipCards: `/api/pro-tip-cards`,
+};
