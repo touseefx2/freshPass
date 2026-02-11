@@ -335,7 +335,7 @@ apiClient.interceptors.response.use(
     // Handle 401 Unauthorized - Session expired
     if (error.response?.status === 401) {
       // Clear user data and tokens
-      // await handleLogout();
+      await handleLogout();
 
       // Call session expired handler (for toast and navigation)
       if (onSessionExpired) {
