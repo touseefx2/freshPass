@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useRef, useEffect } from "react";
 import {
   Modal,
   Pressable,
@@ -43,6 +43,8 @@ const getTimeValue = (hours: number, minutes: number): number => {
   return hours * 2 + (minutes === 30 ? 1 : 0);
 };
 
+const ITEM_HEIGHT = moderateHeightScale(12) * 2 + 22;
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     modalOverlay: {
@@ -84,10 +86,20 @@ export default function TimePickerModal({
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
-
-  if (!visible) return null;
+  const scrollRef = useRef<ScrollView>(null);
 
   const currentValue = getTimeValue(currentHours, currentMinutes);
+
+  useEffect(() => {
+    if (visible && scrollRef.current) {
+      const y = Math.max(0, currentValue * ITEM_HEIGHT);
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y, animated: false });
+      }, 50);
+    }
+  }, [visible, currentValue]);
+
+  if (!visible) return null;
 
   return (
     <Modal
@@ -100,7 +112,7 @@ export default function TimePickerModal({
         <View
           style={[styles.dropdownModal, { paddingBottom: insets.bottom + 15 }]}
         >
-          <ScrollView>
+          <ScrollView ref={scrollRef}>
             {TIME_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.value}
