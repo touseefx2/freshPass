@@ -627,6 +627,7 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     disabledAction: {
+      opacity: 0.4,
     },
     inclusionsModalOverlay: {
       flex: 1,
