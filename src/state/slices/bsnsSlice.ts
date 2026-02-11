@@ -16,6 +16,7 @@ export interface StaffMember {
   experience: number | null;
   image: string | null;
   working_hours: BusinessHours | null;
+  active?: boolean | null;
 }
 
 export interface BusinessHours {

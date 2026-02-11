@@ -2796,7 +2796,18 @@ export default function BusinessDetailScreen() {
                                       // Construct image URL from API response
                                       let image = DEFAULT_AVATAR_URL;
                                       if (staff.avatar) {
-                                        image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+                                        const isAbsoluteUrl =
+                                          typeof staff.avatar === "string" &&
+                                          (staff.avatar.startsWith("http://") ||
+                                            staff.avatar.startsWith(
+                                              "https://",
+                                            ));
+
+                                        if (isAbsoluteUrl) {
+                                          image = staff.avatar;
+                                        } else {
+                                          image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+                                        }
                                       }
 
                                       // Parse working_hours if available (even if empty array)
@@ -2811,6 +2822,7 @@ export default function BusinessDetailScreen() {
                                         experience: staff?.description ?? null,
                                         image: image,
                                         working_hours: staffWorkingHours,
+                                        active: staff.active,
                                       };
                                     });
 

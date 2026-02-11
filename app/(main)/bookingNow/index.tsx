@@ -526,7 +526,16 @@ export default function BookingNow() {
 
             let image = DEFAULT_AVATAR_URL;
             if (staff.avatar) {
-              image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+              const isAbsoluteUrl =
+                typeof staff.avatar === "string" &&
+                (staff.avatar.startsWith("http://") ||
+                  staff.avatar.startsWith("https://"));
+
+              if (isAbsoluteUrl) {
+                image = staff.avatar;
+              } else {
+                image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+              }
             }
 
             // Parse working_hours if available (even if empty array)
@@ -538,6 +547,7 @@ export default function BookingNow() {
               experience: staff?.description ?? null,
               image: image,
               working_hours: staffWorkingHours,
+              active: staff.active,
             };
           });
 
@@ -640,12 +650,14 @@ export default function BookingNow() {
       name: "Anyone who's available",
       experience: null,
       image: null,
+      active: null,
     },
     ...staffMembers.map((staff) => ({
       id: staff.id.toString(),
       name: staff.name,
       experience: staff.experience ?? null,
       image: staff.image,
+      active: staff.active,
     })),
   ];
   const totalPrice = selectedServices.reduce(
@@ -821,6 +833,9 @@ export default function BookingNow() {
           >
             {staffList.map((staff) => {
               const isAnyone = staff.id === "anyone";
+              const isActive = staff.active;
+              console.log("isActive", isActive);
+
               return (
                 <TouchableOpacity
                   activeOpacity={0.7}
