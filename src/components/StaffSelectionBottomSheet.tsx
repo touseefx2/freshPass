@@ -58,6 +58,14 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(5),
       backgroundColor: theme.orangeBrown,
     },
+    staffImageWrapper: {
+      position: "relative",
+      width: widthScale(50),
+      height: widthScale(50),
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: moderateWidthScale(8),
+    },
     staffImage: {
       width: widthScale(50),
       height: widthScale(50),
@@ -66,6 +74,20 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.borderLight,
       overflow: "hidden",
+    },
+    staffStatusDot: {
+      position: "absolute",
+      bottom: 4,
+      right: 3,
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(8) / 2,
+    },
+    staffStatusDotActive: {
+      backgroundColor: theme.toggleActive,
+    },
+    staffStatusDotInactive: {
+      backgroundColor: theme.lightGreen5,
     },
     staffInfo: {
       flex: 1,
@@ -177,21 +199,33 @@ export default function StaffSelectionBottomSheet({
               >
                 {isSelected && <View style={styles.radioButtonInner} />}
               </View>
-              {staff.image ? (
-                <Image
-                  source={{ uri: staff.image }}
-                  style={styles.staffImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Image
-                  source={{
-                    uri: "https://www.w3schools.com/howto/img_avatar2.png",
-                  }}
-                  style={styles.staffImage}
-                  resizeMode="cover"
-                />
-              )}
+              <View style={styles.staffImageWrapper}>
+                {staff.image ? (
+                  <Image
+                    source={{ uri: staff.image }}
+                    style={styles.staffImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Image
+                    source={{
+                      uri: "https://www.w3schools.com/howto/img_avatar2.png",
+                    }}
+                    style={styles.staffImage}
+                    resizeMode="cover"
+                  />
+                )}
+                {staff.active !== null && (
+                  <View
+                    style={[
+                      styles.staffStatusDot,
+                      staff.active
+                        ? styles.staffStatusDotActive
+                        : styles.staffStatusDotInactive,
+                    ]}
+                  />
+                )}
+              </View>
               <View style={styles.staffInfo}>
                 <Text style={styles.staffName}>{staff.name}</Text>
                 {staff.experience !== null && (
