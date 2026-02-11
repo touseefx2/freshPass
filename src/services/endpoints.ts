@@ -80,6 +80,8 @@ export const businessEndpoints = {
     `/api/subscriptions/${subscriptionId}/cancel`,
   businessDetails: (businessId: string | number) =>
     `/api/business/details?business_id=${businessId}`,
+  favorite: (businessId: string | number) =>
+    `/api/businesses/${businessId}/favorite`,
   generateSubscription: `/api/subscription/generate`,
 };
 

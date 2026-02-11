@@ -43,7 +43,6 @@ import {
   MapPinIcon,
   PhoneIconContact,
   ShareIcon,
-  BookmarkIcon,
   GlobeIcon,
   StarIconBusinessDetail,
   LocationPinIconBusinessDetail,
@@ -57,7 +56,7 @@ import {
 import InclusionsModal from "@/src/components/inclusionsModal";
 import FullImageModal from "@/src/components/fullImageModal";
 import Button from "@/src/components/button";
-import { ApiService } from "@/src/services/api";
+import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
 import RetryButton from "@/src/components/retryButton";
 import ExploreSegmentToggle, {
@@ -1249,6 +1248,8 @@ export default function BusinessDetailScreen() {
   const [reviewsTotal, setReviewsTotal] = useState(0);
   const [reviewsAverageRating, setReviewsAverageRating] = useState(0);
 
+  const [isFavorited, setIsFavorited] = useState<boolean | null>(null);
+
   // Fetch business details
   const fetchBusinessDetails = async () => {
     if (!params.business_id) {
@@ -1270,6 +1271,11 @@ export default function BusinessDetailScreen() {
 
       if (response.success && response.data?.business) {
         setBusinessData(response.data.business);
+        setIsFavorited(
+          typeof response.data.business.is_favorited === "boolean"
+            ? response.data.business.is_favorited
+            : false,
+        );
       } else {
         setError("Failed to load business details");
       }
@@ -1286,6 +1292,56 @@ export default function BusinessDetailScreen() {
       fetchReviews();
     }, []),
   );
+
+  const handleToggleFavorite = async () => {
+    const isInternetConnected = await checkInternetConnection();
+    if (!isInternetConnected) {
+      Alert.alert(t("error"), t("noInternetConnection"));
+      return;
+    }
+
+    if (!params.business_id || isFavorited === null) {
+      return;
+    }
+
+    const previousValue = isFavorited;
+    const nextValue = !previousValue;
+
+    // Optimistic UI update
+    setIsFavorited(nextValue);
+    setBusinessData((prev: any) =>
+      prev ? { ...prev, is_favorited: nextValue } : prev,
+    );
+
+    try {
+      const response = await ApiService.post<{
+        success: boolean;
+        favorited?: boolean;
+      }>(businessEndpoints.favorite(params.business_id));
+
+      if (!response?.success) {
+        // Revert on failure
+        setIsFavorited(previousValue);
+        setBusinessData((prev: any) =>
+          prev ? { ...prev, is_favorited: previousValue } : prev,
+        );
+        return;
+      }
+
+      if (typeof response.favorited === "boolean") {
+        setIsFavorited(response.favorited);
+        setBusinessData((prev: any) =>
+          prev ? { ...prev, is_favorited: response.favorited } : prev,
+        );
+      }
+    } catch (error) {
+      // Revert on error
+      setIsFavorited(previousValue);
+      setBusinessData((prev: any) =>
+        prev ? { ...prev, is_favorited: previousValue } : prev,
+      );
+    }
+  };
 
   // Fetch service templates for this business category
   useEffect(() => {
@@ -1944,8 +2000,8 @@ export default function BusinessDetailScreen() {
     const displayText = isAboutExpanded
       ? aboutText
       : shouldShowReadMore
-      ? aboutText.substring(0, 220) + "..."
-      : aboutText;
+        ? aboutText.substring(0, 220) + "..."
+        : aboutText;
 
     // Sort business hours so current day appears first
     const currentDay = getCurrentDayName();
@@ -2157,14 +2213,14 @@ export default function BusinessDetailScreen() {
     const displayedMembershipSubscriptions = showAllMembershipSubscriptions
       ? membershipSubscriptions
       : shouldShowMembershipMoreCard
-      ? membershipSubscriptions.slice(0, 3)
-      : membershipSubscriptions;
+        ? membershipSubscriptions.slice(0, 3)
+        : membershipSubscriptions;
 
     const displayedIndividualServices = showAllIndividualServices
       ? filteredIndividualServices
       : shouldShowIndividualMoreCard
-      ? filteredIndividualServices.slice(0, 3)
-      : filteredIndividualServices;
+        ? filteredIndividualServices.slice(0, 3)
+        : filteredIndividualServices;
 
     const membershipPreview =
       !showAllMembershipSubscriptions && membershipSubscriptions.length > 3
@@ -3109,18 +3165,22 @@ export default function BusinessDetailScreen() {
               </View>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity activeOpacity={0.8} style={styles.iconButton}>
                 <ShareIcon
                   width={widthScale(16)}
                   height={heightScale(16)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <BookmarkIcon
-                  width={widthScale(16)}
-                  height={heightScale(16)}
-                  color={theme.darkGreen}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.iconButton}
+                onPress={handleToggleFavorite}
+              >
+                <MaterialIcons
+                  name={isFavorited ? "favorite" : "favorite-border"}
+                  size={widthScale(16)}
+                  color={theme.lightGreen}
                 />
               </TouchableOpacity>
             </View>
