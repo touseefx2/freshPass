@@ -89,33 +89,23 @@ export default function Tools() {
   const businessId = user?.business_id ?? "";
   const userId = Number(user?.id) ?? 0;
 
-  // Refresh user details (including ai_quota) when this screen is focused so quota is up-to-date
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      const fetchQuota = async () => {
-        try {
-          const response = await ApiService.get<{
-            success: boolean;
-            data?: { ai_quota?: number };
-          }>(userEndpoints.details);
-          if (
-            !cancelled &&
-            response?.success &&
-            response.data?.ai_quota !== undefined
-          ) {
-            dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
-          }
-        } catch {
-          // Silent fail
-        }
-      };
       fetchQuota();
-      return () => {
-        cancelled = true;
-      };
-    }, [dispatch]),
+    }, []),
   );
+
+  const fetchQuota = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        data?: { ai_quota?: number };
+      }>(userEndpoints.details);
+      if (response?.success && response.data?.ai_quota !== undefined) {
+        dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
+      }
+    } catch {}
+  };
 
   const hairTryOnService =
     aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;

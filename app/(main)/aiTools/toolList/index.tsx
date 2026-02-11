@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import React, {
+  useMemo,
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 import {
   ScrollView,
   View,
@@ -7,8 +13,8 @@ import {
   Animated,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useRouter } from "expo-router";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
   moderateHeightScale,
@@ -23,6 +29,9 @@ import {
   GenerateReelIcon,
   PersonScissorsIcon,
 } from "@/assets/icons";
+import { ApiService } from "@/src/services/api";
+import { userEndpoints } from "@/src/services/endpoints";
+import { setUserDetails } from "@/src/state/slices/userSlice";
 
 export default function ToolList() {
   const router = useRouter();
@@ -30,6 +39,7 @@ export default function ToolList() {
   const { t } = useTranslation();
   const user = useAppSelector((state) => state.user);
   const userRole = user?.userRole;
+  const dispatch = useAppDispatch();
 
   const isGuest = user.isGuest;
   const isCustomer = userRole === "customer";
@@ -131,6 +141,22 @@ export default function ToolList() {
       ]).start();
     }
   }, [isExpanded]);
+
+  useEffect(() => {
+    fetchQuota();
+  }, []);
+
+  const fetchQuota = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        data?: { ai_quota?: number };
+      }>(userEndpoints.details);
+      if (response?.success && response.data?.ai_quota !== undefined) {
+        dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
+      }
+    } catch {}
+  };
 
   const handleHeaderPress = () => {
     setIsExpanded(!isExpanded);
