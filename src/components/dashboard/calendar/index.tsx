@@ -496,9 +496,7 @@ export default function CalendarScreen() {
         if (l.type !== "break") return false;
         const bStart = dayjs.utc(l.start_time);
         const bEnd = dayjs.utc(l.end_time);
-        return (
-          !slotStart.isAfter(bEnd) && slotEnd.isAfter(bStart)
-        );
+        return !slotStart.isAfter(bEnd) && slotEnd.isAfter(bStart);
       });
     },
     [leaves, selectedDate],
