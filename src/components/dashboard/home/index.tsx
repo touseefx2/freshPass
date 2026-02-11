@@ -227,6 +227,7 @@ export default function HomeScreen() {
           active: number;
           description: string | null;
           invitation_token: string;
+          invitation_status: string;
           completed_appointments_count: number;
           business: {
             id: number;
@@ -246,7 +247,11 @@ export default function HomeScreen() {
       }>(staffEndpoints.list(active));
 
       if (response.success && response.data) {
-        const sortedStaff = [...response.data].sort((a, b) => {
+        const filteredStaff = response.data.filter(
+          staff => staff.invitation_status === "accepted",
+        );
+
+        const sortedStaff = [...filteredStaff].sort((a, b) => {
           const aActive = a.active === 1;
           const bActive = b.active === 1;
           if (aActive === bActive) return 0;
