@@ -387,6 +387,7 @@ const createStyles = (theme: Theme) =>
     actionButton: {
       alignItems: "center",
       width: widthScale(70),
+      justifyContent: "center",
     },
     actionButtonCircle: {
       width: widthScale(60),
@@ -401,6 +402,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
+      textAlign: "center",
     },
     paymentSection: {
       flexDirection: "row",

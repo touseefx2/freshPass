@@ -1,25 +1,11 @@
 import React, { useMemo } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import {
-  heightScale,
-  widthScale,
-} from "@/src/theme/dimensions";
-import {
-  MonitorIcon,
-  PersonIcon,
-  ChevronRight,
-} from "@/assets/icons";
+import { heightScale, widthScale } from "@/src/theme/dimensions";
+import { MonitorIcon, PersonIcon, ChevronRight } from "@/assets/icons";
 import { createStyles } from "./styles";
-
 
 interface AppointmentCard {
   id: number;
@@ -37,7 +23,7 @@ interface ShowAppointmentsProps {
 }
 
 export default function ShowAppointments({
-  appointments
+  appointments,
 }: ShowAppointmentsProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -52,9 +38,20 @@ export default function ShowAppointments({
       contentContainerStyle={styles.appointmentsScroll}
       nestedScrollEnabled={true}
     >
-
       {appointments.map((appointment) => (
-        <View key={appointment.id} style={styles.verifiedSalonCard}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => {
+            router.push({
+              pathname: "/(main)/bookingDetailsById",
+              params: {
+                bookingId: appointment.id,
+              },
+            });
+          }}
+          key={appointment.id}
+          style={styles.verifiedSalonCard}
+        >
           <View style={styles.verifiedCardTopRow}>
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedBadgeText}>
@@ -90,50 +87,21 @@ export default function ShowAppointments({
                 </Text>
               </View>
               <View style={styles.verifiedCardInfoRow2}>
-                <View
-                  style={[styles.verifiedCardInfoRow, { width: "58%" }]}
-                >
+                <View style={[styles.verifiedCardInfoRow, { width: "58%" }]}>
                   <PersonIcon
                     width={widthScale(16)}
                     height={heightScale(16)}
                     color={theme.white80}
                   />
-                  <Text
-                    numberOfLines={1}
-                    style={styles.verifiedCardInfoText}
-                  >
+                  <Text numberOfLines={1} style={styles.verifiedCardInfoText}>
                     {appointment.staffName}
                   </Text>
                 </View>
-
-                <TouchableOpacity
-                  style={styles.viewDetailLink}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/(main)/bookingDetailsById",
-                      params: {
-                        bookingId: appointment.id,
-                      },
-                    });
-                  }}
-                >
-                  <Text style={styles.viewDetailText}>View detail</Text>
-                  <ChevronRight
-                    width={widthScale(4)}
-                    height={heightScale(8)}
-                    color={theme.orangeBrown}
-                  />
-                </TouchableOpacity>
               </View>
             </View>
           </View>
-        </View>
-      ))
-      }
-
+        </TouchableOpacity>
+      ))}
     </ScrollView>
   );
-
-
-
 }
