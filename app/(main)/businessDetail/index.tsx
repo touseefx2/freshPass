@@ -28,6 +28,7 @@ import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { setBusinessData as setBusinessDataAction } from "@/src/state/slices/bsnsSlice";
+import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   heightScale,
@@ -3307,7 +3308,13 @@ export default function BusinessDetailScreen() {
                   styles.iconButton,
                   isBusinessOwnerView && styles.disabledAction,
                 ]}
-                onPress={isBusinessOwnerView ? undefined : handleToggleFavorite}
+                onPress={
+                  isBusinessOwnerView
+                    ? undefined
+                    : isGuest
+                      ? () => dispatch(setGuestModeModalVisible(true))
+                      : handleToggleFavorite
+                }
                 disabled={isBusinessOwnerView}
               >
                 <MaterialIcons
