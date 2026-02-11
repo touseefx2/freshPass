@@ -266,6 +266,7 @@ export default function StaffDetail() {
         setError(response?.message || t("staffProfileNotFound"));
         setData(null);
       } else {
+        console.log("--->data : ", response.data);
         setData(response.data);
         setError(null);
       }
