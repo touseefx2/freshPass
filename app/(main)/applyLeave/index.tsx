@@ -6,8 +6,6 @@ import {
   ScrollView,
   StatusBar,
   TouchableOpacity,
-  Modal,
-  Pressable,
   TextInput,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
@@ -18,7 +16,6 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
@@ -30,6 +27,7 @@ import dayjs from "dayjs";
 import DatePickerModal from "@/src/components/datePickerModal";
 import TimePickerModal from "@/src/components/timePickerModal";
 import Button from "@/src/components/button";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -53,22 +51,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.text,
       marginBottom: moderateHeightScale(8),
-    },
-    dateRangeInput: {
-      flexDirection: "row",
-      alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.borderLine,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(16),
-    },
-    dateRangeInputText: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
     },
     dropdownInput: {
       flexDirection: "row",
@@ -139,61 +121,6 @@ const createStyles = (theme: Theme) =>
     applyButton: {
       marginTop: moderateHeightScale(8),
     },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    dateRangeModalContainer: {
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(24),
-      paddingBottom: moderateHeightScale(24),
-      maxWidth: widthScale(400),
-      alignSelf: "center",
-      width: "100%",
-    },
-    modalHeader: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(8),
-    },
-    dateRangeModalTitle: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.text,
-      flex: 1,
-    },
-    modalCloseBtn: {
-      padding: moderateWidthScale(4),
-    },
-    dateRangeField: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      borderWidth: 1,
-      borderColor: theme.borderLine,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(12),
-    },
-    dateRangeFieldText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
-    },
-    dateRangeModalFooter: {
-      flexDirection: "row",
-      gap: moderateWidthScale(12),
-      marginTop: moderateHeightScale(20),
-    },
-    modalFooterButton: {
-      flex: 1,
-    },
   });
 
 export default function ApplyLeave() {
@@ -236,9 +163,6 @@ export default function ApplyLeave() {
   const [breakEndHours, setBreakEndHours] = useState(initialSlotEnd);
   const [breakEndMinutes, setBreakEndMinutes] = useState(0);
   const [reason, setReason] = useState("");
-  const [dateRangeModalVisible, setDateRangeModalVisible] = useState(false);
-  const [dateRangeFrom, setDateRangeFrom] = useState(initialDate);
-  const [dateRangeTo, setDateRangeTo] = useState(initialDate);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [datePickerTarget, setDatePickerTarget] = useState<"from" | "to">(
     "from",
@@ -268,8 +192,6 @@ export default function ApplyLeave() {
     setLeaveBreakType(type);
     setBreakStartHours(startH);
     setBreakEndHours(endH);
-    setDateRangeFrom(date);
-    setDateRangeTo(date);
   }, [params.type, params.date, params.slotStartHour, params.slotEndHour]);
 
   const formatTimeDisplay = (hours: number, minutes: number) => {
@@ -279,31 +201,11 @@ export default function ApplyLeave() {
     return `${displayHours}:${displayMinutes} ${period}`;
   };
 
-  const openDateRangeModal = () => {
-    setDateRangeFrom(fromDate);
-    setDateRangeTo(toDate);
-    setDateRangeModalVisible(true);
-  };
-
-  const applyDateRange = () => {
-    setFromDate(dateRangeFrom);
-    setToDate(dateRangeTo);
-    setDateRangeModalVisible(false);
-  };
-
-  const clearDateRange = () => {
-    setDateRangeFrom(today);
-    setDateRangeTo(today);
-    setFromDate(today);
-    setToDate(today);
-    setDateRangeModalVisible(false);
-  };
-
   const handleDateSelect = (date: dayjs.Dayjs) => {
     if (datePickerTarget === "from") {
-      setDateRangeFrom(date);
+      setFromDate(date);
     } else {
-      setDateRangeTo(date);
+      setToDate(date);
     }
     setDatePickerVisible(false);
   };
@@ -409,7 +311,7 @@ export default function ApplyLeave() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <StackHeader title="Apply for Leave / Break" />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -419,21 +321,52 @@ export default function ApplyLeave() {
           Select dates and times for your leave or break.
         </Text>
 
-        <Text style={styles.fieldLabel}>Date Range</Text>
-        <TouchableOpacity
-          style={styles.dateRangeInput}
-          onPress={openDateRangeModal}
-          activeOpacity={0.7}
+        <View
+          style={{
+            flexDirection: "row",
+            gap: moderateWidthScale(12),
+            marginBottom: moderateHeightScale(8),
+          }}
         >
-          <Text style={styles.dateRangeInputText} numberOfLines={1}>
-            {fromDate.format("MMM D, YYYY")} – {toDate.format("MMM D, YYYY")}
-          </Text>
-          <Feather
-            name="calendar"
-            size={moderateWidthScale(18)}
-            color={theme.lightGreen}
-          />
-        </TouchableOpacity>
+          <Text style={[styles.fieldLabel, { flex: 1 }]}>From Date</Text>
+          <Text style={[styles.fieldLabel, { flex: 1 }]}>To Date</Text>
+        </View>
+        <View style={styles.timeRow}>
+          <TouchableOpacity
+            style={styles.timeInputHalf}
+            onPress={() => {
+              setDatePickerTarget("from");
+              setDatePickerVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.timeInputText}>
+              {fromDate.format("DD/MM/YYYY")}
+            </Text>
+            <Feather
+              name="calendar"
+              size={moderateWidthScale(18)}
+              color={theme.lightGreen}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.timeInputHalf}
+            onPress={() => {
+              setDatePickerTarget("to");
+              setDatePickerVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.timeInputText}>
+              {toDate.format("DD/MM/YYYY")}
+            </Text>
+            <Feather
+              name="calendar"
+              size={moderateWidthScale(18)}
+              color={theme.lightGreen}
+            />
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.fieldLabel}>Type</Text>
         <TouchableOpacity
@@ -557,97 +490,12 @@ export default function ApplyLeave() {
           loading={applyLoading}
           containerStyle={styles.applyButton}
         />
-      </ScrollView>
-
-      {/* Select Date Range Modal */}
-      <Modal
-        visible={dateRangeModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setDateRangeModalVisible(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setDateRangeModalVisible(false)}
-        >
-          <Pressable
-            style={styles.dateRangeModalContainer}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.dateRangeModalTitle}>Select Date Range</Text>
-              <TouchableOpacity
-                onPress={() => setDateRangeModalVisible(false)}
-                style={styles.modalCloseBtn}
-                activeOpacity={0.7}
-              >
-                <Feather
-                  name="x"
-                  size={moderateWidthScale(22)}
-                  color={theme.text}
-                />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.fieldLabel}>From Date</Text>
-            <TouchableOpacity
-              style={styles.dateRangeField}
-              onPress={() => {
-                setDatePickerTarget("from");
-                setDatePickerVisible(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dateRangeFieldText}>
-                {dateRangeFrom.format("DD/MM/YYYY")}
-              </Text>
-              <Feather
-                name="calendar"
-                size={moderateWidthScale(18)}
-                color={theme.lightGreen}
-              />
-            </TouchableOpacity>
-            <Text style={styles.fieldLabel}>To Date</Text>
-            <TouchableOpacity
-              style={styles.dateRangeField}
-              onPress={() => {
-                setDatePickerTarget("to");
-                setDatePickerVisible(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.dateRangeFieldText}>
-                {dateRangeTo.format("DD/MM/YYYY")}
-              </Text>
-              <Feather
-                name="calendar"
-                size={moderateWidthScale(18)}
-                color={theme.lightGreen}
-              />
-            </TouchableOpacity>
-            <View style={styles.dateRangeModalFooter}>
-              <Button
-                title="Clear"
-                onPress={clearDateRange}
-                containerStyle={{
-                  ...styles.modalFooterButton,
-                  backgroundColor: theme.borderLight,
-                }}
-                textColor={theme.text}
-              />
-              <Button
-                title="Apply Filter"
-                onPress={applyDateRange}
-                containerStyle={styles.modalFooterButton}
-              />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      </KeyboardAwareScrollView>
 
       <DatePickerModal
         visible={datePickerVisible}
         onClose={() => setDatePickerVisible(false)}
-        selectedDate={datePickerTarget === "from" ? dateRangeFrom : dateRangeTo}
+        selectedDate={datePickerTarget === "from" ? fromDate : toDate}
         onDateSelect={handleDateSelect}
       />
 
@@ -657,9 +505,7 @@ export default function ApplyLeave() {
           timePickerTarget === "start" ? breakStartHours : breakEndHours
         }
         currentMinutes={
-          timePickerTarget === "start"
-            ? breakStartMinutes
-            : breakEndMinutes
+          timePickerTarget === "start" ? breakStartMinutes : breakEndMinutes
         }
         onSelect={handleTimeSelect}
         onClose={() => {
