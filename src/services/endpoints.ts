@@ -9,7 +9,7 @@
  */
 export const staffEndpoints = {
   register: `/staff/auth/register`,
-  details: (id: string | number) => `/api/staff/details/${id}`,
+  details: (id: string | number) => `/api/staff/${id}/details`,
   profile: `/api/staff/details`,
   availabilityHours: `/api/staff/availability-hours`,
   invite: `/api/staff/invite`,

@@ -138,6 +138,27 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       fontStyle: "italic",
     },
+    statusBadge: {
+      marginTop: moderateHeightScale(12),
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen1,
+      gap: moderateWidthScale(6),
+    },
+    statusDot: {
+      width: widthScale(10),
+      height: widthScale(10),
+      borderRadius: widthScale(5),
+      backgroundColor: theme.toggleActive,
+    },
+    statusText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
   });
 
 export interface StaffDetailData {
@@ -190,7 +211,7 @@ export default function StaffDetail() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StaffDetailData | null>(null);
 
-  const fetchStaffDetails = useCallback(async () => {
+  const fetchStaffDetails = async () => {
     if (!staffId) {
       setError(t("staffProfileNotFound"));
       setLoading(false);
@@ -200,18 +221,17 @@ export default function StaffDetail() {
     setError(null);
     setData(null);
     try {
-      const response = await ApiService.get<
-        StaffDetailData | { success: false; message: string; error: string }
-      >(staffEndpoints.details(staffId));
-      const res = response as any;
-      if (
-        res?.success === false ||
-        res?.message === "Staff profile not found."
-      ) {
-        setError(res?.message || t("staffProfileNotFound"));
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data?: StaffDetailData;
+      }>(staffEndpoints.details(staffId));
+
+      if (!response?.success || !response.data) {
+        setError(response?.message || t("staffProfileNotFound"));
         setData(null);
       } else {
-        setData(response as StaffDetailData);
+        setData(response.data);
         setError(null);
       }
     } catch (err: any) {
@@ -221,11 +241,11 @@ export default function StaffDetail() {
     } finally {
       setLoading(false);
     }
-  }, [staffId, t]);
+  };
 
   React.useEffect(() => {
     fetchStaffDetails();
-  }, [fetchStaffDetails]);
+  }, []);
 
   if (loading) {
     return (
@@ -271,7 +291,7 @@ export default function StaffDetail() {
       ? data.user.profile_image_url
       : (process.env.EXPO_PUBLIC_API_BASE_URL || "") +
         data.user.profile_image_url
-    : process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
 
   const workingHours = data.user?.working_hours ?? [];
   const dayOrder = [
@@ -286,6 +306,9 @@ export default function StaffDetail() {
   const sortedHours = [...workingHours].sort(
     (a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day),
   );
+
+  const isActive = Boolean(data.active);
+  const totalAppointments = data.completed_appointments_count ?? 0;
 
   return (
     <View style={styles.container}>
@@ -308,6 +331,21 @@ export default function StaffDetail() {
           {data.description ? (
             <Text style={styles.description}>{data.description}</Text>
           ) : null}
+          <View style={styles.statusBadge}>
+            <View
+              style={[
+                styles.statusDot,
+                {
+                  backgroundColor: isActive
+                    ? theme.toggleActive
+                    : theme.lightGreen5,
+                },
+              ]}
+            />
+            <Text style={styles.statusText}>
+              {isActive ? "Available for appointments" : "Not available"}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.card}>
@@ -325,7 +363,13 @@ export default function StaffDetail() {
           <View style={styles.row}>
             <Text style={styles.label}>{t("completedAppointmentsCount")}</Text>
             <Text style={styles.value}>
-              {String(data.completed_appointments_count ?? 0)}
+              {String(totalAppointments)}
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("status")}</Text>
+            <Text style={styles.value}>
+              {isActive ? "Active" : "Inactive"}
             </Text>
           </View>
         </View>
