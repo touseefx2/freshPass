@@ -20,6 +20,12 @@ export const staffEndpoints = {
     return `/api/staff`;
   },
   leaves: `/api/staff/leaves`,
+  leavesList: (params: { start_time: string; end_time: string }) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("start_time", params.start_time);
+    queryParams.append("end_time", params.end_time);
+    return `/api/staff/leaves?${queryParams.toString()}`;
+  },
   breaks: `/api/staff/breaks`,
 };
 

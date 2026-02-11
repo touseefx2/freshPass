@@ -24,7 +24,10 @@ import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { ApiService } from "@/src/services/api";
-import { appointmentsEndpoints } from "@/src/services/endpoints";
+import {
+  appointmentsEndpoints,
+  staffEndpoints,
+} from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter } from "expo-router";
 
@@ -88,6 +91,17 @@ interface CalendarAppointment {
   status_label: string;
   client_name: string;
   originalAppointment: Appointment;
+}
+
+interface StaffLeave {
+  id: number;
+  staff_id: number;
+  staff_name: string;
+  type: "leave" | "break";
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+  created_at: string;
 }
 
 const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
@@ -371,9 +385,11 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState(today);
   const [week, setWeek] = useState(getWeekDays(today));
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
+  const [leaves, setLeaves] = useState<StaffLeave[]>([]);
   const [loading, setLoading] = useState(false);
 
   const isStaff = userRole === "staff";
+  const currentDate = selectedDate.format("YYYY-MM-DD");
 
   // Set to current week on mount
   useEffect(() => {
@@ -390,6 +406,36 @@ export default function CalendarScreen() {
       }
     }
   }, [week]);
+
+  // Fetch leaves for selected date (staff/business only)
+  useEffect(() => {
+    if (isStaff) {
+      fetchLeaves();
+    }
+  }, [selectedDate]);
+
+  const fetchLeaves = async () => {
+    try {
+      setLeaves([]);
+      const dateStr = selectedDate.format("YYYY-MM-DD");
+      const start_time = `${dateStr} 00:00:00`;
+      const end_time = `${dateStr} 23:59:59`;
+
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: StaffLeave[];
+      }>(staffEndpoints.leavesList({ start_time, end_time }));
+
+      if (response.success && response.data && Array.isArray(response.data)) {
+        setLeaves(response.data);
+      } else {
+        setLeaves([]);
+      }
+    } catch {
+      setLeaves([]);
+    }
+  };
 
   const fetchAppointments = async () => {
     if (week.length === 0) return;
@@ -530,8 +576,6 @@ export default function CalendarScreen() {
     });
   };
 
-  const currentDate = selectedDate.format("YYYY-MM-DD");
-
   const nextWeek = () => {
     const next = selectedDate.add(7, "day");
     const nextWeekDays = getWeekDays(next);
@@ -563,7 +607,10 @@ export default function CalendarScreen() {
     return `${date.format("M/D/YYYY")} - ${date.format("h:mm a")}`;
   };
 
-  const navigateToApplyLeave = (type: "leave" | "break", slotTime12h?: string) => {
+  const navigateToApplyLeave = (
+    type: "leave" | "break",
+    slotTime12h?: string,
+  ) => {
     const dateStr = selectedDate.format("YYYY-MM-DD");
     if (type === "leave") {
       router.push({
@@ -585,6 +632,8 @@ export default function CalendarScreen() {
       });
     }
   };
+
+  console.log("-----> leave", leaves);
 
   return (
     <View style={styles.container}>
@@ -661,7 +710,7 @@ export default function CalendarScreen() {
                 {loading && (
                   <ActivityIndicator size="small" color={theme.primary} />
                 )}
-                {isStaff && (
+                {isStaff && !selectedDate.isBefore(today, "day") && (
                   <TouchableOpacity
                     onPress={() => navigateToApplyLeave("leave")}
                     style={{ marginLeft: moderateWidthScale(8) }}
