@@ -466,7 +466,7 @@ export default function LocationScreen() {
     ? locationLoading
       ? "Getting location..."
       : currentLocation.lat && currentLocation.long
-        ? currentLocation?.countryName
+        ? currentLocation?.locationName
         : "Get location"
     : "Location access disabled";
 

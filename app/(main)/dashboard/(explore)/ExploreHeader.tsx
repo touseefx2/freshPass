@@ -321,7 +321,7 @@ export default function ExploreHeader({
                 }
                 numberOfLines={1}
               >
-                {location?.lat ? location.countryName : t("where")}
+                {location?.lat ? location.locationName : t("where")}
               </Text>
             </View>
           </View>
