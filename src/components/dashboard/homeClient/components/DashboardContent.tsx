@@ -538,6 +538,8 @@ export default function DashboardContent() {
   const [dealsError, setDealsError] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
+  const [proTipLoading, setProTipLoading] = useState(false);
+  const [proTipError, setProTipError] = useState(false);
   const [proTipData, setProTipData] = useState<{
     heading: string;
     subheading: string;
@@ -721,6 +723,8 @@ export default function DashboardContent() {
 
   const fetchProTipCards = async () => {
     try {
+      setProTipLoading(true);
+      setProTipError(false);
       const response = await ApiService.get<{
         success: boolean;
         data: {
@@ -740,13 +744,15 @@ export default function DashboardContent() {
       }>(generalEndpoints.proTipCards);
 
       if (response.success && response.data?.cards?.length) {
-        setProTipData(response.data);
-      } else {
+        // setProTipData(response.data);
         setProTipData(null);
+        setProTipError(true);
       }
     } catch (error) {
       Logger.error("Failed to fetch pro tip cards:", error);
-      setProTipData(null);
+      proTipData == null && setProTipError(true);
+    } finally {
+      setProTipLoading(false);
     }
   };
 
@@ -932,6 +938,10 @@ export default function DashboardContent() {
     }, []),
   );
 
+  console.log("proTipData", proTipData);
+  console.log("proTipLoading", proTipLoading);
+  console.log("proTipError", proTipError);
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -994,18 +1004,23 @@ export default function DashboardContent() {
         />
       </View>
 
-      {proTipData && proTipData.cards.length > 0 && (
+      {(proTipData?.cards?.length ?? 0) > 0 || proTipLoading || proTipError ? (
         <View style={styles.section}>
-          <ShowProTips
-            heading={proTipData.heading}
-            subheading={proTipData.subheading}
-            actionLabel={proTipData.action_label}
-            benefitLabel={proTipData.benefit_label}
-            standardLabel={proTipData.standard_label}
-            cards={proTipData.cards}
-          />
+          {proTipData && (
+            <ShowProTips
+              heading={proTipData.heading}
+              subheading={proTipData.subheading}
+              actionLabel={proTipData.action_label}
+              benefitLabel={proTipData.benefit_label}
+              standardLabel={proTipData.standard_label}
+              cards={proTipData.cards}
+              loading={proTipLoading}
+              error={proTipError}
+              onRetry={fetchProTipCards}
+            />
+          )}
         </View>
-      )}
+      ) : null}
     </ScrollView>
   );
 }

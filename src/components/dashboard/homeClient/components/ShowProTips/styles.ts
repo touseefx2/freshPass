@@ -31,4 +31,22 @@ export const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       gap: moderateWidthScale(12),
     },
+    loadingContainer: {
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    errorContainer: {
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    errorText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
   });
