@@ -1486,6 +1486,19 @@ export default function BusinessDetailScreen() {
     }
     return ""; // Return empty string if no phone
   }, [businessData?.phone, businessData?.country_code]);
+
+  const ownerPhone = useMemo(() => {
+    const phone = businessData?.owner?.phone;
+    const countryCode = businessData?.owner?.country_code;
+
+    if (phone && countryCode) {
+      return `${countryCode}${phone}`;
+    } else if (phone) {
+      return phone;
+    }
+    return null;
+  }, [businessData?.owner?.phone, businessData?.owner?.country_code]);
+
   const businessName = businessData?.title || "Ra Benjamin Styles LLC";
   const businessLatitude = businessData?.latitude
     ? parseFloat(businessData.latitude)
@@ -1934,6 +1947,13 @@ export default function BusinessDetailScreen() {
 
   const getProfileImageUrl = (avatar: string | null) => {
     if (avatar) {
+      const isAbsoluteUrl =
+        avatar.startsWith("http://") || avatar.startsWith("https://");
+
+      if (isAbsoluteUrl) {
+        return avatar;
+      }
+
       return `${process.env.EXPO_PUBLIC_API_BASE_URL}${avatar}`;
     }
     return DEFAULT_AVATAR_URL;
@@ -1941,24 +1961,23 @@ export default function BusinessDetailScreen() {
 
   // Get owner avatar URL
   const getOwnerAvatarUrl = () => {
-    if (businessData?.owner?.avatar) {
-      return `${process.env.EXPO_PUBLIC_API_BASE_URL}${businessData.owner.avatar}`;
+    const avatar = businessData?.owner?.avatar ?? null;
+
+    if (avatar) {
+      const isAbsoluteUrl =
+        avatar.startsWith("http://") || avatar.startsWith("https://");
+
+      if (isAbsoluteUrl) {
+        return avatar;
+      }
+
+      return `${process.env.EXPO_PUBLIC_API_BASE_URL}${avatar}`;
     }
+
     return DEFAULT_AVATAR_URL;
   };
 
   // Format owner phone with country code
-  const ownerPhone = useMemo(() => {
-    const phone = businessData?.owner?.phone;
-    const countryCode = businessData?.owner?.country_code;
-
-    if (phone && countryCode) {
-      return `${countryCode}${phone}`;
-    } else if (phone) {
-      return phone;
-    }
-    return null;
-  }, [businessData?.owner?.phone, businessData?.owner?.country_code]);
 
   const renderReviewCard = (review: any, isHorizontal = false, index = 0) => {
     const reviewText = review.comment || "";
@@ -2915,7 +2934,17 @@ export default function BusinessDetailScreen() {
           </Text>
           <View style={styles.staffGrid}>
             {displayedStaff.map((staff: any) => (
-              <View key={staff.id} style={[styles.staffCard, styles.shadow]}>
+              <TouchableOpacity
+                key={staff.id}
+                style={[styles.staffCard, styles.shadow]}
+                activeOpacity={0.7}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(main)/staffDetail",
+                    params: { id: String(staff.id) },
+                  })
+                }
+              >
                 <View style={styles.staffImageWrapper}>
                   <Image
                     source={{ uri: staff.image }}
@@ -2940,7 +2969,7 @@ export default function BusinessDetailScreen() {
                     </Text>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
           {hasMoreStaff && !showAllStaff && (
