@@ -1834,9 +1834,20 @@ export default function BusinessDetailScreen() {
       .filter((staff: any) => staff.invitation_status === "accepted")
       .map((staff: any) => {
         let image = DEFAULT_AVATAR_URL;
+
         if (staff.avatar) {
-          image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+          const isAbsoluteUrl =
+            typeof staff.avatar === "string" &&
+            (staff.avatar.startsWith("http://") ||
+              staff.avatar.startsWith("https://"));
+
+          if (isAbsoluteUrl) {
+            image = staff.avatar;
+          } else {
+            image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+          }
         }
+
         return {
           id: staff.id || staff.user_id || 0,
           name: staff.name || "Staff Member",
