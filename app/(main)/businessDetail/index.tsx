@@ -2192,11 +2192,30 @@ export default function BusinessDetailScreen() {
                       {businessData.owner.email}
                     </Text>
                   )}
-                  {/* {ownerPhone && (
-                    <Text style={styles.ownerPhone}>{ownerPhone}</Text>
-                  )} */}
                 </View>
               </View>
+              {ownerPhone && (
+                <View style={styles.contactRow}>
+                  <View style={styles.phoneIconContainer}>
+                    <PhoneIconContact
+                      width={widthScale(18)}
+                      height={heightScale(18)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <View style={styles.contactPhoneRow}>
+                    <Text style={styles.phoneText}>{ownerPhone}</Text>
+                    <TouchableOpacity
+                      style={styles.callNowButton}
+                      onPress={handleCallNow}
+                    >
+                      <Text style={styles.callNowButtonText}>
+                        {t("callNow")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
           </>
         )}
