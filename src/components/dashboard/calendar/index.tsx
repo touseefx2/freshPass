@@ -441,7 +441,6 @@ export default function CalendarScreen() {
 
   const fetchLeaves = async () => {
     try {
-      setLeaves([]);
       const dateStr = selectedDate.format("YYYY-MM-DD");
       const start_time = `${dateStr} 00:00:00`;
       const end_time = `${dateStr} 23:59:59`;
@@ -457,9 +456,7 @@ export default function CalendarScreen() {
       } else {
         setLeaves([]);
       }
-    } catch {
-      setLeaves([]);
-    }
+    } catch {}
   };
 
   const fetchAppointments = async () => {
@@ -632,6 +629,21 @@ export default function CalendarScreen() {
     return `${date.format("M/D/YYYY")} - ${date.format("h:mm a")}`;
   };
 
+  const navigateToLeaveDetail = (leave: StaffLeave) => {
+    router.push({
+      pathname: "/(main)/leaveDetail",
+      params: {
+        leaveId: String(leave.id),
+        staffName: leave.staff_name || "",
+        leaveType: leave.type,
+        startTime: leave.start_time || "",
+        endTime: leave.end_time || "",
+        reason: leave.reason || "",
+        createdAt: leave.created_at || "",
+      },
+    });
+  };
+
   const navigateToApplyLeave = (
     type: "leave" | "break",
     slotTime12h?: string,
@@ -739,7 +751,7 @@ export default function CalendarScreen() {
                   <>
                     {leaves.length > 0 ? (
                       <TouchableOpacity
-                        onPress={() => navigateToApplyLeave("leave")}
+                        onPress={() => navigateToLeaveDetail(leaves[0])}
                         style={styles.leaveBox}
                         activeOpacity={0.7}
                       >

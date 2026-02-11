@@ -26,6 +26,7 @@ export const staffEndpoints = {
     queryParams.append("end_time", params.end_time);
     return `/api/staff/leaves?${queryParams.toString()}`;
   },
+  leaveCancel: (id: number) => `/api/staff/leaves/${id}`,
   breaks: `/api/staff/breaks`,
 };
 
