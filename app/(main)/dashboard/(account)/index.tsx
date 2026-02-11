@@ -264,6 +264,15 @@ export default function AccountScreen() {
       router.push(isCustomer ? "./subscriptionCustomer" : "./subscription");
     } else if (key === "aiTools") {
       router.push("/(main)/aiTools/toolList");
+    } else if (key === "viewBusiness") {
+      const businessId = user.business_id;
+      if (!businessId) {
+        return;
+      }
+      router.push({
+        pathname: "/(main)/businessDetail",
+        params: { business_id: businessId.toString() },
+      } as any);
     } else if (key === "favorites") {
       router.push("./favourite");
     } else if (key === "logout") {
@@ -287,6 +296,7 @@ export default function AccountScreen() {
       | "reviews"
       | "subscriptions"
       | "aiTools"
+      | "viewBusiness"
       | "favorites"
       | "logout"
       | "delete";
@@ -323,6 +333,9 @@ export default function AccountScreen() {
       title: t("language"),
       subtitle: getLanguageName(currentLanguage),
     },
+    ...(userRole === "business" && !isGuest
+      ? [{ key: "viewBusiness" as const, title: t("viewBusiness") }]
+      : []),
     ...(userRole === "business" || isCustomer
       ? [{ key: "subscriptions" as const, title: t("subscription") }]
       : []),
@@ -407,6 +420,14 @@ export default function AccountScreen() {
             name="favorite"
             size={iconSize}
             color={theme.lightGreen}
+          />
+        );
+      case "viewBusiness":
+        return (
+          <MaterialIcons
+            name="visibility"
+            size={iconSize}
+            color={theme.darkGreen}
           />
         );
       case "aiTools":

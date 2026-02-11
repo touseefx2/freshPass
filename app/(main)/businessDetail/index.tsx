@@ -626,6 +626,8 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
+    disabledAction: {
+    },
     inclusionsModalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -1207,6 +1209,11 @@ export default function BusinessDetailScreen() {
   const [selectedReview, setSelectedReview] = useState<any | null>(null);
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
+  const isBusinessOwnerView =
+    user.userRole === "business" &&
+    user.business_id &&
+    params.business_id &&
+    user.business_id?.toString() === params.business_id?.toString();
 
   // Refs for scroll positions
   const scrollViewRef = useRef<ScrollView>(null);
@@ -2363,8 +2370,13 @@ export default function BusinessDetailScreen() {
                             </Text>
                           </View>
                           <TouchableOpacity
-                            style={styles.bookNowButton}
+                            style={[
+                              styles.bookNowButton,
+                              isBusinessOwnerView && styles.disabledAction,
+                            ]}
+                            disabled={isBusinessOwnerView}
                             onPress={() => {
+                              if (isBusinessOwnerView) return;
                               router.push({
                                 pathname:
                                   "/(main)/bookingNow/checkoutSubscription",
@@ -2535,8 +2547,13 @@ export default function BusinessDetailScreen() {
                                 {service.duration}
                               </Text>
                               <TouchableOpacity
-                                style={styles.bookNowButton}
+                                style={[
+                                  styles.bookNowButton,
+                                  isBusinessOwnerView && styles.disabledAction,
+                                ]}
+                                disabled={isBusinessOwnerView}
                                 onPress={() => {
+                                  if (isBusinessOwnerView) return;
                                   // Set business data in Redux
                                   const serviceData = {
                                     id: service.id,
@@ -2923,6 +2940,8 @@ export default function BusinessDetailScreen() {
     const hasUserReviewed = currentUserId
       ? reviewsData.some((review: any) => review.user_id === currentUserId)
       : false;
+    const canWriteReview = !hasUserReviewed && !isGuest;
+    const isWriteReviewDisabled = isBusinessOwnerView;
 
     return (
       <View
@@ -3006,11 +3025,15 @@ export default function BusinessDetailScreen() {
           )}
 
           {/* Write a Review Button */}
-          {!hasUserReviewed && !isGuest && (
+          {canWriteReview && (
             <View style={styles.writeReviewButtonContainer}>
               <Button
                 backgroundColor={theme.darkGreen}
                 title={t("writeAReview")}
+                disabled={isWriteReviewDisabled}
+                containerStyle={
+                  isWriteReviewDisabled ? styles.disabledAction : undefined
+                }
                 onPress={() => {
                   const logoUrl = getBusinessLogoUrl();
                   router.push({
@@ -3174,8 +3197,12 @@ export default function BusinessDetailScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 activeOpacity={0.8}
-                style={styles.iconButton}
-                onPress={handleToggleFavorite}
+                style={[
+                  styles.iconButton,
+                  isBusinessOwnerView && styles.disabledAction,
+                ]}
+                onPress={isBusinessOwnerView ? undefined : handleToggleFavorite}
+                disabled={isBusinessOwnerView}
               >
                 <MaterialIcons
                   name={isFavorited ? "favorite" : "favorite-border"}
