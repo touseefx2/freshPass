@@ -478,9 +478,11 @@ export default function CalendarScreen() {
 
   const leaveForSelectedDate = useMemo(() => {
     const dateStr = selectedDate.format("YYYY-MM-DD");
-    return leaves.find(
-      (l) => dayjs.utc(l.start_time).format("YYYY-MM-DD") === dateStr,
-    );
+    return leaves.find((l) => {
+      const startDate = dayjs.utc(l.start_time).format("YYYY-MM-DD");
+      const endDate = dayjs.utc(l.end_time).format("YYYY-MM-DD");
+      return dateStr >= startDate && dateStr <= endDate;
+    });
   }, [leaves, selectedDate]);
 
   const getBreaksForSlot = useCallback(
