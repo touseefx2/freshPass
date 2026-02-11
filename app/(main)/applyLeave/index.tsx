@@ -276,7 +276,7 @@ export default function ApplyLeave() {
         const response = await ApiService.post<{
           success: boolean;
           message?: string;
-        }>(staffEndpoints.breaks, body);
+        }>(staffEndpoints.leaves, body);
         if (response.success) {
           showBanner(
             t("success") || "Success",

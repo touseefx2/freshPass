@@ -99,6 +99,8 @@ export default function LeaveDetail() {
   const reason = params.reason ?? "";
   const createdAt = params.createdAt ?? "";
 
+  console.log("-----> params", params);
+
   const formatDateTime = (iso: string) => {
     if (!iso) return "—";
     const d = dayjs(iso);
@@ -113,9 +115,7 @@ export default function LeaveDetail() {
 
   const formatStartEnd = (iso: string) => {
     if (!iso) return "—";
-    return leaveType === "leave"
-      ? formatDateOnly(iso)
-      : formatDateTime(iso);
+    return leaveType === "leave" ? formatDateOnly(iso) : formatDateTime(iso);
   };
 
   const handleCancelLeave = async () => {

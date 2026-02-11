@@ -442,15 +442,13 @@ export default function CalendarScreen() {
   const fetchLeaves = async () => {
     setLeaves([]);
     try {
-      const dateStr = selectedDate.format("YYYY-MM-DD");
-      const start_time = `${dateStr} 00:00:00`;
-      const end_time = `${dateStr} 23:59:59`;
+      const date = selectedDate.format("YYYY-MM-DD");
 
       const response = await ApiService.get<{
         success: boolean;
         message: string;
         data: StaffLeave[];
-      }>(staffEndpoints.leavesList({ start_time, end_time }));
+      }>(staffEndpoints.leavesList({ date }));
 
       if (response.success && response.data && Array.isArray(response.data)) {
         setLeaves(response.data);
@@ -763,7 +761,9 @@ export default function CalendarScreen() {
                           size={moderateWidthScale(16)}
                           color={theme.primary}
                         />
-                        <Text style={styles.leaveBoxText}>LEAVE</Text>
+                        <Text style={styles.leaveBoxText}>
+                          {leaves[0].type === "leave" ? "LEAVE" : "BREAK"}
+                        </Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
