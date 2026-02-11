@@ -19,6 +19,7 @@ import {
   Linking,
   Platform,
   Alert,
+  Share,
   ActivityIndicator,
   TextInput,
 } from "react-native";
@@ -1372,6 +1373,20 @@ export default function BusinessDetailScreen() {
       setBusinessData((prev: any) =>
         prev ? { ...prev, is_favorited: previousValue } : prev,
       );
+    }
+  };
+
+  const handleShareBusiness = async () => {
+    try {
+      const shareUrl = `https://getfreshpass.com/business/${businessData?.name ?? ""}`;
+      const message = `Discover ${businessName} on FreshPass.\n\nAddress: ${businessAddress}\n\nView details & book here:\n${shareUrl}\n\nImage preview:\n${currentHeroImage}`;
+
+      await Share.share({
+        message,
+        url: shareUrl,
+      });
+    } catch (_error) {
+      // Silently ignore share errors for now
     }
   };
 
@@ -3295,7 +3310,11 @@ export default function BusinessDetailScreen() {
               </View>
             </View>
             <View style={styles.headerRight}>
-              <TouchableOpacity activeOpacity={0.8} style={styles.iconButton}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.iconButton}
+                onPress={handleShareBusiness}
+              >
                 <ShareIcon
                   width={widthScale(16)}
                   height={heightScale(16)}
