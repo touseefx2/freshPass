@@ -69,12 +69,23 @@ const createStyles = (theme: Theme) =>
       borderRadius: widthScale(52 / 2),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      overflow: "hidden",
+      // overflow: "hidden",
+      position: "relative",
     },
     staffAvatarImage: {
       flex: 1,
       borderRadius: widthScale(52 / 2),
       overflow: "hidden",
+    },
+    statusDot: {
+      position: "absolute",
+      right: 3,
+      bottom: 2,
+      width: widthScale(9),
+      height: widthScale(9),
+      borderRadius: widthScale(9 / 2),
+      backgroundColor: theme.toggleActive,
+      zIndex: 9999,
     },
     staffName: {
       fontSize: fontSize.size11,
@@ -191,9 +202,20 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
                         ? staff.user.profile_image_url
                         : process.env.EXPO_PUBLIC_API_BASE_URL +
                           staff.user.profile_image_url
-                      : process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "",
+                      : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
                   }}
                   style={styles.staffAvatarImage}
+                />
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor:
+                        staff.active === 1
+                          ? theme.toggleActive
+                          : theme.lightGreen5,
+                    },
+                  ]}
                 />
               </View>
               <Text numberOfLines={1} style={styles.staffName}>

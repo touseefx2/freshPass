@@ -246,7 +246,13 @@ export default function HomeScreen() {
       }>(staffEndpoints.list(active));
 
       if (response.success && response.data) {
-        setStaffData(response.data);
+        const sortedStaff = [...response.data].sort((a, b) => {
+          const aActive = a.active === 1;
+          const bActive = b.active === 1;
+          if (aActive === bActive) return 0;
+          return aActive ? -1 : 1;
+        });
+        setStaffData(sortedStaff);
       }
     } catch (error: any) {
       showBanner(
