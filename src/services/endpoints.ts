@@ -275,3 +275,17 @@ export const aiTransactionsEndpoints = {
     return `/api/ai/transactions${query ? `?${query}` : ""}`;
   },
 };
+
+/**
+ * Favorites endpoints
+ */
+export const favoritesEndpoints = {
+  list: (params?: { page?: number; per_page?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.per_page)
+      queryParams.append("per_page", params.per_page.toString());
+    const query = queryParams.toString();
+    return `/api/favorites${query ? `?${query}` : ""}`;
+  },
+};

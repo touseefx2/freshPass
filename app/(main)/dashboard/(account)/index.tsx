@@ -264,6 +264,8 @@ export default function AccountScreen() {
       router.push(isCustomer ? "./subscriptionCustomer" : "./subscription");
     } else if (key === "aiTools") {
       router.push("/(main)/aiTools/toolList");
+    } else if (key === "favorites") {
+      router.push("./favourite");
     } else if (key === "logout") {
       handleLogout();
     } else if (key === "delete") {
@@ -285,6 +287,7 @@ export default function AccountScreen() {
       | "reviews"
       | "subscriptions"
       | "aiTools"
+      | "favorites"
       | "logout"
       | "delete";
 
@@ -328,7 +331,12 @@ export default function AccountScreen() {
       title: t("notificationSettings"),
       subtitle: t("turnedOn"),
     },
-    ...(isCustomer ? [{ key: "reviews" as const, title: t("reviews") }] : []),
+    ...(isCustomer
+      ? [
+          { key: "reviews" as const, title: t("reviews") },
+          { key: "favorites" as const, title: t("favorites") },
+        ]
+      : []),
     ...(userRole === "business" || userRole === "customer"
       ? [{ key: "aiTools" as const, title: t("aiTools") }]
       : []),
@@ -391,6 +399,14 @@ export default function AccountScreen() {
             name="star"
             size={iconSize}
             color={theme.orangeBrown}
+          />
+        );
+      case "favorites":
+        return (
+          <MaterialIcons
+            name="favorite"
+            size={iconSize}
+            color={theme.lightGreen}
           />
         );
       case "aiTools":

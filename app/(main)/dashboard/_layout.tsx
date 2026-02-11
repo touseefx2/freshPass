@@ -156,6 +156,10 @@ export default function DashboardLayout() {
     Array.isArray(segments) &&
     segments.includes("(explore)") &&
     segments.includes("search2");
+  const isFavoritesScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("favourite");
   // Check if we should hide the AI chat button and tab bar on certain screens
   const shouldHideAiChat =
     isUserReviewsScreen ||
@@ -179,7 +183,8 @@ export default function DashboardLayout() {
     isSubscriptionCustomerScreen ||
     isLocationScreen ||
     isSearchScreen ||
-    isSearch2Screen;
+    isSearch2Screen ||
+    isFavoritesScreen;
 
   return (
     <>
