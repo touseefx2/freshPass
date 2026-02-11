@@ -248,7 +248,7 @@ export default function HomeScreen() {
 
       if (response.success && response.data) {
         const filteredStaff = response.data.filter(
-          staff => staff.invitation_status === "accepted",
+          (staff) => staff.invitation_token == null,
         );
 
         const sortedStaff = [...filteredStaff].sort((a, b) => {

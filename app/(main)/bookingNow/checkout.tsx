@@ -20,7 +20,6 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { FlatList } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import {
@@ -508,6 +507,14 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       padding: moderateWidthScale(16),
     },
+    serviceDetailsStaffImageWrapper: {
+      position: "relative",
+      width: widthScale(32),
+      height: widthScale(32),
+      marginRight: moderateWidthScale(8),
+      justifyContent: "center",
+      alignItems: "center",
+    },
     serviceDetailsStaffImage: {
       width: widthScale(32),
       height: widthScale(32),
@@ -515,7 +522,23 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 1,
       borderColor: theme.borderLight,
-      marginRight: moderateWidthScale(8),
+      overflow: "hidden",
+    },
+    serviceDetailsStaffStatusDot: {
+      position: "absolute",
+      bottom: moderateHeightScale(-2),
+      right: moderateWidthScale(-2),
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(8) / 2,
+      borderWidth: 1,
+      borderColor: theme.white,
+    },
+    serviceDetailsStaffStatusDotActive: {
+      backgroundColor: theme.green,
+    },
+    serviceDetailsStaffStatusDotInactive: {
+      backgroundColor: theme.grey30,
     },
     serviceDetailsStaffName: {
       flex: 1,
@@ -726,7 +749,7 @@ function CheckoutContent() {
     "morning" | "evening" | "night"
   >("morning");
   const [paymentMethod, setPaymentMethod] = useState<"payNow" | "payLater">(
-    "payNow"
+    "payNow",
   );
   const [note, setNote] = useState<string>("");
   const [processingPayment, setProcessingPayment] = useState(false);
@@ -746,7 +769,7 @@ function CheckoutContent() {
 
   // Get index of first slot in a category
   const getCategoryStartIndex = (
-    category: "morning" | "evening" | "night"
+    category: "morning" | "evening" | "night",
   ): number => {
     const allSlots = getAllSlots();
     switch (category) {
@@ -784,14 +807,14 @@ function CheckoutContent() {
 
     // Calculate which slot index is currently visible (centered)
     const visibleIndex = Math.round(
-      (scrollX - paddingHorizontal + slotWidth / 2) / (slotWidth + gap)
+      (scrollX - paddingHorizontal + slotWidth / 2) / (slotWidth + gap),
     );
 
     // Clamp to valid range
     const allSlots = getAllSlots();
     const clampedIndex = Math.max(
       0,
-      Math.min(visibleIndex, allSlots.length - 1)
+      Math.min(visibleIndex, allSlots.length - 1),
     );
 
     // Get the slot at this index
@@ -845,7 +868,7 @@ function CheckoutContent() {
   // Handle service deletion
   const handleDeleteService = (serviceId: number) => {
     const updatedServices = selectedServices.filter(
-      (service) => service.id !== serviceId
+      (service) => service.id !== serviceId,
     );
     dispatch(setSelectedServices(updatedServices));
   };
@@ -863,13 +886,13 @@ function CheckoutContent() {
     (services: Service[]) => {
       dispatch(setSelectedServices(services));
     },
-    [dispatch]
+    [dispatch],
   );
 
   // Memoize selectedServiceIds for AddServiceBottomSheet
   const selectedServiceIds = useMemo(
     () => selectedServices.map((s) => s.id),
-    [selectedServices]
+    [selectedServices],
   );
 
   // Handle back navigation with updated data
@@ -890,11 +913,11 @@ function CheckoutContent() {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onBackPress
+        onBackPress,
       );
 
       return () => subscription.remove();
-    }, [handleBackNavigation])
+    }, [handleBackNavigation]),
   );
 
   // Dummy staff member
@@ -908,7 +931,7 @@ function CheckoutContent() {
 
   const totalPrice = selectedServices.reduce(
     (sum, service) => sum + service.price,
-    0
+    0,
   );
   // Tax rate (5% = 0.1)
   const taxRate = 0.0;
@@ -921,7 +944,7 @@ function CheckoutContent() {
       setSelectedStaffMember(null);
     } else {
       const foundStaff = staffMembers.find(
-        (s) => s.id.toString() === selectedStaffId
+        (s) => s.id.toString() === selectedStaffId,
       );
       if (foundStaff) {
         setSelectedStaffMember(foundStaff);
@@ -1107,7 +1130,7 @@ function CheckoutContent() {
       // Check if slot is during a break
       const isDuringBreak = breakTimes.some(
         (breakTime) =>
-          slotMinutes >= breakTime.start && slotMinutes < breakTime.end
+          slotMinutes >= breakTime.start && slotMinutes < breakTime.end,
       );
       if (isDuringBreak) {
         return false;
@@ -1122,7 +1145,7 @@ function CheckoutContent() {
   // Re-categorize available slots
   const { morning, evening, night } = useMemo(
     () => categorizeTimeSlots(availableTimeSlots),
-    [availableTimeSlots]
+    [availableTimeSlots],
   );
 
   const getTimezoneText = () => {
@@ -1147,14 +1170,12 @@ function CheckoutContent() {
     : undefined;
 
   const handleBookNow = async () => {
-    
-
     if (!selectedTimeSlot) {
       showBanner(
         "Time Slot Required",
         "Please select a time slot to proceed with booking.",
         "warning",
-        4000
+        4000,
       );
       return;
     }
@@ -1163,11 +1184,10 @@ function CheckoutContent() {
         "No Service Selected",
         "Please select at least one service to proceed with checkout.",
         "warning",
-        4000
+        4000,
       );
       return;
     }
-
 
     if (isGuest) {
       dispatch(setGuestModeModalVisible(true));
@@ -1219,7 +1239,7 @@ function CheckoutContent() {
     try {
       const response = (await ApiService.post(
         appointmentsEndpoints.create,
-        requestBody
+        requestBody,
       )) as {
         success?: boolean;
         message?: string;
@@ -1239,7 +1259,7 @@ function CheckoutContent() {
       // Console log response
       Logger.log(
         "Appointment API Response:",
-        JSON.stringify(response, null, 2)
+        JSON.stringify(response, null, 2),
       );
 
       // Check success - ApiService.post returns response.data, so structure is:
@@ -1267,7 +1287,7 @@ function CheckoutContent() {
               "Payment Failed",
               "Appointment ID is missing. Please try again.",
               "error",
-              4000
+              4000,
             );
             return;
           }
@@ -1302,7 +1322,7 @@ function CheckoutContent() {
               paymentConfig.customerEphemeralKeySecret = ephemeralKey;
             } else {
               throw new Error(
-                "Either customerSessionClientSecret or ephemeralKey must be provided"
+                "Either customerSessionClientSecret or ephemeralKey must be provided",
               );
             }
 
@@ -1313,14 +1333,14 @@ function CheckoutContent() {
               paymentConfig.setupIntentClientSecret = setupIntent;
             } else {
               throw new Error(
-                "Either Payment Intent or Setup Intent must be provided"
+                "Either Payment Intent or Setup Intent must be provided",
               );
             }
             const { error: initError } = await initPaymentSheet(paymentConfig);
 
             if (initError) {
               throw new Error(
-                initError.message || "Failed to initialize payment"
+                initError.message || "Failed to initialize payment",
               );
             }
 
@@ -1334,7 +1354,7 @@ function CheckoutContent() {
                   "Payment Failed",
                   presentError.message || "Payment could not be completed",
                   "error",
-                  4000
+                  4000,
                 );
               }
               // If user canceled, don't show error (silent cancel)
@@ -1351,7 +1371,7 @@ function CheckoutContent() {
                 "Success",
                 "Payment successful! Your booking is confirmed.",
                 "success",
-                3000
+                3000,
               );
 
               // Create bookingId: appointmentDate (YYYYMMDD format) + appointmentId
@@ -1363,7 +1383,7 @@ function CheckoutContent() {
                   const [month, day, year] = dateParts;
                   dateFormatted = `${year}${month.padStart(
                     2,
-                    "0"
+                    "0",
                   )}${day.padStart(2, "0")}`;
                 }
               }
@@ -1424,7 +1444,7 @@ function CheckoutContent() {
               const [month, day, year] = dateParts;
               dateFormatted = `${year}${month.padStart(2, "0")}${day.padStart(
                 2,
-                "0"
+                "0",
               )}`;
             }
           }
@@ -1459,7 +1479,7 @@ function CheckoutContent() {
           "Booking Failed",
           response?.message || "Failed to book appointment. Please try again.",
           "error",
-          4000
+          4000,
         );
       }
     } catch (error: any) {
@@ -1473,7 +1493,7 @@ function CheckoutContent() {
         "Booking Failed",
         error?.message || "Failed to book appointment. Please try again.",
         "error",
-        4000
+        4000,
       );
     }
   };
@@ -1882,7 +1902,8 @@ function CheckoutContent() {
                     <>
                       <Image
                         source={{
-                          uri: "https://www.w3schools.com/howto/img_avatar2.png",
+                          uri:
+                            process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "",
                         }}
                         style={styles.serviceDetailsStaffImage}
                         resizeMode="cover"
@@ -1893,20 +1914,22 @@ function CheckoutContent() {
                     </>
                   ) : selectedStaffMember ? (
                     <>
-                      {selectedStaffMember.image ? (
+                      <View style={styles.serviceDetailsStaffImageWrapper}>
                         <Image
-                          source={{ uri: selectedStaffMember.image }}
+                          source={{ uri: selectedStaffMember.image ?? "" }}
                           style={styles.serviceDetailsStaffImage}
                           resizeMode="cover"
                         />
-                      ) : (
-                        <Image
-                          source={{
-                            uri: "https://www.w3schools.com/howto/img_avatar2.png",
-                          }}
-                          style={styles.serviceDetailsStaffImage}
+                        <View
+                          style={[
+                            styles.serviceDetailsStaffStatusDot,
+                            selectedStaffMember.active
+                              ? styles.serviceDetailsStaffStatusDotActive
+                              : styles.serviceDetailsStaffStatusDotInactive,
+                          ]}
                         />
-                      )}
+                      </View>
+
                       <Text style={styles.serviceDetailsStaffName}>
                         {selectedStaffMember.name}
                       </Text>
@@ -2051,7 +2074,7 @@ function CheckoutContent() {
             setSelectedStaffMember(null);
           } else {
             const foundStaff = staffMembers.find(
-              (s) => s.id.toString() === staffId
+              (s) => s.id.toString() === staffId,
             );
             if (foundStaff) {
               setSelectedStaffMember(foundStaff);

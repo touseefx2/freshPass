@@ -215,6 +215,13 @@ const createStyles = (theme: Theme) =>
       width: widthScale(130),
       backgroundColor: theme.lightGreen015,
     },
+    staffImageWrapper: {
+      position: "relative",
+      width: widthScale(35),
+      height: widthScale(35),
+      justifyContent: "center",
+      alignItems: "center",
+    },
     staffImage: {
       width: widthScale(35),
       height: widthScale(35),
@@ -223,6 +230,21 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.borderLight,
       overflow: "hidden",
+    },
+    staffStatusDot: {
+      position: "absolute",
+      bottom: 2,
+      right: 2,
+      width: moderateWidthScale(7),
+      height: moderateWidthScale(7),
+      borderRadius: moderateWidthScale(7) / 2,
+      zIndex: 9999,
+    },
+    staffStatusDotActive: {
+      backgroundColor: theme.toggleActive,
+    },
+    staffStatusDotInactive: {
+      backgroundColor: theme.lightGreen5,
     },
     staffInfo: {
       flex: 1,
@@ -834,7 +856,6 @@ export default function BookingNow() {
             {staffList.map((staff) => {
               const isAnyone = staff.id === "anyone";
               const isActive = staff.active;
-              console.log("isActive", isActive);
 
               return (
                 <TouchableOpacity
@@ -852,10 +873,20 @@ export default function BookingNow() {
                 >
                   <>
                     {!isAnyone && (
-                      <Image
-                        source={{ uri: staff.image || "" }}
-                        style={styles.staffImage}
-                      />
+                      <View style={styles.staffImageWrapper}>
+                        <Image
+                          source={{ uri: staff.image || "" }}
+                          style={styles.staffImage}
+                        />
+                        <View
+                          style={[
+                            styles.staffStatusDot,
+                            isActive
+                              ? styles.staffStatusDotActive
+                              : styles.staffStatusDotInactive,
+                          ]}
+                        />
+                      </View>
                     )}
 
                     <View style={styles.staffInfo}>
