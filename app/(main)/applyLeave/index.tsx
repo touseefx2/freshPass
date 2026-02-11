@@ -262,7 +262,7 @@ export default function ApplyLeave() {
           .minute(breakStartMinutes)
           .second(0)
           .format("YYYY-MM-DD HH:mm:ss");
-        const endTime = fromDate
+        const endTime = toDate
           .hour(breakEndHours)
           .minute(breakEndMinutes)
           .second(0)
