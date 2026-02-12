@@ -14,4 +14,5 @@ export const IMAGES = {
   location: require("@/assets/images/location.png"),
   logo3d: require("@/assets/images/logo3d.png"),
   tryOnBack: require("@/assets/images/tryOnBack.png"),
+  femaleAgent: require("@/assets/images/female-agent.png"),
 };

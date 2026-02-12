@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.freshpass",
       "config": {
-        "googleMapsApiKey": "AIzaSyCVenDT7Q0jMPj-x5tLh4gFO3aF_rP5i7c"
+        "googleMapsApiKey": "AIzaSyAN80D-POyBiP1myIaPPPHB5Cvnd7B2gOQ"
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -32,7 +32,7 @@
       "package": "com.freshpass",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyCVenDT7Q0jMPj-x5tLh4gFO3aF_rP5i7c"
+          "apiKey": "AIzaSyAN80D-POyBiP1myIaPPPHB5Cvnd7B2gOQ"
         }
       },
       "permissions": ["android.permission.RECORD_AUDIO"],

@@ -2162,17 +2162,29 @@ export const AiChatSupportIcon: React.FC<AiChatSupportIconProps> = ({
   return <SvgXml xml={svgXml} />;
 };
 
-// AI Robot Icon SVG - Modern Robot Head Design
+// AI Robot Icon SVG - Friendly female agent chatbot
 const aiRobotIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="7" width="18" height="13" rx="3" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="8" y="11" width="2" height="2" rx="0.5" fill="{{COLOR}}"/>
-  <rect x="14" y="11" width="2" height="2" rx="0.5" fill="{{COLOR}}"/>
-  <path d="M9 16H15" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
-  <path d="M12 4V7" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
-  <circle cx="12" cy="3" r="1.5" stroke="{{COLOR}}" stroke-width="1.5"/>
-  <path d="M1 11V15" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
-  <path d="M23 11V15" stroke="{{COLOR}}" stroke-width="1.8" stroke-linecap="round"/>
+  <!-- Outer circle / badge -->
+  <circle cx="12" cy="12" r="9.25" stroke="{{COLOR}}" stroke-width="1.5"/>
+  <!-- Hair / top silhouette to hint female agent -->
+  <path d="M9.2 7.5C9.7 6.5 10.67 5.75 12 5.75C13.31 5.75 14.3 6.47 14.82 7.45C14.9 7.6 15.12 7.63 15.26 7.52C15.84 7.08 16.25 6.39 16.25 5.6C16.25 4.16 15.09 3 13.65 3C12.72 3 11.9 3.45 11.44 4.16C11.34 4.31 11.12 4.32 10.98 4.2C10.6 3.86 10.06 3.65 9.45 3.65C8.09 3.65 7 4.74 7 6.1C7 7.09 7.53 7.94 8.33 8.4" stroke="{{COLOR}}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Face -->
+  <path d="M8.5 9.5C8.7 11.43 10.14 13 12 13C13.86 13 15.3 11.43 15.5 9.5" stroke="{{COLOR}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Eyes -->
+  <path d="M11 10.25H11.01" stroke="{{COLOR}}" stroke-width="1.7" stroke-linecap="round"/>
+  <path d="M13 10.25H13.01" stroke="{{COLOR}}" stroke-width="1.7" stroke-linecap="round"/>
+  <!-- Smile -->
+  <path d="M11 11.9C11.32 12.2 11.64 12.35 12 12.35C12.36 12.35 12.68 12.2 13 11.9" stroke="{{COLOR}}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Headset ear-cups -->
+  <path d="M8.25 9.75C7.6 9.75 7 10.35 7 11V11.75C7 12.44 7.56 13 8.25 13" stroke="{{COLOR}}" stroke-width="1.4" stroke-linecap="round"/>
+  <path d="M15.75 9.75C16.4 9.75 17 10.35 17 11V11.75C17 12.44 16.44 13 15.75 13" stroke="{{COLOR}}" stroke-width="1.4" stroke-linecap="round"/>
+  <!-- Mic boom -->
+  <path d="M15.7 13.3H16.4C16.93 13.3 17.35 13.72 17.35 14.25C17.35 14.78 16.93 15.2 16.4 15.2H15.4" stroke="{{COLOR}}" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Shoulders -->
+  <path d="M9.25 16.5C10.1 15.8 11.02 15.5 12 15.5C12.98 15.5 13.9 15.8 14.75 16.5" stroke="{{COLOR}}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Small chat badge at bottom -->
+  <path d="M10.25 18.5H12.25C13.49 18.5 14.5 17.49 14.5 16.25V16.1" stroke="{{COLOR}}" stroke-width="1.3" stroke-linecap="round"/>
 </svg>
 `;
 

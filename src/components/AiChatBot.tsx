@@ -21,6 +21,8 @@ import {
   Easing,
   Alert,
   PermissionsAndroid,
+  ScrollView,
+  Image,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -42,6 +44,8 @@ import {
   AiRobotIcon,
   AiReceptionistIcon,
 } from "@/assets/icons";
+import { IMAGES } from "@/src/constant/images";
+import { Ionicons } from "@expo/vector-icons";
 import {
   toggleChat,
   openChat,
@@ -66,8 +70,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
 const CHAT_BOX_HEIGHT = SCREEN_HEIGHT * 0.6;
 
-const CHAT_BOTTOM_OFFSET = 70;
-const CHAT_BOTTOM_OFFSET_TRYON = 115; // when isFirstShowTryOn is true
+const CHAT_BOTTOM_OFFSET = 75;
+const CHAT_BOTTOM_OFFSET_TRYON = 125; // when isFirstShowTryOn is true
 
 const createStyles = (
   theme: Theme,
@@ -94,9 +98,10 @@ const createStyles = (
       width: widthScale(45),
       height: widthScale(45),
       borderRadius: widthScale(45 / 2),
-      backgroundColor: theme.darkGreen,
-      borderWidth: 0.5,
-      borderColor: theme.white85,
+      backgroundColor: theme.lightGreen,
+      borderWidth: 1,
+      borderColor: theme.white,
+      overflow: "hidden",
     },
     buttonInner: {
       width: "100%",
@@ -128,6 +133,10 @@ const createStyles = (
     aiIconContainer: {
       alignItems: "center",
       justifyContent: "center",
+    },
+    aiAgentImage: {
+      width: widthScale(38),
+      height: widthScale(38),
     },
     menuOptionsContainer: {
       position: "absolute",
@@ -181,7 +190,7 @@ const createStyles = (
       bottom: moderateHeightScale(chatBottomOffset) + bottomInset,
       right: moderateWidthScale(5),
       width: CHAT_BOX_WIDTH,
-      height: CHAT_BOX_HEIGHT,
+      height: SCREEN_HEIGHT * 0.75,
       backgroundColor: theme.background,
       borderRadius: moderateWidthScale(20),
       overflow: "hidden",
@@ -402,6 +411,11 @@ const createStyles = (
       alignItems: "center",
       justifyContent: "space-between",
     },
+    receptionistBody: {
+      flex: 1,
+      width: "100%",
+      alignItems: "center",
+    },
     receptionistCenter: {
       alignItems: "center",
       justifyContent: "center",
@@ -446,22 +460,26 @@ const createStyles = (
     receptionistControls: {
       width: "100%",
       flexDirection: "row",
-      justifyContent: "center",
       alignItems: "center",
+      justifyContent: "space-between",
       marginTop: moderateHeightScale(24),
+      paddingHorizontal: moderateWidthScale(16),
+      gap: moderateWidthScale(12),
     },
     receptionistControlButton: {
-      minWidth: widthScale(140),
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(999),
+    },
+    receptionistControlButtonStart: {
       backgroundColor: theme.darkGreen,
     },
-    receptionistControlButtonSecondary: {
-      backgroundColor: theme.lightGreen1,
+    receptionistControlButtonEnd: {
+      backgroundColor: theme.red,
     },
     receptionistControlLabel: {
       fontSize: fontSize.size14,
@@ -472,6 +490,7 @@ const createStyles = (
       width: "100%",
       marginTop: moderateHeightScale(20),
       marginBottom: moderateHeightScale(12),
+      maxHeight: heightScale(180),
     },
     receptionistTranscriptTitle: {
       fontSize: fontSize.size13,
@@ -484,6 +503,31 @@ const createStyles = (
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(4),
+    },
+    receptionistTranscriptScroll: {
+      marginTop: moderateHeightScale(4),
+    },
+    receptionistTranscriptScrollContent: {
+      paddingBottom: moderateHeightScale(4),
+    },
+    receptionistIconButton: {
+      flex: 1,
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(999),
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.background,
+    },
+    receptionistIconButtonActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    receptionistIconLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
     },
   });
 
@@ -756,7 +800,12 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  const FLUSH_SAMPLE_THRESHOLD = 16000 * 8; // ~8 seconds of audio per segment
+  const FLUSH_SAMPLE_THRESHOLD = 16000 * 1; // ~1 second of audio per segment
+  const isMicMutedRef = useRef(false);
+  const isSpeakerMutedRef = useRef(false);
+  const [isMicMuted, setIsMicMuted] = useState(false);
+  const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
+  const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -776,6 +825,12 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
     setIsListening(false);
     setIsConnected(false);
     setIsStarting(false);
+    setIsAgentSpeaking(false);
+    setIsMicMuted(false);
+    setIsSpeakerMuted(false);
+    isMicMutedRef.current = false;
+    isSpeakerMutedRef.current = false;
+    isPlayingRef.current = false;
     try {
       AudioRecord.stop();
     } catch {
@@ -802,6 +857,17 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
     audioQueueRef.current = [];
   }, []);
 
+  useEffect(() => {
+    isMicMutedRef.current = isMicMuted;
+  }, [isMicMuted]);
+
+  useEffect(() => {
+    isSpeakerMutedRef.current = isSpeakerMuted;
+    if (soundRef.current) {
+      soundRef.current.setVolumeAsync(isSpeakerMuted ? 0 : 1).catch(() => {});
+    }
+  }, [isSpeakerMuted]);
+
   useEffect(
     () => () => {
       cleanup();
@@ -825,7 +891,11 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
   const playNextInQueue = useCallback(async () => {
     if (isPlayingRef.current) return;
     const nextUri = audioQueueRef.current.shift();
-    if (!nextUri) return;
+    if (!nextUri) {
+      isPlayingRef.current = false;
+      setIsAgentSpeaking(false);
+      return;
+    }
 
     try {
       isPlayingRef.current = true;
@@ -834,6 +904,7 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
         { shouldPlay: true },
       );
       soundRef.current = sound;
+      await sound.setVolumeAsync(isSpeakerMutedRef.current ? 0 : 1);
 
       sound.setOnPlaybackStatusUpdate(async (status) => {
         if (!status.isLoaded) {
@@ -856,6 +927,10 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
             // ignore
           }
 
+          if (audioQueueRef.current.length === 0) {
+            setIsAgentSpeaking(false);
+          }
+
           // Play next chunk if queued
           playNextInQueue().catch(() => {
             // ignore
@@ -864,6 +939,7 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
       });
     } catch {
       isPlayingRef.current = false;
+      setIsAgentSpeaking(false);
       try {
         const file = new File(nextUri);
         file.delete();
@@ -939,6 +1015,7 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
       file.write(base64, { encoding: "base64" as any });
 
       audioQueueRef.current.push(file.uri);
+      setIsAgentSpeaking(true);
       playNextInQueue().catch(() => {
         // ignore
       });
@@ -1071,11 +1148,7 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
         };
 
         ws.onclose = (event: any) => {
-          console.log(
-            "Voice agent WebSocket closed",
-            event.code,
-            event.reason,
-          );
+          console.log("Voice agent WebSocket closed", event.code, event.reason);
           if (event.code === 1008) {
             setError("Voice agent authentication failed.");
           } else if (event.code === 1006) {
@@ -1128,7 +1201,12 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
         });
         AudioRecord.on("data", (data: string) => {
           const ws = wsRef.current;
-          if (!ws || ws.readyState !== WebSocket.OPEN) {
+          if (
+            !ws ||
+            ws.readyState !== WebSocket.OPEN ||
+            isPlayingRef.current ||
+            isMicMutedRef.current
+          ) {
             return;
           }
           try {
@@ -1177,7 +1255,8 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
 
   const statusText = (() => {
     if (isStarting) return "Connecting...";
-    if (isListening) return "Listening...";
+    if (isAgentSpeaking) return "Agent is speaking...";
+    if (isListening) return "Now you can speak";
     if (isConnected) return "Tap the button to speak";
     return "Tap the button to start";
   })();
@@ -1187,7 +1266,7 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
       ? formatElapsedTime(elapsedSeconds)
       : "00:00";
 
-  const latestMessages = conversation.slice(-3);
+  const messagesToShow = conversation;
 
   const handlePrimaryPress = () => {
     if (isListening) {
@@ -1199,49 +1278,89 @@ const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
 
   return (
     <View style={styles.receptionistContainer}>
-      <View style={styles.receptionistCenter}>
-        <View style={styles.receptionistMicOuter}>
-          <View style={styles.receptionistMicInner}>
-            <AiReceptionistIcon width={36} height={36} />
+      <View style={styles.receptionistBody}>
+        <View style={styles.receptionistCenter}>
+          <View style={styles.receptionistMicOuter}>
+            <View style={styles.receptionistMicInner}>
+              <AiReceptionistIcon width={36} height={36} />
+            </View>
           </View>
+          <Text style={styles.receptionistStatusText}>{statusLabel}</Text>
+          <Text style={styles.receptionistTimerText}>{statusText}</Text>
+          <Text style={styles.receptionistTimerText}>{timerText}</Text>
+          {error ? (
+            <Text style={styles.receptionistErrorText}>{error}</Text>
+          ) : null}
         </View>
-        <Text style={styles.receptionistStatusText}>{statusLabel}</Text>
-        <Text style={styles.receptionistTimerText}>{statusText}</Text>
-        <Text style={styles.receptionistTimerText}>{timerText}</Text>
-        {error ? (
-          <Text style={styles.receptionistErrorText}>{error}</Text>
-        ) : null}
-      </View>
 
-      {latestMessages.length > 0 && (
-        <View style={styles.receptionistTranscriptContainer}>
-          <Text style={styles.receptionistTranscriptTitle}>
-            Recent conversation
-          </Text>
-          {latestMessages.map((msg) => (
-            <Text
-              key={msg.timestamp.toString()}
-              style={styles.receptionistTranscriptMessage}
-            >
-              {`${msg.role}: ${msg.content}`}
+        {messagesToShow.length > 0 && (
+          <View style={styles.receptionistTranscriptContainer}>
+            <Text style={styles.receptionistTranscriptTitle}>
+              Recent conversation
             </Text>
-          ))}
-        </View>
-      )}
+            <ScrollView
+              style={styles.receptionistTranscriptScroll}
+              contentContainerStyle={styles.receptionistTranscriptScrollContent}
+              showsVerticalScrollIndicator
+            >
+              {messagesToShow.map((msg) => (
+                <Text
+                  key={msg.timestamp.toString()}
+                  style={styles.receptionistTranscriptMessage}
+                >
+                  {`${msg.role}: ${msg.content}`}
+                </Text>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
 
       <View style={styles.receptionistControls}>
         <TouchableOpacity
           style={[
+            styles.receptionistIconButton,
+            isMicMuted && styles.receptionistIconButtonActive,
+          ]}
+          onPress={() => setIsMicMuted((prev) => !prev)}
+          disabled={isStarting}
+          activeOpacity={0.9}
+        >
+          <Ionicons
+            name={isMicMuted ? "mic-off" : "mic"}
+            size={22}
+            color={isMicMuted ? theme.white : theme.darkGreen}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
             styles.receptionistControlButton,
-            !isListening && styles.receptionistControlButtonSecondary,
+            isListening
+              ? styles.receptionistControlButtonEnd
+              : styles.receptionistControlButtonStart,
           ]}
           onPress={handlePrimaryPress}
           disabled={isStarting}
           activeOpacity={0.9}
         >
-          <Text style={styles.receptionistControlLabel}>
-            {isListening ? "End conversation" : "Start conversation"}
-          </Text>
+          <Ionicons name="call" size={24} color={theme.white} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.receptionistIconButton,
+            isSpeakerMuted && styles.receptionistIconButtonActive,
+          ]}
+          onPress={() => setIsSpeakerMuted((prev) => !prev)}
+          disabled={isStarting}
+          activeOpacity={0.9}
+        >
+          <Ionicons
+            name={isSpeakerMuted ? "volume-mute" : "volume-high"}
+            size={22}
+            color={isSpeakerMuted ? theme.white : theme.darkGreen}
+          />
         </TouchableOpacity>
       </View>
     </View>
@@ -1284,34 +1403,8 @@ const AiChatBot: React.FC = () => {
   // Check if input should be disabled (loading or streaming)
   const isInputDisabled = isLoading || isStreaming;
 
-  // Animation refs - only spin in place (no bounce, no scale)
-  const rotateAnim = useRef(new Animated.Value(0)).current;
+  // Animation ref for chat box open/close
   const chatBoxAnim = useRef(new Animated.Value(0)).current;
-
-  // Continuous 360° spin in place when menu is not expanded
-  useEffect(() => {
-    if (menuExpanded) {
-      rotateAnim.setValue(0);
-      return;
-    }
-    const spinAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 6000,
-          useNativeDriver: true,
-          easing: Easing.linear,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    spinAnimation.start();
-    return () => spinAnimation.stop();
-  }, [rotateAnim, menuExpanded]);
 
   // Animate chat box open/close
   useEffect(() => {
@@ -1748,9 +1841,7 @@ const AiChatBot: React.FC = () => {
                         styles.sendButtonDisabled,
                     ]}
                     onPress={handleSendMessage}
-                    disabled={
-                      inputText.trim().length === 0 || isInputDisabled
-                    }
+                    disabled={inputText.trim().length === 0 || isInputDisabled}
                     activeOpacity={0.8}
                   >
                     <SendIcon width={16} height={16} color={theme.white} />
@@ -1800,24 +1891,9 @@ const AiChatBot: React.FC = () => {
         </>
       )}
 
-      {/* Floating AI Button - robot icon or cross when menu expanded */}
+      {/* Floating AI Button - static icon (no rotation) */}
       {!isOpen && (
-        <Animated.View
-          style={[
-            styles.floatingButton,
-            styles.shadow,
-            {
-              transform: [
-                {
-                  rotate: rotateAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ["0deg", "360deg"],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
+        <View style={styles.floatingButton}>
           <TouchableOpacity
             style={styles.buttonInner}
             onPress={menuExpanded ? handleCloseMenu : handleFloatingButtonPress}
@@ -1827,11 +1903,15 @@ const AiChatBot: React.FC = () => {
               {menuExpanded ? (
                 <CloseIcon width={22} height={22} color={theme.white} />
               ) : (
-                <AiRobotIcon width={22} height={22} color={theme.white} />
+                <Image
+                  source={IMAGES.femaleAgent}
+                  style={styles.aiAgentImage}
+                  resizeMode="cover"
+                />
               )}
             </View>
           </TouchableOpacity>
-        </Animated.View>
+        </View>
       )}
     </>
   );

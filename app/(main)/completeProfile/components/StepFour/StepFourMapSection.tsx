@@ -156,7 +156,7 @@ export default function StepFourMapSection({
     selectedLocation ||
       (mapRegion
         ? { latitude: mapRegion.latitude, longitude: mapRegion.longitude }
-        : null)
+        : null),
   );
 
   useEffect(() => {
@@ -195,11 +195,11 @@ export default function StepFourMapSection({
     const factor = direction === "in" ? 0.7 : 1.3;
     const latitudeDelta = Math.max(
       currentRegionRef.current.latitudeDelta * factor,
-      0.0005
+      0.0005,
     );
     const longitudeDelta = Math.max(
       currentRegionRef.current.longitudeDelta * factor,
-      0.0005
+      0.0005,
     );
 
     const newRegion: Region = {
