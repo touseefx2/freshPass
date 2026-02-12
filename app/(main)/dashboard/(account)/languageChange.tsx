@@ -52,7 +52,6 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     languageInfo: {
-      marginLeft: moderateWidthScale(16),
       flex: 1,
     },
     rowTitle: {
@@ -80,26 +79,15 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.borderLight,
       marginLeft: moderateWidthScale(4),
     },
-    flagContainer: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.orangeBrown015,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    flagText: {
-      fontSize: fontSize.size20,
-    },
   });
 
 const languages = [
-  { code: "en", name: "English", nativeName: "English", flag: "🇬🇧" },
-  { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
-  { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },
-  { code: "de", name: "German", nativeName: "Deutsch", flag: "🇩🇪" },
-  { code: "ja", name: "Japanese", nativeName: "日本語", flag: "🇯🇵" },
-  { code: "ar", name: "Arabic", nativeName: "العربية", flag: "🇸🇦" },
+  { code: "en", name: "English", nativeName: "English" },
+  { code: "fr", name: "French", nativeName: "Français" },
+  { code: "es", name: "Spanish", nativeName: "Español" },
+  { code: "de", name: "German", nativeName: "Deutsch" },
+  { code: "ja", name: "Japanese", nativeName: "日本語" },
+  { code: "ar", name: "Arabic", nativeName: "العربية" },
 ];
 
 export default function LanguageChangeScreen() {
@@ -179,9 +167,6 @@ export default function LanguageChangeScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.rowLeft}>
-                    <View style={styles.flagContainer}>
-                      <Text style={styles.flagText}>{language.flag}</Text>
-                    </View>
                     <View style={styles.languageInfo}>
                       <Text style={styles.rowTitle}>{language.name}</Text>
                       <Text style={styles.rowSubtitle}>
