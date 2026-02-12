@@ -20,6 +20,7 @@ import {
   Dimensions,
   Easing,
   Alert,
+  PermissionsAndroid,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -33,6 +34,8 @@ import {
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSegments } from "expo-router";
+import { Audio } from "expo-av";
+import { File, Directory, Paths } from "expo-file-system";
 import {
   SendIcon,
   CloseIcon,
@@ -54,6 +57,10 @@ import {
 } from "@/src/state/slices/chatSlice";
 import { checkInternetConnection } from "../services/api";
 import { AiToolsService } from "../services/aiToolsService";
+import AudioRecord from "react-native-audio-record";
+import { Buffer } from "buffer";
+
+const VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
@@ -388,6 +395,96 @@ const createStyles = (
       borderRadius: widthScale(4),
       backgroundColor: theme.darkGreen,
     },
+    receptionistContainer: {
+      flex: 1,
+      paddingHorizontal: moderateWidthScale(24),
+      paddingVertical: moderateHeightScale(20),
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    receptionistCenter: {
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(12),
+    },
+    receptionistMicOuter: {
+      width: widthScale(120),
+      height: widthScale(120),
+      borderRadius: widthScale(60),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightGreen1,
+    },
+    receptionistMicInner: {
+      width: widthScale(80),
+      height: widthScale(80),
+      borderRadius: widthScale(40),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.darkGreen,
+    },
+    receptionistStatusText: {
+      marginTop: moderateHeightScale(12),
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    receptionistTimerText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
+    receptionistErrorText: {
+      marginTop: moderateHeightScale(8),
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.red,
+      textAlign: "center",
+    },
+    receptionistControls: {
+      width: "100%",
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: moderateHeightScale(24),
+    },
+    receptionistControlButton: {
+      minWidth: widthScale(140),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(24),
+      backgroundColor: theme.darkGreen,
+    },
+    receptionistControlButtonSecondary: {
+      backgroundColor: theme.lightGreen1,
+    },
+    receptionistControlLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    receptionistTranscriptContainer: {
+      width: "100%",
+      marginTop: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(12),
+    },
+    receptionistTranscriptTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    receptionistTranscriptMessage: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(4),
+    },
   });
 
 const TypingIndicator: React.FC<{ theme: Theme; bottomInset: number }> = ({
@@ -612,6 +709,540 @@ const InlineTypingIndicator: React.FC<{ theme: Theme }> = ({ theme }) => {
             },
           ]}
         />
+      </View>
+    </View>
+  );
+};
+
+type VoiceConversationMessage = {
+  role: string;
+  content: string;
+  timestamp: number;
+};
+type VoiceReceptionistProps = {
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+  statusLabel: string;
+  websocketUrl: string;
+};
+
+const formatElapsedTime = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const secs = (seconds % 60).toString().padStart(2, "0");
+  return `${mins}:${secs}`;
+};
+
+const VoiceReceptionistContent: React.FC<VoiceReceptionistProps> = ({
+  theme,
+  styles,
+  statusLabel,
+  websocketUrl,
+}) => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [conversation, setConversation] = useState<VoiceConversationMessage[]>(
+    [],
+  );
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const recorderInitializedRef = useRef(false);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const isPlayingRef = useRef(false);
+  const audioQueueRef = useRef<string[]>([]);
+  const pendingPcmChunksRef = useRef<Int16Array[]>([]);
+  const pendingSamplesRef = useRef(0);
+  const FLUSH_SAMPLE_THRESHOLD = 16000 * 8; // ~8 seconds of audio per segment
+
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    if (isListening) {
+      intervalId = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isListening]);
+
+  const cleanup = useCallback(() => {
+    setIsListening(false);
+    setIsConnected(false);
+    setIsStarting(false);
+    try {
+      AudioRecord.stop();
+    } catch {
+      // ignore
+    }
+    try {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    } catch {
+      // ignore
+    }
+    wsRef.current = null;
+    pendingPcmChunksRef.current = [];
+    pendingSamplesRef.current = 0;
+    try {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    } catch {
+      // ignore
+    }
+    soundRef.current = null;
+    audioQueueRef.current = [];
+  }, []);
+
+  useEffect(
+    () => () => {
+      cleanup();
+    },
+    [cleanup],
+  );
+
+  useEffect(() => {
+    // Ensure audio can play even in silent mode on iOS
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      allowsRecordingIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    }).catch(() => {
+      // ignore audio mode errors
+    });
+  }, []);
+
+  const playNextInQueue = useCallback(async () => {
+    if (isPlayingRef.current) return;
+    const nextUri = audioQueueRef.current.shift();
+    if (!nextUri) return;
+
+    try {
+      isPlayingRef.current = true;
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: nextUri },
+        { shouldPlay: true },
+      );
+      soundRef.current = sound;
+
+      sound.setOnPlaybackStatusUpdate(async (status) => {
+        if (!status.isLoaded) {
+          return;
+        }
+        if (status.didJustFinish) {
+          try {
+            await sound.unloadAsync();
+          } catch {
+            // ignore
+          }
+          soundRef.current = null;
+          isPlayingRef.current = false;
+
+          // Clean up the file
+          try {
+            const file = new File(nextUri);
+            file.delete();
+          } catch {
+            // ignore
+          }
+
+          // Play next chunk if queued
+          playNextInQueue().catch(() => {
+            // ignore
+          });
+        }
+      });
+    } catch {
+      isPlayingRef.current = false;
+      try {
+        const file = new File(nextUri);
+        file.delete();
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  const flushPendingAudio = useCallback(async () => {
+    const totalSamples = pendingSamplesRef.current;
+    if (!totalSamples || pendingPcmChunksRef.current.length === 0) {
+      return;
+    }
+
+    try {
+      const merged = new Int16Array(totalSamples);
+      let offset = 0;
+      for (const chunk of pendingPcmChunksRef.current) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+
+      // reset buffers
+      pendingPcmChunksRef.current = [];
+      pendingSamplesRef.current = 0;
+
+      const wavHeaderSize = 44;
+      const dataLength = merged.length * 2;
+      const totalSize = wavHeaderSize + dataLength;
+
+      const wavBuffer = new ArrayBuffer(totalSize);
+      const view = new DataView(wavBuffer);
+      const u8 = new Uint8Array(wavBuffer);
+
+      // RIFF header
+      view.setUint32(0, 0x52494646, false); // "RIFF"
+      view.setUint32(4, 36 + dataLength, true); // chunkSize
+      view.setUint32(8, 0x57415645, false); // "WAVE"
+
+      // fmt subchunk
+      view.setUint32(12, 0x666d7420, false); // "fmt "
+      view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+      view.setUint16(20, 1, true); // AudioFormat (1 = PCM)
+      view.setUint16(22, 1, true); // NumChannels (mono)
+      view.setUint32(24, 16000, true); // SampleRate
+      const byteRate = 16000 * 1 * 2;
+      view.setUint32(28, byteRate, true); // ByteRate
+      const blockAlign = 1 * 2;
+      view.setUint16(32, blockAlign, true); // BlockAlign
+      view.setUint16(34, 16, true); // BitsPerSample
+
+      // data subchunk
+      view.setUint32(36, 0x64617461, false); // "data"
+      view.setUint32(40, dataLength, true); // Subchunk2Size
+
+      // PCM data
+      const pcmBytes = new Uint8Array(merged.buffer);
+      u8.set(pcmBytes, wavHeaderSize);
+
+      const base64 = Buffer.from(wavBuffer).toString("base64");
+      const cacheDir = new Directory(Paths.cache, "voice-agent");
+      try {
+        cacheDir.create({ intermediates: true, idempotent: true });
+      } catch {
+        // ignore
+      }
+
+      const fileName = `voice-agent-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}.wav`;
+      const file = cacheDir.createFile(fileName, "audio/wav");
+      file.write(base64, { encoding: "base64" as any });
+
+      audioQueueRef.current.push(file.uri);
+      playNextInQueue().catch(() => {
+        // ignore
+      });
+    } catch (err) {
+      console.error("Failed to flush voice agent audio buffer", err);
+      pendingPcmChunksRef.current = [];
+      pendingSamplesRef.current = 0;
+    }
+  }, [playNextInQueue]);
+
+  const enqueuePcmChunk = useCallback(
+    (buffer: ArrayBuffer) => {
+      try {
+        const pcm = new Int16Array(buffer);
+        if (!pcm.length) {
+          return;
+        }
+        pendingPcmChunksRef.current.push(pcm);
+        pendingSamplesRef.current += pcm.length;
+
+        // If we have accumulated enough samples (~8s), flush a segment
+        if (pendingSamplesRef.current >= FLUSH_SAMPLE_THRESHOLD) {
+          flushPendingAudio().catch(() => {
+            // ignore
+          });
+        }
+      } catch (err) {
+        console.error("Failed to buffer voice agent audio chunk", err);
+      }
+    },
+    [flushPendingAudio],
+  );
+
+  const handleServerMessage = useCallback(
+    (event: any) => {
+      const { data } = event;
+      if (typeof data === "string") {
+        // Try to parse JSON text message first
+        const trimmed = data.trim();
+        let parsed: any | null = null;
+        if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+          try {
+            parsed = JSON.parse(trimmed);
+          } catch {
+            parsed = null;
+          }
+        }
+
+        if (parsed && typeof parsed === "object" && parsed.type) {
+          switch (parsed.type) {
+            case "ConversationText":
+              if (parsed.content) {
+                const role =
+                  typeof parsed.role === "string" ? parsed.role : "assistant";
+                setConversation((prev) => [
+                  ...prev,
+                  {
+                    role,
+                    content: String(parsed.content),
+                    timestamp: Date.now(),
+                  },
+                ]);
+              }
+              break;
+            case "AgentAudioDone":
+              // Flush whatever audio we've buffered for this utterance
+              flushPendingAudio().catch(() => {
+                // ignore
+              });
+              break;
+            case "UserStartedSpeaking":
+            case "FunctionCallRequest":
+            case "FunctionCallResponse":
+              // Not used in UI yet, but could be logged
+              break;
+            default:
+              break;
+          }
+          return;
+        }
+
+        // Otherwise, likely non-JSON text – try to treat as base64-encoded PCM audio
+        try {
+          const buf = Buffer.from(trimmed, "base64");
+          if (buf.byteLength > 0) {
+            const arr = buf.buffer.slice(
+              buf.byteOffset,
+              buf.byteOffset + buf.byteLength,
+            );
+            enqueuePcmChunk(arr);
+          }
+        } catch (err) {
+          // If it's not valid base64 audio, ignore silently
+          console.error("Failed to decode voice agent audio string", err);
+        }
+      } else if (data instanceof ArrayBuffer) {
+        // Binary audio data from the voice agent – enqueue for playback
+        enqueuePcmChunk(data);
+      }
+    },
+    [enqueuePcmChunk, flushPendingAudio],
+  );
+
+  const connectWebSocket = useCallback(async () => {
+    if (!websocketUrl) {
+      setError("Voice agent URL is not configured.");
+      throw new Error("Voice agent URL is not configured.");
+    }
+
+    if (wsRef.current && isConnected) {
+      return;
+    }
+
+    setError(null);
+
+    await new Promise<void>((resolve, reject) => {
+      try {
+        const ws = new WebSocket(websocketUrl);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          setIsConnected(true);
+          resolve();
+        };
+
+        ws.onerror = (event: any) => {
+          console.error("Voice agent WebSocket error", event);
+          setError("Unable to connect to voice agent.");
+          reject(event);
+        };
+
+        ws.onclose = (event: any) => {
+          console.log(
+            "Voice agent WebSocket closed",
+            event.code,
+            event.reason,
+          );
+          if (event.code === 1008) {
+            setError("Voice agent authentication failed.");
+          } else if (event.code === 1006) {
+            setError(
+              "Voice agent connection closed unexpectedly. Please try again.",
+            );
+          }
+          cleanup();
+        };
+
+        ws.onmessage = handleServerMessage;
+      } catch (err) {
+        console.error("Failed to open voice agent WebSocket", err);
+        setError("Failed to open voice agent connection.");
+        reject(err);
+      }
+    });
+  }, [cleanup, handleServerMessage, isConnected, websocketUrl]);
+
+  const startRecorder = useCallback(async () => {
+    try {
+      // Android runtime permission check
+      if (Platform.OS === "android") {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: "Microphone Permission",
+            message:
+              "Fresh Pass needs access to your microphone so the AI Receptionist can talk with you.",
+            buttonPositive: "OK",
+            buttonNegative: "Cancel",
+          },
+        );
+
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          setError(
+            "Microphone permission was denied. Please enable it in Settings to use the AI Receptionist.",
+          );
+          return;
+        }
+      }
+
+      if (!recorderInitializedRef.current) {
+        AudioRecord.init({
+          sampleRate: 16000,
+          channels: 1,
+          bitsPerSample: 16,
+          audioSource: 6,
+          wavFile: "freshpass_voice_agent.wav",
+        });
+        AudioRecord.on("data", (data: string) => {
+          const ws = wsRef.current;
+          if (!ws || ws.readyState !== WebSocket.OPEN) {
+            return;
+          }
+          try {
+            const chunk = Buffer.from(data, "base64");
+            ws.send(chunk);
+          } catch (err) {
+            console.error("Failed to send audio chunk to voice agent", err);
+          }
+        });
+        recorderInitializedRef.current = true;
+      }
+
+      setIsListening(true);
+      setElapsedSeconds(0);
+      setError(null);
+
+      AudioRecord.start();
+    } catch (err) {
+      console.error("Failed to start microphone recording", err);
+      setError(
+        "Unable to access the microphone. Please check app microphone permissions in your device settings.",
+      );
+      cleanup();
+    }
+  }, [cleanup]);
+
+  const handleStart = useCallback(async () => {
+    if (isStarting || isListening) {
+      return;
+    }
+
+    setIsStarting(true);
+    try {
+      await connectWebSocket();
+      await startRecorder();
+    } catch {
+      // Errors already handled and shown via setError
+    } finally {
+      setIsStarting(false);
+    }
+  }, [connectWebSocket, isListening, isStarting, startRecorder]);
+
+  const handleStop = useCallback(() => {
+    cleanup();
+  }, [cleanup]);
+
+  const statusText = (() => {
+    if (isStarting) return "Connecting...";
+    if (isListening) return "Listening...";
+    if (isConnected) return "Tap the button to speak";
+    return "Tap the button to start";
+  })();
+
+  const timerText =
+    isListening || elapsedSeconds > 0
+      ? formatElapsedTime(elapsedSeconds)
+      : "00:00";
+
+  const latestMessages = conversation.slice(-3);
+
+  const handlePrimaryPress = () => {
+    if (isListening) {
+      handleStop();
+    } else {
+      handleStart();
+    }
+  };
+
+  return (
+    <View style={styles.receptionistContainer}>
+      <View style={styles.receptionistCenter}>
+        <View style={styles.receptionistMicOuter}>
+          <View style={styles.receptionistMicInner}>
+            <AiReceptionistIcon width={36} height={36} />
+          </View>
+        </View>
+        <Text style={styles.receptionistStatusText}>{statusLabel}</Text>
+        <Text style={styles.receptionistTimerText}>{statusText}</Text>
+        <Text style={styles.receptionistTimerText}>{timerText}</Text>
+        {error ? (
+          <Text style={styles.receptionistErrorText}>{error}</Text>
+        ) : null}
+      </View>
+
+      {latestMessages.length > 0 && (
+        <View style={styles.receptionistTranscriptContainer}>
+          <Text style={styles.receptionistTranscriptTitle}>
+            Recent conversation
+          </Text>
+          {latestMessages.map((msg) => (
+            <Text
+              key={msg.timestamp.toString()}
+              style={styles.receptionistTranscriptMessage}
+            >
+              {`${msg.role}: ${msg.content}`}
+            </Text>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.receptionistControls}>
+        <TouchableOpacity
+          style={[
+            styles.receptionistControlButton,
+            !isListening && styles.receptionistControlButtonSecondary,
+          ]}
+          onPress={handlePrimaryPress}
+          disabled={isStarting}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.receptionistControlLabel}>
+            {isListening ? "End conversation" : "Start conversation"}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -902,7 +1533,11 @@ const AiChatBot: React.FC = () => {
             <View style={styles.chatHeader}>
               <View style={styles.headerLeft}>
                 <View style={styles.aiAvatarHeader}>
-                  <AiRobotIcon width={24} height={24} color={theme.white} />
+                  {chatMode === "ai_chat_bot" ? (
+                    <AiRobotIcon width={24} height={24} color={theme.white} />
+                  ) : (
+                    <AiReceptionistIcon width={24} height={24} />
+                  )}
                 </View>
                 <Text style={styles.headerTitle}>
                   {chatMode === "ai_chat_bot"
@@ -912,7 +1547,7 @@ const AiChatBot: React.FC = () => {
               </View>
               <View style={styles.headerRightButtons}>
                 {/* Delete button - clears all messages (only show when messages exist) */}
-                {messages.length > 0 && (
+                {chatMode === "ai_chat_bot" && messages.length > 0 && (
                   <TouchableOpacity
                     style={styles.headerButton}
                     onPress={handleDeleteChat}
@@ -1013,98 +1648,123 @@ const AiChatBot: React.FC = () => {
               </View>
             </View>
 
-            {/* Messages List */}
-            {messages.length === 0 ? (
-              renderEmptyState()
+            {/* Messages List / Voice Receptionist */}
+            {chatMode === "ai_chat_bot" ? (
+              <>
+                {messages.length === 0 ? (
+                  renderEmptyState()
+                ) : (
+                  <FlatList
+                    keyboardShouldPersistTaps="handled"
+                    onScrollBeginDrag={dismissKeyboard}
+                    ref={flatListRef}
+                    data={messages}
+                    renderItem={renderMessage}
+                    keyExtractor={keyExtractor}
+                    style={styles.messagesList}
+                    contentContainerStyle={styles.messagesContent}
+                    showsVerticalScrollIndicator={false}
+                    ListFooterComponent={(() => {
+                      // Check if last message is empty and streaming (shows inline typing indicator)
+                      const lastMessage = messages[messages.length - 1];
+                      const hasEmptyStreamingMessage =
+                        lastMessage &&
+                        lastMessage.sender === "ai" &&
+                        !lastMessage.text &&
+                        lastMessage.isStreaming;
+
+                      // Only show bottom indicator if not showing inline indicator
+                      if (hasEmptyStreamingMessage) {
+                        return null;
+                      }
+
+                      // Show bottom indicator when loading or streaming (but no empty message)
+                      return isLoading || isStreaming ? (
+                        <TypingIndicator
+                          theme={theme}
+                          bottomInset={bottomInset}
+                        />
+                      ) : null;
+                    })()}
+                  />
+                )}
+
+                {/* Input Area */}
+                <View
+                  style={[
+                    styles.inputContainer,
+                    isInputDisabled && styles.inputContainerDisabled,
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.textInputWrapper,
+                      styles.shadowLight,
+                      isInputDisabled && styles.inputWrapperDisabled,
+                    ]}
+                  >
+                    <TextInput
+                      style={[
+                        styles.textInput,
+                        isInputDisabled && styles.textInputDisabled,
+                      ]}
+                      placeholder={
+                        isInputDisabled
+                          ? "AI is responding..."
+                          : "Ask me anything..."
+                      }
+                      placeholderTextColor={theme.lightGreen2}
+                      value={inputText}
+                      onChangeText={setInputText}
+                      multiline
+                      maxLength={5000}
+                      returnKeyType="send"
+                      onSubmitEditing={handleSendMessage}
+                      editable={!isInputDisabled}
+                    />
+                    {inputText.length > 0 && !isInputDisabled && (
+                      <TouchableOpacity
+                        style={styles.clearButton}
+                        onPress={() => setInputText("")}
+                        hitSlop={{
+                          top: 8,
+                          bottom: 8,
+                          left: 8,
+                          right: 8,
+                        }}
+                      >
+                        <CloseIcon
+                          width={16}
+                          height={16}
+                          color={theme.darkGreen}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      (inputText.trim().length === 0 || isInputDisabled) &&
+                        styles.sendButtonDisabled,
+                    ]}
+                    onPress={handleSendMessage}
+                    disabled={
+                      inputText.trim().length === 0 || isInputDisabled
+                    }
+                    activeOpacity={0.8}
+                  >
+                    <SendIcon width={16} height={16} color={theme.white} />
+                  </TouchableOpacity>
+                </View>
+              </>
             ) : (
-              <FlatList
-                keyboardShouldPersistTaps="handled"
-                onScrollBeginDrag={dismissKeyboard}
-                ref={flatListRef}
-                data={messages}
-                renderItem={renderMessage}
-                keyExtractor={keyExtractor}
-                style={styles.messagesList}
-                contentContainerStyle={styles.messagesContent}
-                showsVerticalScrollIndicator={false}
-                ListFooterComponent={(() => {
-                  // Check if last message is empty and streaming (shows inline typing indicator)
-                  const lastMessage = messages[messages.length - 1];
-                  const hasEmptyStreamingMessage =
-                    lastMessage &&
-                    lastMessage.sender === "ai" &&
-                    !lastMessage.text &&
-                    lastMessage.isStreaming;
-
-                  // Only show bottom indicator if not showing inline indicator
-                  if (hasEmptyStreamingMessage) {
-                    return null;
-                  }
-
-                  // Show bottom indicator when loading or streaming (but no empty message)
-                  return isLoading || isStreaming ? (
-                    <TypingIndicator theme={theme} bottomInset={bottomInset} />
-                  ) : null;
-                })()}
+              <VoiceReceptionistContent
+                theme={theme}
+                styles={styles}
+                statusLabel="AI Receptionist"
+                websocketUrl={VOICE_AGENT_WS_URL}
               />
             )}
-
-            {/* Input Area */}
-            <View
-              style={[
-                styles.inputContainer,
-                isInputDisabled && styles.inputContainerDisabled,
-              ]}
-            >
-              <View
-                style={[
-                  styles.textInputWrapper,
-                  styles.shadowLight,
-                  isInputDisabled && styles.inputWrapperDisabled,
-                ]}
-              >
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    isInputDisabled && styles.textInputDisabled,
-                  ]}
-                  placeholder={
-                    isInputDisabled
-                      ? "AI is responding..."
-                      : "Ask me anything..."
-                  }
-                  placeholderTextColor={theme.lightGreen2}
-                  value={inputText}
-                  onChangeText={setInputText}
-                  multiline
-                  maxLength={5000}
-                  returnKeyType="send"
-                  onSubmitEditing={handleSendMessage}
-                  editable={!isInputDisabled}
-                />
-                {inputText.length > 0 && !isInputDisabled && (
-                  <TouchableOpacity
-                    style={styles.clearButton}
-                    onPress={() => setInputText("")}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  >
-                    <CloseIcon width={16} height={16} color={theme.darkGreen} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.sendButton,
-                  (inputText.trim().length === 0 || isInputDisabled) &&
-                    styles.sendButtonDisabled,
-                ]}
-                onPress={handleSendMessage}
-                disabled={inputText.trim().length === 0 || isInputDisabled}
-                activeOpacity={0.8}
-              >
-                <SendIcon width={16} height={16} color={theme.white} />
-              </TouchableOpacity>
-            </View>
           </KeyboardAvoidingView>
         </Animated.View>
       )}

@@ -15,7 +15,8 @@
         "googleMapsApiKey": "AIzaSyCVenDT7Q0jMPj-x5tLh4gFO3aF_rP5i7c"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Fresh Pass uses your microphone so the AI Receptionist can talk with you."
       },
       "entitlements": {
         "com.apple.developer.applesignin": ["Default"]
