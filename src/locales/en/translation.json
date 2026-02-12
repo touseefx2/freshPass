@@ -85,6 +85,8 @@
   "aiAssistant": "AI Assistant",
   "aiChatBot": "AI Chat Bot",
   "aiReceptionist": "AI Receptionist",
+  "chatWithFreshy": "Chat with Freshy",
+  "talkWithFreshy": "Talk with Freshy",
   "selectYourLocation": "Select your location",
   "fetchingAddress": "Fetching address...",
   "loadingMap": "Loading map...",

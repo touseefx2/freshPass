@@ -1658,15 +1658,23 @@ const AiChatBot: React.FC = () => {
               <View style={styles.headerLeft}>
                 <View style={styles.aiAvatarHeader}>
                   {chatMode === "ai_chat_bot" ? (
-                    <AiRobotIcon width={24} height={24} color={theme.white} />
+                    <Ionicons
+                      name="chatbubble-ellipses-outline"
+                      size={20}
+                      color={theme.white}
+                    />
                   ) : (
-                    <AiReceptionistIcon width={24} height={24} />
+                    <Ionicons
+                      name="mic-outline"
+                      size={20}
+                      color={theme.white}
+                    />
                   )}
                 </View>
                 <Text style={styles.headerTitle}>
                   {chatMode === "ai_chat_bot"
-                    ? t("aiChatBot")
-                    : t("aiReceptionist")}
+                    ? t("chatWithFreshy") || "Chat with Freshy"
+                    : t("talkWithFreshy") || "Talk with Freshy"}
                 </Text>
               </View>
               <View style={styles.headerRightButtons}>
@@ -1904,9 +1912,15 @@ const AiChatBot: React.FC = () => {
               activeOpacity={0.9}
             >
               <View style={styles.menuOptionIcon}>
-                <AiRobotIcon width={22} height={22} color={theme.white} />
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={22}
+                  color={theme.white}
+                />
               </View>
-              <Text style={styles.menuOptionLabel}>{t("aiChatBot")}</Text>
+              <Text style={styles.menuOptionLabel}>
+                {t("chatWithFreshy") || "Chat with Freshy"}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.menuOption}
@@ -1914,9 +1928,11 @@ const AiChatBot: React.FC = () => {
               activeOpacity={0.9}
             >
               <View style={styles.menuOptionIcon}>
-                <AiReceptionistIcon width={22} height={22} />
+                <Ionicons name="mic-outline" size={22} color={theme.white} />
               </View>
-              <Text style={styles.menuOptionLabel}>{t("aiReceptionist")}</Text>
+              <Text style={styles.menuOptionLabel}>
+                {t("talkWithFreshy") || "Talk with Freshy"}
+              </Text>
             </TouchableOpacity>
           </View>
         </>
