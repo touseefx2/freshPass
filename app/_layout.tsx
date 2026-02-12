@@ -14,6 +14,7 @@ import { PersistGate } from "redux-persist/integration/react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { PortalProvider } from "@gorhom/portal";
+import { StripeProvider } from "@stripe/stripe-react-native";
 import { NotificationProvider } from "@/src/contexts/NotificationContext";
 import SessionExpiredHandler from "@/src/components/SessionExpiredHandler";
 import ActionLoader from "@/src/components/actionLoader";
@@ -77,18 +78,24 @@ export default function RootLayout() {
               }
             }}
           >
-            <PortalProvider>
-              <I18nextProvider i18n={i18n}>
-                <NotificationProvider>
-                  <ThemedStatusBar />
-                  <Slot />
-                  <ActionLoader />
-                  <GuestModeModal />
-                  <OnboardingHandler />
-                  <SessionExpiredHandler />
-                </NotificationProvider>
-              </I18nextProvider>
-            </PortalProvider>
+            <StripeProvider
+              publishableKey={
+                process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
+              }
+            >
+              <PortalProvider>
+                <I18nextProvider i18n={i18n}>
+                  <NotificationProvider>
+                    <ThemedStatusBar />
+                    <Slot />
+                    <ActionLoader />
+                    <GuestModeModal />
+                    <OnboardingHandler />
+                    <SessionExpiredHandler />
+                  </NotificationProvider>
+                </I18nextProvider>
+              </PortalProvider>
+            </StripeProvider>
           </PersistGate>
         </Provider>
       </KeyboardProvider>

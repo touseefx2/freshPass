@@ -25,7 +25,7 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Button from "@/src/components/button";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+import { useStripe } from "@stripe/stripe-react-native";
 import { fetchPaymentSheetParams } from "@/src/services/stripeService";
 import { useAppSelector } from "@/src/hooks/hooks";
 import NotificationBanner from "@/src/components/notificationBanner";
@@ -742,15 +742,11 @@ export default function BusinessPlansModal({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <StripeProvider
-        publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
-      >
-        <BusinessPlansModalContent
-          visible={visible}
-          onClose={onClose}
-          onSuccess={onSuccess}
-        />
-      </StripeProvider>
+      <BusinessPlansModalContent
+        visible={visible}
+        onClose={onClose}
+        onSuccess={onSuccess}
+      />
     </Modal>
   );
 }

@@ -27,7 +27,7 @@ import {
 } from "react-native-safe-area-context";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+import { useStripe } from "@stripe/stripe-react-native";
 import NotificationBanner from "@/src/components/notificationBanner";
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
@@ -404,11 +404,5 @@ function TryOnModalContent({
 }
 
 export default function TryOnModal(props: TryOnModalProps) {
-  return (
-    <StripeProvider
-      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
-    >
-      <TryOnModalContent {...props} />
-    </StripeProvider>
-  );
+  return <TryOnModalContent {...props} />;
 }

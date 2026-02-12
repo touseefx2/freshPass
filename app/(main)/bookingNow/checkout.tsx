@@ -36,7 +36,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import ApiService from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+import { useStripe } from "@stripe/stripe-react-native";
 import { fetchAppointmentPaymentSheetParams } from "@/src/services/stripeService";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -2106,11 +2106,5 @@ function CheckoutContent() {
 }
 
 export default function Checkout() {
-  return (
-    <StripeProvider
-      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
-    >
-      <CheckoutContent />
-    </StripeProvider>
-  );
+  return <CheckoutContent />;
 }

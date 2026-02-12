@@ -23,7 +23,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, Octicons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import StackHeader from "@/src/components/StackHeader";
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+import { useStripe } from "@stripe/stripe-react-native";
 import { fetchPaymentSheetParams } from "@/src/services/stripeService";
 import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -995,11 +995,5 @@ function CheckoutSubscriptionContent() {
 }
 
 export default function CheckoutSubscription() {
-  return (
-    <StripeProvider
-      publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""}
-    >
-      <CheckoutSubscriptionContent />
-    </StripeProvider>
-  );
+  return <CheckoutSubscriptionContent />;
 }
