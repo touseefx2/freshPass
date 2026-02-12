@@ -19,6 +19,7 @@ import {
   Easing,
   Alert,
   Image,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -35,7 +36,8 @@ import { useSegments } from "expo-router";
 import { CloseIcon } from "@/assets/icons";
 import { IMAGES } from "@/src/constant/images";
 import { Ionicons } from "@expo/vector-icons";
-import { AiChatBoxPanel } from "@/src/components/AiChatBoxPanel";
+import { AiChatContent } from "@/src/components/AiChatContent";
+import { VoiceReceptionistContent } from "@/src/components/VoiceReceptionistContent";
 import {
   toggleChat,
   openChat,
@@ -740,26 +742,158 @@ const AiChatBot: React.FC = () => {
 
       {/* Chat Box - positioned above the button */}
       {isOpen && (
-        <AiChatBoxPanel
-          theme={theme}
-          styles={styles}
-          chatMode={chatMode}
-          messages={messages}
-          inputText={inputText}
-          setInputText={setInputText}
-          isInputDisabled={isInputDisabled}
-          handleSendMessage={handleSendMessage}
-          handleCloseChat={handleCloseChat}
-          handleDeleteChat={handleDeleteChat}
-          flatListRef={flatListRef}
-          bottomInset={bottomInset}
-          isLoading={isLoading}
-          isStreaming={isStreaming}
-          websocketUrl={VOICE_AGENT_WS_URL}
-          chatBoxAnimStyle={chatBoxAnimStyle}
-          headerTitleChat={t("chatWithFreshy") || "Chat with Freshy"}
-          headerTitleTalk={t("talkWithFreshy") || "Talk with Freshy"}
-        />
+        <Animated.View
+          style={[styles.chatBoxContainer, chatBoxAnimStyle, styles.shadow]}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={
+              Platform.OS === "ios" ? moderateHeightScale(100) : 0
+            }
+          >
+            <View style={styles.chatHeader}>
+              <View style={styles.headerLeft}>
+                <View style={styles.aiAvatarHeader}>
+                  {chatMode === "ai_chat_bot" ? (
+                    <Ionicons
+                      name="chatbubble-ellipses-outline"
+                      size={20}
+                      color={theme.white}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="mic-outline"
+                      size={20}
+                      color={theme.white}
+                    />
+                  )}
+                </View>
+                <Text style={styles.headerTitle}>
+                  {chatMode === "ai_chat_bot"
+                    ? t("chatWithFreshy") || "Chat with Freshy"
+                    : t("talkWithFreshy") || "Talk with Freshy"}
+                </Text>
+              </View>
+              <View style={styles.headerRightButtons}>
+                {chatMode === "ai_chat_bot" && messages.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.headerButton}
+                    onPress={handleDeleteChat}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={{
+                        width: widthScale(18),
+                        height: widthScale(18),
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: widthScale(14),
+                          height: widthScale(12),
+                          borderWidth: 1.5,
+                          borderColor: theme.white,
+                          borderRadius: moderateWidthScale(1),
+                          borderTopWidth: 0,
+                          position: "relative",
+                        }}
+                      >
+                        <View
+                          style={{
+                            width: widthScale(16),
+                            height: widthScale(2),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(-2),
+                            left: moderateWidthScale(-1),
+                          }}
+                        />
+                        <View
+                          style={{
+                            width: widthScale(4),
+                            height: widthScale(2),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(-4),
+                            left: moderateWidthScale(5),
+                          }}
+                        />
+                        <View
+                          style={{
+                            width: widthScale(1),
+                            height: widthScale(6),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(2),
+                            left: moderateWidthScale(3),
+                          }}
+                        />
+                        <View
+                          style={{
+                            width: widthScale(1),
+                            height: widthScale(6),
+                            backgroundColor: theme.white,
+                            position: "absolute",
+                            top: moderateHeightScale(2),
+                            left: moderateWidthScale(6.5),
+                          }}
+                        />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={handleCloseChat}
+                  activeOpacity={0.7}
+                >
+                  <View
+                    style={{
+                      width: widthScale(18),
+                      height: widthScale(18),
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: widthScale(14),
+                        height: widthScale(2),
+                        backgroundColor: theme.white,
+                        borderRadius: moderateWidthScale(1),
+                      }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {chatMode === "ai_chat_bot" ? (
+              <AiChatContent
+                theme={theme}
+                styles={styles}
+                messages={messages}
+                inputText={inputText}
+                setInputText={setInputText}
+                isInputDisabled={isInputDisabled}
+                handleSendMessage={handleSendMessage}
+                flatListRef={flatListRef}
+                isLoading={isLoading}
+                isStreaming={isStreaming}
+              />
+            ) : (
+              <VoiceReceptionistContent
+                theme={theme}
+                styles={styles}
+                statusLabel={t("talkWithFreshy") || "Talk with Freshy"}
+                websocketUrl={VOICE_AGENT_WS_URL}
+              />
+            )}
+          </KeyboardAvoidingView>
+        </Animated.View>
       )}
 
       {/* Expanded menu - two options above the button (only for customer/guest) */}
