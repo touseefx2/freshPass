@@ -99,16 +99,21 @@ const createStyles = (
       height: widthScale(45),
       borderRadius: widthScale(45 / 2),
       backgroundColor: theme.lightGreen,
-      borderWidth: 1,
-      borderColor: theme.white,
-      overflow: "hidden",
+      padding: moderateWidthScale(2),
+      borderWidth: 3,
+      borderTopColor: theme.white85,
+      borderLeftColor: theme.white85,
+      borderRightColor: theme.orangeBrown,
+      borderBottomColor: theme.orangeBrown,
+      // overflow: "hidden",
     },
     buttonInner: {
       width: "100%",
       height: "100%",
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: widthScale(27),
+      borderRadius: widthScale(45 / 2),
+      backgroundColor: theme.buttonBack,
     },
     shadow: {
       shadowColor: theme.shadow,
@@ -135,8 +140,9 @@ const createStyles = (
       justifyContent: "center",
     },
     aiAgentImage: {
-      width: widthScale(38),
-      height: widthScale(38),
+      width: widthScale(36),
+      height: widthScale(44),
+      top: -15,
     },
     menuOptionsContainer: {
       position: "absolute",
@@ -1891,9 +1897,9 @@ const AiChatBot: React.FC = () => {
         </>
       )}
 
-      {/* Floating AI Button - static icon (no rotation) */}
+      {/* Floating AI Button - static icon with subtle 3D effect */}
       {!isOpen && (
-        <View style={styles.floatingButton}>
+        <View style={[styles.floatingButton, styles.shadow]}>
           <TouchableOpacity
             style={styles.buttonInner}
             onPress={menuExpanded ? handleCloseMenu : handleFloatingButtonPress}
