@@ -55,7 +55,6 @@ import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import UnlockAIFeaturesModal from "@/src/components/UnlockAIFeaturesModal";
-import TryOnModal from "../dashboard/(explore)/TryOnModal";
 
 interface MediaFile {
   id: string;
@@ -154,9 +153,6 @@ export default function Tools() {
   const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
   const [audioPickerVisible, setAudioPickerVisible] = useState(false);
   const [fullImageModalVisible, setFullImageModalVisible] = useState(false);
-
-  // Unlock AI features modal (Hair Tryon – when no quota)
-  const [unlockModalVisible, setUnlockModalVisible] = useState(false);
 
   // Hair pipeline processing modal state (single object)
   const [hairPipelineState, setHairPipelineState] =
@@ -502,8 +498,11 @@ export default function Tools() {
         );
         return;
       }
-      if (showUnlockModal) {
-        setUnlockModalVisible(true);
+      if (showUnlockModal && hairTryOnService) {
+        router.push({
+          pathname: "/(main)/tryOnPurchase",
+          params: { serviceId: String(hairTryOnService.id), screen: "tools" },
+        });
         return;
       }
     } else if (toolType === "Generate Collage") {
@@ -1280,14 +1279,6 @@ export default function Tools() {
         onClose={closeHairPipelineModal}
         onSeeStatus={handleHairPipelineSeeStatus}
       />
-
-      {unlockModalVisible && (
-        <TryOnModal
-          service={hairTryOnService}
-          visible={unlockModalVisible}
-          onClose={() => setUnlockModalVisible(false)}
-        />
-      )}
     </SafeAreaView>
   );
 }

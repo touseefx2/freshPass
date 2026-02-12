@@ -34,7 +34,6 @@ import type {
   ServiceItem,
   SubscriptionItem,
 } from "@/src/components/businessList";
-import TryOnModal from "./TryOnModal";
 import {
   setIsFirstShowTryOn,
   setTryOnBannerDismissed,
@@ -123,6 +122,17 @@ export default function ExploreScreen() {
     !!hairTryOnService &&
     (aiQuota === 0 || aiQuota == null) &&
     isCusotmerandGuest;
+
+  useEffect(() => {
+    if (showTryOnModal && hairTryOnService) {
+      dispatch(setIsFirstShowTryOn(true));
+      router.push({
+        pathname: "/(main)/tryOnPurchase",
+        params: { serviceId: String(hairTryOnService.id), screen: "explore" },
+      });
+    }
+  }, [showTryOnModal, hairTryOnService, dispatch]);
+
   const [verifiedSalons, setVerifiedSalons] = useState<VerifiedSalon[]>([]);
   const [businessesLoading, setBusinessesLoading] = useState(false);
   const [businessesError, setBusinessesError] = useState(false);
@@ -631,15 +641,6 @@ export default function ExploreScreen() {
         sortBy={sortBy}
         setSortBy={setSortBy}
       />
-
-      {showTryOnModal && (
-        <TryOnModal
-          service={hairTryOnService}
-          visible={showTryOnModal}
-          onClose={() => dispatch(setIsFirstShowTryOn(true))}
-          screen="explore"
-        />
-      )}
     </>
   );
 }
