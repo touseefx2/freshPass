@@ -351,6 +351,15 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           return;
         }
       }
+      if (Platform.OS === "ios") {
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status !== "granted") {
+          setError(
+            "Microphone permission was denied. Please enable it in Settings to use the AI Receptionist.",
+          );
+          return;
+        }
+      }
       if (!recorderInitializedRef.current) {
         AudioRecord.init({
           sampleRate: 16000,
@@ -370,7 +379,12 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
             return;
           try {
             const chunk = Buffer.from(data, "base64");
-            ws.send(chunk);
+            if (chunk.byteLength === 0) return;
+            const arrayBuffer = chunk.buffer.slice(
+              chunk.byteOffset,
+              chunk.byteOffset + chunk.byteLength,
+            );
+            ws.send(arrayBuffer);
           } catch (err) {
             console.error("Failed to send audio chunk to voice agent", err);
           }
