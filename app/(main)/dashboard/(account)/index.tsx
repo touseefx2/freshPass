@@ -110,18 +110,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    cardHeaderRight: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    arrowCircle: {
-      width: moderateWidthScale(24),
-      height: moderateWidthScale(24),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen1,
-      alignItems: "center",
-      justifyContent: "center",
-    },
     newBadge: {
       backgroundColor: theme.green,
       paddingHorizontal: moderateWidthScale(5),
@@ -499,24 +487,9 @@ export default function AccountScreen() {
                     <View style={styles.iconWrap}>
                       {getIconForRow(row.key)}
                     </View>
-                    <View style={styles.cardHeaderRight}>
-                      {/* {showNewBadge && (
-                        <View style={styles.newBadge}>
-                          <Text style={styles.newBadgeText}>NEW</Text>
-                        </View>
-                      )} */}
-                      <View style={styles.arrowCircle}>
-                        {isDelete && deleteLoading ? (
-                          <ActivityIndicator size="small" color={theme.red} />
-                        ) : !isDelete && !isLogout ? (
-                          <MaterialIcons
-                            name="keyboard-arrow-right"
-                            size={moderateWidthScale(14)}
-                            color={theme.darkGreen}
-                          />
-                        ) : null}
-                      </View>
-                    </View>
+                    {isDelete && deleteLoading ? (
+                      <ActivityIndicator size="small" color={theme.red} />
+                    ) : null}
                   </View>
                   <View style={styles.cardContent}>
                     <Text
