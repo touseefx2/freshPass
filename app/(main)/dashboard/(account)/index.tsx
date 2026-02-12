@@ -62,10 +62,10 @@ const createStyles = (theme: Theme) =>
     },
     shadow: {
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.06,
-      shadowRadius: moderateWidthScale(4),
-      elevation: 2,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.14,
+      shadowRadius: moderateWidthScale(8),
+      elevation: 5,
     },
     card: {
       backgroundColor: theme.white,
@@ -76,12 +76,12 @@ const createStyles = (theme: Theme) =>
       ...Platform.select({
         ios: {
           shadowColor: theme.shadow,
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.06,
-          shadowRadius: moderateWidthScale(4),
+          shadowOffset: { width: 0, height: 3 },
+          shadowOpacity: 0.14,
+          shadowRadius: moderateWidthScale(8),
         },
         android: {
-          elevation: 2,
+          elevation: 5,
         },
       }),
     },
