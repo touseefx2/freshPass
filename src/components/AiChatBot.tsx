@@ -1408,6 +1408,34 @@ const AiChatBot: React.FC = () => {
 
   // Animation ref for chat box open/close
   const chatBoxAnim = useRef(new Animated.Value(0)).current;
+  // Float animation for FAB when chat is closed (gentle up-down bob)
+  const floatAnim = useRef(new Animated.Value(0)).current;
+
+  // Gentle float (up then down) when chat is closed
+  useEffect(() => {
+    if (isOpen) {
+      floatAnim.setValue(0);
+      return;
+    }
+    const bob = Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 1400,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 1400,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease),
+        }),
+      ]),
+    );
+    bob.start();
+    return () => bob.stop();
+  }, [isOpen, floatAnim]);
 
   // Animate chat box open/close
   useEffect(() => {
@@ -1894,9 +1922,24 @@ const AiChatBot: React.FC = () => {
         </>
       )}
 
-      {/* Floating AI Button - static icon with subtle 3D effect */}
+      {/* Floating AI Button - gentle float animation when chat closed */}
       {!isOpen && (
-        <View style={[styles.floatingButton, styles.shadow]}>
+        <Animated.View
+          style={[
+            styles.floatingButton,
+            styles.shadow,
+            {
+              transform: [
+                {
+                  translateY: floatAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -moderateHeightScale(6)],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <TouchableOpacity
             style={styles.buttonInner}
             onPress={menuExpanded ? handleCloseMenu : handleFloatingButtonPress}
@@ -1914,7 +1957,7 @@ const AiChatBot: React.FC = () => {
               )}
             </View>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       )}
     </>
   );
