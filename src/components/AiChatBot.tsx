@@ -443,6 +443,12 @@ const createStyles = (
       color: theme.lightGreen,
       textAlign: "center",
     },
+    receptionistStatusTextMedium: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
     receptionistErrorText: {
       marginTop: moderateHeightScale(8),
       fontSize: fontSize.size12,
@@ -888,7 +894,6 @@ const AiChatBot: React.FC = () => {
               <VoiceReceptionistContent
                 theme={theme}
                 styles={styles}
-                statusLabel={t("talkWithFreshy") || "Talk with Freshy"}
                 websocketUrl={VOICE_AGENT_WS_URL}
               />
             )}

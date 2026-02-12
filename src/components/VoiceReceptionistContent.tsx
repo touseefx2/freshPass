@@ -11,11 +11,12 @@ import {
   ScrollView,
   Platform,
   PermissionsAndroid,
+  Animated,
+  Easing,
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import { Audio } from "expo-av";
 import { File, Directory, Paths } from "expo-file-system";
-import { AiReceptionistIcon } from "@/assets/icons";
 import { Ionicons } from "@expo/vector-icons";
 import AudioRecord from "react-native-audio-record";
 import { Buffer } from "buffer";
@@ -39,14 +40,12 @@ const formatElapsedTime = (seconds: number): string => {
 export type VoiceReceptionistContentProps = {
   theme: Theme;
   styles: ChatBoxStyles;
-  statusLabel: string;
   websocketUrl: string;
 };
 
 export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> = ({
   theme,
   styles,
-  statusLabel,
   websocketUrl,
 }) => {
   const [isConnected, setIsConnected] = useState(false);
@@ -71,6 +70,29 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
+  const centerIconScale = useRef(new Animated.Value(1)).current;
+  const transcriptScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(centerIconScale, {
+          toValue: 1.12,
+          duration: 600,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        Animated.timing(centerIconScale, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.sin),
+        }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [centerIconScale]);
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -435,17 +457,33 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
     else handleStart();
   };
 
+  const centerIconName = isStarting
+    ? "hourglass-outline"
+    : isAgentSpeaking
+      ? "volume-high"
+      : isListening
+        ? "mic"
+        : "mic-outline";
+
   return (
     <View style={styles.receptionistContainer}>
       <View style={styles.receptionistBody}>
         <View style={styles.receptionistCenter}>
           <View style={styles.receptionistMicOuter}>
-            <View style={styles.receptionistMicInner}>
-              <AiReceptionistIcon width={36} height={36} />
-            </View>
+            <Animated.View
+              style={[
+                styles.receptionistMicInner,
+                { transform: [{ scale: centerIconScale }] },
+              ]}
+            >
+              <Ionicons
+                name={centerIconName}
+                size={36}
+                color={theme.white}
+              />
+            </Animated.View>
           </View>
-          <Text style={styles.receptionistStatusText}>{statusLabel}</Text>
-          <Text style={styles.receptionistTimerText}>{statusText}</Text>
+          <Text style={styles.receptionistStatusTextMedium}>{statusText}</Text>
           <Text style={styles.receptionistTimerText}>{timerText}</Text>
           {error ? (
             <Text style={styles.receptionistErrorText}>{error}</Text>
@@ -457,9 +495,13 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
               Recent conversation
             </Text>
             <ScrollView
+              ref={transcriptScrollRef}
               style={styles.receptionistTranscriptScroll}
               contentContainerStyle={styles.receptionistTranscriptScrollContent}
               showsVerticalScrollIndicator
+              onContentSizeChange={() =>
+                transcriptScrollRef.current?.scrollToEnd({ animated: true })
+              }
             >
               {conversation.map((msg) => (
                 <Text
