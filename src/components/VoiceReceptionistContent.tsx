@@ -15,6 +15,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
+import { moderateHeightScale } from "@/src/theme/dimensions";
 import { Audio } from "expo-av";
 import { File, Directory, Paths } from "expo-file-system";
 import { Ionicons } from "@expo/vector-icons";
@@ -64,7 +65,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  const FLUSH_SAMPLE_THRESHOLD = 16000 * 1;
+  const FLUSH_SAMPLE_THRESHOLD = 16000 * 0.5;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
@@ -73,6 +74,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const centerIconScale = useRef(new Animated.Value(1)).current;
   const sendQueueRef = useRef<ArrayBuffer[]>([]);
   const drainScheduledRef = useRef(false);
+  const conversationScrollRef = useRef<ScrollView | null>(null);
 
   const drainSendQueue = useCallback(() => {
     const ws = wsRef.current;
@@ -166,6 +168,15 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   useEffect(() => () => cleanup(), [cleanup]);
 
   useEffect(() => {
+    if (conversation.length > 0 && conversationScrollRef.current) {
+      setTimeout(
+        () => conversationScrollRef.current?.scrollToEnd({ animated: true }),
+        100,
+      );
+    }
+  }, [conversation.length]);
+
+  useEffect(() => {
     Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       allowsRecordingIOS: true,
@@ -187,7 +198,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
       isPlayingRef.current = true;
       const { sound } = await Audio.Sound.createAsync(
         { uri: nextUri },
-        { shouldPlay: true },
+        { shouldPlay: true, progressUpdateIntervalMillis: 50 },
       );
       soundRef.current = sound;
       await sound.setVolumeAsync(isSpeakerMutedRef.current ? 0 : 1);
@@ -313,6 +324,23 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
                 ]);
               }
               break;
+            case "UserTranscript":
+            case "user_input":
+            case "InputTranscript":
+              if (parsed.content || parsed.text) {
+                const content = String(parsed.content ?? parsed.text ?? "").trim();
+                if (content) {
+                  setConversation((prev) => [
+                    ...prev,
+                    {
+                      role: "user",
+                      content,
+                      timestamp: Date.now(),
+                    },
+                  ]);
+                }
+              }
+              break;
             case "AgentAudioDone":
               flushPendingAudio().catch(() => {});
               break;
@@ -414,7 +442,6 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           if (
             !wsRef.current ||
             wsRef.current.readyState !== WebSocket.OPEN ||
-            isPlayingRef.current ||
             isMicMutedRef.current
           )
             return;
@@ -541,13 +568,30 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
         {conversation.length > 0 && (
           <View style={styles.receptionistCurrentStatementContainer}>
             <ScrollView
+              ref={conversationScrollRef}
               style={styles.receptionistCurrentStatementScroll}
-              contentContainerStyle={styles.receptionistCurrentStatementScrollContent}
+              contentContainerStyle={[
+                styles.receptionistCurrentStatementScrollContent,
+                { alignItems: "flex-start", justifyContent: "flex-start" },
+              ]}
               showsVerticalScrollIndicator={true}
             >
-              <Text style={styles.receptionistCurrentStatementText}>
-                {conversation[conversation.length - 1].content}
-              </Text>
+              {conversation.map((msg, index) => (
+                <View
+                  key={`${msg.timestamp}-${index}`}
+                  style={{
+                    marginBottom:
+                      index < conversation.length - 1
+                        ? moderateHeightScale(12)
+                        : 0,
+                  }}
+                >
+                  <Text style={styles.receptionistCurrentStatementText}>
+                    {msg.role === "user" ? "You: " : "Agent: "}
+                    {msg.content}
+                  </Text>
+                </View>
+              ))}
             </ScrollView>
           </View>
         )}
