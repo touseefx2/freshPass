@@ -10,6 +10,7 @@ import {
 } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
+import Button from "@/src/components/button";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   GeneratePostIcon,
@@ -102,44 +103,30 @@ export default function ToolList() {
     <View style={styles.safeArea}>
       <StackHeader title={t("aiTools")} />
 
-      {!isGuest && (
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            paddingHorizontal: moderateWidthScale(20),
-            paddingVertical: moderateHeightScale(16),
-          }}
-        >
-          {isCustomer ? (
-            <TouchableOpacity
-              style={styles.seeRequestsHistoryButton}
-              activeOpacity={0.7}
-              onPress={() => router.push("/aiTransactions")}
-            >
-              <Text style={styles.seeRequestsHistoryText}>
-                {t("transcations")}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 10 }} />
-          )}
-
-          <TouchableOpacity
-            style={styles.seeRequestsHistoryButton}
-            activeOpacity={0.7}
-            onPress={() => router.push("/aiRequests")}
-          >
-            <Text style={styles.seeRequestsHistoryText}>{t("aiRequests")}</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {!isGuest && (
+          <View style={styles.actionButtonsRow}>
+            {isCustomer && (
+              <View style={styles.actionButtonFlex}>
+                <Button
+                  title={t("transcations")}
+                  onPress={() => router.push("/aiTransactions")}
+                />
+              </View>
+            )}
+            <View style={styles.actionButtonFlex}>
+              <Button
+                title={t("aiRequests")}
+                onPress={() => router.push("/aiRequests")}
+              />
+            </View>
+          </View>
+        )}
+
         <View style={styles.featuresContainer}>
           {features.map((feature, index) => {
             const IconComponent = feature.icon;

@@ -17,7 +17,7 @@ export const createStyles = (theme: Theme) =>
       flexGrow: 1,
       paddingVertical: moderateHeightScale(24),
       paddingHorizontal: moderateWidthScale(20),
-      justifyContent: "center",
+      justifyContent: "flex-start",
     },
     headerContainer: {
       alignItems: "center",
@@ -72,13 +72,12 @@ export const createStyles = (theme: Theme) =>
       color: theme.white,
       textAlign: "center",
     },
-    seeRequestsHistoryButton: {},
-    seeRequestsHistoryText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textDecorationLine: "underline",
-      textDecorationColor: theme.lightGreen,
-      textAlign: "right",
+    actionButtonsRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(20),
+    },
+    actionButtonFlex: {
+      flex: 1,
     },
   });
