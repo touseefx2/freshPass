@@ -12,7 +12,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Feather, AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useTheme } from "@/src/hooks/hooks";
+import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -26,6 +26,7 @@ import Button from "@/src/components/button";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import CustomToggle from "@/src/components/customToggle";
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateEmail } from "@/src/services/validationService";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import {
@@ -110,6 +111,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    subtitleBold: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+    },
     inputSection: {
       marginBottom: moderateHeightScale(20),
     },
@@ -118,19 +124,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       marginTop: moderateHeightScale(4),
-    },
-    readOnlyField: {
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      backgroundColor: theme.lightGreen07,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(12),
-    },
-    readOnlyText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen4,
     },
     label: {
       fontSize: fontSize.size12,
@@ -224,11 +217,9 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       marginBottom: moderateHeightScale(20),
     },
-    toggleLabel: {
+    toggleTitle: {
       flex: 1,
       marginLeft: moderateWidthScale(12),
-    },
-    toggleTitle: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
@@ -269,7 +260,8 @@ const createStyles = (theme: Theme) =>
     },
     footerRow: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(30),
       position: "absolute",
       bottom: 0,
       left: 0,
@@ -285,6 +277,25 @@ export default function AddStaffScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const { showBanner } = useNotificationContext();
+  const businessName =
+    useAppSelector((state) => state.user.business_name) || "";
+
+  const handleActiveToggle = useCallback(
+    (value: boolean) => {
+      if (value) {
+        showBanner(
+          "Cannot activate yet",
+          "You can turn this on only after the staff accepts the invitation. This is for online/offline status.",
+          "error",
+          3000,
+        );
+        return;
+      }
+      setIsActive(false);
+    },
+    [showBanner],
+  );
 
   const [staffEmail, setStaffEmail] = useState("");
   const [name, setName] = useState("");
@@ -294,7 +305,7 @@ export default function AddStaffScreen() {
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [description, setDescription] = useState("");
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
   const [businessHours, setBusinessHours] = useState<Record<string, DayData>>(
     () => {
       const init: Record<string, DayData> = {};
@@ -441,8 +452,13 @@ export default function AddStaffScreen() {
         <View style={styles.titleSec}>
           <Text style={styles.title}>New Staff Member</Text>
           <Text style={styles.subtitle}>
-            Add a new staff member to your business. They will receive an
-            invitation to join.
+            Add a new staff member to your business
+            {businessName ? (
+              <Text style={styles.subtitleBold}> {businessName}. </Text>
+            ) : (
+              ". "
+            )}
+            They will receive an invitation to join.
           </Text>
         </View>
 
@@ -505,13 +521,6 @@ export default function AddStaffScreen() {
           {errors.email ? (
             <Text style={styles.errorText}>{errors.email}</Text>
           ) : null}
-        </View>
-
-        <View style={styles.inputSection}>
-          <Text style={styles.label}>Business</Text>
-          <View style={styles.readOnlyField}>
-            <Text style={styles.readOnlyText}>Business 1</Text>
-          </View>
         </View>
 
         <View style={styles.inputSection}>
@@ -579,16 +588,8 @@ export default function AddStaffScreen() {
         </View>
 
         <View style={styles.toggleRow}>
-          <CustomToggle value={isActive} onValueChange={setIsActive} />
-          <View style={styles.toggleLabel}>
-            <Text style={styles.toggleTitle}>
-              Active (will be activated after invitation acceptance)
-            </Text>
-            <Text style={styles.hint}>
-              An invitation email will be sent to the provided email address.
-              They must accept the invitation to activate their account.
-            </Text>
-          </View>
+          <CustomToggle value={isActive} onValueChange={handleActiveToggle} />
+          <Text style={styles.toggleTitle}>Active</Text>
         </View>
 
         <Text style={styles.sectionTitle}>Working hours</Text>
@@ -632,7 +633,7 @@ export default function AddStaffScreen() {
       </KeyboardAwareScrollView>
 
       <View style={styles.footerRow}>
-        <Button title="Create Staff Member" onPress={handleCreate} />
+        <Button title="Create" onPress={handleCreate} />
       </View>
 
       {selectedDay && (
