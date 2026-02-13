@@ -7,6 +7,7 @@ import {
   PermissionsAndroid,
   Animated,
   Easing,
+  ScrollView,
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import { Audio } from "expo-av";
@@ -58,7 +59,7 @@ export const VoiceReceptionistContent: React.FC<
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  const FLUSH_SAMPLE_THRESHOLD = 16000 * 0.25;
+  const FLUSH_SAMPLE_THRESHOLD = 16000 * 1;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
@@ -74,6 +75,20 @@ export const VoiceReceptionistContent: React.FC<
   const pendingAudioBuffersRef = useRef<ArrayBuffer[]>([]);
   const currentTurnTextShownRef = useRef(false);
   const flushPendingAgentTextRef = useRef<() => void>(() => {});
+  const agentAudioDoneForTurnRef = useRef(false);
+  const agentDoneFallbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const conversationScrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (conversation.length > 0) {
+      const t = setTimeout(() => {
+        conversationScrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [conversation.length]);
 
   const drainSendQueue = useCallback(() => {
     const ws = wsRef.current;
@@ -140,6 +155,11 @@ export const VoiceReceptionistContent: React.FC<
     pendingAgentTextBufferRef.current = [];
     pendingAudioBuffersRef.current = [];
     currentTurnTextShownRef.current = true;
+    agentAudioDoneForTurnRef.current = false;
+    if (agentDoneFallbackTimeoutRef.current) {
+      clearTimeout(agentDoneFallbackTimeoutRef.current);
+      agentDoneFallbackTimeoutRef.current = null;
+    }
     try {
       if (soundRef.current) soundRef.current.unloadAsync();
     } catch {}
@@ -174,6 +194,11 @@ export const VoiceReceptionistContent: React.FC<
     pendingAgentTextBufferRef.current = [];
     pendingAudioBuffersRef.current = [];
     currentTurnTextShownRef.current = true;
+    agentAudioDoneForTurnRef.current = false;
+    if (agentDoneFallbackTimeoutRef.current) {
+      clearTimeout(agentDoneFallbackTimeoutRef.current);
+      agentDoneFallbackTimeoutRef.current = null;
+    }
     try {
       if (soundRef.current) soundRef.current.unloadAsync();
     } catch {}
@@ -215,6 +240,26 @@ export const VoiceReceptionistContent: React.FC<
     if (isPlayingRef.current) return;
     const nextUri = audioQueueRef.current.shift();
     if (!nextUri) {
+      await flushPendingAudio();
+      if (isPlayingRef.current || audioQueueRef.current.length > 0) {
+        return;
+      }
+      if (!agentAudioDoneForTurnRef.current) {
+        if (agentDoneFallbackTimeoutRef.current)
+          clearTimeout(agentDoneFallbackTimeoutRef.current);
+        agentDoneFallbackTimeoutRef.current = setTimeout(() => {
+          agentDoneFallbackTimeoutRef.current = null;
+          if (
+            !isPlayingRef.current &&
+            audioQueueRef.current.length === 0 &&
+            pendingSamplesRef.current === 0
+          ) {
+            agentAudioDoneForTurnRef.current = true;
+            playNextInQueue().catch(() => {});
+          }
+        }, 2000);
+        return;
+      }
       isPlayingRef.current = false;
       setIsAgentSpeaking(false);
       flushPendingAgentTextRef.current();
@@ -240,21 +285,16 @@ export const VoiceReceptionistContent: React.FC<
             const file = new File(nextUri);
             file.delete();
           } catch {}
-          if (audioQueueRef.current.length === 0) {
-            setIsAgentSpeaking(false);
-            flushPendingAgentTextRef.current();
-          }
           playNextInQueue().catch(() => {});
         }
       });
     } catch {
       isPlayingRef.current = false;
-      setIsAgentSpeaking(false);
-      flushPendingAgentTextRef.current();
       try {
         const file = new File(nextUri);
         file.delete();
       } catch {}
+      playNextInQueue().catch(() => {});
     }
   }, []);
 
@@ -298,6 +338,10 @@ export const VoiceReceptionistContent: React.FC<
       const fileName = `voice-agent-${Date.now()}-${Math.random().toString(36).slice(2)}.wav`;
       const file = cacheDir.createFile(fileName, "audio/wav");
       file.write(base64, { encoding: "base64" as any });
+      if (agentDoneFallbackTimeoutRef.current) {
+        clearTimeout(agentDoneFallbackTimeoutRef.current);
+        agentDoneFallbackTimeoutRef.current = null;
+      }
       audioQueueRef.current.push(file.uri);
       currentTurnTextShownRef.current = false;
       setIsAgentSpeaking(true);
@@ -356,6 +400,7 @@ export const VoiceReceptionistContent: React.FC<
           switch (parsed.type) {
             case "ConversationText":
               if (parsed.content) {
+                agentAudioDoneForTurnRef.current = false;
                 setHasReceivedFirstAgentResponse(true);
                 const role =
                   typeof parsed.role === "string" ? parsed.role : "assistant";
@@ -390,6 +435,7 @@ export const VoiceReceptionistContent: React.FC<
               }
               break;
             case "AgentAudioDone":
+              agentAudioDoneForTurnRef.current = true;
               flushPendingAudio().catch(() => {});
               break;
             default:
@@ -505,7 +551,8 @@ export const VoiceReceptionistContent: React.FC<
           if (
             !wsRef.current ||
             wsRef.current.readyState !== WebSocket.OPEN ||
-            isMicMutedRef.current
+            isMicMutedRef.current ||
+            isAgentSpeakingRef.current
           )
             return;
           try {
@@ -644,27 +691,32 @@ export const VoiceReceptionistContent: React.FC<
             </View>
           ) : null}
         </View>
-        {conversation.length > 0 &&
-          (() => {
-            const lastExchange = conversation.slice(-2);
-            return (
-              <View style={styles.receptionistCurrentStatementContainer}>
-                {lastExchange.map((msg, index) => (
-                  <Text
-                    key={`${msg.timestamp}-${index}`}
-                    style={[
-                      styles.receptionistCurrentStatementText,
-                      index < lastExchange.length - 1 &&
-                        styles.receptionistCurrentStatementTextMargin,
-                    ]}
-                  >
-                    {msg.role === "user" ? "You: " : "Agent: "}
-                    {msg.content}
-                  </Text>
-                ))}
-              </View>
-            );
-          })()}
+        {conversation.length > 0 && (
+          <View style={styles.receptionistCurrentStatementContainer}>
+            <ScrollView
+              ref={conversationScrollRef}
+              style={styles.receptionistCurrentStatementScroll}
+              contentContainerStyle={
+                styles.receptionistCurrentStatementScrollContent
+              }
+              showsVerticalScrollIndicator={false}
+            >
+              {conversation.map((msg, index) => (
+                <Text
+                  key={`${msg.timestamp}-${index}`}
+                  style={[
+                    styles.receptionistCurrentStatementText,
+                    index < conversation.length - 1 &&
+                      styles.receptionistCurrentStatementTextMargin,
+                  ]}
+                >
+                  {msg.role === "user" ? "You: " : "Agent: "}
+                  {msg.content}
+                </Text>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
       <View style={styles.receptionistControls}>
         <TouchableOpacity
