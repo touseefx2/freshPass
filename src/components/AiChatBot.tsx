@@ -54,8 +54,6 @@ import {
 import { checkInternetConnection } from "../services/api";
 import { AiToolsService } from "../services/aiToolsService";
 
-const VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
-
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
 const CHAT_BOX_HEIGHT = SCREEN_HEIGHT * 0.6;
@@ -566,7 +564,9 @@ const AiChatBot: React.FC = () => {
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
   );
-  const { userRole, isGuest } = useAppSelector((state) => state.user);
+  const { userRole, isGuest, accessToken } = useAppSelector(
+    (state) => state.user,
+  );
   const chatBottomOffset =
     isFirstTryon && isOnExploreScreen
       ? CHAT_BOTTOM_OFFSET_TRYON
@@ -593,6 +593,14 @@ const AiChatBot: React.FC = () => {
   const chatBoxAnim = useRef(new Animated.Value(0)).current;
   // Float animation for FAB when chat is closed (gentle up-down bob)
   const floatAnim = useRef(new Animated.Value(0)).current;
+
+  let VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
+  if (!isGuest) {
+    // const encodedToken = encodeURIComponent(accessToken || "");
+    VOICE_AGENT_WS_URL = VOICE_AGENT_WS_URL + `&user_token=${accessToken}`;
+  }
+
+  console.log("VOICE_AGENT_WS_URL : ", VOICE_AGENT_WS_URL);
 
   // Gentle float (up then down) when chat is closed
   useEffect(() => {
