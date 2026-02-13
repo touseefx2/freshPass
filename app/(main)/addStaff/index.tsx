@@ -7,9 +7,13 @@ import {
   TextInput,
   Image,
   Pressable,
+  Dimensions,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import { MaterialIcons, Feather, AntDesign } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
@@ -28,12 +32,20 @@ import CustomToggle from "@/src/components/customToggle";
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateEmail } from "@/src/services/validationService";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
+import {
+  parsePhoneNumberFromString,
+  getExampleNumber,
+  AsYouType,
+  CountryCode as PhoneCountryCode,
+} from "libphonenumber-js";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const examples = require("libphonenumber-js/examples.mobile.json");
 import {
   CountryPicker,
   CountryItem,
   Style as CountryPickerStyle,
 } from "react-native-country-codes-picker";
+import { CloseIcon } from "@/assets/icons";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -181,6 +193,115 @@ const parseBusinessHoursFromAPI = (
   return businessHours;
 };
 
+const FALLBACK_PHONE_PLACEHOLDERS: Record<string, string> = {
+  US: "2015550123",
+  NG: "8031234567",
+  GB: "7123456789",
+  CA: "2045550133",
+  IN: "9123456789",
+  AU: "412345678",
+  ZA: "731234567",
+  PK: "3071234567",
+};
+
+const sanitizePlaceholder = (value: string) =>
+  value
+    .replace(/[^\d\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const formatNationalNumber = (
+  countryIso: string,
+  dialCode: string,
+  nationalDigits: string,
+) => {
+  const dialDigits = dialCode.replace(/\D/g, "");
+  const digits = nationalDigits.replace(/\D/g, "");
+
+  if (!digits) return "";
+  try {
+    const formatter = new AsYouType(countryIso as PhoneCountryCode);
+    const formatted = formatter.input(`+${dialDigits}${digits}`);
+    const prefix = `+${dialDigits}`;
+    if (formatted.startsWith(prefix)) {
+      return formatted.slice(prefix.length).trimStart();
+    }
+    return formatted.replace(prefix, "").trimStart();
+  } catch {
+    return digits;
+  }
+};
+
+const getPlaceholderForCountry = (countryIso: string, dialCode: string) => {
+  try {
+    const example = getExampleNumber(countryIso as PhoneCountryCode, examples);
+    if (example) {
+      const formatted = example.formatInternational();
+      const prefix = `+${example.countryCallingCode} `;
+      if (formatted.startsWith(prefix)) {
+        return sanitizePlaceholder(formatted.slice(prefix.length));
+      }
+      return sanitizePlaceholder(
+        formatted.replace(`+${example.countryCallingCode}`, ""),
+      );
+    }
+  } catch {
+    // ignore and fallback
+  }
+  const fallbackDigits = FALLBACK_PHONE_PLACEHOLDERS[countryIso] ?? "0000000";
+  const formattedFallback = formatNationalNumber(
+    countryIso,
+    dialCode,
+    fallbackDigits,
+  );
+  const sanitizedFallback =
+    formattedFallback || sanitizePlaceholder(fallbackDigits);
+  return sanitizePlaceholder(sanitizedFallback);
+};
+
+const getCountryIsoFromDialCode = (dialCode: string): string => {
+  const dialCodeMap: Record<string, string> = {
+    "+1": "US",
+    "+44": "GB",
+    "+234": "NG",
+    "+91": "IN",
+    "+61": "AU",
+    "+27": "ZA",
+    "+92": "PK",
+    "+33": "FR",
+    "+49": "DE",
+    "+86": "CN",
+    "+81": "JP",
+    "+7": "RU",
+    "+55": "BR",
+    "+52": "MX",
+    "+39": "IT",
+    "+34": "ES",
+    "+31": "NL",
+    "+32": "BE",
+    "+41": "CH",
+    "+46": "SE",
+    "+47": "NO",
+    "+45": "DK",
+    "+358": "FI",
+    "+353": "IE",
+    "+351": "PT",
+    "+30": "GR",
+    "+48": "PL",
+    "+420": "CZ",
+    "+36": "HU",
+    "+40": "RO",
+    "+359": "BG",
+    "+385": "HR",
+    "+386": "SI",
+    "+421": "SK",
+    "+370": "LT",
+    "+371": "LV",
+    "+372": "EE",
+  };
+  return dialCodeMap[dialCode] || "US";
+};
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -230,36 +351,92 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(4),
     },
     phoneField: {
+      gap: moderateHeightScale(2),
       marginBottom: moderateHeightScale(20),
+    },
+    phoneFieldContainer: {
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(10),
+      gap: moderateHeightScale(2),
+    },
+    inputLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     phoneInputContainer: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(15),
-      paddingVertical: moderateHeightScale(10),
+    },
+    segmentWrapper: {
+      flex: 1,
+      position: "relative",
+      justifyContent: "center",
+    },
+    segInputWrapper: {
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: moderateWidthScale(3),
+    },
+    digitContainer: {
+      minWidth: moderateWidthScale(13),
+      alignItems: "center",
+      justifyContent: "flex-end",
+    },
+    digitChar: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+    },
+    digitCharPlaceholder: {
+      color: theme.lightGreen2,
+    },
+    digitCharFilled: {
+      color: theme.darkGreen,
+      fontFamily: fonts.fontMedium,
+    },
+    digitGuideline: {
+      width: "100%",
+      backgroundColor: "transparent",
+    },
+    digitGuidelineFilled: {
+      backgroundColor: "transparent",
+    },
+    groupSpacer: {
+      width: moderateWidthScale(4),
+    },
+    hiddenInput: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      right: 0,
+      bottom: 0,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      textAlignVertical: "center",
+      includeFontPadding: false,
+      letterSpacing: moderateWidthScale(7),
     },
     countrySelector: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(12),
+      minHeight: moderateHeightScale(44),
+      justifyContent: "center",
     },
     countryCodeText: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
-    },
-    phoneInput: {
-      flex: 1,
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      paddingVertical: 0,
-      minHeight: moderateHeightScale(22),
     },
     profileSection: {
       flexDirection: "row",
@@ -328,27 +505,58 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(12),
     },
+    daysContainer: {
+      gap: moderateHeightScale(2),
+    },
     dayRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateWidthScale(12),
+      justifyContent: "space-between",
+      paddingVertical: moderateHeightScale(16),
+    },
+    dayLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      flex: 1,
     },
     dayName: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      minWidth: moderateWidthScale(90),
+      flex: 1,
     },
     dayHours: {
-      flex: 1,
       fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    dayHoursContainer: {
+      flex: 1,
+      alignItems: "flex-end",
+      marginRight: moderateWidthScale(8),
+      gap: moderateHeightScale(2),
+    },
+    dayHoursMultiple: {
+      gap: moderateHeightScale(2),
+      alignItems: "flex-end",
+    },
+    dayHoursLine: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    dayHorsBreak: {
+      fontSize: fontSize.size9,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
     divider: {
-      height: 1,
+      height: 1.2,
       backgroundColor: theme.borderLight,
+    },
+    chevronIcon: {
+      marginLeft: moderateWidthScale(8),
     },
     copyCheckboxContainer: {
       marginTop: moderateHeightScale(5),
@@ -408,6 +616,7 @@ export default function AddStaffScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const businessName =
@@ -431,9 +640,20 @@ export default function AddStaffScreen() {
 
   const [staffEmail, setStaffEmail] = useState("");
   const [name, setName] = useState("");
-  const [countryCode, setCountryCode] = useState("+1");
+  const initialCountryCode = "+1";
+  const initialCountryIso = getCountryIsoFromDialCode(initialCountryCode);
+  const [countryCode, setCountryCode] = useState(initialCountryCode);
+  const [countryIso, setCountryIso] = useState(initialCountryIso);
+  const [phonePlaceholder, setPhonePlaceholder] = useState(
+    getPlaceholderForCountry(initialCountryIso, initialCountryCode),
+  );
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneIsValid, setPhoneIsValid] = useState(false);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const phoneInputRef = useRef<TextInput>(null);
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const previousDigitCountRef = useRef(0);
+  const isSettingCursorRef = useRef(false);
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [description, setDescription] = useState("");
@@ -488,6 +708,67 @@ export default function AddStaffScreen() {
   }, [fetchAvailability]);
 
   useEffect(() => {
+    setPhonePlaceholder(getPlaceholderForCountry(countryIso, countryCode));
+  }, [countryCode, countryIso]);
+
+  const maxDigits = useMemo(
+    () => phonePlaceholder.replace(/\s+/g, "").length,
+    [phonePlaceholder],
+  );
+
+  const formattedPhoneValue = useMemo(() => {
+    if (!phoneNumber) return "";
+    const digits = phoneNumber.replace(/\D/g, "");
+    const groups = phonePlaceholder.split(" ").filter(Boolean);
+    let result = "";
+    let digitIndex = 0;
+    for (let i = 0; i < groups.length && digitIndex < digits.length; i++) {
+      if (i > 0) result += " ";
+      const groupLength = groups[i].length;
+      result += digits.slice(digitIndex, digitIndex + groupLength);
+      digitIndex += groupLength;
+    }
+    return result;
+  }, [phoneNumber, phonePlaceholder]);
+
+  const segmentNodes = useMemo(() => {
+    let cursor = 0;
+    const groups = phonePlaceholder.split(" ").filter(Boolean);
+    return groups.map((group, groupIdx) => (
+      <React.Fragment key={`group-${groupIdx}`}>
+        {groupIdx > 0 && <View style={styles.groupSpacer} />}
+        {group.split("").map((digit, digitIdx) => {
+          const filledDigit = phoneNumber[cursor] ?? "";
+          const isFilled = filledDigit !== "";
+          const displayChar = isFilled ? filledDigit : digit;
+          const key = `digit-${groupIdx}-${digitIdx}`;
+          cursor += 1;
+          return (
+            <View key={key} style={styles.digitContainer}>
+              <Text
+                style={[
+                  styles.digitChar,
+                  isFilled
+                    ? styles.digitCharFilled
+                    : styles.digitCharPlaceholder,
+                ]}
+              >
+                {displayChar}
+              </Text>
+              <View
+                style={[
+                  styles.digitGuideline,
+                  isFilled && styles.digitGuidelineFilled,
+                ]}
+              />
+            </View>
+          );
+        })}
+      </React.Fragment>
+    ));
+  }, [phonePlaceholder, phoneNumber, styles]);
+
+  useEffect(() => {
     if (copySalonHours && salonBusinessHours) {
       previousBusinessHoursRef.current = JSON.parse(
         JSON.stringify(businessHours),
@@ -517,12 +798,88 @@ export default function AddStaffScreen() {
 
   const handleCountrySelect = useCallback((country: CountryItem) => {
     setCountryCode(country.dial_code);
+    setCountryIso(country.code);
+    setPhonePlaceholder(
+      getPlaceholderForCountry(country.code, country.dial_code),
+    );
+    setPhoneNumber("");
+    setPhoneIsValid(false);
+    previousDigitCountRef.current = 0;
     setPickerVisible(false);
   }, []);
 
-  const handlePhoneChange = (text: string) => {
-    setPhoneNumber(text.replace(/\D/g, ""));
-  };
+  const handlePhoneChange = useCallback(
+    (value: string) => {
+      const digitsOnly = value.replace(/[^0-9]/g, "");
+      const limitedDigits = digitsOnly.slice(0, maxDigits);
+      const dialDigits = countryCode.replace(/\D/g, "");
+      let isValid = false;
+      let parsedDigits = limitedDigits;
+
+      if (limitedDigits.length > 0 && dialDigits.length > 0) {
+        try {
+          const parsed = parsePhoneNumberFromString(
+            `+${dialDigits}${limitedDigits}`,
+            countryIso as PhoneCountryCode,
+          );
+          isValid = parsed?.isValid() ?? false;
+          parsedDigits = parsed?.nationalNumber?.toString() ?? limitedDigits;
+        } catch {
+          isValid = false;
+        }
+      }
+
+      const isTyping = parsedDigits.length > previousDigitCountRef.current;
+      previousDigitCountRef.current = parsedDigits.length;
+
+      setPhoneNumber(parsedDigits);
+      setPhoneIsValid(isValid);
+
+      const groups = phonePlaceholder.split(" ").filter(Boolean);
+      let newFormatted = "";
+      let digitIndex = 0;
+      for (
+        let i = 0;
+        i < groups.length && digitIndex < parsedDigits.length;
+        i++
+      ) {
+        if (i > 0) newFormatted += " ";
+        const groupLength = groups[i].length;
+        newFormatted += parsedDigits.slice(
+          digitIndex,
+          digitIndex + groupLength,
+        );
+        digitIndex += groupLength;
+      }
+
+      if (isTyping) {
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (phoneInputRef.current) {
+              const endPosition = newFormatted.length;
+              isSettingCursorRef.current = true;
+              setSelection({ start: endPosition, end: endPosition });
+              phoneInputRef.current.setNativeProps({
+                selection: { start: endPosition, end: endPosition },
+              });
+              setTimeout(() => {
+                isSettingCursorRef.current = false;
+              }, 50);
+            }
+          }, 10);
+        });
+      }
+    },
+    [countryCode, countryIso, maxDigits, phonePlaceholder],
+  );
+
+  const handleSelectionChange = useCallback((event: any) => {
+    if (isSettingCursorRef.current) return;
+    setSelection({
+      start: event.nativeEvent.selection.start,
+      end: event.nativeEvent.selection.end,
+    });
+  }, []);
 
   const handleDayPress = (day: string) => {
     setSelectedDay(day);
@@ -570,16 +927,67 @@ export default function AddStaffScreen() {
     handleCloseBottomSheet();
   };
 
-  const getDayDisplayText = (day: string): string => {
+  const getDayDisplayText = (day: string): string | React.ReactNode => {
     const dayData = businessHours[day];
     if (!dayData?.isOpen) return "Closed";
-    if (!dayData.fromHours && !dayData.tillHours) return "Select";
-    return formatTimeRange(
+    if (!dayData.fromHours && !dayData.tillHours) return "---";
+    const mainHours = formatTimeRange(
       dayData.fromHours,
       dayData.fromMinutes,
       dayData.tillHours,
       dayData.tillMinutes,
     );
+    if (dayData.breaks && dayData.breaks.length > 0) {
+      return (
+        <View style={styles.dayHoursMultiple}>
+          <Text style={styles.dayHoursLine}>{mainHours}</Text>
+          {dayData.breaks.map((breakTime, index) => (
+            <Text key={index} style={styles.dayHorsBreak}>
+              Break:{" "}
+              {formatTimeRange(
+                breakTime.fromHours,
+                breakTime.fromMinutes,
+                breakTime.tillHours,
+                breakTime.tillMinutes,
+              )}
+            </Text>
+          ))}
+        </View>
+      );
+    }
+    return mainHours;
+  };
+
+  const handleToggleDay = (day: string, value: boolean) => {
+    const dayData = businessHours[day];
+    setBusinessHours((prev) => ({
+      ...prev,
+      [day]: {
+        ...(prev[day] || defaultDayData()),
+        isOpen: value,
+      },
+    }));
+    if (value && dayData) {
+      const hasNoHours =
+        dayData.fromHours === 0 &&
+        dayData.fromMinutes === 0 &&
+        dayData.tillHours === 0 &&
+        dayData.tillMinutes === 0;
+      if (hasNoHours) {
+        setBusinessHours((prev) => ({
+          ...prev,
+          [day]: {
+            ...prev[day],
+            fromHours: 10,
+            fromMinutes: 0,
+            tillHours: 19,
+            tillMinutes: 30,
+            breaks: [],
+            isOpen: true,
+          },
+        }));
+      }
+    }
   };
 
   const handleCreate = () => {
@@ -596,17 +1004,8 @@ export default function AddStaffScreen() {
       newErrors.name = "Name is required";
     }
 
-    if (phoneNumber.trim()) {
-      try {
-        const parsed = parsePhoneNumberFromString(
-          `${countryCode}${phoneNumber.replace(/\D/g, "")}`,
-        );
-        if (!parsed?.isValid()) {
-          newErrors.phone = "Enter a valid phone number";
-        }
-      } catch {
-        newErrors.phone = "Enter a valid phone number";
-      }
+    if (phoneNumber.length > 0 && !phoneIsValid) {
+      newErrors.phone = "Enter a valid phone number";
     }
 
     setErrors(newErrors);
@@ -620,18 +1019,60 @@ export default function AddStaffScreen() {
     () => ({
       modal: {
         backgroundColor: theme.background,
+        borderTopLeftRadius: moderateWidthScale(24),
+        borderTopRightRadius: moderateWidthScale(24),
+        paddingHorizontal: moderateWidthScale(20),
+        paddingTop: moderateHeightScale(20),
+        paddingBottom: moderateHeightScale(16) + insets.bottom,
+        gap: moderateHeightScale(16),
+        shadowColor: theme.shadow,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.22,
+        shadowRadius: 2.22,
+        elevation: 3,
+        height: Dimensions.get("window").height / 1.5,
+      },
+      textInput: {
+        borderRadius: moderateWidthScale(999),
+        borderWidth: 1,
+        borderColor: theme.borderLight,
+        paddingHorizontal: moderateWidthScale(16),
+        fontSize: fontSize.size16,
+        fontFamily: fonts.fontRegular,
+        color: theme.darkGreen,
+        backgroundColor: theme.white,
+        flex: 1,
+      },
+      line: {
+        backgroundColor: theme.borderLight,
+      },
+      itemsList: {
+        paddingBottom: moderateHeightScale(12),
+      },
+      countryButtonStyles: {
+        paddingVertical: moderateHeightScale(12),
+        borderBottomWidth: 1,
+        borderBottomColor: theme.borderLight,
+        backgroundColor: theme.background,
       },
       dialCode: {
+        fontSize: fontSize.size16,
+        fontFamily: fonts.fontRegular,
         color: theme.darkGreen,
-        fontFamily: fonts.fontMedium,
       },
       countryName: {
-        color: theme.darkGreen,
+        fontSize: fontSize.size16,
         fontFamily: fonts.fontRegular,
+        color: theme.darkGreen,
+      },
+      backdrop: {
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
       },
     }),
-    [theme],
+    [theme, insets.bottom],
   );
+
+  const isPhoneInvalid = phoneNumber.length > 0 && !phoneIsValid;
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -728,39 +1169,74 @@ export default function AddStaffScreen() {
           ) : null}
         </View>
 
-        <View style={styles.inputSection}>
-          <Text style={styles.label}>Phone number</Text>
-          <View style={styles.phoneInputContainer}>
-            <Pressable
-              onPress={() => setPickerVisible(true)}
-              style={styles.countrySelector}
-              hitSlop={moderateWidthScale(10)}
-            >
-              <Text style={styles.countryCodeText}>{countryCode}</Text>
-              <AntDesign
-                name="caret-down"
-                size={moderateWidthScale(12)}
-                color={theme.darkGreen}
-              />
-            </Pressable>
-            <TextInput
-              style={styles.phoneInput}
-              value={phoneNumber}
-              onChangeText={handlePhoneChange}
-              placeholder="(555) 123-4567"
-              placeholderTextColor={theme.lightGreen2}
-              keyboardType="phone-pad"
-            />
+        <View style={styles.phoneField}>
+          <View style={styles.phoneFieldContainer}>
+            <Text style={styles.inputLabel}>Phone number</Text>
+            <View style={styles.phoneInputContainer}>
+              <Pressable
+                onPress={() => setPickerVisible(true)}
+                style={styles.countrySelector}
+                hitSlop={{
+                  top: moderateHeightScale(16),
+                  bottom: moderateHeightScale(16),
+                  left: moderateWidthScale(16),
+                  right: moderateWidthScale(16),
+                }}
+              >
+                <Text style={styles.countryCodeText}>{countryCode}</Text>
+                <AntDesign
+                  name="caret-down"
+                  size={moderateWidthScale(12)}
+                  color={theme.darkGreen}
+                />
+              </Pressable>
+              <View style={styles.segmentWrapper}>
+                <TextInput
+                  ref={phoneInputRef}
+                  style={styles.hiddenInput}
+                  value={formattedPhoneValue}
+                  onChangeText={handlePhoneChange}
+                  onSelectionChange={handleSelectionChange}
+                  selection={selection}
+                  keyboardType="phone-pad"
+                  returnKeyType="done"
+                  maxLength={phonePlaceholder.length}
+                  showSoftInputOnFocus
+                  caretHidden={false}
+                />
+                <View style={styles.segInputWrapper} pointerEvents="none">
+                  {segmentNodes}
+                </View>
+              </View>
+              {!!phoneNumber && (
+                <Pressable
+                  onPress={() => {
+                    previousDigitCountRef.current = 0;
+                    setPhoneNumber("");
+                    setPhoneIsValid(false);
+                  }}
+                  hitSlop={moderateWidthScale(10)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
           </View>
-          {errors.phone ? (
-            <Text style={styles.errorText}>{errors.phone}</Text>
-          ) : null}
+          {(errors.phone || isPhoneInvalid) && (
+            <Text style={styles.errorText}>
+              {errors.phone || "Enter a valid phone number"}
+            </Text>
+          )}
           <CountryPicker
             show={pickerVisible}
             pickerButtonOnPress={handleCountrySelect}
             onBackdropPress={() => setPickerVisible(false)}
             onRequestClose={() => setPickerVisible(false)}
+            inputPlaceholder="Search country"
+            inputPlaceholderTextColor={theme.lightGreen2}
+            searchMessage="No country found"
             style={pickerStyles}
+            popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
             enableModalAvoiding
             lang="en"
           />
@@ -786,42 +1262,47 @@ export default function AddStaffScreen() {
 
         <Text style={styles.sectionTitle}>Working hours</Text>
 
-        {DAYS.map((day, index) => {
-          const dayData = businessHours[day];
-          const isOpen = dayData?.isOpen ?? false;
-          return (
-            <View key={day}>
-              <TouchableOpacity
-                style={styles.dayRow}
-                onPress={() => handleDayPress(day)}
-                activeOpacity={0.7}
-              >
-                <CustomToggle
-                  value={isOpen}
-                  onValueChange={(value) => {
-                    setBusinessHours((prev) => ({
-                      ...prev,
-                      [day]: {
-                        ...(prev[day] || defaultDayData()),
-                        isOpen: value,
-                      },
-                    }));
-                  }}
-                />
-                <Text style={styles.dayName}>{day}</Text>
-                <Text style={styles.dayHours} numberOfLines={1}>
-                  {getDayDisplayText(day)}
-                </Text>
-                <Feather
-                  name="chevron-right"
-                  size={moderateWidthScale(18)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              {index < DAYS.length - 1 && <View style={styles.divider} />}
-            </View>
-          );
-        })}
+        <View style={styles.daysContainer}>
+          {DAYS.map((day, index) => {
+            const dayData = businessHours[day];
+            const isOpen = dayData?.isOpen ?? false;
+            const displayText = getDayDisplayText(day);
+
+            return (
+              <React.Fragment key={day}>
+                <TouchableOpacity
+                  style={styles.dayRow}
+                  onPress={() => handleDayPress(day)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.dayLeft}>
+                    <CustomToggle
+                      value={isOpen}
+                      onValueChange={(value) => handleToggleDay(day, value)}
+                    />
+                    <Text style={styles.dayName}>{day}</Text>
+                    <View style={styles.dayHoursContainer}>
+                      {typeof displayText === "string" ? (
+                        <Text style={styles.dayHours}>{displayText}</Text>
+                      ) : (
+                        <View style={styles.dayHoursMultiple}>
+                          {displayText}
+                        </View>
+                      )}
+                    </View>
+                    <Feather
+                      name="chevron-right"
+                      size={moderateWidthScale(18)}
+                      color={theme.darkGreen}
+                      style={styles.chevronIcon}
+                    />
+                  </View>
+                </TouchableOpacity>
+                {index < DAYS.length - 1 && <View style={styles.divider} />}
+              </React.Fragment>
+            );
+          })}
+        </View>
 
         {salonBusinessHours && (
           <View style={styles.copyCheckboxContainer}>
