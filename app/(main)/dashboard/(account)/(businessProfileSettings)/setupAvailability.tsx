@@ -79,17 +79,19 @@ const formatTimeRange = (
   fromHours: number,
   fromMinutes: number,
   tillHours: number,
-  tillMinutes: number
+  tillMinutes: number,
 ): string => {
   return `${formatTime(fromHours, fromMinutes)} - ${formatTime(
     tillHours,
-    tillMinutes
+    tillMinutes,
   )}`;
 };
 
 // Convert HH:MM string to hours and minutes
-const parseTimeToHoursMinutes = (timeString: string | null | undefined): { hours: number; minutes: number } => {
-  if (!timeString || typeof timeString !== 'string') {
+const parseTimeToHoursMinutes = (
+  timeString: string | null | undefined,
+): { hours: number; minutes: number } => {
+  if (!timeString || typeof timeString !== "string") {
     return { hours: 0, minutes: 0 };
   }
   const [hours, minutes] = timeString.split(":").map(Number);
@@ -101,7 +103,10 @@ const getDayDisplayFormat = (day: string): string => {
   if (!day) return day;
   // Handle both "monday" and "Monday" formats
   const lowerDay = day.toLowerCase();
-  return DAYS.find(d => d.toLowerCase() === lowerDay) || (day.charAt(0).toUpperCase() + day.slice(1));
+  return (
+    DAYS.find((d) => d.toLowerCase() === lowerDay) ||
+    day.charAt(0).toUpperCase() + day.slice(1)
+  );
 };
 
 // Convert day name from display format to API format (lowercase)
@@ -110,19 +115,21 @@ const getDayApiFormat = (day: string): string => {
 };
 
 // Convert API format to local state format
-const parseBusinessHoursFromAPI = (hoursArray: Array<{
-  id: number;
-  day: string;
-  closed: boolean;
-  opening_time: string | null;
-  closing_time: string | null;
-  break_hours: Array<{
-    start: string;
-    end: string;
-  }>;
-}>): BusinessHours => {
+const parseBusinessHoursFromAPI = (
+  hoursArray: Array<{
+    id: number;
+    day: string;
+    closed: boolean;
+    opening_time: string | null;
+    closing_time: string | null;
+    break_hours: Array<{
+      start: string;
+      end: string;
+    }>;
+  }>,
+): BusinessHours => {
   const businessHours: BusinessHours = {};
-  
+
   // Initialize all days with default closed state
   DAYS.forEach((day) => {
     businessHours[day] = {
@@ -140,8 +147,8 @@ const parseBusinessHoursFromAPI = (hoursArray: Array<{
   }
 
   // Create a map to handle duplicates - keep the entry with highest ID for each day
-  const dayMap = new Map<string, typeof hoursArray[0]>();
-  
+  const dayMap = new Map<string, (typeof hoursArray)[0]>();
+
   hoursArray.forEach((dayData) => {
     const dayName = getDayDisplayFormat(dayData.day);
     if (DAYS.includes(dayName)) {
@@ -174,12 +181,10 @@ const parseBusinessHoursFromAPI = (hoursArray: Array<{
     }
 
     const breaks = (dayData.break_hours || []).map((breakTime) => {
-      const { hours: fromHours, minutes: fromMinutes } = parseTimeToHoursMinutes(
-        breakTime.start || "00:00"
-      );
-      const { hours: tillHours, minutes: tillMinutes } = parseTimeToHoursMinutes(
-        breakTime.end || "00:00"
-      );
+      const { hours: fromHours, minutes: fromMinutes } =
+        parseTimeToHoursMinutes(breakTime.start || "00:00");
+      const { hours: tillHours, minutes: tillMinutes } =
+        parseTimeToHoursMinutes(breakTime.end || "00:00");
       return {
         fromHours,
         fromMinutes,
@@ -205,7 +210,7 @@ const parseBusinessHoursFromAPI = (hoursArray: Array<{
 const convertBusinessHoursToAPI = (businessHours: BusinessHours): any[] => {
   return DAYS.map((day) => {
     const dayData = businessHours[day];
-    
+
     const formatTimeToHHMM = (hours: number, minutes: number): string => {
       const h = hours.toString().padStart(2, "0");
       const m = minutes.toString().padStart(2, "0");
@@ -345,7 +350,7 @@ export default function SetupAvailabilityScreen() {
 
       if (response.success && response.data) {
         const parsedHours = parseBusinessHoursFromAPI(
-          response.data.business_hours || []
+          response.data.business_hours || [],
         );
         setBusinessHours(parsedHours);
       }
@@ -355,7 +360,7 @@ export default function SetupAvailabilityScreen() {
         "Error",
         error.message || "Failed to fetch availability. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setLoading(false);
@@ -432,11 +437,11 @@ export default function SetupAvailabilityScreen() {
       tillMinutes: number;
     }>,
     copyHoursEnabled?: boolean,
-    selectedDays?: string[]
+    selectedDays?: string[],
   ) => {
     setBusinessHours((prev) => {
       const updated = { ...prev };
-      
+
       // Update the current day
       updated[day] = {
         ...updated[day],
@@ -491,7 +496,7 @@ export default function SetupAvailabilityScreen() {
       dayData.fromHours,
       dayData.fromMinutes,
       dayData.tillHours,
-      dayData.tillMinutes
+      dayData.tillMinutes,
     );
 
     if (dayData.breaks && dayData.breaks.length > 0) {
@@ -505,7 +510,7 @@ export default function SetupAvailabilityScreen() {
                 breakTime.fromHours,
                 breakTime.fromMinutes,
                 breakTime.tillHours,
-                breakTime.tillMinutes
+                breakTime.tillMinutes,
               )}
             </Text>
           ))}
@@ -543,7 +548,7 @@ export default function SetupAvailabilityScreen() {
           "Success",
           response.message || "Availability updated successfully",
           "success",
-          3000
+          3000,
         );
 
         router.back();
@@ -552,7 +557,7 @@ export default function SetupAvailabilityScreen() {
           "Error",
           response.message || "Failed to update availability",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -561,13 +566,12 @@ export default function SetupAvailabilityScreen() {
         "Error",
         error.message || "Failed to update availability. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
     }
   };
-
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -591,7 +595,7 @@ export default function SetupAvailabilityScreen() {
             <View style={styles.daysContainer}>
               {DAYS.map((day, index) => {
                 const dayData = businessHours[day];
-                const isOpen = dayData?.isOpen ?? false; 
+                const isOpen = dayData?.isOpen ?? false;
                 const showDivider = index < DAYS.length - 1;
                 const displayText = getDayDisplayText(day);
 
@@ -636,11 +640,7 @@ export default function SetupAvailabilityScreen() {
 
       {!loading && (
         <View style={styles.continueButtonContainer}>
-          <Button
-            title="Update"
-            onPress={handleUpdate}
-            disabled={isUpdating}
-          />
+          <Button title="Update" onPress={handleUpdate} disabled={isUpdating} />
         </View>
       )}
 

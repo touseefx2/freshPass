@@ -90,10 +90,13 @@ export default function PickerDropdown({
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
+  const scrollViewRef = useRef<ScrollView>(null);
   const [menuPosition, setMenuPosition] = React.useState<{
     x: number;
     y: number;
   } | null>(null);
+
+  const currentValue = getTimeValue(currentHours, currentMinutes);
 
   useEffect(() => {
     if (visible && buttonRef?.current) {
@@ -120,9 +123,25 @@ export default function PickerDropdown({
     }
   }, [visible, buttonRef]);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (visible && menuPosition != null && scrollViewRef.current) {
+      const itemHeight =
+        moderateHeightScale(12) * 2 + 20 + 1;
+      const scrollY = Math.max(
+        0,
+        currentValue * itemHeight - moderateHeightScale(85)
+      );
+      const timer = setTimeout(() => {
+        scrollViewRef.current?.scrollTo({
+          y: scrollY,
+          animated: false,
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, menuPosition, currentValue]);
 
-  const currentValue = getTimeValue(currentHours, currentMinutes);
+  if (!visible) return null;
 
   const handleMenuItemPress = (hours: number, minutes: number) => {
     onSelect(hours, minutes);
@@ -149,6 +168,7 @@ export default function PickerDropdown({
             ]}
           >
             <ScrollView
+              ref={scrollViewRef}
               nestedScrollEnabled
               showsVerticalScrollIndicator={false}
             >
