@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -34,6 +34,9 @@ import {
   CountryItem,
   Style as CountryPickerStyle,
 } from "react-native-country-codes-picker";
+import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
+import { businessEndpoints } from "@/src/services/endpoints";
 
 const DAYS = [
   "Monday",
@@ -82,6 +85,101 @@ const formatTimeRange = (
   tillMinutes: number,
 ): string =>
   `${formatTime(fromHours, fromMinutes)} - ${formatTime(tillHours, tillMinutes)}`;
+
+interface BusinessHoursData {
+  business_hours: Array<{
+    id: number;
+    day: string;
+    closed: boolean;
+    opening_time: string | null;
+    closing_time: string | null;
+    break_hours: Array<{ start: string; end: string }>;
+  }>;
+}
+
+const parseTimeToHoursMinutes = (
+  timeString: string | null | undefined,
+): { hours: number; minutes: number } => {
+  if (!timeString || typeof timeString !== "string") {
+    return { hours: 0, minutes: 0 };
+  }
+  const [hours, minutes] = timeString.split(":").map(Number);
+  return { hours: hours || 0, minutes: minutes || 0 };
+};
+
+const getDayDisplayFormat = (day: string): string => {
+  if (!day) return day;
+  const lowerDay = day.toLowerCase();
+  return (
+    DAYS.find((d) => d.toLowerCase() === lowerDay) ||
+    day.charAt(0).toUpperCase() + day.slice(1)
+  );
+};
+
+const parseBusinessHoursFromAPI = (
+  hoursArray: Array<{
+    id: number;
+    day: string;
+    closed: boolean;
+    opening_time: string | null;
+    closing_time: string | null;
+    break_hours: Array<{ start: string; end: string }>;
+  }>,
+): Record<string, DayData> => {
+  const businessHours: Record<string, DayData> = {};
+  DAYS.forEach((day) => {
+    businessHours[day] = defaultDayData();
+  });
+
+  if (!hoursArray?.length) return businessHours;
+
+  const dayMap = new Map<string, (typeof hoursArray)[0]>();
+  hoursArray.forEach((dayData) => {
+    const dayName = getDayDisplayFormat(dayData.day);
+    if (DAYS.includes(dayName)) {
+      const existing = dayMap.get(dayName);
+      if (!existing || dayData.id > existing.id) {
+        dayMap.set(dayName, dayData);
+      }
+    }
+  });
+
+  dayMap.forEach((dayData, dayName) => {
+    let fromHours = 0,
+      fromMinutes = 0,
+      tillHours = 0,
+      tillMinutes = 0;
+    if (dayData.opening_time) {
+      const parsed = parseTimeToHoursMinutes(dayData.opening_time);
+      fromHours = parsed.hours;
+      fromMinutes = parsed.minutes;
+    }
+    if (dayData.closing_time) {
+      const parsed = parseTimeToHoursMinutes(dayData.closing_time);
+      tillHours = parsed.hours;
+      tillMinutes = parsed.minutes;
+    }
+    const breaks = (dayData.break_hours || []).map((breakTime) => {
+      const from = parseTimeToHoursMinutes(breakTime.start || "00:00");
+      const till = parseTimeToHoursMinutes(breakTime.end || "00:00");
+      return {
+        fromHours: from.hours,
+        fromMinutes: from.minutes,
+        tillHours: till.hours,
+        tillMinutes: till.minutes,
+      };
+    });
+    businessHours[dayName] = {
+      isOpen: !dayData.closed,
+      fromHours,
+      fromMinutes,
+      tillHours,
+      tillMinutes,
+      breaks,
+    };
+  });
+  return businessHours;
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -252,6 +350,40 @@ const createStyles = (theme: Theme) =>
       height: 1,
       backgroundColor: theme.borderLight,
     },
+    copyCheckboxContainer: {
+      marginTop: moderateHeightScale(5),
+      marginBottom: moderateHeightScale(20),
+      gap: moderateHeightScale(15),
+    },
+    copyHoursSection: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    checkbox: {
+      width: moderateWidthScale(18),
+      height: moderateWidthScale(18),
+      borderRadius: moderateWidthScale(4),
+      borderWidth: 1.5,
+      borderColor: theme.black,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    checkboxChecked: {
+      backgroundColor: theme.orangeBrown,
+      borderColor: theme.orangeBrown,
+    },
+    checkboxLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      flex: 1,
+    },
+    sectionDescription: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
     errorText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
@@ -317,11 +449,71 @@ export default function AddStaffScreen() {
   );
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [salonBusinessHours, setSalonBusinessHours] = useState<
+    Record<string, DayData> | null
+  >(null);
+  const [copySalonHours, setCopySalonHours] = useState(false);
+  const previousBusinessHoursRef = useRef<Record<string, DayData> | null>(null);
   const [errors, setErrors] = useState<{
     email?: string;
     name?: string;
     phone?: string;
   }>({});
+
+  const fetchAvailability = useCallback(async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: BusinessHoursData;
+      }>(businessEndpoints.moduleData("availability"));
+
+      if (response.success && response.data?.business_hours) {
+        const parsed = parseBusinessHoursFromAPI(response.data.business_hours);
+        setSalonBusinessHours(parsed);
+      }
+    } catch (error: any) {
+      Logger.error("Failed to fetch availability:", error);
+      showBanner(
+        "Error",
+        error.message || "Failed to fetch business hours. Please try again.",
+        "error",
+        3000,
+      );
+    }
+  }, [showBanner]);
+
+  useEffect(() => {
+    fetchAvailability();
+  }, [fetchAvailability]);
+
+  useEffect(() => {
+    if (copySalonHours && salonBusinessHours) {
+      previousBusinessHoursRef.current = JSON.parse(
+        JSON.stringify(businessHours),
+      );
+      setBusinessHours((prev) => {
+        const updated = { ...prev };
+        Object.keys(salonBusinessHours).forEach((day) => {
+          const salonDay = salonBusinessHours[day];
+          updated[day] = {
+            isOpen: salonDay.isOpen,
+            fromHours: salonDay.fromHours,
+            fromMinutes: salonDay.fromMinutes,
+            tillHours: salonDay.tillHours,
+            tillMinutes: salonDay.tillMinutes,
+            breaks: salonDay.breaks ? [...salonDay.breaks] : [],
+          };
+        });
+        return updated;
+      });
+    } else if (!copySalonHours && previousBusinessHoursRef.current) {
+      setBusinessHours(
+        JSON.parse(JSON.stringify(previousBusinessHoursRef.current)),
+      );
+      previousBusinessHoursRef.current = null;
+    }
+  }, [copySalonHours]);
 
   const handleCountrySelect = useCallback((country: CountryItem) => {
     setCountryCode(country.dial_code);
@@ -630,6 +822,42 @@ export default function AddStaffScreen() {
             </View>
           );
         })}
+
+        {salonBusinessHours && (
+          <View style={styles.copyCheckboxContainer}>
+            <View style={styles.copyHoursSection}>
+              <TouchableOpacity
+                onPress={() => setCopySalonHours(!copySalonHours)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.checkbox,
+                    copySalonHours && styles.checkboxChecked,
+                  ]}
+                >
+                  {copySalonHours && (
+                    <Feather
+                      name="check"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+              <View style={{ gap: 3, width: "90%" }}>
+                <Text style={styles.checkboxLabel}>
+                  Copy business hours
+                  {businessName ? ` (${businessName})` : ""}
+                </Text>
+                <Text style={styles.sectionDescription}>
+                  Use the same working hours as your business for this staff
+                  member.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
       </KeyboardAwareScrollView>
 
       <View style={styles.footerRow}>
