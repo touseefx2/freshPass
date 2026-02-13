@@ -239,12 +239,6 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(12),
     },
-    sameForAllRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(12),
-    },
     dayRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -301,7 +295,6 @@ export default function AddStaffScreen() {
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const [sameForAllDays, setSameForAllDays] = useState(false);
   const [businessHours, setBusinessHours] = useState<Record<string, DayData>>(
     () => {
       const init: Record<string, DayData> = {};
@@ -599,13 +592,6 @@ export default function AddStaffScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Working hours</Text>
-        <View style={styles.sameForAllRow}>
-          <Text style={styles.toggleTitle}>Same for all days</Text>
-          <CustomToggle
-            value={sameForAllDays}
-            onValueChange={setSameForAllDays}
-          />
-        </View>
 
         {DAYS.map((day, index) => {
           const dayData = businessHours[day];
