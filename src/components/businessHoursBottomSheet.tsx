@@ -1,10 +1,5 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -38,7 +33,7 @@ interface BusinessHoursBottomSheetProps {
       tillMinutes: number;
     }>,
     copyHoursEnabled?: boolean,
-    selectedDays?: string[]
+    selectedDays?: string[],
   ) => void;
   initialData?: {
     isOpen: boolean;
@@ -62,7 +57,8 @@ interface BreakTime {
   tillMinutes: number;
 }
 
-const getTotalMinutes = (hours: number, minutes: number) => hours * 60 + minutes;
+const getTotalMinutes = (hours: number, minutes: number) =>
+  hours * 60 + minutes;
 
 const DAYS = [
   "Sunday",
@@ -230,7 +226,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-
   });
 
 export default function BusinessHoursBottomSheet({
@@ -272,22 +267,24 @@ export default function BusinessHoursBottomSheet({
   const DEFAULT_TILL_MINUTES = 0;
 
   // Check if day has no hours set
-  const hasNoHours = 
-    (dayData.fromHours === 0 && dayData.fromMinutes === 0 && 
-     dayData.tillHours === 0 && dayData.tillMinutes === 0) ||
+  const hasNoHours =
+    (dayData.fromHours === 0 &&
+      dayData.fromMinutes === 0 &&
+      dayData.tillHours === 0 &&
+      dayData.tillMinutes === 0) ||
     (!dayData.fromHours && !dayData.tillHours);
 
   const [fromHours, setFromHours] = useState(
-    hasNoHours ? DEFAULT_FROM_HOURS : (dayData.fromHours || 0)
+    hasNoHours ? DEFAULT_FROM_HOURS : dayData.fromHours || 0,
   );
   const [fromMinutes, setFromMinutes] = useState(
-    hasNoHours ? DEFAULT_FROM_MINUTES : (dayData.fromMinutes || 0)
+    hasNoHours ? DEFAULT_FROM_MINUTES : dayData.fromMinutes || 0,
   );
   const [tillHours, setTillHours] = useState(
-    hasNoHours ? DEFAULT_TILL_HOURS : (dayData.tillHours || 0)
+    hasNoHours ? DEFAULT_TILL_HOURS : dayData.tillHours || 0,
   );
   const [tillMinutes, setTillMinutes] = useState(
-    hasNoHours ? DEFAULT_TILL_MINUTES : (dayData.tillMinutes || 0)
+    hasNoHours ? DEFAULT_TILL_MINUTES : dayData.tillMinutes || 0,
   );
   const [breaks, setBreaks] = useState<BreakTime[]>(dayData.breaks || []);
   const [copyHoursEnabled, setCopyHoursEnabled] = useState(false);
@@ -300,7 +297,9 @@ export default function BusinessHoursBottomSheet({
   const [showBreakTillDropdown, setShowBreakTillDropdown] = useState<
     number | null
   >(null);
-  const [openingHoursError, setOpeningHoursError] = useState<string | null>(null);
+  const [openingHoursError, setOpeningHoursError] = useState<string | null>(
+    null,
+  );
   const [breakTimeError, setBreakTimeError] = useState<string | null>(null);
 
   // Refs for dropdown positioning
@@ -331,16 +330,18 @@ export default function BusinessHoursBottomSheet({
           };
 
       // Check if day has no hours set (all zeros)
-      const hasNoHours = 
-        (currentDayData.fromHours === 0 && currentDayData.fromMinutes === 0 && 
-         currentDayData.tillHours === 0 && currentDayData.tillMinutes === 0) ||
+      const hasNoHours =
+        (currentDayData.fromHours === 0 &&
+          currentDayData.fromMinutes === 0 &&
+          currentDayData.tillHours === 0 &&
+          currentDayData.tillMinutes === 0) ||
         (!currentDayData.fromHours && !currentDayData.tillHours);
-      
+
       let currentFromHours = 0;
       let currentFromMinutes = 0;
       let currentTillHours = 0;
       let currentTillMinutes = 0;
-      
+
       // If no hours are set, use default hours (9 AM - 6 PM)
       if (hasNoHours) {
         currentFromHours = 9; // 9 AM
@@ -361,32 +362,44 @@ export default function BusinessHoursBottomSheet({
         setTillHours(currentTillHours);
         setTillMinutes(currentTillMinutes);
       }
-      
+
       // Auto-add at least 1 break time field if no breaks exist
       const existingBreaks = currentDayData.breaks || [];
       if (existingBreaks.length === 0) {
         // Calculate default break time: 1 hour in the middle of business hours
-        const fromTotalMinutes = getTotalMinutes(currentFromHours, currentFromMinutes);
-        const tillTotalMinutes = getTotalMinutes(currentTillHours, currentTillMinutes);
+        const fromTotalMinutes = getTotalMinutes(
+          currentFromHours,
+          currentFromMinutes,
+        );
+        const tillTotalMinutes = getTotalMinutes(
+          currentTillHours,
+          currentTillMinutes,
+        );
         const totalDuration = tillTotalMinutes - fromTotalMinutes;
-        
+
         // Only set default break if business hours are at least 2 hours (need space for 1 hour break)
         if (totalDuration >= 120) {
           // Calculate middle point and set 1 hour break (60 minutes)
           const middlePoint = fromTotalMinutes + Math.floor(totalDuration / 2);
           const breakStartMinutes = middlePoint - 30; // Start 30 minutes before middle
           const breakEndMinutes = middlePoint + 30; // End 30 minutes after middle (exactly 1 hour)
-          
+
           // Ensure break is within business hours
-          const adjustedBreakStart = Math.max(fromTotalMinutes, breakStartMinutes);
-          const adjustedBreakEnd = Math.min(tillTotalMinutes, adjustedBreakStart + 60);
-          
+          const adjustedBreakStart = Math.max(
+            fromTotalMinutes,
+            breakStartMinutes,
+          );
+          const adjustedBreakEnd = Math.min(
+            tillTotalMinutes,
+            adjustedBreakStart + 60,
+          );
+
           // Convert back to hours and minutes
           const breakFromHours = Math.floor(adjustedBreakStart / 60);
           const breakFromMinutes = adjustedBreakStart % 60;
           const breakTillHours = Math.floor(adjustedBreakEnd / 60);
           const breakTillMinutes = adjustedBreakEnd % 60;
-          
+
           setBreaks([
             {
               fromHours: breakFromHours,
@@ -425,8 +438,12 @@ export default function BusinessHoursBottomSheet({
 
     // Validate opening hours: from must be less than till
     // Check if times are set (we set defaults, so if both are 0, user might have cleared them or selected 12 AM for both)
-    const bothAreZero = fromHours === 0 && fromMinutes === 0 && tillHours === 0 && tillMinutes === 0;
-    
+    const bothAreZero =
+      fromHours === 0 &&
+      fromMinutes === 0 &&
+      tillHours === 0 &&
+      tillMinutes === 0;
+
     if (bothAreZero) {
       // This could be "not set" or "both 12 AM" - either way, it's invalid
       setOpeningHoursError("Please select valid opening and closing times.");
@@ -442,7 +459,7 @@ export default function BusinessHoursBottomSheet({
         breakTime.fromHours > 0 ||
         breakTime.fromMinutes > 0 ||
         breakTime.tillHours > 0 ||
-        breakTime.tillMinutes > 0
+        breakTime.tillMinutes > 0,
     );
 
     // Validate break times
@@ -452,26 +469,25 @@ export default function BusinessHoursBottomSheet({
         for (let j = i + 1; j < validBreaks.length; j++) {
           const break1From = getTotalMinutes(
             validBreaks[i].fromHours,
-            validBreaks[i].fromMinutes
+            validBreaks[i].fromMinutes,
           );
           const break1Till = getTotalMinutes(
             validBreaks[i].tillHours,
-            validBreaks[i].tillMinutes
+            validBreaks[i].tillMinutes,
           );
           const break2From = getTotalMinutes(
             validBreaks[j].fromHours,
-            validBreaks[j].fromMinutes
+            validBreaks[j].fromMinutes,
           );
           const break2Till = getTotalMinutes(
             validBreaks[j].tillHours,
-            validBreaks[j].tillMinutes
+            validBreaks[j].tillMinutes,
           );
 
-          if (
-            break1From === break2From &&
-            break1Till === break2Till
-          ) {
-            setBreakTimeError("Break times cannot be the same. Please set different break times.");
+          if (break1From === break2From && break1Till === break2Till) {
+            setBreakTimeError(
+              "Break times cannot be the same. Please set different break times.",
+            );
             hasError = true;
             break;
           }
@@ -484,11 +500,11 @@ export default function BusinessHoursBottomSheet({
         const hasInvalidBreak = validBreaks.some((breakTime) => {
           const breakFrom = getTotalMinutes(
             breakTime.fromHours,
-            breakTime.fromMinutes
+            breakTime.fromMinutes,
           );
           const breakTill = getTotalMinutes(
             breakTime.tillHours,
-            breakTime.tillMinutes
+            breakTime.tillMinutes,
           );
 
           // Break from must be less than break till
@@ -497,10 +513,7 @@ export default function BusinessHoursBottomSheet({
           }
 
           // Break time must be within opening hours
-          if (
-            breakFrom < fromTotalMinutes ||
-            breakTill > tillTotalMinutes
-          ) {
+          if (breakFrom < fromTotalMinutes || breakTill > tillTotalMinutes) {
             return true;
           }
 
@@ -509,7 +522,7 @@ export default function BusinessHoursBottomSheet({
 
         if (hasInvalidBreak) {
           setBreakTimeError(
-            "Break times must be valid (from < till) and within opening hours."
+            "Break times must be valid (from < till) and within opening hours.",
           );
           hasError = true;
         }
@@ -522,7 +535,16 @@ export default function BusinessHoursBottomSheet({
 
     // If onSave callback is provided, use it (for non-Redux usage)
     if (onSave) {
-      onSave(day, fromHours, fromMinutes, tillHours, tillMinutes, validBreaks, copyHoursEnabled, selectedDays);
+      onSave(
+        day,
+        fromHours,
+        fromMinutes,
+        tillHours,
+        tillMinutes,
+        validBreaks,
+        copyHoursEnabled,
+        selectedDays,
+      );
     } else {
       // Otherwise use Redux (for completeProfile flow)
       dispatch(
@@ -533,7 +555,7 @@ export default function BusinessHoursBottomSheet({
           tillHours,
           tillMinutes,
           breaks: validBreaks,
-        })
+        }),
       );
 
       if (copyHoursEnabled && selectedDays.length > 0) {
@@ -546,7 +568,7 @@ export default function BusinessHoursBottomSheet({
               tillHours,
               tillMinutes,
               breaks: validBreaks,
-            })
+            }),
           );
           dispatch(setDayAvailability({ day: selectedDay, isOpen: true }));
         });
@@ -576,7 +598,7 @@ export default function BusinessHoursBottomSheet({
   const handleBreakTimeChange = (
     index: number,
     field: "fromHours" | "fromMinutes" | "tillHours" | "tillMinutes",
-    value: number
+    value: number,
   ) => {
     const updatedBreaks = [...breaks];
     updatedBreaks[index] = {
@@ -598,7 +620,7 @@ export default function BusinessHoursBottomSheet({
     hours: number,
     minutes: number,
     type: "from" | "till" | "breakFrom" | "breakTill",
-    breakIndex?: number
+    breakIndex?: number,
   ) => {
     if (type === "from") {
       setFromHours(hours);
@@ -646,27 +668,98 @@ export default function BusinessHoursBottomSheet({
         footerButtonTitle="Save"
         onFooterButtonPress={handleSave}
       >
-          <View style={{ gap: 3 }}>
-            <Text style={styles.sectionTitle}>Business hours</Text>
-            <Text style={styles.sectionDescription}>
-              Set your business hours for {day}s here. To edit hours for a
-              specific date, use your calendar.
-            </Text>
-          </View>
+        <View style={{ gap: 3 }}>
+          <Text style={styles.sectionTitle}>Business hours</Text>
+          <Text style={styles.sectionDescription}>
+            Set your business hours for {day}s here. To edit hours for a
+            specific date, use your calendar.
+          </Text>
+        </View>
 
-          <View style={{ gap: 5, marginTop: moderateHeightScale(12) }}>
-            <Text style={styles.sectionTitle2}>Opening hours</Text>
-            <View style={styles.inputRow}>
+        <View style={{ gap: 5, marginTop: moderateHeightScale(12) }}>
+          <Text style={styles.sectionTitle2}>Opening hours</Text>
+          <View style={styles.inputRow}>
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>From</Text>
+              <TouchableOpacity
+                ref={fromButtonRef}
+                style={styles.dropdownButton}
+                onPress={() => setShowFromDropdown(true)}
+              >
+                {fromHours !== undefined && fromMinutes !== undefined ? (
+                  <Text style={styles.dropdownText}>
+                    {formatTime(fromHours, fromMinutes)}
+                  </Text>
+                ) : (
+                  <Text style={styles.dropdownPlaceholder}>From</Text>
+                )}
+                <Feather
+                  name="chevron-down"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.inputWrapper}>
+              <Text style={styles.inputLabel}>Till</Text>
+              <TouchableOpacity
+                ref={tillButtonRef}
+                style={styles.dropdownButton}
+                onPress={() => setShowTillDropdown(true)}
+              >
+                {tillHours !== undefined && tillMinutes !== undefined ? (
+                  <Text style={styles.dropdownText}>
+                    {formatTime(tillHours, tillMinutes)}
+                  </Text>
+                ) : (
+                  <Text style={styles.dropdownPlaceholder}>Till</Text>
+                )}
+                <Feather
+                  name="chevron-down"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+          {openingHoursError ? (
+            <Text style={styles.errorText}>{openingHoursError}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.breakTimeSection}>
+          <View style={styles.breakTimeHeader}>
+            <Text style={styles.sectionTitle2}>Break time</Text>
+            <TouchableOpacity
+              onPress={handleAddBreak}
+              style={styles.addBreakButton}
+            >
+              <Text style={styles.addBreakButtonText}>Add new +</Text>
+            </TouchableOpacity>
+          </View>
+          {breakTimeError ? (
+            <Text style={styles.errorText}>{breakTimeError}</Text>
+          ) : null}
+        </View>
+
+        {breaks.map((breakTime, index) => (
+          <View key={index} style={styles.breakTimeItem}>
+            <View style={styles.breakTimeInputs}>
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>From</Text>
                 <TouchableOpacity
-                  ref={fromButtonRef}
+                  ref={(ref) => {
+                    if (ref) {
+                      breakFromButtonRefs.current[index] = ref;
+                    }
+                  }}
                   style={styles.dropdownButton}
-                  onPress={() => setShowFromDropdown(true)}
+                  onPress={() => setShowBreakFromDropdown(index)}
                 >
-                  {fromHours !== undefined && fromMinutes !== undefined ? (
+                  {breakTime.fromHours !== undefined &&
+                  breakTime.fromMinutes !== undefined ? (
                     <Text style={styles.dropdownText}>
-                      {formatTime(fromHours, fromMinutes)}
+                      {formatTime(breakTime.fromHours, breakTime.fromMinutes)}
                     </Text>
                   ) : (
                     <Text style={styles.dropdownPlaceholder}>From</Text>
@@ -681,13 +774,18 @@ export default function BusinessHoursBottomSheet({
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Till</Text>
                 <TouchableOpacity
-                  ref={tillButtonRef}
+                  ref={(ref) => {
+                    if (ref) {
+                      breakTillButtonRefs.current[index] = ref;
+                    }
+                  }}
                   style={styles.dropdownButton}
-                  onPress={() => setShowTillDropdown(true)}
+                  onPress={() => setShowBreakTillDropdown(index)}
                 >
-                  {tillHours !== undefined && tillMinutes !== undefined ? (
+                  {breakTime.tillHours !== undefined &&
+                  breakTime.tillMinutes !== undefined ? (
                     <Text style={styles.dropdownText}>
-                      {formatTime(tillHours, tillMinutes)}
+                      {formatTime(breakTime.tillHours, breakTime.tillMinutes)}
                     </Text>
                   ) : (
                     <Text style={styles.dropdownPlaceholder}>Till</Text>
@@ -700,174 +798,100 @@ export default function BusinessHoursBottomSheet({
                 </TouchableOpacity>
               </View>
             </View>
-            {openingHoursError ? (
-              <Text style={styles.errorText}>{openingHoursError}</Text>
-            ) : null}
+            <TouchableOpacity
+              onPress={() => handleRemoveBreak(index)}
+              style={styles.deleteButton}
+            >
+              <Feather
+                name="trash-2"
+                size={moderateWidthScale(20)}
+                color={theme.link}
+              />
+            </TouchableOpacity>
           </View>
+        ))}
 
-          <View style={styles.breakTimeSection}>
-            <View style={styles.breakTimeHeader}>
-              <Text style={styles.sectionTitle2}>Break time</Text>
-              <TouchableOpacity
-                onPress={handleAddBreak}
-                style={styles.addBreakButton}
+        <View style={{ gap: 15 }}>
+          <View style={styles.copyHoursSection}>
+            <TouchableOpacity
+              onPress={() => setCopyHoursEnabled(!copyHoursEnabled)}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  copyHoursEnabled && styles.checkboxChecked,
+                ]}
               >
-                <Text style={styles.addBreakButtonText}>Add new +</Text>
-              </TouchableOpacity>
+                {copyHoursEnabled && (
+                  <Feather
+                    name="check"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                )}
+              </View>
+            </TouchableOpacity>
+            <View style={{ gap: 3, width: "90%" }}>
+              <Text style={styles.checkboxLabel}>Copy hours</Text>
+              <Text style={styles.sectionDescription}>
+                Apply these hours to multiple days. Select the ones that match
+                your schedule.
+              </Text>
             </View>
-            {breakTimeError ? (
-              <Text style={styles.errorText}>{breakTimeError}</Text>
-            ) : null}
           </View>
-
-          {breaks.map((breakTime, index) => (
-            <View key={index} style={styles.breakTimeItem}>
-              <View style={styles.breakTimeInputs}>
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputLabel}>From</Text>
+          {copyHoursEnabled && (
+            <View style={styles.daysContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.dayPill,
+                  selectedDays.length === DAYS.length - 1 &&
+                    styles.dayPillSelected,
+                ]}
+                onPress={() => {
+                  const otherDays = DAYS.filter((d) => d !== day);
+                  if (selectedDays.length === otherDays.length) {
+                    setSelectedDays([]);
+                  } else {
+                    setSelectedDays(otherDays);
+                  }
+                }}
+              >
+                {selectedDays.length === DAYS.length - 1 && (
+                  <Feather
+                    name="check"
+                    size={moderateWidthScale(14)}
+                    color={theme.darkGreen}
+                    style={{ marginRight: moderateWidthScale(4) }}
+                  />
+                )}
+                <Text style={[styles.dayPillText]}>All</Text>
+              </TouchableOpacity>
+              {DAYS.filter((d) => d !== day).map((dayName) => {
+                const isSelected = selectedDays.includes(dayName);
+                return (
                   <TouchableOpacity
-                    ref={(ref) => {
-                      if (ref) {
-                        breakFromButtonRefs.current[index] = ref;
-                      }
-                    }}
-                    style={styles.dropdownButton}
-                    onPress={() => setShowBreakFromDropdown(index)}
+                    key={dayName}
+                    style={[
+                      styles.dayPill,
+                      isSelected && styles.dayPillSelected,
+                    ]}
+                    onPress={() => handleDayToggle(dayName)}
                   >
-                    {breakTime.fromHours !== undefined && breakTime.fromMinutes !== undefined ? (
-                      <Text style={styles.dropdownText}>
-                        {formatTime(breakTime.fromHours, breakTime.fromMinutes)}
-                      </Text>
-                    ) : (
-                      <Text style={styles.dropdownPlaceholder}>From</Text>
+                    {isSelected && (
+                      <Feather
+                        name="check"
+                        size={moderateWidthScale(14)}
+                        color={theme.darkGreen}
+                        style={{ marginRight: moderateWidthScale(4) }}
+                      />
                     )}
-                    <Feather
-                      name="chevron-down"
-                      size={moderateWidthScale(16)}
-                      color={theme.darkGreen}
-                    />
+                    <Text style={[styles.dayPillText]}>{dayName}</Text>
                   </TouchableOpacity>
-                </View>
-                <View style={styles.inputWrapper}>
-                  <Text style={styles.inputLabel}>Till</Text>
-                  <TouchableOpacity
-                    ref={(ref) => {
-                      if (ref) {
-                        breakTillButtonRefs.current[index] = ref;
-                      }
-                    }}
-                    style={styles.dropdownButton}
-                    onPress={() => setShowBreakTillDropdown(index)}
-                  >
-                    {breakTime.tillHours !== undefined && breakTime.tillMinutes !== undefined ? (
-                      <Text style={styles.dropdownText}>
-                        {formatTime(breakTime.tillHours, breakTime.tillMinutes)}
-                      </Text>
-                    ) : (
-                      <Text style={styles.dropdownPlaceholder}>Till</Text>
-                    )}
-                    <Feather
-                      name="chevron-down"
-                      size={moderateWidthScale(16)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <TouchableOpacity
-                onPress={() => handleRemoveBreak(index)}
-                style={styles.deleteButton}
-              >
-                <Feather
-                  name="trash-2"
-                  size={moderateWidthScale(20)}
-                  color={theme.link}
-                />
-              </TouchableOpacity>
+                );
+              })}
             </View>
-          ))}
-
-          <View style={{ gap: 15 }}>
-            <View style={styles.copyHoursSection}>
-              <TouchableOpacity
-                onPress={() => setCopyHoursEnabled(!copyHoursEnabled)}
-              >
-                <View
-                  style={[
-                    styles.checkbox,
-                    copyHoursEnabled && styles.checkboxChecked,
-                  ]}
-                >
-                  {copyHoursEnabled && (
-                    <Feather
-                      name="check"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
-                  )}
-                </View>
-              </TouchableOpacity>
-              <View style={{ gap: 3, width: "90%" }}>
-                <Text style={styles.checkboxLabel}>Copy business hours</Text>
-                <Text style={styles.sectionDescription}>
-                  Apply these hours to multiple days. Select the ones that match
-                  your schedule.
-                </Text>
-              </View>
-            </View>
-            {copyHoursEnabled && (
-              <View style={styles.daysContainer}>
-                <TouchableOpacity
-                  style={[
-                    styles.dayPill,
-                    selectedDays.length === DAYS.length - 1 &&
-                      styles.dayPillSelected,
-                  ]}
-                  onPress={() => {
-                    const otherDays = DAYS.filter((d) => d !== day);
-                    if (selectedDays.length === otherDays.length) {
-                      setSelectedDays([]);
-                    } else {
-                      setSelectedDays(otherDays);
-                    }
-                  }}
-                >
-                  {selectedDays.length === DAYS.length - 1 && (
-                    <Feather
-                      name="check"
-                      size={moderateWidthScale(14)}
-                      color={theme.darkGreen}
-                      style={{ marginRight: moderateWidthScale(4) }}
-                    />
-                  )}
-                  <Text style={[styles.dayPillText]}>All</Text>
-                </TouchableOpacity>
-                {DAYS.filter((d) => d !== day).map((dayName) => {
-                  const isSelected = selectedDays.includes(dayName);
-                  return (
-                    <TouchableOpacity
-                      key={dayName}
-                      style={[
-                        styles.dayPill,
-                        isSelected && styles.dayPillSelected,
-                      ]}
-                      onPress={() => handleDayToggle(dayName)}
-                    >
-                      {isSelected && (
-                        <Feather
-                          name="check"
-                          size={moderateWidthScale(14)}
-                          color={theme.darkGreen}
-                          style={{ marginRight: moderateWidthScale(4) }}
-                        />
-                      )}
-                      <Text style={[styles.dayPillText]}>{dayName}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-          </View>
+          )}
+        </View>
       </ModalizeBottomSheet>
 
       <PickerDropdown
