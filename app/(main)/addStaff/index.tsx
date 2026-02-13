@@ -1132,89 +1132,154 @@ export default function AddStaffScreen() {
     !formErrors.phone &&
     !formErrors.description;
 
+  const buildWorkingHoursArray = useCallback(() => {
+    return DAYS.map((day) => {
+      const dayData = businessHours[day];
+      const breakHours = (dayData?.breaks || []).map((br) => ({
+        start: formatTimeToHHMM(br.fromHours, br.fromMinutes),
+        end: formatTimeToHHMM(br.tillHours, br.tillMinutes),
+      }));
+      return {
+        day: getDayApiFormat(day),
+        closed: !(dayData?.isOpen ?? false),
+        opening_time: formatTimeToHHMM(
+          dayData?.fromHours ?? 0,
+          dayData?.fromMinutes ?? 0,
+        ),
+        closing_time: formatTimeToHHMM(
+          dayData?.tillHours ?? 0,
+          dayData?.tillMinutes ?? 0,
+        ),
+        break_hours: breakHours,
+      };
+    });
+  }, [businessHours]);
+
   const handleCreate = useCallback(async () => {
     if (!isFormValid || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const formData = new FormData();
-      formData.append("email", staffEmail.trim());
-      if (name.trim()) formData.append("name", name.trim());
-      if (countryCode) formData.append("country_code", countryCode);
-      if (phoneNumber.trim())
-        formData.append("phone", phoneNumber.replace(/\D/g, ""));
-      if (description.trim()) formData.append("description", description.trim());
-      // Add staff (invite): always send is_onboarded true per API. Do not send is_onboarded in edit/update staff request.
-      formData.append("is_onboarded", "true");
-
-      const workingHoursArray = DAYS.map((day) => {
-        const dayData = businessHours[day];
-        const breakHours = (dayData?.breaks || []).map((br) => ({
-          start: formatTimeToHHMM(br.fromHours, br.fromMinutes),
-          end: formatTimeToHHMM(br.tillHours, br.tillMinutes),
-        }));
-        return {
-          day: getDayApiFormat(day),
-          closed: !(dayData?.isOpen ?? false),
-          opening_time: formatTimeToHHMM(
-            dayData?.fromHours ?? 0,
-            dayData?.fromMinutes ?? 0,
-          ),
-          closing_time: formatTimeToHHMM(
-            dayData?.tillHours ?? 0,
-            dayData?.tillMinutes ?? 0,
-          ),
-          break_hours: breakHours,
-        };
-      });
-      formData.append("working_hours", JSON.stringify(workingHoursArray));
-
-      if (profileImageUri) {
-        const fileExtension = profileImageUri.split(".").pop()?.toLowerCase() || "jpg";
-        const fileName = `profile_image.${fileExtension}`;
-        const mimeType =
-          fileExtension === "jpg" || fileExtension === "jpeg"
-            ? "image/jpeg"
-            : fileExtension === "png"
-              ? "image/png"
-              : fileExtension === "webp"
-                ? "image/webp"
-                : "image/jpeg";
-        formData.append("profile_image", {
-          uri: profileImageUri,
-          type: mimeType,
-          name: fileName,
-        } as any);
-      }
-
-      const response = await ApiService.post<{
-        success: boolean;
-        message?: string;
-        data?: any;
-      }>(staffEndpoints.invite, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      if (response?.success) {
-        showBanner(
-          "Success",
-          "Staff invitation sent successfully.",
-          "success",
-          3000,
+      if (isEditMode) {
+        const formData = new FormData();
+        formData.append("name", name.trim());
+        formData.append("description", description.trim());
+        formData.append(
+          "working_hours",
+          JSON.stringify(buildWorkingHoursArray()),
         );
-        router.back();
+        if (profileImageUri) {
+          const isLocalUri =
+            profileImageUri.startsWith("file://") ||
+            profileImageUri.startsWith("content://") ||
+            !profileImageUri.startsWith("http");
+          if (isLocalUri) {
+            const fileExtension =
+              profileImageUri.split(".").pop()?.toLowerCase() || "jpg";
+            const fileName = `profile_image.${fileExtension}`;
+            const mimeType =
+              fileExtension === "jpg" || fileExtension === "jpeg"
+                ? "image/jpeg"
+                : fileExtension === "png"
+                  ? "image/png"
+                  : fileExtension === "webp"
+                    ? "image/webp"
+                    : "image/jpeg";
+            formData.append("profile_image", {
+              uri: profileImageUri,
+              type: mimeType,
+              name: fileName,
+            } as any);
+          }
+        } else if (params.profile_image_url) {
+          formData.append("remove_image", "true");
+        }
+        const response = await ApiService.post<{
+          success: boolean;
+          message?: string;
+          data?: any;
+        }>(staffEndpoints.profile, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        if (response?.success) {
+          showBanner(
+            "Success",
+            "Staff details updated successfully.",
+            "success",
+            3000,
+          );
+          router.back();
+        } else {
+          showBanner(
+            "Error",
+            (response as any)?.message ||
+              "Failed to update staff. Please try again.",
+            "error",
+            3000,
+          );
+        }
       } else {
-        showBanner(
-          "Error",
-          (response as any)?.message || "Failed to invite staff. Please try again.",
-          "error",
-          3000,
+        const formData = new FormData();
+        formData.append("email", staffEmail.trim());
+        formData.append("name", name.trim());
+        formData.append("country_code", countryCode || "");
+        formData.append("phone", phoneNumber.replace(/\D/g, ""));
+        formData.append("description", description.trim());
+        formData.append("is_onboarded", "true");
+        formData.append(
+          "working_hours",
+          JSON.stringify(buildWorkingHoursArray()),
         );
+        if (profileImageUri) {
+          const fileExtension =
+            profileImageUri.split(".").pop()?.toLowerCase() || "jpg";
+          const fileName = `profile_image.${fileExtension}`;
+          const mimeType =
+            fileExtension === "jpg" || fileExtension === "jpeg"
+              ? "image/jpeg"
+              : fileExtension === "png"
+                ? "image/png"
+                : fileExtension === "webp"
+                  ? "image/webp"
+                  : "image/jpeg";
+          formData.append("profile_image", {
+            uri: profileImageUri,
+            type: mimeType,
+            name: fileName,
+          } as any);
+        }
+        const response = await ApiService.post<{
+          success: boolean;
+          message?: string;
+          data?: any;
+        }>(staffEndpoints.invite, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        if (response?.success) {
+          showBanner(
+            "Success",
+            "Staff invitation sent successfully.",
+            "success",
+            3000,
+          );
+          router.back();
+        } else {
+          showBanner(
+            "Error",
+            (response as any)?.message ||
+              "Failed to invite staff. Please try again.",
+            "error",
+            3000,
+          );
+        }
       }
     } catch (error: any) {
-      Logger.error("Staff invite error:", error);
+      Logger.error(isEditMode ? "Staff update error:" : "Staff invite error:", error);
       showBanner(
         "Error",
-        error?.message || "Failed to invite staff. Please try again.",
+        error?.message ||
+          (isEditMode
+            ? "Failed to update staff. Please try again."
+            : "Failed to invite staff. Please try again."),
         "error",
         3000,
       );
@@ -1224,6 +1289,7 @@ export default function AddStaffScreen() {
   }, [
     isFormValid,
     isSubmitting,
+    isEditMode,
     staffEmail,
     name,
     countryCode,
@@ -1231,6 +1297,8 @@ export default function AddStaffScreen() {
     description,
     businessHours,
     profileImageUri,
+    params.profile_image_url,
+    buildWorkingHoursArray,
     showBanner,
   ]);
 
@@ -1242,18 +1310,20 @@ export default function AddStaffScreen() {
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleSec}>
-          <Text style={styles.title}>New Staff Member</Text>
-          <Text style={styles.subtitle}>
-            Add a new staff member to your business
-            {businessName ? (
-              <Text style={styles.subtitleBold}> {businessName}. </Text>
-            ) : (
-              ". "
-            )}
-            They will receive an invitation to join.
-          </Text>
-        </View>
+        {!isEditMode && (
+          <View style={styles.titleSec}>
+            <Text style={styles.title}>New Staff Member</Text>
+            <Text style={styles.subtitle}>
+              Add a new staff member to your business
+              {businessName ? (
+                <Text style={styles.subtitleBold}> {businessName}. </Text>
+              ) : (
+                ". "
+              )}
+              They will receive an invitation to join.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.inputSection}>
           <Text style={styles.label}>Profile picture</Text>
@@ -1504,7 +1574,15 @@ export default function AddStaffScreen() {
 
       <View style={styles.footerRow}>
         <Button
-          title={isSubmitting ? "Creating…" : "Create"}
+          title={
+            isSubmitting
+              ? isEditMode
+                ? "Updating…"
+                : "Creating…"
+              : isEditMode
+                ? "Update"
+                : "Create"
+          }
           onPress={handleCreate}
           disabled={!isFormValid || isSubmitting}
         />
