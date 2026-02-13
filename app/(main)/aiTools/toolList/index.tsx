@@ -1,19 +1,7 @@
-import React, {
-  useMemo,
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-} from "react";
-import {
-  ScrollView,
-  View,
-  Text,
-  TouchableOpacity,
-  Animated,
-} from "react-native";
+import React, { useMemo, useEffect } from "react";
+import { ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -45,12 +33,6 @@ export default function ToolList() {
   const isCustomer = userRole === "customer";
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Animation values
-  const headerTranslateY = useRef(new Animated.Value(0)).current;
-  const boxesTranslateY = useRef(new Animated.Value(300)).current;
-  const boxesOpacity = useRef(new Animated.Value(0)).current;
 
   // Business features (paramTitle is passed to tools screen and must match expected values)
   const businessFeatures = [
@@ -94,55 +76,6 @@ export default function ToolList() {
     userRole === "business" ? t("socialMediaAiTool") : t("aiTool");
 
   useEffect(() => {
-    if (isExpanded) {
-      // Animate header up
-      Animated.spring(headerTranslateY, {
-        toValue: -100,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-
-      // Animate boxes coming from below with stagger
-      Animated.parallel([
-        Animated.spring(boxesTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 80,
-          friction: 8,
-          delay: 100,
-        }),
-        Animated.timing(boxesOpacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-          delay: 100,
-        }),
-      ]).start();
-    } else {
-      // Reset animations
-      Animated.parallel([
-        Animated.spring(headerTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 100,
-          friction: 8,
-        }),
-        Animated.timing(boxesTranslateY, {
-          toValue: 300,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(boxesOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [isExpanded]);
-
-  useEffect(() => {
     fetchQuota();
   }, []);
 
@@ -156,10 +89,6 @@ export default function ToolList() {
         dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
       }
     } catch {}
-  };
-
-  const handleHeaderPress = () => {
-    setIsExpanded(!isExpanded);
   };
 
   const handleFeaturePress = (paramTitle: string) => {
@@ -211,42 +140,7 @@ export default function ToolList() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Animated.View
-          style={[
-            styles.headerContainer,
-            {
-              transform: [{ translateY: headerTranslateY }],
-            },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={handleHeaderPress}
-            activeOpacity={0.7}
-            style={styles.headerButton}
-          >
-            <LinearGradient
-              colors={[
-                (colors as Theme).darkGreenLight,
-                (colors as Theme).darkGreen,
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.headerGradient}
-            >
-              <Text style={styles.headerTitle}>{headerTitle}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.featuresContainer,
-            {
-              transform: [{ translateY: boxesTranslateY }],
-              opacity: boxesOpacity,
-            },
-          ]}
-        >
+        <View style={styles.featuresContainer}>
           {features.map((feature, index) => {
             const IconComponent = feature.icon;
             return (
@@ -277,7 +171,7 @@ export default function ToolList() {
               </TouchableOpacity>
             );
           })}
-        </Animated.View>
+        </View>
       </ScrollView>
     </View>
   );
