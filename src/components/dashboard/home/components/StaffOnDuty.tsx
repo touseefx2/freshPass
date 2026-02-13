@@ -17,7 +17,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { Entypo } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
 
 const createStyles = (theme: Theme) =>
@@ -104,6 +104,14 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       paddingHorizontal: moderateWidthScale(20),
     },
+    addStaffCircle: {
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(22 / 2),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
 
 interface StaffData {
@@ -152,20 +160,17 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     <View style={styles.staffContainer}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
-        {data && data.length > 0 && (
-          <TouchableOpacity activeOpacity={0.7}>
-            <View style={styles.sectionRight}>
-              <Text style={styles.sectionLinkText}>
-                {data.length > 8 ? `8/${data.length}` : `${data.length}`}
-              </Text>
-              <Entypo
-                name="chevron-small-right"
-                size={moderateWidthScale(20)}
-                color={theme.darkGreen}
-              />
-            </View>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => router.push("/(main)/addStaff")}
+          style={styles.addStaffCircle}
+        >
+          <Feather
+            name="plus"
+            size={moderateWidthScale(15)}
+            color={theme.white85}
+          />
+        </TouchableOpacity>
       </View>
       {!data ? (
         <Skeleton screenType="StaffOnDuty" styles={styles} />
