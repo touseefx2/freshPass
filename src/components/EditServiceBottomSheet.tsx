@@ -103,7 +103,7 @@ const createStyles = (theme: Theme) =>
     timeInputContainer: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-start",
     },
     timeInput: {
       fontSize: fontSize.size16,
@@ -113,6 +113,23 @@ const createStyles = (theme: Theme) =>
       height: heightScale(22),
       flex: 1,
       textAlign: "left",
+    },
+    minutesSuffix: {
+      flex: 0,
+      marginLeft: moderateWidthScale(4),
+      lineHeight: heightScale(22),
+      height: heightScale(22),
+      includeFontPadding: false,
+    },
+    pricePrefix: {
+      flex: 0,
+      marginRight: 0,
+      lineHeight: heightScale(22),
+      height: heightScale(22),
+      includeFontPadding: false,
+    },
+    priceInputInner: {
+      paddingLeft: 0,
     },
     arrowButtonsContainer: {
       width: "28%",
@@ -154,6 +171,12 @@ const createStyles = (theme: Theme) =>
       color: theme.link,
       marginTop: moderateHeightScale(4),
     },
+    timeFieldHint: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(4),
+    },
   });
 
 export default function EditServiceBottomSheet({
@@ -171,9 +194,9 @@ export default function EditServiceBottomSheet({
   const service = serviceId ? services.find((s) => s.id === serviceId) : null;
 
   const [serviceName, setServiceName] = useState(service?.name || "");
-  const [hours, setHours] = useState(service?.hours || 0);
-  const [minutes, setMinutes] = useState(service?.minutes || 0);
-  const [price, setPrice] = useState(service?.price.toString() || "0");
+  const [hoursStr, setHoursStr] = useState("");
+  const [minutesStr, setMinutesStr] = useState("");
+  const [price, setPrice] = useState("");
   const [currency] = useState(service?.currency || "USD");
   const [errors, setErrors] = useState<{
     name?: string;
@@ -183,75 +206,63 @@ export default function EditServiceBottomSheet({
   useEffect(() => {
     if (visible && service) {
       setServiceName(service.name);
-      // Clamp hours to 0-12 range
       const serviceHours = Math.min(Math.max(service.hours, 0), 12);
-      setHours(serviceHours);
-      // Clamp minutes to 0-60 range
-      const serviceMinutes = Math.min(Math.max(service.minutes, 0), 60);
-      setMinutes(serviceMinutes);
+      setHoursStr(serviceHours.toString());
+      const serviceMinutes = Math.min(Math.max(service.minutes, 0), 59);
+      setMinutesStr(serviceMinutes.toString());
       setPrice(service.price.toString());
       setErrors({});
     }
   }, [visible, service]);
 
   const handleHoursChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9]/g, "");
-    if (cleaned === "") {
-      setHours(0);
-    } else {
-      const value = parseInt(cleaned, 10);
-      if (!isNaN(value) && value >= 0 && value <= 12) {
-        setHours(value);
-      }
-    }
+    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 2);
+    setHoursStr(cleaned);
   };
 
   const handleIncrementHours = () => {
-    if (hours < 12) {
-      setHours(hours + 1);
+    const current = parseInt(hoursStr, 10) || 0;
+    if (current < 12) {
+      setHoursStr((current + 1).toString());
     } else {
-      // If at max (12), wrap to 0
-      setHours(0);
+      setHoursStr("0");
     }
   };
 
   const handleDecrementHours = () => {
-    if (hours > 0) {
-      setHours(hours - 1);
+    const current = parseInt(hoursStr, 10) || 0;
+    if (current > 0) {
+      setHoursStr((current - 1).toString());
     } else {
-      // If at 0, wrap to 12
-      setHours(12);
+      setHoursStr("12");
     }
   };
 
   const handleMinutesChange = (text: string) => {
-    // Extract number from "35 mins" or just "35" format
-    const cleaned = text.replace(/[^0-9]/g, "");
-    if (cleaned === "") {
-      setMinutes(0);
+    const cleaned = text.replace(/[^0-9]/g, "").slice(0, 2);
+    const num = parseInt(cleaned, 10);
+    if (cleaned !== "" && !isNaN(num) && num > 59) {
+      setMinutesStr("0");
     } else {
-      const value = parseInt(cleaned, 10);
-      if (!isNaN(value) && value >= 0 && value <= 60) {
-        setMinutes(value);
-      }
+      setMinutesStr(cleaned);
     }
   };
 
   const handleIncrementMinutes = () => {
-    if (minutes < 60) {
-      setMinutes(minutes + 1);
+    const current = parseInt(minutesStr, 10) || 0;
+    if (current < 59) {
+      setMinutesStr((current + 1).toString());
     } else {
-      // If at max (60), wrap to 0 (don't affect hours)
-      setMinutes(0);
+      setMinutesStr("0");
     }
   };
 
   const handleDecrementMinutes = () => {
-    if (minutes > 0) {
-      setMinutes(minutes - 1);
+    const current = parseInt(minutesStr, 10) || 0;
+    if (current > 0) {
+      setMinutesStr((current - 1).toString());
     } else {
-      // If at 0, wrap to 60 (don't affect hours)
-      setMinutes(60);
+      setMinutesStr("59");
     }
   };
 
@@ -270,9 +281,8 @@ export default function EditServiceBottomSheet({
   const handleSave = () => {
     const newErrors: typeof errors = {};
 
-    // Service name is disabled, so we don't validate it
-    // It will remain the same as the original service name
-
+    const hours = Math.min(Math.max(parseInt(hoursStr, 10) || 0, 0), 12);
+    const minutes = Math.min(Math.max(parseInt(minutesStr, 10) || 0, 0), 59);
     const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue <= 0) {
       newErrors.price = "Price must be greater than 0";
@@ -287,7 +297,7 @@ export default function EditServiceBottomSheet({
       dispatch(
         updateService({
           id: serviceId,
-          name: service.name, // Keep original name since it's disabled
+          name: service.name,
           hours,
           minutes,
           price: priceValue,
@@ -297,10 +307,6 @@ export default function EditServiceBottomSheet({
     }
 
     onClose();
-  };
-
-  const formatMinutes = (mins: number): string => {
-    return `${mins} min${mins !== 1 ? "s" : ""}`;
   };
 
   return (
@@ -326,7 +332,7 @@ export default function EditServiceBottomSheet({
               <View style={styles.timeInputContainer}>
                 <TextInput
                   style={styles.timeInput}
-                  value={hours.toString()}
+                  value={hoursStr}
                   onChangeText={handleHoursChange}
                   keyboardType="number-pad"
                   placeholder="0"
@@ -365,12 +371,17 @@ export default function EditServiceBottomSheet({
               <View style={styles.timeInputContainer}>
                 <TextInput
                   style={styles.timeInput}
-                  value={formatMinutes(minutes)}
+                  value={minutesStr}
                   onChangeText={handleMinutesChange}
                   keyboardType="number-pad"
-                  placeholder="0 mins"
+                  placeholder="0"
                   placeholderTextColor={theme.lightGreen2}
                 />
+                {minutesStr ? (
+                  <Text style={[styles.timeInput, styles.minutesSuffix]}>
+                    {minutesStr === "1" ? " min" : " mins"}
+                  </Text>
+                ) : null}
               </View>
             </View>
             <View style={styles.arrowButtonsContainer}>
@@ -398,25 +409,31 @@ export default function EditServiceBottomSheet({
             </View>
           </View>
         </View>
+        <Text style={styles.timeFieldHint}>
+          After 59, value resets to 0 (60 mins = 1 hour, then it restarts).
+        </Text>
 
         <View style={styles.timeInputWrapper}>
           <View style={styles.mainTimeCon}>
             <Text style={styles.inputLabel}>Price</Text>
             <View style={styles.timeInputContainer}>
+              <Text style={[styles.timeInput, styles.pricePrefix]}>
+                {currency} $
+              </Text>
               <TextInput
-                style={styles.timeInput}
-                value={`${currency} $${parseFloat(price || "0").toFixed(2)}`}
+                style={[styles.timeInput, styles.priceInputInner]}
+                value={price}
                 onChangeText={(text) => {
-                  // Extract number from "USD $145.99" or just "145.99" format
                   const cleaned = text.replace(/[^0-9.]/g, "");
-                  if (cleaned) {
-                    setPrice(cleaned);
-                  } else {
-                    setPrice("0");
-                  }
+                  const oneDot =
+                    cleaned.indexOf(".") >= 0
+                      ? cleaned.slice(0, cleaned.indexOf(".") + 1) +
+                        cleaned.slice(cleaned.indexOf(".") + 1).replace(/\./g, "")
+                      : cleaned;
+                  setPrice(oneDot);
                 }}
                 keyboardType="decimal-pad"
-                placeholder={`${currency} $0.00`}
+                placeholder="0.00"
                 placeholderTextColor={theme.lightGreen2}
               />
             </View>
