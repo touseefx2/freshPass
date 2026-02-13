@@ -1,4 +1,5 @@
 import React, { useMemo, useCallback, useState, useEffect } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   StyleSheet,
   View,
@@ -420,10 +421,6 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    if (userRole === "business" || userRole === "staff") {
-      fetchInitialData();
-    }
-
     const subscription = AppState.addEventListener(
       "change",
       async (nextAppState) => {
@@ -440,6 +437,14 @@ export default function HomeScreen() {
       subscription.remove();
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (userRole === "business" || userRole === "staff") {
+        fetchInitialData();
+      }
+    }, [userRole]),
+  );
 
   const showLoadingState =
     (isLoading && !businessStatus && !apiError) ||

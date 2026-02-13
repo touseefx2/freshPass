@@ -1143,7 +1143,8 @@ export default function AddStaffScreen() {
       if (phoneNumber.trim())
         formData.append("phone", phoneNumber.replace(/\D/g, ""));
       if (description.trim()) formData.append("description", description.trim());
-      formData.append("is_onboarded", isActive ? "true" : "false");
+      // Add staff (invite): always send is_onboarded true per API. Do not send is_onboarded in edit/update staff request.
+      formData.append("is_onboarded", "true");
 
       const workingHoursArray = DAYS.map((day) => {
         const dayData = businessHours[day];
@@ -1228,7 +1229,6 @@ export default function AddStaffScreen() {
     countryCode,
     phoneNumber,
     description,
-    isActive,
     businessHours,
     profileImageUri,
     showBanner,
