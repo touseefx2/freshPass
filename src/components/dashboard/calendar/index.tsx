@@ -12,6 +12,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Pressable,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -24,8 +25,9 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { PersonIcon } from "@/assets/icons";
+import TimePickerModal from "@/src/components/timePickerModal";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -233,6 +235,7 @@ const createStyles = (theme: Theme) =>
     },
     agendaContainer: {
       flex: 1,
+      position: "relative",
     },
     agendaHeader: {
       flexDirection: "row",
@@ -408,6 +411,123 @@ const createStyles = (theme: Theme) =>
     timeSlotClickable: {
       flex: 1,
     },
+    applyBoxDropdown: {
+      position: "absolute",
+      top: moderateHeightScale(44),
+      left: moderateWidthScale(12),
+      maxWidth: widthScale(220),
+      zIndex: 10,
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(6),
+      padding: moderateWidthScale(8),
+      paddingTop: moderateHeightScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.18,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    applyBoxHeaderRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(2),
+    },
+    applyBoxCloseBtn: {
+      padding: moderateWidthScale(2),
+      marginTop: moderateHeightScale(-2),
+      marginRight: moderateWidthScale(-2),
+    },
+    applyBoxDateText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    applyBoxHint: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(4),
+    },
+    applyBoxRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(4),
+    },
+    applyBoxRadioRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    applyBoxRadioOuter: {
+      width: widthScale(14),
+      height: widthScale(14),
+      borderRadius: widthScale(7),
+      borderWidth: 1.5,
+      borderColor: theme.borderLine,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    applyBoxRadioOuterSelected: {
+      borderColor: theme.primary,
+    },
+    applyBoxRadioInner: {
+      width: widthScale(6),
+      height: widthScale(6),
+      borderRadius: widthScale(3),
+      backgroundColor: theme.primary,
+    },
+    applyBoxOptionText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
+    applyBoxSlotRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(6),
+      marginBottom: moderateHeightScale(4),
+    },
+    applyBoxSlotLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    applyBoxTimeTouch: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      borderRadius: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(4),
+    },
+    applyBoxTimeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
+    applyBoxButtonWrap: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+    },
+    applyBoxButton: {
+      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.primary,
+      alignItems: "center",
+    },
+    applyBoxButtonText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
   });
 
 export default function CalendarScreen() {
@@ -426,6 +546,17 @@ export default function CalendarScreen() {
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
   const [leaves, setLeaves] = useState<StaffLeave[]>([]);
   const [loading, setLoading] = useState(false);
+  const [applyBoxVisible, setApplyBoxVisible] = useState(false);
+  const [applyBoxType, setApplyBoxType] = useState<"leave" | "break">("leave");
+  const [applyBoxSlotHour, setApplyBoxSlotHour] = useState(9);
+  const [applyBoxBreakStartMinutes, setApplyBoxBreakStartMinutes] = useState(0);
+  const [applyBoxBreakEndHour, setApplyBoxBreakEndHour] = useState(10);
+  const [applyBoxBreakEndMinutes, setApplyBoxBreakEndMinutes] = useState(0);
+  const [applyBoxTimePickerVisible, setApplyBoxTimePickerVisible] = useState(false);
+  const [applyBoxTimePickerTarget, setApplyBoxTimePickerTarget] = useState<
+    "start" | "end" | null
+  >(null);
+  const [applyBoxLoading, setApplyBoxLoading] = useState(false);
 
   const isStaff = userRole === "staff";
   const currentDate = selectedDate.format("YYYY-MM-DD");
@@ -687,33 +818,102 @@ export default function CalendarScreen() {
     });
   };
 
-  const navigateToApplyLeave = (
-    type: "leave" | "break",
-    slotTime12h?: string,
-  ) => {
-    const dateStr = selectedDate.format("YYYY-MM-DD");
-    if (type === "leave") {
-      router.push({
-        pathname: "/(main)/applyLeave",
-        params: { type: "leave", date: dateStr },
-      });
-    } else {
-      const slotHour = slotTime12h
-        ? parseInt(convertTo24Hour(slotTime12h).split(":")[0], 10)
-        : 9;
-      router.push({
-        pathname: "/(main)/applyLeave",
-        params: {
-          type: "break",
-          date: dateStr,
-          slotStartHour: String(slotHour),
-          slotEndHour: String(slotHour + 1),
-        },
-      });
+  const openApplyBox = (type: "leave" | "break" = "leave", slotTime12h?: string) => {
+    setApplyBoxType(type);
+    const slotHour = slotTime12h
+      ? parseInt(convertTo24Hour(slotTime12h).split(":")[0], 10)
+      : 9;
+    setApplyBoxSlotHour(slotHour);
+    setApplyBoxBreakStartMinutes(0);
+    setApplyBoxBreakEndHour(slotHour + 1 < 24 ? slotHour + 1 : 0);
+    setApplyBoxBreakEndMinutes(0);
+    setApplyBoxVisible(true);
+  };
+
+  const formatApplyBoxTime = (hours: number, minutes: number) => {
+    const period = hours >= 12 ? "pm" : "am";
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, "0");
+    return `${displayHours}:${displayMinutes} ${period}`;
+  };
+
+  const handleApplyBoxTimeSelect = (hours: number, minutes: number) => {
+    if (applyBoxTimePickerTarget === "start") {
+      setApplyBoxSlotHour(hours);
+      setApplyBoxBreakStartMinutes(minutes);
+    } else if (applyBoxTimePickerTarget === "end") {
+      setApplyBoxBreakEndHour(hours);
+      setApplyBoxBreakEndMinutes(minutes);
+    }
+    setApplyBoxTimePickerVisible(false);
+    setApplyBoxTimePickerTarget(null);
+  };
+
+  const applyLeaveBreakFromBox = async () => {
+    setApplyBoxLoading(true);
+    try {
+      const date = selectedDate;
+      if (applyBoxType === "leave") {
+        const startTime = date.startOf("day").format("YYYY-MM-DD HH:mm:ss");
+        const endTime = date.endOf("day").format("YYYY-MM-DD HH:mm:ss");
+        const body = { start_time: startTime, end_time: endTime, type: "leave" };
+        const response = await ApiService.post<{ success: boolean; message?: string }>(
+          staffEndpoints.leaves,
+          body,
+        );
+        if (response.success) {
+          showBanner(t("success") || "Success", response.message || "Leave applied.", "success", 2500);
+          setApplyBoxVisible(false);
+          fetchLeaves();
+        } else {
+          showBanner(
+            t("apiFailed") || "Error",
+            (response as { message?: string }).message || "Failed to apply leave.",
+            "error",
+            2500,
+          );
+        }
+      } else {
+        const startTime = date
+          .hour(applyBoxSlotHour)
+          .minute(applyBoxBreakStartMinutes)
+          .second(0)
+          .format("YYYY-MM-DD HH:mm:ss");
+        const endTime = date
+          .hour(applyBoxBreakEndHour)
+          .minute(applyBoxBreakEndMinutes)
+          .second(0)
+          .format("YYYY-MM-DD HH:mm:ss");
+        const body = { start_time: startTime, end_time: endTime, type: "break" };
+        const response = await ApiService.post<{ success: boolean; message?: string }>(
+          staffEndpoints.leaves,
+          body,
+        );
+        if (response.success) {
+          showBanner(t("success") || "Success", response.message || "Break applied.", "success", 2500);
+          setApplyBoxVisible(false);
+          fetchLeaves();
+        } else {
+          showBanner(
+            t("apiFailed") || "Error",
+            (response as { message?: string }).message || "Failed to apply break.",
+            "error",
+            2500,
+          );
+        }
+      }
+    } catch (error: unknown) {
+      showBanner(
+        t("apiFailed") || "Error",
+        (error as { message?: string })?.message || "Something went wrong.",
+        "error",
+        2500,
+      );
+    } finally {
+      setApplyBoxLoading(false);
     }
   };
 
-  console.log("-----> leave", leaves);
 
   return (
     <View style={styles.container}>
@@ -722,7 +922,13 @@ export default function CalendarScreen() {
         {/* Calendar Header */}
         <View style={styles.calendarHeader}>
           <View style={styles.weekNavigation}>
-            <TouchableOpacity style={styles.arrowButton} onPress={prevWeek}>
+            <TouchableOpacity
+              style={styles.arrowButton}
+              onPress={() => {
+                setApplyBoxVisible(false);
+                prevWeek();
+              }}
+            >
               <MaterialIcons
                 name="keyboard-arrow-left"
                 size={moderateWidthScale(24)}
@@ -732,7 +938,13 @@ export default function CalendarScreen() {
             <Text style={styles.weekText}>
               {week[0].format("MMM D")} - {week[6].format("MMM D, YYYY")}
             </Text>
-            <TouchableOpacity style={styles.arrowButton} onPress={nextWeek}>
+            <TouchableOpacity
+              style={styles.arrowButton}
+              onPress={() => {
+                setApplyBoxVisible(false);
+                nextWeek();
+              }}
+            >
               <MaterialIcons
                 name="keyboard-arrow-right"
                 size={moderateWidthScale(24)}
@@ -753,7 +965,10 @@ export default function CalendarScreen() {
                 <TouchableOpacity
                   key={day.format("YYYY-MM-DD")}
                   style={styles.dayContainer}
-                  onPress={() => setSelectedDate(day)}
+                  onPress={() => {
+                    setApplyBoxVisible(false);
+                    setSelectedDate(day);
+                  }}
                 >
                   <Text style={styles.dayName}>{day.format("ddd")}</Text>
                   <View
@@ -780,68 +995,212 @@ export default function CalendarScreen() {
 
         {/* Agenda View */}
         <View style={styles.agendaContainer}>
-          <View style={styles.agendaHeader}>
-            <View style={styles.allDayLabel}>
-              <Text style={styles.allDayText}>{t("allDay")}</Text>
-            </View>
-            <View style={styles.todayLabel}>
-              <View style={styles.todayLabelRow}>
-                <Text style={styles.todayText}>{formatDate(selectedDate)}</Text>
-                {loading && (
-                  <ActivityIndicator size="small" color={theme.primary} />
-                )}
-                {isStaff && !selectedDate.isBefore(today, "day") && (
-                  <>
-                    {leaveForSelectedDate ? (
-                      <TouchableOpacity
-                        onPress={() =>
-                          navigateToLeaveDetail(leaveForSelectedDate)
-                        }
-                        style={styles.leaveBox}
-                        activeOpacity={0.7}
-                      >
-                        <MaterialIcons
-                          name="event"
-                          size={moderateWidthScale(16)}
-                          color={theme.primary}
-                        />
-                        <Text style={styles.leaveBoxText}>
-                          {leaveForSelectedDate.type === "leave"
-                            ? "LEAVE"
-                            : "BREAK"}
-                        </Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        onPress={() => navigateToApplyLeave("leave")}
-                        style={{ marginLeft: moderateWidthScale(8) }}
-                        activeOpacity={0.7}
-                      >
-                        <Text
-                          style={[
-                            styles.todayText,
-                            {
-                              color: theme.primary,
-                              fontFamily: fonts.fontMedium,
-                              fontSize: fontSize.size12,
-                            },
-                          ]}
-                        >
-                          Apply for Leave / Break
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </>
-                )}
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity
+              style={styles.agendaHeader}
+              activeOpacity={1}
+              onPress={() => applyBoxVisible && setApplyBoxVisible(false)}
+            >
+              <View style={styles.allDayLabel}>
+                <Text style={styles.allDayText}>{t("allDay")}</Text>
               </View>
-            </View>
-          </View>
+              <View style={styles.todayLabel}>
+                <View style={styles.todayLabelRow}>
+                  <Text style={styles.todayText}>{formatDate(selectedDate)}</Text>
+                  {loading && (
+                    <ActivityIndicator size="small" color={theme.primary} />
+                  )}
+                  {isStaff && !selectedDate.isBefore(today, "day") && (
+                    <>
+                      {leaveForSelectedDate ? (
+                        <TouchableOpacity
+                          onPress={() =>
+                            navigateToLeaveDetail(leaveForSelectedDate)
+                          }
+                          style={styles.leaveBox}
+                          activeOpacity={0.7}
+                        >
+                          <MaterialIcons
+                            name="event"
+                            size={moderateWidthScale(16)}
+                            color={theme.primary}
+                          />
+                          <Text style={styles.leaveBoxText}>
+                            {leaveForSelectedDate.type === "leave"
+                              ? "LEAVE"
+                              : "BREAK"}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <TouchableOpacity
+                          onPress={() => openApplyBox("leave")}
+                          style={{ marginLeft: moderateWidthScale(8) }}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.todayText,
+                              {
+                                color: theme.primary,
+                                fontFamily: fonts.fontMedium,
+                                fontSize: fontSize.size12,
+                              },
+                            ]}
+                          >
+                            Apply for Leave / Break
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </>
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
 
-          <ScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: moderateHeightScale(20) }}
-          >
+            {applyBoxVisible && (
+              <Pressable
+                style={styles.applyBoxDropdown}
+                onPress={() => {}}
+              >
+                <View style={styles.applyBoxHeaderRow}>
+                  <Text style={styles.applyBoxDateText}>
+                    {selectedDate.format("DD/MM/YYYY")}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.applyBoxCloseBtn}
+                    onPress={() => setApplyBoxVisible(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name="close"
+                      size={moderateWidthScale(16)}
+                      color={theme.text}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.applyBoxHint}>
+                  You want to take leave on this date / mark this day as off
+                </Text>
+                <View style={styles.applyBoxRow}>
+                  <TouchableOpacity
+                    style={styles.applyBoxRadioRow}
+                    onPress={() => setApplyBoxType("leave")}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.applyBoxRadioOuter,
+                        applyBoxType === "leave" &&
+                          styles.applyBoxRadioOuterSelected,
+                      ]}
+                    >
+                      {applyBoxType === "leave" && (
+                        <View style={styles.applyBoxRadioInner} />
+                      )}
+                    </View>
+                    <Text style={styles.applyBoxOptionText}>Leave</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.applyBoxRadioRow}
+                    onPress={() => setApplyBoxType("break")}
+                    activeOpacity={0.7}
+                  >
+                    <View
+                      style={[
+                        styles.applyBoxRadioOuter,
+                        applyBoxType === "break" &&
+                          styles.applyBoxRadioOuterSelected,
+                      ]}
+                    >
+                      {applyBoxType === "break" && (
+                        <View style={styles.applyBoxRadioInner} />
+                      )}
+                    </View>
+                    <Text style={styles.applyBoxOptionText}>Break</Text>
+                  </TouchableOpacity>
+                </View>
+                {applyBoxType === "break" && (
+                  <View style={{ marginBottom: moderateHeightScale(4) }}>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: moderateWidthScale(6),
+                        marginBottom: moderateHeightScale(2),
+                      }}
+                    >
+                      <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
+                        Start
+                      </Text>
+                      <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
+                        End
+                      </Text>
+                    </View>
+                    <View style={styles.applyBoxSlotRow}>
+                      <TouchableOpacity
+                        style={styles.applyBoxTimeTouch}
+                        onPress={() => {
+                          setApplyBoxTimePickerTarget("start");
+                          setApplyBoxTimePickerVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.applyBoxTimeText}>
+                          {formatApplyBoxTime(
+                            applyBoxSlotHour,
+                            applyBoxBreakStartMinutes,
+                          )}
+                        </Text>
+                        <Feather
+                          name="clock"
+                          size={moderateWidthScale(12)}
+                          color={theme.lightGreen}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.applyBoxTimeTouch}
+                        onPress={() => {
+                          setApplyBoxTimePickerTarget("end");
+                          setApplyBoxTimePickerVisible(true);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.applyBoxTimeText}>
+                          {formatApplyBoxTime(
+                            applyBoxBreakEndHour,
+                            applyBoxBreakEndMinutes,
+                          )}
+                        </Text>
+                        <Feather
+                          name="clock"
+                          size={moderateWidthScale(12)}
+                          color={theme.lightGreen}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+                <View style={styles.applyBoxButtonWrap}>
+                  <TouchableOpacity
+                    style={styles.applyBoxButton}
+                    onPress={applyLeaveBreakFromBox}
+                    disabled={applyBoxLoading}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.applyBoxButtonText}>
+                      {applyBoxLoading ? "..." : "Apply"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            )}
+
+            <ScrollView
+              ref={scrollViewRef}
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: moderateHeightScale(20) }}
+            >
             {TIME_SLOTS.map((time) => {
               const timeSlot24h = convertTo24Hour(time);
               const [slotHour] = timeSlot24h.split(":").map(Number);
@@ -887,9 +1246,9 @@ export default function CalendarScreen() {
                   <View style={styles.timeSlot}>
                     {isStaff ? (
                       <TouchableOpacity
-                        disabled={leaves.length > 0}
+                        disabled={!!leaveForSelectedDate}
                         style={styles.timeSlotClickable}
-                        onPress={() => navigateToApplyLeave("break", time)}
+                        onPress={() => openApplyBox("break", time)}
                         activeOpacity={0.7}
                       >
                         <Text style={styles.timeSlotText}>{time}</Text>
@@ -987,8 +1346,28 @@ export default function CalendarScreen() {
               );
             })}
           </ScrollView>
+          </View>
         </View>
       </View>
+
+      <TimePickerModal
+        visible={applyBoxTimePickerVisible}
+        currentHours={
+          applyBoxTimePickerTarget === "start"
+            ? applyBoxSlotHour
+            : applyBoxBreakEndHour
+        }
+        currentMinutes={
+          applyBoxTimePickerTarget === "start"
+            ? applyBoxBreakStartMinutes
+            : applyBoxBreakEndMinutes
+        }
+        onSelect={handleApplyBoxTimeSelect}
+        onClose={() => {
+          setApplyBoxTimePickerVisible(false);
+          setApplyBoxTimePickerTarget(null);
+        }}
+      />
     </View>
   );
 }
