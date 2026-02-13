@@ -247,11 +247,11 @@ export default function HomeScreen() {
       }>(staffEndpoints.list(active));
 
       if (response.success && response.data) {
-        const filteredStaff = response.data.filter(
-          (staff) => staff.invitation_token == null,
-        );
+        // const filteredStaff = response.data.filter(
+        //   (staff) => staff.invitation_token == null,
+        // );
 
-        const sortedStaff = [...filteredStaff].sort((a, b) => {
+        const sortedStaff = [...response.data].sort((a, b) => {
           const aActive = a.active === 1;
           const bActive = b.active === 1;
           if (aActive === bActive) return 0;

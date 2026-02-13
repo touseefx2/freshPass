@@ -184,6 +184,17 @@ const createStyles = (theme: Theme) =>
       borderRadius: widthScale(6),
       zIndex: 9999,
     },
+    invitationStatus: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textAlign: "center",
+      marginTop: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    invitationStatusPending: {
+      color: theme.orangeBrown,
+    },
   });
 
 export interface StaffDetailData {
@@ -194,7 +205,7 @@ export interface StaffDetailData {
   business_id: number;
   active: boolean;
   description: string | null;
-  invitation_token: string;
+  invitation_token: string | null;
   completed_appointments_count: number;
   business: {
     id: number;
@@ -266,7 +277,6 @@ export default function StaffDetail() {
         setError(response?.message || t("staffProfileNotFound"));
         setData(null);
       } else {
-        console.log("--->data : ", response.data);
         setData(response.data);
         setError(null);
       }
@@ -376,6 +386,13 @@ export default function StaffDetail() {
           <Text style={styles.staffName}>{data.name}</Text>
           {data.description ? (
             <Text style={styles.description}>{data.description}</Text>
+          ) : null}
+          {data.invitation_token != null && data.invitation_token !== "" ? (
+            <Text
+              style={[styles.invitationStatus, styles.invitationStatusPending]}
+            >
+              {t("staffInvitationPending")}
+            </Text>
           ) : null}
         </View>
 

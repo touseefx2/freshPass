@@ -16,6 +16,8 @@
   "staffDetail": "تفاصيل الموظف",
   "staffProfileNotFound": "ملف الموظف غير موجود.",
   "staffDetailInfo": "معلومات",
+  "staffInvitationAccepted": "قبل الموظف الدعوة.",
+  "staffInvitationPending": "الدعوة لم تُقبل بعد.",
   "completedAppointmentsCount": "المواعيد المكتملة",
   "workingHours": "ساعات العمل",
   "closed": "مغلق",

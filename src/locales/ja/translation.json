@@ -16,6 +16,8 @@
   "staffDetail": "スタッフ詳細",
   "staffProfileNotFound": "スタッフプロフィールが見つかりません。",
   "staffDetailInfo": "情報",
+  "staffInvitationAccepted": "スタッフが招待を受け入れました。",
+  "staffInvitationPending": "招待はまだ受け入れられていません。",
   "completedAppointmentsCount": "完了した予約",
   "workingHours": "営業時間",
   "closed": "休業",

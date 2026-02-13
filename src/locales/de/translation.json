@@ -16,6 +16,8 @@
   "staffDetail": "Mitarbeiterdetails",
   "staffProfileNotFound": "Mitarbeiterprofil nicht gefunden.",
   "staffDetailInfo": "Info",
+  "staffInvitationAccepted": "Mitarbeiter hat die Einladung angenommen.",
+  "staffInvitationPending": "Einladung noch nicht angenommen.",
   "completedAppointmentsCount": "Abgeschlossene Termine",
   "workingHours": "Öffnungszeiten",
   "closed": "Geschlossen",

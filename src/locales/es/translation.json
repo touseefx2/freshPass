@@ -16,6 +16,8 @@
   "staffDetail": "Detalle del personal",
   "staffProfileNotFound": "Perfil del personal no encontrado.",
   "staffDetailInfo": "Información",
+  "staffInvitationAccepted": "El personal ha aceptado la invitación.",
+  "staffInvitationPending": "Invitación no aceptada aún.",
   "completedAppointmentsCount": "Citas completadas",
   "workingHours": "Horario de trabajo",
   "closed": "Cerrado",
