@@ -31,7 +31,11 @@ import ImagePickerModal from "@/src/components/imagePickerModal";
 import CustomToggle from "@/src/components/customToggle";
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { validateEmail } from "@/src/services/validationService";
+import {
+  validateEmail,
+  validateName,
+  validateDescription,
+} from "@/src/services/validationService";
 import {
   parsePhoneNumberFromString,
   getExampleNumber,
@@ -674,11 +678,6 @@ export default function AddStaffScreen() {
   >(null);
   const [copySalonHours, setCopySalonHours] = useState(false);
   const previousBusinessHoursRef = useRef<Record<string, DayData> | null>(null);
-  const [errors, setErrors] = useState<{
-    email?: string;
-    name?: string;
-    phone?: string;
-  }>({});
 
   const fetchAvailability = useCallback(async () => {
     try {
@@ -991,26 +990,7 @@ export default function AddStaffScreen() {
   };
 
   const handleCreate = () => {
-    const newErrors: typeof errors = {};
-
-    if (!staffEmail.trim()) {
-      newErrors.email = "Staff email is required";
-    } else {
-      const emailValidation = validateEmail(staffEmail.trim());
-      if (emailValidation.error) newErrors.email = emailValidation.error;
-    }
-
-    if (!name.trim()) {
-      newErrors.name = "Name is required";
-    }
-
-    if (phoneNumber.length > 0 && !phoneIsValid) {
-      newErrors.phone = "Enter a valid phone number";
-    }
-
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
-
+    if (!isFormValid) return;
     // TODO: API call to create staff member
     router.back();
   };
@@ -1073,6 +1053,37 @@ export default function AddStaffScreen() {
   );
 
   const isPhoneInvalid = phoneNumber.length > 0 && !phoneIsValid;
+
+  const formErrors = useMemo(() => {
+    const e: {
+      email?: string;
+      name?: string;
+      phone?: string;
+      description?: string;
+    } = {};
+    const emailRes = validateEmail(staffEmail.trim());
+    if (!staffEmail.trim()) {
+      e.email = "Staff email is required";
+    } else if (emailRes.error) {
+      e.email = emailRes.error;
+    }
+    const nameRes = validateName(name.trim(), "Name");
+    if (nameRes.error) e.name = nameRes.error;
+    if (phoneNumber.length > 0 && !phoneIsValid) {
+      e.phone = "Enter a valid phone number";
+    }
+    if (description.trim().length > 0) {
+      const descRes = validateDescription(description);
+      if (descRes.error) e.description = descRes.error;
+    }
+    return e;
+  }, [staffEmail, name, phoneNumber, phoneIsValid, description]);
+
+  const isFormValid =
+    !formErrors.email &&
+    !formErrors.name &&
+    !formErrors.phone &&
+    !formErrors.description;
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -1151,8 +1162,8 @@ export default function AddStaffScreen() {
           <Text style={styles.hint}>
             A user account will be created with the staff role for this email.
           </Text>
-          {errors.email ? (
-            <Text style={styles.errorText}>{errors.email}</Text>
+          {formErrors.email ? (
+            <Text style={styles.errorText}>{formErrors.email}</Text>
           ) : null}
         </View>
 
@@ -1164,8 +1175,8 @@ export default function AddStaffScreen() {
             placeholder="Staff member name"
             autoCapitalize="words"
           />
-          {errors.name ? (
-            <Text style={styles.errorText}>{errors.name}</Text>
+          {formErrors.name ? (
+            <Text style={styles.errorText}>{formErrors.name}</Text>
           ) : null}
         </View>
 
@@ -1222,11 +1233,9 @@ export default function AddStaffScreen() {
               )}
             </View>
           </View>
-          {(errors.phone || isPhoneInvalid) && (
-            <Text style={styles.errorText}>
-              {errors.phone || "Enter a valid phone number"}
-            </Text>
-          )}
+          {formErrors.phone ? (
+            <Text style={styles.errorText}>{formErrors.phone}</Text>
+          ) : null}
           <CountryPicker
             show={pickerVisible}
             pickerButtonOnPress={handleCountrySelect}
@@ -1253,6 +1262,9 @@ export default function AddStaffScreen() {
             multiline
             numberOfLines={4}
           />
+          {formErrors.description ? (
+            <Text style={styles.errorText}>{formErrors.description}</Text>
+          ) : null}
         </View>
 
         <View style={styles.toggleRow}>
@@ -1342,7 +1354,11 @@ export default function AddStaffScreen() {
       </KeyboardAwareScrollView>
 
       <View style={styles.footerRow}>
-        <Button title="Create" onPress={handleCreate} />
+        <Button
+          title="Create"
+          onPress={handleCreate}
+          disabled={!isFormValid}
+        />
       </View>
 
       {selectedDay && (
