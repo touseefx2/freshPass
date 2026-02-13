@@ -52,7 +52,7 @@ import {
 import { CloseIcon } from "@/assets/icons";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
-import { businessEndpoints } from "@/src/services/endpoints";
+import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 
 const DAYS = [
   "Monday",
@@ -131,6 +131,14 @@ const getDayDisplayFormat = (day: string): string => {
     day.charAt(0).toUpperCase() + day.slice(1)
   );
 };
+
+const formatTimeToHHMM = (hours: number, minutes: number): string => {
+  const h = hours.toString().padStart(2, "0");
+  const m = minutes.toString().padStart(2, "0");
+  return `${h}:${m}`;
+};
+
+const getDayApiFormat = (day: string): string => day.toLowerCase();
 
 const parseBusinessHoursFromAPI = (
   hoursArray: Array<{
@@ -691,6 +699,7 @@ export default function AddStaffScreen() {
     Record<string, DayData> | null
   >(null);
   const [copySalonHours, setCopySalonHours] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const previousBusinessHoursRef = useRef<Record<string, DayData> | null>(null);
 
   const fetchAvailability = useCallback(async () => {
@@ -1031,12 +1040,6 @@ export default function AddStaffScreen() {
     }
   };
 
-  const handleCreate = () => {
-    if (!isFormValid) return;
-    // TODO: API call to create staff member
-    router.back();
-  };
-
   const pickerStyles = useMemo<CountryPickerStyle>(
     () => ({
       modal: {
@@ -1109,8 +1112,10 @@ export default function AddStaffScreen() {
     } else if (emailRes.error) {
       e.email = emailRes.error;
     }
-    const nameRes = validateName(name.trim(), "Name");
-    if (nameRes.error) e.name = nameRes.error;
+    if (name.trim()) {
+      const nameRes = validateName(name.trim(), "Name");
+      if (nameRes.error) e.name = nameRes.error;
+    }
     if (phoneNumber.length > 0 && !phoneIsValid) {
       e.phone = "Enter a valid phone number";
     }
@@ -1126,6 +1131,108 @@ export default function AddStaffScreen() {
     !formErrors.name &&
     !formErrors.phone &&
     !formErrors.description;
+
+  const handleCreate = useCallback(async () => {
+    if (!isFormValid || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", staffEmail.trim());
+      if (name.trim()) formData.append("name", name.trim());
+      if (countryCode) formData.append("country_code", countryCode);
+      if (phoneNumber.trim())
+        formData.append("phone", phoneNumber.replace(/\D/g, ""));
+      if (description.trim()) formData.append("description", description.trim());
+      formData.append("is_onboarded", isActive ? "true" : "false");
+
+      const workingHoursArray = DAYS.map((day) => {
+        const dayData = businessHours[day];
+        const breakHours = (dayData?.breaks || []).map((br) => ({
+          start: formatTimeToHHMM(br.fromHours, br.fromMinutes),
+          end: formatTimeToHHMM(br.tillHours, br.tillMinutes),
+        }));
+        return {
+          day: getDayApiFormat(day),
+          closed: !(dayData?.isOpen ?? false),
+          opening_time: formatTimeToHHMM(
+            dayData?.fromHours ?? 0,
+            dayData?.fromMinutes ?? 0,
+          ),
+          closing_time: formatTimeToHHMM(
+            dayData?.tillHours ?? 0,
+            dayData?.tillMinutes ?? 0,
+          ),
+          break_hours: breakHours,
+        };
+      });
+      formData.append("working_hours", JSON.stringify(workingHoursArray));
+
+      if (profileImageUri) {
+        const fileExtension = profileImageUri.split(".").pop()?.toLowerCase() || "jpg";
+        const fileName = `profile_image.${fileExtension}`;
+        const mimeType =
+          fileExtension === "jpg" || fileExtension === "jpeg"
+            ? "image/jpeg"
+            : fileExtension === "png"
+              ? "image/png"
+              : fileExtension === "webp"
+                ? "image/webp"
+                : "image/jpeg";
+        formData.append("profile_image", {
+          uri: profileImageUri,
+          type: mimeType,
+          name: fileName,
+        } as any);
+      }
+
+      const response = await ApiService.post<{
+        success: boolean;
+        message?: string;
+        data?: any;
+      }>(staffEndpoints.invite, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response?.success) {
+        showBanner(
+          "Success",
+          "Staff invitation sent successfully.",
+          "success",
+          3000,
+        );
+        router.back();
+      } else {
+        showBanner(
+          "Error",
+          (response as any)?.message || "Failed to invite staff. Please try again.",
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("Staff invite error:", error);
+      showBanner(
+        "Error",
+        error?.message || "Failed to invite staff. Please try again.",
+        "error",
+        3000,
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [
+    isFormValid,
+    isSubmitting,
+    staffEmail,
+    name,
+    countryCode,
+    phoneNumber,
+    description,
+    isActive,
+    businessHours,
+    profileImageUri,
+    showBanner,
+  ]);
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -1397,9 +1504,9 @@ export default function AddStaffScreen() {
 
       <View style={styles.footerRow}>
         <Button
-          title="Create"
+          title={isSubmitting ? "Creating…" : "Create"}
           onPress={handleCreate}
-          disabled={!isFormValid}
+          disabled={!isFormValid || isSubmitting}
         />
       </View>
 

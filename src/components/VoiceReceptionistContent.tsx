@@ -1,9 +1,4 @@
-import React, {
-  useRef,
-  useEffect,
-  useState,
-  useCallback,
-} from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -42,11 +37,9 @@ export type VoiceReceptionistContentProps = {
   websocketUrl: string;
 };
 
-export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> = ({
-  theme,
-  styles,
-  websocketUrl,
-}) => {
+export const VoiceReceptionistContent: React.FC<
+  VoiceReceptionistContentProps
+> = ({ theme, styles, websocketUrl }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -206,7 +199,6 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   }, [isSpeakerMuted]);
 
   useEffect(() => () => cleanup(), [cleanup]);
-
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -382,7 +374,9 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
             case "user_input":
             case "InputTranscript":
               if (parsed.content || parsed.text) {
-                const content = String(parsed.content ?? parsed.text ?? "").trim();
+                const content = String(
+                  parsed.content ?? parsed.text ?? "",
+                ).trim();
                 if (content) {
                   setConversation((prev) => [
                     ...prev,
@@ -573,8 +567,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
 
   const statusText = (() => {
     if (isStarting) return "Connecting...";
-    if (isConnected && !hasReceivedFirstAgentResponse)
-      return "Connecting...";
+    if (isConnected && !hasReceivedFirstAgentResponse) return "Connecting...";
     if (isAgentSpeaking) return "Agent is speaking...";
     if (isListening) return "Now you can speak";
     if (isConnected) return "Tap the button to speak";
@@ -621,11 +614,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
                   { transform: [{ scale: centerIconScale }] },
                 ]}
               >
-                <Ionicons
-                  name={centerIconName}
-                  size={36}
-                  color={theme.white}
-                />
+                <Ionicons name={centerIconName} size={36} color={theme.white} />
               </Animated.View>
             </TouchableOpacity>
           ) : (
@@ -636,11 +625,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
                   { transform: [{ scale: centerIconScale }] },
                 ]}
               >
-                <Ionicons
-                  name={centerIconName}
-                  size={36}
-                  color={theme.white}
-                />
+                <Ionicons name={centerIconName} size={36} color={theme.white} />
               </Animated.View>
             </View>
           )}
@@ -659,25 +644,27 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
             </View>
           ) : null}
         </View>
-        {conversation.length > 0 && (() => {
-          const lastExchange = conversation.slice(-2);
-          return (
-            <View style={styles.receptionistCurrentStatementContainer}>
-              {lastExchange.map((msg, index) => (
-                <Text
-                  key={`${msg.timestamp}-${index}`}
-                  style={[
-                    styles.receptionistCurrentStatementText,
-                    index < lastExchange.length - 1 && styles.receptionistCurrentStatementTextMargin,
-                  ]}
-                >
-                  {msg.role === "user" ? "You: " : "Agent: "}
-                  {msg.content}
-                </Text>
-              ))}
-            </View>
-          );
-        })()}
+        {conversation.length > 0 &&
+          (() => {
+            const lastExchange = conversation.slice(-2);
+            return (
+              <View style={styles.receptionistCurrentStatementContainer}>
+                {lastExchange.map((msg, index) => (
+                  <Text
+                    key={`${msg.timestamp}-${index}`}
+                    style={[
+                      styles.receptionistCurrentStatementText,
+                      index < lastExchange.length - 1 &&
+                        styles.receptionistCurrentStatementTextMargin,
+                    ]}
+                  >
+                    {msg.role === "user" ? "You: " : "Agent: "}
+                    {msg.content}
+                  </Text>
+                ))}
+              </View>
+            );
+          })()}
       </View>
       <View style={styles.receptionistControls}>
         <TouchableOpacity
