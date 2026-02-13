@@ -15,7 +15,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { MaterialIcons, Feather, AntDesign } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -616,15 +616,29 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+type AddStaffParams = {
+  id?: string;
+  name?: string;
+  email?: string;
+  description?: string;
+  profile_image_url?: string;
+  active?: string;
+  working_hours?: string;
+};
+
 export default function AddStaffScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const params = useLocalSearchParams<AddStaffParams>();
   const { showBanner } = useNotificationContext();
   const businessName =
     useAppSelector((state) => state.user.business_name) || "";
+
+  const isEditMode = !!params.id;
+  const headerTitle = isEditMode ? "Edit Staff" : "New Staff Member";
 
   const handleActiveToggle = useCallback(
     (value: boolean) => {
@@ -705,6 +719,34 @@ export default function AddStaffScreen() {
   useEffect(() => {
     fetchAvailability();
   }, [fetchAvailability]);
+
+  useEffect(() => {
+    if (!params.id) return;
+    if (params.name != null) setName(params.name);
+    if (params.email != null) setStaffEmail(params.email);
+    if (params.description != null) setDescription(params.description);
+    if (params.profile_image_url != null && params.profile_image_url !== "")
+      setProfileImageUri(params.profile_image_url);
+    if (params.active != null) setIsActive(params.active === "1");
+    if (params.working_hours != null && params.working_hours !== "") {
+      try {
+        const hoursArray = JSON.parse(params.working_hours) as Array<{
+          id: number;
+          day: string;
+          closed: boolean;
+          opening_time: string | null;
+          closing_time: string | null;
+          break_hours: Array<{ start: string; end: string }>;
+        }>;
+        if (Array.isArray(hoursArray) && hoursArray.length > 0) {
+          const parsed = parseBusinessHoursFromAPI(hoursArray);
+          setBusinessHours(parsed);
+        }
+      } catch {
+        // ignore invalid JSON
+      }
+    }
+  }, [params.id]);
 
   useEffect(() => {
     setPhonePlaceholder(getPlaceholderForCountry(countryIso, countryCode));
@@ -1087,7 +1129,7 @@ export default function AddStaffScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="New Staff Member" />
+      <StackHeader title={headerTitle} />
       <KeyboardAwareScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

@@ -19,6 +19,7 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
+import { MaterialIcons } from "@expo/vector-icons";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
@@ -293,6 +294,29 @@ export default function StaffDetail() {
     fetchStaffDetails();
   }, []);
 
+  const handleEditPress = () => {
+    if (!data) return;
+    const editProfileImageUrl = data.user?.profile_image_url
+      ? data.user.profile_image_url.startsWith("http://") ||
+        data.user.profile_image_url.startsWith("https://")
+        ? data.user.profile_image_url
+        : (process.env.EXPO_PUBLIC_API_BASE_URL || "") +
+          data.user.profile_image_url
+      : "";
+    router.push({
+      pathname: "/(main)/addStaff",
+      params: {
+        id: String(data.id),
+        name: data.name || "",
+        email: data.email || "",
+        description: data.description || "",
+        profile_image_url: editProfileImageUrl,
+        active: data.active ? "1" : "0",
+        working_hours: JSON.stringify(data.user?.working_hours ?? []),
+      },
+    });
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -359,7 +383,17 @@ export default function StaffDetail() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <StackHeader title={t("staffDetail")} />
+      <StackHeader
+        title={t("staffDetail")}
+        rightIcon={
+          <MaterialIcons
+            name="edit"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        }
+        onRightPress={handleEditPress}
+      />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}

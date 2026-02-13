@@ -15,6 +15,8 @@ import { useRouter } from "expo-router";
 type StackHeaderProps = {
   title: string;
   onBack?: () => void;
+  rightIcon?: React.ReactNode;
+  onRightPress?: () => void;
 };
 
 const createStyles = (theme: Theme) =>
@@ -33,6 +35,11 @@ const createStyles = (theme: Theme) =>
       width: widthScale(28),
       alignItems: "flex-start",
     },
+    rightIconWrapper: {
+      width: widthScale(28),
+      alignItems: "flex-end",
+      justifyContent: "center",
+    },
     headerTitle: {
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
@@ -45,7 +52,12 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-export default function StackHeader({ title, onBack }: StackHeaderProps) {
+export default function StackHeader({
+  title,
+  onBack,
+  rightIcon,
+  onRightPress,
+}: StackHeaderProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -81,7 +93,18 @@ export default function StackHeader({ title, onBack }: StackHeaderProps) {
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{title}</Text>
-          <View style={styles.backIconWrapper} />
+          {rightIcon && onRightPress ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={onRightPress}
+              style={styles.rightIconWrapper}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              {rightIcon}
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.rightIconWrapper} />
+          )}
         </View>
       </View>
       <View style={styles.line} />
