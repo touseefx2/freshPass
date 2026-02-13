@@ -12,10 +12,8 @@ import {
   PermissionsAndroid,
   Animated,
   Easing,
-  ScrollView,
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
-import { moderateHeightScale } from "@/src/theme/dimensions";
 import { Audio } from "expo-av";
 import { File, Directory, Paths } from "expo-file-system";
 import { Ionicons } from "@expo/vector-icons";
@@ -54,6 +52,8 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const [isStarting, setIsStarting] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [hasReceivedFirstAgentResponse, setHasReceivedFirstAgentResponse] =
+    useState(false);
   const [conversation, setConversation] = useState<VoiceConversationMessage[]>(
     [],
   );
@@ -65,7 +65,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  const FLUSH_SAMPLE_THRESHOLD = 16000 * 0.5;
+  const FLUSH_SAMPLE_THRESHOLD = 16000 * 0.25;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
   const [isMicMuted, setIsMicMuted] = useState(false);
@@ -74,7 +74,13 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const centerIconScale = useRef(new Animated.Value(1)).current;
   const sendQueueRef = useRef<ArrayBuffer[]>([]);
   const drainScheduledRef = useRef(false);
-  const conversationScrollRef = useRef<ScrollView | null>(null);
+  const isAgentSpeakingRef = useRef(false);
+  const pendingAgentTextBufferRef = useRef<{ role: string; content: string }[]>(
+    [],
+  );
+  const pendingAudioBuffersRef = useRef<ArrayBuffer[]>([]);
+  const currentTurnTextShownRef = useRef(false);
+  const flushPendingAgentTextRef = useRef<() => void>(() => {});
 
   const drainSendQueue = useCallback(() => {
     const ws = wsRef.current;
@@ -126,6 +132,30 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
     };
   }, [isListening]);
 
+  const disconnectDueToError = useCallback(() => {
+    setIsListening(false);
+    setIsConnected(false);
+    setIsStarting(false);
+    setIsAgentSpeaking(false);
+    isPlayingRef.current = false;
+    try {
+      AudioRecord.stop();
+    } catch {}
+    wsRef.current = null;
+    pendingPcmChunksRef.current = [];
+    pendingSamplesRef.current = 0;
+    pendingAgentTextBufferRef.current = [];
+    pendingAudioBuffersRef.current = [];
+    currentTurnTextShownRef.current = true;
+    try {
+      if (soundRef.current) soundRef.current.unloadAsync();
+    } catch {}
+    soundRef.current = null;
+    audioQueueRef.current = [];
+    sendQueueRef.current = [];
+    drainScheduledRef.current = false;
+  }, []);
+
   const cleanup = useCallback(() => {
     setIsListening(false);
     setIsConnected(false);
@@ -133,6 +163,9 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
     setIsAgentSpeaking(false);
     setIsMicMuted(false);
     setIsSpeakerMuted(false);
+    setError(null);
+    setHasReceivedFirstAgentResponse(false);
+    setConversation([]);
     isMicMutedRef.current = false;
     isSpeakerMutedRef.current = false;
     isPlayingRef.current = false;
@@ -145,6 +178,9 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
     wsRef.current = null;
     pendingPcmChunksRef.current = [];
     pendingSamplesRef.current = 0;
+    pendingAgentTextBufferRef.current = [];
+    pendingAudioBuffersRef.current = [];
+    currentTurnTextShownRef.current = true;
     try {
       if (soundRef.current) soundRef.current.unloadAsync();
     } catch {}
@@ -159,6 +195,10 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   }, [isMicMuted]);
 
   useEffect(() => {
+    isAgentSpeakingRef.current = isAgentSpeaking;
+  }, [isAgentSpeaking]);
+
+  useEffect(() => {
     isSpeakerMutedRef.current = isSpeakerMuted;
     if (soundRef.current) {
       soundRef.current.setVolumeAsync(isSpeakerMuted ? 0 : 1).catch(() => {});
@@ -167,14 +207,6 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
 
   useEffect(() => () => cleanup(), [cleanup]);
 
-  useEffect(() => {
-    if (conversation.length > 0 && conversationScrollRef.current) {
-      setTimeout(
-        () => conversationScrollRef.current?.scrollToEnd({ animated: true }),
-        100,
-      );
-    }
-  }, [conversation.length]);
 
   useEffect(() => {
     Audio.setAudioModeAsync({
@@ -185,6 +217,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
       playThroughEarpieceAndroid: false,
     }).catch(() => {});
   }, []);
+  // User mic is only sent to the server; we never play it back. Only agent TTS is played.
 
   const playNextInQueue = useCallback(async () => {
     if (isPlayingRef.current) return;
@@ -192,6 +225,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
     if (!nextUri) {
       isPlayingRef.current = false;
       setIsAgentSpeaking(false);
+      flushPendingAgentTextRef.current();
       return;
     }
     try {
@@ -214,13 +248,17 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
             const file = new File(nextUri);
             file.delete();
           } catch {}
-          if (audioQueueRef.current.length === 0) setIsAgentSpeaking(false);
+          if (audioQueueRef.current.length === 0) {
+            setIsAgentSpeaking(false);
+            flushPendingAgentTextRef.current();
+          }
           playNextInQueue().catch(() => {});
         }
       });
     } catch {
       isPlayingRef.current = false;
       setIsAgentSpeaking(false);
+      flushPendingAgentTextRef.current();
       try {
         const file = new File(nextUri);
         file.delete();
@@ -269,6 +307,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
       const file = cacheDir.createFile(fileName, "audio/wav");
       file.write(base64, { encoding: "base64" as any });
       audioQueueRef.current.push(file.uri);
+      currentTurnTextShownRef.current = false;
       setIsAgentSpeaking(true);
       playNextInQueue().catch(() => {});
     } catch (err) {
@@ -295,6 +334,19 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
     [flushPendingAudio],
   );
 
+  const flushPendingAgentText = useCallback(() => {
+    currentTurnTextShownRef.current = true;
+    const audioBufs = pendingAudioBuffersRef.current;
+    pendingAudioBuffersRef.current = [];
+    for (const arr of audioBufs) {
+      enqueuePcmChunk(arr);
+    }
+  }, [enqueuePcmChunk]);
+
+  useEffect(() => {
+    flushPendingAgentTextRef.current = flushPendingAgentText;
+  }, [flushPendingAgentText]);
+
   const handleServerMessage = useCallback(
     (event: any) => {
       const { data } = event;
@@ -312,16 +364,18 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           switch (parsed.type) {
             case "ConversationText":
               if (parsed.content) {
+                setHasReceivedFirstAgentResponse(true);
                 const role =
                   typeof parsed.role === "string" ? parsed.role : "assistant";
+                const content = String(parsed.content);
                 setConversation((prev) => [
                   ...prev,
-                  {
-                    role,
-                    content: String(parsed.content),
-                    timestamp: Date.now(),
-                  },
+                  { role, content, timestamp: Date.now() },
                 ]);
+                currentTurnTextShownRef.current = true;
+                const audioBufs = pendingAudioBuffersRef.current;
+                pendingAudioBuffersRef.current = [];
+                for (const arr of audioBufs) enqueuePcmChunk(arr);
               }
               break;
             case "UserTranscript":
@@ -352,17 +406,27 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
         try {
           const buf = Buffer.from(trimmed, "base64");
           if (buf.byteLength > 0) {
+            setHasReceivedFirstAgentResponse(true);
             const arr = buf.buffer.slice(
               buf.byteOffset,
               buf.byteOffset + buf.byteLength,
             );
-            enqueuePcmChunk(arr);
+            if (!currentTurnTextShownRef.current) {
+              pendingAudioBuffersRef.current.push(arr);
+            } else {
+              enqueuePcmChunk(arr);
+            }
           }
         } catch (err) {
           console.error("Failed to decode voice agent audio string", err);
         }
       } else if (data instanceof ArrayBuffer) {
-        enqueuePcmChunk(data);
+        setHasReceivedFirstAgentResponse(true);
+        if (!currentTurnTextShownRef.current) {
+          pendingAudioBuffersRef.current.push(data);
+        } else {
+          enqueuePcmChunk(data);
+        }
       }
     },
     [enqueuePcmChunk, flushPendingAudio],
@@ -388,10 +452,15 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           reject(event);
         };
         ws.onclose = (event: any) => {
-          if (event.code === 1008) setError("Voice agent authentication failed.");
+          if (event.code === 1008)
+            setError("Voice agent authentication failed.");
           else if (event.code === 1006)
-            setError("Voice agent connection closed unexpectedly. Please try again.");
-          cleanup();
+            setError(
+              "Connection error. Voice agent disconnected. Please try again.",
+            );
+          else if (event.code !== 1000)
+            setError("Connection error. Please try again.");
+          disconnectDueToError();
         };
         ws.onmessage = handleServerMessage;
       } catch (err) {
@@ -453,10 +522,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
               chunk.byteOffset + chunk.byteLength,
             );
             sendQueueRef.current.push(arrayBuffer);
-            if (!drainScheduledRef.current) {
-              drainScheduledRef.current = true;
-              setTimeout(drainSendQueue, 0);
-            }
+            drainSendQueue();
           } catch (err) {
             console.error("Failed to queue audio chunk", err);
           }
@@ -489,8 +555,26 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
 
   const handleStop = useCallback(() => cleanup(), [cleanup]);
 
+  const handleRetry = useCallback(async () => {
+    if (isStarting || isListening) return;
+    setError(null);
+    setConversation([]);
+    setHasReceivedFirstAgentResponse(false);
+    setIsStarting(true);
+    try {
+      await connectWebSocket();
+      await startRecorder();
+    } catch {
+      // Error already set by connectWebSocket
+    } finally {
+      setIsStarting(false);
+    }
+  }, [connectWebSocket, isListening, isStarting, startRecorder]);
+
   const statusText = (() => {
     if (isStarting) return "Connecting...";
+    if (isConnected && !hasReceivedFirstAgentResponse)
+      return "Connecting...";
     if (isAgentSpeaking) return "Agent is speaking...";
     if (isListening) return "Now you can speak";
     if (isConnected) return "Tap the button to speak";
@@ -519,6 +603,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const showCallButton = isCallActive;
 
   const centerIconPressable = !isCallActive && !isStarting;
+  const centerIconOnPress = error ? handleRetry : handleStart;
 
   return (
     <View style={styles.receptionistContainer}>
@@ -527,7 +612,7 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           {centerIconPressable ? (
             <TouchableOpacity
               style={styles.receptionistMicOuter}
-              onPress={handleStart}
+              onPress={centerIconOnPress}
               activeOpacity={0.85}
             >
               <Animated.View
@@ -562,39 +647,37 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           <Text style={styles.receptionistStatusTextMedium}>{statusText}</Text>
           <Text style={styles.receptionistTimerText}>{timerText}</Text>
           {error ? (
-            <Text style={styles.receptionistErrorText}>{error}</Text>
+            <View style={styles.receptionistErrorContainer}>
+              <Text style={styles.receptionistErrorText}>{error}</Text>
+              <TouchableOpacity
+                onPress={handleRetry}
+                activeOpacity={0.8}
+                style={styles.receptionistRetryTouchable}
+              >
+                <Text style={styles.receptionistRetryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
           ) : null}
         </View>
-        {conversation.length > 0 && (
-          <View style={styles.receptionistCurrentStatementContainer}>
-            <ScrollView
-              ref={conversationScrollRef}
-              style={styles.receptionistCurrentStatementScroll}
-              contentContainerStyle={[
-                styles.receptionistCurrentStatementScrollContent,
-                { alignItems: "flex-start", justifyContent: "flex-start" },
-              ]}
-              showsVerticalScrollIndicator={true}
-            >
-              {conversation.map((msg, index) => (
-                <View
+        {conversation.length > 0 && (() => {
+          const lastExchange = conversation.slice(-2);
+          return (
+            <View style={styles.receptionistCurrentStatementContainer}>
+              {lastExchange.map((msg, index) => (
+                <Text
                   key={`${msg.timestamp}-${index}`}
-                  style={{
-                    marginBottom:
-                      index < conversation.length - 1
-                        ? moderateHeightScale(12)
-                        : 0,
-                  }}
+                  style={[
+                    styles.receptionistCurrentStatementText,
+                    index < lastExchange.length - 1 && styles.receptionistCurrentStatementTextMargin,
+                  ]}
                 >
-                  <Text style={styles.receptionistCurrentStatementText}>
-                    {msg.role === "user" ? "You: " : "Agent: "}
-                    {msg.content}
-                  </Text>
-                </View>
+                  {msg.role === "user" ? "You: " : "Agent: "}
+                  {msg.content}
+                </Text>
               ))}
-            </ScrollView>
-          </View>
-        )}
+            </View>
+          );
+        })()}
       </View>
       <View style={styles.receptionistControls}>
         <TouchableOpacity

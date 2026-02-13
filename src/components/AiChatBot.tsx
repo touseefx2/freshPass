@@ -454,6 +454,21 @@ const createStyles = (
       color: theme.red,
       textAlign: "center",
     },
+    receptionistErrorContainer: {
+      alignItems: "center",
+      marginTop: moderateHeightScale(8),
+      gap: moderateHeightScale(8),
+    },
+    receptionistRetryTouchable: {
+      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(8),
+    },
+    receptionistRetryText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textDecorationLine: "underline",
+    },
     receptionistControls: {
       width: "100%",
       flexDirection: "row",
@@ -529,6 +544,9 @@ const createStyles = (
       color: theme.darkGreen,
       textAlign: "center",
       lineHeight: moderateHeightScale(24),
+    },
+    receptionistCurrentStatementTextMargin: {
+      marginBottom: moderateHeightScale(12),
     },
     receptionistIconButton: {
       flex: 1,
