@@ -89,7 +89,7 @@ const createStyles = (theme: Theme) =>
     timeInputContainer: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-start",
     },
     timeInput: {
       fontSize: fontSize.size16,
@@ -99,6 +99,16 @@ const createStyles = (theme: Theme) =>
       height: heightScale(22),
       flex: 1,
       textAlign: "left",
+    },
+    pricePrefix: {
+      flex: 0,
+      marginRight: 0,
+      lineHeight: heightScale(22),
+      height: heightScale(22),
+      includeFontPadding: false,
+    },
+    priceInputInner: {
+      paddingLeft: 0,
     },
     arrowButtonsContainer: {
       width: "28%",
@@ -220,10 +230,8 @@ export default function EditSubscriptionBottomSheet({
   const [packageName, setPackageName] = useState(
     subscription?.packageName || ""
   );
-  const [servicesPerMonth, setServicesPerMonth] = useState(
-    subscription?.servicesPerMonth || 0
-  );
-  const [price, setPrice] = useState(subscription?.price.toString() || "0");
+  const [servicesPerMonthStr, setServicesPerMonthStr] = useState("");
+  const [price, setPrice] = useState("");
   const [currency] = useState(subscription?.currency || "USD");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
     subscription?.serviceIds || []
@@ -238,17 +246,14 @@ export default function EditSubscriptionBottomSheet({
   useEffect(() => {
     if (visible) {
       if (subscription) {
-        // Edit mode
-      setPackageName(subscription.packageName);
-      setServicesPerMonth(subscription.servicesPerMonth);
-      setPrice(subscription.price.toString());
-      setSelectedServiceIds(subscription.serviceIds);
+        setPackageName(subscription.packageName);
+        setServicesPerMonthStr(subscription.servicesPerMonth.toString());
+        setPrice(subscription.price.toString());
+        setSelectedServiceIds(subscription.serviceIds);
       } else {
-        // Add mode - set defaults
         setPackageName("");
-        setServicesPerMonth(1); // Default 1 service per month
-        setPrice("10.00"); // Default price
-        // Don't preselect any services; user can add them later if needed
+        setServicesPerMonthStr("1");
+        setPrice("10.00");
         setSelectedServiceIds([]);
       }
       setErrors({});
@@ -257,23 +262,18 @@ export default function EditSubscriptionBottomSheet({
 
   const handleServicesPerMonthChange = (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, "");
-    if (cleaned === "") {
-      setServicesPerMonth(0);
-    } else {
-      const value = parseInt(cleaned, 10);
-      if (!isNaN(value) && value >= 0) {
-        setServicesPerMonth(value);
-      }
-    }
+    setServicesPerMonthStr(cleaned);
   };
 
   const handleIncrementServicesPerMonth = () => {
-    setServicesPerMonth(servicesPerMonth + 1);
+    const current = parseInt(servicesPerMonthStr, 10) || 0;
+    setServicesPerMonthStr((current + 1).toString());
   };
 
   const handleDecrementServicesPerMonth = () => {
-    if (servicesPerMonth > 0) {
-      setServicesPerMonth(servicesPerMonth - 1);
+    const current = parseInt(servicesPerMonthStr, 10) || 0;
+    if (current > 0) {
+      setServicesPerMonthStr((current - 1).toString());
     }
   };
 
@@ -324,8 +324,9 @@ export default function EditSubscriptionBottomSheet({
       return;
     }
 
+    const servicesPerMonth = Math.max(0, parseInt(servicesPerMonthStr, 10) || 0);
+
     if (subscriptionId && subscription) {
-      // Edit mode
       dispatch(
         updateSubscription({
           id: subscriptionId,
@@ -337,7 +338,6 @@ export default function EditSubscriptionBottomSheet({
         })
       );
     } else {
-      // Add mode - add to custom suggestions, not to Redux subscriptions
       const newId = `subscription-${Date.now()}`;
       const newSubscription = {
         id: newId,
@@ -347,16 +347,13 @@ export default function EditSubscriptionBottomSheet({
         currency,
         serviceIds: selectedServiceIds,
       };
-      
+
       if (onAddCustomSuggestion) {
         onAddCustomSuggestion(newSubscription);
       } else {
-        // Fallback: if callback not provided, add to Redux (for backward compatibility)
         dispatch(addSubscription(newSubscription));
       }
     }
-
-    onClose();
 
     onClose();
   };
@@ -392,7 +389,7 @@ export default function EditSubscriptionBottomSheet({
               <View style={styles.timeInputContainer}>
                 <TextInput
                   style={styles.timeInput}
-                  value={servicesPerMonth.toString()}
+                  value={servicesPerMonthStr}
                   onChangeText={handleServicesPerMonthChange}
                   keyboardType="number-pad"
                   placeholder="0"
@@ -429,19 +426,23 @@ export default function EditSubscriptionBottomSheet({
             <View style={styles.mainTimeCon}>
               <Text style={styles.inputLabel}>Price</Text>
               <View style={styles.timeInputContainer}>
+                <Text style={[styles.timeInput, styles.pricePrefix]}>$ </Text>
                 <TextInput
-                  style={styles.timeInput}
-                  value={`$${parseFloat(price || "0").toFixed(2)}`}
+                  style={[styles.timeInput, styles.priceInputInner]}
+                  value={price}
                   onChangeText={(text) => {
                     const cleaned = text.replace(/[^0-9.]/g, "");
-                    if (cleaned) {
-                      setPrice(cleaned);
-                    } else {
-                      setPrice("0");
-                    }
+                    const oneDot =
+                      cleaned.indexOf(".") >= 0
+                        ? cleaned.slice(0, cleaned.indexOf(".") + 1) +
+                          cleaned
+                            .slice(cleaned.indexOf(".") + 1)
+                            .replace(/\./g, "")
+                        : cleaned;
+                    setPrice(oneDot);
                   }}
                   keyboardType="decimal-pad"
-                  placeholder="$0.00"
+                  placeholder="0.00"
                   placeholderTextColor={theme.lightGreen2}
                 />
               </View>
