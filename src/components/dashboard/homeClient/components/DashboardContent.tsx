@@ -936,10 +936,6 @@ export default function DashboardContent() {
     }, []),
   );
 
-  console.log("proTipData", proTipData);
-  console.log("proTipLoading", proTipLoading);
-  console.log("proTipError", proTipError);
-
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}

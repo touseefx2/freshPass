@@ -509,6 +509,29 @@ const createStyles = (
     receptionistTranscriptScrollContent: {
       paddingBottom: moderateHeightScale(4),
     },
+    receptionistCurrentStatementContainer: {
+      width: "100%",
+      height: heightScale(180),
+      marginTop: moderateHeightScale(24),
+      marginBottom: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    receptionistCurrentStatementScroll: {
+      flex: 1,
+      width: "100%",
+    },
+    receptionistCurrentStatementScrollContent: {
+      paddingVertical: moderateHeightScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    receptionistCurrentStatementText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+      lineHeight: moderateHeightScale(24),
+    },
     receptionistIconButton: {
       flex: 1,
       height: heightScale(44),

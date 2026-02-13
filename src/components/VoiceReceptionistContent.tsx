@@ -8,11 +8,11 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
   Platform,
   PermissionsAndroid,
   Animated,
   Easing,
+  ScrollView,
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import { Audio } from "expo-av";
@@ -71,7 +71,25 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
   const [isSpeakerMuted, setIsSpeakerMuted] = useState(false);
   const [isAgentSpeaking, setIsAgentSpeaking] = useState(false);
   const centerIconScale = useRef(new Animated.Value(1)).current;
-  const transcriptScrollRef = useRef<ScrollView>(null);
+  const sendQueueRef = useRef<ArrayBuffer[]>([]);
+  const drainScheduledRef = useRef(false);
+
+  const drainSendQueue = useCallback(() => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const queue = sendQueueRef.current;
+    while (queue.length > 0) {
+      const chunk = queue.shift();
+      if (chunk && chunk.byteLength > 0) {
+        try {
+          ws.send(chunk);
+        } catch (err) {
+          console.error("Failed to send audio chunk", err);
+        }
+      }
+    }
+    drainScheduledRef.current = false;
+  }, []);
 
   useEffect(() => {
     const anim = Animated.loop(
@@ -130,6 +148,8 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
     } catch {}
     soundRef.current = null;
     audioQueueRef.current = [];
+    sendQueueRef.current = [];
+    drainScheduledRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -391,10 +411,9 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           wavFile: "freshpass_voice_agent.wav",
         });
         AudioRecord.on("data", (data: string) => {
-          const ws = wsRef.current;
           if (
-            !ws ||
-            ws.readyState !== WebSocket.OPEN ||
+            !wsRef.current ||
+            wsRef.current.readyState !== WebSocket.OPEN ||
             isPlayingRef.current ||
             isMicMutedRef.current
           )
@@ -406,9 +425,13 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
               chunk.byteOffset,
               chunk.byteOffset + chunk.byteLength,
             );
-            ws.send(arrayBuffer);
+            sendQueueRef.current.push(arrayBuffer);
+            if (!drainScheduledRef.current) {
+              drainScheduledRef.current = true;
+              setTimeout(drainSendQueue, 0);
+            }
           } catch (err) {
-            console.error("Failed to send audio chunk to voice agent", err);
+            console.error("Failed to queue audio chunk", err);
           }
         });
         recorderInitializedRef.current = true;
@@ -465,24 +488,50 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
         ? "mic"
         : "mic-outline";
 
+  const isCallActive = isConnected || isListening;
+  const showCallButton = isCallActive;
+
+  const centerIconPressable = !isCallActive && !isStarting;
+
   return (
     <View style={styles.receptionistContainer}>
       <View style={styles.receptionistBody}>
         <View style={styles.receptionistCenter}>
-          <View style={styles.receptionistMicOuter}>
-            <Animated.View
-              style={[
-                styles.receptionistMicInner,
-                { transform: [{ scale: centerIconScale }] },
-              ]}
+          {centerIconPressable ? (
+            <TouchableOpacity
+              style={styles.receptionistMicOuter}
+              onPress={handleStart}
+              activeOpacity={0.85}
             >
-              <Ionicons
-                name={centerIconName}
-                size={36}
-                color={theme.white}
-              />
-            </Animated.View>
-          </View>
+              <Animated.View
+                style={[
+                  styles.receptionistMicInner,
+                  { transform: [{ scale: centerIconScale }] },
+                ]}
+              >
+                <Ionicons
+                  name={centerIconName}
+                  size={36}
+                  color={theme.white}
+                />
+              </Animated.View>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.receptionistMicOuter}>
+              <Animated.View
+                style={[
+                  styles.receptionistMicInner,
+                  { transform: [{ scale: centerIconScale }] },
+                ]}
+              >
+                <Ionicons
+                  name={centerIconName}
+                  size={36}
+                  color={theme.white}
+                />
+              </Animated.View>
+            </View>
+          )}
           <Text style={styles.receptionistStatusTextMedium}>{statusText}</Text>
           <Text style={styles.receptionistTimerText}>{timerText}</Text>
           {error ? (
@@ -490,27 +539,15 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
           ) : null}
         </View>
         {conversation.length > 0 && (
-          <View style={styles.receptionistTranscriptContainer}>
-            <Text style={styles.receptionistTranscriptTitle}>
-              Recent conversation
-            </Text>
+          <View style={styles.receptionistCurrentStatementContainer}>
             <ScrollView
-              ref={transcriptScrollRef}
-              style={styles.receptionistTranscriptScroll}
-              contentContainerStyle={styles.receptionistTranscriptScrollContent}
-              showsVerticalScrollIndicator
-              onContentSizeChange={() =>
-                transcriptScrollRef.current?.scrollToEnd({ animated: true })
-              }
+              style={styles.receptionistCurrentStatementScroll}
+              contentContainerStyle={styles.receptionistCurrentStatementScrollContent}
+              showsVerticalScrollIndicator={true}
             >
-              {conversation.map((msg) => (
-                <Text
-                  key={msg.timestamp.toString()}
-                  style={styles.receptionistTranscriptMessage}
-                >
-                  {`${msg.role}: ${msg.content}`}
-                </Text>
-              ))}
+              <Text style={styles.receptionistCurrentStatementText}>
+                {conversation[conversation.length - 1].content}
+              </Text>
             </ScrollView>
           </View>
         )}
@@ -531,19 +568,23 @@ export const VoiceReceptionistContent: React.FC<VoiceReceptionistContentProps> =
             color={isMicMuted ? theme.white : theme.darkGreen}
           />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.receptionistControlButton,
-            isListening
-              ? styles.receptionistControlButtonEnd
-              : styles.receptionistControlButtonStart,
-          ]}
-          onPress={handlePrimaryPress}
-          disabled={isStarting}
-          activeOpacity={0.9}
-        >
-          <Ionicons name="call" size={24} color={theme.white} />
-        </TouchableOpacity>
+        {showCallButton ? (
+          <TouchableOpacity
+            style={[
+              styles.receptionistControlButton,
+              isListening
+                ? styles.receptionistControlButtonEnd
+                : styles.receptionistControlButtonStart,
+            ]}
+            onPress={handlePrimaryPress}
+            disabled={isStarting}
+            activeOpacity={0.9}
+          >
+            <Ionicons name="call" size={24} color={theme.white} />
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.receptionistControlButton, { opacity: 0 }]} />
+        )}
         <TouchableOpacity
           style={[
             styles.receptionistIconButton,
