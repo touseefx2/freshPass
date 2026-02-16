@@ -10,6 +10,7 @@
 export const staffEndpoints = {
   register: `/staff/auth/register`,
   details: (id: string | number) => `/api/staff/${id}/details`,
+  delete: (id: number) => `/api/staff/${id}`,
   profile: `/api/staff/details`,
   availabilityHours: `/api/staff/availability-hours`,
   invite: `/api/staff/invite`,

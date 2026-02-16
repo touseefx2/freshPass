@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   Text,
@@ -632,6 +638,7 @@ type AddStaffParams = {
   profile_image_url?: string;
   active?: string;
   working_hours?: string;
+  invitation_token?: string | null;
 };
 
 export default function AddStaffScreen() {
@@ -649,9 +656,20 @@ export default function AddStaffScreen() {
   const isEditMode = !!params.id;
   const headerTitle = isEditMode ? "Edit Staff" : "New Staff Member";
 
+  const rawToken = params.invitation_token;
+  const invitationToken =
+    rawToken == null
+      ? undefined
+      : Array.isArray(rawToken)
+        ? rawToken[0]
+        : rawToken;
+  const hasPendingInvitation = !!(
+    invitationToken && invitationToken !== "" && invitationToken !== "null"
+  );
+
   const handleActiveToggle = useCallback(
     (value: boolean) => {
-      if (value) {
+      if (value && hasPendingInvitation) {
         showBanner(
           "Cannot activate yet",
           "You can turn this on only after the staff accepts the invitation. This is for online/offline status.",
@@ -660,9 +678,9 @@ export default function AddStaffScreen() {
         );
         return;
       }
-      setIsActive(false);
+      setIsActive(value);
     },
-    [showBanner],
+    [showBanner, hasPendingInvitation],
   );
 
   const [staffEmail, setStaffEmail] = useState("");
@@ -696,9 +714,10 @@ export default function AddStaffScreen() {
   );
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
-  const [salonBusinessHours, setSalonBusinessHours] = useState<
-    Record<string, DayData> | null
-  >(null);
+  const [salonBusinessHours, setSalonBusinessHours] = useState<Record<
+    string,
+    DayData
+  > | null>(null);
   const [copySalonHours, setCopySalonHours] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const previousBusinessHoursRef = useRef<Record<string, DayData> | null>(null);
@@ -1277,7 +1296,10 @@ export default function AddStaffScreen() {
         }
       }
     } catch (error: any) {
-      Logger.error(isEditMode ? "Staff update error:" : "Staff invite error:", error);
+      Logger.error(
+        isEditMode ? "Staff update error:" : "Staff invite error:",
+        error,
+      );
       showBanner(
         "Error",
         error?.message ||
@@ -1375,22 +1397,25 @@ export default function AddStaffScreen() {
           </View>
         </View>
 
-        <View style={styles.inputSection}>
-          <FloatingInput
-            label="Staff Email"
-            value={staffEmail}
-            onChangeText={setStaffEmail}
-            placeholder="Enter staff member email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <Text style={styles.hint}>
-            A user account will be created with the staff role for this email.
-          </Text>
-          {formErrors.email ? (
-            <Text style={styles.errorText}>{formErrors.email}</Text>
-          ) : null}
-        </View>
+        {!isEditMode && (
+          <View style={styles.inputSection}>
+            <FloatingInput
+              editable={!isEditMode}
+              label="Staff Email"
+              value={staffEmail}
+              onChangeText={setStaffEmail}
+              placeholder="Enter staff member email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+            <Text style={styles.hint}>
+              A user account will be created with the staff role for this email.
+            </Text>
+            {formErrors.email ? (
+              <Text style={styles.errorText}>{formErrors.email}</Text>
+            ) : null}
+          </View>
+        )}
 
         <View style={styles.inputSection}>
           <FloatingInput

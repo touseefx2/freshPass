@@ -8,11 +8,13 @@ import {
   Image,
   StatusBar,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { useDispatch } from "react-redux";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
@@ -25,6 +27,8 @@ import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
+import { setActionLoader } from "@/src/state/slices/generalSlice";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -251,13 +255,17 @@ export default function StaffDetail() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const dispatch = useDispatch();
   const { t } = useTranslation();
+  const { showBanner } = useNotificationContext();
   const params = useLocalSearchParams<{ id?: string }>();
   const staffId = params.id;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StaffDetailData | null>(null);
+
+  console.log("data : ", data?.invitation_token);
 
   const fetchStaffDetails = useCallback(async () => {
     if (!staffId) {
@@ -316,8 +324,53 @@ export default function StaffDetail() {
         profile_image_url: editProfileImageUrl,
         active: data.active ? "1" : "0",
         working_hours: JSON.stringify(data.user?.working_hours ?? []),
+        ...(data.invitation_token
+          ? { invitation_token: data.invitation_token }
+          : {}),
       },
     });
+  };
+
+  const handleDeleteStaff = async () => {
+    if (!data?.id) return;
+    dispatch(setActionLoader(true));
+    try {
+      await ApiService.delete<{ success?: boolean; message?: string }>(
+        staffEndpoints.delete(data.id),
+      );
+      showBanner(
+        t("success") || "Success",
+        t("staffDeletedSuccess") || "Staff deleted successfully",
+        "success",
+        3000,
+      );
+      router.back();
+    } catch (err: any) {
+      const errorMessage =
+        err?.data?.message ||
+        err?.message ||
+        t("error") ||
+        "Something went wrong";
+      showBanner(t("error") || "Error", errorMessage, "error", 3000);
+    } finally {
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  const confirmDeleteStaff = () => {
+    Alert.alert(
+      t("deleteStaff") || "Delete staff",
+      t("deleteStaffConfirm") ||
+        `Are you sure you want to delete "${data?.name}"?`,
+      [
+        { text: t("cancel") || "Cancel", style: "cancel" },
+        {
+          text: t("delete") || "Delete",
+          style: "destructive",
+          onPress: handleDeleteStaff,
+        },
+      ],
+    );
   };
 
   if (loading) {
@@ -390,7 +443,7 @@ export default function StaffDetail() {
         title={t("staffDetail")}
         rightIcon={
           <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => {}}>
+            <TouchableOpacity activeOpacity={0.7} onPress={confirmDeleteStaff}>
               <MaterialIcons
                 name="delete-outline"
                 size={moderateWidthScale(20)}
