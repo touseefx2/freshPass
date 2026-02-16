@@ -431,7 +431,6 @@ export default function StaffDetail() {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t("staffDetailInfo")}</Text>
           <View style={styles.row}>
             <Text style={styles.label}>{t("email")}</Text>
             <Text style={styles.value}>{data.email}</Text>
