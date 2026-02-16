@@ -613,9 +613,12 @@ const AiChatBot: React.FC = () => {
   const floatAnim = useRef(new Animated.Value(0)).current;
 
   let VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
-  if (!isGuest) {
-    // const encodedToken = encodeURIComponent(accessToken || "");
+  if (!isGuest && Platform.OS === "ios" && accessToken) {
     VOICE_AGENT_WS_URL = VOICE_AGENT_WS_URL + `&user_token=${accessToken}`;
+  }
+  if (!isGuest && Platform.OS === "android" && accessToken) {
+    const encodedToken = encodeURIComponent(accessToken || "");
+    VOICE_AGENT_WS_URL = VOICE_AGENT_WS_URL + `&user_token=${encodedToken}`;
   }
 
   console.log("VOICE_AGENT_WS_URL : ", VOICE_AGENT_WS_URL);
