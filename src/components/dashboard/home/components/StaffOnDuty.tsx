@@ -185,7 +185,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
           style={styles.staffScrollView}
           contentContainerStyle={styles.staffScrollContent}
         >
-          {data.slice(0, 8).map((staff, index) => (
+          {data.map((staff, index) => (
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() =>

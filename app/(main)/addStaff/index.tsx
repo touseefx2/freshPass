@@ -664,7 +664,9 @@ export default function AddStaffScreen() {
         ? rawToken[0]
         : rawToken;
   const hasPendingInvitation = !!(
-    invitationToken && invitationToken !== "" && invitationToken !== "null"
+    invitationToken &&
+    invitationToken !== "" &&
+    invitationToken !== "null"
   );
 
   const handleActiveToggle = useCallback(
@@ -1117,8 +1119,6 @@ export default function AddStaffScreen() {
     [theme, insets.bottom],
   );
 
-  const isPhoneInvalid = phoneNumber.length > 0 && !phoneIsValid;
-
   const formErrors = useMemo(() => {
     const e: {
       email?: string;
@@ -1186,6 +1186,8 @@ export default function AddStaffScreen() {
         }
         formData.append("name", name.trim());
         formData.append("description", description.trim());
+
+        formData.append("active", isActive ? "true" : "false");
         formData.append(
           "working_hours",
           JSON.stringify(buildWorkingHoursArray()),
@@ -1248,6 +1250,7 @@ export default function AddStaffScreen() {
         formData.append("phone", phoneNumber.replace(/\D/g, ""));
         formData.append("description", description.trim());
         formData.append("is_onboarded", "true");
+        formData.append("active", isActive ? "true" : "false");
         formData.append(
           "working_hours",
           JSON.stringify(buildWorkingHoursArray()),
@@ -1326,6 +1329,7 @@ export default function AddStaffScreen() {
     description,
     businessHours,
     profileImageUri,
+    isActive,
     buildWorkingHoursArray,
     showBanner,
   ]);
