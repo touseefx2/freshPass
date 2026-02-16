@@ -644,6 +644,7 @@ export default function AddStaffScreen() {
   const { showBanner } = useNotificationContext();
   const businessName =
     useAppSelector((state) => state.user.business_name) || "";
+  const userRole = useAppSelector((state) => state.user.userRole);
 
   const isEditMode = !!params.id;
   const headerTitle = isEditMode ? "Edit Staff" : "New Staff Member";
@@ -1161,6 +1162,9 @@ export default function AddStaffScreen() {
     try {
       if (isEditMode) {
         const formData = new FormData();
+        if (userRole === "business" && params.id) {
+          formData.append("staff_id", params.id);
+        }
         formData.append("name", name.trim());
         formData.append("description", description.trim());
         formData.append(
@@ -1290,6 +1294,9 @@ export default function AddStaffScreen() {
     isFormValid,
     isSubmitting,
     isEditMode,
+    userRole,
+    params.id,
+    params.profile_image_url,
     staffEmail,
     name,
     countryCode,
@@ -1297,7 +1304,6 @@ export default function AddStaffScreen() {
     description,
     businessHours,
     profileImageUri,
-    params.profile_image_url,
     buildWorkingHoursArray,
     showBanner,
   ]);
