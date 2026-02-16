@@ -113,7 +113,7 @@ export default function ToolList() {
             {isCustomer && (
               <View style={styles.actionButtonFlex}>
                 <Button
-                  title={t("transcations")}
+                  title={t("myPurchases")}
                   onPress={() => router.push("/aiTransactions")}
                 />
               </View>

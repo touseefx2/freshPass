@@ -208,7 +208,7 @@ export default function AiTransactions() {
         backgroundColor={theme.darkGreen}
         translucent
       />
-      <StackHeader title={t("transcations")} />
+      <StackHeader title={t("myPurchases")} />
       <FlatList
         data={transactions}
         renderItem={renderItem}

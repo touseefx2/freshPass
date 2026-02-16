@@ -647,5 +647,6 @@
   "credits": "Credits",
   "price": "Price",
   "createdAt": "Created at",
-  "viewInvoice": "View invoice"
+  "viewInvoice": "View invoice",
+  "myPurchases": "My Purchases"
 }
