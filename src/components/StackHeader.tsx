@@ -93,15 +93,19 @@ export default function StackHeader({
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{title}</Text>
-          {rightIcon && onRightPress ? (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={onRightPress}
-              style={styles.rightIconWrapper}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              {rightIcon}
-            </TouchableOpacity>
+          {rightIcon ? (
+            onRightPress ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={onRightPress}
+                style={styles.rightIconWrapper}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                {rightIcon}
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.rightIconWrapper}>{rightIcon}</View>
+            )
           ) : (
             <View style={styles.rightIconWrapper} />
           )}

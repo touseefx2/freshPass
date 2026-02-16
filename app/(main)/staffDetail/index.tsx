@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Image,
   StatusBar,
+  TouchableOpacity,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -386,13 +387,27 @@ export default function StaffDetail() {
       <StackHeader
         title={t("staffDetail")}
         rightIcon={
-          <MaterialIcons
-            name="edit"
-            size={moderateWidthScale(22)}
-            color={theme.white}
-          />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => {}}>
+              <MaterialIcons
+                name="delete-outline"
+                size={moderateWidthScale(20)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleEditPress}
+              style={{ marginLeft: moderateWidthScale(10) }}
+            >
+              <MaterialIcons
+                name="edit"
+                size={moderateWidthScale(20)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
+          </View>
         }
-        onRightPress={handleEditPress}
       />
       <ScrollView
         style={styles.container}
