@@ -59,7 +59,7 @@ const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
 const CHAT_BOX_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 const CHAT_BOTTOM_OFFSET = 75;
-const CHAT_BOTTOM_OFFSET_TRYON = 125; // when isFirstShowTryOn is true
+const CHAT_BOTTOM_OFFSET_TRYON = 75; // when isFirstShowTryOn is true
 
 const createStyles = (
   theme: Theme,
@@ -612,6 +612,10 @@ const AiChatBot: React.FC = () => {
   const { userRole, isGuest, accessToken } = useAppSelector(
     (state) => state.user,
   );
+
+  console.log("isFirstTryon : ", isFirstTryon);
+  console.log("isOnExploreScreen : ", isOnExploreScreen);
+
   const chatBottomOffset =
     isFirstTryon && isOnExploreScreen
       ? CHAT_BOTTOM_OFFSET_TRYON
