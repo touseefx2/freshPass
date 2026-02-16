@@ -567,6 +567,33 @@ const createStyles = (
       fontFamily: fonts.fontMedium,
       color: theme.text,
     },
+    receptionistLogPanel: {
+      width: "100%",
+      maxHeight: heightScale(140),
+      marginTop: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(8),
+    },
+    receptionistLogScroll: {
+      flex: 1,
+    },
+    receptionistLogScrollContent: {
+      paddingBottom: moderateHeightScale(8),
+    },
+    receptionistLogRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(4),
+    },
+    receptionistLogText: {
+      flex: 1,
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
   });
 
 const AiChatBot: React.FC = () => {
@@ -615,9 +642,13 @@ const AiChatBot: React.FC = () => {
   let VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
   if (!isGuest && accessToken) {
     // Android WebSocket rejects URLs with | (IllegalArgumentException); iOS accepts raw token.
+    // On Android we encode the JWT so "|" becomes "%7c". Backend MUST decode the user_token
+    // query param (e.g. decodeURIComponent) before validating the JWT, else auth fails and
+    // voice from user may be ignored (connection can still open and agent audio play).
     const tokenForUrl =
       Platform.OS === "android" ? encodeURIComponent(accessToken) : accessToken;
-    VOICE_AGENT_WS_URL = VOICE_AGENT_WS_URL + `&user_token=${tokenForUrl}`;
+    const separator = VOICE_AGENT_WS_URL.includes("?") ? "&" : "?";
+    VOICE_AGENT_WS_URL = `${VOICE_AGENT_WS_URL}${separator}user_token=${tokenForUrl}`;
   }
 
   console.log("VOICE_AGENT_WS_URL : ", VOICE_AGENT_WS_URL);
