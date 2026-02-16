@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -259,7 +259,7 @@ export default function StaffDetail() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StaffDetailData | null>(null);
 
-  const fetchStaffDetails = async () => {
+  const fetchStaffDetails = useCallback(async () => {
     if (!staffId) {
       setError(t("staffProfileNotFound"));
       setLoading(false);
@@ -289,11 +289,13 @@ export default function StaffDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [staffId, t]);
 
-  React.useEffect(() => {
-    fetchStaffDetails();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchStaffDetails();
+    }, []),
+  );
 
   const handleEditPress = () => {
     if (!data) return;
