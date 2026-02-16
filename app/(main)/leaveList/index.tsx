@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   FlatList,
+  Dimensions,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -46,6 +47,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
     },
     listContent: {
+      flexGrow: 1,
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(16),
       paddingBottom: moderateHeightScale(40),
@@ -89,8 +91,11 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
     emptyContainer: {
-      paddingVertical: moderateHeightScale(40),
+      flex: 1,
+      minHeight: Dimensions.get("window").height * 0.6,
+      justifyContent: "center",
       alignItems: "center",
+      paddingVertical: moderateHeightScale(40),
     },
     emptyText: {
       fontSize: fontSize.size16,

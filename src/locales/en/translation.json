@@ -623,6 +623,7 @@
   "jobId": "Job ID",
   "aiResults": "AI Result",
   "noDataFound": "No data found",
+  "noLeaves": "No leaves or breaks yet.",
   "aiStillProcessing": "AI is still processing",
   "resultNotFound": "Result not found",
   "download": "Download",
