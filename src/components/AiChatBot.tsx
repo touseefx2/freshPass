@@ -59,7 +59,7 @@ const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
 const CHAT_BOX_HEIGHT = SCREEN_HEIGHT * 0.6;
 
 const CHAT_BOTTOM_OFFSET = 75;
-const CHAT_BOTTOM_OFFSET_TRYON = 75; // when isFirstShowTryOn is true
+const CHAT_BOTTOM_OFFSET_TRYON = 125; // when isFirstShowTryOn is true
 
 const createStyles = (
   theme: Theme,
@@ -609,15 +609,27 @@ const AiChatBot: React.FC = () => {
   const isFirstTryon = useAppSelector(
     (state) => state.general.isFirstShowTryOn,
   );
+  const tryOnBannerDismissed = useAppSelector(
+    (state) => state.general.tryOnBannerDismissed,
+  );
+  const aiQuota = useAppSelector((state) => state.user.ai_quota);
+  const aiService = useAppSelector((state) => state.general.aiService);
   const { userRole, isGuest, accessToken } = useAppSelector(
     (state) => state.user,
   );
 
-  console.log("isFirstTryon : ", isFirstTryon);
-  console.log("isOnExploreScreen : ", isOnExploreScreen);
+  const hairTryOnService =
+    aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
+  const isCustomerAndGuest = isGuest || userRole === "customer";
+  const showTryOnBanner =
+    (aiQuota === 0 || aiQuota == null) &&
+    !!hairTryOnService &&
+    isCustomerAndGuest &&
+    isFirstTryon &&
+    !tryOnBannerDismissed;
 
   const chatBottomOffset =
-    isFirstTryon && isOnExploreScreen
+    showTryOnBanner && isOnExploreScreen
       ? CHAT_BOTTOM_OFFSET_TRYON
       : CHAT_BOTTOM_OFFSET;
   const styles = useMemo(
