@@ -137,6 +137,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
       color: theme.text,
+      textTransform: "capitalize",
     },
     businessItem: {
       flexDirection: "row",
@@ -172,6 +173,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.text,
+      textTransform: "capitalize",
     },
     businessAddress: {
       fontSize: fontSize.size14,
