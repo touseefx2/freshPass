@@ -619,7 +619,7 @@
   "ok": "OK",
   "closeAiProcessAlertMessage": "Your AI process is still running. You can go to the AI requests screen to view results.",
   "goToAiRequestsList": "Go to AI requests list",
-  "aiRequests": "AI Requests",
+  "aiRequests": "Requests",
   "jobId": "Job ID",
   "aiResults": "AI Result",
   "noDataFound": "No data found",
