@@ -657,10 +657,6 @@ const AiChatBot: React.FC = () => {
 
   let VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
   if (!isGuest && accessToken) {
-    // Android WebSocket rejects URLs with | (IllegalArgumentException); iOS accepts raw token.
-    // On Android we encode the JWT so "|" becomes "%7c". Backend MUST decode the user_token
-    // query param (e.g. decodeURIComponent) before validating the JWT, else auth fails and
-    // voice from user may be ignored (connection can still open and agent audio play).
     const tokenForUrl =
       Platform.OS === "android" ? encodeURIComponent(accessToken) : accessToken;
     const separator = VOICE_AGENT_WS_URL.includes("?") ? "&" : "?";

@@ -92,17 +92,27 @@ export const VoiceReceptionistContent: React.FC<
 
   const drainSendQueue = useCallback(() => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      if (sendQueueRef.current.length > 0) {
+        console.log("[VoiceReceptionist] drainSendQueue: WS not open, skipping. readyState=", ws?.readyState ?? "null");
+      }
+      return;
+    }
     const queue = sendQueueRef.current;
+    let sentCount = 0;
     while (queue.length > 0) {
       const chunk = queue.shift();
       if (chunk && chunk.byteLength > 0) {
         try {
           ws.send(chunk);
+          sentCount += 1;
         } catch (err) {
-          console.error("Failed to send audio chunk", err);
+          console.error("[VoiceReceptionist] Failed to send audio chunk", err);
         }
       }
+    }
+    if (sentCount > 0) {
+      console.log("[VoiceReceptionist] User voice sent: chunks=", sentCount);
     }
     drainScheduledRef.current = false;
   }, []);
@@ -141,6 +151,7 @@ export const VoiceReceptionistContent: React.FC<
   }, [isListening]);
 
   const disconnectDueToError = useCallback(() => {
+    console.log("[VoiceReceptionist] disconnectDueToError – tearing down");
     setIsListening(false);
     setIsConnected(false);
     setIsStarting(false);
@@ -170,6 +181,7 @@ export const VoiceReceptionistContent: React.FC<
   }, []);
 
   const cleanup = useCallback(() => {
+    console.log("[VoiceReceptionist] cleanup – closing connection and resetting");
     setIsListening(false);
     setIsConnected(false);
     setIsStarting(false);
@@ -397,6 +409,9 @@ export const VoiceReceptionistContent: React.FC<
           }
         }
         if (parsed && typeof parsed === "object" && parsed.type) {
+          const contentPreview = parsed.content ?? parsed.text ?? "";
+          const previewStr = typeof contentPreview === "string" ? contentPreview.slice(0, 80) : JSON.stringify(contentPreview).slice(0, 80);
+          console.log("[VoiceReceptionist] Server message type:", parsed.type, previewStr ? "| " + previewStr + (String(contentPreview).length > 80 ? "..." : "") : "");
           switch (parsed.type) {
             case "ConversationText":
               if (parsed.content) {
@@ -418,11 +433,16 @@ export const VoiceReceptionistContent: React.FC<
             case "UserTranscript":
             case "user_input":
             case "InputTranscript":
+            case "user_transcript":
+            case "input_transcript":
+            case "Transcript":
+            case "transcript":
               if (parsed.content || parsed.text) {
                 const content = String(
                   parsed.content ?? parsed.text ?? "",
                 ).trim();
                 if (content) {
+                  console.log("[VoiceReceptionist] User said (transcript):", content);
                   setConversation((prev) => [
                     ...prev,
                     {
@@ -439,6 +459,7 @@ export const VoiceReceptionistContent: React.FC<
               flushPendingAudio().catch(() => {});
               break;
             default:
+              console.log("[VoiceReceptionist] Server message (unhandled type):", parsed.type, "keys:", Object.keys(parsed));
               break;
           }
           return;
@@ -479,19 +500,23 @@ export const VoiceReceptionistContent: React.FC<
     }
     if (wsRef.current && isConnected) return;
     setError(null);
+    console.log("[VoiceReceptionist] Connecting to WebSocket:", websocketUrl);
     await new Promise<void>((resolve, reject) => {
       try {
         const ws = new WebSocket(websocketUrl);
         wsRef.current = ws;
         ws.onopen = () => {
+          console.log("[VoiceReceptionist] WebSocket OPEN – connected");
           setIsConnected(true);
           resolve();
         };
         ws.onerror = (event: any) => {
+          console.log("[VoiceReceptionist] WebSocket ERROR", event?.message ?? event);
           setError("Unable to connect to voice agent.");
           reject(event);
         };
         ws.onclose = (event: any) => {
+          console.log("[VoiceReceptionist] WebSocket CLOSED – code=", event?.code, "reason=", event?.reason ?? "none", "clean=", event?.wasClean);
           if (event.code === 1008)
             setError("Voice agent authentication failed.");
           else if (event.code === 1006)
@@ -504,6 +529,7 @@ export const VoiceReceptionistContent: React.FC<
         };
         ws.onmessage = handleServerMessage;
       } catch (err) {
+        console.log("[VoiceReceptionist] WebSocket connect failed", err);
         setError("Failed to open voice agent connection.");
         reject(err);
       }
@@ -553,8 +579,12 @@ export const VoiceReceptionistContent: React.FC<
             wsRef.current.readyState !== WebSocket.OPEN ||
             isMicMutedRef.current ||
             isAgentSpeakingRef.current
-          )
+          ) {
+            if (sendQueueRef.current.length === 0 && data?.length > 0) {
+              console.log("[VoiceReceptionist] User voice skipped: wsOpen=", !!wsRef.current && wsRef.current.readyState === WebSocket.OPEN, "micMuted=", isMicMutedRef.current, "agentSpeaking=", isAgentSpeakingRef.current);
+            }
             return;
+          }
           try {
             const chunk = Buffer.from(data, "base64");
             if (chunk.byteLength === 0) return;
@@ -565,11 +595,14 @@ export const VoiceReceptionistContent: React.FC<
             sendQueueRef.current.push(arrayBuffer);
             drainSendQueue();
           } catch (err) {
-            console.error("Failed to queue audio chunk", err);
+            console.error("[VoiceReceptionist] Failed to queue audio chunk", err);
           }
         });
         recorderInitializedRef.current = true;
       }
+      console.log("[VoiceReceptionist] Recorder started – user voice will be sent to server");
+      setIsMicMuted(false);
+      isMicMutedRef.current = false;
       setIsListening(true);
       setElapsedSeconds(0);
       setError(null);
@@ -584,17 +617,23 @@ export const VoiceReceptionistContent: React.FC<
 
   const handleStart = useCallback(async () => {
     if (isStarting || isListening) return;
+    console.log("[VoiceReceptionist] handleStart – user tapped start");
     setIsStarting(true);
     try {
       await connectWebSocket();
       await startRecorder();
+      console.log("[VoiceReceptionist] handleStart – connected and recording");
     } catch {
+      console.log("[VoiceReceptionist] handleStart – failed");
     } finally {
       setIsStarting(false);
     }
   }, [connectWebSocket, isListening, isStarting, startRecorder]);
 
-  const handleStop = useCallback(() => cleanup(), [cleanup]);
+  const handleStop = useCallback(() => {
+    console.log("[VoiceReceptionist] handleStop – user ended call");
+    cleanup();
+  }, [cleanup]);
 
   const handleRetry = useCallback(async () => {
     if (isStarting || isListening) return;
