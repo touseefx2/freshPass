@@ -657,13 +657,13 @@ const AiChatBot: React.FC = () => {
 
   let VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
   if (!isGuest && accessToken) {
-    const tokenForUrl =
-      Platform.OS === "android" ? encodeURIComponent(accessToken) : accessToken;
+    const tokenForUrl = encodeURIComponent(accessToken);
+    // Platform.OS === "android" ? encodeURIComponent(accessToken) : accessToken;
     const separator = VOICE_AGENT_WS_URL.includes("?") ? "&" : "?";
     VOICE_AGENT_WS_URL = `${VOICE_AGENT_WS_URL}${separator}user_token=${tokenForUrl}`;
   }
 
-  console.log("VOICE_AGENT_WS_URL : ", VOICE_AGENT_WS_URL);
+  // console.log("VOICE_AGENT_WS_URL : ", VOICE_AGENT_WS_URL);
 
   // Gentle float (up then down) when chat is closed
   useEffect(() => {
