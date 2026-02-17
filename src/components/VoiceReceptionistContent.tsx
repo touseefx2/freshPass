@@ -796,7 +796,9 @@ export const VoiceReceptionistContent: React.FC<
   }, [cleanup]);
 
   const handleRetry = useCallback(async () => {
-    if (isStarting || isListening) return;
+    if (isStarting) return;
+    // End current call first (disconnect, stop recorder, reset state)
+    cleanup();
     setError(null);
     setConversation([]);
     setHasReceivedFirstAgentResponse(false);
@@ -809,7 +811,7 @@ export const VoiceReceptionistContent: React.FC<
     } finally {
       setIsStarting(false);
     }
-  }, [connectWebSocket, isListening, isStarting, startRecorder]);
+  }, [cleanup, connectWebSocket, isStarting, startRecorder]);
 
   const statusText = (() => {
     if (isStarting) return "Connecting...";
@@ -817,12 +819,12 @@ export const VoiceReceptionistContent: React.FC<
     switch (agentStatus) {
       case "connecting":
         return "Connecting...";
-      case "listening":
+      case "speaking":
         return "Listening...";
+      case "listening":
+        return "Now you can speak";
       case "thinking":
         return "Processing...";
-      case "speaking":
-        return "Agent is speaking...";
       case "idle":
       default:
         if (isListening) return "Now you can speak";
