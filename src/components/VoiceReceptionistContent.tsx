@@ -63,11 +63,14 @@ export const VoiceReceptionistContent: React.FC<
   const wsRef = useRef<WebSocket | null>(null);
   const recorderInitializedRef = useRef(false);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const preloadedNextRef = useRef<{ sound: Audio.Sound; uri: string } | null>(
+    null,
+  );
   const isPlayingRef = useRef(false);
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  const FLUSH_SAMPLE_THRESHOLD = 16000 * 1;
+  const FLUSH_SAMPLE_THRESHOLD = 16000 * 2;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
   const isListeningRef = useRef(false);
@@ -198,6 +201,12 @@ export const VoiceReceptionistContent: React.FC<
       if (soundRef.current) soundRef.current.unloadAsync();
     } catch {}
     soundRef.current = null;
+    try {
+      if (preloadedNextRef.current) {
+        preloadedNextRef.current.sound.unloadAsync().catch(() => {});
+      }
+    } catch {}
+    preloadedNextRef.current = null;
     audioQueueRef.current = [];
     sendQueueRef.current = [];
     drainScheduledRef.current = false;
@@ -241,6 +250,12 @@ export const VoiceReceptionistContent: React.FC<
       if (soundRef.current) soundRef.current.unloadAsync();
     } catch {}
     soundRef.current = null;
+    try {
+      if (preloadedNextRef.current) {
+        preloadedNextRef.current.sound.unloadAsync().catch(() => {});
+      }
+    } catch {}
+    preloadedNextRef.current = null;
     audioQueueRef.current = [];
     sendQueueRef.current = [];
     drainScheduledRef.current = false;
@@ -292,43 +307,102 @@ export const VoiceReceptionistContent: React.FC<
 
   const playNextInQueue = useCallback(async () => {
     if (isPlayingRef.current) return;
-    const nextUri = audioQueueRef.current.shift();
-    if (!nextUri) {
-      await flushPendingAudio();
-      if (isPlayingRef.current || audioQueueRef.current.length > 0) {
+    let sound: Audio.Sound;
+    let nextUri: string | null = null;
+    let wasPreloaded = false;
+
+    if (preloadedNextRef.current) {
+      const pre = preloadedNextRef.current;
+      preloadedNextRef.current = null;
+      if (
+        audioQueueRef.current.length > 0 &&
+        audioQueueRef.current[0] === pre.uri
+      ) {
+        audioQueueRef.current.shift();
+      }
+      sound = pre.sound;
+      nextUri = pre.uri;
+      wasPreloaded = true;
+    } else {
+      nextUri = audioQueueRef.current.shift() ?? null;
+      if (!nextUri) {
+        await flushPendingAudio();
+        if (isPlayingRef.current || audioQueueRef.current.length > 0) {
+          return;
+        }
+        if (!agentAudioDoneForTurnRef.current) {
+          if (agentDoneFallbackTimeoutRef.current)
+            clearTimeout(agentDoneFallbackTimeoutRef.current);
+          agentDoneFallbackTimeoutRef.current = setTimeout(() => {
+            agentDoneFallbackTimeoutRef.current = null;
+            if (
+              !isPlayingRef.current &&
+              audioQueueRef.current.length === 0 &&
+              pendingSamplesRef.current === 0
+            ) {
+              agentAudioDoneForTurnRef.current = true;
+              playNextInQueue().catch(() => {});
+            }
+          }, 2000);
+          return;
+        }
+        isPlayingRef.current = false;
+        setIsAgentSpeaking(false);
+        flushPendingAgentTextRef.current();
         return;
       }
-      if (!agentAudioDoneForTurnRef.current) {
-        if (agentDoneFallbackTimeoutRef.current)
-          clearTimeout(agentDoneFallbackTimeoutRef.current);
-        agentDoneFallbackTimeoutRef.current = setTimeout(() => {
-          agentDoneFallbackTimeoutRef.current = null;
-          if (
-            !isPlayingRef.current &&
-            audioQueueRef.current.length === 0 &&
-            pendingSamplesRef.current === 0
-          ) {
-            agentAudioDoneForTurnRef.current = true;
-            playNextInQueue().catch(() => {});
-          }
-        }, 2000);
+      try {
+        const result = await Audio.Sound.createAsync(
+          { uri: nextUri },
+          { shouldPlay: true, progressUpdateIntervalMillis: 100 },
+        );
+        sound = result.sound;
+      } catch {
+        isPlayingRef.current = false;
+        try {
+          const file = new File(nextUri);
+          file.delete();
+        } catch {}
+        playNextInQueue().catch(() => {});
         return;
       }
-      isPlayingRef.current = false;
-      setIsAgentSpeaking(false);
-      flushPendingAgentTextRef.current();
-      return;
     }
+
+    const uriToPlay = nextUri!;
     try {
       isPlayingRef.current = true;
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: nextUri },
-        { shouldPlay: true, progressUpdateIntervalMillis: 50 },
-      );
       soundRef.current = sound;
       await sound.setVolumeAsync(isSpeakerMutedRef.current ? 0 : 1);
+      if (wasPreloaded) {
+        try {
+          await sound.playAsync();
+        } catch {}
+      }
       sound.setOnPlaybackStatusUpdate(async (status) => {
         if (!status.isLoaded) return;
+        const pos = status.positionMillis ?? 0;
+        const dur = status.durationMillis ?? 1;
+        const remaining = dur - pos;
+        if (
+          remaining > 0 &&
+          remaining < 300 &&
+          audioQueueRef.current.length > 0 &&
+          !preloadedNextRef.current
+        ) {
+          const nextUriToPreload = audioQueueRef.current[0];
+          Audio.Sound.createAsync(
+            { uri: nextUriToPreload },
+            { shouldPlay: false },
+          )
+            .then(({ sound: s }) => {
+              if (!preloadedNextRef.current) {
+                preloadedNextRef.current = { sound: s, uri: nextUriToPreload };
+              } else {
+                s.unloadAsync().catch(() => {});
+              }
+            })
+            .catch(() => {});
+        }
         if (status.didJustFinish) {
           try {
             await sound.unloadAsync();
@@ -336,7 +410,7 @@ export const VoiceReceptionistContent: React.FC<
           soundRef.current = null;
           isPlayingRef.current = false;
           try {
-            const file = new File(nextUri);
+            const file = new File(uriToPlay);
             file.delete();
           } catch {}
           playNextInQueue().catch(() => {});
@@ -344,8 +418,9 @@ export const VoiceReceptionistContent: React.FC<
       });
     } catch {
       isPlayingRef.current = false;
+      soundRef.current = null;
       try {
-        const file = new File(nextUri);
+        const file = new File(uriToPlay);
         file.delete();
       } catch {}
       playNextInQueue().catch(() => {});
@@ -539,6 +614,7 @@ export const VoiceReceptionistContent: React.FC<
               break;
             case "AgentAudioDone":
               agentAudioDoneForTurnRef.current = true;
+              setIsAgentSpeaking(false);
               flushPendingAudio().catch(() => {});
               setTimeout(() => {
                 setAgentStatus(isListeningRef.current ? "listening" : "idle");
@@ -610,6 +686,8 @@ export const VoiceReceptionistContent: React.FC<
           console.log("[VoiceReceptionist] WebSocket OPEN – connected");
           setIsConnected(true);
           setAgentStatus("idle");
+          isAgentSpeakingRef.current = true;
+          setIsAgentSpeaking(true);
           resolve();
         };
         ws.onerror = (event: any) => {
@@ -816,15 +894,16 @@ export const VoiceReceptionistContent: React.FC<
   const statusText = (() => {
     if (isStarting) return "Connecting...";
     if (isConnected && !hasReceivedFirstAgentResponse) return "Connecting...";
+    if (isAgentSpeaking) return "Listening...";
     switch (agentStatus) {
       case "connecting":
         return "Connecting...";
-      case "speaking":
-        return "Listening...";
       case "listening":
         return "Now you can speak";
       case "thinking":
         return "Processing...";
+      case "speaking":
+        return "Listening...";
       case "idle":
       default:
         if (isListening) return "Now you can speak";
