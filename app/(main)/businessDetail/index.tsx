@@ -1515,7 +1515,7 @@ export default function BusinessDetailScreen() {
     return null;
   }, [businessData?.owner?.phone, businessData?.owner?.country_code]);
 
-  const businessName = businessData?.title || "Ra Benjamin Styles LLC";
+  const businessName = businessData?.title || "----";
   const businessLatitude = businessData?.latitude
     ? parseFloat(businessData.latitude)
     : null;

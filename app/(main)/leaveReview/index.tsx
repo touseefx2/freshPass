@@ -84,8 +84,7 @@ export default function LeaveReview() {
   const businessName = params.business_name || "Business Name";
   const businessAddress = params.business_address || "Business Address";
   const rawLogo = params.business_logo_url?.trim() || "";
-  const defaultLogo =
-    process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+  const defaultLogo = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
   const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
   const businessLogoUrl = !rawLogo
     ? defaultLogo
@@ -259,8 +258,12 @@ export default function LeaveReview() {
     }
   };
 
+  // const handleExploreMore = useCallback(() => {
+  //   router.back();
+  // }, [router]);
+
   const handleExploreMore = useCallback(() => {
-    router.back();
+    router.navigate("/(main)/dashboard/(explore)" as any);
   }, [router]);
 
   const renderRatingScreen = () => (

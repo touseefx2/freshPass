@@ -597,32 +597,42 @@ export default function BookingDetail() {
   };
 
   // Fetch business details by business_id (same as businessDetail) for modal and display
-  useEffect(() => {
+  const fetchBusinessDetails = async () => {
     if (!businessIdParam) return;
-    const fetchBusinessDetails = async () => {
-      try {
-        const response = (await ApiService.get(
-          businessEndpoints.businessDetails(businessIdParam),
-        )) as { success?: boolean; data?: { business?: any } };
-        const b = response?.data?.business;
-        if (response?.success && b) {
-          const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-          const defaultLogo =
-            process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
-          setBusinessData({
-            businessName: b?.title ?? "",
-            businessAddress: b?.address ?? "",
-            businessLogoUrl: b?.logo_url
-              ? `${baseUrl}${b.logo_url}`
-              : defaultLogo,
-            businessLatitude: b?.latitude?.toString() ?? "",
-            businessLongitude: b?.longitude?.toString() ?? "",
-          });
-        }
-      } catch (e) {
-        Logger.error("BookingDetail fetchBusinessDetails:", e);
+    try {
+      const response = (await ApiService.get(
+        businessEndpoints.businessDetails(businessIdParam),
+      )) as any;
+      // Handle both: full Axios response (response.data.data.business) or body only (response.data.business)
+      const body = response?.data ?? response;
+      const b =
+        body?.data?.business ??
+        body?.business ??
+        (body && typeof body === "object" && "title" in body ? body : null);
+      if (b) {
+        const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
+        const defaultLogo = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+        const rawLogo = b?.logo_url?.trim() || "";
+        const businessLogoUrlResolved = !rawLogo
+          ? defaultLogo
+          : rawLogo.startsWith("http://") || rawLogo.startsWith("https://")
+            ? rawLogo
+            : `${baseUrl}${rawLogo}`;
+
+        setBusinessData({
+          businessName: b?.title ?? "",
+          businessAddress: b?.address ?? "",
+          businessLogoUrl: businessLogoUrlResolved,
+          businessLatitude: b?.latitude?.toString() ?? "",
+          businessLongitude: b?.longitude?.toString() ?? "",
+        });
       }
-    };
+    } catch (e) {
+      Logger.error("BookingDetail fetchBusinessDetails:", e);
+    }
+  };
+
+  useEffect(() => {
     fetchBusinessDetails();
   }, [businessIdParam]);
 
@@ -893,11 +903,7 @@ export default function BookingDetail() {
               <Text style={styles.modalTitleAccent}>{businessName}?</Text>
             </Text>
             <Text style={styles.modalBody}>
-              Your feedback helps{" "}
-              <Text style={styles.modalBodyBold}>
-                {selectedStaffMember?.name || "the team"}
-              </Text>{" "}
-              and helps other customers find the best service.
+              Your feedback helps other customers find the best service.
             </Text>
             <View style={styles.modalButtonsRow}>
               <TouchableOpacity
