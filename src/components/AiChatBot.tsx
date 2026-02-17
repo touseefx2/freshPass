@@ -152,8 +152,11 @@ const createStyles = (
       paddingHorizontal: moderateWidthScale(14),
       backgroundColor: theme.darkGreenLight,
       borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.white70,
+      borderWidth: 3,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.orangeBrown,
+      borderBottomColor: theme.orangeBrown,
       minWidth: widthScale(140),
       // 3D raised effect – stronger shadow
       shadowColor: theme.shadow,
