@@ -3147,7 +3147,7 @@ export default function BusinessDetailScreen() {
           )}
 
           {/* Write a Review Button */}
-          {canWriteReview && (
+          {/* {canWriteReview && (
             <View style={styles.writeReviewButtonContainer}>
               <Button
                 backgroundColor={theme.darkGreen}
@@ -3172,7 +3172,7 @@ export default function BusinessDetailScreen() {
                 }}
               />
             </View>
-          )}
+          )} */}
 
           {/* Show All Reviews Button */}
           {hasMoreReviews && !reviewsError && (
