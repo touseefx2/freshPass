@@ -45,6 +45,11 @@ export type VoiceReceptionistContentProps = {
   websocketUrl: string;
 };
 
+/**
+ * Standard flow: Connect → Agent speaks first (greeting + TTS) → User speaks →
+ * Agent responds (text + TTS) → repeat. Mic is sent only when not muted and not
+ * during agent TTS so we don't talk over the agent.
+ */
 export const VoiceReceptionistContent: React.FC<
   VoiceReceptionistContentProps
 > = ({ theme, styles, websocketUrl }) => {
@@ -81,9 +86,6 @@ export const VoiceReceptionistContent: React.FC<
   const sendQueueRef = useRef<ArrayBuffer[]>([]);
   const drainScheduledRef = useRef(false);
   const isAgentSpeakingRef = useRef(false);
-  const pendingAgentTextBufferRef = useRef<{ role: string; content: string }[]>(
-    [],
-  );
   const pendingAudioBuffersRef = useRef<ArrayBuffer[]>([]);
   const currentTurnTextShownRef = useRef(false);
   const flushPendingAgentTextRef = useRef<() => void>(() => {});
@@ -92,6 +94,10 @@ export const VoiceReceptionistContent: React.FC<
     typeof setTimeout
   > | null>(null);
   const conversationScrollRef = useRef<ScrollView>(null);
+  const lastAgentContentRef = useRef<string | null>(null);
+  const lastUserTranscriptRef = useRef<string | null>(null);
+  const userMicUnblockAfterRef = useRef(0);
+  const ECHO_GUARD_MS = 1000;
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -105,39 +111,19 @@ export const VoiceReceptionistContent: React.FC<
   const drainSendQueue = useCallback(() => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
-      if (sendQueueRef.current.length > 0) {
-        console.log(
-          "[VoiceReceptionist] drainSendQueue: WS not open, skipping. readyState=",
-          ws?.readyState ?? "null",
-        );
-      }
+      drainScheduledRef.current = false;
       return;
     }
     const queue = sendQueueRef.current;
-    let sentCount = 0;
-    // Send all queued chunks immediately (don't artificially limit)
     while (queue.length > 0) {
       const chunk = queue.shift();
       if (chunk && chunk.byteLength > 0) {
         try {
           ws.send(chunk);
-          sentCount += 1;
-        } catch (err) {
-          console.error(
-            "[VoiceReceptionist] Failed to send audio chunk from queue",
-            err,
-          );
-          // If send fails, stop draining to avoid spamming errors
+        } catch {
           break;
         }
       }
-    }
-    if (sentCount > 0) {
-      console.log(
-        "[VoiceReceptionist] Drained queue: sent",
-        sentCount,
-        "chunks",
-      );
     }
     drainScheduledRef.current = false;
   }, []);
@@ -176,10 +162,10 @@ export const VoiceReceptionistContent: React.FC<
   }, [isListening]);
 
   const disconnectDueToError = useCallback(() => {
-    console.log("[VoiceReceptionist] disconnectDueToError – tearing down");
     setIsListening(false);
     setIsConnected(false);
     setIsStarting(false);
+    isAgentSpeakingRef.current = false;
     setIsAgentSpeaking(false);
     setAgentStatus("idle");
     isPlayingRef.current = false;
@@ -189,10 +175,12 @@ export const VoiceReceptionistContent: React.FC<
     wsRef.current = null;
     pendingPcmChunksRef.current = [];
     pendingSamplesRef.current = 0;
-    pendingAgentTextBufferRef.current = [];
     pendingAudioBuffersRef.current = [];
     currentTurnTextShownRef.current = true;
     agentAudioDoneForTurnRef.current = false;
+    lastAgentContentRef.current = null;
+    lastUserTranscriptRef.current = null;
+    userMicUnblockAfterRef.current = 0;
     if (agentDoneFallbackTimeoutRef.current) {
       clearTimeout(agentDoneFallbackTimeoutRef.current);
       agentDoneFallbackTimeoutRef.current = null;
@@ -213,12 +201,10 @@ export const VoiceReceptionistContent: React.FC<
   }, []);
 
   const cleanup = useCallback(() => {
-    console.log(
-      "[VoiceReceptionist] cleanup – closing connection and resetting",
-    );
     setIsListening(false);
     setIsConnected(false);
     setIsStarting(false);
+    isAgentSpeakingRef.current = false;
     setIsAgentSpeaking(false);
     setIsMicMuted(false);
     setIsSpeakerMuted(false);
@@ -238,10 +224,12 @@ export const VoiceReceptionistContent: React.FC<
     wsRef.current = null;
     pendingPcmChunksRef.current = [];
     pendingSamplesRef.current = 0;
-    pendingAgentTextBufferRef.current = [];
     pendingAudioBuffersRef.current = [];
     currentTurnTextShownRef.current = true;
     agentAudioDoneForTurnRef.current = false;
+    lastAgentContentRef.current = null;
+    lastUserTranscriptRef.current = null;
+    userMicUnblockAfterRef.current = 0;
     if (agentDoneFallbackTimeoutRef.current) {
       clearTimeout(agentDoneFallbackTimeoutRef.current);
       agentDoneFallbackTimeoutRef.current = null;
@@ -288,6 +276,7 @@ export const VoiceReceptionistContent: React.FC<
         if (soundRef.current) soundRef.current.unloadAsync();
       } catch {}
       soundRef.current = null;
+      isAgentSpeakingRef.current = false;
       setIsAgentSpeaking(false);
     }
   }, [isSpeakerMuted]);
@@ -347,10 +336,13 @@ export const VoiceReceptionistContent: React.FC<
           return;
         }
         isPlayingRef.current = false;
+        isAgentSpeakingRef.current = false;
         setIsAgentSpeaking(false);
+        userMicUnblockAfterRef.current = Date.now() + ECHO_GUARD_MS;
         flushPendingAgentTextRef.current();
         return;
       }
+      isPlayingRef.current = true;
       try {
         const result = await Audio.Sound.createAsync(
           { uri: nextUri },
@@ -427,60 +419,68 @@ export const VoiceReceptionistContent: React.FC<
     }
   }, []);
 
-  const flushPendingAudio = useCallback(async () => {
-    const totalSamples = pendingSamplesRef.current;
-    if (!totalSamples || pendingPcmChunksRef.current.length === 0) return;
-    try {
-      const merged = new Int16Array(totalSamples);
-      let offset = 0;
-      for (const chunk of pendingPcmChunksRef.current) {
-        merged.set(chunk, offset);
-        offset += chunk.length;
-      }
-      pendingPcmChunksRef.current = [];
-      pendingSamplesRef.current = 0;
-      const wavHeaderSize = 44;
-      const dataLength = merged.length * 2;
-      const totalSize = wavHeaderSize + dataLength;
-      const wavBuffer = new ArrayBuffer(totalSize);
-      const view = new DataView(wavBuffer);
-      const u8 = new Uint8Array(wavBuffer);
-      view.setUint32(0, 0x52494646, false);
-      view.setUint32(4, 36 + dataLength, true);
-      view.setUint32(8, 0x57415645, false);
-      view.setUint32(12, 0x666d7420, false);
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, 1, true);
-      view.setUint32(24, 16000, true);
-      view.setUint32(28, 16000 * 2, true);
-      view.setUint16(32, 2, true);
-      view.setUint16(34, 16, true);
-      view.setUint32(36, 0x64617461, false);
-      view.setUint32(40, dataLength, true);
-      u8.set(new Uint8Array(merged.buffer), wavHeaderSize);
-      const base64 = Buffer.from(wavBuffer).toString("base64");
-      const cacheDir = new Directory(Paths.cache, "voice-agent");
+  const flushChunksToWavAndQueue = useCallback(
+    (chunks: Int16Array[], totalSamples: number) => {
+      if (!totalSamples || chunks.length === 0) return;
       try {
-        cacheDir.create({ intermediates: true, idempotent: true });
-      } catch {}
-      const fileName = `voice-agent-${Date.now()}-${Math.random().toString(36).slice(2)}.wav`;
-      const file = cacheDir.createFile(fileName, "audio/wav");
-      file.write(base64, { encoding: "base64" as any });
-      if (agentDoneFallbackTimeoutRef.current) {
-        clearTimeout(agentDoneFallbackTimeoutRef.current);
-        agentDoneFallbackTimeoutRef.current = null;
+        const merged = new Int16Array(totalSamples);
+        let offset = 0;
+        for (const chunk of chunks) {
+          merged.set(chunk, offset);
+          offset += chunk.length;
+        }
+        const wavHeaderSize = 44;
+        const dataLength = merged.length * 2;
+        const totalSize = wavHeaderSize + dataLength;
+        const wavBuffer = new ArrayBuffer(totalSize);
+        const view = new DataView(wavBuffer);
+        const u8 = new Uint8Array(wavBuffer);
+        view.setUint32(0, 0x52494646, false);
+        view.setUint32(4, 36 + dataLength, true);
+        view.setUint32(8, 0x57415645, false);
+        view.setUint32(12, 0x666d7420, false);
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true);
+        view.setUint16(22, 1, true);
+        view.setUint32(24, 16000, true);
+        view.setUint32(28, 16000 * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        view.setUint32(36, 0x64617461, false);
+        view.setUint32(40, dataLength, true);
+        u8.set(new Uint8Array(merged.buffer), wavHeaderSize);
+        const base64 = Buffer.from(wavBuffer).toString("base64");
+        const cacheDir = new Directory(Paths.cache, "voice-agent");
+        try {
+          cacheDir.create({ intermediates: true, idempotent: true });
+        } catch {}
+        const fileName = `voice-agent-${Date.now()}-${Math.random().toString(36).slice(2)}.wav`;
+        const file = cacheDir.createFile(fileName, "audio/wav");
+        file.write(base64, { encoding: "base64" as any });
+        if (agentDoneFallbackTimeoutRef.current) {
+          clearTimeout(agentDoneFallbackTimeoutRef.current);
+          agentDoneFallbackTimeoutRef.current = null;
+        }
+        audioQueueRef.current.push(file.uri);
+        currentTurnTextShownRef.current = false;
+        isAgentSpeakingRef.current = true;
+        setIsAgentSpeaking(true);
+        playNextInQueue().catch(() => {});
+      } catch (err) {
+        console.error("Failed to flush voice agent audio buffer", err);
       }
-      audioQueueRef.current.push(file.uri);
-      currentTurnTextShownRef.current = false;
-      setIsAgentSpeaking(true);
-      playNextInQueue().catch(() => {});
-    } catch (err) {
-      console.error("Failed to flush voice agent audio buffer", err);
-      pendingPcmChunksRef.current = [];
-      pendingSamplesRef.current = 0;
-    }
-  }, [playNextInQueue]);
+    },
+    [playNextInQueue],
+  );
+
+  const flushPendingAudio = useCallback(async () => {
+    const chunks = pendingPcmChunksRef.current;
+    const totalSamples = pendingSamplesRef.current;
+    if (!totalSamples || chunks.length === 0) return;
+    pendingPcmChunksRef.current = [];
+    pendingSamplesRef.current = 0;
+    flushChunksToWavAndQueue(chunks, totalSamples);
+  }, [flushChunksToWavAndQueue]);
 
   const enqueuePcmChunk = useCallback(
     (buffer: ArrayBuffer) => {
@@ -526,32 +526,25 @@ export const VoiceReceptionistContent: React.FC<
           }
         }
         if (parsed && typeof parsed === "object" && parsed.type) {
-          const contentPreview = parsed.content ?? parsed.text ?? "";
-          const previewStr =
-            typeof contentPreview === "string"
-              ? contentPreview.slice(0, 80)
-              : JSON.stringify(contentPreview).slice(0, 80);
-          console.log(
-            "[VoiceReceptionist] Server message type:",
-            parsed.type,
-            previewStr
-              ? "| " +
-                  previewStr +
-                  (String(contentPreview).length > 80 ? "..." : "")
-              : "",
-          );
           switch (parsed.type) {
             case "Welcome":
             case "SettingsApplied":
-              // No-op, but we mirror web widget logs / types
+              break;
+            case "History":
               break;
             case "ConversationText":
               if (parsed.content) {
-                agentAudioDoneForTurnRef.current = false;
-                setHasReceivedFirstAgentResponse(true);
                 const role =
                   typeof parsed.role === "string" ? parsed.role : "assistant";
-                const content = String(parsed.content);
+                const content = String(parsed.content).trim();
+                if (!content) break;
+                if (lastAgentContentRef.current === content) break;
+                lastAgentContentRef.current = content;
+                lastUserTranscriptRef.current = null;
+                agentAudioDoneForTurnRef.current = false;
+                isAgentSpeakingRef.current = true;
+                setIsAgentSpeaking(true);
+                setHasReceivedFirstAgentResponse(true);
                 setConversation((prev) => [
                   ...prev,
                   { role, content, timestamp: Date.now() },
@@ -559,14 +552,22 @@ export const VoiceReceptionistContent: React.FC<
                 currentTurnTextShownRef.current = true;
                 const audioBufs = pendingAudioBuffersRef.current;
                 pendingAudioBuffersRef.current = [];
+                // Snapshot and clear refs immediately so back-to-back ConversationText messages
+                // don't merge into one WAV (pehle 1 suna, phir 2).
+                const prevChunks = pendingPcmChunksRef.current;
+                const prevSamples = pendingSamplesRef.current;
+                pendingPcmChunksRef.current = [];
+                pendingSamplesRef.current = 0;
+                flushChunksToWavAndQueue(prevChunks, prevSamples);
                 for (const arr of audioBufs) enqueuePcmChunk(arr);
               }
               break;
             case "UserStartedSpeaking":
             case "user_started_speaking":
-              // User started talking – stop any remaining TTS so we don't talk over them
               setAgentStatus("listening");
+              isAgentSpeakingRef.current = false;
               setIsAgentSpeaking(false);
+              userMicUnblockAfterRef.current = 0;
               audioQueueRef.current = [];
               pendingPcmChunksRef.current = [];
               pendingSamplesRef.current = 0;
@@ -583,6 +584,7 @@ export const VoiceReceptionistContent: React.FC<
             case "AgentStartedSpeaking":
             case "agent_started_speaking":
               setAgentStatus("speaking");
+              isAgentSpeakingRef.current = true;
               setIsAgentSpeaking(true);
               break;
             case "UserTranscript":
@@ -596,11 +598,9 @@ export const VoiceReceptionistContent: React.FC<
                 const content = String(
                   parsed.content ?? parsed.text ?? "",
                 ).trim();
-                if (content) {
-                  console.log(
-                    "[VoiceReceptionist] User said (transcript):",
-                    content,
-                  );
+                if (content && lastUserTranscriptRef.current !== content) {
+                  lastUserTranscriptRef.current = content;
+                  lastAgentContentRef.current = null;
                   setConversation((prev) => [
                     ...prev,
                     {
@@ -614,7 +614,9 @@ export const VoiceReceptionistContent: React.FC<
               break;
             case "AgentAudioDone":
               agentAudioDoneForTurnRef.current = true;
+              isAgentSpeakingRef.current = false;
               setIsAgentSpeaking(false);
+              userMicUnblockAfterRef.current = Date.now() + ECHO_GUARD_MS;
               flushPendingAudio().catch(() => {});
               setTimeout(() => {
                 setAgentStatus(isListeningRef.current ? "listening" : "idle");
@@ -630,12 +632,6 @@ export const VoiceReceptionistContent: React.FC<
               break;
             }
             default:
-              console.log(
-                "[VoiceReceptionist] Server message (unhandled type):",
-                parsed.type,
-                "keys:",
-                Object.keys(parsed),
-              );
               break;
           }
           return;
@@ -644,6 +640,10 @@ export const VoiceReceptionistContent: React.FC<
           const buf = Buffer.from(trimmed, "base64");
           if (buf.byteLength > 0) {
             setHasReceivedFirstAgentResponse(true);
+            if (!isAgentSpeakingRef.current) {
+              isAgentSpeakingRef.current = true;
+              setIsAgentSpeaking(true);
+            }
             const arr = buf.buffer.slice(
               buf.byteOffset,
               buf.byteOffset + buf.byteLength,
@@ -659,6 +659,10 @@ export const VoiceReceptionistContent: React.FC<
         }
       } else if (data instanceof ArrayBuffer) {
         setHasReceivedFirstAgentResponse(true);
+        if (!isAgentSpeakingRef.current) {
+          isAgentSpeakingRef.current = true;
+          setIsAgentSpeaking(true);
+        }
         if (!currentTurnTextShownRef.current) {
           pendingAudioBuffersRef.current.push(data);
         } else {
@@ -666,7 +670,7 @@ export const VoiceReceptionistContent: React.FC<
         }
       }
     },
-    [enqueuePcmChunk, flushPendingAudio],
+    [enqueuePcmChunk, flushChunksToWavAndQueue, flushPendingAudio],
   );
 
   const connectWebSocket = useCallback(async () => {
@@ -677,17 +681,15 @@ export const VoiceReceptionistContent: React.FC<
     if (wsRef.current && isConnected) return;
     setError(null);
     setAgentStatus("connecting");
-    console.log("[VoiceReceptionist] Connecting to WebSocket:", websocketUrl);
     await new Promise<void>((resolve, reject) => {
       try {
         const ws = new WebSocket(websocketUrl);
         wsRef.current = ws;
         ws.onopen = () => {
-          console.log("[VoiceReceptionist] WebSocket OPEN – connected");
           setIsConnected(true);
           setAgentStatus("idle");
-          isAgentSpeakingRef.current = true;
-          setIsAgentSpeaking(true);
+          isAgentSpeakingRef.current = false;
+          setIsAgentSpeaking(false);
           resolve();
         };
         ws.onerror = (event: any) => {
@@ -699,15 +701,6 @@ export const VoiceReceptionistContent: React.FC<
           reject(event);
         };
         ws.onclose = (event: any) => {
-          console.log(
-            "[VoiceReceptionist] WebSocket CLOSED – code=",
-            event?.code,
-            "reason=",
-            event?.reason ?? "none",
-            "clean=",
-            event?.wasClean,
-          );
-          // More specific error handling based on close code
           if (event.code === 1008) {
             setError("Voice agent authentication failed.");
           } else if (event.code === 1001) {
@@ -777,18 +770,9 @@ export const VoiceReceptionistContent: React.FC<
             !wsRef.current ||
             wsRef.current.readyState !== WebSocket.OPEN ||
             isMicMutedRef.current ||
-            isAgentSpeakingRef.current
+            isAgentSpeakingRef.current ||
+            Date.now() < userMicUnblockAfterRef.current
           ) {
-            if (sendQueueRef.current.length === 0 && data?.length > 0) {
-              console.log(
-                "[VoiceReceptionist] User voice skipped: wsOpen=",
-                !!wsRef.current && wsRef.current.readyState === WebSocket.OPEN,
-                "micMuted=",
-                isMicMutedRef.current,
-                "agentSpeaking=",
-                isAgentSpeakingRef.current,
-              );
-            }
             return;
           }
           try {
@@ -804,14 +788,6 @@ export const VoiceReceptionistContent: React.FC<
             if (ws && ws.readyState === WebSocket.OPEN) {
               try {
                 ws.send(arrayBuffer);
-                // Log occasionally so we know chunks are flowing without spamming logs.
-                if (Math.random() < 0.01) {
-                  console.log(
-                    "[VoiceReceptionist] Audio chunk sent directly:",
-                    arrayBuffer.byteLength,
-                    "bytes",
-                  );
-                }
               } catch (err) {
                 console.error(
                   "[VoiceReceptionist] Failed to send audio chunk directly",
@@ -835,9 +811,6 @@ export const VoiceReceptionistContent: React.FC<
         });
         recorderInitializedRef.current = true;
       }
-      console.log(
-        "[VoiceReceptionist] Recorder started – user voice will be sent to server",
-      );
       setIsMicMuted(false);
       isMicMutedRef.current = false;
       setIsListening(true);
@@ -855,21 +828,18 @@ export const VoiceReceptionistContent: React.FC<
 
   const handleStart = useCallback(async () => {
     if (isStarting || isListening) return;
-    console.log("[VoiceReceptionist] handleStart – user tapped start");
     setIsStarting(true);
     try {
       await connectWebSocket();
       await startRecorder();
-      console.log("[VoiceReceptionist] handleStart – connected and recording");
     } catch {
-      console.log("[VoiceReceptionist] handleStart – failed");
+      // Error set by connectWebSocket or startRecorder
     } finally {
       setIsStarting(false);
     }
   }, [connectWebSocket, isListening, isStarting, startRecorder]);
 
   const handleStop = useCallback(() => {
-    console.log("[VoiceReceptionist] handleStop – user ended call");
     cleanup();
   }, [cleanup]);
 
@@ -894,7 +864,7 @@ export const VoiceReceptionistContent: React.FC<
   const statusText = (() => {
     if (isStarting) return "Connecting...";
     if (isConnected && !hasReceivedFirstAgentResponse) return "Connecting...";
-    if (isAgentSpeaking) return "Listening...";
+    if (isAgentSpeaking) return "Agent is speaking...";
     switch (agentStatus) {
       case "connecting":
         return "Connecting...";
@@ -903,7 +873,7 @@ export const VoiceReceptionistContent: React.FC<
       case "thinking":
         return "Processing...";
       case "speaking":
-        return "Listening...";
+        return "Agent is speaking...";
       case "idle":
       default:
         if (isListening) return "Now you can speak";
