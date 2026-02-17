@@ -285,7 +285,7 @@ export default function ExploreHeader({
             />
           </Pressable>
         )}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={styles.filterIconContainer}
           onPress={handleFilterPress}
           activeOpacity={0.8}
@@ -295,7 +295,7 @@ export default function ExploreHeader({
             height={heightScale(18)}
             color={theme.darkGreen}
           />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </TouchableOpacity>
 
       {/* Where? and When? Fields */}

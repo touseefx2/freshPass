@@ -96,7 +96,7 @@ export default function SearchBar({
           {t("findServicesToBookIn")}
         </Text>
       </View>
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={styles.filterIconContainer}
         onPress={onFilterPress}
         activeOpacity={0.8}
@@ -106,7 +106,7 @@ export default function SearchBar({
           height={heightScale(18)}
           color={theme.darkGreen}
         />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </TouchableOpacity>
   );
 }
