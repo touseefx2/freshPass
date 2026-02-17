@@ -1494,6 +1494,7 @@ function CheckoutContent() {
             selectedDate: selectedDate.format("YYYY-MM-DD"),
             selectedTimeSlot: selectedTimeSlot || "",
             businessId: params.businessId || "",
+            business_id: params.businessId || "",
             subscriptionId: subscriptionId?.toString() || "",
             note: note || "",
             fromCheckoutBooking: "true",

@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import Logger from "@/src/services/logger";
+import ApiService from "@/src/services/api";
+import { businessEndpoints } from "@/src/services/endpoints";
 import {
   StatusBar,
   StyleSheet,
@@ -489,6 +491,7 @@ export default function BookingDetail() {
     tax?: string;
     estimatedTotal?: string;
     businessId?: string;
+    business_id?: string;
     note?: string;
     subscriptionId?: string;
     fromCheckoutBooking?: string;
@@ -499,11 +502,20 @@ export default function BookingDetail() {
     business_longitude?: string;
   }>();
 
+  const businessIdParam = params.business_id || params.businessId;
+
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [bookingDate, setBookingDate] = useState<string>("");
   const [showReviewModal, setShowReviewModal] = useState(false);
+  const [businessData, setBusinessData] = useState<{
+    businessName: string;
+    businessAddress: string;
+    businessLogoUrl: string;
+    businessLatitude: string;
+    businessLongitude: string;
+  } | null>(null);
 
   useEffect(() => {
     if (params.selectedServices) {
@@ -553,14 +565,14 @@ export default function BookingDetail() {
   };
 
   const handleBackNavigation = useCallback(() => {
-    if (params.businessId) {
+    if (businessIdParam) {
       router.navigate("/(main)/dashboard/(home)" as any);
       // router.replace({
       //   pathname: "/(main)/businessDetail",
       //   params: { business_id: params.businessId },
       // });
     }
-  }, [params.businessId, router]);
+  }, [businessIdParam, router]);
 
   // Handle Android hardware back button
   useFocusEffect(
@@ -584,8 +596,46 @@ export default function BookingDetail() {
     router.navigate("/(main)/dashboard/(calendar)" as any);
   };
 
-  const businessName = params.business_name || "----";
-  const businessAddress = params.business_address || "----";
+  // Fetch business details by business_id (same as businessDetail) for modal and display
+  useEffect(() => {
+    if (!businessIdParam) return;
+    const fetchBusinessDetails = async () => {
+      try {
+        const response = (await ApiService.get(
+          businessEndpoints.businessDetails(businessIdParam),
+        )) as { success?: boolean; data?: { business?: any } };
+        const b = response?.data?.business;
+        if (response?.success && b) {
+          const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
+          const defaultLogo =
+            process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+          setBusinessData({
+            businessName: b?.title ?? "",
+            businessAddress: b?.address ?? "",
+            businessLogoUrl: b?.logo_url
+              ? `${baseUrl}${b.logo_url}`
+              : defaultLogo,
+            businessLatitude: b?.latitude?.toString() ?? "",
+            businessLongitude: b?.longitude?.toString() ?? "",
+          });
+        }
+      } catch (e) {
+        Logger.error("BookingDetail fetchBusinessDetails:", e);
+      }
+    };
+    fetchBusinessDetails();
+  }, [businessIdParam]);
+
+  const businessName =
+    businessData?.businessName || params.business_name || "----";
+  const businessAddress =
+    businessData?.businessAddress || params.business_address || "----";
+  const businessLogoUrl =
+    businessData?.businessLogoUrl || params.business_logo_url || "";
+  const businessLatitude =
+    businessData?.businessLatitude || params.business_latitude || "";
+  const businessLongitude =
+    businessData?.businessLongitude || params.business_longitude || "";
 
   useEffect(() => {
     const fromCheckout =
@@ -843,7 +893,11 @@ export default function BookingDetail() {
               <Text style={styles.modalTitleAccent}>{businessName}?</Text>
             </Text>
             <Text style={styles.modalBody}>
-              Your feedback helps other customers find the best service.
+              Your feedback helps{" "}
+              <Text style={styles.modalBodyBold}>
+                {selectedStaffMember?.name || "the team"}
+              </Text>{" "}
+              and helps other customers find the best service.
             </Text>
             <View style={styles.modalButtonsRow}>
               <TouchableOpacity
@@ -860,12 +914,12 @@ export default function BookingDetail() {
                   router.push({
                     pathname: "/(main)/leaveReview",
                     params: {
-                      business_id: params.businessId || "",
+                      business_id: businessIdParam || "",
                       business_name: businessName,
                       business_address: businessAddress,
-                      business_logo_url: params.business_logo_url || "",
-                      business_latitude: params.business_latitude || "",
-                      business_longitude: params.business_longitude || "",
+                      business_logo_url: businessLogoUrl,
+                      business_latitude: businessLatitude,
+                      business_longitude: businessLongitude,
                     },
                   });
                 }}

@@ -1408,6 +1408,7 @@ function CheckoutContent() {
                   tax: tax.toFixed(2),
                   estimatedTotal: estimatedTotal.toFixed(2),
                   businessId: businessId || "",
+                  business_id: businessId || "",
                   note: note || "",
                 },
               });
@@ -1468,6 +1469,7 @@ function CheckoutContent() {
               tax: tax.toFixed(2),
               estimatedTotal: estimatedTotal.toFixed(2),
               businessId: businessId || "",
+              business_id: businessId || "",
               note: note || "",
             },
           });

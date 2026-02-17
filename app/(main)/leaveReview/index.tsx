@@ -83,9 +83,15 @@ export default function LeaveReview() {
   // Get business data from params
   const businessName = params.business_name || "Business Name";
   const businessAddress = params.business_address || "Business Address";
-  const businessLogoUrl =
-    params.business_logo_url ||
-    "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
+  const rawLogo = params.business_logo_url?.trim() || "";
+  const defaultLogo =
+    process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+  const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
+  const businessLogoUrl = !rawLogo
+    ? defaultLogo
+    : rawLogo.startsWith("http://") || rawLogo.startsWith("https://")
+      ? rawLogo
+      : `${baseUrl}${rawLogo}`;
   const businessLatitude = params.business_latitude
     ? parseFloat(params.business_latitude)
     : null;
