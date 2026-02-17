@@ -102,6 +102,18 @@ export default function LeaveDetail() {
   const reason = params.reason ?? "";
   const createdAt = params.createdAt ?? "";
 
+  const detailTitle =
+    leaveType === "break" ? "Break Detail" : "Closed Day Detail";
+
+  const cancelButtonTitle =
+    leaveType === "break"
+      ? cancelling
+        ? "Cancelling break..."
+        : "Cancel Break"
+      : cancelling
+        ? "Cancelling closed day..."
+        : "Cancel Closed Day";
+
   const formatDateTime = (iso: string) => {
     if (!iso) return "—";
     const d = dayjs.utc(iso);
@@ -148,7 +160,7 @@ export default function LeaveDetail() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <StackHeader title="Leave Detail" />
+      <StackHeader title={detailTitle} />
       <KeyboardAwareScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -160,7 +172,7 @@ export default function LeaveDetail() {
             <Text style={styles.label}>Type</Text>
             <View style={styles.typeBadge}>
               <Text style={styles.typeBadgeText}>
-                {(leaveType === "break" ? "Break" : "Leave").toUpperCase()}
+                {leaveType === "break" ? "BREAK" : "CLOSE"}
               </Text>
             </View>
           </View>
@@ -189,7 +201,7 @@ export default function LeaveDetail() {
         </View>
 
         <Button
-          title={cancelling ? "Cancelling..." : "Cancel Leave"}
+          title={cancelButtonTitle}
           onPress={handleCancelLeave}
           disabled={cancelling}
           containerStyle={styles.cancelButton}

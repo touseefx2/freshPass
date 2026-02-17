@@ -411,20 +411,30 @@ const createStyles = (theme: Theme) =>
     timeSlotClickable: {
       flex: 1,
     },
-    applyBoxDropdown: {
+    applyBoxOverlay: {
       position: "absolute",
-      top: moderateHeightScale(44),
-      left: moderateWidthScale(12),
-      maxWidth: widthScale(220),
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingTop: moderateHeightScale(44),
+      paddingHorizontal: moderateWidthScale(12),
+      alignItems: "flex-start",
+      justifyContent: "flex-start",
       zIndex: 10,
+    },
+    applyBoxDropdown: {
+      maxWidth: widthScale(210),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(6),
-      padding: moderateWidthScale(8),
-      paddingTop: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(6),
       borderWidth: 1,
       borderColor: theme.borderLine,
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
       shadowOpacity: 0.18,
       shadowRadius: 6,
       elevation: 6,
@@ -552,7 +562,8 @@ export default function CalendarScreen() {
   const [applyBoxBreakStartMinutes, setApplyBoxBreakStartMinutes] = useState(0);
   const [applyBoxBreakEndHour, setApplyBoxBreakEndHour] = useState(10);
   const [applyBoxBreakEndMinutes, setApplyBoxBreakEndMinutes] = useState(0);
-  const [applyBoxTimePickerVisible, setApplyBoxTimePickerVisible] = useState(false);
+  const [applyBoxTimePickerVisible, setApplyBoxTimePickerVisible] =
+    useState(false);
   const [applyBoxTimePickerTarget, setApplyBoxTimePickerTarget] = useState<
     "start" | "end" | null
   >(null);
@@ -818,7 +829,10 @@ export default function CalendarScreen() {
     });
   };
 
-  const openApplyBox = (type: "leave" | "break" = "leave", slotTime12h?: string) => {
+  const openApplyBox = (
+    type: "leave" | "break" = "leave",
+    slotTime12h?: string,
+  ) => {
     setApplyBoxType(type);
     const slotHour = slotTime12h
       ? parseInt(convertTo24Hour(slotTime12h).split(":")[0], 10)
@@ -856,47 +870,78 @@ export default function CalendarScreen() {
       if (applyBoxType === "leave") {
         const startTime = date.startOf("day").format("YYYY-MM-DD HH:mm:ss");
         const endTime = date.endOf("day").format("YYYY-MM-DD HH:mm:ss");
-        const body = { start_time: startTime, end_time: endTime, type: "leave" };
-        const response = await ApiService.post<{ success: boolean; message?: string }>(
-          staffEndpoints.leaves,
-          body,
-        );
+        const body = {
+          start_time: startTime,
+          end_time: endTime,
+          type: "leave",
+        };
+        const response = await ApiService.post<{
+          success: boolean;
+          message?: string;
+        }>(staffEndpoints.leaves, body);
         if (response.success) {
-          showBanner(t("success") || "Success", response.message || "Leave applied.", "success", 2500);
+          showBanner(
+            t("success") || "Success",
+            response.message || "Leave applied.",
+            "success",
+            2500,
+          );
           setApplyBoxVisible(false);
           fetchLeaves();
         } else {
           showBanner(
             t("apiFailed") || "Error",
-            (response as { message?: string }).message || "Failed to apply leave.",
+            (response as { message?: string }).message ||
+              "Failed to apply leave.",
             "error",
             2500,
           );
         }
       } else {
-        const startTime = date
+        const startDateTime = date
           .hour(applyBoxSlotHour)
           .minute(applyBoxBreakStartMinutes)
-          .second(0)
-          .format("YYYY-MM-DD HH:mm:ss");
-        const endTime = date
+          .second(0);
+        const endDateTime = date
           .hour(applyBoxBreakEndHour)
           .minute(applyBoxBreakEndMinutes)
-          .second(0)
-          .format("YYYY-MM-DD HH:mm:ss");
-        const body = { start_time: startTime, end_time: endTime, type: "break" };
-        const response = await ApiService.post<{ success: boolean; message?: string }>(
-          staffEndpoints.leaves,
-          body,
-        );
+          .second(0);
+
+        if (!endDateTime.isAfter(startDateTime)) {
+          showBanner(
+            t("apiFailed") || "Error",
+            "End time must be greater than start time.",
+            "error",
+            2500,
+          );
+          return;
+        }
+
+        const startTime = startDateTime.format("YYYY-MM-DD HH:mm:ss");
+        const endTime = endDateTime.format("YYYY-MM-DD HH:mm:ss");
+        const body = {
+          start_time: startTime,
+          end_time: endTime,
+          type: "break",
+        };
+        const response = await ApiService.post<{
+          success: boolean;
+          message?: string;
+        }>(staffEndpoints.leaves, body);
         if (response.success) {
-          showBanner(t("success") || "Success", response.message || "Break applied.", "success", 2500);
+          showBanner(
+            t("success") || "Success",
+            response.message || "Break applied.",
+            "success",
+            2500,
+          );
           setApplyBoxVisible(false);
           fetchLeaves();
         } else {
           showBanner(
             t("apiFailed") || "Error",
-            (response as { message?: string }).message || "Failed to apply break.",
+            (response as { message?: string }).message ||
+              "Failed to apply break.",
             "error",
             2500,
           );
@@ -913,7 +958,6 @@ export default function CalendarScreen() {
       setApplyBoxLoading(false);
     }
   };
-
 
   return (
     <View style={styles.container}>
@@ -999,14 +1043,24 @@ export default function CalendarScreen() {
             <TouchableOpacity
               style={styles.agendaHeader}
               activeOpacity={1}
-              onPress={() => applyBoxVisible && setApplyBoxVisible(false)}
+              onPress={() => {
+                if (leaveForSelectedDate) {
+                  navigateToLeaveDetail(leaveForSelectedDate);
+                  return;
+                }
+                if (applyBoxVisible) {
+                  setApplyBoxVisible(false);
+                }
+              }}
             >
               <View style={styles.allDayLabel}>
                 <Text style={styles.allDayText}>{t("allDay")}</Text>
               </View>
               <View style={styles.todayLabel}>
                 <View style={styles.todayLabelRow}>
-                  <Text style={styles.todayText}>{formatDate(selectedDate)}</Text>
+                  <Text style={styles.todayText}>
+                    {formatDate(selectedDate)}
+                  </Text>
                   {loading && (
                     <ActivityIndicator size="small" color={theme.primary} />
                   )}
@@ -1027,7 +1081,7 @@ export default function CalendarScreen() {
                           />
                           <Text style={styles.leaveBoxText}>
                             {leaveForSelectedDate.type === "leave"
-                              ? "LEAVE"
+                              ? "CLOSE"
                               : "BREAK"}
                           </Text>
                         </TouchableOpacity>
@@ -1047,7 +1101,7 @@ export default function CalendarScreen() {
                               },
                             ]}
                           >
-                            Apply for Leave / Break
+                            Manage Availability
                           </Text>
                         </TouchableOpacity>
                       )}
@@ -1059,139 +1113,145 @@ export default function CalendarScreen() {
 
             {applyBoxVisible && (
               <Pressable
-                style={styles.applyBoxDropdown}
-                onPress={() => {}}
+                style={styles.applyBoxOverlay}
+                onPress={() => setApplyBoxVisible(false)}
               >
-                <View style={styles.applyBoxHeaderRow}>
-                  <Text style={styles.applyBoxDateText}>
-                    {selectedDate.format("DD/MM/YYYY")}
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.applyBoxCloseBtn}
-                    onPress={() => setApplyBoxVisible(false)}
-                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    activeOpacity={0.7}
-                  >
-                    <MaterialIcons
-                      name="close"
-                      size={moderateWidthScale(16)}
-                      color={theme.text}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.applyBoxHint}>
-                  You want to take leave on this date / mark this day as off
-                </Text>
-                <View style={styles.applyBoxRow}>
-                  <TouchableOpacity
-                    style={styles.applyBoxRadioRow}
-                    onPress={() => setApplyBoxType("leave")}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.applyBoxRadioOuter,
-                        applyBoxType === "leave" &&
-                          styles.applyBoxRadioOuterSelected,
-                      ]}
-                    >
-                      {applyBoxType === "leave" && (
-                        <View style={styles.applyBoxRadioInner} />
-                      )}
-                    </View>
-                    <Text style={styles.applyBoxOptionText}>Leave</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.applyBoxRadioRow}
-                    onPress={() => setApplyBoxType("break")}
-                    activeOpacity={0.7}
-                  >
-                    <View
-                      style={[
-                        styles.applyBoxRadioOuter,
-                        applyBoxType === "break" &&
-                          styles.applyBoxRadioOuterSelected,
-                      ]}
-                    >
-                      {applyBoxType === "break" && (
-                        <View style={styles.applyBoxRadioInner} />
-                      )}
-                    </View>
-                    <Text style={styles.applyBoxOptionText}>Break</Text>
-                  </TouchableOpacity>
-                </View>
-                {applyBoxType === "break" && (
-                  <View style={{ marginBottom: moderateHeightScale(4) }}>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        gap: moderateWidthScale(6),
-                        marginBottom: moderateHeightScale(2),
-                      }}
-                    >
-                      <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
-                        Start
-                      </Text>
-                      <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
-                        End
-                      </Text>
-                    </View>
-                    <View style={styles.applyBoxSlotRow}>
-                      <TouchableOpacity
-                        style={styles.applyBoxTimeTouch}
-                        onPress={() => {
-                          setApplyBoxTimePickerTarget("start");
-                          setApplyBoxTimePickerVisible(true);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.applyBoxTimeText}>
-                          {formatApplyBoxTime(
-                            applyBoxSlotHour,
-                            applyBoxBreakStartMinutes,
-                          )}
-                        </Text>
-                        <Feather
-                          name="clock"
-                          size={moderateWidthScale(12)}
-                          color={theme.lightGreen}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.applyBoxTimeTouch}
-                        onPress={() => {
-                          setApplyBoxTimePickerTarget("end");
-                          setApplyBoxTimePickerVisible(true);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.applyBoxTimeText}>
-                          {formatApplyBoxTime(
-                            applyBoxBreakEndHour,
-                            applyBoxBreakEndMinutes,
-                          )}
-                        </Text>
-                        <Feather
-                          name="clock"
-                          size={moderateWidthScale(12)}
-                          color={theme.lightGreen}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-                <View style={styles.applyBoxButtonWrap}>
-                  <TouchableOpacity
-                    style={styles.applyBoxButton}
-                    onPress={applyLeaveBreakFromBox}
-                    disabled={applyBoxLoading}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.applyBoxButtonText}>
-                      {applyBoxLoading ? "..." : "Apply"}
+                <Pressable
+                  style={styles.applyBoxDropdown}
+                  onPress={(event) => event.stopPropagation()}
+                >
+                  <View style={styles.applyBoxHeaderRow}>
+                    <Text style={styles.applyBoxDateText}>
+                      {selectedDate.format("DD/MM/YYYY")}
                     </Text>
-                  </TouchableOpacity>
-                </View>
+                    <TouchableOpacity
+                      style={styles.applyBoxCloseBtn}
+                      onPress={() => setApplyBoxVisible(false)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons
+                        name="close"
+                        size={moderateWidthScale(16)}
+                        color={theme.text}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.applyBoxHint}>
+                    You can take a break on this day or mark the entire day as
+                    closed.
+                  </Text>
+                  <View style={styles.applyBoxRow}>
+                    <TouchableOpacity
+                      style={styles.applyBoxRadioRow}
+                      onPress={() => setApplyBoxType("leave")}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.applyBoxRadioOuter,
+                          applyBoxType === "leave" &&
+                            styles.applyBoxRadioOuterSelected,
+                        ]}
+                      >
+                        {applyBoxType === "leave" && (
+                          <View style={styles.applyBoxRadioInner} />
+                        )}
+                      </View>
+                      <Text style={styles.applyBoxOptionText}>Close</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.applyBoxRadioRow}
+                      onPress={() => setApplyBoxType("break")}
+                      activeOpacity={0.7}
+                    >
+                      <View
+                        style={[
+                          styles.applyBoxRadioOuter,
+                          applyBoxType === "break" &&
+                            styles.applyBoxRadioOuterSelected,
+                        ]}
+                      >
+                        {applyBoxType === "break" && (
+                          <View style={styles.applyBoxRadioInner} />
+                        )}
+                      </View>
+                      <Text style={styles.applyBoxOptionText}>Break</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {applyBoxType === "break" && (
+                    <View style={{ marginBottom: moderateHeightScale(4) }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: moderateWidthScale(6),
+                          marginBottom: moderateHeightScale(2),
+                        }}
+                      >
+                        <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
+                          Start
+                        </Text>
+                        <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
+                          End
+                        </Text>
+                      </View>
+                      <View style={styles.applyBoxSlotRow}>
+                        <TouchableOpacity
+                          style={styles.applyBoxTimeTouch}
+                          onPress={() => {
+                            setApplyBoxTimePickerTarget("start");
+                            setApplyBoxTimePickerVisible(true);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.applyBoxTimeText}>
+                            {formatApplyBoxTime(
+                              applyBoxSlotHour,
+                              applyBoxBreakStartMinutes,
+                            )}
+                          </Text>
+                          <Feather
+                            name="clock"
+                            size={moderateWidthScale(12)}
+                            color={theme.lightGreen}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.applyBoxTimeTouch}
+                          onPress={() => {
+                            setApplyBoxTimePickerTarget("end");
+                            setApplyBoxTimePickerVisible(true);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.applyBoxTimeText}>
+                            {formatApplyBoxTime(
+                              applyBoxBreakEndHour,
+                              applyBoxBreakEndMinutes,
+                            )}
+                          </Text>
+                          <Feather
+                            name="clock"
+                            size={moderateWidthScale(12)}
+                            color={theme.lightGreen}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  <View style={styles.applyBoxButtonWrap}>
+                    <TouchableOpacity
+                      style={styles.applyBoxButton}
+                      onPress={applyLeaveBreakFromBox}
+                      disabled={applyBoxLoading}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.applyBoxButtonText}>
+                        {applyBoxLoading ? "..." : "Apply"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </Pressable>
               </Pressable>
             )}
 
@@ -1201,151 +1261,177 @@ export default function CalendarScreen() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: moderateHeightScale(20) }}
             >
-            {TIME_SLOTS.map((time) => {
-              const timeSlot24h = convertTo24Hour(time);
-              const [slotHour] = timeSlot24h.split(":").map(Number);
-              const breaksInSlot = getBreaksForSlot(slotHour);
-              const filteredAppointments = appointments.filter(
-                (appointment) => {
-                  if (!appointment.scheduled_at) return false;
+              {TIME_SLOTS.map((time) => {
+                const timeSlot24h = convertTo24Hour(time);
+                const [slotHour] = timeSlot24h.split(":").map(Number);
+                const breaksInSlot = getBreaksForSlot(slotHour);
+                const filteredAppointments = appointments.filter(
+                  (appointment) => {
+                    if (!appointment.scheduled_at) return false;
 
-                  const scheduledDate = dayjs(appointment.scheduled_at).format(
-                    "YYYY-MM-DD",
-                  );
-                  const scheduledTime = dayjs(appointment.scheduled_at).format(
-                    "HH:mm",
-                  );
+                    const scheduledDate = dayjs(
+                      appointment.scheduled_at,
+                    ).format("YYYY-MM-DD");
+                    const scheduledTime = dayjs(
+                      appointment.scheduled_at,
+                    ).format("HH:mm");
 
-                  if (scheduledDate !== currentDate) return false;
+                    if (scheduledDate !== currentDate) return false;
 
-                  const [scheduledHour, scheduledMinute] = scheduledTime
-                    .split(":")
-                    .map(Number);
-                  const scheduledMinutes = scheduledHour * 60 + scheduledMinute;
+                    const [scheduledHour, scheduledMinute] = scheduledTime
+                      .split(":")
+                      .map(Number);
+                    const scheduledMinutes =
+                      scheduledHour * 60 + scheduledMinute;
 
-                  const [slotHour] = timeSlot24h.split(":").map(Number);
-                  const slotMinutes = slotHour * 60;
+                    const [slotHour] = timeSlot24h.split(":").map(Number);
+                    const slotMinutes = slotHour * 60;
 
-                  return (
-                    scheduledMinutes >= slotMinutes &&
-                    scheduledMinutes < slotMinutes + 60
-                  );
-                },
-              );
+                    return (
+                      scheduledMinutes >= slotMinutes &&
+                      scheduledMinutes < slotMinutes + 60
+                    );
+                  },
+                );
 
-              const hasMultipleAppointments = filteredAppointments.length > 1;
+                const hasMultipleAppointments = filteredAppointments.length > 1;
 
-              return (
-                <View
-                  key={time}
-                  style={[
-                    styles.timeSlotRow,
-                    hasMultipleAppointments && styles.timeSlotRowWithMultiple,
-                  ]}
-                >
-                  <View style={styles.timeSlot}>
+                const slotLeave =
+                  breaksInSlot.length > 0
+                    ? breaksInSlot[0]
+                    : leaveForSelectedDate || null;
+
+                return (
+                  <View
+                    key={time}
+                    style={[
+                      styles.timeSlotRow,
+                      hasMultipleAppointments && styles.timeSlotRowWithMultiple,
+                    ]}
+                  >
                     {isStaff ? (
                       <TouchableOpacity
-                        disabled={!!leaveForSelectedDate}
-                        style={styles.timeSlotClickable}
-                        onPress={() => openApplyBox("break", time)}
+                        style={styles.timeSlot}
                         activeOpacity={0.7}
+                        onPress={() => {
+                          if (slotLeave) {
+                            navigateToLeaveDetail(slotLeave);
+                          } else {
+                            openApplyBox("break", time);
+                          }
+                        }}
                       >
+                        <View style={styles.timeSlotClickable}>
+                          <Text style={styles.timeSlotText}>{time}</Text>
+                          {breaksInSlot.length > 0 && (
+                            <View style={styles.breakSlotBox}>
+                              <MaterialIcons
+                                name="free-breakfast"
+                                size={moderateWidthScale(12)}
+                                color={theme.selectCard}
+                              />
+                              <Text style={styles.breakSlotText}>BREAK</Text>
+                            </View>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.timeSlot}>
                         <Text style={styles.timeSlotText}>{time}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.timeSlotText}>{time}</Text>
-                    )}
-                    {breaksInSlot.length > 0 && (
-                      <TouchableOpacity
-                        disabled
-                        style={styles.breakSlotBox}
-                        onPress={() => navigateToLeaveDetail(breaksInSlot[0])}
-                        activeOpacity={0.7}
-                      >
-                        <MaterialIcons
-                          name="free-breakfast"
-                          size={moderateWidthScale(12)}
-                          color={theme.selectCard}
-                        />
-                        <Text style={styles.breakSlotText}>BREAK</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  <View style={styles.appointmentsContainer}>
-                    {filteredAppointments.length > 0 ? (
-                      filteredAppointments.map((appointment, index) => {
-                        const isLast = index === appointments.length - 1;
-                        return (
-                          <View
-                            key={appointment.id}
-                            style={[
-                              styles.appointmentWrapper,
-                              isLast && styles.appointmentWrapperLast,
-                            ]}
+                        {breaksInSlot.length > 0 && (
+                          <TouchableOpacity
+                            style={styles.breakSlotBox}
+                            onPress={() =>
+                              navigateToLeaveDetail(breaksInSlot[0])
+                            }
+                            activeOpacity={0.7}
                           >
-                            <TouchableOpacity
-                              style={[styles.appointmentCard, styles.shadow]}
-                              activeOpacity={0.7}
-                              onPress={() => {
-                                router.push({
-                                  pathname: "/(main)/bookingDetailsById",
-                                  params: {
-                                    bookingId: appointment.id,
-                                  },
-                                });
-                              }}
-                            >
-                              <View style={styles.appointmentHeader}>
-                                <View style={styles.appointmentLeftSection}>
-                                  <Text
-                                    numberOfLines={1}
-                                    style={styles.appointmentTitle}
-                                  >
-                                    {appointment.title}
-                                  </Text>
-                                  <Text style={styles.appointmentMeta}>
-                                    {formatAppointmentDate(
-                                      appointment.scheduled_at,
-                                    )}{" "}
-                                    • {appointment.duration}
-                                  </Text>
-                                </View>
-                                <View style={styles.appointmentRightSection}>
-                                  <View style={styles.clientNameContainer}>
-                                    <PersonIcon
-                                      width={moderateWidthScale(14)}
-                                      height={moderateWidthScale(14)}
-                                      color={theme.darkGreen}
-                                    />
-                                    <Text
-                                      numberOfLines={1}
-                                      style={styles.clientNameText}
-                                    >
-                                      {appointment.client_name}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.appointmentStatus}>
-                                    <Text style={styles.appointmentStatusText}>
-                                      {appointment.status_label}
-                                    </Text>
-                                  </View>
-                                </View>
-                              </View>
-                            </TouchableOpacity>
-                          </View>
-                        );
-                      })
-                    ) : (
-                      <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}></Text>
+                            <MaterialIcons
+                              name="free-breakfast"
+                              size={moderateWidthScale(12)}
+                              color={theme.selectCard}
+                            />
+                            <Text style={styles.breakSlotText}>BREAK</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
+                    <View style={styles.appointmentsContainer}>
+                      {filteredAppointments.length > 0 ? (
+                        filteredAppointments.map((appointment, index) => {
+                          const isLast = index === appointments.length - 1;
+                          return (
+                            <View
+                              key={appointment.id}
+                              style={[
+                                styles.appointmentWrapper,
+                                isLast && styles.appointmentWrapperLast,
+                              ]}
+                            >
+                              <TouchableOpacity
+                                style={[styles.appointmentCard, styles.shadow]}
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                  router.push({
+                                    pathname: "/(main)/bookingDetailsById",
+                                    params: {
+                                      bookingId: appointment.id,
+                                    },
+                                  });
+                                }}
+                              >
+                                <View style={styles.appointmentHeader}>
+                                  <View style={styles.appointmentLeftSection}>
+                                    <Text
+                                      numberOfLines={1}
+                                      style={styles.appointmentTitle}
+                                    >
+                                      {appointment.title}
+                                    </Text>
+                                    <Text style={styles.appointmentMeta}>
+                                      {formatAppointmentDate(
+                                        appointment.scheduled_at,
+                                      )}{" "}
+                                      • {appointment.duration}
+                                    </Text>
+                                  </View>
+                                  <View style={styles.appointmentRightSection}>
+                                    <View style={styles.clientNameContainer}>
+                                      <PersonIcon
+                                        width={moderateWidthScale(14)}
+                                        height={moderateWidthScale(14)}
+                                        color={theme.darkGreen}
+                                      />
+                                      <Text
+                                        numberOfLines={1}
+                                        style={styles.clientNameText}
+                                      >
+                                        {appointment.client_name}
+                                      </Text>
+                                    </View>
+                                    <View style={styles.appointmentStatus}>
+                                      <Text
+                                        style={styles.appointmentStatusText}
+                                      >
+                                        {appointment.status_label}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                </View>
+                              </TouchableOpacity>
+                            </View>
+                          );
+                        })
+                      ) : (
+                        <View style={styles.emptyState}>
+                          <Text style={styles.emptyStateText}></Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                </View>
-              );
-            })}
-          </ScrollView>
+                );
+              })}
+            </ScrollView>
           </View>
         </View>
       </View>
