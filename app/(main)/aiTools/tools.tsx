@@ -226,6 +226,7 @@ export default function Tools() {
     }
     setHairPipelineState(INITIAL_HAIR_PIPELINE_STATE);
     hairPipelineStartTimeRef.current = null;
+    fetchQuota();
   }, []);
 
   const handleHairPipelineSeeStatus = () => {
