@@ -223,7 +223,6 @@ export default function HomeScreen() {
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
-        console.log("------> ai_quota", response.data.ai_quota);
         dispatch(
           setUserDetails({
             name: response.data.name,

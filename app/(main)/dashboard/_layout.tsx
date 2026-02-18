@@ -1,6 +1,6 @@
 import { Tabs, useSegments } from "expo-router";
-import { useTheme, useAppSelector } from "@/src/hooks/hooks";
-import { useMemo } from "react";
+import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import { useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, View, Text } from "react-native";
 import { Theme } from "@/src/theme/colors";
@@ -19,6 +19,9 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
+import { setUserDetails } from "@/src/state/slices/userSlice";
+import { ApiService } from "@/src/services/api";
+import { userEndpoints } from "@/src/services/endpoints";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -75,6 +78,48 @@ export default function DashboardLayout() {
   const isGuest = user.isGuest;
   const userRole = user.userRole;
   const isCustomer = isGuest || userRole === "customer";
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    if (!isCustomer) return;
+    const fetchUserDetails = async () => {
+      try {
+        const response = await ApiService.get<{
+          success: boolean;
+          message: string;
+          data: {
+            name: string;
+            email: string;
+            phone: string | null;
+            country_code: string | null;
+            email_notifications: boolean | null;
+            profile_image_url: string | null;
+            business: { id: number; title: string };
+            ai_quota?: number;
+          };
+        }>(userEndpoints.details);
+
+        if (response.success && response.data) {
+          dispatch(
+            setUserDetails({
+              name: response.data.name,
+              email: response.data.email,
+              phone: response.data.phone,
+              country_code: response.data.country_code,
+              email_notifications: response.data.email_notifications,
+              profile_image_url: response.data.profile_image_url,
+              business_id: response.data.business?.id ?? undefined,
+              business_name: response.data.business?.title ?? undefined,
+              ai_quota: response.data.ai_quota ?? 0,
+            }),
+          );
+        }
+      } catch {
+        // Silent fail
+      }
+    };
+    fetchUserDetails();
+  }, [isCustomer, dispatch]);
 
   const isUserReviewsScreen =
     Array.isArray(segments) &&
