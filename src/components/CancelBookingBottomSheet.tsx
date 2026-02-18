@@ -57,8 +57,8 @@ const createStyles = (theme: Theme) =>
     },
     radioContainer: {
       width: widthScale(20),
-      height: heightScale(20),
-      borderRadius: moderateWidthScale(10),
+      height: widthScale(20),
+      borderRadius: widthScale(20 / 2),
       borderWidth: moderateWidthScale(1.5),
       borderColor: theme.lightGreen2,
       alignItems: "center",

@@ -783,6 +783,7 @@ export default function bookingDetailsById() {
   };
 
   const isCancelled = booking?.status === "cancelled";
+  const isComplete = booking?.status === "complete";
 
   // Parse date and time from dateTime string
   const dateTimeParts = booking?.dateTime?.split(" - ") ?? [];
@@ -1162,7 +1163,7 @@ export default function bookingDetailsById() {
 
         {/* Bottom Button */}
 
-        {!isCancelled && userRole === "customer" && (
+        {!isCancelled && !isComplete && userRole === "customer" && (
           <View style={styles.bottomButton}>
             <Button
               title={t("cancelThisBooking")}
