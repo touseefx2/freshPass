@@ -600,41 +600,41 @@ export default function NotificationsScreen() {
     );
   };
 
-  const handleSignIn = async () => {
-    await ApiService.logout();
-  };
+  // const handleSignIn = async () => {
+  //   await ApiService.logout();
+  // };
 
-  if (isGuest) {
-    return (
-      <View style={styles.container}>
-        <DashboardHeader />
-        <Text
-          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
-        >
-          Notifications
-        </Text>
-        <View style={styles.guestContainer}>
-          <View style={styles.guestContent}>
-            <View style={styles.guestIconContainer}>
-              <Feather
-                name="user"
-                size={moderateWidthScale(36)}
-                color={theme.darkGreen}
-              />
-            </View>
+  // if (isGuest) {
+  //   return (
+  //     <View style={styles.container}>
+  //       <DashboardHeader />
+  //       <Text
+  //         style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
+  //       >
+  //         Notifications
+  //       </Text>
+  //       <View style={styles.guestContainer}>
+  //         <View style={styles.guestContent}>
+  //           <View style={styles.guestIconContainer}>
+  //             <Feather
+  //               name="user"
+  //               size={moderateWidthScale(36)}
+  //               color={theme.darkGreen}
+  //             />
+  //           </View>
 
-            <Text style={styles.guestTitle}>{t("guestMode")}</Text>
+  //           <Text style={styles.guestTitle}>{t("guestMode")}</Text>
 
-            <Text style={styles.guestMessage}>{t("guestModeMessage")}</Text>
+  //           <Text style={styles.guestMessage}>{t("guestModeMessage")}</Text>
 
-            <View style={styles.buttonContainer}>
-              <Button title={t("signIn")} onPress={handleSignIn} />
-            </View>
-          </View>
-        </View>
-      </View>
-    );
-  }
+  //           <View style={styles.buttonContainer}>
+  //             <Button title={t("signIn")} onPress={handleSignIn} />
+  //           </View>
+  //         </View>
+  //       </View>
+  //     </View>
+  //   );
+  // }
 
   return (
     <View style={styles.container}>
