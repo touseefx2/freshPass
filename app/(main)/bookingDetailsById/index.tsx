@@ -1149,7 +1149,7 @@ export default function bookingDetailsById() {
           <View style={styles.line} />
 
           {/* Policy Link (only for ongoing bookings) */}
-          {!isCancelled && userRole === "customer" && (
+          {!isCancelled && !isComplete && userRole === "customer" && (
             <TouchableOpacity style={styles.policyLink}>
               <Text style={styles.policyText}>{t("bookingCancelPolicy")}</Text>
               <Entypo
