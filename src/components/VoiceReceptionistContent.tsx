@@ -453,15 +453,9 @@ export const VoiceReceptionistContent: React.FC<
           merged.set(chunk, offset);
           offset += chunk.length;
         }
-
-        // Apply a simple gain to boost agent audio loudness on devices where it is too quiet.
-        const GAIN = 44;
-        for (let i = 0; i < merged.length; i++) {
-          let sample = merged[i] * GAIN;
-          if (sample > 32767) sample = 32767;
-          if (sample < -32768) sample = -32768;
-          merged[i] = sample;
-        }
+        // No extra gain here – we play agent audio at the level
+        // provided by the backend TTS. iPhone hardware volume controls
+        // overall loudness.
 
         const wavHeaderSize = 44;
         const dataLength = merged.length * 2;
