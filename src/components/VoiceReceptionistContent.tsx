@@ -11,7 +11,13 @@ import {
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import { Audio } from "expo-av";
-import { File, Directory, Paths } from "expo-file-system";
+import {
+  cacheDirectory,
+  makeDirectoryAsync,
+  writeAsStringAsync,
+  deleteAsync,
+  EncodingType,
+} from "expo-file-system/legacy";
 import { Ionicons } from "@expo/vector-icons";
 import AudioRecord from "react-native-audio-record";
 import { Buffer } from "buffer";
@@ -75,7 +81,7 @@ export const VoiceReceptionistContent: React.FC<
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  const FLUSH_SAMPLE_THRESHOLD = 16000 * 2;
+  const FLUSH_SAMPLE_THRESHOLD = 16000 * 4;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
   const isListeningRef = useRef(false);
@@ -98,6 +104,8 @@ export const VoiceReceptionistContent: React.FC<
   const lastUserTranscriptRef = useRef<string | null>(null);
   const userMicUnblockAfterRef = useRef(0);
   const ECHO_GUARD_MS = 1000;
+  // Silence buffer to send when mic is blocked (agent speaking) so server does not timeout.
+  const silenceChunkRef = useRef<ArrayBuffer | null>(null);
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -348,12 +356,21 @@ export const VoiceReceptionistContent: React.FC<
           { uri: nextUri },
           { shouldPlay: true, progressUpdateIntervalMillis: 100 },
         );
+        // Log when we successfully create a sound instance for debugging real-device issues
+        console.log(
+          "[VoiceReceptionist] Created Audio.Sound from URI",
+          nextUri,
+        );
         sound = result.sound;
-      } catch {
+      } catch (err) {
+        console.error(
+          "[VoiceReceptionist] Failed to create Audio.Sound from URI",
+          nextUri,
+          err,
+        );
         isPlayingRef.current = false;
         try {
-          const file = new File(nextUri);
-          file.delete();
+          await deleteAsync(nextUri, { idempotent: true });
         } catch {}
         playNextInQueue().catch(() => {});
         return;
@@ -377,7 +394,7 @@ export const VoiceReceptionistContent: React.FC<
         const remaining = dur - pos;
         if (
           remaining > 0 &&
-          remaining < 300 &&
+          remaining < 500 &&
           audioQueueRef.current.length > 0 &&
           !preloadedNextRef.current
         ) {
@@ -402,25 +419,32 @@ export const VoiceReceptionistContent: React.FC<
           soundRef.current = null;
           isPlayingRef.current = false;
           try {
-            const file = new File(uriToPlay);
-            file.delete();
+            await deleteAsync(uriToPlay, { idempotent: true });
           } catch {}
+          console.log(
+            "[VoiceReceptionist] Finished playback and deleted file",
+            uriToPlay,
+          );
           playNextInQueue().catch(() => {});
         }
       });
-    } catch {
+    } catch (err) {
+      console.error(
+        "[VoiceReceptionist] Unexpected error during playback",
+        uriToPlay,
+        err,
+      );
       isPlayingRef.current = false;
       soundRef.current = null;
       try {
-        const file = new File(uriToPlay);
-        file.delete();
+        await deleteAsync(uriToPlay, { idempotent: true });
       } catch {}
       playNextInQueue().catch(() => {});
     }
   }, []);
 
   const flushChunksToWavAndQueue = useCallback(
-    (chunks: Int16Array[], totalSamples: number) => {
+    async (chunks: Int16Array[], totalSamples: number) => {
       if (!totalSamples || chunks.length === 0) return;
       try {
         const merged = new Int16Array(totalSamples);
@@ -429,12 +453,24 @@ export const VoiceReceptionistContent: React.FC<
           merged.set(chunk, offset);
           offset += chunk.length;
         }
+
+        // Apply a simple gain to boost agent audio loudness on devices where it is too quiet.
+        const GAIN = 44;
+        for (let i = 0; i < merged.length; i++) {
+          let sample = merged[i] * GAIN;
+          if (sample > 32767) sample = 32767;
+          if (sample < -32768) sample = -32768;
+          merged[i] = sample;
+        }
+
         const wavHeaderSize = 44;
         const dataLength = merged.length * 2;
         const totalSize = wavHeaderSize + dataLength;
         const wavBuffer = new ArrayBuffer(totalSize);
         const view = new DataView(wavBuffer);
         const u8 = new Uint8Array(wavBuffer);
+
+        // WAV RIFF header
         view.setUint32(0, 0x52494646, false);
         view.setUint32(4, 36 + dataLength, true);
         view.setUint32(8, 0x57415645, false);
@@ -448,20 +484,37 @@ export const VoiceReceptionistContent: React.FC<
         view.setUint16(34, 16, true);
         view.setUint32(36, 0x64617461, false);
         view.setUint32(40, dataLength, true);
+
+        // PCM data
         u8.set(new Uint8Array(merged.buffer), wavHeaderSize);
         const base64 = Buffer.from(wavBuffer).toString("base64");
-        const cacheDir = new Directory(Paths.cache, "voice-agent");
-        try {
-          cacheDir.create({ intermediates: true, idempotent: true });
-        } catch {}
-        const fileName = `voice-agent-${Date.now()}-${Math.random().toString(36).slice(2)}.wav`;
-        const file = cacheDir.createFile(fileName, "audio/wav");
-        file.write(base64, { encoding: "base64" as any });
+
+        const baseDir = cacheDirectory ?? "";
+        const dir = `${baseDir}voice-agent/`;
+        await makeDirectoryAsync(dir, { intermediates: true });
+        const fileName = `voice-agent-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.wav`;
+        const uri = dir + fileName;
+
+        console.log(
+          "[VoiceReceptionist] Writing agent WAV file",
+          uri,
+          "samples=",
+          totalSamples,
+          "bytes=",
+          dataLength,
+        );
+
+        await writeAsStringAsync(uri, base64, {
+          encoding: EncodingType.Base64,
+        });
+
         if (agentDoneFallbackTimeoutRef.current) {
           clearTimeout(agentDoneFallbackTimeoutRef.current);
           agentDoneFallbackTimeoutRef.current = null;
         }
-        audioQueueRef.current.push(file.uri);
+        audioQueueRef.current.push(uri);
         currentTurnTextShownRef.current = false;
         isAgentSpeakingRef.current = true;
         setIsAgentSpeaking(true);
@@ -487,6 +540,10 @@ export const VoiceReceptionistContent: React.FC<
       try {
         const pcm = new Int16Array(buffer);
         if (!pcm.length) return;
+        console.log(
+          "[VoiceReceptionist] Enqueue agent PCM chunk, samples=",
+          pcm.length,
+        );
         pendingPcmChunksRef.current.push(pcm);
         pendingSamplesRef.current += pcm.length;
         if (pendingSamplesRef.current >= FLUSH_SAMPLE_THRESHOLD) {
@@ -549,6 +606,7 @@ export const VoiceReceptionistContent: React.FC<
                   ...prev,
                   { role, content, timestamp: Date.now() },
                 ]);
+                console.log("[VoiceReceptionist] Agent text message:", content);
                 currentTurnTextShownRef.current = true;
                 const audioBufs = pendingAudioBuffersRef.current;
                 pendingAudioBuffersRef.current = [];
@@ -609,6 +667,10 @@ export const VoiceReceptionistContent: React.FC<
                       timestamp: Date.now(),
                     },
                   ]);
+                  console.log(
+                    "[VoiceReceptionist] User transcript from agent:",
+                    content,
+                  );
                 }
               }
               break;
@@ -628,7 +690,8 @@ export const VoiceReceptionistContent: React.FC<
                 parsed.message ||
                 "Unknown error from agent.";
               console.error("[VoiceReceptionist] Agent Error:", errorMsg);
-              setError(errorMsg);
+              const isTimeout = /timeout|did not receive audio/i.test(errorMsg);
+              if (!isTimeout) setError(errorMsg);
               break;
             }
             default:
@@ -648,6 +711,11 @@ export const VoiceReceptionistContent: React.FC<
               buf.byteOffset,
               buf.byteOffset + buf.byteLength,
             );
+            console.log(
+              "[VoiceReceptionist] Received agent audio chunk (base64)",
+              "bytes=",
+              buf.byteLength,
+            );
             if (!currentTurnTextShownRef.current) {
               pendingAudioBuffersRef.current.push(arr);
             } else {
@@ -663,6 +731,11 @@ export const VoiceReceptionistContent: React.FC<
           isAgentSpeakingRef.current = true;
           setIsAgentSpeaking(true);
         }
+        console.log(
+          "[VoiceReceptionist] Received agent audio chunk (binary)",
+          "bytes=",
+          data.byteLength,
+        );
         if (!currentTurnTextShownRef.current) {
           pendingAudioBuffersRef.current.push(data);
         } else {
@@ -686,6 +759,10 @@ export const VoiceReceptionistContent: React.FC<
         const ws = new WebSocket(websocketUrl);
         wsRef.current = ws;
         ws.onopen = () => {
+          console.log(
+            "[VoiceReceptionist] WebSocket connected to voice agent",
+            websocketUrl,
+          );
           setIsConnected(true);
           setAgentStatus("idle");
           isAgentSpeakingRef.current = false;
@@ -701,6 +778,13 @@ export const VoiceReceptionistContent: React.FC<
           reject(event);
         };
         ws.onclose = (event: any) => {
+          console.log(
+            "[VoiceReceptionist] WebSocket closed",
+            "code=",
+            event?.code,
+            "reason=",
+            event?.reason,
+          );
           if (event.code === 1008) {
             setError("Voice agent authentication failed.");
           } else if (event.code === 1001) {
@@ -766,15 +850,23 @@ export const VoiceReceptionistContent: React.FC<
           wavFile: "freshpass_voice_agent.wav",
         });
         AudioRecord.on("data", (data: string) => {
-          if (
-            !wsRef.current ||
-            wsRef.current.readyState !== WebSocket.OPEN ||
-            isMicMutedRef.current ||
+          const ws = wsRef.current;
+          if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+          const blocked =
             isAgentSpeakingRef.current ||
-            Date.now() < userMicUnblockAfterRef.current
-          ) {
+            Date.now() < userMicUnblockAfterRef.current;
+          const muted = isMicMutedRef.current;
+
+          if (blocked || muted) {
+            if (silenceChunkRef.current == null)
+              silenceChunkRef.current = new ArrayBuffer(2048);
+            try {
+              ws.send(silenceChunkRef.current);
+            } catch {}
             return;
           }
+
           try {
             const chunk = Buffer.from(data, "base64");
             if (chunk.byteLength === 0) return;
@@ -782,23 +874,18 @@ export const VoiceReceptionistContent: React.FC<
               chunk.byteOffset,
               chunk.byteOffset + chunk.byteLength,
             );
-            // CRITICAL FIX: send audio immediately to maintain continuous stream.
-            // Only fall back to the queue if direct send fails or WS not ready.
-            const ws = wsRef.current;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-              try {
-                ws.send(arrayBuffer);
-              } catch (err) {
-                console.error(
-                  "[VoiceReceptionist] Failed to send audio chunk directly",
-                  err,
-                );
-                // Fallback: queue and let drainSendQueue handle it.
-                sendQueueRef.current.push(arrayBuffer);
-                drainSendQueue();
-              }
-            } else {
-              // Fallback: queue if WebSocket not ready
+            console.log(
+              "[VoiceReceptionist] Mic audio chunk ready to send",
+              "bytes=",
+              arrayBuffer.byteLength,
+            );
+            try {
+              ws.send(arrayBuffer);
+            } catch (err) {
+              console.error(
+                "[VoiceReceptionist] Failed to send audio chunk directly",
+                err,
+              );
               sendQueueRef.current.push(arrayBuffer);
               drainSendQueue();
             }
