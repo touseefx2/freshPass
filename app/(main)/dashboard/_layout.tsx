@@ -82,44 +82,46 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (!isCustomer) return;
-    const fetchUserDetails = async () => {
-      try {
-        const response = await ApiService.get<{
-          success: boolean;
-          message: string;
-          data: {
-            name: string;
-            email: string;
-            phone: string | null;
-            country_code: string | null;
-            email_notifications: boolean | null;
-            profile_image_url: string | null;
-            business: { id: number; title: string };
-            ai_quota?: number;
-          };
-        }>(userEndpoints.details);
 
-        if (response.success && response.data) {
-          dispatch(
-            setUserDetails({
-              name: response.data.name,
-              email: response.data.email,
-              phone: response.data.phone,
-              country_code: response.data.country_code,
-              email_notifications: response.data.email_notifications,
-              profile_image_url: response.data.profile_image_url,
-              business_id: response.data.business?.id ?? undefined,
-              business_name: response.data.business?.title ?? undefined,
-              ai_quota: response.data.ai_quota ?? 0,
-            }),
-          );
-        }
-      } catch {
-        // Silent fail
-      }
-    };
     fetchUserDetails();
   }, [isCustomer, dispatch]);
+
+  const fetchUserDetails = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          name: string;
+          email: string;
+          phone: string | null;
+          country_code: string | null;
+          email_notifications: boolean | null;
+          profile_image_url: string | null;
+          business: { id: number; title: string };
+          ai_quota?: number;
+        };
+      }>(userEndpoints.details);
+
+      if (response.success && response.data) {
+        dispatch(
+          setUserDetails({
+            name: response.data.name,
+            email: response.data.email,
+            phone: response.data.phone,
+            country_code: response.data.country_code,
+            email_notifications: response.data.email_notifications,
+            profile_image_url: response.data.profile_image_url,
+            business_id: response.data.business?.id ?? undefined,
+            business_name: response.data.business?.title ?? undefined,
+            ai_quota: response.data.ai_quota ?? 0,
+          }),
+        );
+      }
+    } catch {
+      // Silent fail
+    }
+  };
 
   const isUserReviewsScreen =
     Array.isArray(segments) &&
