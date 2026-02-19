@@ -405,7 +405,10 @@ const ChatContent = ({
                   activeOpacity={0.9}
                 >
                   <Image
-                    style={styles.bubbleImage}
+                    style={[
+                      styles.bubbleImage,
+                      !item.text && idx === 0 && { marginTop: 0 },
+                    ]}
                     source={{ uri }}
                     resizeMode="cover"
                   />
@@ -554,7 +557,7 @@ export default function ChatBoxScreen() {
   const apiMessageToItem = useCallback(
     (m: ApiMessage): MessageItem => {
       const isMe = currentUserId != null && m.sender.id === currentUserId;
-      const text = m.message ?? (m.attachments?.length ? "Attachment" : "");
+      const text = m.message ?? "";
       const attachments = (m.attachments ?? [])
         .map((u) => getMessageImageUrl(u))
         .filter(Boolean);
