@@ -12,6 +12,7 @@ import {
   NativeScrollEvent,
 } from "react-native";
 import { useDispatch, useSelector } from "react-redux";
+import Zoom from "react-native-zoom-reanimated";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -25,8 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { closeFullImageModal } from "@/src/state/slices/generalSlice";
 import type { RootState } from "@/src/state/store";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } =
-  Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -54,6 +54,7 @@ const createStyles = (theme: Theme) =>
     },
     imagePage: {
       width: SCREEN_WIDTH,
+      height: SCREEN_HEIGHT,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -125,19 +126,31 @@ export default function FullImageModal() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: string }) => (
+    ({ item, index }: { item: string; index: number }) => (
       <View style={styles.imagePage}>
-        <Image
-          source={{ uri: item }}
-          style={styles.modalImage}
-          resizeMode="contain"
-        />
+        <Zoom
+          enableGallerySwipe
+          parentScrollRef={flatListRef}
+          currentIndex={index}
+          itemWidth={SCREEN_WIDTH}
+          minScale={1}
+          maxScale={4}
+        >
+          <Image
+            source={{ uri: item }}
+            style={styles.modalImage}
+            resizeMode="contain"
+          />
+        </Zoom>
       </View>
     ),
     [styles],
   );
 
-  const keyExtractor = useCallback((item: string, index: number) => `${index}`, []);
+  const keyExtractor = useCallback(
+    (item: string, index: number) => `${index}`,
+    [],
+  );
 
   if (!visible) {
     return null;
@@ -165,11 +178,15 @@ export default function FullImageModal() {
         </Pressable>
 
         {displayImages.length === 1 && (
-          <Image
-            source={{ uri: displayImages[0] }}
-            style={styles.modalImage}
-            resizeMode="contain"
-          />
+          <View style={styles.imagePage}>
+            <Zoom minScale={1} maxScale={4}>
+              <Image
+                source={{ uri: displayImages[0] }}
+                style={styles.modalImage}
+                resizeMode="contain"
+              />
+            </Zoom>
+          </View>
         )}
 
         {hasMultiple && (
@@ -203,7 +220,9 @@ export default function FullImageModal() {
                   key={`dot-${index}`}
                   style={[
                     styles.dot,
-                    index === currentIndex ? styles.dotActive : styles.dotInactive,
+                    index === currentIndex
+                      ? styles.dotActive
+                      : styles.dotInactive,
                     { backgroundColor: theme.white },
                   ]}
                 />
