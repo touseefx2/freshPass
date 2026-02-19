@@ -77,7 +77,7 @@ export default function DashboardLayout() {
   const unreadCount = user.unreadCount;
   const isGuest = user.isGuest;
   const userRole = user.userRole;
-  const isCustomer = isGuest || userRole === "customer";
+  const isCustomer = userRole === "customer" && !isGuest;
   const dispatch = useAppDispatch();
 
   useEffect(() => {
