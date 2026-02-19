@@ -781,7 +781,6 @@ export default function BookingScreen() {
 
   return (
     <View style={styles.container}>
-      {/* <DashboardHeader /> */}
       <DashboardHeaderClient />
       <View style={styles.content}>
         <Text style={styles.title}>{t("bookingList")}</Text>
