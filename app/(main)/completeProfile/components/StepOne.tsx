@@ -10,7 +10,6 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
-import { IMAGES } from "@/src/constant/images";
 import {
   setBusinessCategory,
   setSearchTerm,
@@ -23,7 +22,6 @@ import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { sortCategoriesByMalePriority } from "@/src/constant/functions";
 
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -171,8 +169,7 @@ export default function StepOne() {
       }>(businessEndpoints.categories);
 
       if (response.success && response.data) {
-        const sortedCategories = sortCategoriesByMalePriority(response.data);
-        dispatch(setCategories(sortedCategories));
+        dispatch(setCategories(response.data));
       }
     } catch (error) {
       Logger.error("Failed to fetch categories:", error);

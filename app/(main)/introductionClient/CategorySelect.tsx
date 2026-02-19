@@ -36,8 +36,6 @@ import {
   setIsGuest,
 } from "@/src/state/slices/userSlice";
 import { setIsVisitFirst } from "@/src/state/slices/generalSlice";
-import { sortCategoriesByMalePriority } from "@/src/constant/functions";
-
 interface CategorySelectProps {
   onNext: () => void;
 }
@@ -243,8 +241,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
       }>(businessEndpoints.categories);
 
       if (response.success && response.data) {
-        const sortedCategories = sortCategoriesByMalePriority(response.data);
-        setCategories(sortedCategories);
+        setCategories(response.data);
       }
     } catch (error) {
       Logger.error("Failed to fetch categories:", error);

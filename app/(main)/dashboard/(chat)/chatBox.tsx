@@ -39,8 +39,9 @@ import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 
 const PER_PAGE = 20;
-const MAX_ATTACHMENTS = 8;
+const MAX_ATTACHMENTS = 5;
 const MESSAGES_URL = (userId: string) => `/api/chat/messages/${userId}`;
+const SEND_MESSAGE_URL = "/api/chat/messages";
 
 type MessageItem = {
   id: string;
@@ -70,6 +71,26 @@ type MessagesResponse = {
     };
   };
 };
+
+type SendMessageResponse = {
+  success: boolean;
+  message: string;
+  data: ApiMessage;
+};
+
+function getMimeAndName(uri: string): { mimeType: string; name: string } {
+  const ext = uri.split(".").pop()?.toLowerCase() || "jpg";
+  const mimeType =
+    ext === "jpg" || ext === "jpeg"
+      ? "image/jpeg"
+      : ext === "png"
+        ? "image/png"
+        : ext === "gif"
+          ? "image/gif"
+          : "image/jpeg";
+  const name = uri.split("/").pop() || `image.${ext}`;
+  return { mimeType, name };
+}
 
 function getMessageImageUrl(url: string | null | undefined): string {
   if (!url || url.trim() === "") return "";
@@ -310,6 +331,8 @@ type ChatContentProps = {
   onRemoveAttachment?: (index: number) => void;
   inputValue?: string;
   onInputChange?: (text: string) => void;
+  sending?: boolean;
+  onSend?: () => void;
 };
 
 const ChatContent = ({
@@ -330,8 +353,12 @@ const ChatContent = ({
   onRemoveAttachment,
   inputValue = "",
   onInputChange,
+  sending = false,
+  onSend,
 }: ChatContentProps) => {
   const hasInputValue = Boolean(inputValue && inputValue.trim().length > 0);
+  const canSend = hasInputValue || selectedAttachments.length > 0;
+  const sendDisabled = !canSend || sending;
   return (
     <>
       <FlatList
@@ -489,9 +516,13 @@ const ChatContent = ({
           ) : null}
         </View>
         <TouchableOpacity
-          style={styles.attachmentButton}
+          style={[
+            styles.attachmentButton,
+            sending && { opacity: 0.5 },
+          ]}
           activeOpacity={0.8}
           onPress={() => onAttachmentPress?.()}
+          disabled={sending}
         >
           <View style={styles.attachmentIconWrap}>
             <MaterialIcons
@@ -501,8 +532,20 @@ const ChatContent = ({
             />
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sendButton} activeOpacity={0.8}>
-          <SendIcon width={18} height={18} color={theme.buttonText} />
+        <TouchableOpacity
+          style={[
+            styles.sendButton,
+            sendDisabled && { opacity: 0.5 },
+          ]}
+          activeOpacity={0.8}
+          onPress={onSend}
+          disabled={sendDisabled}
+        >
+          {sending ? (
+            <ActivityIndicator size="small" color={theme.buttonText} />
+          ) : (
+            <SendIcon width={18} height={18} color={theme.buttonText} />
+          )}
         </TouchableOpacity>
       </View>
     </>
@@ -532,6 +575,7 @@ export default function ChatBoxScreen() {
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
   const [inputText, setInputText] = useState("");
+  const [sending, setSending] = useState(false);
 
   const chatItem = useMemo(() => {
     if (params.chatItem) {
@@ -612,6 +656,63 @@ export default function ChatBoxScreen() {
     if (loadingMore || loading || page >= lastPage) return;
     fetchMessages(page + 1, true);
   }, [loadingMore, loading, page, lastPage, fetchMessages]);
+
+  const handleSend = useCallback(async () => {
+    const trimmed = inputText.trim();
+    const hasAttachments = selectedAttachments.length > 0;
+    if (!userId || sending || (!trimmed && !hasAttachments)) return;
+
+    setSending(true);
+    try {
+      const formData = new FormData();
+      formData.append("receiver_id", String(Number(userId)));
+      formData.append("message", trimmed || "");
+
+      for (let i = 0; i < selectedAttachments.length; i++) {
+        const uri = selectedAttachments[i];
+        const { mimeType, name } = getMimeAndName(uri);
+        formData.append("attachments[]", {
+          uri,
+          type: mimeType,
+          name,
+        } as any);
+      }
+
+      const res = await ApiService.post<SendMessageResponse>(
+        SEND_MESSAGE_URL,
+        formData,
+        {
+          headers: {
+            "Content-Type": false as any,
+          },
+        },
+      );
+
+      if (res?.success && res?.data) {
+        const newItem = apiMessageToItem(res.data);
+        setMessages((prev) => [newItem, ...prev]);
+        setInputText("");
+        setSelectedAttachments([]);
+      }
+    } catch {
+      showBanner(
+        t("error") || "Error",
+        t("somethingWentWrong") || "Something went wrong. Please try again.",
+        "error",
+        3000,
+      );
+    } finally {
+      setSending(false);
+    }
+  }, [
+    userId,
+    inputText,
+    selectedAttachments,
+    sending,
+    apiMessageToItem,
+    showBanner,
+    t,
+  ]);
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -713,6 +814,8 @@ export default function ChatBoxScreen() {
             }
             inputValue={inputText}
             onInputChange={setInputText}
+            sending={sending}
+            onSend={handleSend}
           />
         </KeyboardAvoidingView>
       ) : (
@@ -751,6 +854,8 @@ export default function ChatBoxScreen() {
             }
             inputValue={inputText}
             onInputChange={setInputText}
+            sending={sending}
+            onSend={handleSend}
           />
         </View>
       )}
