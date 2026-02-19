@@ -31,7 +31,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import { SendIcon } from "@/assets/icons";
+import { CloseIcon, SendIcon } from "@/assets/icons";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
 import FullImageModal from "@/src/components/fullImageModal";
@@ -211,16 +211,20 @@ const createStyles = (theme: Theme) =>
     },
     inputRow: {
       flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(8),
       borderRadius: moderateWidthScale(20),
       backgroundColor: theme.lightGreen20,
     },
     textInput: {
+      flex: 1,
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
-      height: heightScale(20),
+      minHeight: heightScale(20),
       paddingVertical: 0,
       textAlignVertical: "center",
       includeFontPadding: false,
@@ -244,11 +248,12 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    inputClearButton: {
+      paddingHorizontal: moderateWidthScale(4),
+      justifyContent: "center",
+      alignItems: "center",
+    },
     attachmentThumbnailsRow: {
-      flexDirection: "row",
-      paddingTop: moderateHeightScale(8),
-      paddingBottom: moderateHeightScale(4),
-      gap: moderateWidthScale(8),
       backgroundColor: theme.white,
       borderTopWidth: 1,
       borderTopColor: theme.borderLight,
@@ -259,8 +264,8 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(6),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      overflow: "hidden",
       backgroundColor: theme.lightGreen20,
+      marginVertical: moderateHeightScale(8),
     },
     attachmentThumbnail: {
       width: widthScale(44),
@@ -269,8 +274,8 @@ const createStyles = (theme: Theme) =>
     },
     attachmentThumbnailDelete: {
       position: "absolute",
-      top: -5,
-      right: 0,
+      top: -7,
+      right: -7,
       width: widthScale(16),
       height: widthScale(16),
       borderRadius: widthScale(16 / 2),
@@ -302,6 +307,8 @@ type ChatContentProps = {
   onAttachmentPress?: () => void;
   selectedAttachments?: string[];
   onRemoveAttachment?: (index: number) => void;
+  inputValue?: string;
+  onInputChange?: (text: string) => void;
 };
 
 const ChatContent = ({
@@ -320,7 +327,10 @@ const ChatContent = ({
   onAttachmentPress,
   selectedAttachments = [],
   onRemoveAttachment,
+  inputValue = "",
+  onInputChange,
 }: ChatContentProps) => {
+  const hasInputValue = Boolean(inputValue && inputValue.trim().length > 0);
   return (
     <>
       <FlatList
@@ -455,7 +465,24 @@ const ChatContent = ({
             style={styles.textInput}
             placeholder="Enter message"
             placeholderTextColor={theme.lightGreen4}
+            value={inputValue}
+            onChangeText={onInputChange}
           />
+          {hasInputValue ? (
+            <TouchableOpacity
+              style={styles.inputClearButton}
+              onPress={() => onInputChange?.("")}
+              activeOpacity={0.7}
+              hitSlop={{
+                top: moderateHeightScale(8),
+                bottom: moderateHeightScale(8),
+                left: moderateWidthScale(8),
+                right: moderateWidthScale(8),
+              }}
+            >
+              <CloseIcon color={theme.darkGreen} />
+            </TouchableOpacity>
+          ) : null}
         </View>
         <TouchableOpacity
           style={styles.attachmentButton}
@@ -500,6 +527,7 @@ export default function ChatBoxScreen() {
   const [fullImageUri, setFullImageUri] = useState<string | null>(null);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
+  const [inputText, setInputText] = useState("");
 
   const chatItem = useMemo(() => {
     if (params.chatItem) {
@@ -672,6 +700,8 @@ export default function ChatBoxScreen() {
             onRemoveAttachment={(idx) =>
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
             }
+            inputValue={inputText}
+            onInputChange={setInputText}
           />
         </KeyboardAvoidingView>
       ) : (
@@ -701,6 +731,8 @@ export default function ChatBoxScreen() {
             onRemoveAttachment={(idx) =>
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
             }
+            inputValue={inputText}
+            onInputChange={setInputText}
           />
         </View>
       )}
