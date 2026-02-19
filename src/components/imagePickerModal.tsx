@@ -51,6 +51,7 @@ export default function ImagePickerModal({
   visible,
   onClose,
   onImageSelected,
+  onImagesSelected,
   allowsMultipleSelection = false,
   quality = 0.8,
 }: ImagePickerModalProps) {
@@ -74,8 +75,13 @@ export default function ImagePickerModal({
         allowsEditing: false,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        onImageSelected(result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const uris = result.assets.map((a) => a.uri).filter(Boolean);
+        if (allowsMultipleSelection && uris.length > 0 && onImagesSelected) {
+          onImagesSelected(uris);
+        } else {
+          onImageSelected(uris[0]!);
+        }
       }
     } catch (error) {
       Logger.error("Error selecting image from gallery:", error);
@@ -84,7 +90,7 @@ export default function ImagePickerModal({
         "Failed to select image from gallery. Please try again.",
       );
     }
-  }, [onClose, onImageSelected, allowsMultipleSelection, quality]);
+  }, [onClose, onImageSelected, onImagesSelected, allowsMultipleSelection, quality]);
 
   const handleTakePhoto = useCallback(async () => {
     onClose();

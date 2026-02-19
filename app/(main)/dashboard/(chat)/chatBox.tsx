@@ -13,8 +13,11 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -32,8 +35,10 @@ import { SendIcon } from "@/assets/icons";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
 import FullImageModal from "@/src/components/fullImageModal";
+import ImagePickerModal from "@/src/components/imagePickerModal";
 
 const PER_PAGE = 20;
+const MAX_ATTACHMENTS = 8;
 const MESSAGES_URL = (userId: string) => `/api/chat/messages/${userId}`;
 
 type MessageItem = {
@@ -239,6 +244,36 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    attachmentThumbnailsRow: {
+      flexDirection: "row",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(8),
+      paddingBottom: moderateHeightScale(4),
+      gap: moderateWidthScale(8),
+      backgroundColor: theme.white,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    attachmentThumbnailWrap: {
+      position: "relative",
+    },
+    attachmentThumbnail: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen20,
+    },
+    attachmentThumbnailDelete: {
+      position: "absolute",
+      top: -moderateHeightScale(2),
+      right: -moderateWidthScale(2),
+      width: widthScale(18),
+      height: widthScale(18),
+      borderRadius: widthScale(18 / 2),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
 
 type ChatContentProps = {
@@ -261,6 +296,8 @@ type ChatContentProps = {
   loadingMore?: boolean;
   onImagePress?: (uri: string) => void;
   onAttachmentPress?: () => void;
+  selectedAttachments?: string[];
+  onRemoveAttachment?: (index: number) => void;
 };
 
 const ChatContent = ({
@@ -277,6 +314,8 @@ const ChatContent = ({
   loadingMore,
   onImagePress,
   onAttachmentPress,
+  selectedAttachments = [],
+  onRemoveAttachment,
 }: ChatContentProps) => {
   return (
     <>
@@ -363,6 +402,39 @@ const ChatContent = ({
         )}
         showsVerticalScrollIndicator={false}
       />
+      {selectedAttachments.length > 0 ? (
+        <View style={styles.attachmentThumbnailsRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: moderateWidthScale(8) }}
+          >
+            {selectedAttachments.map((uri, idx) => (
+              <View
+                key={`${uri}-${idx}`}
+                style={styles.attachmentThumbnailWrap}
+              >
+                <Image
+                  style={styles.attachmentThumbnail}
+                  source={{ uri }}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  style={styles.attachmentThumbnailDelete}
+                  onPress={() => onRemoveAttachment?.(idx)}
+                  activeOpacity={0.8}
+                >
+                  <MaterialIcons
+                    name="close"
+                    size={moderateWidthScale(10)}
+                    color={theme.white}
+                  />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
       <View
         style={[
           styles.inputBarContainer,
@@ -403,6 +475,8 @@ export default function ChatBoxScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const { showBanner } = useNotificationContext();
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ chatItem?: string; id?: string }>();
   const insets = useSafeAreaInsets();
@@ -417,6 +491,8 @@ export default function ChatBoxScreen() {
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
   const [fullImageUri, setFullImageUri] = useState<string | null>(null);
+  const [imagePickerVisible, setImagePickerVisible] = useState(false);
+  const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
 
   const chatItem = useMemo(() => {
     if (params.chatItem) {
@@ -584,7 +660,11 @@ export default function ChatBoxScreen() {
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
             onImagePress={(uri) => setFullImageUri(uri)}
-            onAttachmentPress={() => {}}
+            onAttachmentPress={() => setImagePickerVisible(true)}
+            selectedAttachments={selectedAttachments}
+            onRemoveAttachment={(idx) =>
+              setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
+            }
           />
         </KeyboardAvoidingView>
       ) : (
@@ -609,7 +689,11 @@ export default function ChatBoxScreen() {
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
             onImagePress={(uri) => setFullImageUri(uri)}
-            onAttachmentPress={() => {}}
+            onAttachmentPress={() => setImagePickerVisible(true)}
+            selectedAttachments={selectedAttachments}
+            onRemoveAttachment={(idx) =>
+              setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
+            }
           />
         </View>
       )}
@@ -617,6 +701,49 @@ export default function ChatBoxScreen() {
         visible={!!fullImageUri}
         onClose={() => setFullImageUri(null)}
         imageUri={fullImageUri}
+      />
+      <ImagePickerModal
+        visible={imagePickerVisible}
+        onClose={() => setImagePickerVisible(false)}
+        allowsMultipleSelection
+        onImageSelected={(uri) => {
+          setSelectedAttachments((prev) => {
+            if (prev.length >= MAX_ATTACHMENTS) {
+              showBanner(
+                t("limitExceeded"),
+                t("collageMax6Images"),
+                "error",
+                3000,
+              );
+              return prev;
+            }
+            return [...prev, uri];
+          });
+        }}
+        onImagesSelected={(uris) => {
+          setSelectedAttachments((prev) => {
+            const remaining = MAX_ATTACHMENTS - prev.length;
+            if (remaining <= 0) {
+              showBanner(
+                t("limitExceeded"),
+                t("collageMax6Images"),
+                "error",
+                3000,
+              );
+              return prev;
+            }
+            const toAdd = uris.slice(0, remaining);
+            if (uris.length > remaining) {
+              showBanner(
+                t("limitExceeded"),
+                t("collageMax6Images"),
+                "error",
+                3000,
+              );
+            }
+            return [...prev, ...toAdd];
+          });
+        }}
       />
     </View>
   );
