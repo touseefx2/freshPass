@@ -246,7 +246,6 @@ const createStyles = (theme: Theme) =>
     },
     attachmentThumbnailsRow: {
       flexDirection: "row",
-      paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(8),
       paddingBottom: moderateHeightScale(4),
       gap: moderateWidthScale(8),
@@ -255,22 +254,27 @@ const createStyles = (theme: Theme) =>
       borderTopColor: theme.borderLight,
     },
     attachmentThumbnailWrap: {
-      position: "relative",
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      overflow: "hidden",
+      backgroundColor: theme.lightGreen20,
     },
     attachmentThumbnail: {
       width: widthScale(44),
       height: widthScale(44),
       borderRadius: moderateWidthScale(6),
-      backgroundColor: theme.lightGreen20,
     },
     attachmentThumbnailDelete: {
       position: "absolute",
-      top: -moderateHeightScale(2),
-      right: -moderateWidthScale(2),
-      width: widthScale(18),
-      height: widthScale(18),
-      borderRadius: widthScale(18 / 2),
-      backgroundColor: theme.darkGreen,
+      top: -5,
+      right: 0,
+      width: widthScale(16),
+      height: widthScale(16),
+      borderRadius: widthScale(16 / 2),
+      backgroundColor: theme.lightGreen,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -407,7 +411,10 @@ const ChatContent = ({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: moderateWidthScale(8) }}
+            contentContainerStyle={{
+              gap: moderateWidthScale(10),
+              paddingHorizontal: moderateWidthScale(16),
+            }}
           >
             {selectedAttachments.map((uri, idx) => (
               <View
