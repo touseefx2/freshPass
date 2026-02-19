@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,6 +6,8 @@ import {
   SectionList,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -21,16 +23,18 @@ import DashboardHeader from "@/src/components/DashboardHeader";
 import { useRouter } from "expo-router";
 import Button from "@/src/components/button";
 import { Feather } from "@expo/vector-icons";
-import { MAIN_ROUTES } from "@/src/constant/routes";
 import { ApiService } from "@/src/services/api";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
+
+const PER_PAGE = 20;
+const CHAT_CONTACTS_URL = "/api/chat/contacts";
 
 type ChatItem = {
   id: string;
   name: string;
   message: string;
   timeLabel: string;
-  createdAt: string; // ISO datetime for grouping/sorting
+  createdAt: string;
   isHighlighted?: boolean;
   image: string;
 };
@@ -39,6 +43,99 @@ type ChatSection = {
   title: string;
   data: ChatItem[];
 };
+
+type ApiContact = {
+  id: number;
+  name: string;
+  email: string;
+  avatar: string | null;
+  role: string;
+  unread_count: number;
+  latest_message?: {
+    id: number;
+    message: string | null;
+    sender: { id: number; name: string; email: string };
+    attachments?: string[];
+    created_at: string;
+  };
+  last_message_at: string | null;
+};
+
+type ContactsResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    data: ApiContact[];
+    meta: {
+      current_page: number;
+      last_page: number;
+      per_page: number;
+      total: number;
+    };
+  };
+};
+
+function getAvatarUrl(avatar: string | null): string {
+  if (!avatar || avatar.trim() === "") {
+    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  }
+  const trimmed = avatar.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const base = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+  const path = trimmed.replace(/^\//, "");
+  return path
+    ? `${base}/${path}`
+    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+}
+
+function formatTimeLabel(isoString: string | null): string {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const dateOnly = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  );
+
+  if (dateOnly.getTime() === today.getTime()) {
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min`;
+    const diffHrs = Math.floor(diffMins / 60);
+    return `${diffHrs} hr`;
+  }
+  if (dateOnly.getTime() === yesterday.getTime()) return "Yesterday";
+  const d = `${date.getDate()}`.padStart(2, "0");
+  const m = `${date.getMonth() + 1}`.padStart(2, "0");
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+function contactToChatItem(c: ApiContact): ChatItem {
+  const createdAt =
+    c.last_message_at ?? c.latest_message?.created_at ?? "1970-01-01T00:00:00Z";
+  let message = "No message";
+  if (c.latest_message) {
+    if (c.latest_message.message) message = c.latest_message.message;
+    else if (c.latest_message.attachments?.length) message = "Attachment";
+    else message = "No message";
+  }
+  return {
+    id: String(c.id),
+    name: c.name,
+    message,
+    timeLabel: formatTimeLabel(createdAt),
+    createdAt,
+    isHighlighted: (c.unread_count ?? 0) > 0,
+    image: getAvatarUrl(c.avatar),
+  };
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -169,6 +266,54 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+function buildSections(contacts: ChatItem[]): ChatSection[] {
+  const today = new Date();
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  const formatDateTitle = (date: Date) => {
+    const yesterday = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate() - 1,
+    );
+    if (isSameDay(date, today)) return "Recent";
+    if (isSameDay(date, yesterday)) return "Yesterday";
+    const day = `${date.getDate()}`.padStart(2, "0");
+    const month = `${date.getMonth() + 1}`.padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const grouped = new Map<string, ChatItem[]>();
+  contacts.forEach((item) => {
+    const dateObj = new Date(item.createdAt);
+    const key = `${dateObj.getFullYear()}-${`${
+      dateObj.getMonth() + 1
+    }`.padStart(2, "0")}-${`${dateObj.getDate()}`.padStart(2, "0")}`;
+    const list = grouped.get(key) ?? [];
+    list.push(item);
+    grouped.set(key, list);
+  });
+
+  const sortedDates = Array.from(grouped.keys()).sort((a, b) =>
+    a < b ? 1 : a > b ? -1 : 0,
+  );
+
+  return sortedDates.map((isoDate) => {
+    const dateObj = new Date(isoDate);
+    const items = [...(grouped.get(isoDate) ?? [])].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    const title =
+      isoDate === sortedDates[0] ? "Recent" : formatDateTitle(dateObj);
+    return { title, data: items };
+  });
+}
+
 export default function ChatScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -178,95 +323,52 @@ export default function ChatScreen() {
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
 
-  const sections = useMemo<ChatSection[]>(() => {
-    const chats: ChatItem[] = [
-      {
-        id: "1",
-        name: "Bristol Galveston",
-        message: "Okay this makes ore sense than...",
-        timeLabel: "2 hr",
-        createdAt: "2025-12-01T08:00:00Z",
-        image:
-          "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg",
-      },
-      {
-        id: "2",
-        name: "Norman Brown J.",
-        message: "Good mrng.",
-        timeLabel: "1/5/2025",
-        createdAt: "2025-11-30T09:00:00Z",
-        isHighlighted: true,
-        image: "",
-      },
-      {
-        id: "3",
-        name: "Jack",
-        message: "Okay this makes ore sense than...",
-        timeLabel: "1/5/2025",
-        createdAt: "2025-11-30T08:00:00Z",
-        image: "https://biteable.com/wp-content/uploads/2025/09/Avatar-4.jpg",
-      },
-    ];
+  const [contacts, setContacts] = useState<ChatItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
 
-    const today = new Date();
-    const isSameDay = (a: Date, b: Date) =>
-      a.getFullYear() === b.getFullYear() &&
-      a.getMonth() === b.getMonth() &&
-      a.getDate() === b.getDate();
-
-    const formatDateTitle = (date: Date) => {
-      const yesterday = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() - 1,
-      );
-
-      if (isSameDay(date, today)) {
-        return "Recent";
+  const fetchContacts = useCallback(
+    async (pageNum: number, append: boolean) => {
+      try {
+        if (append) setLoadingMore(true);
+        else if (pageNum === 1) setLoading(true);
+        const res = await ApiService.get<ContactsResponse>(CHAT_CONTACTS_URL, {
+          params: { per_page: PER_PAGE, page: pageNum },
+        });
+        const list = (res.data?.data ?? []).map(contactToChatItem);
+        setContacts((prev) => (append ? [...prev, ...list] : list));
+        setPage(res.data?.meta?.current_page ?? pageNum);
+        setLastPage(res.data?.meta?.last_page ?? 1);
+      } catch {
+        // keep current data on error
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
       }
+    },
+    [],
+  );
 
-      if (isSameDay(date, yesterday)) {
-        return "Yesterday";
-      }
+  useEffect(() => {
+    if (!isGuest) fetchContacts(1, false);
+    else setLoading(false);
+  }, [isGuest, fetchContacts]);
 
-      const day = `${date.getDate()}`.padStart(2, "0");
-      const month = `${date.getMonth() + 1}`.padStart(2, "0");
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    };
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchContacts(1, false);
+  }, [fetchContacts]);
 
-    const grouped = new Map<string, ChatItem[]>();
-    chats.forEach((item) => {
-      const dateObj = new Date(item.createdAt);
-      const key = `${dateObj.getFullYear()}-${`${
-        dateObj.getMonth() + 1
-      }`.padStart(2, "0")}-${`${dateObj.getDate()}`.padStart(2, "0")}`;
-      const list = grouped.get(key) ?? [];
-      list.push(item);
-      grouped.set(key, list);
-    });
+  const onEndReached = useCallback(() => {
+    if (loadingMore || loading || page >= lastPage) return;
+    fetchContacts(page + 1, true);
+  }, [loadingMore, loading, page, lastPage, fetchContacts]);
 
-    const sortedDates = Array.from(grouped.keys()).sort((a, b) =>
-      a < b ? 1 : a > b ? -1 : 0,
-    );
-
-    return sortedDates.map((isoDate) => {
-      const dateObj = new Date(isoDate);
-      const items = [...(grouped.get(isoDate) ?? [])].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
-
-      // First group (latest date) should show as "Recent"
-      const title =
-        isoDate === sortedDates[0] ? "Recent" : formatDateTitle(dateObj);
-
-      return {
-        title,
-        data: items,
-      };
-    });
-  }, []);
+  const sections = useMemo(() => buildSections(contacts), [contacts]);
 
   const renderInitials = (name: string) => {
     const parts = name.trim().split(" ");
@@ -311,6 +413,26 @@ export default function ChatScreen() {
     );
   }
 
+  if (!isGuest && loading && contacts.length === 0) {
+    return (
+      <View style={styles.container}>
+        {user.userRole === "customer" ? (
+          <DashboardHeaderClient />
+        ) : (
+          <DashboardHeader />
+        )}
+        <Text
+          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
+        >
+          {t("chatBox")}
+        </Text>
+        <View style={styles.guestContainer}>
+          <ActivityIndicator size="large" color={theme.darkGreen} />
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {user.userRole === "customer" || isGuest ? (
@@ -324,8 +446,30 @@ export default function ChatScreen() {
         sections={sections}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.darkGreen]}
+            tintColor={theme.darkGreen}
+          />
+        }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.3}
         ListHeaderComponent={
           <Text style={styles.screenTitle}>{t("chatBox")}</Text>
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View
+              style={{
+                paddingVertical: moderateHeightScale(16),
+                alignItems: "center",
+              }}
+            >
+              <ActivityIndicator size="small" color={theme.darkGreen} />
+            </View>
+          ) : null
         }
         renderSectionHeader={({ section }) => (
           <Text style={styles.sectionHeader}>{section.title}</Text>
