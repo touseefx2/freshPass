@@ -31,6 +31,7 @@ import {
 import { SendIcon } from "@/assets/icons";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
+import FullImageModal from "@/src/components/fullImageModal";
 
 const PER_PAGE = 20;
 const MESSAGES_URL = (userId: string) => `/api/chat/messages/${userId}`;
@@ -242,6 +243,7 @@ type ChatContentProps = {
   onRefresh?: () => void;
   onLoadMore?: () => void;
   loadingMore?: boolean;
+  onImagePress?: (uri: string) => void;
 };
 
 const ChatContent = ({
@@ -256,6 +258,7 @@ const ChatContent = ({
   onRefresh,
   onLoadMore,
   loadingMore,
+  onImagePress,
 }: ChatContentProps) => {
   return (
     <>
@@ -315,12 +318,17 @@ const ChatContent = ({
                 </Text>
               ) : null}
               {item.attachments?.map((uri, idx) => (
-                <Image
+                <TouchableOpacity
                   key={`${item.id}-${idx}`}
-                  style={styles.bubbleImage}
-                  source={{ uri }}
-                  resizeMode="cover"
-                />
+                  onPress={() => onImagePress?.(uri)}
+                  activeOpacity={0.9}
+                >
+                  <Image
+                    style={styles.bubbleImage}
+                    source={{ uri }}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -367,6 +375,7 @@ export default function ChatBoxScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
+  const [fullImageUri, setFullImageUri] = useState<string | null>(null);
 
   const chatItem = useMemo(() => {
     if (params.chatItem) {
@@ -534,6 +543,7 @@ export default function ChatBoxScreen() {
             onRefresh={onRefresh}
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
+            onImagePress={(uri) => setFullImageUri(uri)}
           />
         </KeyboardAvoidingView>
       ) : (
@@ -557,9 +567,15 @@ export default function ChatBoxScreen() {
             onRefresh={onRefresh}
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
+            onImagePress={(uri) => setFullImageUri(uri)}
           />
         </View>
       )}
+      <FullImageModal
+        visible={!!fullImageUri}
+        onClose={() => setFullImageUri(null)}
+        imageUri={fullImageUri}
+      />
     </View>
   );
 }
