@@ -32,6 +32,8 @@ import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet"
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
+import { useStripe } from "@stripe/stripe-react-native";
+import { fetchAppointmentPaymentSheetParams } from "@/src/services/stripeService";
 import {
   PersonIcon,
   MapPinIcon,
@@ -58,7 +60,12 @@ const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
   return <SvgXml xml={svgXml} />;
 };
 
-type BookingStatus = "ongoing" | "active" | "complete" | "cancelled" | "expired";
+type BookingStatus =
+  | "ongoing"
+  | "active"
+  | "complete"
+  | "cancelled"
+  | "expired";
 
 interface BookingItem {
   id: string;
@@ -315,8 +322,8 @@ const createStyles = (theme: Theme) =>
     },
     businessImage: {
       width: widthScale(60),
-      height: heightScale(60),
-      borderRadius: moderateWidthScale(30),
+      height: widthScale(60),
+      borderRadius: widthScale(60 / 2),
       borderWidth: 1,
       borderColor: theme.borderLight,
       overflow: "hidden",
@@ -492,6 +499,8 @@ export default function bookingDetailsById() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const user = useAppSelector((state: any) => state.user);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [booking, setBooking] = useState<BookingItem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -893,6 +902,105 @@ export default function bookingDetailsById() {
     }
   };
 
+  const handlePayOnline = async () => {
+    if (!booking?.id) {
+      showBanner(
+        t("error"),
+        "Appointment ID is missing. Please try again.",
+        "error",
+        4000,
+      );
+      return;
+    }
+
+    const appointmentId = Number(booking.id);
+    if (Number.isNaN(appointmentId)) {
+      showBanner(t("error"), "Invalid appointment ID.", "error", 4000);
+      return;
+    }
+
+    dispatch(setActionLoader(true));
+    try {
+      const {
+        paymentIntent,
+        setupIntent,
+        customerSessionClientSecret,
+        ephemeralKey,
+        customer,
+      } = await fetchAppointmentPaymentSheetParams(appointmentId);
+      dispatch(setActionLoader(false));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const paymentConfig: any = {
+        merchantDisplayName: "Fresh Pass",
+        customerId: customer,
+        allowsDelayedPaymentMethods: true,
+        defaultBillingDetails: {
+          name: user.name || undefined,
+          email: user.email || undefined,
+        },
+        customFlow: false,
+      };
+
+      if (customerSessionClientSecret) {
+        paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
+      } else if (ephemeralKey) {
+        paymentConfig.customerEphemeralKeySecret = ephemeralKey;
+      } else {
+        throw new Error(
+          "Either customerSessionClientSecret or ephemeralKey must be provided",
+        );
+      }
+
+      if (paymentIntent && paymentIntent.trim() !== "") {
+        paymentConfig.paymentIntentClientSecret = paymentIntent;
+      } else if (setupIntent && setupIntent.trim() !== "") {
+        paymentConfig.setupIntentClientSecret = setupIntent;
+      } else {
+        throw new Error(
+          "Either Payment Intent or Setup Intent must be provided",
+        );
+      }
+
+      const { error: initError } = await initPaymentSheet(paymentConfig);
+      if (initError) {
+        throw new Error(initError.message || "Failed to initialize payment");
+      }
+
+      const { error: presentError } = await presentPaymentSheet();
+      if (presentError) {
+        if (!presentError.code?.includes("Canceled")) {
+          showBanner(
+            "Payment Failed",
+            presentError.message || "Payment could not be completed",
+            "error",
+            4000,
+          );
+        }
+        return;
+      }
+
+      showBanner(
+        t("success"),
+        "Payment successful! Your booking is confirmed.",
+        "success",
+        3000,
+      );
+      await fetchBookingDetails();
+    } catch (err: any) {
+      let errorMessage = "Failed to process payment";
+      if (err.data?.message) {
+        errorMessage = err.data.message;
+      } else if (err.data?.error) {
+        errorMessage = err.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      showBanner("Payment Failed", errorMessage, "error", 4000);
+    } finally {
+      dispatch(setActionLoader(false));
+    }
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -1159,7 +1267,7 @@ export default function bookingDetailsById() {
                 ) && (
                   <Button
                     title={t("payOnline")}
-                    onPress={() => {}}
+                    onPress={handlePayOnline}
                     containerStyle={styles.payOnlineButton}
                     textStyle={styles.payOnlineButtonText}
                   />
