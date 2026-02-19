@@ -21,6 +21,8 @@ interface ImagePickerModalProps {
   visible: boolean;
   onClose: () => void;
   onImageSelected: (uri: string) => void;
+  /** When allowsMultipleSelection is true, can use this to receive all selected URIs at once */
+  onImagesSelected?: (uris: string[]) => void;
   allowsMultipleSelection?: boolean;
   quality?: number;
 }

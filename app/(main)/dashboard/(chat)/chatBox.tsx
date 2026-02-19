@@ -56,7 +56,12 @@ type MessagesResponse = {
   success: boolean;
   data: {
     data: ApiMessage[];
-    meta: { current_page: number; last_page: number; per_page: number; total: number };
+    meta: {
+      current_page: number;
+      last_page: number;
+      per_page: number;
+      total: number;
+    };
   };
 };
 
@@ -215,6 +220,17 @@ const createStyles = (theme: Theme) =>
       textAlignVertical: "center",
       includeFontPadding: false,
     },
+    attachmentButton: {
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: widthScale(40 / 2),
+      backgroundColor: theme.lightGreen20,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    attachmentIconWrap: {
+      transform: [{ rotate: "45deg" }],
+    },
     sendButton: {
       width: widthScale(40),
       height: widthScale(40),
@@ -244,6 +260,7 @@ type ChatContentProps = {
   onLoadMore?: () => void;
   loadingMore?: boolean;
   onImagePress?: (uri: string) => void;
+  onAttachmentPress?: () => void;
 };
 
 const ChatContent = ({
@@ -259,6 +276,7 @@ const ChatContent = ({
   onLoadMore,
   loadingMore,
   onImagePress,
+  onAttachmentPress,
 }: ChatContentProps) => {
   return (
     <>
@@ -282,14 +300,24 @@ const ChatContent = ({
         onEndReachedThreshold={0.3}
         ListEmptyComponent={
           loading ? (
-            <View style={{ paddingVertical: moderateHeightScale(40), alignItems: "center" }}>
+            <View
+              style={{
+                paddingVertical: moderateHeightScale(40),
+                alignItems: "center",
+              }}
+            >
               <ActivityIndicator size="large" color={theme.darkGreen} />
             </View>
           ) : null
         }
         ListFooterComponent={
           loadingMore ? (
-            <View style={{ paddingVertical: moderateHeightScale(12), alignItems: "center" }}>
+            <View
+              style={{
+                paddingVertical: moderateHeightScale(12),
+                alignItems: "center",
+              }}
+            >
               <ActivityIndicator size="small" color={theme.darkGreen} />
             </View>
           ) : null
@@ -339,7 +367,7 @@ const ChatContent = ({
         style={[
           styles.inputBarContainer,
           {
-            marginBottom: Math.max(insets.bottom, moderateHeightScale(8)),
+            paddingBottom: Math.max(insets.bottom, moderateHeightScale(8)),
           },
         ]}
       >
@@ -350,6 +378,19 @@ const ChatContent = ({
             placeholderTextColor={theme.lightGreen4}
           />
         </View>
+        <TouchableOpacity
+          style={styles.attachmentButton}
+          activeOpacity={0.8}
+          onPress={() => onAttachmentPress?.()}
+        >
+          <View style={styles.attachmentIconWrap}>
+            <MaterialIcons
+              name="attach-file"
+              size={22}
+              color={theme.darkGreen}
+            />
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.sendButton} activeOpacity={0.8}>
           <SendIcon width={18} height={18} color={theme.buttonText} />
         </TouchableOpacity>
@@ -402,8 +443,7 @@ export default function ChatBoxScreen() {
   const apiMessageToItem = useCallback(
     (m: ApiMessage): MessageItem => {
       const isMe = currentUserId != null && m.sender.id === currentUserId;
-      const text =
-        m.message ?? (m.attachments?.length ? "Attachment" : "");
+      const text = m.message ?? (m.attachments?.length ? "Attachment" : "");
       const attachments = (m.attachments ?? [])
         .map((u) => getMessageImageUrl(u))
         .filter(Boolean);
@@ -544,6 +584,7 @@ export default function ChatBoxScreen() {
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
             onImagePress={(uri) => setFullImageUri(uri)}
+            onAttachmentPress={() => {}}
           />
         </KeyboardAvoidingView>
       ) : (
@@ -568,6 +609,7 @@ export default function ChatBoxScreen() {
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
             onImagePress={(uri) => setFullImageUri(uri)}
+            onAttachmentPress={() => {}}
           />
         </View>
       )}
