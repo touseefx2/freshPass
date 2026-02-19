@@ -58,7 +58,7 @@ const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
   return <SvgXml xml={svgXml} />;
 };
 
-type BookingStatus = "ongoing" | "active" | "complete" | "cancelled";
+type BookingStatus = "ongoing" | "active" | "complete" | "cancelled" | "expired";
 
 interface BookingItem {
   id: string;
@@ -430,6 +430,16 @@ const createStyles = (theme: Theme) =>
     paymentAmountVal: {
       fontFamily: fonts.fontMedium,
     },
+    payOnlineButtonContainer: {},
+    payOnlineButton: {
+      height: moderateHeightScale(36),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(8),
+    },
+    payOnlineButtonText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+    },
     policyLink: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -506,6 +516,8 @@ export default function bookingDetailsById() {
         return "complete";
       case "cancelled":
         return "cancelled";
+      case "expired":
+        return "expired";
       default:
         return "active";
     }
@@ -746,6 +758,7 @@ export default function bookingDetailsById() {
       case "complete":
         return styles.statusComplete;
       case "cancelled":
+      case "expired":
         return styles.statusCancelled;
       default:
         return styles.statusActive;
@@ -761,6 +774,7 @@ export default function bookingDetailsById() {
       case "complete":
         return styles.statusTextComplete;
       case "cancelled":
+      case "expired":
         return styles.statusTextCancelled;
       default:
         return styles.statusTextActive;
@@ -777,12 +791,15 @@ export default function bookingDetailsById() {
         return "Complete";
       case "cancelled":
         return "You canceled";
+      case "expired":
+        return "Expired";
       default:
         return "Active";
     }
   };
 
-  const isCancelled = booking?.status === "cancelled";
+  const isCancelled =
+    booking?.status === "cancelled" || booking?.status === "expired";
   const isComplete = booking?.status === "complete";
 
   // Parse date and time from dateTime string
@@ -1133,6 +1150,20 @@ export default function bookingDetailsById() {
                   </>
                 )}
               </View>
+              {!isCancelled &&
+                !isComplete &&
+                userRole === "customer" &&
+                !(
+                  booking.paymentMethod === "pay_now" &&
+                  booking.paidAmount != null
+                ) && (
+                  <Button
+                    title={t("payOnline")}
+                    onPress={() => {}}
+                    containerStyle={styles.payOnlineButton}
+                    textStyle={styles.payOnlineButtonText}
+                  />
+                )}
             </View>
           ) : (
             <View style={styles.paymentSection}>
