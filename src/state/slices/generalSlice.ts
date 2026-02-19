@@ -72,6 +72,10 @@ export interface GeneralState {
   searchReturnFromSearch2: SearchReturnFromSearch2 | null; // When search2 returns to search screen (not persisted)
   aiService: AdditionalServiceItem[] | null; // Additional services by type (not persisted)
   tryOnBannerDismissed: boolean; // User closed try-on banner this session (not persisted, reset on app open)
+  // Full image modal (not persisted)
+  fullImageModalVisible: boolean;
+  fullImageModalImages: string[];
+  fullImageModalInitialIndex: number;
 }
 
 const initialState: GeneralState = {
@@ -104,6 +108,9 @@ const initialState: GeneralState = {
   searchReturnFromSearch2: null,
   aiService: null,
   tryOnBannerDismissed: false,
+  fullImageModalVisible: false,
+  fullImageModalImages: [],
+  fullImageModalInitialIndex: 0,
 };
 
 const generalSlice = createSlice({
@@ -171,6 +178,24 @@ const generalSlice = createSlice({
     },
     setTryOnBannerDismissed(state, action: PayloadAction<boolean>) {
       state.tryOnBannerDismissed = action.payload;
+    },
+    openFullImageModal(
+      state,
+      action: PayloadAction<{ images: string[]; initialIndex?: number }>,
+    ) {
+      const { images, initialIndex = 0 } = action.payload;
+      if (!images?.length) return;
+      state.fullImageModalVisible = true;
+      state.fullImageModalImages = images;
+      state.fullImageModalInitialIndex = Math.min(
+        Math.max(0, initialIndex),
+        Math.max(0, images.length - 1),
+      );
+    },
+    closeFullImageModal(state) {
+      state.fullImageModalVisible = false;
+      state.fullImageModalImages = [];
+      state.fullImageModalInitialIndex = 0;
     },
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
@@ -250,6 +275,9 @@ const generalSlice = createSlice({
       state.searchReturnFromSearch2 = null;
       state.aiService = null;
       state.tryOnBannerDismissed = false;
+      state.fullImageModalVisible = false;
+      state.fullImageModalImages = [];
+      state.fullImageModalInitialIndex = 0;
     },
   },
 });
@@ -274,6 +302,8 @@ export const {
   clearSearchReturnFromSearch2,
   setAiService,
   setTryOnBannerDismissed,
+  openFullImageModal,
+  closeFullImageModal,
   setGuestModeModalVisible,
   setIsFirstShowTryOn,
   setCurrentLocation,

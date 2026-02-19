@@ -27,8 +27,9 @@ import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints } from "@/src/services/endpoints";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
+import { useDispatch } from "react-redux";
 import { moderateWidthScale } from "@/src/theme/dimensions";
-import FullImageModal from "@/src/components/fullImageModal";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 
 /** API: GET /api/ai-requests/{job_id} - response can be processing, replicate, hair_pipeline, or social media */
 export interface AiRequestByJobIdResponse {
@@ -282,7 +283,7 @@ export default function AiResults() {
   const [error, setError] = useState<string | null>(null);
   const [normalized, setNormalized] = useState<NormalizedResult | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const dispatch = useDispatch();
   const [downloading, setDownloading] = useState(false);
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -394,8 +395,14 @@ export default function AiResults() {
     }
   };
 
-  const openFullImage = (uri: string) => setSelectedImageUri(uri);
-  const closeFullImage = () => setSelectedImageUri(null);
+  const openFullImage = (uri: string, allUris?: string[]) => {
+    dispatch(
+      openFullImageModal({
+        images: allUris ?? [uri],
+        initialIndex: allUris ? allUris.indexOf(uri) : 0,
+      }),
+    );
+  };
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -753,7 +760,12 @@ export default function AiResults() {
                   <View style={styles.imageCardInner}>
                     <TouchableOpacity
                       style={StyleSheet.absoluteFill}
-                      onPress={() => openFullImage(url)}
+                      onPress={() =>
+                        openFullImage(
+                          url,
+                          section.views.map((v) => v.url),
+                        )
+                      }
                       activeOpacity={1}
                     >
                       <Image
@@ -793,11 +805,6 @@ export default function AiResults() {
     <View style={styles.safeArea}>
       <StackHeader title={t("aiResults")} />
       {content}
-      <FullImageModal
-        visible={selectedImageUri != null}
-        onClose={closeFullImage}
-        imageUri={selectedImageUri}
-      />
     </View>
   );
 }

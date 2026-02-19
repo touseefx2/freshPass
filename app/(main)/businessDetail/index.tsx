@@ -29,7 +29,10 @@ import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { setBusinessData as setBusinessDataAction } from "@/src/state/slices/bsnsSlice";
-import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  setGuestModeModalVisible,
+  openFullImageModal,
+} from "@/src/state/slices/generalSlice";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   heightScale,
@@ -56,7 +59,6 @@ import {
   ChevronRightIconBusinessDetail,
 } from "@/assets/icons";
 import InclusionsModal from "@/src/components/inclusionsModal";
-import FullImageModal from "@/src/components/fullImageModal";
 import Button from "@/src/components/button";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
@@ -1207,8 +1209,6 @@ export default function BusinessDetailScreen() {
   const [activeTab, setActiveTab] = useState<
     "Details" | "Service" | "Ratings" | "Staff"
   >("Service");
-  const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [currentHeroImage, setCurrentHeroImage] = useState<string>(
     "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=800&q=80",
   );
@@ -1719,8 +1719,15 @@ export default function BusinessDetailScreen() {
   const thumbnails = portfolioPhotos;
 
   const handleOpenFullImage = () => {
-    setSelectedImage(currentHeroImage);
-    setImageModalVisible(true);
+    if (thumbnails.length) {
+      const idx = thumbnails.indexOf(currentHeroImage);
+      dispatch(
+        openFullImageModal({
+          images: thumbnails,
+          initialIndex: idx >= 0 ? idx : 0,
+        }),
+      );
+    }
   };
 
   const handleThumbnailSelect = (image: string) => {
@@ -3500,13 +3507,6 @@ export default function BusinessDetailScreen() {
           {renderRatingsContent()}
         </View>
       </ScrollView>
-
-      {/* Image Modal */}
-      <FullImageModal
-        visible={imageModalVisible}
-        onClose={() => setImageModalVisible(false)}
-        imageUri={selectedImage}
-      />
 
       {/* Inclusions Modal */}
       <InclusionsModal

@@ -20,6 +20,7 @@ import SessionExpiredHandler from "@/src/components/SessionExpiredHandler";
 import ActionLoader from "@/src/components/actionLoader";
 import OnboardingHandler from "@/src/components/OnboardingHandler";
 import GuestModeModal from "@/src/components/guestModeModal";
+import FullImageModal from "@/src/components/fullImageModal";
 import "../global.css";
 import * as SystemUI from "expo-system-ui";
 import { LogBox } from "react-native";
@@ -90,6 +91,7 @@ export default function RootLayout() {
                     <Slot />
                     <ActionLoader />
                     <GuestModeModal />
+                    <FullImageModal />
                     <OnboardingHandler />
                     <SessionExpiredHandler />
                   </NotificationProvider>

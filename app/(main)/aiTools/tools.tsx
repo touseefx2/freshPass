@@ -40,12 +40,14 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import FullImageModal from "@/src/components/fullImageModal";
 import HairPipelineProcessingModal, {
   type HairPipelineModalState,
   INITIAL_HAIR_PIPELINE_STATE,
 } from "@/src/components/HairPipelineProcessingModal";
-import { setActionLoader } from "@/src/state/slices/generalSlice";
+import {
+  setActionLoader,
+  openFullImageModal,
+} from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import Logger from "@/src/services/logger";
@@ -152,7 +154,6 @@ export default function Tools() {
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
   const [audioPickerVisible, setAudioPickerVisible] = useState(false);
-  const [fullImageModalVisible, setFullImageModalVisible] = useState(false);
 
   // Hair pipeline processing modal state (single object)
   const [hairPipelineState, setHairPipelineState] =
@@ -1098,7 +1099,12 @@ export default function Tools() {
         {hairTryonSourceImage && (
           <View style={styles.imagePreviewContainer}>
             <TouchableOpacity
-              onPress={() => setFullImageModalVisible(true)}
+              onPress={() =>
+                hairTryonSourceImage &&
+                dispatch(
+                  openFullImageModal({ images: [hairTryonSourceImage] }),
+                )
+              }
               activeOpacity={0.9}
               style={{ width: "100%", height: "100%" }}
             >
@@ -1267,13 +1273,6 @@ export default function Tools() {
           <Text style={styles.optionText}>{t("chooseAudioFile")}</Text>
         </TouchableOpacity>
       </ModalizeBottomSheet>
-
-      {/* Full Image Modal for Hair Tryon Source Image */}
-      <FullImageModal
-        visible={fullImageModalVisible}
-        onClose={() => setFullImageModalVisible(false)}
-        imageUri={hairTryonSourceImage || null}
-      />
 
       <HairPipelineProcessingModal
         state={hairPipelineState}

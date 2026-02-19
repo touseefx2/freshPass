@@ -33,8 +33,9 @@ import {
 } from "react-native-safe-area-context";
 import { CloseIcon, SendIcon } from "@/assets/icons";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useDispatch } from "react-redux";
 import { ApiService } from "@/src/services/api";
-import FullImageModal from "@/src/components/fullImageModal";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 
 const PER_PAGE = 20;
@@ -303,7 +304,7 @@ type ChatContentProps = {
   onRefresh?: () => void;
   onLoadMore?: () => void;
   loadingMore?: boolean;
-  onImagePress?: (uri: string) => void;
+  onImagePress?: (uri: string, allUris?: string[]) => void;
   onAttachmentPress?: () => void;
   selectedAttachments?: string[];
   onRemoveAttachment?: (index: number) => void;
@@ -401,7 +402,7 @@ const ChatContent = ({
               {item.attachments?.map((uri, idx) => (
                 <TouchableOpacity
                   key={`${item.id}-${idx}`}
-                  onPress={() => onImagePress?.(uri)}
+                  onPress={() => onImagePress?.(uri, item.attachments)}
                   activeOpacity={0.9}
                 >
                   <Image
@@ -527,7 +528,7 @@ export default function ChatBoxScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [fullImageUri, setFullImageUri] = useState<string | null>(null);
+  const dispatch = useDispatch();
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
   const [inputText, setInputText] = useState("");
@@ -697,7 +698,14 @@ export default function ChatBoxScreen() {
             onRefresh={onRefresh}
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
-            onImagePress={(uri) => setFullImageUri(uri)}
+            onImagePress={(uri, allUris) =>
+              dispatch(
+                openFullImageModal({
+                  images: allUris ?? [uri],
+                  initialIndex: allUris ? allUris.indexOf(uri) : 0,
+                }),
+              )
+            }
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
             onRemoveAttachment={(idx) =>
@@ -728,7 +736,14 @@ export default function ChatBoxScreen() {
             onRefresh={onRefresh}
             onLoadMore={onLoadMore}
             loadingMore={loadingMore}
-            onImagePress={(uri) => setFullImageUri(uri)}
+            onImagePress={(uri, allUris) =>
+              dispatch(
+                openFullImageModal({
+                  images: allUris ?? [uri],
+                  initialIndex: allUris ? allUris.indexOf(uri) : 0,
+                }),
+              )
+            }
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
             onRemoveAttachment={(idx) =>
@@ -739,11 +754,6 @@ export default function ChatBoxScreen() {
           />
         </View>
       )}
-      <FullImageModal
-        visible={!!fullImageUri}
-        onClose={() => setFullImageUri(null)}
-        imageUri={fullImageUri}
-      />
       <ImagePickerModal
         visible={imagePickerVisible}
         onClose={() => setImagePickerVisible(false)}
