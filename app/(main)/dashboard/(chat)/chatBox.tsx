@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,8 +11,10 @@ import {
   Image,
   Keyboard,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -28,13 +30,55 @@ import {
 } from "react-native-safe-area-context";
 import { SendIcon } from "@/assets/icons";
 import { MaterialIcons } from "@expo/vector-icons";
+import { ApiService } from "@/src/services/api";
+
+const PER_PAGE = 20;
+const MESSAGES_URL = (userId: string) => `/api/chat/messages/${userId}`;
 
 type MessageItem = {
   id: string;
   text: string;
   isMe: boolean;
   timeLabel: string;
+  attachments?: string[];
 };
+
+type ApiMessage = {
+  id: number;
+  message: string | null;
+  sender: { id: number; name: string; email?: string };
+  attachments?: string[];
+  created_at: string;
+};
+
+type MessagesResponse = {
+  success: boolean;
+  data: {
+    data: ApiMessage[];
+    meta: { current_page: number; last_page: number; per_page: number; total: number };
+  };
+};
+
+function getMessageImageUrl(url: string | null | undefined): string {
+  if (!url || url.trim() === "") return "";
+  const trimmed = url.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const base = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+  const path = trimmed.replace(/^\//, "");
+  return path ? `${base}/${path}` : "";
+}
+
+function formatMessageTime(isoString: string): string {
+  const date = new Date(isoString);
+  const hours = date.getHours();
+  const mins = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const h = hours % 12 || 12;
+  const m = `${mins}`.padStart(2, "0");
+  return `${h}:${m} ${ampm}`;
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -131,6 +175,13 @@ const createStyles = (theme: Theme) =>
     bubbleTextMe: {
       color: theme.darkGreen,
     },
+    bubbleImage: {
+      width: widthScale(160),
+      height: heightScale(160),
+      borderRadius: moderateWidthScale(8),
+      marginTop: moderateHeightScale(6),
+      backgroundColor: theme.galleryPhotoBack,
+    },
     senderLabel: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
@@ -185,6 +236,12 @@ type ChatContentProps = {
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   insets: { bottom: number };
+  currentUserName: string;
+  loading?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
+  onLoadMore?: () => void;
+  loadingMore?: boolean;
 };
 
 const ChatContent = ({
@@ -193,6 +250,12 @@ const ChatContent = ({
   styles,
   theme,
   insets,
+  currentUserName,
+  loading,
+  refreshing,
+  onRefresh,
+  onLoadMore,
+  loadingMore,
 }: ChatContentProps) => {
   return (
     <>
@@ -202,6 +265,32 @@ const ChatContent = ({
         data={messages}
         inverted={true}
         keyExtractor={(item) => item.id}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={!!refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.darkGreen]}
+              tintColor={theme.darkGreen}
+            />
+          ) : undefined
+        }
+        onEndReached={onLoadMore}
+        onEndReachedThreshold={0.3}
+        ListEmptyComponent={
+          loading ? (
+            <View style={{ paddingVertical: moderateHeightScale(40), alignItems: "center" }}>
+              <ActivityIndicator size="large" color={theme.darkGreen} />
+            </View>
+          ) : null
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingVertical: moderateHeightScale(12), alignItems: "center" }}>
+              <ActivityIndicator size="small" color={theme.darkGreen} />
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <View
             style={[
@@ -210,7 +299,7 @@ const ChatContent = ({
             ]}
           >
             <Text style={styles.senderLabel}>
-              {item.isMe ? "Brentley" : chatItem?.name}
+              {item.isMe ? currentUserName : chatItem?.name}
             </Text>
             <View
               style={[
@@ -218,11 +307,21 @@ const ChatContent = ({
                 item.isMe ? styles.bubbleMe : styles.bubbleOther,
               ]}
             >
-              <Text
-                style={[styles.bubbleText, item.isMe && styles.bubbleTextMe]}
-              >
-                {item.text}
-              </Text>
+              {item.text ? (
+                <Text
+                  style={[styles.bubbleText, item.isMe && styles.bubbleTextMe]}
+                >
+                  {item.text}
+                </Text>
+              ) : null}
+              {item.attachments?.map((uri, idx) => (
+                <Image
+                  key={`${item.id}-${idx}`}
+                  style={styles.bubbleImage}
+                  source={{ uri }}
+                  resizeMode="cover"
+                />
+              ))}
             </View>
           </View>
         )}
@@ -256,11 +355,19 @@ export default function ChatBoxScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const params = useLocalSearchParams<{ chatItem?: string }>();
+  const params = useLocalSearchParams<{ chatItem?: string; id?: string }>();
   const insets = useSafeAreaInsets();
+  const user = useAppSelector((state: any) => state.user);
+  const currentUserId = user?.id ?? null;
+  const currentUserName = user?.name ?? "Me";
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
 
-  // Parse chat item from params
   const chatItem = useMemo(() => {
     if (params.chatItem) {
       try {
@@ -278,8 +385,69 @@ export default function ChatBoxScreen() {
     return null;
   }, [params.chatItem]);
 
+  const userId = params.id ?? chatItem?.id ?? "";
+
   const name = chatItem?.name || "Unknown";
   const image = chatItem?.image || "";
+
+  const apiMessageToItem = useCallback(
+    (m: ApiMessage): MessageItem => {
+      const isMe = currentUserId != null && m.sender.id === currentUserId;
+      const text =
+        m.message ?? (m.attachments?.length ? "Attachment" : "");
+      const attachments = (m.attachments ?? [])
+        .map((u) => getMessageImageUrl(u))
+        .filter(Boolean);
+      return {
+        id: String(m.id),
+        text,
+        isMe,
+        timeLabel: formatMessageTime(m.created_at),
+        attachments: attachments.length ? attachments : undefined,
+      };
+    },
+    [currentUserId],
+  );
+
+  const fetchMessages = useCallback(
+    async (pageNum: number, append: boolean) => {
+      if (!userId) return;
+      try {
+        if (append) setLoadingMore(true);
+        else if (pageNum === 1) setLoading(true);
+        const res = await ApiService.get<MessagesResponse>(
+          MESSAGES_URL(userId),
+          { params: { per_page: PER_PAGE, page: pageNum } },
+        );
+        const list = (res.data?.data ?? []).map(apiMessageToItem);
+        setMessages((prev) => (append ? [...prev, ...list] : list));
+        setPage(res.data?.meta?.current_page ?? pageNum);
+        setLastPage(res.data?.meta?.last_page ?? 1);
+      } catch {
+        if (!append) setMessages([]);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
+    },
+    [userId, apiMessageToItem],
+  );
+
+  useEffect(() => {
+    if (userId) fetchMessages(1, false);
+    else setLoading(false);
+  }, [userId, fetchMessages]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchMessages(1, false);
+  }, [fetchMessages]);
+
+  const onLoadMore = useCallback(() => {
+    if (loadingMore || loading || page >= lastPage) return;
+    fetchMessages(page + 1, true);
+  }, [loadingMore, loading, page, lastPage, fetchMessages]);
 
   useEffect(() => {
     if (Platform.OS === "android") {
@@ -302,69 +470,6 @@ export default function ChatBoxScreen() {
       };
     }
   }, []);
-
-  const messages: MessageItem[] = [
-    {
-      id: "1",
-      text: "Hello! Morning, how are you doing?",
-      isMe: true,
-      timeLabel: "9:30 AM",
-    },
-    {
-      id: "2",
-      text: "Good mrng",
-      isMe: false,
-      timeLabel: "9:32 AM",
-    },
-    // {
-    //   id: "3",
-    //   text: "Hello! Morning, how are you doing?",
-    //   isMe: true,
-    //   timeLabel: "9:30 AM",
-    // },
-    // {
-    //   id: "4",
-    //   text: "Good mrng",
-    //   isMe: false,
-    //   timeLabel: "9:32 AM",
-    // },
-    // {
-    //   id: "5",
-    //   text: "Hello! Morning, how are you doing?",
-    //   isMe: true,
-    //   timeLabel: "9:30 AM",
-    // },
-    // {
-    //   id: "6",
-    //   text: "Good mrng",
-    //   isMe: false,
-    //   timeLabel: "9:32 AM",
-    // },
-    // {
-    //   id: "7",
-    //   text: "Hello! Morning, how are you doing?",
-    //   isMe: true,
-    //   timeLabel: "9:30 AM",
-    // },
-    // {
-    //   id: "8",
-    //   text: "Good mrng",
-    //   isMe: false,
-    //   timeLabel: "9:32 AM",
-    // },
-    // {
-    //   id: "9",
-    //   text: "Hello! Morning, how are you doing?",
-    //   isMe: true,
-    //   timeLabel: "9:30 AM",
-    // },
-    // {
-    //   id: "10",
-    //   text: "Good mrng",
-    //   isMe: false,
-    //   timeLabel: "9:32 AM",
-    // },
-  ];
 
   const renderInitials = (fullName: string) => {
     const parts = fullName.trim().split(" ");
@@ -423,6 +528,12 @@ export default function ChatBoxScreen() {
             styles={styles}
             theme={theme}
             insets={insets}
+            currentUserName={currentUserName}
+            loading={loading}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onLoadMore={onLoadMore}
+            loadingMore={loadingMore}
           />
         </KeyboardAvoidingView>
       ) : (
@@ -440,6 +551,12 @@ export default function ChatBoxScreen() {
             styles={styles}
             theme={theme}
             insets={insets}
+            currentUserName={currentUserName}
+            loading={loading}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onLoadMore={onLoadMore}
+            loadingMore={loadingMore}
           />
         </View>
       )}

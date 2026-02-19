@@ -479,7 +479,7 @@ export default function ChatScreen() {
             onPress={() =>
               router.push({
                 pathname: "./chatBox",
-                params: { chatItem: JSON.stringify(item) },
+                params: { id: item.id, chatItem: JSON.stringify(item) },
               })
             }
             activeOpacity={0.8}
