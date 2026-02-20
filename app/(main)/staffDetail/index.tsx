@@ -192,6 +192,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.text,
+      textTransform: "capitalize",
     },
     hoursTime: {
       fontSize: fontSize.size13,
@@ -203,6 +204,18 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
       marginTop: moderateHeightScale(4),
+    },
+    leaveCard: {
+      minWidth: widthScale(100),
+      minHeight: heightScale(72),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      justifyContent: "center",
+      gap: moderateHeightScale(4),
     },
     statusDot: {
       position: "absolute",
@@ -226,6 +239,18 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+export interface StaffLeave {
+  id: number;
+  user_id: number;
+  staff_name: string | null;
+  staff: unknown;
+  type: "break" | "leave";
+  start_time: string;
+  end_time: string;
+  reason: string | null;
+  created_at: string;
+}
+
 export interface StaffDetailData {
   id: number;
   user_id: number;
@@ -236,6 +261,7 @@ export interface StaffDetailData {
   description: string | null;
   invitation_token: string | null;
   completed_appointments_count: number;
+  leaves?: StaffLeave[];
   business: {
     id: number;
     title: string;
@@ -273,6 +299,52 @@ function formatTime(time: string | null | undefined): string {
   return `${displayHour}:${minutes} ${ampm}`;
 }
 
+const UTC_OPTIONS: Intl.DateTimeFormatOptions = {
+  timeZone: "UTC",
+};
+
+const currentYear = () => new Date().getFullYear();
+
+function formatLeaveDateTimeUTC(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    const showYear = d.getUTCFullYear() !== currentYear();
+    const dateStr = d.toLocaleDateString("en-US", {
+      ...UTC_OPTIONS,
+      day: "numeric",
+      month: "short",
+      ...(showYear ? { year: "numeric" } : {}),
+    });
+    const timeStr = d.toLocaleTimeString("en-US", {
+      ...UTC_OPTIONS,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `${dateStr}, ${timeStr}`;
+  } catch {
+    return "--";
+  }
+}
+
+function formatLeaveDateOnlyUTC(
+  isoString: string,
+  alwaysShowYear = false,
+): string {
+  try {
+    const d = new Date(isoString);
+    const showYear = alwaysShowYear || d.getUTCFullYear() !== currentYear();
+    return d.toLocaleDateString("en-US", {
+      ...UTC_OPTIONS,
+      day: "numeric",
+      month: "short",
+      ...(showYear ? { year: "numeric" } : {}),
+    });
+  } catch {
+    return "--";
+  }
+}
+
 export default function StaffDetail() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -289,8 +361,6 @@ export default function StaffDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StaffDetailData | null>(null);
-
-  console.log("data : ", data?.invitation_token);
 
   const fetchStaffDetails = useCallback(async () => {
     if (!staffId) {
@@ -406,7 +476,7 @@ export default function StaffDetail() {
         data.user.profile_image_url.startsWith("https://"))
         ? data.user.profile_image_url
         : (process.env.EXPO_PUBLIC_API_BASE_URL || "") +
-            (data.user?.profile_image_url ?? "");
+          (data.user?.profile_image_url ?? "");
     router.push({
       pathname: "/(main)/chatBox",
       params: {
@@ -414,7 +484,8 @@ export default function StaffDetail() {
         chatItem: JSON.stringify({
           id: String(data.user.id),
           name: data.name ?? "",
-          image: staffImage || (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
+          image:
+            staffImage || (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
         }),
       },
     });
@@ -491,7 +562,10 @@ export default function StaffDetail() {
         rightIcon={
           isBusinessRole ? (
             <View style={styles.headerRightIcons}>
-              <TouchableOpacity activeOpacity={0.7} onPress={confirmDeleteStaff}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={confirmDeleteStaff}
+              >
                 <MaterialIcons
                   name="delete-outline"
                   size={moderateWidthScale(20)}
@@ -612,7 +686,6 @@ export default function StaffDetail() {
                         </Text>
                         {hasBreaks && (
                           <Text style={styles.hoursBreak}>
-                            {/* Show first break; if more exist, append indicator */}
                             {`Break: ${formatTime(
                               breakHours[0].start,
                             )} – ${formatTime(breakHours[0].end)}${
@@ -627,6 +700,35 @@ export default function StaffDetail() {
                   </View>
                 );
               })}
+            </ScrollView>
+          </View>
+        ) : null}
+
+        {(data.leaves?.length ?? 0) > 0 ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>
+              {t("closeBreak") || "Close/Break"}
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.hoursScroll}
+              contentContainerStyle={styles.hoursCardsContainer}
+            >
+              {data.leaves!.map((leave) => (
+                <View key={leave.id} style={styles.leaveCard}>
+                  <Text style={styles.hoursDay}>
+                    {leave.type === "break"
+                      ? t("break") || "Break"
+                      : t("close") || "Close"}
+                  </Text>
+                  <Text style={styles.hoursTime}>
+                    {leave.type === "leave"
+                      ? formatLeaveDateOnlyUTC(leave.start_time, true)
+                      : `${formatLeaveDateTimeUTC(leave.start_time)} – ${formatLeaveDateTimeUTC(leave.end_time)}`}
+                  </Text>
+                </View>
+              ))}
             </ScrollView>
           </View>
         ) : null}
