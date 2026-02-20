@@ -538,6 +538,101 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
+    leaveDetailBoxOverlay: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingTop: moderateHeightScale(44),
+      paddingHorizontal: moderateWidthScale(12),
+      alignItems: "flex-start",
+      justifyContent: "flex-start",
+      zIndex: 10,
+    },
+    leaveDetailBoxDropdown: {
+      maxWidth: widthScale(210),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.18,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    leaveDetailBoxHeaderRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(2),
+    },
+    leaveDetailBoxDateText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    leaveDetailBoxCloseBtn: {
+      padding: moderateWidthScale(2),
+      marginTop: moderateHeightScale(-2),
+      marginRight: moderateWidthScale(-2),
+    },
+    leaveDetailBoxTimeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    leaveDetailBoxRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(2),
+    },
+    leaveDetailBoxLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      width: moderateWidthScale(60),
+    },
+    leaveDetailBoxValue: {
+      flex: 1,
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
+    leaveDetailBoxTypeWrap: {
+      marginBottom: moderateHeightScale(4),
+    },
+    leaveDetailBoxTypeBadge: {
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.orangeBrown015,
+      alignSelf: "flex-start",
+    },
+    leaveDetailBoxTypeBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrown,
+    },
+    leaveDetailBoxCancelWrap: {
+      flexDirection: "row",
+      justifyContent: "flex-end",
+    },
+    leaveDetailBoxCancelBtn: {
+      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.primary,
+      alignItems: "center",
+    },
+    leaveDetailBoxCancelBtnText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
   });
 
 export default function CalendarScreen() {
@@ -568,6 +663,9 @@ export default function CalendarScreen() {
     "start" | "end" | null
   >(null);
   const [applyBoxLoading, setApplyBoxLoading] = useState(false);
+  const [leaveDetailBoxVisible, setLeaveDetailBoxVisible] = useState(false);
+  const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null);
+  const [leaveDetailCancelling, setLeaveDetailCancelling] = useState(false);
 
   const isStaff = userRole === "staff";
   const currentDate = selectedDate.format("YYYY-MM-DD");
@@ -815,25 +913,70 @@ export default function CalendarScreen() {
     return `${date.format("M/D/YYYY")} - ${date.format("h:mm a")}`;
   };
 
-  const navigateToLeaveDetail = (leave: StaffLeave) => {
-    router.push({
-      pathname: "/(main)/leaveDetail",
-      params: {
-        leaveId: String(leave.id),
-        staffName: leave.staff_name || "",
-        leaveType: leave.type,
-        startTime: leave.start_time || "",
-        endTime: leave.end_time || "",
-        reason: leave.reason || "",
-        createdAt: leave.created_at || "",
-      },
-    });
+  const openLeaveDetailBox = (leave: StaffLeave) => {
+    setApplyBoxVisible(false);
+    setSelectedLeave(leave);
+    setLeaveDetailBoxVisible(true);
+  };
+
+  const formatLeaveDetailDateOnly = (iso: string) => {
+    if (!iso) return "—";
+    const datePart = iso.slice(0, 10);
+    return dayjs(datePart).format("MMM D, YYYY");
+  };
+
+  const formatLeaveDetailDateTime = (iso: string) => {
+    if (!iso) return "—";
+    const d = dayjs.utc(iso);
+    return d.format("MMM D, YYYY · h:mm a");
+  };
+
+  const formatLeaveDetailTimeOnly = (iso: string) => {
+    if (!iso) return "—";
+    const d = dayjs.utc(iso);
+    return d.format("h:mm a");
+  };
+
+  const formatLeaveDetailStartEnd = (iso: string, leaveType: "leave" | "break") => {
+    if (!iso) return "—";
+    return leaveType === "leave"
+      ? formatLeaveDetailDateOnly(iso)
+      : formatLeaveDetailDateTime(iso);
+  };
+
+  const handleCancelLeaveFromBox = async () => {
+    if (selectedLeave == null) return;
+    setLeaveDetailCancelling(true);
+    try {
+      await ApiService.delete<{ success: boolean; message: string }>(
+        staffEndpoints.leaveCancel(selectedLeave.id),
+      );
+      showBanner(
+        t("success") || "Success",
+        "Leave cancelled successfully",
+        "success",
+        2500,
+      );
+      setLeaveDetailBoxVisible(false);
+      setSelectedLeave(null);
+      fetchLeaves();
+    } catch (error: any) {
+      showBanner(
+        t("apiFailed") || "Error",
+        error?.message ?? "Failed to cancel leave",
+        "error",
+        2500,
+      );
+    } finally {
+      setLeaveDetailCancelling(false);
+    }
   };
 
   const openApplyBox = (
     type: "leave" | "break" = "leave",
     slotTime12h?: string,
   ) => {
+    setLeaveDetailBoxVisible(false);
     setApplyBoxType(type);
     const slotHour = slotTime12h
       ? parseInt(convertTo24Hour(slotTime12h).split(":")[0], 10)
@@ -971,6 +1114,7 @@ export default function CalendarScreen() {
               style={styles.arrowButton}
               onPress={() => {
                 setApplyBoxVisible(false);
+                setLeaveDetailBoxVisible(false);
                 prevWeek();
               }}
             >
@@ -987,6 +1131,7 @@ export default function CalendarScreen() {
               style={styles.arrowButton}
               onPress={() => {
                 setApplyBoxVisible(false);
+                setLeaveDetailBoxVisible(false);
                 nextWeek();
               }}
             >
@@ -1012,6 +1157,7 @@ export default function CalendarScreen() {
                   style={styles.dayContainer}
                   onPress={() => {
                     setApplyBoxVisible(false);
+                    setLeaveDetailBoxVisible(false);
                     setSelectedDate(day);
                   }}
                 >
@@ -1045,12 +1191,16 @@ export default function CalendarScreen() {
               style={styles.agendaHeader}
               activeOpacity={1}
               onPress={() => {
-                if (leaveForSelectedDate) {
-                  navigateToLeaveDetail(leaveForSelectedDate);
+                if (leaveDetailBoxVisible) {
+                  setLeaveDetailBoxVisible(false);
                   return;
                 }
                 if (applyBoxVisible) {
                   setApplyBoxVisible(false);
+                  return;
+                }
+                if (leaveForSelectedDate) {
+                  openLeaveDetailBox(leaveForSelectedDate);
                 }
               }}
             >
@@ -1068,7 +1218,7 @@ export default function CalendarScreen() {
                   {isStaff && leaveForSelectedDate && (
                     <TouchableOpacity
                       onPress={() =>
-                        navigateToLeaveDetail(leaveForSelectedDate)
+                        openLeaveDetailBox(leaveForSelectedDate)
                       }
                       style={styles.leaveBox}
                       activeOpacity={0.7}
@@ -1255,6 +1405,82 @@ export default function CalendarScreen() {
               </Pressable>
             )}
 
+            {leaveDetailBoxVisible && selectedLeave && (
+              <Pressable
+                style={styles.leaveDetailBoxOverlay}
+                onPress={() => setLeaveDetailBoxVisible(false)}
+              >
+                <Pressable
+                  style={styles.leaveDetailBoxDropdown}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <View style={styles.leaveDetailBoxHeaderRow}>
+                    <Text style={styles.leaveDetailBoxDateText}>
+                      {formatLeaveDetailDateOnly(
+                        selectedLeave.start_time || "",
+                      )}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.leaveDetailBoxCloseBtn}
+                      onPress={() => setLeaveDetailBoxVisible(false)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons
+                        name="close"
+                        size={moderateWidthScale(16)}
+                        color={theme.text}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  {selectedLeave.type === "break" && (
+                    <Text style={styles.leaveDetailBoxTimeText}>
+                      {formatLeaveDetailTimeOnly(
+                        selectedLeave.start_time || "",
+                      )}{" "}
+                      –{" "}
+                      {formatLeaveDetailTimeOnly(
+                        selectedLeave.end_time || "",
+                      )}
+                    </Text>
+                  )}
+                  {selectedLeave.reason ? (
+                    <View style={styles.leaveDetailBoxRow}>
+                      <Text style={styles.leaveDetailBoxLabel}>Reason</Text>
+                      <Text style={styles.leaveDetailBoxValue}>
+                        {selectedLeave.reason}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.leaveDetailBoxTypeWrap}>
+                    <View style={styles.leaveDetailBoxTypeBadge}>
+                      <Text style={styles.leaveDetailBoxTypeBadgeText}>
+                        {selectedLeave.type === "break"
+                          ? "BREAK"
+                          : "CLOSE"}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.leaveDetailBoxCancelWrap}>
+                    <TouchableOpacity
+                      style={styles.leaveDetailBoxCancelBtn}
+                      onPress={handleCancelLeaveFromBox}
+                      disabled={leaveDetailCancelling}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.leaveDetailBoxCancelBtnText}>
+                        {leaveDetailCancelling
+                          ? "..."
+                          : selectedLeave.type === "break"
+                            ? "Cancel Break"
+                            : "Cancel Closed Day"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </Pressable>
+              </Pressable>
+            )}
+
             <ScrollView
               ref={scrollViewRef}
               style={{ flex: 1 }}
@@ -1315,7 +1541,7 @@ export default function CalendarScreen() {
                         activeOpacity={0.7}
                         onPress={() => {
                           if (slotLeave) {
-                            navigateToLeaveDetail(slotLeave);
+                            openLeaveDetailBox(slotLeave);
                           } else if (!isPastDate) {
                             openApplyBox("break", time);
                           }
@@ -1342,7 +1568,7 @@ export default function CalendarScreen() {
                           <TouchableOpacity
                             style={styles.breakSlotBox}
                             onPress={() =>
-                              navigateToLeaveDetail(breaksInSlot[0])
+                              openLeaveDetailBox(breaksInSlot[0])
                             }
                             activeOpacity={0.7}
                           >
