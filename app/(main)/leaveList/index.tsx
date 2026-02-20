@@ -85,11 +85,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.text,
     },
-    staffText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
     emptyContainer: {
       flex: 1,
       minHeight: Dimensions.get("window").height * 0.6,
@@ -216,9 +211,6 @@ export default function LeaveList() {
             size={moderateWidthScale(20)}
             color={theme.darkGreen}
           />
-        </View>
-        <View style={styles.cardRow}>
-          <Text style={styles.staffText}>{item.staff_name || "—"}</Text>
         </View>
         <View style={styles.cardRow}>
           <Text style={styles.dateText}>{startStr}</Text>

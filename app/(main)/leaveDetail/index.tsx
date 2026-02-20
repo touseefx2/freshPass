@@ -176,10 +176,10 @@ export default function LeaveDetail() {
               </Text>
             </View>
           </View>
-          <View style={styles.row}>
+          {/* <View style={styles.row}>
             <Text style={styles.label}>Staff</Text>
             <Text style={styles.value}>{staffName || "—"}</Text>
-          </View>
+          </View> */}
           <View style={styles.row}>
             <Text style={styles.label}>Start</Text>
             <Text style={styles.value}>{formatStartEnd(startTime)}</Text>

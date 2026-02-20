@@ -667,7 +667,7 @@ export default function CalendarScreen() {
   const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null);
   const [leaveDetailCancelling, setLeaveDetailCancelling] = useState(false);
 
-  const isStaff = userRole === "staff";
+  const canManageLeaves = userRole === "staff" || userRole === "business";
   const currentDate = selectedDate.format("YYYY-MM-DD");
   const isPastDate = selectedDate.isBefore(today, "day");
 
@@ -687,13 +687,13 @@ export default function CalendarScreen() {
     }
   }, [week]);
 
-  // Refetch leaves when screen comes into focus (staff only)
+  // Refetch leaves when screen comes into focus (staff and business)
   useFocusEffect(
     useCallback(() => {
-      if (isStaff) {
+      if (canManageLeaves) {
         fetchLeaves();
       }
-    }, [isStaff, selectedDate]),
+    }, [canManageLeaves, selectedDate]),
   );
 
   const fetchLeaves = async () => {
@@ -1208,7 +1208,7 @@ export default function CalendarScreen() {
                   {loading && (
                     <ActivityIndicator size="small" color={theme.primary} />
                   )}
-                  {isStaff && leaveForSelectedDate && (
+                  {canManageLeaves && leaveForSelectedDate && (
                     <TouchableOpacity
                       onPress={() => openLeaveDetailBox(leaveForSelectedDate)}
                       style={styles.leaveBox}
@@ -1226,7 +1226,7 @@ export default function CalendarScreen() {
                       </Text>
                     </TouchableOpacity>
                   )}
-                  {isStaff && !leaveForSelectedDate && !isPastDate && (
+                  {canManageLeaves && !leaveForSelectedDate && !isPastDate && (
                     <TouchableOpacity
                       onPress={() => openApplyBox("leave")}
                       style={{ marginLeft: moderateWidthScale(8) }}
@@ -1520,7 +1520,7 @@ export default function CalendarScreen() {
                       hasMultipleAppointments && styles.timeSlotRowWithMultiple,
                     ]}
                   >
-                    {isStaff ? (
+                    {canManageLeaves ? (
                       <TouchableOpacity
                         style={styles.timeSlot}
                         activeOpacity={0.7}
