@@ -246,13 +246,16 @@ export default function Tools() {
     try {
       const isReel = toolType === "Generate Reel";
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: isReel
-          ? ImagePicker.MediaTypeOptions.All
-          : ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: isReel ? ["images", "videos"] : "images",
         allowsMultipleSelection:
           toolType === "Generate Collage" || toolType === "Generate Reel",
         quality: 0.8,
         allowsEditing: false,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
       });
 
       if (!result.canceled && result.assets) {
@@ -336,11 +339,14 @@ export default function Tools() {
     try {
       const isReel = toolType === "Generate Reel";
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: isReel
-          ? ImagePicker.MediaTypeOptions.All
-          : ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: isReel ? ["images", "videos"] : "images",
         quality: 0.8,
         allowsEditing: false,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
