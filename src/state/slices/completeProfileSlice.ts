@@ -66,6 +66,7 @@ export interface CompleteProfileState {
   services: Array<{
     id: string;
     name: string;
+    description?: string;
     hours: number;
     minutes: number;
     price: number;
@@ -74,6 +75,7 @@ export interface CompleteProfileState {
   subscriptions: Array<{
     id: string;
     packageName: string;
+    description?: string;
     servicesPerMonth: number;
     price: number;
     currency: string;
@@ -580,6 +582,7 @@ const completeProfileSlice = createSlice({
       action: PayloadAction<{
         id: string;
         name: string;
+        description?: string;
         hours: number;
         minutes: number;
         price: number;
@@ -602,6 +605,7 @@ const completeProfileSlice = createSlice({
       action: PayloadAction<{
         id: string;
         name: string;
+        description?: string;
         hours: number;
         minutes: number;
         price: number;
@@ -622,6 +626,7 @@ const completeProfileSlice = createSlice({
         Array<{
           id: string;
           name: string;
+          description?: string;
           hours: number;
           minutes: number;
           price: number;
@@ -643,6 +648,7 @@ const completeProfileSlice = createSlice({
       action: PayloadAction<{
         id: string;
         packageName: string;
+        description?: string;
         servicesPerMonth: number;
         price: number;
         currency: string;
@@ -665,6 +671,7 @@ const completeProfileSlice = createSlice({
       action: PayloadAction<{
         id: string;
         packageName: string;
+        description?: string;
         servicesPerMonth: number;
         price: number;
         currency: string;

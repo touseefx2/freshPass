@@ -219,14 +219,19 @@ export default function CompleteProfile() {
     }
 
     if (currentStep === 8) {
-      // Transform services to API format
-      const servicesArray = services.map((service) => ({
-        template_id: parseInt(service.id),
-        price: service.price,
-        description: service.name,
-        duration_hours: service.hours,
-        duration_minutes: service.minutes,
-      }));
+      // Transform services to API format - name and description sent for both template and custom
+      const servicesArray = services.map((service) => {
+        const isCustomService = service.id.startsWith("custom-");
+        const description = service.description ?? service.name;
+        return {
+          template_id: isCustomService ? null : parseInt(service.id, 10),
+          name: service.name,
+          description,
+          price: service.price,
+          duration_hours: service.hours,
+          duration_minutes: service.minutes,
+        };
+      });
 
       body = { ...body, services: servicesArray };
     }
@@ -235,7 +240,7 @@ export default function CompleteProfile() {
       // Transform subscriptions to API format
       const subscriptionPlansArray = subscriptions.map((subscription) => ({
         name: subscription.packageName,
-        description: subscription.packageName, // Using packageName as description
+        description: subscription.description ?? subscription.packageName,
         price: subscription.price,
         visits: subscription.servicesPerMonth,
         plan_services: subscription.serviceIds.map((id) => parseInt(id)), // Convert string IDs to numbers (template_id)

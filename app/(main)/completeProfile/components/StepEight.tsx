@@ -106,10 +106,24 @@ const createStyles = (theme: Theme) =>
     popularSection: {
       // gap: moderateHeightScale(12),
     },
+    popularTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(4),
+    },
     popularTitle: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.lightGreen4,
+    },
+    addServiceCircleButton: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
     },
     suggestionSeparator: {
       height: 1,
@@ -226,6 +240,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    serviceDescription: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      marginTop: moderateHeightScale(2),
+    },
     servicePrice: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
@@ -321,6 +341,7 @@ export default function StepEight() {
     return {
       id: template.id.toString(),
       name: template.name,
+      description: template.name,
       hours: template.duration_hours,
       minutes: template.duration_minutes,
       price: template.base_price,
@@ -452,24 +473,6 @@ export default function StepEight() {
             loading={serviceTemplatesLoading}
           />
         </View>
-      ) : hasNoData ? (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>
-            Service data not found against category {businessCategory?.name}
-          </Text>
-
-          <TouchableOpacity onPress={handleChangeBusinessCategory}>
-            <Text style={styles.changeCategoryText}>
-              Change business category
-            </Text>
-          </TouchableOpacity>
-          <View style={styles.retryButtonContainer}>
-            <RetryButton
-              onPress={fetchServiceTemplates}
-              loading={serviceTemplatesLoading}
-            />
-          </View>
-        </View>
       ) : (
         <>
           <View style={styles.titleSec}>
@@ -506,6 +509,14 @@ export default function StepEight() {
                       <Text style={styles.serviceDetails}>
                         {formatDuration(service.hours, service.minutes)}
                       </Text>
+                      {service.description ? (
+                        <Text
+                          style={styles.serviceDescription}
+                          numberOfLines={2}
+                        >
+                          {service.description}
+                        </Text>
+                      ) : null}
                     </View>
                     <TouchableOpacity
                       onPress={() => handleEditService(service.id)}
@@ -524,53 +535,56 @@ export default function StepEight() {
             </View>
           )}
 
-          {(() => {
-            // Filter out selected services from popular suggestions
-            const unselectedSuggestions = popularSuggestions.filter(
-              (s) => !services.some((service) => service.id === s.id),
-            );
-
-            if (unselectedSuggestions.length === 0) return null;
-
-            return (
-              <View style={styles.popularSection}>
-                <Text style={styles.popularTitle}>
-                  Popular starting points:
-                </Text>
-                {unselectedSuggestions.map((suggestion) => {
-                  return (
-                    <View key={suggestion.id}>
-                      <TouchableOpacity
-                        onPress={() => handleSelectSuggestion(suggestion)}
-                        activeOpacity={0.7}
-                        style={styles.suggestionItem}
-                      >
-                        <Text style={styles.suggestionText}>
-                          {suggestion.name}
-                        </Text>
-                        <View style={styles.selectButtonWrapper}>
-                          <View style={styles.selectButtonShadow} />
-                          <View style={styles.selectButton}>
-                            <Text style={styles.selectButtonText}>Select</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                      <View style={styles.suggestionSeparator} />
+          <View style={styles.popularSection}>
+            <View style={styles.popularTitleRow}>
+              <Text style={styles.popularTitle}>Popular starting points:</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setEditingServiceId(null);
+                  setEditServiceVisible(true);
+                }}
+                style={styles.addServiceCircleButton}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="plus"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            </View>
+            {popularSuggestions
+              .filter((s) => !services.some((service) => service.id === s.id))
+              .map((suggestion) => (
+                <View key={suggestion.id}>
+                  <TouchableOpacity
+                    onPress={() => handleSelectSuggestion(suggestion)}
+                    activeOpacity={0.7}
+                    style={styles.suggestionItem}
+                  >
+                    <Text style={styles.suggestionText}>{suggestion.name}</Text>
+                    <View style={styles.selectButtonWrapper}>
+                      <View style={styles.selectButtonShadow} />
+                      <View style={styles.selectButton}>
+                        <Text style={styles.selectButtonText}>Select</Text>
+                      </View>
                     </View>
-                  );
-                })}
-              </View>
-            );
-          })()}
+                  </TouchableOpacity>
+                  <View style={styles.suggestionSeparator} />
+                </View>
+              ))}
+          </View>
 
-          <TouchableOpacity
-            style={styles.viewMoreButton}
-            onPress={handleViewMore}
-          >
-            <Text style={styles.viewMoreButtonText}>
-              + View more suggestion
-            </Text>
-          </TouchableOpacity>
+          {!hasNoData && (
+            <TouchableOpacity
+              style={styles.viewMoreButton}
+              onPress={handleViewMore}
+            >
+              <Text style={styles.viewMoreButtonText}>
+                + View more suggestion
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <ServiceListBottomSheet
             visible={serviceListVisible}

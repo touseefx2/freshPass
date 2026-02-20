@@ -17,7 +17,10 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { updateService } from "@/src/state/slices/completeProfileSlice";
+import {
+  addService,
+  updateService,
+} from "@/src/state/slices/completeProfileSlice";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 
 interface EditServiceBottomSheetProps {
@@ -68,11 +71,44 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(15),
       paddingVertical: moderateHeightScale(10),
     },
+    serviceNameWrapperEditable: {
+      backgroundColor: theme.white,
+    },
+    descriptionWrapper: {
+      gap: moderateHeightScale(2),
+      marginTop: 0,
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      paddingHorizontal: moderateWidthScale(15),
+      paddingVertical: moderateHeightScale(10),
+    },
+    descriptionWrapperEditable: {
+      backgroundColor: theme.white,
+    },
     serviceNameText: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen4,
       flex: 1,
+    },
+    serviceNameInput: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      paddingVertical: 0,
+      height: heightScale(24),
+      flex: 1,
+    },
+    descriptionInput: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      paddingVertical: 0,
+      minHeight: heightScale(48),
+      flex: 1,
+      textAlignVertical: "top",
     },
     profileIcon: {
       width: widthScale(40),
@@ -194,6 +230,9 @@ export default function EditServiceBottomSheet({
   const service = serviceId ? services.find((s) => s.id === serviceId) : null;
 
   const [serviceName, setServiceName] = useState(service?.name || "");
+  const [serviceDescription, setServiceDescription] = useState(
+    service?.description ?? service?.name ?? "",
+  );
   const [hoursStr, setHoursStr] = useState("");
   const [minutesStr, setMinutesStr] = useState("");
   const [price, setPrice] = useState("");
@@ -203,9 +242,20 @@ export default function EditServiceBottomSheet({
     price?: string;
   }>({});
 
+  const isNameEditable = !serviceId || (service?.id?.startsWith?.("custom-") ?? false);
+
   useEffect(() => {
-    if (visible && service) {
+    if (!visible) return;
+    if (serviceId === null) {
+      setServiceName("");
+      setServiceDescription("");
+      setHoursStr("0");
+      setMinutesStr("0");
+      setPrice("");
+      setErrors({});
+    } else if (service) {
       setServiceName(service.name);
+      setServiceDescription(service.description ?? service.name);
       const serviceHours = Math.min(Math.max(service.hours, 0), 12);
       setHoursStr(serviceHours.toString());
       const serviceMinutes = Math.min(Math.max(service.minutes, 0), 59);
@@ -213,7 +263,7 @@ export default function EditServiceBottomSheet({
       setPrice(service.price.toString());
       setErrors({});
     }
-  }, [visible, service]);
+  }, [visible, serviceId, service]);
 
   const handleHoursChange = (text: string) => {
     const cleaned = text.replace(/[^0-9]/g, "").slice(0, 2);
@@ -281,6 +331,13 @@ export default function EditServiceBottomSheet({
   const handleSave = () => {
     const newErrors: typeof errors = {};
 
+    if (isNameEditable) {
+      const trimmedName = serviceName.trim();
+      if (!trimmedName) {
+        newErrors.name = "Service name is required";
+      }
+    }
+
     const hours = Math.min(Math.max(parseInt(hoursStr, 10) || 0, 0), 12);
     const minutes = Math.min(Math.max(parseInt(minutesStr, 10) || 0, 0), 59);
     const priceValue = parseFloat(price);
@@ -293,11 +350,27 @@ export default function EditServiceBottomSheet({
       return;
     }
 
-    if (serviceId && service) {
+    const descriptionValue =
+      serviceDescription.trim() || serviceName.trim();
+
+    if (serviceId === null) {
+      dispatch(
+        addService({
+          id: `custom-${Date.now()}`,
+          name: serviceName.trim(),
+          description: descriptionValue,
+          hours,
+          minutes,
+          price: priceValue,
+          currency,
+        }),
+      );
+    } else if (serviceId && service) {
       dispatch(
         updateService({
           id: serviceId,
-          name: service.name,
+          name: isNameEditable ? serviceName.trim() : service.name,
+          description: descriptionValue,
           hours,
           minutes,
           price: priceValue,
@@ -313,14 +386,51 @@ export default function EditServiceBottomSheet({
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title={t("editService")}
+      title={serviceId ? t("editService") : "Add service"}
       footerButtonTitle="Save"
       onFooterButtonPress={handleSave}
       contentStyle={styles.scrollContent}
     >
-      <View style={styles.serviceNameWrapper}>
+      <View
+        style={[
+          styles.serviceNameWrapper,
+          isNameEditable && styles.serviceNameWrapperEditable,
+        ]}
+      >
         <Text style={styles.inputLabel}>Service name</Text>
-        <Text style={styles.serviceNameText}>{serviceName}</Text>
+        {isNameEditable ? (
+          <>
+            <TextInput
+              style={styles.serviceNameInput}
+              value={serviceName}
+              onChangeText={setServiceName}
+              placeholder="Enter service name"
+              placeholderTextColor={theme.lightGreen2}
+            />
+            {errors.name ? (
+              <Text style={styles.errorText}>{errors.name}</Text>
+            ) : null}
+          </>
+        ) : (
+          <Text style={styles.serviceNameText}>{serviceName}</Text>
+        )}
+      </View>
+
+      <View
+        style={[
+          styles.descriptionWrapper,
+          styles.descriptionWrapperEditable,
+        ]}
+      >
+        <Text style={styles.inputLabel}>Description</Text>
+        <TextInput
+          style={styles.descriptionInput}
+          value={serviceDescription}
+          onChangeText={setServiceDescription}
+          placeholder="Enter description"
+          placeholderTextColor={theme.lightGreen2}
+          multiline
+        />
       </View>
 
       <View style={{ gap: 15 }}>

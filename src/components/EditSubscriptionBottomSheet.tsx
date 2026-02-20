@@ -27,6 +27,7 @@ interface EditSubscriptionBottomSheetProps {
   onAddCustomSuggestion?: (subscription: {
     id: string;
     packageName: string;
+    description?: string;
     servicesPerMonth: number;
     price: number;
     currency: string;
@@ -42,12 +43,31 @@ const createStyles = (theme: Theme) =>
     packageNameWrapper: {
       gap: moderateHeightScale(2),
       marginTop: moderateHeightScale(16),
-      backgroundColor: theme.lightGreen07,
+      backgroundColor: theme.white,
       borderRadius: moderateWidthScale(8),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
       paddingHorizontal: moderateWidthScale(15),
       paddingVertical: moderateHeightScale(10),
+    },
+    descriptionWrapper: {
+      gap: moderateHeightScale(2),
+      marginTop: 0,
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      paddingHorizontal: moderateWidthScale(15),
+      paddingVertical: moderateHeightScale(10),
+    },
+    descriptionInput: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      paddingVertical: 0,
+      minHeight: heightScale(48),
+      flex: 1,
+      textAlignVertical: "top",
     },
     inputLabel: {
       fontSize: fontSize.size12,
@@ -230,6 +250,9 @@ export default function EditSubscriptionBottomSheet({
   const [packageName, setPackageName] = useState(
     subscription?.packageName || ""
   );
+  const [description, setDescription] = useState(
+    subscription?.description ?? ""
+  );
   const [servicesPerMonthStr, setServicesPerMonthStr] = useState("");
   const [price, setPrice] = useState("");
   const [currency] = useState(subscription?.currency || "USD");
@@ -247,11 +270,13 @@ export default function EditSubscriptionBottomSheet({
     if (visible) {
       if (subscription) {
         setPackageName(subscription.packageName);
+        setDescription(subscription.description ?? "");
         setServicesPerMonthStr(subscription.servicesPerMonth.toString());
         setPrice(subscription.price.toString());
         setSelectedServiceIds(subscription.serviceIds);
       } else {
         setPackageName("");
+        setDescription("");
         setServicesPerMonthStr("1");
         setPrice("10.00");
         setSelectedServiceIds([]);
@@ -325,12 +350,14 @@ export default function EditSubscriptionBottomSheet({
     }
 
     const servicesPerMonth = Math.max(0, parseInt(servicesPerMonthStr, 10) || 0);
+    const descriptionValue = description.trim() || packageName.trim();
 
     if (subscriptionId && subscription) {
       dispatch(
         updateSubscription({
           id: subscriptionId,
           packageName: packageName.trim(),
+          description: descriptionValue,
           servicesPerMonth,
           price: priceValue,
           currency,
@@ -342,6 +369,7 @@ export default function EditSubscriptionBottomSheet({
       const newSubscription = {
         id: newId,
         packageName: packageName.trim(),
+        description: descriptionValue,
         servicesPerMonth,
         price: priceValue,
         currency,
@@ -379,6 +407,18 @@ export default function EditSubscriptionBottomSheet({
         {errors.packageName && (
           <Text style={styles.errorText}>{errors.packageName}</Text>
         )}
+      </View>
+
+      <View style={styles.descriptionWrapper}>
+        <Text style={styles.inputLabel}>Description</Text>
+        <TextInput
+          style={styles.descriptionInput}
+          value={description}
+          onChangeText={setDescription}
+          placeholder="Enter description"
+          placeholderTextColor={theme.lightGreen2}
+          multiline
+        />
       </View>
 
       <View style={{ gap: moderateHeightScale(15) }}>

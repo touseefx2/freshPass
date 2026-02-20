@@ -43,6 +43,7 @@ const getPopularSuggestions = (
     {
       id: "basic_plan",
       packageName: "Basic Plan",
+      description: "",
       servicesPerMonth: 2,
       price: 145.99,
       currency: "USD",
@@ -196,6 +197,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    subscriptionDescription: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      marginTop: moderateHeightScale(4),
+    },
     subscriptionDetails: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
@@ -332,6 +339,7 @@ export default function StepNine() {
     Array<{
       id: string;
       packageName: string;
+      description?: string;
       servicesPerMonth: number;
       price: number;
       currency: string;
@@ -544,6 +552,7 @@ export default function StepNine() {
   const handleAddCustomSuggestion = (subscription: {
     id: string;
     packageName: string;
+    description?: string;
     servicesPerMonth: number;
     price: number;
     currency: string;
@@ -640,9 +649,19 @@ export default function StepNine() {
             return (
               <View key={subscription.id} style={styles.subscriptionCard}>
                 <View style={styles.subscriptionCardHeader}>
-                  <Text style={styles.subscriptionName}>
-                    {subscription.packageName}
-                  </Text>
+                  <View style={styles.subscriptionInfo}>
+                    <Text style={styles.subscriptionName}>
+                      {subscription.packageName}
+                    </Text>
+                    {subscription.description ? (
+                      <Text
+                        style={styles.subscriptionDescription}
+                        numberOfLines={2}
+                      >
+                        {subscription.description}
+                      </Text>
+                    ) : null}
+                  </View>
                   <TouchableOpacity
                     style={{
                       width: moderateWidthScale(50),
@@ -913,9 +932,11 @@ export default function StepNine() {
               .map((service) => service.id.toString());
 
             // Create subscription object in the required format
+            // Description defaults to empty when adding from AI-generated plans
             const subscription = {
               id: subscriptionId,
               packageName: plan.name,
+              description: "",
               servicesPerMonth: plan.visits_included,
               price: plan.monthly_price,
               currency: plan.currency,
