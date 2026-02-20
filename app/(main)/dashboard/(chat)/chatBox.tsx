@@ -215,6 +215,27 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(6),
       backgroundColor: theme.galleryPhotoBack,
     },
+    bubbleAttachmentsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(6),
+      alignSelf: "flex-start",
+      width: widthScale(260),
+    },
+    bubbleImageGridWrap: {
+      width: (widthScale(260) - moderateWidthScale(6)) / 2,
+      height: (widthScale(260) - moderateWidthScale(6)) / 2,
+      overflow: "hidden",
+    },
+    bubbleImageGrid: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.galleryPhotoBack,
+    },
+    bubbleTextBelow: {
+      marginTop: moderateHeightScale(8),
+    },
     senderLabel: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
@@ -419,29 +440,39 @@ const ChatContent = ({
                 item.isMe ? styles.bubbleMe : styles.bubbleOther,
               ]}
             >
+              {item.attachments && item.attachments.length > 0 ? (
+                <View style={styles.bubbleAttachmentsRow}>
+                  {item.attachments.map((uri, idx) => (
+                    <TouchableOpacity
+                      key={`${item.id}-${idx}`}
+                      onPress={() =>
+                        onImagePress?.(uri, item.attachments)
+                      }
+                      activeOpacity={0.9}
+                      style={styles.bubbleImageGridWrap}
+                    >
+                      <Image
+                        style={styles.bubbleImageGrid}
+                        source={{ uri }}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : null}
               {item.text ? (
                 <Text
-                  style={[styles.bubbleText, item.isMe && styles.bubbleTextMe]}
+                  style={[
+                    styles.bubbleText,
+                    item.isMe && styles.bubbleTextMe,
+                    item.attachments && item.attachments.length > 0
+                      ? styles.bubbleTextBelow
+                      : null,
+                  ]}
                 >
                   {item.text}
                 </Text>
               ) : null}
-              {item.attachments?.map((uri, idx) => (
-                <TouchableOpacity
-                  key={`${item.id}-${idx}`}
-                  onPress={() => onImagePress?.(uri, item.attachments)}
-                  activeOpacity={0.9}
-                >
-                  <Image
-                    style={[
-                      styles.bubbleImage,
-                      !item.text && idx === 0 && { marginTop: 0 },
-                    ]}
-                    source={{ uri }}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ))}
             </View>
           </View>
         )}
