@@ -104,26 +104,20 @@ const createStyles = (theme: Theme) =>
     headerEditIcon: {
       marginLeft: moderateWidthScale(10),
     },
-    chatIconButton: {
-      backgroundColor: theme.darkGreenLight,
-      width: widthScale(40),
-      height: heightScale(40),
-      borderRadius: moderateWidthScale(999),
+    messageRow: {
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      marginLeft: moderateWidthScale(8),
+      gap: moderateWidthScale(8),
+      paddingTop: moderateHeightScale(14),
+      marginTop: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLine,
     },
-    chatButtonRow: {
-      marginTop: moderateHeightScale(16),
-      alignItems: "center",
-    },
-    chatIconButtonBelow: {
-      backgroundColor: theme.darkGreenLight,
-      width: widthScale(44),
-      height: heightScale(44),
-      borderRadius: moderateWidthScale(999),
-      alignItems: "center",
-      justifyContent: "center",
+    messageRowText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     cardTitle: {
       fontSize: fontSize.size14,
@@ -553,20 +547,6 @@ export default function StaffDetail() {
               {t("staffInvitationPending")}
             </Text>
           ) : null}
-          {data?.user?.id != null && (
-            <View style={styles.chatButtonRow}>
-              <TouchableOpacity
-                style={styles.chatIconButtonBelow}
-                onPress={handleChatPress}
-              >
-                <ChatIcon
-                  width={widthScale(20)}
-                  height={heightScale(20)}
-                  color={theme.white}
-                />
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         <View style={styles.card}>
@@ -588,6 +568,22 @@ export default function StaffDetail() {
             <Text style={styles.label}>{t("status")}</Text>
             <Text style={styles.value}>{isActive ? "Active" : "Inactive"}</Text>
           </View>
+          {data?.user?.id != null && (
+            <TouchableOpacity
+              style={styles.messageRow}
+              onPress={handleChatPress}
+              activeOpacity={0.7}
+            >
+              <ChatIcon
+                width={widthScale(18)}
+                height={heightScale(18)}
+                color={theme.darkGreen}
+              />
+              <Text style={styles.messageRowText}>
+                {t("message") || "Message"}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {sortedHours.length > 0 ? (
