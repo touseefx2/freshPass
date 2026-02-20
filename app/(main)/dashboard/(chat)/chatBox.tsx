@@ -118,8 +118,18 @@ function formatMessageDateTime(isoString: string): string {
   const date = new Date(isoString);
   const day = date.getDate();
   const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
   const month = months[date.getMonth()];
   const year = date.getFullYear();
@@ -236,10 +246,17 @@ const createStyles = (theme: Theme) =>
       alignSelf: "flex-start",
       width: widthScale(260),
     },
+    bubbleAttachmentsRowSingle: {
+      width: undefined,
+    },
     bubbleImageGridWrap: {
       width: (widthScale(260) - moderateWidthScale(6)) / 2,
       height: (widthScale(260) - moderateWidthScale(6)) / 2,
       overflow: "hidden",
+    },
+    bubbleImageGridWrapSingle: {
+      width: widthScale(160),
+      height: heightScale(160),
     },
     bubbleImageGrid: {
       width: "100%",
@@ -461,15 +478,23 @@ const ChatContent = ({
               ]}
             >
               {item.attachments && item.attachments.length > 0 ? (
-                <View style={styles.bubbleAttachmentsRow}>
+                <View
+                  style={[
+                    styles.bubbleAttachmentsRow,
+                    item.attachments.length === 1 &&
+                      styles.bubbleAttachmentsRowSingle,
+                  ]}
+                >
                   {item.attachments.map((uri, idx) => (
                     <TouchableOpacity
                       key={`${item.id}-${idx}`}
-                      onPress={() =>
-                        onImagePress?.(uri, item.attachments)
-                      }
+                      onPress={() => onImagePress?.(uri, item.attachments)}
                       activeOpacity={0.9}
-                      style={styles.bubbleImageGridWrap}
+                      style={[
+                        styles.bubbleImageGridWrap,
+                        (item.attachments?.length ?? 0) === 1 &&
+                          styles.bubbleImageGridWrapSingle,
+                      ]}
                     >
                       <Image
                         style={styles.bubbleImageGrid}
@@ -570,10 +595,7 @@ const ChatContent = ({
           ) : null}
         </View>
         <TouchableOpacity
-          style={[
-            styles.attachmentButton,
-            sending && { opacity: 0.5 },
-          ]}
+          style={[styles.attachmentButton, sending && { opacity: 0.5 }]}
           activeOpacity={0.8}
           onPress={() => onAttachmentPress?.()}
           disabled={sending}
@@ -587,10 +609,7 @@ const ChatContent = ({
           </View>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[
-            styles.sendButton,
-            sendDisabled && { opacity: 0.5 },
-          ]}
+          style={[styles.sendButton, sendDisabled && { opacity: 0.5 }]}
           activeOpacity={0.8}
           onPress={onSend}
           disabled={sendDisabled}
