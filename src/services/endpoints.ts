@@ -20,15 +20,15 @@ export const staffEndpoints = {
     }
     return `/api/staff`;
   },
-  leaves: `/api/staff/leaves`,
+  leaves: `/api/leaves`,
   leavesList: (params: { date: string }) => {
     const queryParams = new URLSearchParams();
     queryParams.append("date", params.date);
 
-    return `/api/staff/leaves?${queryParams.toString()}`;
+    return `/api/leaves?${queryParams.toString()}`;
   },
-  leaveCancel: (id: number) => `/api/staff/leaves/${id}`,
-  breaks: `/api/staff/breaks`,
+  leaveCancel: (id: number) => `/api/leaves/${id}`,
+  breaks: `/api/breaks`,
 };
 
 /**

@@ -208,7 +208,7 @@ export default function LeaveList() {
         <View style={styles.cardRow}>
           <View style={styles.typeBadge}>
             <Text style={styles.typeBadgeText}>
-              {(item.type === "break" ? "Break" : "Leave").toUpperCase()}
+              {(item.type === "break" ? "Break" : "Close").toUpperCase()}
             </Text>
           </View>
           <MaterialIcons

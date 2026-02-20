@@ -571,6 +571,7 @@ export default function CalendarScreen() {
 
   const isStaff = userRole === "staff";
   const currentDate = selectedDate.format("YYYY-MM-DD");
+  const isPastDate = selectedDate.isBefore(today, "day");
 
   // Set to current week on mount
   useEffect(() => {
@@ -1064,49 +1065,48 @@ export default function CalendarScreen() {
                   {loading && (
                     <ActivityIndicator size="small" color={theme.primary} />
                   )}
-                  {isStaff && !selectedDate.isBefore(today, "day") && (
-                    <>
-                      {leaveForSelectedDate ? (
-                        <TouchableOpacity
-                          onPress={() =>
-                            navigateToLeaveDetail(leaveForSelectedDate)
-                          }
-                          style={styles.leaveBox}
-                          activeOpacity={0.7}
-                        >
-                          <MaterialIcons
-                            name="event"
-                            size={moderateWidthScale(16)}
-                            color={theme.primary}
-                          />
-                          <Text style={styles.leaveBoxText}>
-                            {leaveForSelectedDate.type === "leave"
-                              ? "CLOSE"
-                              : "BREAK"}
-                          </Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <TouchableOpacity
-                          onPress={() => openApplyBox("leave")}
-                          style={{ marginLeft: moderateWidthScale(8) }}
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              styles.todayText,
-                              {
-                                color: theme.primary,
-                                fontFamily: fonts.fontMedium,
-                                fontSize: fontSize.size12,
-                              },
-                            ]}
-                          >
-                            Manage Availability
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </>
+                  {isStaff && leaveForSelectedDate && (
+                    <TouchableOpacity
+                      onPress={() =>
+                        navigateToLeaveDetail(leaveForSelectedDate)
+                      }
+                      style={styles.leaveBox}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons
+                        name="event"
+                        size={moderateWidthScale(16)}
+                        color={theme.primary}
+                      />
+                      <Text style={styles.leaveBoxText}>
+                        {leaveForSelectedDate.type === "leave"
+                          ? "CLOSE"
+                          : "BREAK"}
+                      </Text>
+                    </TouchableOpacity>
                   )}
+                  {isStaff &&
+                    !leaveForSelectedDate &&
+                    !isPastDate && (
+                      <TouchableOpacity
+                        onPress={() => openApplyBox("leave")}
+                        style={{ marginLeft: moderateWidthScale(8) }}
+                        activeOpacity={0.7}
+                      >
+                        <Text
+                          style={[
+                            styles.todayText,
+                            {
+                              color: theme.primary,
+                              fontFamily: fonts.fontMedium,
+                              fontSize: fontSize.size12,
+                            },
+                          ]}
+                        >
+                          Manage Availability
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                 </View>
               </View>
             </TouchableOpacity>
@@ -1316,7 +1316,7 @@ export default function CalendarScreen() {
                         onPress={() => {
                           if (slotLeave) {
                             navigateToLeaveDetail(slotLeave);
-                          } else {
+                          } else if (!isPastDate) {
                             openApplyBox("break", time);
                           }
                         }}

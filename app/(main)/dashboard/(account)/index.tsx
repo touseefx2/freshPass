@@ -303,15 +303,23 @@ export default function AccountScreen() {
     ...((userRole === "business" || userRole === "staff") &&
     !isGuest &&
     !isCustomer
-      ? userRole === "staff"
-        ? [
-            { key: "availability" as const, title: t("setAvailability") },
-            {
-              key: "leaveRequest" as const,
-              title: t("leaveRequest") || "Leave Request",
-            },
-          ]
-        : [{ key: "business" as const, title: t("businessProfileSettings") }]
+      ? [
+          ...(userRole === "staff"
+            ? [{ key: "availability" as const, title: t("setAvailability") }]
+            : []),
+          ...(userRole === "business"
+            ? [
+                {
+                  key: "business" as const,
+                  title: t("businessProfileSettings"),
+                },
+              ]
+            : []),
+          {
+            key: "leaveRequest" as const,
+            title: t("leaveRequest") || "Leave Request",
+          },
+        ]
       : []),
     ...(isCustomer
       ? [
