@@ -48,6 +48,7 @@ type MessageItem = {
   text: string;
   isMe: boolean;
   timeLabel: string;
+  dateTimeLabel: string;
   attachments?: string[];
 };
 
@@ -111,6 +112,19 @@ function formatMessageTime(isoString: string): string {
   const h = hours % 12 || 12;
   const m = `${mins}`.padStart(2, "0");
   return `${h}:${m} ${ampm}`;
+}
+
+function formatMessageDateTime(isoString: string): string {
+  const date = new Date(isoString);
+  const day = date.getDate();
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  const time = formatMessageTime(isoString);
+  return `${day} ${month} ${year}, ${time}`;
 }
 
 const createStyles = (theme: Theme) =>
@@ -241,6 +255,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
       marginBottom: moderateHeightScale(4),
+    },
+    messageDateTimeLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(4),
     },
     inputBarContainer: {
       paddingHorizontal: moderateWidthScale(16),
@@ -474,6 +494,9 @@ const ChatContent = ({
                 </Text>
               ) : null}
             </View>
+            <Text style={styles.messageDateTimeLabel}>
+              {item.dateTimeLabel}
+            </Text>
           </View>
         )}
         showsVerticalScrollIndicator={false}
@@ -642,6 +665,7 @@ export default function ChatBoxScreen() {
         text,
         isMe,
         timeLabel: formatMessageTime(m.created_at),
+        dateTimeLabel: formatMessageDateTime(m.created_at),
         attachments: attachments.length ? attachments : undefined,
       };
     },
