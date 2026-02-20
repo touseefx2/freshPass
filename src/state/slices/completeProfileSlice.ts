@@ -770,6 +770,7 @@ const completeProfileSlice = createSlice({
         Array<{
           id: string;
           packageName: string;
+          description?: string;
           servicesPerMonth: number;
           price: number;
           currency: string;

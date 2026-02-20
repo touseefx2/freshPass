@@ -169,10 +169,25 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       marginBottom: moderateHeightScale(12),
     },
+    subscriptionInfo: {
+      flex: 1,
+      gap: moderateHeightScale(3),
+    },
     subscriptionName: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    subscriptionDescription: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+    },
+    subscriptionVisits: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
     },
     subscriptionCardContent: {
       marginTop: moderateHeightScale(12),
@@ -561,6 +576,7 @@ export default function ManageSubscriptionsScreen() {
             // so it is treated as "already selected" in the popular list
             id: suggestionId ?? plan.id.toString(),
             packageName: plan.name,
+            description: plan.description || undefined,
             servicesPerMonth: plan.visits,
             price: parseFloat(plan.price),
             currency: "USD",
@@ -760,7 +776,7 @@ export default function ManageSubscriptionsScreen() {
     try {
       const payload = subscriptions.map((subscription) => ({
         name: subscription.packageName,
-        description: subscription.packageName,
+        description: subscription.description ?? subscription.packageName,
         price: subscription.price,
         visits: subscription.servicesPerMonth,
         plan_services: subscription.serviceIds.map((id) => Number(id)),
@@ -900,9 +916,19 @@ export default function ManageSubscriptionsScreen() {
                   return (
                     <View key={subscription.id} style={styles.subscriptionCard}>
                       <View style={styles.subscriptionCardHeader}>
-                        <Text style={styles.subscriptionName}>
-                          {subscription.packageName}
-                        </Text>
+                        <View style={styles.subscriptionInfo}>
+                          <Text style={styles.subscriptionName}>
+                            {subscription.packageName}
+                          </Text>
+                          {subscription.description ? (
+                            <Text
+                              style={styles.subscriptionDescription}
+                              numberOfLines={2}
+                            >
+                              {subscription.description}
+                            </Text>
+                          ) : null}
+                        </View>
                         <TouchableOpacity
                           style={{
                             width: moderateWidthScale(50),
@@ -923,9 +949,18 @@ export default function ManageSubscriptionsScreen() {
                       <View style={styles.subscriptionSeparator} />
                       <View style={styles.subscriptionCardContent}>
                         <View style={styles.subscriptionDetailSection}>
-                          <Text style={styles.subscriptionDetailTitle}>
-                            Subscription detail
-                          </Text>
+                          <View>
+                            <Text style={styles.subscriptionDetailTitle}>
+                              Subscription detail
+                            </Text>
+                            <Text style={styles.subscriptionVisits}>
+                              {subscription.servicesPerMonth}{" "}
+                              {subscription.servicesPerMonth === 1
+                                ? "visit"
+                                : "visits"}
+                              /month
+                            </Text>
+                          </View>
                           <View style={styles.subscriptionDetailPrice}>
                             <Text style={styles.subscriptionPriceText}>
                               {formatPrice(
