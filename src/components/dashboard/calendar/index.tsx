@@ -937,13 +937,6 @@ export default function CalendarScreen() {
     return d.format("h:mm a");
   };
 
-  const formatLeaveDetailStartEnd = (iso: string, leaveType: "leave" | "break") => {
-    if (!iso) return "—";
-    return leaveType === "leave"
-      ? formatLeaveDetailDateOnly(iso)
-      : formatLeaveDetailDateTime(iso);
-  };
-
   const handleCancelLeaveFromBox = async () => {
     if (selectedLeave == null) return;
     setLeaveDetailCancelling(true);
@@ -1217,9 +1210,7 @@ export default function CalendarScreen() {
                   )}
                   {isStaff && leaveForSelectedDate && (
                     <TouchableOpacity
-                      onPress={() =>
-                        openLeaveDetailBox(leaveForSelectedDate)
-                      }
+                      onPress={() => openLeaveDetailBox(leaveForSelectedDate)}
                       style={styles.leaveBox}
                       activeOpacity={0.7}
                     >
@@ -1235,28 +1226,26 @@ export default function CalendarScreen() {
                       </Text>
                     </TouchableOpacity>
                   )}
-                  {isStaff &&
-                    !leaveForSelectedDate &&
-                    !isPastDate && (
-                      <TouchableOpacity
-                        onPress={() => openApplyBox("leave")}
-                        style={{ marginLeft: moderateWidthScale(8) }}
-                        activeOpacity={0.7}
+                  {isStaff && !leaveForSelectedDate && !isPastDate && (
+                    <TouchableOpacity
+                      onPress={() => openApplyBox("leave")}
+                      style={{ marginLeft: moderateWidthScale(8) }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.todayText,
+                          {
+                            color: theme.primary,
+                            fontFamily: fonts.fontMedium,
+                            fontSize: fontSize.size12,
+                          },
+                        ]}
                       >
-                        <Text
-                          style={[
-                            styles.todayText,
-                            {
-                              color: theme.primary,
-                              fontFamily: fonts.fontMedium,
-                              fontSize: fontSize.size12,
-                            },
-                          ]}
-                        >
-                          Manage Availability
-                        </Text>
-                      </TouchableOpacity>
-                    )}
+                        Manage Availability
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </TouchableOpacity>
@@ -1439,9 +1428,7 @@ export default function CalendarScreen() {
                         selectedLeave.start_time || "",
                       )}{" "}
                       –{" "}
-                      {formatLeaveDetailTimeOnly(
-                        selectedLeave.end_time || "",
-                      )}
+                      {formatLeaveDetailTimeOnly(selectedLeave.end_time || "")}
                     </Text>
                   )}
                   {selectedLeave.reason ? (
@@ -1455,9 +1442,7 @@ export default function CalendarScreen() {
                   <View style={styles.leaveDetailBoxTypeWrap}>
                     <View style={styles.leaveDetailBoxTypeBadge}>
                       <Text style={styles.leaveDetailBoxTypeBadgeText}>
-                        {selectedLeave.type === "break"
-                          ? "BREAK"
-                          : "CLOSE"}
+                        {selectedLeave.type === "break" ? "BREAK" : "CLOSE"}
                       </Text>
                     </View>
                   </View>
@@ -1567,9 +1552,7 @@ export default function CalendarScreen() {
                         {breaksInSlot.length > 0 && (
                           <TouchableOpacity
                             style={styles.breakSlotBox}
-                            onPress={() =>
-                              openLeaveDetailBox(breaksInSlot[0])
-                            }
+                            onPress={() => openLeaveDetailBox(breaksInSlot[0])}
                             activeOpacity={0.7}
                           >
                             <MaterialIcons
