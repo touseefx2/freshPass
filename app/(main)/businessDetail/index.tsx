@@ -1212,6 +1212,53 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
   });
+
+const UTC_OPTIONS: Intl.DateTimeFormatOptions = {
+  timeZone: "UTC",
+};
+
+const currentYear = () => new Date().getFullYear();
+
+function formatLeaveDateTimeUTC(isoString: string): string {
+  try {
+    const d = new Date(isoString);
+    const showYear = d.getUTCFullYear() !== currentYear();
+    const dateStr = d.toLocaleDateString("en-US", {
+      ...UTC_OPTIONS,
+      day: "numeric",
+      month: "short",
+      ...(showYear ? { year: "numeric" } : {}),
+    });
+    const timeStr = d.toLocaleTimeString("en-US", {
+      ...UTC_OPTIONS,
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    return `${dateStr}, ${timeStr}`;
+  } catch {
+    return "--";
+  }
+}
+
+function formatLeaveDateOnlyUTC(
+  isoString: string,
+  alwaysShowYear = false,
+): string {
+  try {
+    const d = new Date(isoString);
+    const showYear = alwaysShowYear || d.getUTCFullYear() !== currentYear();
+    return d.toLocaleDateString("en-US", {
+      ...UTC_OPTIONS,
+      day: "numeric",
+      month: "short",
+      ...(showYear ? { year: "numeric" } : {}),
+    });
+  } catch {
+    return "--";
+  }
+}
+
 export default function BusinessDetailScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -1816,6 +1863,12 @@ export default function BusinessDetailScreen() {
     });
   }, [businessData]);
 
+  const businessLeaves = useMemo(() => {
+    const leaves = businessData?.business_leaves;
+    if (!Array.isArray(leaves) || leaves.length === 0) return [];
+    return leaves;
+  }, [businessData]);
+
   // Get current day name
   const getCurrentDayName = () => {
     const days = [
@@ -2351,6 +2404,50 @@ export default function BusinessDetailScreen() {
             </ScrollView>
           )}
         </View>
+
+        {/* Business Leaves */}
+        {(businessLeaves?.length ?? 0) > 0 ? (
+          <>
+            <View style={styles.sectionDivider} />
+            <View
+              style={[styles.sectionContentFullWidth, { paddingHorizontal: 0 }]}
+            >
+              <View
+                style={[
+                  styles.businessHoursHeader,
+                  { marginTop: moderateHeightScale(24) },
+                ]}
+              >
+                <Text style={styles.sectionTitle}>
+                  {t("closeBreak") || "Close/Break"}
+                </Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.hoursCardsContainer}
+              >
+                {businessLeaves.map((leave: any) => (
+                  <View
+                    key={leave.id}
+                    style={[styles.hoursCard, styles.shadow]}
+                  >
+                    <Text style={styles.hoursDay}>
+                      {leave.type === "break"
+                        ? t("break") || "Break"
+                        : t("close") || "Close"}
+                    </Text>
+                    <Text style={styles.hoursTime}>
+                      {leave.type === "leave"
+                        ? formatLeaveDateOnlyUTC(leave.start_time, true)
+                        : `${formatLeaveDateTimeUTC(leave.start_time)} – ${formatLeaveDateTimeUTC(leave.end_time)}`}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </>
+        ) : null}
       </View>
     );
   };
