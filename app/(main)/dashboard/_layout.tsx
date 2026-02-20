@@ -20,9 +20,18 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
-import { setUserDetails } from "@/src/state/slices/userSlice";
+import { setUserDetails, setTotalUnreadChat } from "@/src/state/slices/userSlice";
+import {
+  setChatContacts,
+  setChatContactsMeta,
+  resetChatContacts,
+} from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
-import { userEndpoints } from "@/src/services/endpoints";
+import { userEndpoints, chatEndpoints } from "@/src/services/endpoints";
+import { getEcho } from "@/src/services/echo";
+import { fetchChatContactsApi } from "@/src/services/chatContacts";
+
+const CHAT_MESSAGE_SENT = ".message.sent";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -84,9 +93,42 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     if (!isCustomer) return;
-
     fetchUserDetails();
   }, [isCustomer, dispatch]);
+
+  // Socket: users.{userId} for inbox updates. Only when !isGuest. Close on logout (isGuest) or unmount; keep on in background.
+  useEffect(() => {
+    if (isGuest || !user?.id || !user?.accessToken) {
+      if (isGuest) dispatch(resetChatContacts());
+      return;
+    }
+    const echo = getEcho(user.accessToken);
+    if (!echo) return;
+    const channelName = `users.${user.id}`;
+    const channel = echo.private(channelName);
+
+    channel.listen(CHAT_MESSAGE_SENT, () => {
+      ApiService.get<{ success: boolean; data?: { unread_count: number } }>(
+        chatEndpoints.unreadCount,
+      )
+        .then((res) => {
+          if (res?.success && res?.data != null)
+            dispatch(setTotalUnreadChat(res.data.unread_count));
+        })
+        .catch(() => {});
+      fetchChatContactsApi(1)
+        .then(({ list, current_page, last_page }) => {
+          dispatch(setChatContacts(list));
+          dispatch(setChatContactsMeta({ page: current_page, lastPage: last_page }));
+        })
+        .catch(() => {});
+    });
+
+    return () => {
+      channel.stopListening(CHAT_MESSAGE_SENT);
+      echo.leave(channelName);
+    };
+  }, [isGuest, user?.id, user?.accessToken, dispatch]);
 
   const fetchUserDetails = async () => {
     try {

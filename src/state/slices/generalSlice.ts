@@ -76,6 +76,23 @@ export interface GeneralState {
   fullImageModalVisible: boolean;
   fullImageModalImages: string[];
   fullImageModalInitialIndex: number;
+  // Chat contacts list (not persisted) – used by chat tab and layout socket
+  chatContacts: ChatContactItem[];
+  chatContactsPage: number;
+  chatContactsLastPage: number;
+  chatContactsLoading: boolean;
+  chatContactsRefreshing: boolean;
+  chatContactsLoadingMore: boolean;
+}
+
+export interface ChatContactItem {
+  id: string;
+  name: string;
+  message: string;
+  timeLabel: string;
+  createdAt: string;
+  isHighlighted?: boolean;
+  image: string;
 }
 
 const initialState: GeneralState = {
@@ -111,6 +128,12 @@ const initialState: GeneralState = {
   fullImageModalVisible: false,
   fullImageModalImages: [],
   fullImageModalInitialIndex: 0,
+  chatContacts: [],
+  chatContactsPage: 1,
+  chatContactsLastPage: 1,
+  chatContactsLoading: true,
+  chatContactsRefreshing: false,
+  chatContactsLoadingMore: false,
 };
 
 const generalSlice = createSlice({
@@ -197,6 +220,36 @@ const generalSlice = createSlice({
       state.fullImageModalImages = [];
       state.fullImageModalInitialIndex = 0;
     },
+    setChatContacts(state, action: PayloadAction<ChatContactItem[]>) {
+      state.chatContacts = action.payload;
+    },
+    setChatContactsMeta(
+      state,
+      action: PayloadAction<{ page: number; lastPage: number }>,
+    ) {
+      state.chatContactsPage = action.payload.page;
+      state.chatContactsLastPage = action.payload.lastPage;
+    },
+    setChatContactsLoading(state, action: PayloadAction<boolean>) {
+      state.chatContactsLoading = action.payload;
+    },
+    setChatContactsRefreshing(state, action: PayloadAction<boolean>) {
+      state.chatContactsRefreshing = action.payload;
+    },
+    setChatContactsLoadingMore(state, action: PayloadAction<boolean>) {
+      state.chatContactsLoadingMore = action.payload;
+    },
+    appendChatContacts(state, action: PayloadAction<ChatContactItem[]>) {
+      state.chatContacts = [...state.chatContacts, ...action.payload];
+    },
+    resetChatContacts(state) {
+      state.chatContacts = [];
+      state.chatContactsPage = 1;
+      state.chatContactsLastPage = 1;
+      state.chatContactsLoading = false;
+      state.chatContactsRefreshing = false;
+      state.chatContactsLoadingMore = false;
+    },
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
     },
@@ -278,6 +331,12 @@ const generalSlice = createSlice({
       state.fullImageModalVisible = false;
       state.fullImageModalImages = [];
       state.fullImageModalInitialIndex = 0;
+      state.chatContacts = [];
+      state.chatContactsPage = 1;
+      state.chatContactsLastPage = 1;
+      state.chatContactsLoading = false;
+      state.chatContactsRefreshing = false;
+      state.chatContactsLoadingMore = false;
     },
   },
 });
@@ -312,5 +371,12 @@ export const {
   clearCurrentLocation,
   resetGeneral,
   clearGeneral,
+  setChatContacts,
+  setChatContactsMeta,
+  setChatContactsLoading,
+  setChatContactsRefreshing,
+  setChatContactsLoadingMore,
+  appendChatContacts,
+  resetChatContacts,
 } = generalSlice.actions;
 export default generalSlice.reducer;

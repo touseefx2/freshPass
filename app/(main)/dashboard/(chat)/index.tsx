@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -27,117 +27,21 @@ import { ApiService } from "@/src/services/api";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { chatEndpoints } from "@/src/services/endpoints";
 import { setTotalUnreadChat } from "@/src/state/slices/userSlice";
-
-const PER_PAGE = 20;
-const CHAT_CONTACTS_URL = "/api/chat/contacts";
-
-type ChatItem = {
-  id: string;
-  name: string;
-  message: string;
-  timeLabel: string;
-  createdAt: string;
-  isHighlighted?: boolean;
-  image: string;
-};
+import type { ChatContactItem } from "@/src/state/slices/generalSlice";
+import {
+  setChatContacts,
+  setChatContactsMeta,
+  setChatContactsLoading,
+  setChatContactsRefreshing,
+  setChatContactsLoadingMore,
+  appendChatContacts,
+} from "@/src/state/slices/generalSlice";
+import { fetchChatContactsApi } from "@/src/services/chatContacts";
 
 type ChatSection = {
   title: string;
-  data: ChatItem[];
+  data: ChatContactItem[];
 };
-
-type ApiContact = {
-  id: number;
-  name: string;
-  email: string;
-  avatar: string | null;
-  role: string;
-  unread_count: number;
-  latest_message?: {
-    id: number;
-    message: string | null;
-    sender: { id: number; name: string; email: string };
-    attachments?: string[];
-    created_at: string;
-  };
-  last_message_at: string | null;
-};
-
-type ContactsResponse = {
-  success: boolean;
-  message: string;
-  data: {
-    data: ApiContact[];
-    meta: {
-      current_page: number;
-      last_page: number;
-      per_page: number;
-      total: number;
-    };
-  };
-};
-
-function getAvatarUrl(avatar: string | null): string {
-  if (!avatar || avatar.trim() === "") {
-    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
-  }
-  const trimmed = avatar.trim();
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
-  }
-  const base = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
-  const path = trimmed.replace(/^\//, "");
-  return path
-    ? `${base}/${path}`
-    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
-}
-
-function formatTimeLabel(isoString: string | null): string {
-  if (!isoString) return "";
-  const date = new Date(isoString);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-  const dateOnly = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-  );
-
-  if (dateOnly.getTime() === today.getTime()) {
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins} min`;
-    const diffHrs = Math.floor(diffMins / 60);
-    return `${diffHrs} hr`;
-  }
-  if (dateOnly.getTime() === yesterday.getTime()) return "Yesterday";
-  const d = `${date.getDate()}`.padStart(2, "0");
-  const m = `${date.getMonth() + 1}`.padStart(2, "0");
-  const y = date.getFullYear();
-  return `${d}/${m}/${y}`;
-}
-
-function contactToChatItem(c: ApiContact): ChatItem {
-  const createdAt =
-    c.last_message_at ?? c.latest_message?.created_at ?? "1970-01-01T00:00:00Z";
-  let message = "No message";
-  if (c.latest_message) {
-    if (c.latest_message.message) message = c.latest_message.message;
-    else if (c.latest_message.attachments?.length) message = "Attachment";
-    else message = "No message";
-  }
-  return {
-    id: String(c.id),
-    name: c.name,
-    message,
-    timeLabel: formatTimeLabel(createdAt),
-    createdAt,
-    isHighlighted: (c.unread_count ?? 0) > 0,
-    image: getAvatarUrl(c.avatar),
-  };
-}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -268,7 +172,7 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-function buildSections(contacts: ChatItem[]): ChatSection[] {
+function buildSections(contacts: ChatContactItem[]): ChatSection[] {
   const today = new Date();
   const isSameDay = (a: Date, b: Date) =>
     a.getFullYear() === b.getFullYear() &&
@@ -289,7 +193,7 @@ function buildSections(contacts: ChatItem[]): ChatSection[] {
     return `${day}/${month}/${year}`;
   };
 
-  const grouped = new Map<string, ChatItem[]>();
+  const grouped = new Map<string, ChatContactItem[]>();
   contacts.forEach((item) => {
     const dateObj = new Date(item.createdAt);
     const key = `${dateObj.getFullYear()}-${`${
@@ -325,69 +229,70 @@ export default function ChatScreen() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
-
-  const [contacts, setContacts] = useState<ChatItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [page, setPage] = useState(1);
-  const [lastPage, setLastPage] = useState(1);
+  const contacts = useAppSelector((state) => state.general.chatContacts);
+  const page = useAppSelector((state) => state.general.chatContactsPage);
+  const lastPage = useAppSelector((state) => state.general.chatContactsLastPage);
+  const loading = useAppSelector((state) => state.general.chatContactsLoading);
+  const refreshing = useAppSelector(
+    (state) => state.general.chatContactsRefreshing,
+  );
+  const loadingMore = useAppSelector(
+    (state) => state.general.chatContactsLoadingMore,
+  );
 
   const fetchContacts = useCallback(
     async (pageNum: number, append: boolean) => {
       try {
-        if (append) setLoadingMore(true);
-        else if (pageNum === 1) setLoading(true);
-        const res = await ApiService.get<ContactsResponse>(CHAT_CONTACTS_URL, {
-          params: { per_page: PER_PAGE, page: pageNum },
-        });
-        const list = (res.data?.data ?? []).map(contactToChatItem);
-        setContacts((prev) => (append ? [...prev, ...list] : list));
-        setPage(res.data?.meta?.current_page ?? pageNum);
-        setLastPage(res.data?.meta?.last_page ?? 1);
+        if (append) dispatch(setChatContactsLoadingMore(true));
+        else if (pageNum === 1) dispatch(setChatContactsLoading(true));
+        const { list, current_page, last_page } =
+          await fetchChatContactsApi(pageNum);
+        if (append) {
+          dispatch(appendChatContacts(list));
+        } else {
+          dispatch(setChatContacts(list));
+        }
+        dispatch(setChatContactsMeta({ page: current_page, lastPage: last_page }));
       } catch {
         // keep current data on error
       } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
+        dispatch(setChatContactsLoading(false));
+        dispatch(setChatContactsRefreshing(false));
+        dispatch(setChatContactsLoadingMore(false));
       }
     },
-    [],
+    [dispatch],
   );
 
-  const handleFetchChatUnreadCount = async () => {
+  const handleFetchChatUnreadCount = useCallback(async () => {
     try {
       const response = await ApiService.get<{
         success: boolean;
         message: string;
-        data: {
-          unread_count: number;
-        };
+        data: { unread_count: number };
       }>(chatEndpoints.unreadCount);
-
       if (response.success && response.data) {
         dispatch(setTotalUnreadChat(response.data.unread_count));
       }
-    } catch (error: any) {
-      // Silent fail - no banner or console
+    } catch {
+      // Silent fail
     }
-  };
+  }, [dispatch]);
 
   useFocusEffect(
     useCallback(() => {
       if (!isGuest) {
         fetchContacts(1, false);
         handleFetchChatUnreadCount();
-      } else setLoading(false);
-    }, [isGuest, fetchContacts]),
+      } else dispatch(setChatContactsLoading(false));
+    }, [isGuest, fetchContacts, handleFetchChatUnreadCount, dispatch]),
   );
 
   const onRefresh = useCallback(() => {
-    setRefreshing(true);
+    dispatch(setChatContactsRefreshing(true));
     fetchContacts(1, false);
     handleFetchChatUnreadCount();
-  }, [fetchContacts, handleFetchChatUnreadCount]);
+  }, [fetchContacts, handleFetchChatUnreadCount, dispatch]);
 
   const onEndReached = useCallback(() => {
     if (loadingMore || loading || page >= lastPage) return;
