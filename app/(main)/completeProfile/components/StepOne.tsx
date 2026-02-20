@@ -95,34 +95,6 @@ export const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       textAlign: "center",
     },
-    otherCategoriesContainer: {
-      gap: moderateHeightScale(15),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    otherCategoriesTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.lightGreen2,
-    },
-    otherCategoryContainer: {
-      gap: moderateHeightScale(12),
-    },
-    otherCategoryRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    catSeparator: {
-      width: "100%",
-      height: 1,
-      backgroundColor: theme.borderLight,
-    },
-    otherCategoryLabel: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      flex: 1,
-    },
     emptyStateContainer: {
       flex: 1,
       alignItems: "center",
@@ -180,34 +152,25 @@ export default function StepOne() {
     }
   };
 
-  // Split categories into popular (first 6) and other (rest)
-  const popularCategories = useMemo(() => {
-    return categories.slice(0, 6);
-  }, [categories]);
-
-  const otherCategories = useMemo(() => {
-    return categories.slice(6);
-  }, [categories]);
-
-  const filteredPopular = useMemo(() => {
+  const filteredCategories = useMemo(() => {
     if (!searchTerm.trim()) {
-      return popularCategories;
+      return categories;
     }
     const term = searchTerm.toLowerCase();
-    return popularCategories.filter((category) =>
+    return categories.filter((category) =>
       category.name.toLowerCase().includes(term),
     );
-  }, [popularCategories, searchTerm]);
+  }, [categories, searchTerm]);
 
-  const filteredOther = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return otherCategories;
+  const getCategoryImageUri = useCallback((imageUrl: string | null) => {
+    if (!imageUrl || !imageUrl.trim()) {
+      return process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE ?? "";
     }
-    const term = searchTerm.toLowerCase();
-    return otherCategories.filter((category) =>
-      category.name.toLowerCase().includes(term),
-    );
-  }, [otherCategories, searchTerm]);
+    if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+      return imageUrl;
+    }
+    return (process.env.EXPO_PUBLIC_API_BASE_URL ?? "") + imageUrl;
+  }, []);
 
   const handleSearchChange = (value: string) => {
     dispatch(setSearchTerm(value));
@@ -271,7 +234,7 @@ export default function StepOne() {
           <View style={styles.categoriesContainer}>
             <View style={[styles.lineSeparator, { top: 0 }]} />
             <View style={styles.categoriesGrid}>
-              {filteredPopular.map((item) => {
+              {filteredCategories.map((item) => {
                 const isSelected = businessCategory?.id === item.id;
                 return (
                   <Pressable
@@ -281,13 +244,7 @@ export default function StepOne() {
                   >
                     <Image
                       source={{
-                        uri: item?.imageUrl
-                          ? item.imageUrl.startsWith("http://") ||
-                            item.imageUrl.startsWith("https://")
-                            ? item.imageUrl
-                            : process.env.EXPO_PUBLIC_API_BASE_URL +
-                              item.imageUrl
-                          : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
+                        uri: getCategoryImageUri(item.imageUrl),
                       }}
                       style={[
                         styles.categoryImage,
@@ -304,44 +261,7 @@ export default function StepOne() {
                 );
               })}
             </View>
-            <View style={[styles.lineSeparator, { bottom: 0 }]} />
-          </View>
-
-          <View style={styles.otherCategoriesContainer}>
-            <Text style={styles.otherCategoriesTitle}>
-              {t("otherCategories")}
-            </Text>
-
-            {filteredOther.map((category, index) => {
-              const isSelected = businessCategory?.id === category.id;
-              return (
-                <View key={category.id} style={styles.otherCategoryContainer}>
-                  <Pressable
-                    onPress={() =>
-                      handleSelectCategory(category.id, category.name)
-                    }
-                    style={[
-                      styles.otherCategoryRow,
-                      isSelected && {
-                        backgroundColor: (colors as Theme).lightBeige,
-                      },
-                    ]}
-                  >
-                    <Text style={styles.otherCategoryLabel}>
-                      {category.name}
-                    </Text>
-                    <Feather
-                      name="chevron-right"
-                      size={moderateWidthScale(18)}
-                      color={(colors as Theme).darkGreen}
-                    />
-                  </Pressable>
-                  {index < filteredOther.length - 1 && (
-                    <View style={styles.catSeparator} />
-                  )}
-                </View>
-              );
-            })}
+            {/* <View style={[styles.lineSeparator, { bottom: 0 }]} /> */}
           </View>
         </>
       )}
