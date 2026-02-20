@@ -234,7 +234,7 @@ export default function StepOne() {
           <View style={styles.categoriesContainer}>
             <View style={[styles.lineSeparator, { top: 0 }]} />
             <View style={styles.categoriesGrid}>
-              {filteredCategories.map((item) => {
+              {categories.map((item) => {
                 const isSelected = businessCategory?.id === item.id;
                 return (
                   <Pressable
@@ -261,7 +261,6 @@ export default function StepOne() {
                 );
               })}
             </View>
-            {/* <View style={[styles.lineSeparator, { bottom: 0 }]} /> */}
           </View>
         </>
       )}
