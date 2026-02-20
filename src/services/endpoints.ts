@@ -243,6 +243,13 @@ export const hairTryonEndpoints = {
 };
 
 /**
+ * In-app chat endpoints (conversations / messages)
+ */
+export const chatEndpoints = {
+  unreadCount: `/api/chat/unread-count`,
+};
+
+/**
  * Client chat endpoints
  */
 export const clientChatEndpoints = {

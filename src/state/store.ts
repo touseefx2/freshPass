@@ -71,6 +71,7 @@ const userPersistConfig = {
     "accessToken",
     "userRole",
     "unreadCount",
+    "totalUnreadChat",
     "description",
     "country_code",
     "phone",

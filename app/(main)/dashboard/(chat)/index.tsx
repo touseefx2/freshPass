@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -25,6 +25,8 @@ import Button from "@/src/components/button";
 import { Feather } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
+import { chatEndpoints } from "@/src/services/endpoints";
+import { setTotalUnreadChat } from "@/src/state/slices/userSlice";
 
 const PER_PAGE = 20;
 const CHAT_CONTACTS_URL = "/api/chat/contacts";
@@ -320,6 +322,7 @@ export default function ChatScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
 
@@ -353,17 +356,38 @@ export default function ChatScreen() {
     [],
   );
 
+  const handleFetchChatUnreadCount = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          unread_count: number;
+        };
+      }>(chatEndpoints.unreadCount);
+
+      if (response.success && response.data) {
+        dispatch(setTotalUnreadChat(response.data.unread_count));
+      }
+    } catch (error: any) {
+      // Silent fail - no banner or console
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
-      if (!isGuest) fetchContacts(1, false);
-      else setLoading(false);
+      if (!isGuest) {
+        fetchContacts(1, false);
+        handleFetchChatUnreadCount();
+      } else setLoading(false);
     }, [isGuest, fetchContacts]),
   );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchContacts(1, false);
-  }, [fetchContacts]);
+    handleFetchChatUnreadCount();
+  }, [fetchContacts, handleFetchChatUnreadCount]);
 
   const onEndReached = useCallback(() => {
     if (loadingMore || loading || page >= lastPage) return;

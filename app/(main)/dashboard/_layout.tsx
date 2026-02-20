@@ -15,6 +15,7 @@ import {
 import {
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -51,16 +52,16 @@ const createStyles = (theme: Theme) =>
       top: moderateHeightScale(-2),
       right: moderateWidthScale(1),
       backgroundColor: theme.red,
-      borderRadius: moderateWidthScale(10),
-      minWidth: moderateWidthScale(22),
-      height: moderateHeightScale(18),
+      borderRadius: moderateWidthScale(16 / 2),
+      minWidth: widthScale(16),
+      height: widthScale(16),
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(3),
     },
     badgeText: {
       color: theme.white,
-      fontSize: fontSize.size9,
+      fontSize: fontSize.size8,
       fontFamily: fonts.fontMedium,
     },
   });
@@ -75,6 +76,7 @@ export default function DashboardLayout() {
   const user = useAppSelector((state) => state.user);
   const segments = useSegments() as string[];
   const unreadCount = user.unreadCount;
+  const totalUnreadChat = user.totalUnreadChat;
   const isGuest = user.isGuest;
   const userRole = user.userRole;
   const isCustomer = userRole === "customer" && !isGuest;
@@ -344,6 +346,13 @@ export default function DashboardLayout() {
                   color={theme.darkGreen}
                   focused={focused}
                 />
+                {totalUnreadChat > 0 && (
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>
+                      {totalUnreadChat > 9 ? "9+" : totalUnreadChat.toString()}
+                    </Text>
+                  </View>
+                )}
               </View>
             ),
           }}

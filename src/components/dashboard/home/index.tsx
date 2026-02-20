@@ -38,10 +38,14 @@ import {
   staffEndpoints,
   appointmentsEndpoints,
   notificationsEndpoints,
+  chatEndpoints,
 } from "@/src/services/endpoints";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import { Appointment } from "@/src/components/appointmentDetail";
-import { setUnreadCount } from "@/src/state/slices/userSlice";
+import {
+  setUnreadCount,
+  setTotalUnreadChat,
+} from "@/src/state/slices/userSlice";
 import { IMAGES } from "@/src/constant/images";
 
 const createStyles = (theme: Theme) =>
@@ -184,6 +188,24 @@ export default function HomeScreen() {
 
       if (response.success && response.data) {
         dispatch(setUnreadCount(response.data.unread_count));
+      }
+    } catch (error: any) {
+      // Silent fail - no banner or console
+    }
+  };
+
+  const handleFetchChatUnreadCount = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          unread_count: number;
+        };
+      }>(chatEndpoints.unreadCount);
+
+      if (response.success && response.data) {
+        dispatch(setTotalUnreadChat(response.data.unread_count));
       }
     } catch (error: any) {
       // Silent fail - no banner or console
@@ -411,6 +433,7 @@ export default function HomeScreen() {
     if (statusSuccess) {
       handleFetchUserDetails();
       handleFetchUnreadCount();
+      handleFetchChatUnreadCount();
       handleFetchDashboardStats();
       if (userRole === "business") {
         handleFetchStaff();
@@ -429,6 +452,7 @@ export default function HomeScreen() {
           // Refresh data when app comes to foreground
           handleFetchUserStatus();
           handleFetchUnreadCount();
+          handleFetchChatUnreadCount();
         }
       },
     );

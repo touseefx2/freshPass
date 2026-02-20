@@ -11,6 +11,7 @@ import * as Location from "expo-location";
 import LocationEnableModal from "@/src/components/locationEnableModal";
 import {
   setLocation,
+  setTotalUnreadChat,
   setUnreadCount,
   setUserDetails,
 } from "@/src/state/slices/userSlice";
@@ -24,6 +25,7 @@ import { handleLocationPermission } from "@/src/services/locationPermissionServi
 import { ApiService } from "@/src/services/api";
 import {
   businessEndpoints,
+  chatEndpoints,
   notificationsEndpoints,
   userEndpoints,
 } from "@/src/services/endpoints";
@@ -202,6 +204,24 @@ export default function HomeScreen() {
     }
   };
 
+  const handleFetchChatUnreadCount = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: {
+          unread_count: number;
+        };
+      }>(chatEndpoints.unreadCount);
+
+      if (response.success && response.data) {
+        dispatch(setTotalUnreadChat(response.data.unread_count));
+      }
+    } catch (error: any) {
+      // Silent fail - no banner or console
+    }
+  };
+
   const handleFetchUserDetails = async () => {
     try {
       const response = await ApiService.get<{
@@ -275,6 +295,7 @@ export default function HomeScreen() {
     useCallback(() => {
       if (isCustomer) {
         handleFetchUnreadCount();
+        handleFetchChatUnreadCount();
       }
     }, []),
   );

@@ -44,6 +44,7 @@ export interface UserState {
   refreshToken: string | null;
   userRole: UserRole;
   unreadCount: number;
+  totalUnreadChat: number;
   businessStatus: BusinessStatus | null;
   // Business status loading/error states (NOT persisted)
   businessStatusLoading: boolean;
@@ -81,6 +82,7 @@ const initialState: UserState = {
   userRole: null,
   businessStatus: null,
   unreadCount: 0,
+  totalUnreadChat: 0,
   businessStatusLoading: false,
   businessStatusError: false,
   isGuest: false,
@@ -223,6 +225,9 @@ const userSlice = createSlice({
     setUnreadCount(state, action: PayloadAction<number>) {
       state.unreadCount = action.payload;
     },
+    setTotalUnreadChat(state, action: PayloadAction<number>) {
+      state.totalUnreadChat = action.payload;
+    },
     setIsGuest(state, action: PayloadAction<boolean>) {
       state.isGuest = action.payload;
     },
@@ -269,6 +274,7 @@ export const {
   setBusinessStatusError,
   setUserDetails,
   setUnreadCount,
+  setTotalUnreadChat,
   setIsGuest,
   setLocation,
   setDiscover,
