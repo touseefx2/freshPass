@@ -310,6 +310,7 @@ export default function StepEight() {
           duration_minutes: number;
           active: boolean;
           createdAt: string;
+          description?: string;
         }>;
       }>(businessEndpoints.serviceTemplates(businessCatId));
 
@@ -331,17 +332,19 @@ export default function StepEight() {
   };
 
   // Convert API service template to Redux service format
+  // Use template description if API provides it, otherwise empty (user can add in edit sheet)
   const convertTemplateToService = (template: {
     id: number;
     name: string;
     base_price: number;
     duration_hours: number;
     duration_minutes: number;
+    description?: string;
   }) => {
     return {
       id: template.id.toString(),
       name: template.name,
-      description: template.name,
+      description: template.description ?? "",
       hours: template.duration_hours,
       minutes: template.duration_minutes,
       price: template.base_price,
