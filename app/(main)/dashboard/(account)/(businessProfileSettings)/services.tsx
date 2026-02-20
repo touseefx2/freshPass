@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -127,6 +127,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    serviceDescription: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      marginTop: moderateHeightScale(2),
+    },
     servicePrice: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
@@ -158,10 +164,24 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateHeightScale(16),
     },
     popularSection: {},
+    popularTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(4),
+    },
     popularTitle: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.lightGreen4,
+    },
+    addServiceCircleButton: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
     },
     suggestionSeparator: {
       height: 1,
@@ -234,7 +254,7 @@ const createStyles = (theme: Theme) =>
 
 interface ModuleService {
   id: number;
-  template_id: number;
+  template_id: number | null;
   name: string;
   price: string;
   description: string;
@@ -244,7 +264,7 @@ interface ModuleService {
   template: {
     id: number;
     name: string;
-  };
+  } | null;
 }
 
 export default function ManageServicesScreen() {
@@ -290,18 +310,29 @@ export default function ManageServicesScreen() {
       }>(businessEndpoints.moduleData("services"));
 
       if (response.success && response.data && response.data.services) {
-        const mapped = response.data.services.map((service) => ({
-          id: service.template_id.toString(),
-          name: service.name,
-          hours: service.duration_hours,
-          minutes: service.duration_minutes,
-          price: parseFloat(service.price),
-          currency: "USD",
-        }));
+        const mapped = response.data.services.map((service) => {
+          const isCustom = service.template_id == null;
+          const id = isCustom
+            ? `custom-${service.id}`
+            : String(service.template_id);
+          return {
+            id,
+            name: service.name,
+            description: service.description || undefined,
+            hours: service.duration_hours,
+            minutes: service.duration_minutes,
+            price: parseFloat(service.price),
+            currency: "USD",
+          };
+        });
 
         const backendIdMap: Record<string, number> = {};
         response.data.services.forEach((service) => {
-          backendIdMap[service.template_id.toString()] = service.id;
+          const key =
+            service.template_id == null
+              ? `custom-${service.id}`
+              : String(service.template_id);
+          backendIdMap[key] = service.id;
         });
 
         setServiceIdMap(backendIdMap);
@@ -375,6 +406,7 @@ export default function ManageServicesScreen() {
     return {
       id: template.id.toString(),
       name: template.name,
+      description: template.name,
       hours: template.duration_hours,
       minutes: template.duration_minutes,
       price: template.base_price,
@@ -501,13 +533,20 @@ export default function ManageServicesScreen() {
   const handleUpdate = async () => {
     setIsUpdating(true);
     try {
-      const servicesPayload = services.map((service) => ({
-        template_id: Number(service.id),
-        price: service.price,
-        description: service.name,
-        duration_hours: service.hours,
-        duration_minutes: service.minutes,
-      }));
+      const servicesPayload = services.map((service) => {
+        const isCustom = service.id.startsWith("custom-");
+        const description = service.description ?? service.name;
+        const base = {
+          price: service.price,
+          description,
+          duration_hours: service.hours,
+          duration_minutes: service.minutes,
+        };
+        if (isCustom) {
+          return { template_id: null, name: service.name, ...base };
+        }
+        return { template_id: Number(service.id), ...base };
+      });
 
       const servicesString = JSON.stringify(servicesPayload);
 
@@ -610,6 +649,14 @@ export default function ManageServicesScreen() {
                         <Text style={styles.serviceDetails}>
                           {formatDuration(service.hours, service.minutes)}
                         </Text>
+                        {service.description ? (
+                          <Text
+                            style={styles.serviceDescription}
+                            numberOfLines={2}
+                          >
+                            {service.description}
+                          </Text>
+                        ) : null}
                       </View>
                       <TouchableOpacity
                         onPress={
@@ -636,9 +683,25 @@ export default function ManageServicesScreen() {
               !apiError &&
               popularSuggestions.length > 0 && (
                 <View style={styles.popularSection}>
-                  <Text style={styles.popularTitle}>
-                    Popular starting points:
-                  </Text>
+                  <View style={styles.popularTitleRow}>
+                    <Text style={styles.popularTitle}>
+                      Popular starting points:
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditingServiceId(null);
+                        setEditServiceVisible(true);
+                      }}
+                      style={styles.addServiceCircleButton}
+                      activeOpacity={0.7}
+                    >
+                      <Feather
+                        name="plus"
+                        size={moderateWidthScale(16)}
+                        color={theme.darkGreen}
+                      />
+                    </TouchableOpacity>
+                  </View>
                   {popularSuggestions
                     .filter(
                       (s) => !services.some((service) => service.id === s.id),
