@@ -118,6 +118,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
+      textTransform: "capitalize",
     },
     cardTitle: {
       fontSize: fontSize.size14,
@@ -470,13 +471,8 @@ export default function StaffDetail() {
 
   const handleChatPress = useCallback(() => {
     if (!data?.user?.id) return;
-    const staffImage =
-      data.user?.profile_image_url &&
-      (data.user.profile_image_url.startsWith("http://") ||
-        data.user.profile_image_url.startsWith("https://"))
-        ? data.user.profile_image_url
-        : (process.env.EXPO_PUBLIC_API_BASE_URL || "") +
-          (data.user?.profile_image_url ?? "");
+    const staffImage = data.user?.profile_image_url;
+
     router.push({
       pathname: "/(main)/chatBox",
       params: {
