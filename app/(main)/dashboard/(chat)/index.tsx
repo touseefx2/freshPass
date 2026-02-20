@@ -173,7 +173,7 @@ const createStyles = (theme: Theme) =>
       borderBottomWidth: 0.5,
     },
     rowHighlighted: {
-      backgroundColor: theme.lightGreen05,
+      backgroundColor: theme.lightGreen13,
     },
     avatarContainer: {
       width: moderateWidthScale(40),

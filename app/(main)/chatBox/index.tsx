@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   Text,
@@ -37,10 +43,19 @@ import { useDispatch } from "react-redux";
 import { ApiService } from "@/src/services/api";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import ImagePickerModal from "@/src/components/imagePickerModal";
+import {
+  getEcho,
+  getPrivateChatChannelName,
+  CHAT_MESSAGE_EVENT,
+  CHAT_MESSAGES_READ_EVENT,
+  CHAT_WHISPER_TYPING,
+  CHAT_WHISPER_STOP_TYPING,
+} from "@/src/services/echo";
 
 const PER_PAGE = 20;
 const MAX_ATTACHMENTS = 5;
 const MESSAGES_URL = (userId: string) => `/api/chat/messages/${userId}`;
+const MARK_READ_URL = (userId: string) => `/api/chat/messages/${userId}/read`;
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
 type MessageItem = {
@@ -50,6 +65,7 @@ type MessageItem = {
   timeLabel: string;
   dateTimeLabel: string;
   attachments?: string[];
+  is_read?: boolean;
 };
 
 type ApiMessage = {
@@ -279,6 +295,16 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       marginTop: moderateHeightScale(4),
     },
+    typingIndicator: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(4),
+      backgroundColor: theme.white,
+    },
+    typingIndicatorText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+    },
     inputBarContainer: {
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(8),
@@ -391,6 +417,7 @@ type ChatContentProps = {
   onInputChange?: (text: string) => void;
   sending?: boolean;
   onSend?: () => void;
+  isTyping?: boolean;
 };
 
 const ChatContent = ({
@@ -413,6 +440,7 @@ const ChatContent = ({
   onInputChange,
   sending = false,
   onSend,
+  isTyping = false,
 }: ChatContentProps) => {
   const hasInputValue = Boolean(inputValue && inputValue.trim().length > 0);
   const canSend = hasInputValue || selectedAttachments.length > 0;
@@ -562,6 +590,13 @@ const ChatContent = ({
           </ScrollView>
         </View>
       ) : null}
+      {isTyping && chatItem ? (
+        <View style={styles.typingIndicator}>
+          <Text style={styles.typingIndicatorText}>
+            {chatItem.name} is typing...
+          </Text>
+        </View>
+      ) : null}
       <View
         style={[
           styles.inputBarContainer,
@@ -637,6 +672,7 @@ export default function ChatBoxScreen() {
   const user = useAppSelector((state: any) => state.user);
   const currentUserId = user?.id ?? null;
   const currentUserName = user?.name ?? "Me";
+  const accessToken = user?.accessToken ?? null;
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -649,6 +685,11 @@ export default function ChatBoxScreen() {
   const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const channelRef = useRef<{
+    whisper: (event: string, data: Record<string, unknown>) => void;
+  } | null>(null);
 
   const chatItem = useMemo(() => {
     if (params.chatItem) {
@@ -726,6 +767,102 @@ export default function ChatBoxScreen() {
     if (userId) fetchMessages(1, false);
     else setLoading(false);
   }, [userId, fetchMessages]);
+
+  // Mark that user's messages as read once when opening this chat screen
+  useEffect(() => {
+    if (!userId) return;
+    ApiService.post(MARK_READ_URL(userId), {}).catch(() => {});
+  }, [userId]);
+
+  // Real-time: subscribe to private chat channel (matches web: chat.id1.id2), messages, read receipts, typing
+  useEffect(() => {
+    if (!userId || !accessToken || currentUserId == null) return;
+    const echo = getEcho(accessToken);
+    if (!echo) return;
+    const channelName = getPrivateChatChannelName(currentUserId, userId);
+    const channel = echo.private(channelName);
+    channelRef.current = channel;
+
+    // New message: only add when sender is the other user (we add our own from API response)
+    channel.listen(CHAT_MESSAGE_EVENT, (payload: unknown) => {
+      const raw = (payload as { message?: ApiMessage })?.message ?? payload;
+      const msg = raw as ApiMessage;
+      if (!msg?.id || !msg?.sender?.id || msg.created_at == null) return;
+      if (msg.sender.id === currentUserId) return; // skip own message from socket
+      setIsTyping(false);
+      // Mark that user's messages as read when we receive their message
+      ApiService.post(MARK_READ_URL(String(msg.sender.id)), {}).catch(() => {});
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === String(msg.id))) return prev;
+        return [apiMessageToItem(msg), ...prev];
+      });
+    });
+
+    // Read receipts: mark our messages as read when other user reads
+    channel.listen(
+      CHAT_MESSAGES_READ_EVENT,
+      (e: { senderId: number; receiverId: number }) => {
+        if (e.receiverId === currentUserId && e.senderId === Number(userId)) {
+          setMessages((prev) =>
+            prev.map((m) => (m.isMe ? { ...m, is_read: true } : m)),
+          );
+        }
+      },
+    );
+
+    // Typing indicator
+    channel.listenForWhisper(CHAT_WHISPER_TYPING, (e: { userId?: number }) => {
+      if (e.userId === Number(userId)) {
+        setIsTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
+      }
+    });
+    channel.listenForWhisper(
+      CHAT_WHISPER_STOP_TYPING,
+      (e: { userId?: number }) => {
+        if (e.userId === Number(userId)) {
+          setIsTyping(false);
+          if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = null;
+          }
+        }
+      },
+    );
+
+    return () => {
+      channel.stopListening(CHAT_MESSAGE_EVENT);
+      channel.stopListening(CHAT_MESSAGES_READ_EVENT);
+      channel.stopListeningForWhisper(CHAT_WHISPER_TYPING);
+      channel.stopListeningForWhisper(CHAT_WHISPER_STOP_TYPING);
+      echo.leave(channelName);
+      channelRef.current = null;
+      setIsTyping(false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
+    };
+  }, [userId, accessToken, currentUserId, apiMessageToItem]);
+
+  // Send typing / stop-typing whisper (debounced: typing at most every 1.5s, stop when idle 2s or empty)
+  useEffect(() => {
+    if (!userId || currentUserId == null) return;
+    const ch = channelRef.current;
+    if (!ch) return;
+    const trimmed = inputText.trim();
+    if (trimmed.length > 0) {
+      ch.whisper(CHAT_WHISPER_TYPING, { userId: currentUserId });
+      const stopT = setTimeout(() => {
+        channelRef.current?.whisper(CHAT_WHISPER_STOP_TYPING, {
+          userId: currentUserId,
+        });
+      }, 2000);
+      return () => clearTimeout(stopT);
+    }
+    ch.whisper(CHAT_WHISPER_STOP_TYPING, { userId: currentUserId });
+  }, [userId, currentUserId, inputText]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -896,6 +1033,7 @@ export default function ChatBoxScreen() {
             onInputChange={setInputText}
             sending={sending}
             onSend={handleSend}
+            isTyping={isTyping}
           />
         </KeyboardAvoidingView>
       ) : (
@@ -936,6 +1074,7 @@ export default function ChatBoxScreen() {
             onInputChange={setInputText}
             sending={sending}
             onSend={handleSend}
+            isTyping={isTyping}
           />
         </View>
       )}
