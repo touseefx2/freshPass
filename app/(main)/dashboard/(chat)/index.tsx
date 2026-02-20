@@ -170,6 +170,18 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       marginBottom: moderateHeightScale(20),
     },
+    emptyChatContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    emptyChatText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
   });
 
 function buildSections(contacts: ChatContactItem[]): ChatSection[] {
@@ -231,7 +243,9 @@ export default function ChatScreen() {
   const isGuest = user.isGuest;
   const contacts = useAppSelector((state) => state.general.chatContacts);
   const page = useAppSelector((state) => state.general.chatContactsPage);
-  const lastPage = useAppSelector((state) => state.general.chatContactsLastPage);
+  const lastPage = useAppSelector(
+    (state) => state.general.chatContactsLastPage,
+  );
   const loading = useAppSelector((state) => state.general.chatContactsLoading);
   const refreshing = useAppSelector(
     (state) => state.general.chatContactsRefreshing,
@@ -252,7 +266,9 @@ export default function ChatScreen() {
         } else {
           dispatch(setChatContacts(list));
         }
-        dispatch(setChatContactsMeta({ page: current_page, lastPage: last_page }));
+        dispatch(
+          setChatContactsMeta({ page: current_page, lastPage: last_page }),
+        );
       } catch {
         // keep current data on error
       } finally {
@@ -359,6 +375,26 @@ export default function ChatScreen() {
         </Text>
         <View style={styles.guestContainer}>
           <ActivityIndicator size="large" color={theme.darkGreen} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!isGuest && !loading && contacts.length === 0) {
+    return (
+      <View style={styles.container}>
+        {user.userRole === "customer" ? (
+          <DashboardHeaderClient />
+        ) : (
+          <DashboardHeader />
+        )}
+        <Text
+          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
+        >
+          {t("chatBox")}
+        </Text>
+        <View style={styles.emptyChatContainer}>
+          <Text style={styles.emptyChatText}>{t("noAnyChat")}</Text>
         </View>
       </View>
     );
