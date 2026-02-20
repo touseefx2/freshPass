@@ -709,9 +709,6 @@ export default function ChatBoxScreen() {
   };
   const channelRef = useRef<ChannelHandle | null>(null);
   const channelActiveRef = useRef(false);
-  const echoRef = useRef<ReturnType<typeof getEcho> | null>(null);
-  const channelNameRef = useRef<string | null>(null);
-  const [isAppActive, setIsAppActive] = useState(true);
 
   const chatItem = useMemo(() => {
     if (params.chatItem) {
@@ -796,58 +793,33 @@ export default function ChatBoxScreen() {
     ApiService.post(MARK_READ_URL(userId), {}).catch(() => {});
   }, [userId]);
 
-  // When app goes background or is killed: leave channel so server can clean up. On foreground, re-subscribe.
+  // When app returns from background: refetch messages so any missed (throttled) socket events are synced
   useEffect(() => {
     const sub = AppState.addEventListener(
       "change",
       (nextState: AppStateStatus) => {
-        setIsAppActive(nextState === "active");
+        if (nextState === "active" && userId) {
+          fetchMessages(1, false);
+          ApiService.post(MARK_READ_URL(userId), {}).catch(() => {});
+        }
       },
     );
     return () => sub.remove();
-  }, []);
+  }, [userId, fetchMessages]);
 
   // Real-time: subscribe to private chat channel (matches web: chat.id1.id2), messages, read receipts, typing
-  // Cleanup on unmount or app background: leave channel and guard callbacks (no memory leak).
-  // App kill / phone off: connection drops and server closes channel.
+  // Cleanup only on unmount (navigate back). Background: socket stays connected. App kill: connection drops and server closes.
   useEffect(() => {
     if (!userId || !accessToken || currentUserId == null) return;
-
-    if (!isAppActive) {
-      if (channelRef.current && echoRef.current && channelNameRef.current) {
-        const channel = channelRef.current;
-        const name = channelNameRef.current;
-        const echo = echoRef.current;
-        channelActiveRef.current = false;
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-          typingTimeoutRef.current = null;
-        }
-        channel.stopListening(CHAT_MESSAGE_EVENT);
-        channel.stopListening(CHAT_MESSAGES_READ_EVENT);
-        channel.stopListeningForWhisper(CHAT_WHISPER_TYPING);
-        channel.stopListeningForWhisper(CHAT_WHISPER_STOP_TYPING);
-        echo.leave(name);
-        channelRef.current = null;
-        echoRef.current = null;
-        channelNameRef.current = null;
-      }
-      return;
-    }
-
     const echo = getEcho(accessToken);
     if (!echo) return;
     const channelName = getPrivateChatChannelName(currentUserId, userId);
     const channel = echo.private(channelName);
     channelRef.current = channel;
     channelActiveRef.current = true;
-    echoRef.current = echo;
-    channelNameRef.current = channelName;
 
     // New message: only add when sender is the other user (we add our own from API response)
     channel.listen(CHAT_MESSAGE_EVENT, (payload: unknown) => {
-      console.log("--------->payload : ", payload);
-
       if (!channelActiveRef.current) return;
       const raw = (payload as { message?: ApiMessage })?.message ?? payload;
       const msg = raw as ApiMessage;
@@ -913,10 +885,8 @@ export default function ChatBoxScreen() {
       channel.stopListeningForWhisper(CHAT_WHISPER_STOP_TYPING);
       echo.leave(channelName);
       channelRef.current = null;
-      echoRef.current = null;
-      channelNameRef.current = null;
     };
-  }, [userId, accessToken, currentUserId, apiMessageToItem, isAppActive]);
+  }, [userId, accessToken, currentUserId, apiMessageToItem]);
 
   // Send typing / stop-typing whisper (debounced: typing at most every 1.5s, stop when idle 2s or empty)
   useEffect(() => {
