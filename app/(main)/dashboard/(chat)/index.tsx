@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -20,7 +20,7 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import Button from "@/src/components/button";
 import { Feather } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
@@ -353,10 +353,12 @@ export default function ChatScreen() {
     [],
   );
 
-  useEffect(() => {
-    if (!isGuest) fetchContacts(1, false);
-    else setLoading(false);
-  }, [isGuest, fetchContacts]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!isGuest) fetchContacts(1, false);
+      else setLoading(false);
+    }, [isGuest, fetchContacts]),
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -478,7 +480,7 @@ export default function ChatScreen() {
           <TouchableOpacity
             onPress={() =>
               router.push({
-                pathname: "./chatBox",
+                pathname: "/(main)/chatBox",
                 params: { id: item.id, chatItem: JSON.stringify(item) },
               })
             }
