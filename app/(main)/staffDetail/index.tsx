@@ -29,6 +29,7 @@ import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { ChatIcon } from "@/assets/icons";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -102,6 +103,27 @@ const createStyles = (theme: Theme) =>
     },
     headerEditIcon: {
       marginLeft: moderateWidthScale(10),
+    },
+    chatIconButton: {
+      backgroundColor: theme.darkGreenLight,
+      width: widthScale(40),
+      height: heightScale(40),
+      borderRadius: moderateWidthScale(999),
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: moderateWidthScale(8),
+    },
+    chatButtonRow: {
+      marginTop: moderateHeightScale(16),
+      alignItems: "center",
+    },
+    chatIconButtonBelow: {
+      backgroundColor: theme.darkGreenLight,
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(999),
+      alignItems: "center",
+      justifyContent: "center",
     },
     cardTitle: {
       fontSize: fontSize.size14,
@@ -382,6 +404,28 @@ export default function StaffDetail() {
     );
   };
 
+  const handleChatPress = useCallback(() => {
+    if (!data?.user?.id) return;
+    const staffImage =
+      data.user?.profile_image_url &&
+      (data.user.profile_image_url.startsWith("http://") ||
+        data.user.profile_image_url.startsWith("https://"))
+        ? data.user.profile_image_url
+        : (process.env.EXPO_PUBLIC_API_BASE_URL || "") +
+            (data.user?.profile_image_url ?? "");
+    router.push({
+      pathname: "/(main)/chatBox",
+      params: {
+        id: String(data.user.id),
+        chatItem: JSON.stringify({
+          id: String(data.user.id),
+          name: data.name ?? "",
+          image: staffImage || (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
+        }),
+      },
+    });
+  }, [data?.user?.id, data?.user?.profile_image_url, data?.name, router]);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -509,6 +553,20 @@ export default function StaffDetail() {
               {t("staffInvitationPending")}
             </Text>
           ) : null}
+          {data?.user?.id != null && (
+            <View style={styles.chatButtonRow}>
+              <TouchableOpacity
+                style={styles.chatIconButtonBelow}
+                onPress={handleChatPress}
+              >
+                <ChatIcon
+                  width={widthScale(20)}
+                  height={heightScale(20)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.card}>
