@@ -230,10 +230,18 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       // marginBottom: moderateHeightScale(12),
     },
+    subscriptionDetailLeft: {
+      gap: moderateHeightScale(2),
+    },
     subscriptionDetailTitle: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
+    },
+    subscriptionVisitsText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     subscriptionDetailPrice: {
       flexDirection: "row",
@@ -680,9 +688,14 @@ export default function StepNine() {
                 <View style={styles.subscriptionSeparator} />
                 <View style={styles.subscriptionCardContent}>
                   <View style={styles.subscriptionDetailSection}>
-                    <Text style={styles.subscriptionDetailTitle}>
-                      Subscription detail
-                    </Text>
+                    <View style={styles.subscriptionDetailLeft}>
+                      <Text style={styles.subscriptionDetailTitle}>
+                        Subscription detail
+                      </Text>
+                      <Text style={styles.subscriptionVisitsText}>
+                        {subscription.servicesPerMonth} visits/month
+                      </Text>
+                    </View>
                     <View style={styles.subscriptionDetailPrice}>
                       <Text style={styles.subscriptionPriceText}>
                         {formatPrice(subscription.price, subscription.currency)}
