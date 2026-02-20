@@ -94,11 +94,21 @@ interface BookingItem {
     total: number;
     remaining: number;
   } | null;
+  owner?: {
+    id: number;
+    name: string;
+    profile_pic: string | null;
+  };
 }
 
 interface ApiBookingResponse {
   id: number;
   businessId: number;
+  owner?: {
+    id: number;
+    name: string;
+    profile_pic: string | null;
+  };
   businessTitle: string;
   businessAddress: string;
   businessLatitude: string;
@@ -719,6 +729,7 @@ export default function bookingDetailsById() {
       subscriptionVisits: apiData.subscriptionVisits || null,
       planName,
       type: apiData.appointmentType,
+      owner: apiData.owner,
     };
   };
 
@@ -823,6 +834,23 @@ export default function bookingDetailsById() {
   const businessLongitude = booking?.businessLongitude
     ? parseFloat(booking.businessLongitude)
     : undefined;
+
+  const handleContactPress = useCallback(() => {
+    const owner = booking?.owner;
+    if (!owner?.id) return;
+
+    router.push({
+      pathname: "/(main)/chatBox",
+      params: {
+        id: String(owner.id),
+        chatItem: JSON.stringify({
+          id: String(owner.id),
+          name: owner.name ?? "",
+          image: owner.profile_pic ?? "",
+        }),
+      },
+    });
+  }, [booking?.owner, router]);
 
   // Handle location navigation to Google Maps
   const handleLocationPress = async () => {
@@ -1174,7 +1202,11 @@ export default function bookingDetailsById() {
 
           {/* Action Buttons */}
           <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.actionButton}
+              onPress={handleContactPress}
+            >
               <View style={styles.actionButtonCircle}>
                 <ContactIcon
                   width={moderateWidthScale(22)}

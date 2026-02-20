@@ -594,7 +594,9 @@ export default function CompleteProfile() {
   const renderStep = useMemo(() => {
     switch (currentStep) {
       case 1:
-        return <StepOne />;
+        return (
+          <StepOne onContinueFromSearch={handleContinue} />
+        );
       case 2:
         return <StepTwo />;
       case 3:
@@ -618,7 +620,7 @@ export default function CompleteProfile() {
       default:
         return null;
     }
-  }, [currentStep]);
+  }, [currentStep, handleContinue]);
 
   const continueLabel = useMemo(() => {
     if (currentStep === totalSteps) {
