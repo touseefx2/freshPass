@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   Alert,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -95,6 +95,13 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(16),
       padding: moderateWidthScale(16),
       borderRadius: moderateWidthScale(12),
+    },
+    headerRightIcons: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    headerEditIcon: {
+      marginLeft: moderateWidthScale(10),
     },
     cardTitle: {
       fontSize: fontSize.size14,
@@ -260,6 +267,8 @@ export default function StaffDetail() {
   const { showBanner } = useNotificationContext();
   const params = useLocalSearchParams<{ id?: string }>();
   const staffId = params.id;
+  const user = useAppSelector((state: any) => state.user);
+  const isBusinessRole = user?.role?.toLowerCase() === "business";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -442,26 +451,28 @@ export default function StaffDetail() {
       <StackHeader
         title={t("staffDetail")}
         rightIcon={
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity activeOpacity={0.7} onPress={confirmDeleteStaff}>
-              <MaterialIcons
-                name="delete-outline"
-                size={moderateWidthScale(20)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleEditPress}
-              style={{ marginLeft: moderateWidthScale(10) }}
-            >
-              <MaterialIcons
-                name="edit"
-                size={moderateWidthScale(20)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
-          </View>
+          isBusinessRole ? (
+            <View style={styles.headerRightIcons}>
+              <TouchableOpacity activeOpacity={0.7} onPress={confirmDeleteStaff}>
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleEditPress}
+                style={styles.headerEditIcon}
+              >
+                <MaterialIcons
+                  name="edit"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : undefined
         }
       />
       <ScrollView

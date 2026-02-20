@@ -668,10 +668,16 @@ export default function ChatBoxScreen() {
   }, [params.chatItem]);
 
   const userId = params.id ?? chatItem?.id ?? "";
+  const name = chatItem?.name || "-----";
+  let image = chatItem?.image || "";
 
-  const name = chatItem?.name || "Unknown";
-  const image = chatItem?.image || "";
-
+  if (!image) {
+    image = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  } else if (image.startsWith("http") || image.startsWith("https")) {
+    image = image;
+  } else {
+    image = process.env.EXPO_PUBLIC_API_BASE_URL + image;
+  }
   const apiMessageToItem = useCallback(
     (m: ApiMessage): MessageItem => {
       const isMe = currentUserId != null && m.sender.id === currentUserId;

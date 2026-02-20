@@ -57,6 +57,7 @@ import {
   CloseIconBusinessDetail,
   BackArrowIcon,
   ChevronRightIconBusinessDetail,
+  ChatIcon,
 } from "@/assets/icons";
 import InclusionsModal from "@/src/components/inclusionsModal";
 import Button from "@/src/components/button";
@@ -385,6 +386,19 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.white,
+    },
+    contactActionsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    chatIconButton: {
+      backgroundColor: theme.darkGreenLight,
+      width: widthScale(35),
+      height: widthScale(35),
+      borderRadius: widthScale(35 / 2),
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: moderateWidthScale(8),
     },
     businessHoursHeader: {
       flexDirection: "row",
@@ -1615,6 +1629,27 @@ export default function BusinessDetailScreen() {
   ]);
 
   // Handle phone call
+  const handleChatPress = useCallback(() => {
+    const ownerId = businessData?.owner?.id;
+    if (!ownerId) return;
+    router.push({
+      pathname: "/(main)/chatBox",
+      params: {
+        id: String(ownerId),
+        chatItem: JSON.stringify({
+          id: String(ownerId),
+          name: businessData?.owner?.name ?? "",
+          image: businessData?.owner?.avatar ?? "",
+        }),
+      },
+    });
+  }, [
+    businessData?.owner?.id,
+    businessData?.owner?.name,
+    businessData?.owner?.avatar,
+    router,
+  ]);
+
   const handleCallNow = async () => {
     const phoneNumber = businessPhone.replace(/[^\d+]/g, ""); // Remove non-digit characters except +
     const phoneUrl = `tel:${phoneNumber}`;
@@ -2161,7 +2196,7 @@ export default function BusinessDetailScreen() {
                   { marginTop: moderateHeightScale(24) },
                 ]}
               >
-                {t("contact")}
+                {t("contact")}a
               </Text>
               <View style={styles.contactRow}>
                 <View style={styles.phoneIconContainer}>
@@ -2173,12 +2208,28 @@ export default function BusinessDetailScreen() {
                 </View>
                 <View style={styles.contactPhoneRow}>
                   <Text style={styles.phoneText}>{businessPhone}</Text>
-                  <TouchableOpacity
-                    style={styles.callNowButton}
-                    onPress={handleCallNow}
-                  >
-                    <Text style={styles.callNowButtonText}>{t("callNow")}</Text>
-                  </TouchableOpacity>
+                  <View style={styles.contactActionsRow}>
+                    {businessData?.owner?.id != null && (
+                      <TouchableOpacity
+                        style={styles.chatIconButton}
+                        onPress={handleChatPress}
+                      >
+                        <ChatIcon
+                          width={widthScale(17)}
+                          height={heightScale(17)}
+                          color={theme.white}
+                        />
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      style={styles.callNowButton}
+                      onPress={handleCallNow}
+                    >
+                      <Text style={styles.callNowButtonText}>
+                        {t("callNow")}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             </View>
