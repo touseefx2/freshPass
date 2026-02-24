@@ -72,7 +72,8 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(10),
-      minHeight: moderateHeightScale(88),
+      height: moderateHeightScale(100),
+      width: "100%",
       ...Platform.select({
         ios: {
           shadowColor: theme.shadow,
