@@ -672,7 +672,7 @@ export default function StaffDetail() {
                 {t("staffInvitationPending")}
               </Text>
 
-              {/* <TouchableOpacity
+              <TouchableOpacity
                 onPress={handleReinvite}
                 disabled={reinviting}
                 activeOpacity={0.7}
@@ -681,7 +681,7 @@ export default function StaffDetail() {
                 <Text style={[styles.invitationStatus, styles.reinviteLink]}>
                   {reinviting ? t("sendingInvite") : t("reinvite")}
                 </Text>
-              </TouchableOpacity> */}
+              </TouchableOpacity>
             </>
           ) : null}
         </View>
