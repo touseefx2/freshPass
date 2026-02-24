@@ -153,6 +153,7 @@ export const createStyles = (theme: Theme) =>
     jobCardStatusText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
+      color: theme.text,
     },
     jobCardTypeRow: {
       flexDirection: "row",

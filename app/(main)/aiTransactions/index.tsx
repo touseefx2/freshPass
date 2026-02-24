@@ -142,6 +142,7 @@ export default function AiTransactions() {
       const badgeStyle = isCredit
         ? styles.jobCardStatusBadgeCompleted
         : styles.jobCardStatusBadgeFailed;
+      const showPrice = isCredit && item.price != null && item.price !== "";
 
       return (
         <View style={[styles.jobCard, styles.shadow]}>
@@ -156,15 +157,22 @@ export default function AiTransactions() {
                 >
                   {item.description || "-"}
                 </Text>
+                <View style={[styles.jobCardStatusBadge, badgeStyle]}>
+                  <Text style={styles.jobCardStatusText}>
+                    {statusLabel}
+                  </Text>
+                </View>
               </View>
 
               <View style={styles.jobCardMetaRow}>
-                <View style={styles.jobCardMetaItem}>
-                  <Text style={styles.jobCardMetaLabel}>{t("price")}</Text>
-                  <Text style={styles.jobCardMetaValue}>
-                    {item.price ? `$${item.price}` : "-"}
-                  </Text>
-                </View>
+                {showPrice && (
+                  <View style={styles.jobCardMetaItem}>
+                    <Text style={styles.jobCardMetaLabel}>{t("price")}</Text>
+                    <Text style={styles.jobCardMetaValue}>
+                      ${item.price}
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.jobCardMetaItem}>
                   <Text style={styles.jobCardMetaLabel}>{t("credits")}</Text>
                   <Text style={styles.jobCardMetaValue}>
@@ -187,7 +195,7 @@ export default function AiTransactions() {
         </View>
       );
     },
-    [styles, t, formatDateTime, theme.darkGreen, theme.appointmentStatusText],
+    [styles, t, formatDateTime, theme.darkGreen],
   );
 
   const keyExtractor = useCallback(
