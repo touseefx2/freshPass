@@ -249,6 +249,15 @@ export const hairTryonEndpoints = {
  */
 export const chatEndpoints = {
   unreadCount: `/api/chat/unread-count`,
+  potentialContacts: (params?: { page?: number; per_page?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null)
+      queryParams.append("page", params.page.toString());
+    if (params?.per_page != null)
+      queryParams.append("per_page", params.per_page.toString());
+    const query = queryParams.toString();
+    return `/api/chat/potential-contacts${query ? `?${query}` : ""}`;
+  },
 };
 
 /**

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,6 +8,8 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Modal,
+  FlatList,
 } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -43,6 +45,35 @@ type ChatSection = {
   data: ChatContactItem[];
 };
 
+type PotentialContact = {
+  id: number;
+  name: string;
+  avatar: string | null;
+};
+
+type PotentialContactsResponse = {
+  success: boolean;
+  data: {
+    data: PotentialContact[];
+    meta: { current_page: number; last_page: number };
+  };
+};
+
+function getPotentialContactAvatar(avatar: string | null): string {
+  if (avatar == null || avatar.trim() === "") {
+    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  }
+  const trimmed = avatar.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const base = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+  const path = trimmed.replace(/^\//, "");
+  return path
+    ? `${base}/${path}`
+    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -61,6 +92,58 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginHorizontal: moderateWidthScale(20),
       marginBottom: moderateHeightScale(12),
+    },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(12),
+      paddingTop: moderateHeightScale(4),
+    },
+    titleRowText: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    plusBox: {
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(22 / 2),
+      borderWidth: 1,
+      borderColor: theme.white,
+      backgroundColor: theme.lightGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.5)",
+      justifyContent: "center",
+      padding: moderateWidthScale(20),
+    },
+    modalContent: {
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(12),
+      maxHeight: heightScale(400),
+      overflow: "hidden",
+    },
+    modalTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    modalContactRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(14),
+      borderBottomWidth: 0.5,
+      borderBottomColor: theme.borderLight,
     },
     sectionHeader: {
       fontSize: fontSize.size13,
@@ -254,6 +337,85 @@ export default function ChatScreen() {
     (state) => state.general.chatContactsLoadingMore,
   );
 
+  const [potentialModalVisible, setPotentialModalVisible] = useState(false);
+  const [potentialContacts, setPotentialContacts] = useState<
+    PotentialContact[]
+  >([]);
+  const [potentialPage, setPotentialPage] = useState(1);
+  const [potentialLastPage, setPotentialLastPage] = useState(1);
+  const [potentialLoading, setPotentialLoading] = useState(false);
+  const [potentialLoadingMore, setPotentialLoadingMore] = useState(false);
+
+  const fetchPotentialContacts = useCallback(
+    async (pageNum: number, append: boolean) => {
+      try {
+        if (append) setPotentialLoadingMore(true);
+        else setPotentialLoading(true);
+        const url = chatEndpoints.potentialContacts({
+          page: pageNum,
+          per_page: 20,
+        });
+        const res = await ApiService.get<PotentialContactsResponse>(url);
+        const list = res.data?.data ?? [];
+        const meta = res.data?.meta;
+        if (append) {
+          setPotentialContacts((prev) => [...prev, ...list]);
+        } else {
+          setPotentialContacts(list);
+        }
+        setPotentialPage(meta?.current_page ?? pageNum);
+        setPotentialLastPage(meta?.last_page ?? 1);
+      } catch {
+        // keep current data
+      } finally {
+        setPotentialLoading(false);
+        setPotentialLoadingMore(false);
+      }
+    },
+    [],
+  );
+
+  const openPotentialModal = useCallback(() => {
+    setPotentialModalVisible(true);
+    setPotentialContacts([]);
+    setPotentialPage(1);
+    setPotentialLastPage(1);
+    fetchPotentialContacts(1, false);
+  }, [fetchPotentialContacts]);
+
+  const onPotentialContactPress = useCallback(
+    (contact: PotentialContact) => {
+      setPotentialModalVisible(false);
+      const image = getPotentialContactAvatar(contact.avatar);
+      const chatItem = {
+        id: String(contact.id),
+        name: contact.name,
+        image,
+      };
+      router.push({
+        pathname: "/(main)/chatBox",
+        params: { id: String(contact.id), chatItem: JSON.stringify(chatItem) },
+      });
+    },
+    [router],
+  );
+
+  const onPotentialEndReached = useCallback(() => {
+    if (
+      potentialLoadingMore ||
+      potentialLoading ||
+      potentialPage >= potentialLastPage
+    )
+      return;
+    fetchPotentialContacts(potentialPage + 1, true);
+  }, [
+    potentialLoadingMore,
+    potentialLoading,
+    potentialPage,
+    potentialLastPage,
+    fetchPotentialContacts,
+  ]);
+
   const fetchContacts = useCallback(
     async (pageNum: number, append: boolean) => {
       try {
@@ -332,11 +494,11 @@ export default function ChatScreen() {
     return (
       <View style={styles.container}>
         <DashboardHeader />
-        <Text
-          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
+        <View
+          style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
         >
-          Chat box
-        </Text>
+          <Text style={styles.titleRowText}>Chat box</Text>
+        </View>
         <View style={styles.guestContainer}>
           <View style={styles.guestContent}>
             <View style={styles.iconContainer}>
@@ -368,11 +530,22 @@ export default function ChatScreen() {
         ) : (
           <DashboardHeader />
         )}
-        <Text
-          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
+        <View
+          style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
         >
-          {t("chatBox")}
-        </Text>
+          <Text style={styles.titleRowText}>{t("chatBox")}</Text>
+          <TouchableOpacity
+            style={styles.plusBox}
+            onPress={openPotentialModal}
+            activeOpacity={0.8}
+          >
+            <Feather
+              name="plus"
+              size={moderateWidthScale(15)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+        </View>
         <View style={styles.guestContainer}>
           <ActivityIndicator size="large" color={theme.darkGreen} />
         </View>
@@ -388,11 +561,22 @@ export default function ChatScreen() {
         ) : (
           <DashboardHeader />
         )}
-        <Text
-          style={[styles.screenTitle, { paddingTop: moderateHeightScale(20) }]}
+        <View
+          style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
         >
-          {t("chatBox")}
-        </Text>
+          <Text style={styles.titleRowText}>{t("chatBox")}</Text>
+          <TouchableOpacity
+            style={styles.plusBox}
+            onPress={openPotentialModal}
+            activeOpacity={0.8}
+          >
+            <Feather
+              name="plus"
+              size={moderateWidthScale(15)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+        </View>
         <View style={styles.emptyChatContainer}>
           <Text style={styles.emptyChatText}>{t("noAnyChat")}</Text>
         </View>
@@ -424,7 +608,20 @@ export default function ChatScreen() {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
         ListHeaderComponent={
-          <Text style={styles.screenTitle}>{t("chatBox")}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.titleRowText}>{t("chatBox")}</Text>
+            <TouchableOpacity
+              style={styles.plusBox}
+              onPress={openPotentialModal}
+              activeOpacity={0.8}
+            >
+              <Feather
+                name="plus"
+                size={moderateWidthScale(15)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
+          </View>
         }
         ListFooterComponent={
           loadingMore ? (
@@ -480,6 +677,86 @@ export default function ChatScreen() {
         )}
         stickySectionHeadersEnabled={false}
       />
+      <Modal
+        visible={potentialModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPotentialModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setPotentialModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.modalContent}
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.modalTitle}>{t("chatBox")}</Text>
+            {potentialLoading && potentialContacts.length === 0 ? (
+              <View
+                style={{
+                  paddingVertical: moderateHeightScale(40),
+                  alignItems: "center",
+                }}
+              >
+                <ActivityIndicator size="small" color={theme.darkGreen} />
+              </View>
+            ) : (
+              <FlatList
+                data={potentialContacts}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.modalContactRow}
+                    onPress={() => onPotentialContactPress(item)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.avatarContainer}>
+                      {(() => {
+                        const avatarUri = getPotentialContactAvatar(
+                          item.avatar,
+                        );
+                        if (avatarUri) {
+                          return (
+                            <Image
+                              style={styles.avatarImage}
+                              source={{ uri: avatarUri }}
+                            />
+                          );
+                        }
+                        return (
+                          <Text style={styles.avatarInitials}>
+                            {renderInitials(item.name)}
+                          </Text>
+                        );
+                      })()}
+                    </View>
+                    <Text style={[styles.nameText, { marginRight: 0 }]}>
+                      {item.name}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                onEndReached={onPotentialEndReached}
+                onEndReachedThreshold={0.3}
+                ListFooterComponent={
+                  potentialLoadingMore ? (
+                    <View
+                      style={{
+                        paddingVertical: moderateHeightScale(12),
+                        alignItems: "center",
+                      }}
+                    >
+                      <ActivityIndicator size="small" color={theme.darkGreen} />
+                    </View>
+                  ) : null
+                }
+              />
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
