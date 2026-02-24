@@ -203,10 +203,7 @@ const userSlice = createSlice({
       if (action.payload.profile_image_url !== undefined) {
         state.profile_image_url = action.payload.profile_image_url;
       }
-      if (
-        action.payload.dateOfBirth !== undefined &&
-        action.payload.dateOfBirth !== null
-      ) {
+      if (action.payload.dateOfBirth !== undefined) {
         state.dateOfBirth = action.payload.dateOfBirth;
       }
       if (action.payload.countryZipCode !== undefined) {

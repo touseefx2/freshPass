@@ -277,7 +277,12 @@ export default function HomeScreen() {
         };
       }>(userEndpoints.details);
 
-      console.log("=======>date_of_birth", response.data.date_of_birth);
+      console.log(
+        "=======>date_of_birth",
+        response.data.date_of_birth
+          ? parseDateOfBirth(response.data.date_of_birth)
+          : null,
+      );
 
       if (response.success && response.data) {
         dispatch(

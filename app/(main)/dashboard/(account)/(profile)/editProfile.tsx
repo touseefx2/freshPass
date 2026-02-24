@@ -561,6 +561,10 @@ export default function EditProfileScreen() {
   const yearFieldRef = useRef<View>(null);
 
   console.log("initialDateOfBirth", initialDateOfBirth);
+  // Sync local dateOfBirth when Redux user.dateOfBirth updates (e.g. after fetch on Home or on this screen)
+  useEffect(() => {
+    setDateOfBirth(user.dateOfBirth || null);
+  }, [user.dateOfBirth]);
 
   // Validate phone number on mount if it exists
   useEffect(() => {
