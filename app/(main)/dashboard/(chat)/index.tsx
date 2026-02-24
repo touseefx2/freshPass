@@ -445,15 +445,40 @@ export default function ChatScreen() {
     await ApiService.logout();
   };
 
-  if (isGuest) {
-    return (
-      <View style={styles.container}>
+  const showHeaderClient =
+    !isGuest && user.userRole === "customer";
+
+  return (
+    <View style={styles.container}>
+      {isGuest ? (
         <DashboardHeader />
-        <View
-          style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
-        >
-          <Text style={styles.titleRowText}>Chat box</Text>
-        </View>
+      ) : showHeaderClient ? (
+        <DashboardHeaderClient />
+      ) : (
+        <DashboardHeader />
+      )}
+      <View
+        style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
+      >
+        <Text style={styles.titleRowText}>
+          {isGuest ? "Chat box" : t("chatBox")}
+        </Text>
+        {!isGuest && (
+          <TouchableOpacity
+            style={styles.plusBox}
+            onPress={openPotentialModal}
+            activeOpacity={0.8}
+          >
+            <Feather
+              name="plus"
+              size={moderateWidthScale(15)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {isGuest ? (
         <View style={styles.guestContainer}>
           <View style={styles.guestContent}>
             <View style={styles.iconContainer}>
@@ -463,186 +488,108 @@ export default function ChatScreen() {
                 color={theme.darkGreen}
               />
             </View>
-
             <Text style={styles.guestTitle}>{t("guestMode")}</Text>
-
             <Text style={styles.guestMessage}>{t("guestModeMessage")}</Text>
-
             <View style={styles.buttonContainer}>
               <Button title={t("signIn")} onPress={handleSignIn} />
             </View>
           </View>
         </View>
-      </View>
-    );
-  }
-
-  if (!isGuest && loading && contacts.length === 0) {
-    return (
-      <View style={styles.container}>
-        {user.userRole === "customer" ? (
-          <DashboardHeaderClient />
-        ) : (
-          <DashboardHeader />
-        )}
-        <View
-          style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
-        >
-          <Text style={styles.titleRowText}>{t("chatBox")}</Text>
-          <TouchableOpacity
-            style={styles.plusBox}
-            onPress={openPotentialModal}
-            activeOpacity={0.8}
-          >
-            <Feather
-              name="plus"
-              size={moderateWidthScale(15)}
-              color={theme.white}
-            />
-          </TouchableOpacity>
-        </View>
+      ) : loading && contacts.length === 0 ? (
         <View style={styles.guestContainer}>
           <ActivityIndicator size="large" color={theme.darkGreen} />
         </View>
-      </View>
-    );
-  }
-
-  if (!isGuest && !loading && contacts.length === 0) {
-    return (
-      <View style={styles.container}>
-        {user.userRole === "customer" ? (
-          <DashboardHeaderClient />
-        ) : (
-          <DashboardHeader />
-        )}
-        <View
-          style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
-        >
-          <Text style={styles.titleRowText}>{t("chatBox")}</Text>
-          <TouchableOpacity
-            style={styles.plusBox}
-            onPress={openPotentialModal}
-            activeOpacity={0.8}
-          >
-            <Feather
-              name="plus"
-              size={moderateWidthScale(15)}
-              color={theme.white}
-            />
-          </TouchableOpacity>
-        </View>
+      ) : !loading && contacts.length === 0 ? (
         <View style={styles.emptyChatContainer}>
           <Text style={styles.emptyChatText}>{t("noAnyChat")}</Text>
         </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      {user.userRole === "customer" || isGuest ? (
-        <DashboardHeaderClient />
       ) : (
-        <DashboardHeader />
-      )}
-      <SectionList
-        style={styles.content}
-        contentContainerStyle={styles.listContent}
-        sections={sections}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.darkGreen]}
-            tintColor={theme.darkGreen}
-          />
-        }
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.3}
-        ListHeaderComponent={
-          <View style={styles.titleRow}>
-            <Text style={styles.titleRowText}>{t("chatBox")}</Text>
-            <TouchableOpacity
-              style={styles.plusBox}
-              onPress={openPotentialModal}
-              activeOpacity={0.8}
-            >
-              <Feather
-                name="plus"
-                size={moderateWidthScale(15)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
-          </View>
-        }
-        ListFooterComponent={
-          loadingMore ? (
-            <View
-              style={{
-                paddingVertical: moderateHeightScale(16),
-                alignItems: "center",
-              }}
-            >
-              <ActivityIndicator size="small" color={theme.darkGreen} />
-            </View>
-          ) : null
-        }
-        renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionHeader}>{section.title}</Text>
-        )}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: "/(main)/chatBox",
-                params: { id: item.id, chatItem: JSON.stringify(item) },
-              })
-            }
-            activeOpacity={0.8}
-            style={[
-              styles.rowContainer,
-              item.isHighlighted && styles.rowHighlighted,
-            ]}
-          >
-            <View style={styles.avatarContainer}>
-              {item?.image ? (
-                <Image
-                  style={styles.avatarImage}
-                  source={{ uri: item?.image }}
-                />
-              ) : (
-                <Text style={styles.avatarInitials}>
-                  {renderInitials(item.name)}
-                </Text>
-              )}
-            </View>
-            <View style={styles.rowContent}>
-              <View style={styles.rowTop}>
-                <Text style={styles.nameText}>{item.name}</Text>
-                <Text style={styles.timeText}>{item.timeLabel}</Text>
+        <SectionList
+          style={styles.content}
+          contentContainerStyle={styles.listContent}
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.darkGreen]}
+              tintColor={theme.darkGreen}
+            />
+          }
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.3}
+          ListHeaderComponent={null}
+          ListFooterComponent={
+            loadingMore ? (
+              <View
+                style={{
+                  paddingVertical: moderateHeightScale(16),
+                  alignItems: "center",
+                }}
+              >
+                <ActivityIndicator size="small" color={theme.darkGreen} />
               </View>
-              <Text style={styles.messageText} numberOfLines={1}>
-                {item.message}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        stickySectionHeadersEnabled={false}
-      />
-      <PotentialContactsModal
-        visible={potentialModalVisible}
-        onClose={() => setPotentialModalVisible(false)}
-        contacts={potentialContacts}
-        loading={potentialLoading}
-        loadingMore={potentialLoadingMore}
-        error={potentialError}
-        onRetry={() => fetchPotentialContacts(1, false)}
-        onContactPress={onPotentialContactPress}
-        onEndReached={onPotentialEndReached}
-      />
+            ) : null
+          }
+          renderSectionHeader={({ section }) => (
+            <Text style={styles.sectionHeader}>{section.title}</Text>
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/(main)/chatBox",
+                  params: { id: item.id, chatItem: JSON.stringify(item) },
+                })
+              }
+              activeOpacity={0.8}
+              style={[
+                styles.rowContainer,
+                item.isHighlighted && styles.rowHighlighted,
+              ]}
+            >
+              <View style={styles.avatarContainer}>
+                {item?.image ? (
+                  <Image
+                    style={styles.avatarImage}
+                    source={{ uri: item?.image }}
+                  />
+                ) : (
+                  <Text style={styles.avatarInitials}>
+                    {renderInitials(item.name)}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.rowContent}>
+                <View style={styles.rowTop}>
+                  <Text style={styles.nameText}>{item.name}</Text>
+                  <Text style={styles.timeText}>{item.timeLabel}</Text>
+                </View>
+                <Text style={styles.messageText} numberOfLines={1}>
+                  {item.message}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+          stickySectionHeadersEnabled={false}
+        />
+      )}
+
+      {!isGuest && (
+        <PotentialContactsModal
+          visible={potentialModalVisible}
+          onClose={() => setPotentialModalVisible(false)}
+          contacts={potentialContacts}
+          loading={potentialLoading}
+          loadingMore={potentialLoadingMore}
+          error={potentialError}
+          onRetry={() => fetchPotentialContacts(1, false)}
+          onContactPress={onPotentialContactPress}
+          onEndReached={onPotentialEndReached}
+        />
+      )}
     </View>
   );
 }
