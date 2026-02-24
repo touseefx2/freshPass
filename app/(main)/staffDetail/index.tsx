@@ -357,7 +357,7 @@ export default function StaffDetail() {
   const params = useLocalSearchParams<{ id?: string }>();
   const staffId = params.id;
   const user = useAppSelector((state: any) => state.user);
-  const isBusinessRole = user?.role?.toLowerCase() === "business";
+  const isBusinessRole = user?.userRole?.toLowerCase() === "business";
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
