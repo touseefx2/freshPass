@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   StatusBar,
@@ -6,6 +6,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Text,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -55,6 +57,7 @@ export default function AiTransactions() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const hasScrolledRef = useRef(false);
 
   const formatDateTime = useCallback((value: string) => {
     const d = dayjs(value);
@@ -112,15 +115,26 @@ export default function AiTransactions() {
     fetchTransactions(1, false);
   }, []);
 
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
+    if (!hasScrolledRef.current) return;
     fetchTransactions(currentPage + 1, true);
-  };
+  }, [loadingMore, hasMore, currentPage, fetchTransactions]);
 
-  const handleRefresh = () => {
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (e.nativeEvent.contentOffset.y > 20) {
+        hasScrolledRef.current = true;
+      }
+    },
+    [],
+  );
+
+  const handleRefresh = useCallback(() => {
+    hasScrolledRef.current = false;
     setRefreshing(true);
     fetchTransactions(1, false);
-  };
+  }, [fetchTransactions]);
   const renderItem = useCallback(
     ({ item }: { item: AiTransaction }) => {
       const isCredit = (item.type ?? "").toLowerCase() === "credit";
@@ -214,6 +228,7 @@ export default function AiTransactions() {
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
         onEndReached={loadMore}
         onEndReachedThreshold={0.4}
         ListFooterComponent={renderFooter}
