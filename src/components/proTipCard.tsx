@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -74,6 +74,7 @@ interface ProTipCardProps {
   actionLabel: string;
   benefitLabel: string;
   standardLabel: string;
+  onPress?: (item: ProTipCardItem) => void;
 }
 
 export default function ProTipCard({
@@ -81,13 +82,14 @@ export default function ProTipCard({
   actionLabel,
   benefitLabel,
   standardLabel,
+  onPress,
 }: ProTipCardProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
-  return (
-    <View style={styles.card}>
+  const content = (
+    <>
       <View style={styles.imageContainer}>
         <Image source={{ uri: item.image }} style={styles.image} />
       </View>
@@ -106,6 +108,20 @@ export default function ProTipCard({
           <Text style={styles.value}>{item.standard}</Text>
         </View>
       </View>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => onPress(item)}
+        activeOpacity={0.9}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={styles.card}>{content}</View>;
 }

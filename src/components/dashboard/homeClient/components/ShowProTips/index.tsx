@@ -25,6 +25,7 @@ interface ShowProTipsProps {
   loading: boolean;
   error: boolean;
   onRetry: () => void;
+  onCardPress?: (item: ProTipCardItem) => void;
 }
 
 export default function ShowProTips({
@@ -37,6 +38,7 @@ export default function ShowProTips({
   loading,
   error,
   onRetry,
+  onCardPress,
 }: ShowProTipsProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -75,6 +77,7 @@ export default function ShowProTips({
               actionLabel={actionLabel}
               benefitLabel={benefitLabel}
               standardLabel={standardLabel}
+              onPress={onCardPress}
             />
           ))}
         </ScrollView>

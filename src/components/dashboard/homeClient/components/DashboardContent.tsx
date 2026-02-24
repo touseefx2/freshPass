@@ -741,7 +741,6 @@ export default function DashboardContent() {
       }>(generalEndpoints.proTipCards);
 
       if (response.success && response.data?.cards?.length) {
-        console.log("=======>pro tip data", response.data);
         setProTipData(response.data);
       }
     } catch (error) {
@@ -1011,6 +1010,18 @@ export default function DashboardContent() {
             loading={proTipLoading}
             error={proTipError}
             onRetry={fetchProTipCards}
+            onCardPress={(item) => {
+              router.push({
+                pathname: "/(main)/tipDetail",
+                params: {
+                  title: item.title,
+                  image: item.image,
+                  action: item.action,
+                  benefit: item.benefit,
+                  standard: item.standard,
+                },
+              } as any);
+            }}
           />
         </View>
       ) : null}
