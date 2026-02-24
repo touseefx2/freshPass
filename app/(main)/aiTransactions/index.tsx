@@ -47,7 +47,7 @@ export default function AiTransactions() {
     };
   };
 
-  const PER_PAGE = 10;
+  const PER_PAGE = 15;
 
   const [transactions, setTransactions] = useState<AiTransaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,18 +110,17 @@ export default function AiTransactions() {
 
   useEffect(() => {
     fetchTransactions(1, false);
-  }, [fetchTransactions]);
+  }, []);
 
-  const loadMore = useCallback(() => {
+  const loadMore = () => {
     if (loadingMore || !hasMore) return;
     fetchTransactions(currentPage + 1, true);
-  }, [loadingMore, hasMore, currentPage, fetchTransactions]);
+  };
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = () => {
     setRefreshing(true);
     fetchTransactions(1, false);
-  }, [fetchTransactions]);
-
+  };
   const renderItem = useCallback(
     ({ item }: { item: AiTransaction }) => {
       const isCredit = (item.type ?? "").toLowerCase() === "credit";
