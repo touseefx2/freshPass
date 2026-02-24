@@ -238,6 +238,14 @@ const createStyles = (theme: Theme) =>
     invitationStatusPending: {
       color: theme.orangeBrown,
     },
+
+    reinviteLink: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textDecorationLine: "underline",
+      textDecorationColor: theme.lightGreen,
+    },
   });
 
 export interface StaffLeave {
@@ -362,6 +370,7 @@ export default function StaffDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StaffDetailData | null>(null);
+  const [reinviting, setReinviting] = useState(false);
 
   const fetchStaffDetails = useCallback(async () => {
     if (!staffId) {
@@ -452,6 +461,48 @@ export default function StaffDetail() {
       dispatch(setActionLoader(false));
     }
   };
+
+  const handleReinvite = useCallback(async () => {
+    if (!data?.email || reinviting) return;
+    setReinviting(true);
+    try {
+      const formData = new FormData();
+      formData.append("email", data.email.trim());
+      const response = await ApiService.post<{
+        success: boolean;
+        message?: string;
+      }>(staffEndpoints.invite, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      if (response?.success) {
+        showBanner(
+          t("success") || "Success",
+          t("staffInvitationSentSuccess") ||
+            "Invite send ho gaya hai is staff ko",
+          "success",
+          3000,
+        );
+      } else {
+        showBanner(
+          t("error") || "Error",
+          (response as any)?.message ||
+            t("failedToSendInvitation") ||
+            "Failed to send invitation",
+          "error",
+          3000,
+        );
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err?.data?.message ||
+        err?.message ||
+        t("error") ||
+        "Something went wrong";
+      showBanner(t("error") || "Error", errorMessage, "error", 3000);
+    } finally {
+      setReinviting(false);
+    }
+  }, [data?.email, reinviting, showBanner, t]);
 
   const confirmDeleteStaff = () => {
     Alert.alert(
@@ -611,11 +662,27 @@ export default function StaffDetail() {
             <Text style={styles.description}>{data.description}</Text>
           ) : null}
           {data.invitation_token != null && data.invitation_token !== "" ? (
-            <Text
-              style={[styles.invitationStatus, styles.invitationStatusPending]}
-            >
-              {t("staffInvitationPending")}
-            </Text>
+            <>
+              <Text
+                style={[
+                  styles.invitationStatus,
+                  styles.invitationStatusPending,
+                ]}
+              >
+                {t("staffInvitationPending")}
+              </Text>
+
+              {/* <TouchableOpacity
+                onPress={handleReinvite}
+                disabled={reinviting}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={[styles.invitationStatus, styles.reinviteLink]}>
+                  {reinviting ? t("sendingInvite") : t("reinvite")}
+                </Text>
+              </TouchableOpacity> */}
+            </>
           ) : null}
         </View>
 
