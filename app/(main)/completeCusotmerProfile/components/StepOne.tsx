@@ -711,7 +711,7 @@ export default function StepOne() {
               onPress={() => setDateDropdownVisible("date")}
             >
               <View style={styles.dateFieldContent}>
-                <Text style={styles.dateFieldLabel}>{t("date")}</Text>
+                <Text style={styles.dateFieldLabel}>{t("day")}</Text>
                 <Text
                   style={[
                     dateOfBirth?.date
