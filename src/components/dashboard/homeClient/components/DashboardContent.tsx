@@ -741,6 +741,7 @@ export default function DashboardContent() {
       }>(generalEndpoints.proTipCards);
 
       if (response.success && response.data?.cards?.length) {
+        console.log("=======>pro tip data", response.data);
         setProTipData(response.data);
       }
     } catch (error) {
