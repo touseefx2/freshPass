@@ -463,22 +463,19 @@ export default function StaffDetail() {
   };
 
   const handleReinvite = useCallback(async () => {
-    if (!data?.email || reinviting) return;
+    if (!data?.id || reinviting) return;
     setReinviting(true);
     try {
-      const formData = new FormData();
-      formData.append("email", data.email.trim());
       const response = await ApiService.post<{
         success: boolean;
         message?: string;
-      }>(staffEndpoints.invite, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      }>(staffEndpoints.resendInvitation(data.id), {});
       if (response?.success) {
         showBanner(
           t("success") || "Success",
-          t("staffInvitationSentSuccess") ||
-            "Invite send ho gaya hai is staff ko",
+          response.message ||
+            t("staffInvitationSentSuccess") ||
+            "Invitation email resent successfully.",
           "success",
           3000,
         );
@@ -502,7 +499,7 @@ export default function StaffDetail() {
     } finally {
       setReinviting(false);
     }
-  }, [data?.email, reinviting, showBanner, t]);
+  }, [data?.id, reinviting, showBanner, t]);
 
   const confirmDeleteStaff = () => {
     Alert.alert(

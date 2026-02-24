@@ -20,7 +20,10 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
-import { setUserDetails, setTotalUnreadChat } from "@/src/state/slices/userSlice";
+import {
+  setUserDetails,
+  setTotalUnreadChat,
+} from "@/src/state/slices/userSlice";
 import {
   setChatContacts,
   setChatContactsMeta,
@@ -119,7 +122,9 @@ export default function DashboardLayout() {
       fetchChatContactsApi(1)
         .then(({ list, current_page, last_page }) => {
           dispatch(setChatContacts(list));
-          dispatch(setChatContactsMeta({ page: current_page, lastPage: last_page }));
+          dispatch(
+            setChatContactsMeta({ page: current_page, lastPage: last_page }),
+          );
         })
         .catch(() => {});
     });
@@ -342,7 +347,15 @@ export default function DashboardLayout() {
                     />
 
                     {unreadCount > 0 && (
-                      <View style={styles.badgeContainer}>
+                      <View
+                        style={[
+                          styles.badgeContainer,
+                          {
+                            top: moderateHeightScale(1),
+                            right: moderateWidthScale(5),
+                          },
+                        ]}
+                      >
                         <Text style={styles.badgeText}>
                           {unreadCount > 9 ? "9+" : unreadCount.toString()}
                         </Text>
