@@ -8,8 +8,6 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
-  Modal,
-  FlatList,
 } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -39,16 +37,14 @@ import {
   appendChatContacts,
 } from "@/src/state/slices/generalSlice";
 import { fetchChatContactsApi } from "@/src/services/chatContacts";
+import PotentialContactsModal, {
+  type PotentialContact,
+  getPotentialContactAvatar,
+} from "@/src/components/PotentialContactsModal";
 
 type ChatSection = {
   title: string;
   data: ChatContactItem[];
-};
-
-type PotentialContact = {
-  id: number;
-  name: string;
-  avatar: string | null;
 };
 
 type PotentialContactsResponse = {
@@ -58,21 +54,6 @@ type PotentialContactsResponse = {
     meta: { current_page: number; last_page: number };
   };
 };
-
-function getPotentialContactAvatar(avatar: string | null): string {
-  if (avatar == null || avatar.trim() === "") {
-    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
-  }
-  const trimmed = avatar.trim();
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
-  }
-  const base = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
-  const path = trimmed.replace(/^\//, "");
-  return path
-    ? `${base}/${path}`
-    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
-}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -115,35 +96,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightGreen,
       alignItems: "center",
       justifyContent: "center",
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.5)",
-      justifyContent: "center",
-      padding: moderateWidthScale(20),
-    },
-    modalContent: {
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(12),
-      maxHeight: heightScale(400),
-      overflow: "hidden",
-    },
-    modalTitle: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(16),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-    },
-    modalContactRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(14),
-      borderBottomWidth: 0.5,
-      borderBottomColor: theme.borderLight,
     },
     sectionHeader: {
       fontSize: fontSize.size13,
@@ -345,10 +297,12 @@ export default function ChatScreen() {
   const [potentialLastPage, setPotentialLastPage] = useState(1);
   const [potentialLoading, setPotentialLoading] = useState(false);
   const [potentialLoadingMore, setPotentialLoadingMore] = useState(false);
+  const [potentialError, setPotentialError] = useState(false);
 
   const fetchPotentialContacts = useCallback(
     async (pageNum: number, append: boolean) => {
       try {
+        setPotentialError(false);
         if (append) setPotentialLoadingMore(true);
         else setPotentialLoading(true);
         const url = chatEndpoints.potentialContacts({
@@ -366,7 +320,7 @@ export default function ChatScreen() {
         setPotentialPage(meta?.current_page ?? pageNum);
         setPotentialLastPage(meta?.last_page ?? 1);
       } catch {
-        // keep current data
+        if (!append) setPotentialError(true);
       } finally {
         setPotentialLoading(false);
         setPotentialLoadingMore(false);
@@ -380,6 +334,7 @@ export default function ChatScreen() {
     setPotentialContacts([]);
     setPotentialPage(1);
     setPotentialLastPage(1);
+    setPotentialError(false);
     fetchPotentialContacts(1, false);
   }, [fetchPotentialContacts]);
 
@@ -677,86 +632,17 @@ export default function ChatScreen() {
         )}
         stickySectionHeadersEnabled={false}
       />
-      <Modal
+      <PotentialContactsModal
         visible={potentialModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPotentialModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setPotentialModalVisible(false)}
-        >
-          <TouchableOpacity
-            style={styles.modalContent}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={styles.modalTitle}>{t("chatBox")}</Text>
-            {potentialLoading && potentialContacts.length === 0 ? (
-              <View
-                style={{
-                  paddingVertical: moderateHeightScale(40),
-                  alignItems: "center",
-                }}
-              >
-                <ActivityIndicator size="small" color={theme.darkGreen} />
-              </View>
-            ) : (
-              <FlatList
-                data={potentialContacts}
-                keyExtractor={(item) => String(item.id)}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.modalContactRow}
-                    onPress={() => onPotentialContactPress(item)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.avatarContainer}>
-                      {(() => {
-                        const avatarUri = getPotentialContactAvatar(
-                          item.avatar,
-                        );
-                        if (avatarUri) {
-                          return (
-                            <Image
-                              style={styles.avatarImage}
-                              source={{ uri: avatarUri }}
-                            />
-                          );
-                        }
-                        return (
-                          <Text style={styles.avatarInitials}>
-                            {renderInitials(item.name)}
-                          </Text>
-                        );
-                      })()}
-                    </View>
-                    <Text style={[styles.nameText, { marginRight: 0 }]}>
-                      {item.name}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                onEndReached={onPotentialEndReached}
-                onEndReachedThreshold={0.3}
-                ListFooterComponent={
-                  potentialLoadingMore ? (
-                    <View
-                      style={{
-                        paddingVertical: moderateHeightScale(12),
-                        alignItems: "center",
-                      }}
-                    >
-                      <ActivityIndicator size="small" color={theme.darkGreen} />
-                    </View>
-                  ) : null
-                }
-              />
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setPotentialModalVisible(false)}
+        contacts={potentialContacts}
+        loading={potentialLoading}
+        loadingMore={potentialLoadingMore}
+        error={potentialError}
+        onRetry={() => fetchPotentialContacts(1, false)}
+        onContactPress={onPotentialContactPress}
+        onEndReached={onPotentialEndReached}
+      />
     </View>
   );
 }
