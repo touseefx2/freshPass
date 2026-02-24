@@ -47,6 +47,7 @@ import {
   setTotalUnreadChat,
 } from "@/src/state/slices/userSlice";
 import { IMAGES } from "@/src/constant/images";
+import { parseDateOfBirth } from "@/src/constant/functions";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -153,6 +154,7 @@ export default function HomeScreen() {
             title: string;
           };
           ai_quota?: number;
+          date_of_birth: string | null;
         };
       }>(userEndpoints.details);
 
@@ -167,6 +169,9 @@ export default function HomeScreen() {
             profile_image_url: response.data.profile_image_url,
             business_id: response.data.business.id ?? "",
             business_name: response.data.business.title ?? "",
+            dateOfBirth: response.data.date_of_birth
+              ? parseDateOfBirth(response.data.date_of_birth)
+              : null,
             ...(response.data.ai_quota !== undefined && {
               ai_quota: response.data.ai_quota,
             }),

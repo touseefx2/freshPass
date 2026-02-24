@@ -33,6 +33,7 @@ import { ApiService } from "@/src/services/api";
 import { userEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { getEcho } from "@/src/services/echo";
 import { fetchChatContactsApi } from "@/src/services/chatContacts";
+import { parseDateOfBirth } from "@/src/constant/functions";
 
 const CHAT_MESSAGE_SENT = ".message.sent";
 
@@ -149,6 +150,7 @@ export default function DashboardLayout() {
           profile_image_url: string | null;
           business: { id: number; title: string };
           ai_quota?: number;
+          date_of_birth: string | null;
         };
       }>(userEndpoints.details);
 
@@ -164,6 +166,9 @@ export default function DashboardLayout() {
             business_id: response.data.business?.id ?? undefined,
             business_name: response.data.business?.title ?? undefined,
             ai_quota: response.data.ai_quota ?? 0,
+            dateOfBirth: response.data.date_of_birth
+              ? parseDateOfBirth(response.data.date_of_birth)
+              : null,
           }),
         );
       }

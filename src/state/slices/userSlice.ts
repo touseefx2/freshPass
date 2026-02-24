@@ -205,6 +205,7 @@ const userSlice = createSlice({
       }
       if (action.payload.dateOfBirth !== undefined) {
         state.dateOfBirth = action.payload.dateOfBirth;
+        console.log("=======>date_of_birth", action.payload.dateOfBirth);
       }
       if (action.payload.countryZipCode !== undefined) {
         state.countryZipCode = action.payload.countryZipCode;

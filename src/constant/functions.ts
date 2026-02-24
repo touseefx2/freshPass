@@ -338,13 +338,36 @@ export const resolveCurrentLocation = async ({
   }
 };
 
-const MALE_CATEGORY_SLUGS = new Set([
-  "barbershop",
-  "hair-salon",
-  "massage",
-  "spa",
-  "tattoo-shop",
-  "health-fitness",
-  "wellness-day-spa",
-  "piercing",
-]);
+export function parseDateOfBirth(
+  dateString: string | null | undefined,
+): { date: string; month: string; year: string } | null {
+  if (!dateString) return null;
+  try {
+    const parts = dateString.split("-");
+    if (parts.length !== 3) return null;
+    const year = parts[0];
+    const monthNumber = parseInt(parts[1], 10);
+    const date = parts[2];
+    const monthMap: Record<number, string> = {
+      1: "Jan",
+      2: "Feb",
+      3: "Mar",
+      4: "Apr",
+      5: "May",
+      6: "Jun",
+      7: "Jul",
+      8: "Aug",
+      9: "Sep",
+      10: "Oct",
+      11: "Nov",
+      12: "Dec",
+    };
+    return {
+      date: date.replace(/^0+/, "") || date,
+      month: monthMap[monthNumber] || "",
+      year,
+    };
+  } catch {
+    return null;
+  }
+}
