@@ -82,7 +82,7 @@ export default function TipDetail() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title={title} />
+      <StackHeader title={title} showLine={false} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}

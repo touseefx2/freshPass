@@ -17,6 +17,7 @@ type StackHeaderProps = {
   onBack?: () => void;
   rightIcon?: React.ReactNode;
   onRightPress?: () => void;
+  showLine?: boolean;
 };
 
 const createStyles = (theme: Theme) =>
@@ -57,6 +58,7 @@ export default function StackHeader({
   onBack,
   rightIcon,
   onRightPress,
+  showLine = true,
 }: StackHeaderProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -111,7 +113,7 @@ export default function StackHeader({
           )}
         </View>
       </View>
-      <View style={styles.line} />
+      {showLine && <View style={styles.line} />}
     </View>
   );
 }
