@@ -31,6 +31,40 @@ import {
 } from "@/src/services/endpoints";
 import { useFocusEffect } from "expo-router";
 
+function parseDateOfBirth(
+  dateString: string | null | undefined,
+): { date: string; month: string; year: string } | null {
+  if (!dateString) return null;
+  try {
+    const parts = dateString.split("-");
+    if (parts.length !== 3) return null;
+    const year = parts[0];
+    const monthNumber = parseInt(parts[1], 10);
+    const date = parts[2];
+    const monthMap: Record<number, string> = {
+      1: "Jan",
+      2: "Feb",
+      3: "Mar",
+      4: "Apr",
+      5: "May",
+      6: "Jun",
+      7: "Jul",
+      8: "Aug",
+      9: "Sep",
+      10: "Oct",
+      11: "Nov",
+      12: "Dec",
+    };
+    return {
+      date: date.replace(/^0+/, "") || date,
+      month: monthMap[monthNumber] || "",
+      year,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -234,6 +268,7 @@ export default function HomeScreen() {
           country_code: string | null;
           email_notifications: boolean | null;
           profile_image_url: string | null;
+          date_of_birth: string | null;
           business: {
             id: number;
             title: string;
@@ -241,6 +276,8 @@ export default function HomeScreen() {
           ai_quota?: number;
         };
       }>(userEndpoints.details);
+
+      console.log("=======>date_of_birth", response.data.date_of_birth);
 
       if (response.success && response.data) {
         dispatch(
@@ -254,6 +291,9 @@ export default function HomeScreen() {
             business_id: response.data.business.id ?? "",
             business_name: response.data.business.title ?? "",
             ai_quota: response.data.ai_quota ?? 0,
+            dateOfBirth: response.data.date_of_birth
+              ? parseDateOfBirth(response.data.date_of_birth)
+              : null,
           }),
         );
       }

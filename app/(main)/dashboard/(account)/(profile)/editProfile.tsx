@@ -560,6 +560,8 @@ export default function EditProfileScreen() {
   const monthFieldRef = useRef<View>(null);
   const yearFieldRef = useRef<View>(null);
 
+  console.log("initialDateOfBirth", initialDateOfBirth);
+
   // Validate phone number on mount if it exists
   useEffect(() => {
     if (phoneNumber && countryCode) {
@@ -1021,10 +1023,10 @@ export default function EditProfileScreen() {
             fileExtension === "jpg" || fileExtension === "jpeg"
               ? "image/jpeg"
               : fileExtension === "png"
-              ? "image/png"
-              : fileExtension === "webp"
-              ? "image/webp"
-              : "image/jpeg";
+                ? "image/png"
+                : fileExtension === "webp"
+                  ? "image/webp"
+                  : "image/jpeg";
 
           // Use staff-specific field name when updating staff profile
           const imageFieldName =
@@ -1307,29 +1309,6 @@ export default function EditProfileScreen() {
             </View>
             <View style={styles.dateOfBirthFields}>
               <Pressable
-                ref={dateFieldRef}
-                style={styles.dateField}
-                onPress={() => setDateDropdownVisible("date")}
-              >
-                <View style={styles.dateFieldContent}>
-                  <Text style={styles.dateFieldLabel}>{t("date")}</Text>
-                  <Text
-                    style={[
-                      dateOfBirth?.date
-                        ? styles.dateFieldText
-                        : styles.dateFieldPlaceholder,
-                    ]}
-                  >
-                    {dateOfBirth?.date || "16"}
-                  </Text>
-                </View>
-                <Feather
-                  name="chevron-down"
-                  size={moderateWidthScale(16)}
-                  color={theme.darkGreen}
-                />
-              </Pressable>
-              <Pressable
                 ref={monthFieldRef}
                 style={styles.dateField}
                 onPress={() => setDateDropdownVisible("month")}
@@ -1347,6 +1326,29 @@ export default function EditProfileScreen() {
                       ? MONTHS.find((m) => m.value === dateOfBirth.month)
                           ?.label || dateOfBirth.month
                       : "Sep"}
+                  </Text>
+                </View>
+                <Feather
+                  name="chevron-down"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </Pressable>
+              <Pressable
+                ref={dateFieldRef}
+                style={styles.dateField}
+                onPress={() => setDateDropdownVisible("date")}
+              >
+                <View style={styles.dateFieldContent}>
+                  <Text style={styles.dateFieldLabel}>{t("day")}</Text>
+                  <Text
+                    style={[
+                      dateOfBirth?.date
+                        ? styles.dateFieldText
+                        : styles.dateFieldPlaceholder,
+                    ]}
+                  >
+                    {dateOfBirth?.date || "16"}
                   </Text>
                 </View>
                 <Feather
