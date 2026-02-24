@@ -192,6 +192,7 @@ export default function UserReviewsScreen() {
   const params = useLocalSearchParams<{
     business_id?: string;
     user_id?: string;
+    screenName?: string;
   }>();
 
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -204,6 +205,7 @@ export default function UserReviewsScreen() {
   const [expandedReviews, setExpandedReviews] = useState<
     Record<string, boolean>
   >({});
+  const isCustomerReview = params.screenName === "customerReview";
 
   const fetchReviews = useCallback(
     async (page: number = 1, append: boolean = false) => {
@@ -420,7 +422,9 @@ export default function UserReviewsScreen() {
 
   return (
     <View style={styles.container}>
-      <StackHeader title={t("userReviewsRate")} />
+      <StackHeader
+        title={isCustomerReview ? t("yourReviews") : t("userReviewsRate")}
+      />
 
       {loading ? (
         <View style={styles.contentContainer}>
