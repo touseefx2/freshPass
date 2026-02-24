@@ -706,29 +706,6 @@ export default function StepOne() {
           </View>
           <View style={styles.dateOfBirthFields}>
             <Pressable
-              ref={dateFieldRef}
-              style={styles.dateField}
-              onPress={() => setDateDropdownVisible("date")}
-            >
-              <View style={styles.dateFieldContent}>
-                <Text style={styles.dateFieldLabel}>{t("day")}</Text>
-                <Text
-                  style={[
-                    dateOfBirth?.date
-                      ? styles.dateFieldText
-                      : styles.dateFieldPlaceholder,
-                  ]}
-                >
-                  {dateOfBirth?.date || "16"}
-                </Text>
-              </View>
-              <Feather
-                name="chevron-down"
-                size={moderateWidthScale(16)}
-                color={(colors as Theme).darkGreen}
-              />
-            </Pressable>
-            <Pressable
               ref={monthFieldRef}
               style={styles.dateField}
               onPress={() => setDateDropdownVisible("month")}
@@ -746,6 +723,29 @@ export default function StepOne() {
                     ? MONTHS.find((m) => m.value === dateOfBirth.month)
                         ?.label || dateOfBirth.month
                     : "Sep"}
+                </Text>
+              </View>
+              <Feather
+                name="chevron-down"
+                size={moderateWidthScale(16)}
+                color={(colors as Theme).darkGreen}
+              />
+            </Pressable>
+            <Pressable
+              ref={dateFieldRef}
+              style={styles.dateField}
+              onPress={() => setDateDropdownVisible("date")}
+            >
+              <View style={styles.dateFieldContent}>
+                <Text style={styles.dateFieldLabel}>{t("day")}</Text>
+                <Text
+                  style={[
+                    dateOfBirth?.date
+                      ? styles.dateFieldText
+                      : styles.dateFieldPlaceholder,
+                  ]}
+                >
+                  {dateOfBirth?.date || "16"}
                 </Text>
               </View>
               <Feather
