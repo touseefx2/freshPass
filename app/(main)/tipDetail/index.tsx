@@ -1,7 +1,15 @@
 import React, { useMemo } from "react";
-import { StyleSheet, ScrollView, View, Text, Image } from "react-native";
+import {
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+  View,
+  Text,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
+import { useDispatch } from "react-redux";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -10,6 +18,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import StackHeader from "@/src/components/StackHeader";
 
 const createStyles = (theme: Theme) =>
@@ -23,7 +32,7 @@ const createStyles = (theme: Theme) =>
     },
     imageContainer: {
       width: "100%",
-      height: heightScale(240),
+      height: heightScale(220),
       backgroundColor: theme.emptyProfileImage,
     },
     image: {
@@ -56,6 +65,7 @@ export default function TipDetail() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const dispatch = useDispatch();
   const params = useLocalSearchParams<{
     title?: string;
     image?: string;
@@ -78,11 +88,15 @@ export default function TipDetail() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {image ? (
-          <View style={styles.imageContainer}>
+        {image && (
+          <TouchableOpacity
+            style={styles.imageContainer}
+            onPress={() => dispatch(openFullImageModal({ images: [image] }))}
+            activeOpacity={0.95}
+          >
             <Image source={{ uri: image }} style={styles.image} />
-          </View>
-        ) : null}
+          </TouchableOpacity>
+        )}
         <View style={styles.content}>
           {action ? (
             <View style={styles.section}>
