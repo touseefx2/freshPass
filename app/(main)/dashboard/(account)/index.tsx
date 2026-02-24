@@ -248,7 +248,7 @@ export default function AccountScreen() {
       if (user.id) {
         router.push({
           pathname: "/(main)/userReviews",
-          params: { business_id: user.id }, // Dummy business ID
+          // params: { business_id: user.id }, // Dummy business ID
         } as any);
       }
     } else if (key === "subscriptions") {
