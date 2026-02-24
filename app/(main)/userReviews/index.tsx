@@ -134,6 +134,12 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       marginTop: moderateHeightScale(4),
     },
+    businessNameText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(8),
+    },
     starsRow: {
       flexDirection: "row",
       marginBottom: moderateHeightScale(12),
@@ -320,6 +326,9 @@ export default function UserReviewsScreen() {
 
     return (
       <View style={styles.card}>
+        {isCustomerReview && item.business?.title && (
+          <Text style={styles.businessNameText}>{item.business.title}</Text>
+        )}
         <View style={styles.cardHeaderRow}>
           <View
             style={[
@@ -405,7 +414,8 @@ export default function UserReviewsScreen() {
   };
 
   const renderHeader = () => {
-    if (loading) return null;
+    if (loading || isCustomerReview) return null;
+
     return (
       <View style={styles.headerSection}>
         <Text style={styles.averageText}>
@@ -440,7 +450,10 @@ export default function UserReviewsScreen() {
           ListFooterComponent={renderFooter}
           onEndReached={loadMore}
           onEndReachedThreshold={0.5}
-          contentContainerStyle={styles.contentContainer}
+          contentContainerStyle={[
+            styles.contentContainer,
+            isCustomerReview && { paddingTop: moderateHeightScale(24) },
+          ]}
           showsVerticalScrollIndicator={false}
         />
       )}
