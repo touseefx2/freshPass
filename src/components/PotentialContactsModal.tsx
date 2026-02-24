@@ -18,6 +18,7 @@ import {
   moderateWidthScale,
   heightScale,
 } from "@/src/theme/dimensions";
+import { Feather } from "@expo/vector-icons";
 
 export type PotentialContact = {
   id: number;
@@ -61,14 +62,22 @@ const createStyles = (theme: Theme) =>
       height: heightScale(400),
       overflow: "hidden",
     },
-    modalTitle: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+    modalHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(16),
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
+    },
+    modalTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    closeIconTouch: {
+      padding: moderateWidthScale(4),
     },
     modalContactRow: {
       flexDirection: "row",
@@ -182,7 +191,20 @@ export default function PotentialContactsModal({
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
         >
-          <Text style={styles.modalTitle}>{t("chatBox")}</Text>
+          <View style={styles.modalHeaderRow}>
+            <Text style={styles.modalTitle}>Users</Text>
+            <TouchableOpacity
+              style={styles.closeIconTouch}
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Feather
+                name="x"
+                size={moderateWidthScale(24)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          </View>
           {loading && contacts.length === 0 ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={theme.darkGreen} />
@@ -200,6 +222,7 @@ export default function PotentialContactsModal({
             </View>
           ) : (
             <FlatList
+              showsVerticalScrollIndicator={false}
               data={contacts}
               keyExtractor={(item) => String(item.id)}
               renderItem={({ item }) => {
@@ -231,10 +254,7 @@ export default function PotentialContactsModal({
               ListFooterComponent={
                 loadingMore ? (
                   <View style={styles.footerLoader}>
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.darkGreen}
-                    />
+                    <ActivityIndicator size="small" color={theme.darkGreen} />
                   </View>
                 ) : null
               }
