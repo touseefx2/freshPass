@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   Text,
@@ -31,7 +37,10 @@ import Button from "@/src/components/button";
 import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
-import { appointmentsEndpoints } from "@/src/services/endpoints";
+import {
+  appointmentsEndpoints,
+  reviewsEndpoints,
+} from "@/src/services/endpoints";
 import { useStripe } from "@stripe/stripe-react-native";
 import { fetchAppointmentPaymentSheetParams } from "@/src/services/stripeService";
 import {
@@ -827,19 +836,42 @@ export default function bookingDetailsById() {
     booking?.status === "cancelled" || booking?.status === "expired";
   const isComplete = booking?.status === "complete";
 
-  // Show review modal once when user lands on this screen with a complete booking (customer only)
+  // Show review modal only when: status complete, customer, and no review exists yet (reviews API returns empty data)
   useEffect(() => {
     if (
       !loading &&
       booking &&
       isComplete &&
       userRole === "customer" &&
-      !hasShownReviewPromptForVisit.current
+      !hasShownReviewPromptForVisit.current &&
+      booking.businessId != null &&
+      user?.id != null
     ) {
-      hasShownReviewPromptForVisit.current = true;
-      setShowReviewModal(true);
+      checkAndShowReviewPrompt();
     }
-  }, [loading, booking, isComplete, userRole]);
+  }, [loading, booking, isComplete, userRole, user?.id]);
+
+  const checkAndShowReviewPrompt = async () => {
+    try {
+      const businessId = booking?.businessId ?? 0;
+      const userId = user?.id ?? 0;
+      const response = await ApiService.get<{
+        success: boolean;
+        data: unknown[];
+      }>(reviewsEndpoints.list({ business_id: businessId, user_id: userId }));
+
+      hasShownReviewPromptForVisit.current = true;
+
+      const data = response?.data;
+      const isEmpty = Array.isArray(data) && data.length === 0;
+
+      if (isEmpty) {
+        setShowReviewModal(true);
+      }
+    } catch {
+      hasShownReviewPromptForVisit.current = true;
+    }
+  };
 
   // Parse date and time from dateTime string
   const dateTimeParts = booking?.dateTime?.split(" - ") ?? [];
