@@ -74,7 +74,7 @@ export const VoiceReceptionistContent: React.FC<
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  /** Flush every ~512ms (8192 samples at 16kHz) – fewer chunks = fewer gaps, still smooth. */
+  /** Not used when playing full response at once; kept for reference (was 8192). */
   const FLUSH_SAMPLE_THRESHOLD = 8192;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
@@ -499,22 +499,17 @@ export const VoiceReceptionistContent: React.FC<
     flushChunksToWavAndQueue(chunks, totalSamples);
   }, [flushChunksToWavAndQueue]);
 
-  const enqueuePcmChunk = useCallback(
-    (buffer: ArrayBuffer) => {
-      try {
-        const pcm = new Int16Array(buffer);
-        if (!pcm.length) return;
-        pendingPcmChunksRef.current.push(pcm);
-        pendingSamplesRef.current += pcm.length;
-        if (pendingSamplesRef.current >= FLUSH_SAMPLE_THRESHOLD) {
-          flushPendingAudio().catch(() => {});
-        }
-      } catch (err) {
-        console.error("Failed to buffer voice agent audio chunk", err);
-      }
-    },
-    [flushPendingAudio],
-  );
+  const enqueuePcmChunk = useCallback((buffer: ArrayBuffer) => {
+    try {
+      const pcm = new Int16Array(buffer);
+      if (!pcm.length) return;
+      pendingPcmChunksRef.current.push(pcm);
+      pendingSamplesRef.current += pcm.length;
+      // Do NOT flush on threshold – buffer full response until AgentAudioDone, then play once
+    } catch (err) {
+      console.error("Failed to buffer voice agent audio chunk", err);
+    }
+  }, []);
 
   const flushPendingAgentText = useCallback(() => {
     currentTurnTextShownRef.current = true;
@@ -569,15 +564,9 @@ export const VoiceReceptionistContent: React.FC<
                 ]);
                 console.log("[VoiceReceptionist] Agent text message:", content);
                 currentTurnTextShownRef.current = true;
+                // Keep buffering – move any audio that arrived before this text into main buffer; do NOT flush to playback until AgentAudioDone
                 const audioBufs = pendingAudioBuffersRef.current;
                 pendingAudioBuffersRef.current = [];
-                // Snapshot and clear refs immediately so back-to-back ConversationText messages
-                // don't merge into one WAV (pehle 1 suna, phir 2).
-                const prevChunks = pendingPcmChunksRef.current;
-                const prevSamples = pendingSamplesRef.current;
-                pendingPcmChunksRef.current = [];
-                pendingSamplesRef.current = 0;
-                flushChunksToWavAndQueue(prevChunks, prevSamples);
                 for (const arr of audioBufs) enqueuePcmChunk(arr);
               }
               break;
@@ -640,6 +629,8 @@ export const VoiceReceptionistContent: React.FC<
               isAgentSpeakingRef.current = false;
               setIsAgentSpeaking(false);
               userMicUnblockAfterRef.current = Date.now() + ECHO_GUARD_MS;
+              // Play entire response at once: merge any pending buffers then flush all to one WAV
+              flushPendingAgentTextRef.current();
               flushPendingAudio().catch(() => {});
               setTimeout(() => {
                 setAgentStatus(isListeningRef.current ? "listening" : "idle");
