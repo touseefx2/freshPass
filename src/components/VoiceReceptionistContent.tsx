@@ -11,13 +11,6 @@ import {
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
 import { Audio } from "expo-av";
-import {
-  cacheDirectory,
-  makeDirectoryAsync,
-  writeAsStringAsync,
-  deleteAsync,
-  EncodingType,
-} from "expo-file-system/legacy";
 import { Ionicons } from "@expo/vector-icons";
 import AudioRecord from "react-native-audio-record";
 import { Buffer } from "buffer";
@@ -81,7 +74,8 @@ export const VoiceReceptionistContent: React.FC<
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  const FLUSH_SAMPLE_THRESHOLD = 16000 * 4;
+  /** Flush every ~512ms (8192 samples at 16kHz) – fewer chunks = fewer gaps, still smooth. */
+  const FLUSH_SAMPLE_THRESHOLD = 8192;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
   const isListeningRef = useRef(false);
@@ -104,8 +98,9 @@ export const VoiceReceptionistContent: React.FC<
   const lastUserTranscriptRef = useRef<string | null>(null);
   const userMicUnblockAfterRef = useRef(0);
   const ECHO_GUARD_MS = 1000;
-  // Silence buffer to send when mic is blocked (agent speaking) so server does not timeout.
   const silenceChunkRef = useRef<ArrayBuffer | null>(null);
+  /** When true, all WS/mic callbacks no-op so we don't run after close. */
+  const isClosedRef = useRef(false);
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -170,6 +165,7 @@ export const VoiceReceptionistContent: React.FC<
   }, [isListening]);
 
   const disconnectDueToError = useCallback(() => {
+    isClosedRef.current = true;
     setIsListening(false);
     setIsConnected(false);
     setIsStarting(false);
@@ -209,6 +205,7 @@ export const VoiceReceptionistContent: React.FC<
   }, []);
 
   const cleanup = useCallback(() => {
+    isClosedRef.current = true;
     setIsListening(false);
     setIsConnected(false);
     setIsStarting(false);
@@ -226,10 +223,13 @@ export const VoiceReceptionistContent: React.FC<
     try {
       AudioRecord.stop();
     } catch {}
-    try {
-      if (wsRef.current) wsRef.current.close();
-    } catch {}
+    const ws = wsRef.current;
     wsRef.current = null;
+    try {
+      if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+        ws.close(1000, "User ended call");
+      }
+    } catch {}
     pendingPcmChunksRef.current = [];
     pendingSamplesRef.current = 0;
     pendingAudioBuffersRef.current = [];
@@ -302,7 +302,43 @@ export const VoiceReceptionistContent: React.FC<
   }, []);
   // User mic is only sent to the server; we never play it back. Only agent TTS is played.
 
+  /** Wrap raw PCM Int16 in WAV header for expo-av (per doc). Returns in-memory WAV ArrayBuffer. */
+  const pcmToWav = useCallback(
+    (
+      pcmBuffer: ArrayBuffer,
+      sampleRate: number,
+      numChannels: number,
+      bitsPerSample: number
+    ): ArrayBuffer => {
+      const pcmLength = pcmBuffer.byteLength;
+      const wavBuffer = new ArrayBuffer(44 + pcmLength);
+      const view = new DataView(wavBuffer);
+      const writeString = (offset: number, str: string) => {
+        for (let i = 0; i < str.length; i++) {
+          view.setUint8(offset + i, str.charCodeAt(i));
+        }
+      };
+      writeString(0, "RIFF");
+      view.setUint32(4, 36 + pcmLength, true);
+      writeString(8, "WAVE");
+      writeString(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * numChannels * (bitsPerSample / 8), true);
+      view.setUint16(32, numChannels * (bitsPerSample / 8), true);
+      view.setUint16(34, bitsPerSample, true);
+      writeString(36, "data");
+      view.setUint32(40, pcmLength, true);
+      new Uint8Array(wavBuffer, 44).set(new Uint8Array(pcmBuffer));
+      return wavBuffer;
+    },
+    []
+  );
+
   const playNextInQueue = useCallback(async () => {
+    if (isClosedRef.current) return;
     if (isPlayingRef.current) return;
     let sound: Audio.Sound;
     let nextUri: string | null = null;
@@ -356,22 +392,13 @@ export const VoiceReceptionistContent: React.FC<
           { uri: nextUri },
           { shouldPlay: true, progressUpdateIntervalMillis: 100 },
         );
-        // Log when we successfully create a sound instance for debugging real-device issues
-        console.log(
-          "[VoiceReceptionist] Created Audio.Sound from URI",
-          nextUri,
-        );
         sound = result.sound;
       } catch (err) {
         console.error(
           "[VoiceReceptionist] Failed to create Audio.Sound from URI",
-          nextUri,
           err,
         );
         isPlayingRef.current = false;
-        try {
-          await deleteAsync(nextUri, { idempotent: true });
-        } catch {}
         playNextInQueue().catch(() => {});
         return;
       }
@@ -392,9 +419,10 @@ export const VoiceReceptionistContent: React.FC<
         const pos = status.positionMillis ?? 0;
         const dur = status.durationMillis ?? 1;
         const remaining = dur - pos;
+        // Preload next chunk well before current ends (2s) so it's ready for gapless play
         if (
           remaining > 0 &&
-          remaining < 500 &&
+          remaining < 2000 &&
           audioQueueRef.current.length > 0 &&
           !preloadedNextRef.current
         ) {
@@ -413,32 +441,20 @@ export const VoiceReceptionistContent: React.FC<
             .catch(() => {});
         }
         if (status.didJustFinish) {
-          try {
-            await sound.unloadAsync();
-          } catch {}
           soundRef.current = null;
           isPlayingRef.current = false;
-          try {
-            await deleteAsync(uriToPlay, { idempotent: true });
-          } catch {}
-          console.log(
-            "[VoiceReceptionist] Finished playback and deleted file",
-            uriToPlay,
-          );
+          // Start next chunk immediately – do NOT wait for unload (causes 1 sec gap)
           playNextInQueue().catch(() => {});
+          sound.unloadAsync().catch(() => {});
         }
       });
     } catch (err) {
       console.error(
         "[VoiceReceptionist] Unexpected error during playback",
-        uriToPlay,
         err,
       );
       isPlayingRef.current = false;
       soundRef.current = null;
-      try {
-        await deleteAsync(uriToPlay, { idempotent: true });
-      } catch {}
       playNextInQueue().catch(() => {});
     }
   }, []);
@@ -446,6 +462,7 @@ export const VoiceReceptionistContent: React.FC<
   const flushChunksToWavAndQueue = useCallback(
     async (chunks: Int16Array[], totalSamples: number) => {
       if (!totalSamples || chunks.length === 0) return;
+      if (isClosedRef.current) return;
       try {
         const merged = new Int16Array(totalSamples);
         let offset = 0;
@@ -453,62 +470,15 @@ export const VoiceReceptionistContent: React.FC<
           merged.set(chunk, offset);
           offset += chunk.length;
         }
-        // No extra gain here – we play agent audio at the level
-        // provided by the backend TTS. iPhone hardware volume controls
-        // overall loudness.
-
-        const wavHeaderSize = 44;
-        const dataLength = merged.length * 2;
-        const totalSize = wavHeaderSize + dataLength;
-        const wavBuffer = new ArrayBuffer(totalSize);
-        const view = new DataView(wavBuffer);
-        const u8 = new Uint8Array(wavBuffer);
-
-        // WAV RIFF header
-        view.setUint32(0, 0x52494646, false);
-        view.setUint32(4, 36 + dataLength, true);
-        view.setUint32(8, 0x57415645, false);
-        view.setUint32(12, 0x666d7420, false);
-        view.setUint32(16, 16, true);
-        view.setUint16(20, 1, true);
-        view.setUint16(22, 1, true);
-        view.setUint32(24, 16000, true);
-        view.setUint32(28, 16000 * 2, true);
-        view.setUint16(32, 2, true);
-        view.setUint16(34, 16, true);
-        view.setUint32(36, 0x64617461, false);
-        view.setUint32(40, dataLength, true);
-
-        // PCM data
-        u8.set(new Uint8Array(merged.buffer), wavHeaderSize);
+        const wavBuffer = pcmToWav(merged.buffer, 16000, 1, 16);
         const base64 = Buffer.from(wavBuffer).toString("base64");
-
-        const baseDir = cacheDirectory ?? "";
-        const dir = `${baseDir}voice-agent/`;
-        await makeDirectoryAsync(dir, { intermediates: true });
-        const fileName = `voice-agent-${Date.now()}-${Math.random()
-          .toString(36)
-          .slice(2)}.wav`;
-        const uri = dir + fileName;
-
-        console.log(
-          "[VoiceReceptionist] Writing agent WAV file",
-          uri,
-          "samples=",
-          totalSamples,
-          "bytes=",
-          dataLength,
-        );
-
-        await writeAsStringAsync(uri, base64, {
-          encoding: EncodingType.Base64,
-        });
+        const dataUri = `data:audio/wav;base64,${base64}`;
 
         if (agentDoneFallbackTimeoutRef.current) {
           clearTimeout(agentDoneFallbackTimeoutRef.current);
           agentDoneFallbackTimeoutRef.current = null;
         }
-        audioQueueRef.current.push(uri);
+        audioQueueRef.current.push(dataUri);
         currentTurnTextShownRef.current = false;
         isAgentSpeakingRef.current = true;
         setIsAgentSpeaking(true);
@@ -517,7 +487,7 @@ export const VoiceReceptionistContent: React.FC<
         console.error("Failed to flush voice agent audio buffer", err);
       }
     },
-    [playNextInQueue],
+    [pcmToWav, playNextInQueue]
   );
 
   const flushPendingAudio = useCallback(async () => {
@@ -534,10 +504,6 @@ export const VoiceReceptionistContent: React.FC<
       try {
         const pcm = new Int16Array(buffer);
         if (!pcm.length) return;
-        console.log(
-          "[VoiceReceptionist] Enqueue agent PCM chunk, samples=",
-          pcm.length,
-        );
         pendingPcmChunksRef.current.push(pcm);
         pendingSamplesRef.current += pcm.length;
         if (pendingSamplesRef.current >= FLUSH_SAMPLE_THRESHOLD) {
@@ -565,6 +531,7 @@ export const VoiceReceptionistContent: React.FC<
 
   const handleServerMessage = useCallback(
     (event: any) => {
+      if (isClosedRef.current) return;
       const { data } = event;
       if (typeof data === "string") {
         const trimmed = data.trim();
@@ -746,6 +713,7 @@ export const VoiceReceptionistContent: React.FC<
       throw new Error("Voice agent URL is not configured.");
     }
     if (wsRef.current && isConnected) return;
+    isClosedRef.current = false;
     setError(null);
     setAgentStatus("connecting");
     await new Promise<void>((resolve, reject) => {
@@ -779,10 +747,10 @@ export const VoiceReceptionistContent: React.FC<
             "reason=",
             event?.reason,
           );
+          if (isClosedRef.current) return;
           if (event.code === 1008) {
             setError("Voice agent authentication failed.");
           } else if (event.code === 1001) {
-            // Stream end – Deepgram closes when audio is not continuous (guide fix)
             setError(
               "Connection ended unexpectedly. This may happen if audio stream was interrupted. Please try again.",
             );
@@ -804,7 +772,7 @@ export const VoiceReceptionistContent: React.FC<
         reject(err);
       }
     });
-  }, [cleanup, handleServerMessage, isConnected, websocketUrl]);
+  }, [handleServerMessage, isConnected, websocketUrl]);
 
   const startRecorder = useCallback(async () => {
     try {
@@ -844,6 +812,7 @@ export const VoiceReceptionistContent: React.FC<
           wavFile: "freshpass_voice_agent.wav",
         });
         AudioRecord.on("data", (data: string) => {
+          if (isClosedRef.current) return;
           const ws = wsRef.current;
           if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
