@@ -64,8 +64,8 @@ export const createStyles = (theme: Theme) =>
     },
     verifiedCardImage: {
       width: widthScale(67),
-      height: heightScale(67),
-      borderRadius: moderateWidthScale(999),
+      height: widthScale(67),
+      borderRadius: widthScale(67 / 2),
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 1,
       borderColor: theme.borderLight,
