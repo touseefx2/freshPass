@@ -11,8 +11,6 @@ import {
   ScrollView,
   Clipboard,
   BackHandler,
-  Modal,
-  Pressable,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -30,6 +28,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import { SvgXml } from "react-native-svg";
 import { MaterialIcons, Feather, Ionicons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
+import ReviewPromptModal from "@/src/components/reviewPromptModal";
 import dayjs from "dayjs";
 
 interface Service {
@@ -406,68 +405,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(20),
       paddingTop: moderateHeightScale(2),
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: "rgba(0,0,0,0.4)",
-      justifyContent: "center",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(24),
-    },
-    modalBox: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      paddingHorizontal: moderateWidthScale(24),
-      paddingTop: moderateHeightScale(24),
-      paddingBottom: moderateHeightScale(20),
-      width: "100%",
-      maxWidth: widthScale(340),
-    },
-    modalTitle: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(16),
-    },
-    modalTitleAccent: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
-    },
-    modalBody: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      lineHeight: moderateHeightScale(22),
-      marginBottom: moderateHeightScale(24),
-    },
-    modalBodyBold: {
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    modalButtonsRow: {
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      alignItems: "center",
-      gap: moderateWidthScale(24),
-    },
-    modalButtonLater: {
-      paddingVertical: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(4),
-    },
-    modalButtonReview: {
-      paddingVertical: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(4),
-    },
-    buttonLaterText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-    },
-    buttonReviewText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
     },
   });
 
@@ -884,59 +821,25 @@ export default function BookingDetail() {
       </View>
 
       {/* Review prompt modal – shown after checkout */}
-      <Modal
+      <ReviewPromptModal
         visible={showReviewModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowReviewModal(false)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setShowReviewModal(false)}
-        >
-          <Pressable
-            style={styles.modalBox}
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text style={styles.modalTitle}>
-              How was your visit to{" "}
-              <Text style={styles.modalTitleAccent}>{businessName}?</Text>
-            </Text>
-            <Text style={styles.modalBody}>
-              Your feedback helps other customers find the best service.
-            </Text>
-            <View style={styles.modalButtonsRow}>
-              <TouchableOpacity
-                style={styles.modalButtonLater}
-                onPress={() => setShowReviewModal(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.buttonLaterText}>Maybe Later</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalButtonReview}
-                onPress={() => {
-                  setShowReviewModal(false);
-                  router.push({
-                    pathname: "/(main)/leaveReview",
-                    params: {
-                      business_id: businessIdParam || "",
-                      business_name: businessName,
-                      business_address: businessAddress,
-                      business_logo_url: businessLogoUrl,
-                      business_latitude: businessLatitude,
-                      business_longitude: businessLongitude,
-                    },
-                  });
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.buttonReviewText}>Write a Review</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+        onClose={() => setShowReviewModal(false)}
+        onWriteReview={() => {
+          setShowReviewModal(false);
+          router.push({
+            pathname: "/(main)/leaveReview",
+            params: {
+              business_id: businessIdParam || "",
+              business_name: businessName,
+              business_address: businessAddress,
+              business_logo_url: businessLogoUrl,
+              business_latitude: businessLatitude,
+              business_longitude: businessLongitude,
+            },
+          });
+        }}
+        businessName={businessName}
+      />
     </SafeAreaView>
   );
 }
