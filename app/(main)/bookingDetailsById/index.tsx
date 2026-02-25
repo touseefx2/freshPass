@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -44,6 +44,7 @@ import {
   WalletIcon,
 } from "@/assets/icons";
 import StackHeader from "@/src/components/StackHeader";
+import ReviewPromptModal from "@/src/components/reviewPromptModal";
 
 // Back Arrow Icon SVG
 const backArrowIconSvg = `
@@ -80,6 +81,7 @@ interface BookingItem {
   price: string;
   user: string;
   status: BookingStatus;
+  businessId?: number;
   businessName?: string;
   businessAddress?: string;
   businessLatitude?: string;
@@ -512,6 +514,8 @@ export default function bookingDetailsById() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state: any) => state.user);
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const hasShownReviewPromptForVisit = useRef(false);
   const [booking, setBooking] = useState<BookingItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -718,6 +722,7 @@ export default function bookingDetailsById() {
       user: apiData.user ?? "User",
       price: formatPrice(price),
       status: mapApiStatusToBookingStatus(apiData.status),
+      businessId: apiData.businessId,
       businessName: apiData.businessTitle || "---",
       businessAddress: apiData.businessAddress || "Business address",
       businessLatitude: apiData.businessLatitude || undefined,
@@ -821,6 +826,20 @@ export default function bookingDetailsById() {
   const isCancelled =
     booking?.status === "cancelled" || booking?.status === "expired";
   const isComplete = booking?.status === "complete";
+
+  // Show review modal once when user lands on this screen with a complete booking (customer only)
+  useEffect(() => {
+    if (
+      !loading &&
+      booking &&
+      isComplete &&
+      userRole === "customer" &&
+      !hasShownReviewPromptForVisit.current
+    ) {
+      hasShownReviewPromptForVisit.current = true;
+      setShowReviewModal(true);
+    }
+  }, [loading, booking, isComplete, userRole]);
 
   // Parse date and time from dateTime string
   const dateTimeParts = booking?.dateTime?.split(" - ") ?? [];
@@ -1352,6 +1371,27 @@ export default function bookingDetailsById() {
           visible={cancelModalVisible}
           onClose={handleCloseCancelModal}
           onSubmit={handleCancelBooking}
+        />
+
+        {/* Review prompt modal – shown when booking is complete (once per visit) */}
+        <ReviewPromptModal
+          visible={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          onWriteReview={() => {
+            setShowReviewModal(false);
+            router.push({
+              pathname: "/(main)/leaveReview",
+              params: {
+                business_id: booking?.businessId?.toString() ?? "",
+                business_name: businessName,
+                business_address: booking?.businessAddress ?? "",
+                business_logo_url: booking?.businessLogoUrl ?? "",
+                business_latitude: booking?.businessLatitude ?? "",
+                business_longitude: booking?.businessLongitude ?? "",
+              },
+            });
+          }}
+          businessName={businessName}
         />
       </>
     );

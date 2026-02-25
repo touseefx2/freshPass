@@ -28,7 +28,6 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import { SvgXml } from "react-native-svg";
 import { MaterialIcons, Feather, Ionicons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
-import ReviewPromptModal from "@/src/components/reviewPromptModal";
 import dayjs from "dayjs";
 
 interface Service {
@@ -445,7 +444,6 @@ export default function BookingDetail() {
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [bookingDate, setBookingDate] = useState<string>("");
-  const [showReviewModal, setShowReviewModal] = useState(false);
   const [businessData, setBusinessData] = useState<{
     businessName: string;
     businessAddress: string;
@@ -583,15 +581,6 @@ export default function BookingDetail() {
     businessData?.businessLatitude || params.business_latitude || "";
   const businessLongitude =
     businessData?.businessLongitude || params.business_longitude || "";
-
-  useEffect(() => {
-    const fromCheckout =
-      params.fromCheckoutBooking === "true" ||
-      (params.selectedServices && params.businessId);
-    if (fromCheckout) {
-      setShowReviewModal(true);
-    }
-  }, [params.fromCheckoutBooking, params.selectedServices, params.businessId]);
 
   const totalPrice = params.totalPrice ? parseFloat(params.totalPrice) : 0;
   const tax = params.tax ? parseFloat(params.tax) : 0;
@@ -819,27 +808,6 @@ export default function BookingDetail() {
       <View style={styles.bottomButton}>
         <Button title={t("viewBookings")} onPress={handleViewBooking} />
       </View>
-
-      {/* Review prompt modal – shown after checkout */}
-      <ReviewPromptModal
-        visible={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
-        onWriteReview={() => {
-          setShowReviewModal(false);
-          router.push({
-            pathname: "/(main)/leaveReview",
-            params: {
-              business_id: businessIdParam || "",
-              business_name: businessName,
-              business_address: businessAddress,
-              business_logo_url: businessLogoUrl,
-              business_latitude: businessLatitude,
-              business_longitude: businessLongitude,
-            },
-          });
-        }}
-        businessName={businessName}
-      />
     </SafeAreaView>
   );
 }
