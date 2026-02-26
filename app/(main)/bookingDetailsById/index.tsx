@@ -110,6 +110,7 @@ interface BookingItem {
     name: string;
     profile_pic: string | null;
   };
+  notes?: string | null;
 }
 
 interface ApiBookingResponse {
@@ -328,6 +329,29 @@ const createStyles = (theme: Theme) =>
       height: 1,
       backgroundColor: theme.borderLight,
       marginTop: moderateHeightScale(16),
+    },
+    notesContainer: {
+      marginTop: moderateHeightScale(14),
+      marginHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(8),
+      borderLeftWidth: moderateWidthScale(3),
+      borderLeftColor: theme.darkGreen,
+    },
+    notesLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(4),
+    },
+    notesText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      opacity: 0.85,
+      lineHeight: fontSize.size18,
     },
     businessCard: {
       marginBottom: moderateHeightScale(24),
@@ -744,6 +768,7 @@ export default function bookingDetailsById() {
       planName,
       type: apiData.appointmentType,
       owner: apiData.owner,
+      notes: apiData.notes ?? null,
     };
   };
 
@@ -1203,6 +1228,15 @@ export default function bookingDetailsById() {
               </View>
               <View style={styles.detailsRowBottomLine} />
             </View>
+
+            {/* Notes - show when not empty */}
+            {booking.notes != null &&
+              String(booking.notes).trim() !== "" && (
+                <View style={styles.notesContainer}>
+                  <Text style={styles.notesLabel}>{t("notes")}</Text>
+                  <Text style={styles.notesText}>{booking.notes}</Text>
+                </View>
+              )}
           </View>
 
           {/* Business Information Card */}

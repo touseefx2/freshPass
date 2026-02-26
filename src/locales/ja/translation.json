@@ -30,6 +30,7 @@
   "noBookingDataFound": "予約が見つかりません",
   "duration": "所要時間",
   "date": "日付",
+  "notes": "メモ",
   "contact": "連絡先",
   "bookAgain": "再予約",
   "reschedule": "予約変更",
