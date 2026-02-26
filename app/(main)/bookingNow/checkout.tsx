@@ -637,19 +637,18 @@ function CheckoutContent() {
     businessHours,
     selectedDate: reduxSelectedDate,
     selectedTimeSlot: reduxSelectedTimeSlot,
+    selectedPaymentMethod: reduxPaymentMethod,
   } = businessData;
 
   // Use Redux directly - no local state needed
   const selectedServices = reduxSelectedServices || [];
   const selectedStaffId = reduxSelectedStaff || "anyone";
+  const paymentMethod = reduxPaymentMethod || "payNow";
   const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
   const [staffSelectionModalVisible, setStaffSelectionModalVisible] =
     useState(false);
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"payNow" | "payLater">(
-    "payNow",
-  );
   const [note, setNote] = useState<string>("");
   const [processingPayment, setProcessingPayment] = useState(false);
 
@@ -1124,63 +1123,6 @@ function CheckoutContent() {
             keyboardShouldPersistTaps="handled"
           >
             <View style={[styles.line, { marginTop: 0 }]} />
-
-            {/* Payment Method Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Choose payment method</Text>
-
-              <View style={[styles.paymentCard, styles.shadow]}>
-                <TouchableOpacity
-                  style={styles.paymentOption}
-                  onPress={() => setPaymentMethod("payNow")}
-                >
-                  <View
-                    style={[
-                      styles.paymentRadioButton,
-                      paymentMethod === "payNow" &&
-                        styles.paymentRadioButtonSelected,
-                    ]}
-                  >
-                    {paymentMethod === "payNow" && (
-                      <View style={styles.paymentRadioButtonInner} />
-                    )}
-                  </View>
-                  <View style={styles.paymentOptionContent}>
-                    <Text style={styles.paymentOptionTitle}>Pay now</Text>
-                    <Text style={styles.paymentOptionDescription}>
-                      Securely pay online to confirm your booking instantly.
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <View style={styles.paymentDivider} />
-
-                <TouchableOpacity
-                  style={styles.paymentOption}
-                  onPress={() => setPaymentMethod("payLater")}
-                >
-                  <View
-                    style={[
-                      styles.paymentRadioButton,
-                      paymentMethod === "payLater" &&
-                        styles.paymentRadioButtonSelected,
-                    ]}
-                  >
-                    {paymentMethod === "payLater" && (
-                      <View style={styles.paymentRadioButtonInner} />
-                    )}
-                  </View>
-                  <View style={styles.paymentOptionContent}>
-                    <Text style={styles.paymentOptionTitle}>Pay later</Text>
-                    <Text style={styles.paymentOptionDescription}>
-                      Pay in person at the salon.
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.line} />
 
             {/* Service Details Section */}
 

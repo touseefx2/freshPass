@@ -45,6 +45,7 @@ export interface BusinessState {
   businessHours: BusinessHours | null;
   selectedDate: string | null; // YYYY-MM-DD
   selectedTimeSlot: string | null; // e.g. "09:00"
+  selectedPaymentMethod: "payNow" | "payLater";
 }
 
 const initialState: BusinessState = {
@@ -57,6 +58,7 @@ const initialState: BusinessState = {
   businessHours: null,
   selectedDate: null,
   selectedTimeSlot: null,
+  selectedPaymentMethod: "payNow",
 };
 
 const bsnsSlice = createSlice({
@@ -110,6 +112,12 @@ const bsnsSlice = createSlice({
     setSelectedTimeSlot(state, action: PayloadAction<string | null>) {
       state.selectedTimeSlot = action.payload;
     },
+    setSelectedPaymentMethod(
+      state,
+      action: PayloadAction<"payNow" | "payLater">,
+    ) {
+      state.selectedPaymentMethod = action.payload;
+    },
     addService(state, action: PayloadAction<Service>) {
       const service = action.payload;
       if (!state.selectedServices.find((s) => s.id === service.id)) {
@@ -130,6 +138,7 @@ export const {
   setSelectedStaff,
   setSelectedDate,
   setSelectedTimeSlot,
+  setSelectedPaymentMethod,
   addService,
   removeService,
   resetBusiness,

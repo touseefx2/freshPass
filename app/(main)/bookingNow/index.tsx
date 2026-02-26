@@ -23,6 +23,7 @@ import {
   setSelectedStaff,
   setSelectedDate,
   setSelectedTimeSlot,
+  setSelectedPaymentMethod,
   resetBusiness,
   setBusinessData as setBusinessDataAction,
   type StaffMember,
@@ -372,6 +373,54 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
     },
+    paymentCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(8),
+      marginHorizontal: moderateWidthScale(20),
+      overflow: "hidden",
+      marginBottom: moderateHeightScale(12),
+    },
+    paymentOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: moderateWidthScale(12),
+    },
+    paymentDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+    },
+    paymentRadioButton: {
+      width: moderateWidthScale(20),
+      height: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 2,
+      borderColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: moderateWidthScale(12),
+      marginTop: moderateHeightScale(2),
+    },
+    paymentRadioButtonSelected: {},
+    paymentRadioButtonInner: {
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.orangeBrown,
+    },
+    paymentOptionContent: {
+      flex: 1,
+    },
+    paymentOptionTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(3),
+    },
+    paymentOptionDescription: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
     weekNavigation: {
       flexDirection: "row",
       alignItems: "center",
@@ -606,6 +655,7 @@ export default function BookingNow() {
     selectedStaff: reduxSelectedStaff,
     businessId: reduxBusinessId,
     businessHours,
+    selectedPaymentMethod: reduxPaymentMethod,
   } = businessData || {
     selectedService: null,
     allServices: [],
@@ -614,6 +664,7 @@ export default function BookingNow() {
     selectedStaff: "anyone",
     businessId: "",
     businessHours: null,
+    selectedPaymentMethod: "payNow",
   };
 
   // Use Redux directly - no local state needed
@@ -1657,6 +1708,62 @@ export default function BookingNow() {
         </TouchableOpacity>
 
         {/* <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} /> */}
+
+        {/* Payment Method Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Choose payment method</Text>
+          <View style={[styles.paymentCard, styles.shadow]}>
+            <TouchableOpacity
+              style={styles.paymentOption}
+              onPress={() => dispatch(setSelectedPaymentMethod("payNow"))}
+            >
+              <View
+                style={[
+                  styles.paymentRadioButton,
+                  reduxPaymentMethod === "payNow" &&
+                    styles.paymentRadioButtonSelected,
+                ]}
+              >
+                {reduxPaymentMethod === "payNow" && (
+                  <View style={styles.paymentRadioButtonInner} />
+                )}
+              </View>
+              <View style={styles.paymentOptionContent}>
+                <Text style={styles.paymentOptionTitle}>Pay now</Text>
+                <Text style={styles.paymentOptionDescription}>
+                  Securely pay online to confirm your booking instantly.
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.paymentDivider} />
+
+            <TouchableOpacity
+              style={styles.paymentOption}
+              onPress={() => dispatch(setSelectedPaymentMethod("payLater"))}
+            >
+              <View
+                style={[
+                  styles.paymentRadioButton,
+                  reduxPaymentMethod === "payLater" &&
+                    styles.paymentRadioButtonSelected,
+                ]}
+              >
+                {reduxPaymentMethod === "payLater" && (
+                  <View style={styles.paymentRadioButtonInner} />
+                )}
+              </View>
+              <View style={styles.paymentOptionContent}>
+                <Text style={styles.paymentOptionTitle}>Pay later</Text>
+                <Text style={styles.paymentOptionDescription}>
+                  Pay in person at the salon.
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
         {/* Price Breakdown */}
         <View style={styles.priceBreakdown}>
