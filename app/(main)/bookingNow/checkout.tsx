@@ -665,33 +665,49 @@ const createStyles = (theme: Theme) =>
     },
     footerCard: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(20),
-      marginTop: moderateHeightScale(20),
+      borderRadius: moderateWidthScale(16),
+      marginTop: moderateHeightScale(24),
       overflow: "hidden",
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 16,
-      elevation: 6,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingVertical: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(24),
     },
     footerCardBody: {
-      padding: moderateWidthScale(24),
+      padding: 0,
+    },
+    footerSubRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(10),
+    },
+    footerSubLabel: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+    },
+    footerSubValue: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
+    footerDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginVertical: moderateHeightScale(12),
     },
     footerTotalRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(16),
-      backgroundColor: theme.lightGreen05,
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
+      paddingVertical: moderateHeightScale(12),
+      paddingTop: moderateHeightScale(4),
     },
     footerTotalLabel: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.text,
     },
     footerTotalValue: {
       fontSize: fontSize.size20,
@@ -866,17 +882,17 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
-      backgroundColor: theme.orangeBrown30,
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(16),
-      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.background,
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(8),
       borderWidth: 1,
-      borderColor: theme.orangeBrown,
+      borderColor: theme.borderLight,
     },
     paymentBadgeText: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
     },
     summaryRow: {
       flexDirection: "row",
@@ -1455,7 +1471,7 @@ function CheckoutContent() {
               <View style={styles.paymentRow}>
                 <Text style={styles.paymentLabel}>Payment</Text>
                 <View style={styles.paymentBadge}>
-                  <SummaryIcon type="payment" color={theme.darkGreen} />
+                  <SummaryIcon type="payment" color={theme.text} />
                   <Text style={styles.paymentBadgeText}>
                     {paymentMethod === "payNow" ? "Pay now" : "Pay later"}
                   </Text>
@@ -1467,8 +1483,19 @@ function CheckoutContent() {
           {/* Footer card — Total + Checkout button */}
           <View style={styles.footerCard}>
             <View style={styles.footerCardBody}>
+              <View style={styles.footerSubRow}>
+                <Text style={styles.footerSubLabel}>Subtotal:</Text>
+                <Text style={styles.footerSubValue}>
+                  ${totalPrice.toFixed(2)} USD
+                </Text>
+              </View>
+              <View style={styles.footerSubRow}>
+                <Text style={styles.footerSubLabel}>Tax:</Text>
+                <Text style={styles.footerSubValue}>${tax.toFixed(2)} USD</Text>
+              </View>
+              <View style={styles.footerDivider} />
               <View style={styles.footerTotalRow}>
-                <Text style={styles.footerTotalLabel}>Total</Text>
+                <Text style={styles.footerTotalLabel}>Total:</Text>
                 <Text style={styles.footerTotalValue}>
                   ${estimatedTotal.toFixed(2)} USD
                 </Text>
