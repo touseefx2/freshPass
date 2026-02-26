@@ -70,6 +70,9 @@ const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
   return <SvgXml xml={svgXml} />;
 };
 
+// Hours before appointment (current time must be at least this many hours behind appointment) to show Reschedule button
+const HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE = 1;
+
 type BookingStatus =
   | "ongoing"
   | "active"
@@ -111,6 +114,8 @@ interface BookingItem {
     profile_pic: string | null;
   };
   notes?: string | null;
+  appointmentDate?: string;
+  appointmentTime?: string;
 }
 
 interface ApiBookingResponse {
@@ -227,9 +232,33 @@ const createStyles = (theme: Theme) =>
     },
     badgesContainer: {
       flexDirection: "row",
-      gap: moderateWidthScale(8),
+      justifyContent: "space-between",
+      alignItems: "center",
       marginHorizontal: moderateWidthScale(20),
       marginBottom: moderateHeightScale(12),
+    },
+    badgesLeft: {
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+      alignItems: "center",
+    },
+    rescheduleSmallButton: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.orangeBrown,
+      borderWidth: moderateWidthScale(1),
+      borderColor: theme.white,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 3,
+      elevation: 3,
+    },
+    rescheduleSmallButtonText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
     },
     membershipBadge: {
       alignSelf: "flex-start",
@@ -769,6 +798,8 @@ export default function bookingDetailsById() {
       type: apiData.appointmentType,
       owner: apiData.owner,
       notes: apiData.notes ?? null,
+      appointmentDate: apiData.appointmentDate,
+      appointmentTime: apiData.appointmentTime,
     };
   };
 
@@ -902,6 +933,32 @@ export default function bookingDetailsById() {
   const dateTimeParts = booking?.dateTime?.split(" - ") ?? [];
   const date = (dateTimeParts[0] || booking?.dateTime) ?? "";
   const time = dateTimeParts[1] ?? "";
+
+  // True if status is ongoing and current time is at least HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE hours before appointment
+  const canShowReschedule = (() => {
+    if (
+      booking?.status !== "ongoing" ||
+      !booking?.appointmentDate ||
+      !booking?.appointmentTime
+    )
+      return false;
+    try {
+      const [month, day, year] = booking.appointmentDate.split("/").map(Number);
+      const [hours, minutes] = booking.appointmentTime.split(":").map(Number);
+      const appointmentMs = new Date(
+        year,
+        month - 1,
+        day,
+        hours,
+        minutes,
+      ).getTime();
+      const nowMs = Date.now();
+      const diffHours = (appointmentMs - nowMs) / (1000 * 60 * 60);
+      return diffHours >= HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE;
+    } catch {
+      return false;
+    }
+  })();
 
   const businessName = booking?.businessName || booking?.location || "---";
   const businessLatitude = booking?.businessLatitude
@@ -1138,33 +1195,53 @@ export default function bookingDetailsById() {
           <View style={styles.bookingSection}>
             {/* Status and Membership Badges */}
             <View style={styles.badgesContainer}>
-              <View
-                style={[
-                  styles.statusBadge,
-                  getStatusBadgeStyle(booking.status),
-                ]}
-              >
-                <Text
+              <View style={styles.badgesLeft}>
+                <View
                   style={[
-                    styles.statusText,
-                    getStatusTextStyle(booking.status),
+                    styles.statusBadge,
+                    getStatusBadgeStyle(booking.status),
                   ]}
                 >
-                  {getStatusLabel(booking.status)}
-                </Text>
+                  <Text
+                    style={[
+                      styles.statusText,
+                      getStatusTextStyle(booking.status),
+                    ]}
+                  >
+                    {getStatusLabel(booking.status)}
+                  </Text>
+                </View>
+                {booking.subscriptionVisits &&
+                  booking.subscriptionVisits.remaining !== undefined && (
+                    <View style={styles.membershipBadge}>
+                      <Text style={styles.membershipBadgeText}>
+                        {booking.subscriptionVisits.remaining} visit
+                        {booking.subscriptionVisits.remaining !== 1
+                          ? "s"
+                          : ""}{" "}
+                        left
+                      </Text>
+                    </View>
+                  )}
               </View>
-              {booking.subscriptionVisits &&
-                booking.subscriptionVisits.remaining !== undefined && (
-                  <View style={styles.membershipBadge}>
-                    <Text style={styles.membershipBadgeText}>
-                      {booking.subscriptionVisits.remaining} visit
-                      {booking.subscriptionVisits.remaining !== 1
-                        ? "s"
-                        : ""}{" "}
-                      left
-                    </Text>
-                  </View>
-                )}
+              {canShowReschedule && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.rescheduleSmallButton}
+                  onPress={() => {
+                    router.push({
+                      pathname: "/(main)/bookingNow",
+                      params: {
+                        business_id: booking?.businessId?.toString() ?? "",
+                      },
+                    });
+                  }}
+                >
+                  <Text style={styles.rescheduleSmallButtonText}>
+                    {t("reschedule")}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Service Name */}
@@ -1230,13 +1307,12 @@ export default function bookingDetailsById() {
             </View>
 
             {/* Notes - show when not empty */}
-            {booking.notes != null &&
-              String(booking.notes).trim() !== "" && (
-                <View style={styles.notesContainer}>
-                  <Text style={styles.notesLabel}>{t("notes")}</Text>
-                  <Text style={styles.notesText}>{booking.notes}</Text>
-                </View>
-              )}
+            {booking.notes != null && String(booking.notes).trim() !== "" && (
+              <View style={styles.notesContainer}>
+                <Text style={styles.notesLabel}>{t("notes")}</Text>
+                <Text style={styles.notesText}>{booking.notes}</Text>
+              </View>
+            )}
           </View>
 
           {/* Business Information Card */}
