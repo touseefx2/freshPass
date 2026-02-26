@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   StatusBar,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -191,6 +191,7 @@ const DEFAULT_AVATAR_URL =
 
 export default function UserReviewsScreen() {
   const { colors } = useTheme();
+  const userId = useAppSelector((state) => state.user.id);
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -238,9 +239,9 @@ export default function UserReviewsScreen() {
         }
 
         // Add user_id if it exists in params
-        // if (params.user_id) {
-        //   apiParams.user_id = params.user_id;
-        // }
+        if (isCustomerReview) {
+          apiParams.user_id = userId?.toString() ?? "";
+        }
 
         const response = await ApiService.get<ReviewsResponse>(
           reviewsEndpoints.list(apiParams),
