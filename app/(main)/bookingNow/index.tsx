@@ -29,7 +29,7 @@ import {
   type BusinessHours,
 } from "@/src/state/slices/bsnsSlice";
 import { ApiService } from "@/src/services/api";
-import { businessEndpoints } from "@/src/services/endpoints";
+import { businessEndpoints, appointmentsEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -637,6 +637,8 @@ export default function BookingNow() {
     "morning" | "evening" | "night"
   >("morning");
   const scrollViewRef = useRef<ScrollView>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [apiSlots, setApiSlots] = useState<string[]>([]);
 
   // Always fetch business data - API call happens in both cases
   const fetchBusinessDetails = useCallback(async () => {
@@ -969,40 +971,47 @@ export default function BookingNow() {
     return dayNamesFull[date.day()];
   };
 
-  const availableTimeSlots = useMemo(() => {
-    if (!selectedDate) return [];
-    let hoursToUse: BusinessHours | null = null;
-    if (selectedStaff !== "anyone") {
-      if (selectedStaffMember?.working_hours) {
-        hoursToUse = selectedStaffMember.working_hours;
-      } else {
-        return [];
-      }
-    } else {
-      hoursToUse = businessHours || null;
+  // Clear selected time slot when date changes (new date has different slots)
+  useEffect(() => {
+    setSelectedTimeSlotState(null);
+    dispatch(setSelectedTimeSlot(null));
+  }, [selectedDate, dispatch]);
+
+  // Fetch available slots from API when date or staff changes
+  useEffect(() => {
+    const businessId = reduxBusinessId || params.business_id;
+    if (!businessId || !selectedDate) {
+      setApiSlots([]);
+      return;
     }
-    if (!hoursToUse) return [];
-    const dayName = getDayNameFromDate(selectedDate);
-    const dayHours = hoursToUse[dayName];
-    if (!dayHours || !dayHours.isOpen) return [];
-    const openingMinutes = dayHours.fromHours * 60 + dayHours.fromMinutes;
-    const closingMinutes = dayHours.tillHours * 60 + dayHours.tillMinutes;
-    const breakTimes = (dayHours.breaks || []).map((b: any) => ({
-      start: b.fromHours * 60 + b.fromMinutes,
-      end: b.tillHours * 60 + b.tillMinutes,
-    }));
-    return allTimeSlots.filter((slot) => {
-      const [hours, minutes] = slot.split(":").map(Number);
-      const slotMinutes = hours * 60 + minutes;
-      if (slotMinutes < openingMinutes || slotMinutes >= closingMinutes)
-        return false;
-      const isDuringBreak = breakTimes.some(
-        (bt: { start: number; end: number }) =>
-          slotMinutes >= bt.start && slotMinutes < bt.end,
-      );
-      return !isDuringBreak;
-    });
-  }, [businessHours, selectedDate, selectedStaff, selectedStaffMember]);
+    const dateStr = selectedDate.format("YYYY-MM-DD");
+    const staffId =
+      selectedStaff !== "anyone" ? parseInt(selectedStaff, 10) : undefined;
+    setSlotsLoading(true);
+    ApiService.get<{
+      success?: boolean;
+      data?: Array<{ start: string; end: string }>;
+    }>(
+      appointmentsEndpoints.availableSlots({
+        business_id: parseInt(String(businessId), 10),
+        date: dateStr,
+        staff_id: staffId,
+        slot_minutes: 30,
+      }),
+    )
+      .then((res) => {
+        const list = res?.data && Array.isArray(res.data) ? res.data : [];
+        setApiSlots(list.map((s) => s.start));
+      })
+      .catch(() => {
+        setApiSlots([]);
+      })
+      .finally(() => {
+        setSlotsLoading(false);
+      });
+  }, [selectedDate, reduxBusinessId, params.business_id, selectedStaff]);
+
+  const availableTimeSlots = apiSlots;
 
   const { morning, evening, night } = useMemo(
     () => categorizeTimeSlots(availableTimeSlots),
@@ -1539,7 +1548,19 @@ export default function BookingNow() {
               style={styles.timeSlotsContainer}
               contentContainerStyle={styles.timeSlotsContentContainer}
             >
-              {availableTimeSlots.length > 0 ? (
+              {slotsLoading ? (
+                <View style={styles.noSlotsContainer}>
+                  <ActivityIndicator size="small" color={theme.darkGreen} />
+                  <Text
+                    style={[
+                      styles.noSlotsText,
+                      { marginTop: moderateHeightScale(8) },
+                    ]}
+                  >
+                    Loading slots...
+                  </Text>
+                </View>
+              ) : availableTimeSlots.length > 0 ? (
                 getAllSlots().map((slot) => {
                   const isDisabled = isSlotDisabled(slot);
                   return (

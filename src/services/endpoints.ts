@@ -129,9 +129,6 @@ export const dashboardEndpoints = {
   },
 };
 
-/**
- * Appointments endpoints
- */
 export const appointmentsEndpoints = {
   list: (params?: {
     status?: string;
@@ -168,6 +165,27 @@ export const appointmentsEndpoints = {
   getById: (bookingId: string | number) => `/api/appointments/${bookingId}`,
   cancel: (bookingId: string | number) =>
     `/api/appointments/${bookingId}/cancel`,
+  availableSlots: (params: {
+    business_id: number;
+    date: string;
+    staff_id?: number;
+    slot_minutes?: number;
+    exclude_appointment_id?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("business_id", params.business_id.toString());
+    queryParams.append("date", params.date);
+    if (params.staff_id != null)
+      queryParams.append("staff_id", params.staff_id.toString());
+    if (params.slot_minutes != null)
+      queryParams.append("slot_minutes", params.slot_minutes.toString());
+    if (params.exclude_appointment_id != null)
+      queryParams.append(
+        "exclude_appointment_id",
+        params.exclude_appointment_id.toString(),
+      );
+    return `/api/available-slots?${queryParams.toString()}`;
+  },
 };
 
 /**
