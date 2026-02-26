@@ -692,10 +692,10 @@ export default function subscriptionCustomer() {
 
   const handleBookAppointment = (subscription: SubscriptionData) => {
     router.push({
-      pathname: "/(main)/bookingNow/checkoutBooking",
+      pathname: "/(main)/bookingNow",
       params: {
-        businessId: subscription.businessId.toString(),
-        subscriptionId: subscription.id.toString(),
+        business_id: subscription.businessId.toString(),
+        subscription_id: subscription.id.toString(),
         item: JSON.stringify(subscription),
       },
     });

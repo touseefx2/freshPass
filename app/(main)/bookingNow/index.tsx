@@ -154,6 +154,36 @@ interface Service {
   label?: string | null;
 }
 
+interface SubscriptionData {
+  id: number;
+  subscriptionPlanId: number;
+  subscriptionPlan: string;
+  subscriptionPlanPrice: string;
+  subscriptionPlanType: string;
+  subscriptionPlanDescription: string;
+  userId: number;
+  user: string;
+  businessId: number;
+  business: string;
+  subscriber: string;
+  visits: {
+    used: number;
+    upcoming: number;
+    total: number;
+    remaining: number;
+  };
+  status: string;
+  paymentDate: string | null;
+  nextPaymentDate: string;
+  remainingDays: number;
+  stripePaymentIntentId: string | null;
+  stripePaymentUrl: string;
+  cardLastFour: string | null;
+  createdAt: string;
+  deleted_at: string | null;
+  appointments: any[];
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -681,6 +711,185 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
+    // Subscription Card (when isSubscriptionBooking)
+    subscriptionCard: {
+      marginHorizontal: moderateWidthScale(20),
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.background,
+      padding: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: moderateHeightScale(10),
+    },
+    planTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    starIcon: {
+      marginRight: moderateWidthScale(6),
+    },
+    planTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+      flex: 1,
+    },
+    statusBadge: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.orangeBrown015,
+      borderWidth: 1,
+      borderColor: theme.orangeBrown,
+    },
+    statusText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrown,
+      letterSpacing: 0.5,
+    },
+    topSection: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    userInfoRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+    },
+    userIcon: {
+      marginRight: moderateWidthScale(6),
+    },
+    userText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      opacity: 0.75,
+    },
+    priceBadge: {
+      backgroundColor: theme.buttonBack,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(12),
+      alignItems: "center",
+      minWidth: moderateWidthScale(90),
+    },
+    priceText: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    planPriceLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      marginTop: moderateHeightScale(1),
+      opacity: 0.9,
+    },
+    subscriptionDescriptionText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(10),
+      opacity: 0.65,
+      lineHeight: fontSize.size18,
+    },
+    usageSection: {
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    usageHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    usageTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginLeft: moderateWidthScale(6),
+      flex: 1,
+    },
+    usageStats: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(6),
+    },
+    usageItem: {
+      alignItems: "center",
+      flex: 1,
+      paddingVertical: moderateHeightScale(8),
+      backgroundColor: theme.lightGreen015,
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    usageLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(3),
+      opacity: 0.65,
+    },
+    usageValue: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    paymentRenewalRow: {
+      flexDirection: "row",
+      marginTop: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(6),
+      paddingTop: moderateHeightScale(8),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    paymentDateContainer: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: moderateWidthScale(8),
+    },
+    renewalContainer: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      marginLeft: moderateWidthScale(8),
+    },
+    dateInfoContainer: {
+      marginLeft: moderateWidthScale(4),
+    },
+    dateLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      opacity: 0.7,
+    },
+    dateValue: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
   });
 
 export default function BookingNow() {
@@ -694,7 +903,24 @@ export default function BookingNow() {
   const params = useLocalSearchParams<{
     business_id?: string;
     service_id?: string;
+    subscription_id?: string;
+    item?: string;
   }>();
+
+  const isSubscriptionBooking = Boolean(
+    params.subscription_id && params.item
+  );
+
+  const subscriptionData: SubscriptionData | null = useMemo(() => {
+    if (params.item) {
+      try {
+        return JSON.parse(params.item);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }, [params.item]);
 
   // Get data from Redux
   const businessData = useAppSelector((state) => state.bsns);
@@ -954,28 +1180,27 @@ export default function BookingNow() {
 
         const businessHoursData = parseBusinessHours(businessData?.hours);
 
-        // Find the service to select - use service_id from params if provided
-        // If coming from businessDetail, use the service that was already selected in Redux
-        // If coming from DashboardContent, use service_id from params
-        const serviceIdToSelect = params.service_id
-          ? parseInt(params.service_id)
-          : null;
+        // Find the service to select - skip when coming from subscription booking
+        const serviceIdToSelect = params.subscription_id
+          ? null
+          : params.service_id
+            ? parseInt(params.service_id)
+            : null;
 
         let serviceToSelect = null;
-        if (serviceIdToSelect && allServicesData.length > 0) {
-          // Find service by ID from params (DashboardContent case)
-          serviceToSelect =
-            allServicesData.find((s: Service) => s.id === serviceIdToSelect) ||
-            allServicesData[0];
-        } else if (hasReduxData && reduxSelectedServices.length > 0) {
-          // If Redux has data, keep the already selected service (businessDetail case)
-          const selectedServiceId = reduxSelectedServices[0].id;
-          serviceToSelect =
-            allServicesData.find((s: Service) => s.id === selectedServiceId) ||
-            allServicesData[0];
-        } else if (allServicesData.length > 0) {
-          // Fallback to first service
-          serviceToSelect = allServicesData[0];
+        if (!params.subscription_id) {
+          if (serviceIdToSelect && allServicesData.length > 0) {
+            serviceToSelect =
+              allServicesData.find((s: Service) => s.id === serviceIdToSelect) ||
+              allServicesData[0];
+          } else if (hasReduxData && reduxSelectedServices.length > 0) {
+            const selectedServiceId = reduxSelectedServices[0].id;
+            serviceToSelect =
+              allServicesData.find((s: Service) => s.id === selectedServiceId) ||
+              allServicesData[0];
+          } else if (allServicesData.length > 0) {
+            serviceToSelect = allServicesData[0];
+          }
         }
 
         const businessPayload = {
@@ -988,10 +1213,11 @@ export default function BookingNow() {
 
         dispatch(setBusinessDataAction(businessPayload));
 
-        // Set selected service in selectedServices - preserve existing selection if from businessDetail
-        if (serviceToSelect) {
+        // Set selected service in selectedServices - skip for subscription booking
+        if (params.subscription_id) {
+          dispatch(setSelectedServices([]));
+        } else if (serviceToSelect) {
           if (hasReduxData && reduxSelectedServices.length > 0) {
-            // Keep existing selection from Redux (businessDetail case)
             const existingService = allServicesData.find(
               (s: Service) => s.id === reduxSelectedServices[0].id,
             );
@@ -1001,7 +1227,6 @@ export default function BookingNow() {
               dispatch(setSelectedServices([serviceToSelect]));
             }
           } else {
-            // New selection (DashboardContent case or first time)
             dispatch(setSelectedServices([serviceToSelect]));
           }
         }
@@ -1026,6 +1251,7 @@ export default function BookingNow() {
   }, [
     params.business_id,
     params.service_id,
+    params.subscription_id,
     reduxBusinessId,
     allServices.length,
     reduxSelectedServices,
@@ -1035,7 +1261,7 @@ export default function BookingNow() {
 
   // Fetch data on mount - check both params and Redux for business_id
   useEffect(() => {
-    // Call API if we have business_id from params OR from Redux (businessDetail case)
+    // Call API when we have business_id from params (including subscription) or from Redux
     if (params.business_id || reduxBusinessId) {
       fetchBusinessDetails();
     }
@@ -1711,8 +1937,8 @@ export default function BookingNow() {
 
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
-        {/* Service Details */}
-        {selectedServices.map((service) => (
+        {/* Service Details - hide for subscription booking */}
+        {!isSubscriptionBooking && selectedServices.map((service) => (
           <View key={service.id} style={styles.serviceCard}>
             <View style={styles.serviceHeader}>
               <Text style={styles.serviceName}>{service.name}</Text>
@@ -1745,7 +1971,8 @@ export default function BookingNow() {
           </View>
         ))}
 
-        {/* Add Another Service */}
+        {/* Add Another Service - hide for subscription booking */}
+        {!isSubscriptionBooking && (
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={handleAddService}
@@ -1760,10 +1987,13 @@ export default function BookingNow() {
             />
           </View>
         </TouchableOpacity>
+        )}
 
-        {/* <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} /> */}
+        {/* Payment Method Section - hide for subscription booking */}
+        {!isSubscriptionBooking && (
+        <>
+        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
-        {/* Payment Method Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Choose payment method</Text>
           <View style={[styles.paymentCard, styles.shadow]}>
@@ -1816,6 +2046,8 @@ export default function BookingNow() {
             </TouchableOpacity>
           </View>
         </View>
+        </>
+        )}
 
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
@@ -1863,9 +2095,130 @@ export default function BookingNow() {
           )}
         </View>
 
-        <View style={[styles.line, { marginTop: moderateHeightScale(10) }]} />
+        {/* Subscription Card - below Leave a note when isSubscriptionBooking */}
+        {isSubscriptionBooking && subscriptionData && (
+          <View style={styles.subscriptionCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.planTitleRow}>
+                <Feather
+                  name="star"
+                  size={moderateWidthScale(16)}
+                  color={theme.orangeBrown}
+                  style={styles.starIcon}
+                />
+                <Text style={styles.planTitle}>
+                  {subscriptionData.subscriptionPlan}
+                </Text>
+              </View>
+              <View style={styles.statusBadge}>
+                <Text style={styles.statusText}>
+                  {subscriptionData.status.toUpperCase()}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.topSection}>
+              <View style={styles.userInfoRow}>
+                <Feather
+                  name="user"
+                  size={moderateWidthScale(14)}
+                  color={theme.darkGreen}
+                  style={styles.userIcon}
+                />
+                <Text style={styles.userText} numberOfLines={1}>
+                  {subscriptionData.business}
+                </Text>
+              </View>
+              <View style={styles.priceBadge}>
+                <Text style={styles.priceText}>
+                  ${subscriptionData.subscriptionPlanPrice}
+                </Text>
+                <Text style={styles.planPriceLabel}>/month</Text>
+              </View>
+            </View>
+            {subscriptionData.subscriptionPlanDescription && (
+              <Text style={styles.subscriptionDescriptionText} numberOfLines={2}>
+                {subscriptionData.subscriptionPlanDescription}
+              </Text>
+            )}
+            <View style={styles.usageSection}>
+              <View style={styles.usageHeader}>
+                <Feather
+                  name="zap"
+                  size={moderateWidthScale(14)}
+                  color={theme.orangeBrown}
+                />
+                <Text style={styles.usageTitle}>
+                  {subscriptionData.visits.total} Visits Per Month
+                </Text>
+              </View>
+              <View style={styles.usageStats}>
+                <View style={styles.usageItem}>
+                  <Text style={styles.usageLabel}>Used</Text>
+                  <Text style={styles.usageValue}>
+                    {subscriptionData.visits.used}
+                  </Text>
+                </View>
+                <View style={styles.usageItem}>
+                  <Text style={styles.usageLabel}>Upcoming</Text>
+                  <Text style={styles.usageValue}>
+                    {subscriptionData.visits.upcoming}
+                  </Text>
+                </View>
+                <View style={styles.usageItem}>
+                  <Text style={styles.usageLabel}>Remaining</Text>
+                  <Text style={styles.usageValue}>
+                    {subscriptionData.visits.remaining}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            {(subscriptionData.paymentDate ||
+              subscriptionData.status?.trim()?.toLowerCase() === "active") && (
+              <View style={styles.paymentRenewalRow}>
+                {subscriptionData.paymentDate && (
+                  <View style={styles.paymentDateContainer}>
+                    <Feather
+                      name="credit-card"
+                      size={moderateWidthScale(12)}
+                      color={theme.darkGreen}
+                    />
+                    <View style={styles.dateInfoContainer}>
+                      <Text style={styles.dateLabel}>Payment</Text>
+                      <Text style={styles.dateValue}>
+                        {subscriptionData.paymentDate}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {subscriptionData.status?.trim()?.toLowerCase() ===
+                  "active" && (
+                  <View
+                    style={[
+                      styles.renewalContainer,
+                      !subscriptionData.paymentDate && { marginLeft: 0 },
+                    ]}
+                  >
+                    <Feather
+                      name="calendar"
+                      size={moderateWidthScale(12)}
+                      color={theme.darkGreen}
+                    />
+                    <View style={styles.dateInfoContainer}>
+                      <Text style={styles.dateLabel}>Renewal</Text>
+                      <Text style={styles.dateValue}>
+                        {subscriptionData.nextPaymentDate}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
 
-        {/* Price Breakdown */}
+        <View style={[styles.line, { marginTop: moderateHeightScale(10) }]} />
+        {/* Price Breakdown - hide for subscription booking */}
+        {!isSubscriptionBooking && (
         <View style={styles.priceBreakdown}>
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Subtotal:</Text>
@@ -1893,22 +2246,48 @@ export default function BookingNow() {
             </Text>
           </View> */}
         </View>
+        )}
       </ScrollView>
 
       <View style={styles.bottom}>
-        {/* Final Total */}
+        {/* Final Total - hide for subscription booking */}
+        {!isSubscriptionBooking && (
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>Estimated total:</Text>
           <Text style={styles.totalValue}>
             ${estimatedTotal.toFixed(2)} USD
           </Text>
         </View>
+        )}
 
         {/* Checkout Button */}
         <Button
           // title={t("checkout")}
           title={"Book now"}
           onPress={() => {
+            if (isSubscriptionBooking) {
+              if (!selectedTimeSlot) {
+                showBanner(
+                  "Select time",
+                  "Please select a date and time slot before checkout.",
+                  "warning",
+                  4000,
+                );
+                return;
+              }
+              dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
+              dispatch(setSelectedTimeSlot(selectedTimeSlot));
+              dispatch(setSelectedNote(note));
+              router.push({
+                pathname: "/(main)/bookingNow/checkout",
+                params: {
+                  subscription_id: params.subscription_id || "",
+                  business_id: params.business_id || "",
+                  item: params.item || "",
+                },
+              });
+              return;
+            }
             if (selectedServices.length === 0) {
               showBanner(
                 t("noServiceSelected"),
