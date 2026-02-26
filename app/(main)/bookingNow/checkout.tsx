@@ -1,9 +1,4 @@
-import React, {
-  useMemo,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -1427,7 +1422,11 @@ function CheckoutContent() {
             </View>
 
             {/* Checkout Button */}
-            <Button title="Book now" onPress={handleBookNow} />
+            <Button
+              // title="Book now"
+              title={t("checkout")}
+              onPress={handleBookNow}
+            />
           </View>
         </KeyboardAvoidingView>
       </View>

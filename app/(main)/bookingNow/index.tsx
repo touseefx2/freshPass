@@ -29,7 +29,10 @@ import {
   type BusinessHours,
 } from "@/src/state/slices/bsnsSlice";
 import { ApiService } from "@/src/services/api";
-import { businessEndpoints, appointmentsEndpoints } from "@/src/services/endpoints";
+import {
+  businessEndpoints,
+  appointmentsEndpoints,
+} from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -1694,7 +1697,8 @@ export default function BookingNow() {
 
         {/* Checkout Button */}
         <Button
-          title={t("checkout")}
+          // title={t("checkout")}
+          title={"Book now"}
           onPress={() => {
             if (selectedServices.length === 0) {
               showBanner(
