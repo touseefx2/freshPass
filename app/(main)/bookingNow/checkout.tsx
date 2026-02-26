@@ -1287,10 +1287,6 @@ function CheckoutContent() {
                   ${totalPrice.toFixed(2)} USD
                 </Text>
               </View>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Tax:</Text>
-                <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
-              </View>
               <View
                 style={[
                   styles.line,

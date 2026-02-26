@@ -1241,6 +1241,9 @@ export default function BookingNow() {
     (sum, service) => sum + service.price,
     0,
   );
+  const taxRate = 0.0;
+  const tax = totalPrice * taxRate;
+  const estimatedTotal = totalPrice + tax;
 
   const handleDeleteService = (serviceId: number) => {
     const updatedServices = selectedServices.filter(
@@ -1773,9 +1776,9 @@ export default function BookingNow() {
           </View>
           <View style={styles.priceRow}>
             <Text style={styles.priceLabel}>Tax:</Text>
-            <Text style={styles.priceValue}>Calculated at the checkout</Text>
+            <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
           </View>
-          <View
+          {/* <View
             style={[
               styles.line,
               {
@@ -1789,9 +1792,9 @@ export default function BookingNow() {
               Estimated Total:
             </Text>
             <Text style={[styles.priceValue, { fontFamily: fonts.fontBold }]}>
-              ${totalPrice.toFixed(2)} USD
+              ${estimatedTotal.toFixed(2)} USD
             </Text>
-          </View>
+          </View> */}
         </View>
       </ScrollView>
 
@@ -1799,7 +1802,9 @@ export default function BookingNow() {
         {/* Final Total */}
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>Estimated total:</Text>
-          <Text style={styles.totalValue}>${totalPrice.toFixed(2)} USD</Text>
+          <Text style={styles.totalValue}>
+            ${estimatedTotal.toFixed(2)} USD
+          </Text>
         </View>
 
         {/* Checkout Button */}
