@@ -1461,7 +1461,7 @@ function CheckoutContent() {
               {note.trim() ? (
                 <View style={styles.noteBlock}>
                   <Text style={styles.noteLabel}>Note</Text>
-                  <Text style={styles.noteText} numberOfLines={4}>
+                  <Text style={styles.noteText} numberOfLines={8}>
                     {note.trim()}
                   </Text>
                 </View>
