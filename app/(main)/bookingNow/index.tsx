@@ -1148,7 +1148,8 @@ export default function BookingNow() {
         return;
       }
     }
-  }, [businessHours, selectedStaff, selectedStaffMember]);
+    // Only run when business hours first load - do NOT reset date when staff changes
+  }, [businessHours]);
 
   const getTimezoneText = () => {
     try {
