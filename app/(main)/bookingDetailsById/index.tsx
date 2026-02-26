@@ -1382,6 +1382,7 @@ export default function bookingDetailsById() {
                       booking?.type === "subscription"
                         ? "subscription"
                         : "service",
+                    notes: booking?.notes ?? "",
                     appointment_date: booking?.appointmentDate ?? "",
                     appointment_time: booking?.appointmentTime ?? "",
                     staff_id:
