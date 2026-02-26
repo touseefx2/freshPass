@@ -795,55 +795,15 @@ export default function BookingNow() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Service Details */}
-        {selectedServices.map((service) => (
-          <View key={service.id} style={styles.serviceCard}>
-            <View style={styles.serviceHeader}>
-              <Text style={styles.serviceName}>{service.name}</Text>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDeleteService(service.id)}
-              >
-                <MaterialIcons
-                  name="delete-outline"
-                  size={moderateWidthScale(20)}
-                  color={theme.red}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ gap: moderateHeightScale(4) }}>
-              <View style={styles.priceContainer}>
-                <Text style={styles.currentPrice}>
-                  - ${service.price.toFixed(2)} USD
-                </Text>
-                <Text style={styles.originalPrice}>
-                  ${service.originalPrice.toFixed(2)} USD
-                </Text>
-              </View>
-
-              <Text style={styles.descriptionText}>
-                - {service.description}
-              </Text>
-            </View>
-          </View>
-        ))}
-
-        {/* Add Another Service */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleAddService}
-          style={styles.addServiceSection}
-        >
-          <Text style={styles.addServiceText}>Add another service</Text>
-          <View style={styles.addServiceButton}>
-            <Octicons
-              name="plus"
-              size={moderateWidthScale(16)}
-              color={theme.selectCard}
-            />
-          </View>
-        </TouchableOpacity>
+        <View
+          style={[
+            styles.line,
+            {
+              marginTop: moderateHeightScale(10),
+              backgroundColor: "transparent",
+            },
+          ]}
+        />
 
         {/* Staff Selection */}
         <View>
@@ -913,6 +873,58 @@ export default function BookingNow() {
             })}
           </ScrollView>
         </View>
+
+        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
+
+        {/* Service Details */}
+        {selectedServices.map((service) => (
+          <View key={service.id} style={styles.serviceCard}>
+            <View style={styles.serviceHeader}>
+              <Text style={styles.serviceName}>{service.name}</Text>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => handleDeleteService(service.id)}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(20)}
+                  color={theme.red}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ gap: moderateHeightScale(4) }}>
+              <View style={styles.priceContainer}>
+                <Text style={styles.currentPrice}>
+                  - ${service.price.toFixed(2)} USD
+                </Text>
+                <Text style={styles.originalPrice}>
+                  ${service.originalPrice.toFixed(2)} USD
+                </Text>
+              </View>
+
+              <Text style={styles.descriptionText}>
+                - {service.description}
+              </Text>
+            </View>
+          </View>
+        ))}
+
+        {/* Add Another Service */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleAddService}
+          style={styles.addServiceSection}
+        >
+          <Text style={styles.addServiceText}>Add another service</Text>
+          <View style={styles.addServiceButton}>
+            <Octicons
+              name="plus"
+              size={moderateWidthScale(16)}
+              color={theme.selectCard}
+            />
+          </View>
+        </TouchableOpacity>
 
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
