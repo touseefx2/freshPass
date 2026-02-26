@@ -16,6 +16,7 @@ import {
   Clipboard,
   Alert,
   StyleSheet,
+  Share,
 } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useTranslation } from "react-i18next";
@@ -403,6 +404,76 @@ export default function AiResults() {
       }),
     );
   };
+
+  const handleShareAiResult = useCallback(async () => {
+    try {
+      if (!normalized || normalized.status !== "completed") return;
+
+      let message = "";
+      let url: string | undefined;
+
+      if (normalized.socialMedia) {
+        const sm = normalized.socialMedia;
+        const isReel = sm.jobType === "generate_reel";
+        const typeLabel = isReel
+          ? t("video")
+          : sm.jobType === "generate_collage"
+            ? t("collage")
+            : t("post");
+        message = `${t("aiResults")} – ${typeLabel}\n\n`;
+        if (sm.content?.caption) {
+          message += `${sm.content.caption}\n\n`;
+        }
+        if (sm.content?.hashtags?.length) {
+          message += `${sm.content.hashtags.join(" ")}\n\n`;
+        }
+        if (sm.content?.complete_post) {
+          message += `${sm.content.complete_post}\n\n`;
+        }
+        if (isReel && sm.video?.url) {
+          url = sm.video.url;
+          message += `${t("video")}: ${url}`;
+        } else if (sm.images?.processed) {
+          url = sm.images.processed;
+          message += `${t("image")}: ${url}`;
+        }
+        if (sm.images?.originals?.length) {
+          message += `\n\n${t("originals")}:\n`;
+          sm.images.originals.forEach((u, i) => {
+            message += `${i + 1}. ${u}\n`;
+          });
+        }
+      } else if (normalized.sections.length > 0) {
+        message = `${t("aiResults")}\n\n`;
+        normalized.sections.forEach((section, sectionIndex) => {
+          message += `${section.name}\n`;
+          if (section.description) {
+            message += `${section.description}\n`;
+          }
+          section.views.forEach((v) => {
+            message += `${t(v.labelKey)}: ${v.url}\n`;
+          });
+          if (sectionIndex < normalized.sections.length - 1) {
+            message += "\n";
+          }
+        });
+        url = normalized.sections[0]?.views?.[0]?.url;
+      }
+
+      if (!message.trim()) return;
+
+      await Share.share({
+        message: message.trim(),
+        url: url || undefined,
+      });
+    } catch (_error) {
+      // Silently ignore share errors
+    }
+  }, [normalized, t]);
+
+  const canShare =
+    normalized?.status === "completed" &&
+    (normalized.sections.length > 0 || !!normalized.socialMedia);
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -803,7 +874,19 @@ export default function AiResults() {
 
   return (
     <View style={styles.safeArea}>
-      <StackHeader title={t("aiResults")} />
+      <StackHeader
+        title={t("aiResults")}
+        rightIcon={
+          canShare ? (
+            <MaterialIcons
+              name="share"
+              size={moderateWidthScale(22)}
+              color={theme.white}
+            />
+          ) : undefined
+        }
+        onRightPress={canShare ? handleShareAiResult : undefined}
+      />
       {content}
     </View>
   );
