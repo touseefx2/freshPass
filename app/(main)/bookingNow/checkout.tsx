@@ -46,6 +46,7 @@ import { MaterialIcons, Feather, Octicons } from "@expo/vector-icons";
 import { CloseIcon } from "@/assets/icons";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import StaffSelectionBottomSheet from "@/src/components/StaffSelectionBottomSheet";
+import { useTranslation } from "react-i18next";
 const backArrowIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
@@ -616,6 +617,7 @@ const createStyles = (theme: Theme) =>
 
 function CheckoutContent() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();

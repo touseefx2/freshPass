@@ -1656,7 +1656,7 @@ export default function BookingNow() {
           </View>
         </TouchableOpacity>
 
-        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
+        {/* <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} /> */}
 
         {/* Price Breakdown */}
         <View style={styles.priceBreakdown}>
