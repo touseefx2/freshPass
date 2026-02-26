@@ -940,6 +940,9 @@ export default function BookingNow() {
     booking_id?: string;
     appointment_type?: string;
     notes?: string;
+    appointment_date?: string;
+    appointment_time?: string;
+    staff_id?: string;
   }>();
 
   const isReschedule = params.is_reschedule === "1";
@@ -1005,13 +1008,74 @@ export default function BookingNow() {
   const [apiSlots, setApiSlots] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const hasInitializedReschedulePreset = useRef(false);
+  const hasScrolledToRescheduleSlot = useRef(false);
 
   // Pre-fill note when in reschedule mode and notes param is passed
   useEffect(() => {
-    if (isReschedule && params.notes != null && String(params.notes).trim() !== "") {
+    if (
+      isReschedule &&
+      params.notes != null &&
+      String(params.notes).trim() !== ""
+    ) {
       setNote(String(params.notes).trim());
     }
   }, [isReschedule, params.notes]);
+
+  // When reschedule mode and params have date/time/staff, pre-select them once data is loaded
+  useEffect(() => {
+    if (
+      !isReschedule ||
+      hasInitializedReschedulePreset.current ||
+      !params.appointment_date ||
+      !params.appointment_time ||
+      loading
+    ) {
+      return;
+    }
+    hasInitializedReschedulePreset.current = true;
+
+    const dateStr = params.appointment_date.trim();
+    const timeStr = params.appointment_time.trim();
+    const staffIdParam = params.staff_id?.trim();
+
+    // Parse date: support MM/DD/YYYY or YYYY-MM-DD
+    let parsedDate = dayjs();
+    if (dateStr.includes("/")) {
+      const parts = dateStr.split("/").map(Number);
+      if (parts.length >= 3) {
+        const [m, d, y] = parts;
+        if (y && m && d) parsedDate = dayjs(new Date(y, m - 1, d));
+      }
+    } else {
+      const d = dayjs(dateStr);
+      if (d.isValid()) parsedDate = d;
+    }
+
+    setSelectedDateState(parsedDate);
+    dispatch(setSelectedDate(parsedDate.format("YYYY-MM-DD")));
+    setWeek(getWeekDays(parsedDate));
+
+    if (timeStr) {
+      setSelectedTimeSlotState(timeStr);
+      dispatch(setSelectedTimeSlot(timeStr));
+      const [hours] = timeStr.split(":").map(Number);
+      if (hours >= 6 && hours < 12) setSelectedCategory("morning");
+      else if (hours >= 12 && hours < 18) setSelectedCategory("evening");
+      else setSelectedCategory("night");
+    }
+
+    const staffId =
+      staffIdParam && staffIdParam !== "anyone" ? staffIdParam : "anyone";
+    dispatch(setSelectedStaff(staffId));
+  }, [
+    isReschedule,
+    params.appointment_date,
+    params.appointment_time,
+    params.staff_id,
+    loading,
+    dispatch,
+  ]);
 
   // Always fetch business data - API call happens in both cases
   const fetchBusinessDetails = useCallback(async () => {
@@ -1443,6 +1507,40 @@ export default function BookingNow() {
     scrollViewRef.current?.scrollTo({ x: scrollPosition, animated: true });
   };
 
+  // In reschedule mode, scroll time slot list to the selected slot once slots are loaded
+  useEffect(() => {
+    if (
+      !isReschedule ||
+      !selectedTimeSlot ||
+      hasScrolledToRescheduleSlot.current ||
+      apiSlots.length === 0
+    ) {
+      return;
+    }
+    const allSlots = [...morning, ...evening, ...night];
+    const index = allSlots.indexOf(selectedTimeSlot);
+    if (index < 0) return;
+    hasScrolledToRescheduleSlot.current = true;
+    const slotWidth = widthScale(90);
+    const gap = moderateWidthScale(12);
+    const paddingHorizontal = moderateWidthScale(20);
+    const scrollPosition = index * (slotWidth + gap) + paddingHorizontal;
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        x: scrollPosition,
+        animated: true,
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [
+    isReschedule,
+    selectedTimeSlot,
+    apiSlots.length,
+    morning,
+    evening,
+    night,
+  ]);
+
   const handleScroll = (event: any) => {
     const scrollX = event.nativeEvent.contentOffset.x;
     const slotWidth = widthScale(90);
@@ -1523,6 +1621,8 @@ export default function BookingNow() {
 
   useEffect(() => {
     if (!businessHours) return;
+    // In reschedule mode, keep the date from params; do not reset to today
+    if (params.is_reschedule === "1" && params.appointment_date) return;
     const today = dayjs().startOf("day");
     const currentSelected = selectedDate.startOf("day");
     if (currentSelected.isSame(today, "day") && !isDateDisabled(today)) return;
@@ -2069,309 +2169,318 @@ export default function BookingNow() {
           </>
         ) : (
           <>
-        {/* Service Details - hide for subscription booking */}
-        {!isSubscriptionBooking &&
-          selectedServices.map((service) => (
-            <View key={service.id} style={styles.serviceCard}>
-              <View style={styles.serviceHeader}>
-                <Text style={styles.serviceName}>{service.name}</Text>
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => handleDeleteService(service.id)}
-                >
-                  <MaterialIcons
-                    name="delete-outline"
-                    size={moderateWidthScale(20)}
-                    color={theme.red}
-                  />
-                </TouchableOpacity>
-              </View>
+            {/* Service Details - hide for subscription booking */}
+            {!isSubscriptionBooking &&
+              selectedServices.map((service) => (
+                <View key={service.id} style={styles.serviceCard}>
+                  <View style={styles.serviceHeader}>
+                    <Text style={styles.serviceName}>{service.name}</Text>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteService(service.id)}
+                    >
+                      <MaterialIcons
+                        name="delete-outline"
+                        size={moderateWidthScale(20)}
+                        color={theme.red}
+                      />
+                    </TouchableOpacity>
+                  </View>
 
-              <View style={{ gap: moderateHeightScale(4) }}>
-                <View style={styles.priceContainer}>
-                  <Text style={styles.currentPrice}>
-                    - ${service.price.toFixed(2)} USD
-                  </Text>
-                  <Text style={styles.originalPrice}>
-                    ${service.originalPrice.toFixed(2)} USD
-                  </Text>
+                  <View style={{ gap: moderateHeightScale(4) }}>
+                    <View style={styles.priceContainer}>
+                      <Text style={styles.currentPrice}>
+                        - ${service.price.toFixed(2)} USD
+                      </Text>
+                      <Text style={styles.originalPrice}>
+                        ${service.originalPrice.toFixed(2)} USD
+                      </Text>
+                    </View>
+
+                    <Text style={styles.descriptionText}>
+                      - {service.description}
+                    </Text>
+                  </View>
                 </View>
+              ))}
 
-                <Text style={styles.descriptionText}>
-                  - {service.description}
-                </Text>
-              </View>
-            </View>
-          ))}
+            {/* Add Another Service - hide for subscription booking */}
+            {!isSubscriptionBooking && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleAddService}
+                style={styles.addServiceSection}
+              >
+                <Text style={styles.addServiceText}>Add another service</Text>
+                <View style={styles.addServiceButton}>
+                  <Octicons
+                    name="plus"
+                    size={moderateWidthScale(16)}
+                    color={theme.selectCard}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
 
-        {/* Add Another Service - hide for subscription booking */}
-        {!isSubscriptionBooking && (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleAddService}
-            style={styles.addServiceSection}
-          >
-            <Text style={styles.addServiceText}>Add another service</Text>
-            <View style={styles.addServiceButton}>
-              <Octicons
-                name="plus"
-                size={moderateWidthScale(16)}
-                color={theme.selectCard}
-              />
-            </View>
-          </TouchableOpacity>
-        )}
+            {/* Payment Method Section - hide for subscription booking */}
+            {!isSubscriptionBooking && (
+              <>
+                <View
+                  style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+                />
 
-        {/* Payment Method Section - hide for subscription booking */}
-        {!isSubscriptionBooking && (
-          <>
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Choose payment method</Text>
+                  <View style={[styles.paymentCard, styles.shadow]}>
+                    <TouchableOpacity
+                      style={styles.paymentOption}
+                      onPress={() =>
+                        dispatch(setSelectedPaymentMethod("payNow"))
+                      }
+                    >
+                      <View
+                        style={[
+                          styles.paymentRadioButton,
+                          reduxPaymentMethod === "payNow" &&
+                            styles.paymentRadioButtonSelected,
+                        ]}
+                      >
+                        {reduxPaymentMethod === "payNow" && (
+                          <View style={styles.paymentRadioButtonInner} />
+                        )}
+                      </View>
+                      <View style={styles.paymentOptionContent}>
+                        <Text style={styles.paymentOptionTitle}>Pay now</Text>
+                        <Text style={styles.paymentOptionDescription}>
+                          Securely pay online to confirm your booking instantly.
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    <View style={styles.paymentDivider} />
+
+                    <TouchableOpacity
+                      style={styles.paymentOption}
+                      onPress={() =>
+                        dispatch(setSelectedPaymentMethod("payLater"))
+                      }
+                    >
+                      <View
+                        style={[
+                          styles.paymentRadioButton,
+                          reduxPaymentMethod === "payLater" &&
+                            styles.paymentRadioButtonSelected,
+                        ]}
+                      >
+                        {reduxPaymentMethod === "payLater" && (
+                          <View style={styles.paymentRadioButtonInner} />
+                        )}
+                      </View>
+                      <View style={styles.paymentOptionContent}>
+                        <Text style={styles.paymentOptionTitle}>Pay later</Text>
+                        <Text style={styles.paymentOptionDescription}>
+                          Pay in person at the salon.
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </>
+            )}
+
             <View
               style={[styles.line, { marginTop: moderateHeightScale(20) }]}
             />
 
+            {/* Privacy Policy Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Choose payment method</Text>
-              <View style={[styles.paymentCard, styles.shadow]}>
-                <TouchableOpacity
-                  style={styles.paymentOption}
-                  onPress={() => dispatch(setSelectedPaymentMethod("payNow"))}
+              <Text style={styles.privacyText}>
+                By placing this order, you agree to our{" "}
+                <Text
+                  style={styles.privacyLink}
+                  onPress={() => {
+                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+                    if (url) Linking.openURL(url);
+                  }}
                 >
-                  <View
-                    style={[
-                      styles.paymentRadioButton,
-                      reduxPaymentMethod === "payNow" &&
-                        styles.paymentRadioButtonSelected,
-                    ]}
-                  >
-                    {reduxPaymentMethod === "payNow" && (
-                      <View style={styles.paymentRadioButtonInner} />
-                    )}
-                  </View>
-                  <View style={styles.paymentOptionContent}>
-                    <Text style={styles.paymentOptionTitle}>Pay now</Text>
-                    <Text style={styles.paymentOptionDescription}>
-                      Securely pay online to confirm your booking instantly.
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-
-                <View style={styles.paymentDivider} />
-
-                <TouchableOpacity
-                  style={styles.paymentOption}
-                  onPress={() => dispatch(setSelectedPaymentMethod("payLater"))}
-                >
-                  <View
-                    style={[
-                      styles.paymentRadioButton,
-                      reduxPaymentMethod === "payLater" &&
-                        styles.paymentRadioButtonSelected,
-                    ]}
-                  >
-                    {reduxPaymentMethod === "payLater" && (
-                      <View style={styles.paymentRadioButtonInner} />
-                    )}
-                  </View>
-                  <View style={styles.paymentOptionContent}>
-                    <Text style={styles.paymentOptionTitle}>Pay later</Text>
-                    <Text style={styles.paymentOptionDescription}>
-                      Pay in person at the salon.
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+                  Privacy Policy
+                </Text>
+                . Your personal data will be processed by the partner with whom
+                you're booking an appointment.
+              </Text>
             </View>
-          </>
-        )}
 
-        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
+            {/* Leave a Note Section */}
+            <View style={styles.noteInputContainer}>
+              <View style={styles.noteInputIcon}>
+                <Feather
+                  name="file-text"
+                  size={moderateWidthScale(18)}
+                  color={theme.lightGreen}
+                />
+              </View>
+              <TextInput
+                style={[styles.noteInput, styles.noteInputWithIcon]}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Leave a note (optional)"
+                placeholderTextColor={theme.lightGreen2}
+                multiline
+                numberOfLines={4}
+              />
+              {note.length > 0 && (
+                <Pressable
+                  onPress={() => setNote("")}
+                  style={styles.noteClearButton}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
 
-        {/* Privacy Policy Section */}
-        <View style={styles.section}>
-          <Text style={styles.privacyText}>
-            By placing this order, you agree to our{" "}
-            <Text
-              style={styles.privacyLink}
-              onPress={() => {
-                const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
-                if (url) Linking.openURL(url);
-              }}
-            >
-              Privacy Policy
-            </Text>
-            . Your personal data will be processed by the partner with whom
-            you're booking an appointment.
-          </Text>
-        </View>
+            {/* Subscription Card - below Leave a note when isSubscriptionBooking */}
+            {isSubscriptionBooking && subscriptionData && (
+              <View style={styles.subscriptionCard}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.planTitleRow}>
+                    <Feather
+                      name="star"
+                      size={moderateWidthScale(16)}
+                      color={theme.orangeBrown}
+                      style={styles.starIcon}
+                    />
+                    <Text style={styles.planTitle}>
+                      {subscriptionData.subscriptionPlan}
+                    </Text>
+                  </View>
+                  <View style={styles.statusBadge}>
+                    <Text style={styles.statusText}>
+                      {subscriptionData.status.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.topSection}>
+                  <View style={styles.userInfoRow}>
+                    <Feather
+                      name="user"
+                      size={moderateWidthScale(14)}
+                      color={theme.darkGreen}
+                      style={styles.userIcon}
+                    />
+                    <Text style={styles.userText} numberOfLines={1}>
+                      {subscriptionData.business}
+                    </Text>
+                  </View>
+                  <View style={styles.priceBadge}>
+                    <Text style={styles.priceText}>
+                      ${subscriptionData.subscriptionPlanPrice}
+                    </Text>
+                    <Text style={styles.planPriceLabel}>/month</Text>
+                  </View>
+                </View>
+                {subscriptionData.subscriptionPlanDescription && (
+                  <Text
+                    style={styles.subscriptionDescriptionText}
+                    numberOfLines={2}
+                  >
+                    {subscriptionData.subscriptionPlanDescription}
+                  </Text>
+                )}
+                <View style={styles.usageSection}>
+                  <View style={styles.usageHeader}>
+                    <Feather
+                      name="zap"
+                      size={moderateWidthScale(14)}
+                      color={theme.orangeBrown}
+                    />
+                    <Text style={styles.usageTitle}>
+                      {subscriptionData.visits.total} Visits Per Month
+                    </Text>
+                  </View>
+                  <View style={styles.usageStats}>
+                    <View style={styles.usageItem}>
+                      <Text style={styles.usageLabel}>Used</Text>
+                      <Text style={styles.usageValue}>
+                        {subscriptionData.visits.used}
+                      </Text>
+                    </View>
+                    <View style={styles.usageItem}>
+                      <Text style={styles.usageLabel}>Upcoming</Text>
+                      <Text style={styles.usageValue}>
+                        {subscriptionData.visits.upcoming}
+                      </Text>
+                    </View>
+                    <View style={styles.usageItem}>
+                      <Text style={styles.usageLabel}>Remaining</Text>
+                      <Text style={styles.usageValue}>
+                        {subscriptionData.visits.remaining}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                {(subscriptionData.paymentDate ||
+                  subscriptionData.status?.trim()?.toLowerCase() ===
+                    "active") && (
+                  <View style={styles.paymentRenewalRow}>
+                    {subscriptionData.paymentDate && (
+                      <View style={styles.paymentDateContainer}>
+                        <Feather
+                          name="credit-card"
+                          size={moderateWidthScale(12)}
+                          color={theme.darkGreen}
+                        />
+                        <View style={styles.dateInfoContainer}>
+                          <Text style={styles.dateLabel}>Payment</Text>
+                          <Text style={styles.dateValue}>
+                            {subscriptionData.paymentDate}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                    {subscriptionData.status?.trim()?.toLowerCase() ===
+                      "active" && (
+                      <View
+                        style={[
+                          styles.renewalContainer,
+                          !subscriptionData.paymentDate && { marginLeft: 0 },
+                        ]}
+                      >
+                        <Feather
+                          name="calendar"
+                          size={moderateWidthScale(12)}
+                          color={theme.darkGreen}
+                        />
+                        <View style={styles.dateInfoContainer}>
+                          <Text style={styles.dateLabel}>Renewal</Text>
+                          <Text style={styles.dateValue}>
+                            {subscriptionData.nextPaymentDate}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
 
-        {/* Leave a Note Section */}
-        <View style={styles.noteInputContainer}>
-          <View style={styles.noteInputIcon}>
-            <Feather
-              name="file-text"
-              size={moderateWidthScale(18)}
-              color={theme.lightGreen}
+            <View
+              style={[styles.line, { marginTop: moderateHeightScale(10) }]}
             />
-          </View>
-          <TextInput
-            style={[styles.noteInput, styles.noteInputWithIcon]}
-            value={note}
-            onChangeText={setNote}
-            placeholder="Leave a note (optional)"
-            placeholderTextColor={theme.lightGreen2}
-            multiline
-            numberOfLines={4}
-          />
-          {note.length > 0 && (
-            <Pressable
-              onPress={() => setNote("")}
-              style={styles.noteClearButton}
-              hitSlop={moderateWidthScale(8)}
-            >
-              <CloseIcon color={theme.darkGreen} />
-            </Pressable>
-          )}
-        </View>
-
-        {/* Subscription Card - below Leave a note when isSubscriptionBooking */}
-        {isSubscriptionBooking && subscriptionData && (
-          <View style={styles.subscriptionCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.planTitleRow}>
-                <Feather
-                  name="star"
-                  size={moderateWidthScale(16)}
-                  color={theme.orangeBrown}
-                  style={styles.starIcon}
-                />
-                <Text style={styles.planTitle}>
-                  {subscriptionData.subscriptionPlan}
-                </Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>
-                  {subscriptionData.status.toUpperCase()}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.topSection}>
-              <View style={styles.userInfoRow}>
-                <Feather
-                  name="user"
-                  size={moderateWidthScale(14)}
-                  color={theme.darkGreen}
-                  style={styles.userIcon}
-                />
-                <Text style={styles.userText} numberOfLines={1}>
-                  {subscriptionData.business}
-                </Text>
-              </View>
-              <View style={styles.priceBadge}>
-                <Text style={styles.priceText}>
-                  ${subscriptionData.subscriptionPlanPrice}
-                </Text>
-                <Text style={styles.planPriceLabel}>/month</Text>
-              </View>
-            </View>
-            {subscriptionData.subscriptionPlanDescription && (
-              <Text
-                style={styles.subscriptionDescriptionText}
-                numberOfLines={2}
-              >
-                {subscriptionData.subscriptionPlanDescription}
-              </Text>
-            )}
-            <View style={styles.usageSection}>
-              <View style={styles.usageHeader}>
-                <Feather
-                  name="zap"
-                  size={moderateWidthScale(14)}
-                  color={theme.orangeBrown}
-                />
-                <Text style={styles.usageTitle}>
-                  {subscriptionData.visits.total} Visits Per Month
-                </Text>
-              </View>
-              <View style={styles.usageStats}>
-                <View style={styles.usageItem}>
-                  <Text style={styles.usageLabel}>Used</Text>
-                  <Text style={styles.usageValue}>
-                    {subscriptionData.visits.used}
+            {/* Price Breakdown - hide for subscription booking */}
+            {!isSubscriptionBooking && (
+              <View style={styles.priceBreakdown}>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Subtotal:</Text>
+                  <Text style={styles.priceValue}>
+                    ${totalPrice.toFixed(2)} USD
                   </Text>
                 </View>
-                <View style={styles.usageItem}>
-                  <Text style={styles.usageLabel}>Upcoming</Text>
-                  <Text style={styles.usageValue}>
-                    {subscriptionData.visits.upcoming}
-                  </Text>
+                <View style={styles.priceRow}>
+                  <Text style={styles.priceLabel}>Tax:</Text>
+                  <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
                 </View>
-                <View style={styles.usageItem}>
-                  <Text style={styles.usageLabel}>Remaining</Text>
-                  <Text style={styles.usageValue}>
-                    {subscriptionData.visits.remaining}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            {(subscriptionData.paymentDate ||
-              subscriptionData.status?.trim()?.toLowerCase() === "active") && (
-              <View style={styles.paymentRenewalRow}>
-                {subscriptionData.paymentDate && (
-                  <View style={styles.paymentDateContainer}>
-                    <Feather
-                      name="credit-card"
-                      size={moderateWidthScale(12)}
-                      color={theme.darkGreen}
-                    />
-                    <View style={styles.dateInfoContainer}>
-                      <Text style={styles.dateLabel}>Payment</Text>
-                      <Text style={styles.dateValue}>
-                        {subscriptionData.paymentDate}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                {subscriptionData.status?.trim()?.toLowerCase() ===
-                  "active" && (
-                  <View
-                    style={[
-                      styles.renewalContainer,
-                      !subscriptionData.paymentDate && { marginLeft: 0 },
-                    ]}
-                  >
-                    <Feather
-                      name="calendar"
-                      size={moderateWidthScale(12)}
-                      color={theme.darkGreen}
-                    />
-                    <View style={styles.dateInfoContainer}>
-                      <Text style={styles.dateLabel}>Renewal</Text>
-                      <Text style={styles.dateValue}>
-                        {subscriptionData.nextPaymentDate}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        )}
-
-        <View style={[styles.line, { marginTop: moderateHeightScale(10) }]} />
-        {/* Price Breakdown - hide for subscription booking */}
-        {!isSubscriptionBooking && (
-          <View style={styles.priceBreakdown}>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Subtotal:</Text>
-              <Text style={styles.priceValue}>
-                ${totalPrice.toFixed(2)} USD
-              </Text>
-            </View>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Tax:</Text>
-              <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
-            </View>
-            {/* <View
+                {/* <View
             style={[
               styles.line,
               {
@@ -2388,8 +2497,8 @@ export default function BookingNow() {
               ${estimatedTotal.toFixed(2)} USD
             </Text>
           </View> */}
-          </View>
-        )}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -2476,7 +2585,9 @@ export default function BookingNow() {
               } catch (err: any) {
                 showBanner(
                   t("error"),
-                  err?.message || err?.data?.message || "Failed to reschedule. Please try again.",
+                  err?.message ||
+                    err?.data?.message ||
+                    "Failed to reschedule. Please try again.",
                   "error",
                   4000,
                 );
@@ -2488,11 +2599,42 @@ export default function BookingNow() {
             loading={rescheduleLoading}
           />
         ) : (
-        <Button
-          // title={t("checkout")}
-          title={"Book now"}
-          onPress={() => {
-            if (isSubscriptionBooking) {
+          <Button
+            // title={t("checkout")}
+            title={"Book now"}
+            onPress={() => {
+              if (isSubscriptionBooking) {
+                if (!selectedTimeSlot) {
+                  showBanner(
+                    "Select time",
+                    "Please select a date and time slot before checkout.",
+                    "warning",
+                    4000,
+                  );
+                  return;
+                }
+                dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
+                dispatch(setSelectedTimeSlot(selectedTimeSlot));
+                dispatch(setSelectedNote(note));
+                router.push({
+                  pathname: "/(main)/bookingNow/checkout",
+                  params: {
+                    subscription_id: params.subscription_id || "",
+                    business_id: params.business_id || "",
+                    item: params.item || "",
+                  },
+                });
+                return;
+              }
+              if (selectedServices.length === 0) {
+                showBanner(
+                  t("noServiceSelected"),
+                  t("pleaseSelectAtLeastOneService"),
+                  "warning",
+                  4000,
+                );
+                return;
+              }
               if (!selectedTimeSlot) {
                 showBanner(
                   "Select time",
@@ -2507,40 +2649,9 @@ export default function BookingNow() {
               dispatch(setSelectedNote(note));
               router.push({
                 pathname: "/(main)/bookingNow/checkout",
-                params: {
-                  subscription_id: params.subscription_id || "",
-                  business_id: params.business_id || "",
-                  item: params.item || "",
-                },
               });
-              return;
-            }
-            if (selectedServices.length === 0) {
-              showBanner(
-                t("noServiceSelected"),
-                t("pleaseSelectAtLeastOneService"),
-                "warning",
-                4000,
-              );
-              return;
-            }
-            if (!selectedTimeSlot) {
-              showBanner(
-                "Select time",
-                "Please select a date and time slot before checkout.",
-                "warning",
-                4000,
-              );
-              return;
-            }
-            dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
-            dispatch(setSelectedTimeSlot(selectedTimeSlot));
-            dispatch(setSelectedNote(note));
-            router.push({
-              pathname: "/(main)/bookingNow/checkout",
-            });
-          }}
-        />
+            }}
+          />
         )}
       </View>
 

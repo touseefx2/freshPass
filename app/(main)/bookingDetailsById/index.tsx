@@ -116,6 +116,7 @@ interface BookingItem {
   notes?: string | null;
   appointmentDate?: string;
   appointmentTime?: string;
+  staffId?: number | null;
 }
 
 interface ApiBookingResponse {
@@ -800,6 +801,7 @@ export default function bookingDetailsById() {
       notes: apiData.notes ?? null,
       appointmentDate: apiData.appointmentDate,
       appointmentTime: apiData.appointmentTime,
+      staffId: apiData.staffId,
     };
   };
 
@@ -1224,31 +1226,6 @@ export default function bookingDetailsById() {
                     </View>
                   )}
               </View>
-              {canShowReschedule && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={styles.rescheduleSmallButton}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/(main)/bookingNow",
-                      params: {
-                        business_id: booking?.businessId?.toString() ?? "",
-                        is_reschedule: "1",
-                        booking_id: booking?.id ?? "",
-                        appointment_type:
-                          booking?.type === "subscription"
-                            ? "subscription"
-                            : "service",
-                        notes: booking?.notes ?? "",
-                      },
-                    });
-                  }}
-                >
-                  <Text style={styles.rescheduleSmallButtonText}>
-                    {t("reschedule")}
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
 
             {/* Service Name */}
@@ -1396,16 +1373,43 @@ export default function bookingDetailsById() {
               <Text style={styles.actionButtonText}>{t("bookAgain")}</Text>
             </TouchableOpacity>
           )} */}
-            {/* <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
-            <View style={styles.actionButtonCircle}>
-              <CalendarIcon
-                width={moderateWidthScale(22)}
-                height={moderateWidthScale(22)}
-                color={theme.darkGreen}
-              />
-            </View>
-            <Text style={styles.actionButtonText}>{t("reschedule")}</Text>
-          </TouchableOpacity> */}
+            {canShowReschedule && (
+              <TouchableOpacity
+                onPress={() => {
+                  router.push({
+                    pathname: "/(main)/bookingNow",
+                    params: {
+                      business_id: booking?.businessId?.toString() ?? "",
+                      is_reschedule: "1",
+                      booking_id: booking?.id ?? "",
+                      appointment_type:
+                        booking?.type === "subscription"
+                          ? "subscription"
+                          : "service",
+                      notes: booking?.notes ?? "",
+                      appointment_date: booking?.appointmentDate ?? "",
+                      appointment_time: booking?.appointmentTime ?? "",
+                      staff_id:
+                        booking?.staffId != null
+                          ? String(booking.staffId)
+                          : "anyone",
+                    },
+                  });
+                }}
+                activeOpacity={0.7}
+                style={styles.actionButton}
+              >
+                <View style={styles.actionButtonCircle}>
+                  <CalendarIcon
+                    width={moderateWidthScale(22)}
+                    height={moderateWidthScale(22)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+                <Text style={styles.actionButtonText}>{t("reschedule")}</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
               <View style={styles.actionButtonCircle}>
                 <SupportIcon
