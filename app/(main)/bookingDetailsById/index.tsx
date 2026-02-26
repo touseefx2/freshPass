@@ -62,14 +62,6 @@ const backArrowIconSvg = `
 </svg>
 `;
 
-const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
-  const svgXml = backArrowIconSvg
-    .replace(/{{WIDTH}}/g, width.toString())
-    .replace(/{{HEIGHT}}/g, height.toString())
-    .replace(/{{COLOR}}/g, color);
-  return <SvgXml xml={svgXml} />;
-};
-
 // Hours before appointment (current time must be at least this many hours behind appointment) to show Reschedule button
 const HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE = 1;
 
@@ -117,6 +109,8 @@ interface BookingItem {
   appointmentDate?: string;
   appointmentTime?: string;
   staffId?: number | null;
+  subscription_id?: number | null;
+  service_ids: number[] | null;
 }
 
 interface ApiBookingResponse {
@@ -757,6 +751,8 @@ export default function bookingDetailsById() {
         ? allServices.map((s: any) => s.name).join(" + ")
         : "---";
 
+    const service_ids = allServices.map((s: any) => s.id);
+
     const duration = formatDuration(services, apiData.subscriptionServices);
 
     const dateTime = formatAppointmentDateTime(
@@ -802,6 +798,8 @@ export default function bookingDetailsById() {
       appointmentDate: apiData.appointmentDate,
       appointmentTime: apiData.appointmentTime,
       staffId: apiData.staffId,
+      subscription_id: apiData.subscriptionId,
+      service_ids: service_ids,
     };
   };
 
