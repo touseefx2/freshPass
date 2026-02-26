@@ -13,7 +13,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  StatusBar,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -221,9 +220,9 @@ export default function LocationScreen() {
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const sessionTokenRef = useRef<string>(generateSessionToken());
 
-  useEffect(() => {
-    getCurrentLocation();
-  }, []);
+  // useEffect(() => {
+  //   // getCurrentLocation();
+  // }, []);
 
   const ensureSessionToken = useCallback(() => {
     if (!sessionTokenRef.current) {
@@ -455,6 +454,9 @@ export default function LocationScreen() {
       };
       dispatch(setCurrentLocation(locationPayload));
       dispatch(setLocationLoading(false));
+
+      dispatch(setLocation(locationPayload));
+      goBack();
     } catch (error) {
       dispatch(setLocationLoading(false));
       Logger.error("Error getting location:", error);
@@ -553,6 +555,7 @@ export default function LocationScreen() {
         )}
 
         <TouchableOpacity
+          disabled={true}
           activeOpacity={0.7}
           onPress={() => {
             dispatch(setLocation(currentLocation));
