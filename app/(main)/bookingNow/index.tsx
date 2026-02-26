@@ -644,6 +644,16 @@ const createStyles = (theme: Theme) =>
       opacity: 0.4,
       backgroundColor: theme.background,
     },
+    timeSlotSkeleton: {
+      width: widthScale(90),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.orangeBrown015,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     timeSlotText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
@@ -907,9 +917,7 @@ export default function BookingNow() {
     item?: string;
   }>();
 
-  const isSubscriptionBooking = Boolean(
-    params.subscription_id && params.item
-  );
+  const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
 
   const subscriptionData: SubscriptionData | null = useMemo(() => {
     if (params.item) {
@@ -1191,13 +1199,15 @@ export default function BookingNow() {
         if (!params.subscription_id) {
           if (serviceIdToSelect && allServicesData.length > 0) {
             serviceToSelect =
-              allServicesData.find((s: Service) => s.id === serviceIdToSelect) ||
-              allServicesData[0];
+              allServicesData.find(
+                (s: Service) => s.id === serviceIdToSelect,
+              ) || allServicesData[0];
           } else if (hasReduxData && reduxSelectedServices.length > 0) {
             const selectedServiceId = reduxSelectedServices[0].id;
             serviceToSelect =
-              allServicesData.find((s: Service) => s.id === selectedServiceId) ||
-              allServicesData[0];
+              allServicesData.find(
+                (s: Service) => s.id === selectedServiceId,
+              ) || allServicesData[0];
           } else if (allServicesData.length > 0) {
             serviceToSelect = allServicesData[0];
           }
@@ -1884,17 +1894,18 @@ export default function BookingNow() {
               contentContainerStyle={styles.timeSlotsContentContainer}
             >
               {slotsLoading ? (
-                <View style={styles.noSlotsContainer}>
-                  <ActivityIndicator size="small" color={theme.darkGreen} />
-                  <Text
-                    style={[
-                      styles.noSlotsText,
-                      { marginTop: moderateHeightScale(8) },
-                    ]}
-                  >
-                    Loading slots...
-                  </Text>
-                </View>
+                <>
+                  {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    <View key={`skeleton-${i}`} style={styles.timeSlotSkeleton}>
+                      <Text
+                        style={[styles.timeSlotText, { opacity: 0 }]}
+                        numberOfLines={1}
+                      >
+                        9:00 AM
+                      </Text>
+                    </View>
+                  ))}
+                </>
               ) : availableTimeSlots.length > 0 ? (
                 getAllSlots().map((slot) => {
                   const isDisabled = isSlotDisabled(slot);
@@ -1938,115 +1949,118 @@ export default function BookingNow() {
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
         {/* Service Details - hide for subscription booking */}
-        {!isSubscriptionBooking && selectedServices.map((service) => (
-          <View key={service.id} style={styles.serviceCard}>
-            <View style={styles.serviceHeader}>
-              <Text style={styles.serviceName}>{service.name}</Text>
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDeleteService(service.id)}
-              >
-                <MaterialIcons
-                  name="delete-outline"
-                  size={moderateWidthScale(20)}
-                  color={theme.red}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View style={{ gap: moderateHeightScale(4) }}>
-              <View style={styles.priceContainer}>
-                <Text style={styles.currentPrice}>
-                  - ${service.price.toFixed(2)} USD
-                </Text>
-                <Text style={styles.originalPrice}>
-                  ${service.originalPrice.toFixed(2)} USD
-                </Text>
+        {!isSubscriptionBooking &&
+          selectedServices.map((service) => (
+            <View key={service.id} style={styles.serviceCard}>
+              <View style={styles.serviceHeader}>
+                <Text style={styles.serviceName}>{service.name}</Text>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteService(service.id)}
+                >
+                  <MaterialIcons
+                    name="delete-outline"
+                    size={moderateWidthScale(20)}
+                    color={theme.red}
+                  />
+                </TouchableOpacity>
               </View>
 
-              <Text style={styles.descriptionText}>
-                - {service.description}
-              </Text>
+              <View style={{ gap: moderateHeightScale(4) }}>
+                <View style={styles.priceContainer}>
+                  <Text style={styles.currentPrice}>
+                    - ${service.price.toFixed(2)} USD
+                  </Text>
+                  <Text style={styles.originalPrice}>
+                    ${service.originalPrice.toFixed(2)} USD
+                  </Text>
+                </View>
+
+                <Text style={styles.descriptionText}>
+                  - {service.description}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
+          ))}
 
         {/* Add Another Service - hide for subscription booking */}
         {!isSubscriptionBooking && (
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleAddService}
-          style={styles.addServiceSection}
-        >
-          <Text style={styles.addServiceText}>Add another service</Text>
-          <View style={styles.addServiceButton}>
-            <Octicons
-              name="plus"
-              size={moderateWidthScale(16)}
-              color={theme.selectCard}
-            />
-          </View>
-        </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleAddService}
+            style={styles.addServiceSection}
+          >
+            <Text style={styles.addServiceText}>Add another service</Text>
+            <View style={styles.addServiceButton}>
+              <Octicons
+                name="plus"
+                size={moderateWidthScale(16)}
+                color={theme.selectCard}
+              />
+            </View>
+          </TouchableOpacity>
         )}
 
         {/* Payment Method Section - hide for subscription booking */}
         {!isSubscriptionBooking && (
-        <>
-        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
+          <>
+            <View
+              style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+            />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Choose payment method</Text>
-          <View style={[styles.paymentCard, styles.shadow]}>
-            <TouchableOpacity
-              style={styles.paymentOption}
-              onPress={() => dispatch(setSelectedPaymentMethod("payNow"))}
-            >
-              <View
-                style={[
-                  styles.paymentRadioButton,
-                  reduxPaymentMethod === "payNow" &&
-                    styles.paymentRadioButtonSelected,
-                ]}
-              >
-                {reduxPaymentMethod === "payNow" && (
-                  <View style={styles.paymentRadioButtonInner} />
-                )}
-              </View>
-              <View style={styles.paymentOptionContent}>
-                <Text style={styles.paymentOptionTitle}>Pay now</Text>
-                <Text style={styles.paymentOptionDescription}>
-                  Securely pay online to confirm your booking instantly.
-                </Text>
-              </View>
-            </TouchableOpacity>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Choose payment method</Text>
+              <View style={[styles.paymentCard, styles.shadow]}>
+                <TouchableOpacity
+                  style={styles.paymentOption}
+                  onPress={() => dispatch(setSelectedPaymentMethod("payNow"))}
+                >
+                  <View
+                    style={[
+                      styles.paymentRadioButton,
+                      reduxPaymentMethod === "payNow" &&
+                        styles.paymentRadioButtonSelected,
+                    ]}
+                  >
+                    {reduxPaymentMethod === "payNow" && (
+                      <View style={styles.paymentRadioButtonInner} />
+                    )}
+                  </View>
+                  <View style={styles.paymentOptionContent}>
+                    <Text style={styles.paymentOptionTitle}>Pay now</Text>
+                    <Text style={styles.paymentOptionDescription}>
+                      Securely pay online to confirm your booking instantly.
+                    </Text>
+                  </View>
+                </TouchableOpacity>
 
-            <View style={styles.paymentDivider} />
+                <View style={styles.paymentDivider} />
 
-            <TouchableOpacity
-              style={styles.paymentOption}
-              onPress={() => dispatch(setSelectedPaymentMethod("payLater"))}
-            >
-              <View
-                style={[
-                  styles.paymentRadioButton,
-                  reduxPaymentMethod === "payLater" &&
-                    styles.paymentRadioButtonSelected,
-                ]}
-              >
-                {reduxPaymentMethod === "payLater" && (
-                  <View style={styles.paymentRadioButtonInner} />
-                )}
+                <TouchableOpacity
+                  style={styles.paymentOption}
+                  onPress={() => dispatch(setSelectedPaymentMethod("payLater"))}
+                >
+                  <View
+                    style={[
+                      styles.paymentRadioButton,
+                      reduxPaymentMethod === "payLater" &&
+                        styles.paymentRadioButtonSelected,
+                    ]}
+                  >
+                    {reduxPaymentMethod === "payLater" && (
+                      <View style={styles.paymentRadioButtonInner} />
+                    )}
+                  </View>
+                  <View style={styles.paymentOptionContent}>
+                    <Text style={styles.paymentOptionTitle}>Pay later</Text>
+                    <Text style={styles.paymentOptionDescription}>
+                      Pay in person at the salon.
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               </View>
-              <View style={styles.paymentOptionContent}>
-                <Text style={styles.paymentOptionTitle}>Pay later</Text>
-                <Text style={styles.paymentOptionDescription}>
-                  Pay in person at the salon.
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-        </>
+            </View>
+          </>
         )}
 
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
@@ -2055,10 +2069,13 @@ export default function BookingNow() {
         <View style={styles.section}>
           <Text style={styles.privacyText}>
             By placing this order, you agree to our{" "}
-            <Text style={styles.privacyLink} onPress={() => {
+            <Text
+              style={styles.privacyLink}
+              onPress={() => {
                 const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
                 if (url) Linking.openURL(url);
-              }}>
+              }}
+            >
               Privacy Policy
             </Text>
             . Your personal data will be processed by the partner with whom
@@ -2136,7 +2153,10 @@ export default function BookingNow() {
               </View>
             </View>
             {subscriptionData.subscriptionPlanDescription && (
-              <Text style={styles.subscriptionDescriptionText} numberOfLines={2}>
+              <Text
+                style={styles.subscriptionDescriptionText}
+                numberOfLines={2}
+              >
                 {subscriptionData.subscriptionPlanDescription}
               </Text>
             )}
@@ -2219,16 +2239,18 @@ export default function BookingNow() {
         <View style={[styles.line, { marginTop: moderateHeightScale(10) }]} />
         {/* Price Breakdown - hide for subscription booking */}
         {!isSubscriptionBooking && (
-        <View style={styles.priceBreakdown}>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Subtotal:</Text>
-            <Text style={styles.priceValue}>${totalPrice.toFixed(2)} USD</Text>
-          </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Tax:</Text>
-            <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
-          </View>
-          {/* <View
+          <View style={styles.priceBreakdown}>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Subtotal:</Text>
+              <Text style={styles.priceValue}>
+                ${totalPrice.toFixed(2)} USD
+              </Text>
+            </View>
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Tax:</Text>
+              <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
+            </View>
+            {/* <View
             style={[
               styles.line,
               {
@@ -2245,19 +2267,19 @@ export default function BookingNow() {
               ${estimatedTotal.toFixed(2)} USD
             </Text>
           </View> */}
-        </View>
+          </View>
         )}
       </ScrollView>
 
       <View style={styles.bottom}>
         {/* Final Total - hide for subscription booking */}
         {!isSubscriptionBooking && (
-        <View style={styles.totalSection}>
-          <Text style={styles.totalLabel}>Estimated total:</Text>
-          <Text style={styles.totalValue}>
-            ${estimatedTotal.toFixed(2)} USD
-          </Text>
-        </View>
+          <View style={styles.totalSection}>
+            <Text style={styles.totalLabel}>Estimated total:</Text>
+            <Text style={styles.totalValue}>
+              ${estimatedTotal.toFixed(2)} USD
+            </Text>
+          </View>
         )}
 
         {/* Checkout Button */}
