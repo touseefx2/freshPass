@@ -935,6 +935,7 @@ export default function BookingNow() {
     business_id?: string;
     service_id?: string;
     subscription_id?: string;
+    service_ids?: string;
     item?: string;
     is_reschedule?: string;
     booking_id?: string;
@@ -1286,20 +1287,31 @@ export default function BookingNow() {
 
         const businessHoursData = parseBusinessHours(businessData?.hours);
 
-        // Find the service to select - skip when coming from subscription booking
-        const serviceIdToSelect = params.subscription_id
-          ? null
-          : params.service_id
-            ? parseInt(params.service_id)
-            : null;
+        // Find the service(s) to select - skip when coming from subscription booking
+        let serviceIdsToSelect: number[] = [];
+        if (!params.subscription_id) {
+          if (params.service_ids) {
+            try {
+              serviceIdsToSelect = JSON.parse(params.service_ids) as number[];
+            } catch (_) {
+              serviceIdsToSelect = params.service_ids
+                .split(",")
+                .map((id) => parseInt(id.trim(), 10))
+                .filter((n) => !Number.isNaN(n));
+            }
+          } else if (params.service_id) {
+            serviceIdsToSelect = [parseInt(params.service_id, 10)];
+          }
+        }
 
         let serviceToSelect = null;
-        if (!params.subscription_id) {
-          if (serviceIdToSelect && allServicesData.length > 0) {
-            serviceToSelect =
-              allServicesData.find(
-                (s: Service) => s.id === serviceIdToSelect,
-              ) || allServicesData[0];
+        let servicesToSelect: Service[] = [];
+        if (!params.subscription_id && allServicesData.length > 0) {
+          if (serviceIdsToSelect.length > 0) {
+            servicesToSelect = serviceIdsToSelect
+              .map((id) => allServicesData.find((s: Service) => s.id === id))
+              .filter(Boolean) as Service[];
+            serviceToSelect = servicesToSelect[0] || allServicesData[0];
           } else if (hasReduxData && reduxSelectedServices.length > 0) {
             const selectedServiceId = reduxSelectedServices[0].id;
             serviceToSelect =
@@ -1324,6 +1336,8 @@ export default function BookingNow() {
         // Set selected service in selectedServices - skip for subscription booking
         if (params.subscription_id) {
           dispatch(setSelectedServices([]));
+        } else if (servicesToSelect.length > 0) {
+          dispatch(setSelectedServices(servicesToSelect));
         } else if (serviceToSelect) {
           if (hasReduxData && reduxSelectedServices.length > 0) {
             const existingService = allServicesData.find(
@@ -1359,6 +1373,7 @@ export default function BookingNow() {
   }, [
     params.business_id,
     params.service_id,
+    params.service_ids,
     params.subscription_id,
     reduxBusinessId,
     allServices.length,
@@ -1444,9 +1459,9 @@ export default function BookingNow() {
         date: dateStr,
         staff_id: staffId,
         slot_minutes: 30,
-        ...(excludeAppointmentId != null && !isNaN(excludeAppointmentId)
-          ? { exclude_appointment_id: excludeAppointmentId }
-          : {}),
+        // ...(excludeAppointmentId != null && !isNaN(excludeAppointmentId)
+        //   ? { exclude_appointment_id: excludeAppointmentId }
+        //   : {}),
       }),
     )
       .then((res) => {
@@ -2540,13 +2555,50 @@ export default function BookingNow() {
                 return;
               }
               const staffId =
-                selectedStaff === "anyone" ? 0 : parseInt(selectedStaff, 10);
+                selectedStaff === "anyone" ? null : parseInt(selectedStaff, 10);
               const appointmentDate = selectedDate.format("YYYY-MM-DD");
               const appointmentTime = selectedTimeSlot;
               const appointmentType =
                 params.appointment_type === "subscription"
                   ? "subscription"
                   : "service";
+              const body: {
+                business_id: number;
+                appointment_type: string;
+                staff_id?: number;
+                appointment_date: string;
+                appointment_time: string;
+                notes?: string;
+                service_ids?: number[];
+                subscription_id?: number;
+              } = {
+                business_id: parseInt(businessId, 10),
+                appointment_type: appointmentType,
+                appointment_date: appointmentDate,
+                appointment_time: appointmentTime,
+                notes: note.trim() || undefined,
+              };
+              if (staffId != null && !Number.isNaN(staffId)) {
+                body.staff_id = staffId;
+              }
+              if (appointmentType === "service" && params.service_ids) {
+                try {
+                  body.service_ids = JSON.parse(params.service_ids) as number[];
+                } catch (_) {
+                  // fallback: treat as comma-separated
+                  body.service_ids = params.service_ids
+                    .split(",")
+                    .map((id) => parseInt(id.trim(), 10))
+                    .filter((n) => !Number.isNaN(n));
+                }
+              }
+              if (
+                appointmentType === "subscription" &&
+                params.subscription_id != null &&
+                params.subscription_id !== ""
+              ) {
+                body.subscription_id = parseInt(params.subscription_id, 10);
+              }
               setRescheduleLoading(true);
               try {
                 const response = await ApiService.put<{
@@ -2558,14 +2610,7 @@ export default function BookingNow() {
                     appointmentTime: string;
                     status: string;
                   };
-                }>(appointmentsEndpoints.reschedule(bookingId), {
-                  business_id: parseInt(businessId, 10),
-                  appointment_type: appointmentType,
-                  staff_id: staffId,
-                  appointment_date: appointmentDate,
-                  appointment_time: appointmentTime,
-                  notes: note.trim() || undefined,
-                });
+                }>(appointmentsEndpoints.reschedule(bookingId), body);
                 if (response.success) {
                   showBanner(
                     t("success"),

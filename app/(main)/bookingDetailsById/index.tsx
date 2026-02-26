@@ -1374,24 +1374,41 @@ export default function bookingDetailsById() {
             {canShowReschedule && (
               <TouchableOpacity
                 onPress={() => {
+                  const baseParams: Record<string, string> = {
+                    business_id: booking?.businessId?.toString() ?? "",
+                    is_reschedule: "1",
+                    booking_id: booking?.id ?? "",
+                    appointment_type:
+                      booking?.type === "subscription"
+                        ? "subscription"
+                        : "service",
+                    appointment_date: booking?.appointmentDate ?? "",
+                    appointment_time: booking?.appointmentTime ?? "",
+                    staff_id:
+                      booking?.staffId != null
+                        ? String(booking.staffId)
+                        : "anyone",
+                  };
+                  if (
+                    booking?.type === "service" &&
+                    booking?.service_ids?.length
+                  ) {
+                    baseParams.service_ids = JSON.stringify(
+                      booking.service_ids,
+                    );
+                  }
+                  if (
+                    booking?.type === "subscription" &&
+                    booking?.subscription_id != null
+                  ) {
+                    baseParams.subscription_id = String(
+                      booking.subscription_id,
+                    );
+                  }
+
                   router.push({
                     pathname: "/(main)/bookingNow",
-                    params: {
-                      business_id: booking?.businessId?.toString() ?? "",
-                      is_reschedule: "1",
-                      booking_id: booking?.id ?? "",
-                      appointment_type:
-                        booking?.type === "subscription"
-                          ? "subscription"
-                          : "service",
-                      notes: booking?.notes ?? "",
-                      appointment_date: booking?.appointmentDate ?? "",
-                      appointment_time: booking?.appointmentTime ?? "",
-                      staff_id:
-                        booking?.staffId != null
-                          ? String(booking.staffId)
-                          : "anyone",
-                    },
+                    params: baseParams,
                   });
                 }}
                 activeOpacity={0.7}
