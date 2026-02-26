@@ -8,8 +8,6 @@ import {
   Image,
   StatusBar,
   BackHandler,
-  TextInput,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -42,8 +40,7 @@ import {
 import { SvgXml } from "react-native-svg";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons, Feather, Octicons } from "@expo/vector-icons";
-import { CloseIcon } from "@/assets/icons";
+import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import StaffSelectionBottomSheet from "@/src/components/StaffSelectionBottomSheet";
 import { useTranslation } from "react-i18next";
@@ -638,18 +635,19 @@ function CheckoutContent() {
     selectedDate: reduxSelectedDate,
     selectedTimeSlot: reduxSelectedTimeSlot,
     selectedPaymentMethod: reduxPaymentMethod,
+    selectedNote: reduxNote,
   } = businessData;
 
   // Use Redux directly - no local state needed
   const selectedServices = reduxSelectedServices || [];
   const selectedStaffId = reduxSelectedStaff || "anyone";
   const paymentMethod = reduxPaymentMethod || "payNow";
+  const note = reduxNote || "";
   const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
   const [staffSelectionModalVisible, setStaffSelectionModalVisible] =
     useState(false);
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
-  const [note, setNote] = useState<string>("");
   const [processingPayment, setProcessingPayment] = useState(false);
 
   // Handle service deletion
@@ -1310,46 +1308,6 @@ function CheckoutContent() {
               </View>
             </View>
 
-            {/* Privacy Policy Section */}
-            <View style={styles.section}>
-              <Text style={styles.privacyText}>
-                By placing this order, you agree to our{" "}
-                <Text style={styles.privacyLink} onPress={() => {}}>
-                  Privacy Policy
-                </Text>
-                . Your personal data will be processed by the partner with whom
-                you're booking an appointment.
-              </Text>
-            </View>
-
-            {/* Leave a Note Section */}
-            <View style={styles.noteInputContainer}>
-              <View style={styles.noteInputIcon}>
-                <Feather
-                  name="file-text"
-                  size={moderateWidthScale(18)}
-                  color={theme.lightGreen}
-                />
-              </View>
-              <TextInput
-                style={[styles.noteInput, styles.noteInputWithIcon]}
-                value={note}
-                onChangeText={setNote}
-                placeholder="Leave a note (optional)"
-                placeholderTextColor={theme.lightGreen2}
-                multiline
-                numberOfLines={4}
-              />
-              {note.length > 0 && (
-                <Pressable
-                  onPress={() => setNote("")}
-                  style={styles.noteClearButton}
-                  hitSlop={moderateWidthScale(8)}
-                >
-                  <CloseIcon color={theme.darkGreen} />
-                </Pressable>
-              )}
-            </View>
           </ScrollView>
 
           <View style={styles.bottom}>

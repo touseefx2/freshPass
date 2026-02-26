@@ -14,6 +14,9 @@ import {
   Image,
   StatusBar,
   ActivityIndicator,
+  TextInput,
+  Pressable,
+  Linking,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
@@ -24,6 +27,7 @@ import {
   setSelectedDate,
   setSelectedTimeSlot,
   setSelectedPaymentMethod,
+  setSelectedNote,
   resetBusiness,
   setBusinessData as setBusinessDataAction,
   type StaffMember,
@@ -49,7 +53,7 @@ import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
-import { MorningIcon, EveningIcon, NightIcon } from "@/assets/icons";
+import { MorningIcon, EveningIcon, NightIcon, CloseIcon } from "@/assets/icons";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -421,6 +425,52 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    privacyText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: moderateHeightScale(16),
+      marginHorizontal: moderateWidthScale(20),
+    },
+    privacyLink: {
+      color: theme.primary,
+      fontFamily: fonts.fontMedium,
+    },
+    noteInputContainer: {
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(20),
+      marginHorizontal: moderateWidthScale(20),
+      position: "relative",
+    },
+    noteInput: {
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      paddingRight: moderateWidthScale(40),
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      minHeight: heightScale(100),
+      textAlignVertical: "top",
+    },
+    noteInputIcon: {
+      position: "absolute",
+      left: moderateWidthScale(16),
+      top: moderateHeightScale(12),
+      zIndex: 1,
+    },
+    noteInputWithIcon: {
+      paddingLeft: moderateWidthScale(48),
+    },
+    noteClearButton: {
+      position: "absolute",
+      top: moderateHeightScale(12),
+      right: moderateWidthScale(12),
+      zIndex: 1,
+    },
     weekNavigation: {
       flexDirection: "row",
       alignItems: "center",
@@ -693,6 +743,7 @@ export default function BookingNow() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [apiSlots, setApiSlots] = useState<string[]>([]);
+  const [note, setNote] = useState("");
 
   // Always fetch business data - API call happens in both cases
   const fetchBusinessDetails = useCallback(async () => {
@@ -1768,6 +1819,52 @@ export default function BookingNow() {
 
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
+        {/* Privacy Policy Section */}
+        <View style={styles.section}>
+          <Text style={styles.privacyText}>
+            By placing this order, you agree to our{" "}
+            <Text style={styles.privacyLink} onPress={() => {
+                const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+                if (url) Linking.openURL(url);
+              }}>
+              Privacy Policy
+            </Text>
+            . Your personal data will be processed by the partner with whom
+            you're booking an appointment.
+          </Text>
+        </View>
+
+        {/* Leave a Note Section */}
+        <View style={styles.noteInputContainer}>
+          <View style={styles.noteInputIcon}>
+            <Feather
+              name="file-text"
+              size={moderateWidthScale(18)}
+              color={theme.lightGreen}
+            />
+          </View>
+          <TextInput
+            style={[styles.noteInput, styles.noteInputWithIcon]}
+            value={note}
+            onChangeText={setNote}
+            placeholder="Leave a note (optional)"
+            placeholderTextColor={theme.lightGreen2}
+            multiline
+            numberOfLines={4}
+          />
+          {note.length > 0 && (
+            <Pressable
+              onPress={() => setNote("")}
+              style={styles.noteClearButton}
+              hitSlop={moderateWidthScale(8)}
+            >
+              <CloseIcon color={theme.darkGreen} />
+            </Pressable>
+          )}
+        </View>
+
+        <View style={[styles.line, { marginTop: moderateHeightScale(10) }]} />
+
         {/* Price Breakdown */}
         <View style={styles.priceBreakdown}>
           <View style={styles.priceRow}>
@@ -1832,6 +1929,7 @@ export default function BookingNow() {
             }
             dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
             dispatch(setSelectedTimeSlot(selectedTimeSlot));
+            dispatch(setSelectedNote(note));
             router.push({
               pathname: "/(main)/bookingNow/checkout",
             });
