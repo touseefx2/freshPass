@@ -8,14 +8,11 @@ import {
   Image,
   StatusBar,
   BackHandler,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import {
-  setSelectedServices,
   setSelectedStaff,
   type StaffMember,
 } from "@/src/state/slices/bsnsSlice";
@@ -40,9 +37,6 @@ import {
 import { SvgXml } from "react-native-svg";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialIcons, Octicons } from "@expo/vector-icons";
-import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
-import StaffSelectionBottomSheet from "@/src/components/StaffSelectionBottomSheet";
 import { useTranslation } from "react-i18next";
 const backArrowIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -58,6 +52,29 @@ const BackArrowIcon = ({ width = 24, height = 24, color = "#FFFFFF" }) => {
   return <SvgXml xml={svgXml} />;
 };
 
+const calendarIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V9H19V20Z" fill="{{COLOR}}"/></svg>`;
+const personIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.34 4 18V20H20V18C20 15.34 14.67 14 12 14Z" fill="{{COLOR}}"/></svg>`;
+const listIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 18H21V20H3V18ZM3 13H21V15H3V13ZM3 8H21V10H3V8ZM3 3H21V5H3V3Z" fill="{{COLOR}}"/></svg>`;
+const paymentIconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4C2.89 4 2.01 4.89 2.01 6L2 18C2 19.11 2.89 20 4 20H20C21.11 20 22 19.11 22 18V6C22 4.89 21.11 4 20 4ZM20 18H4V12H20V18ZM20 8H4V6H20V8Z" fill="{{COLOR}}"/></svg>`;
+
+const SummaryIcon = ({
+  type,
+  color,
+}: {
+  type: "calendar" | "person" | "list" | "payment";
+  color: string;
+}) => {
+  const xml =
+    type === "calendar"
+      ? calendarIconSvg.replace(/{{COLOR}}/g, color)
+      : type === "person"
+        ? personIconSvg.replace(/{{COLOR}}/g, color)
+        : type === "list"
+          ? listIconSvg.replace(/{{COLOR}}/g, color)
+          : paymentIconSvg.replace(/{{COLOR}}/g, color);
+  return <SvgXml xml={xml} width={widthScale(20)} height={heightScale(20)} />;
+};
+
 interface Service {
   id: number;
   name: string;
@@ -67,6 +84,50 @@ interface Service {
   duration: string;
   label?: string | null;
 }
+
+const formatSlotTo12h = (time24: string): string => {
+  const [h, m] = time24.split(":").map(Number);
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h === 12 ? 12 : h;
+  return `${h12}:${m.toString().padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+
+const formatDateDisplay = (dateStr: string): string => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr + "T12:00:00");
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return `${days[d.getDay()]}, ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+};
+
+const resolveStaffImageUri = (
+  staffId: string,
+  staffMember: StaffMember | null,
+): string => {
+  if (staffId === "anyone") {
+    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  }
+  const img = staffMember?.image;
+  if (!img) return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  const isAbsolute =
+    typeof img === "string" &&
+    (img.startsWith("http://") || img.startsWith("https://"));
+  return isAbsolute
+    ? img
+    : `${process.env.EXPO_PUBLIC_API_BASE_URL ?? ""}${img}`;
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -107,7 +168,8 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(12),
     },
     scrollContent: {
-      paddingBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingBottom: moderateHeightScale(32),
     },
     section: {
       marginTop: moderateHeightScale(16),
@@ -524,29 +586,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-    bottom: {
-      backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(20),
-      gap: moderateHeightScale(16),
-      paddingVertical: moderateHeightScale(12),
-      borderColor: theme.borderLight,
-      borderTopWidth: 1,
-    },
-    totalSection: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    totalLabel: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    totalValue: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
     // Note Input Section
     noteInputContainer: {
       marginTop: moderateHeightScale(16),
@@ -610,6 +649,258 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(16),
       textAlign: "center",
     },
+    summaryCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      marginTop: moderateHeightScale(24),
+      overflow: "hidden",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 16,
+      elevation: 6,
+    },
+    summaryCardBody: {
+      padding: moderateWidthScale(24),
+    },
+    footerCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      marginTop: moderateHeightScale(20),
+      overflow: "hidden",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 16,
+      elevation: 6,
+    },
+    footerCardBody: {
+      padding: moderateWidthScale(24),
+    },
+    footerTotalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+    },
+    footerTotalLabel: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    footerTotalValue: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
+    },
+    footerButtonWrap: {
+      marginTop: moderateHeightScale(20),
+    },
+    dateTimeBlock: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginBottom: moderateHeightScale(20),
+      paddingLeft: moderateWidthScale(16),
+      borderLeftWidth: 4,
+      borderLeftColor: theme.orangeBrown,
+      paddingVertical: moderateHeightScale(4),
+    },
+    dateTimeTextWrap: {
+      flex: 1,
+    },
+    dateTimeIconWrap: {
+      marginLeft: moderateWidthScale(12),
+      marginTop: moderateHeightScale(2),
+    },
+    dateTimeLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(4),
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    dateTimeValue: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      lineHeight: moderateHeightScale(22),
+    },
+    staffSection: {
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(16),
+      padding: moderateWidthScale(16),
+      marginBottom: moderateHeightScale(20),
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+    },
+    staffAvatarWrap: {
+      position: "relative",
+      marginRight: moderateWidthScale(14),
+    },
+    staffAvatar: {
+      width: widthScale(56),
+      height: widthScale(56),
+      borderRadius: widthScale(28),
+      backgroundColor: theme.emptyProfileImage,
+      borderWidth: 2,
+      borderColor: theme.orangeBrown30,
+    },
+    staffStatusDot: {
+      position: "absolute",
+      bottom: 2,
+      right: 2,
+      width: moderateWidthScale(12),
+      height: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 2,
+      borderColor: theme.white,
+    },
+    staffStatusDotActive: {
+      backgroundColor: theme.toggleActive,
+    },
+    staffStatusDotInactive: {
+      backgroundColor: theme.lightGreen5,
+    },
+    staffLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(4),
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    staffName: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    staffExperience: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
+    },
+    sectionLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(10),
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    serviceRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(10),
+      backgroundColor: theme.white,
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(12),
+      borderLeftWidth: 4,
+      borderLeftColor: theme.orangeBrown30,
+      borderWidth: 1,
+      borderRightWidth: 1,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    serviceName: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      flex: 1,
+      marginRight: moderateWidthScale(12),
+    },
+    servicePrice: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    noteBlock: {
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(14),
+      marginTop: moderateHeightScale(16),
+      borderLeftWidth: 4,
+      borderLeftColor: theme.orangeBrown30,
+    },
+    noteLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(6),
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    noteText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      fontStyle: "italic",
+      lineHeight: moderateHeightScale(18),
+    },
+    paymentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(4),
+    },
+    paymentLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    paymentBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      backgroundColor: theme.orangeBrown30,
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.orangeBrown,
+    },
+    paymentBadgeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    summaryRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(14),
+    },
+    summaryLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    summaryValue: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      flex: 1,
+      textAlign: "right",
+    },
+    summaryDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginVertical: moderateHeightScale(12),
+    },
   });
 
 function CheckoutContent() {
@@ -643,48 +934,11 @@ function CheckoutContent() {
   const selectedStaffId = reduxSelectedStaff || "anyone";
   const paymentMethod = reduxPaymentMethod || "payNow";
   const note = reduxNote || "";
-  const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
-  const [staffSelectionModalVisible, setStaffSelectionModalVisible] =
-    useState(false);
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
 
-  // Handle service deletion
-  const handleDeleteService = (serviceId: number) => {
-    const updatedServices = selectedServices.filter(
-      (service) => service.id !== serviceId,
-    );
-    dispatch(setSelectedServices(updatedServices));
-  };
-
-  // Handle add service modal
-  const handleAddService = () => {
-    setAddServiceModalVisible(true);
-  };
-
-  const handleCloseModal = useCallback(() => {
-    setAddServiceModalVisible(false);
-  }, []);
-
-  const handleUpdateSelectedServices = useCallback(
-    (services: Service[]) => {
-      dispatch(setSelectedServices(services));
-    },
-    [dispatch],
-  );
-
-  // Memoize selectedServiceIds for AddServiceBottomSheet
-  const selectedServiceIds = useMemo(
-    () => selectedServices.map((s) => s.id),
-    [selectedServices],
-  );
-
-  // Handle back navigation with updated data
   const handleBackNavigation = useCallback(() => {
-    // Use router.back() to properly go back in navigation stack
-    // This maintains the correct navigation history (Business Detail -> BookingNow -> Checkout)
-    // The previous screen (bookingNow) will read updated params via useFocusEffect
     router.back();
   }, [router]);
 
@@ -718,6 +972,10 @@ function CheckoutContent() {
     (sum, service) => sum + service.price,
     0,
   );
+  const staffImageUri = resolveStaffImageUri(
+    selectedStaffId,
+    selectedStaffMember,
+  );
   // Tax rate (5% = 0.1)
   const taxRate = 0.0;
   const tax = totalPrice * taxRate;
@@ -738,15 +996,6 @@ function CheckoutContent() {
       }
     }
   }, [selectedStaffId, staffMembers]);
-
-  // Update Redux when local state changes
-  useEffect(() => {
-    dispatch(setSelectedServices(selectedServices));
-  }, [selectedServices, dispatch]);
-
-  useEffect(() => {
-    dispatch(setSelectedStaff(selectedStaffId));
-  }, [selectedStaffId, dispatch]);
 
   const params = useLocalSearchParams<{ subscription_id?: string }>();
   const subscriptionId = params.subscription_id
@@ -1109,259 +1358,129 @@ function CheckoutContent() {
       <View style={styles.line} />
 
       <View style={{ flex: 1 }}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "padding"}
-          enabled={true}
-          keyboardVerticalOffset={0}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={[styles.line, { marginTop: 0 }]} />
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryCardBody}>
+              {/* Date & Time — left accent */}
+              <View style={styles.dateTimeBlock}>
+                <View style={styles.dateTimeTextWrap}>
+                  <Text style={styles.dateTimeLabel}>Date & time</Text>
+                  <Text style={styles.dateTimeValue}>
+                    {formatDateDisplay(reduxSelectedDate || "")}
+                    {reduxSelectedTimeSlot
+                      ? ` • ${formatSlotTo12h(reduxSelectedTimeSlot)}`
+                      : ""}
+                  </Text>
+                </View>
+                <View style={styles.dateTimeIconWrap}>
+                  <SummaryIcon type="calendar" color={theme.orangeBrown} />
+                </View>
+              </View>
 
-            {/* Service Details Section */}
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>You're paying for:</Text>
-              <View style={styles.serviceDetailsCard}>
-                {selectedServices.length > 0 &&
-                  selectedServices.map((service, index) => (
-                    <React.Fragment key={service.id}>
-                      <View style={styles.serviceItem}>
-                        <View style={styles.serviceDetailsHeader}>
-                          <Text style={styles.serviceDetailsName}>
-                            {service.name}
-                            <Text style={{ fontFamily: fonts.fontRegular }}>
-                              {" "}
-                              - {service.description}
-                            </Text>
-                          </Text>
-                          <View style={styles.serviceDetailsPriceContainer}>
-                            <View style={styles.serviceDetailsPriceColumn}>
-                              <Text style={styles.serviceDetailsPrice}>
-                                ${service.price.toFixed(2)} USD
-                              </Text>
-                              <Text style={styles.serviceDetailsOriginalPrice}>
-                                ${service.originalPrice.toFixed(2)}
-                              </Text>
-                            </View>
-                            <TouchableOpacity
-                              onPress={() => handleDeleteService(service.id)}
-                              activeOpacity={0.5}
-                            >
-                              <MaterialIcons
-                                name="delete-outline"
-                                size={moderateWidthScale(20)}
-                                color={theme.red}
-                              />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      </View>
-                      {index < selectedServices.length - 1 && (
-                        <View style={styles.serviceDivider} />
-                      )}
-                    </React.Fragment>
-                  ))}
-                {/* Add Service Button - Always show */}
-                {selectedServices.length > 0 && (
-                  <View style={styles.serviceDivider} />
-                )}
-                {selectedServices.length <= 0 && (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={handleAddService}
-                    style={[
-                      styles.serviceItem,
-                      {
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.serviceDetailsName,
-                        { fontFamily: fonts.fontRegular },
-                      ]}
-                    >
-                      Add another service
-                    </Text>
-                    <View style={styles.addServiceButton}>
-                      <Octicons
-                        name="plus"
-                        size={moderateWidthScale(16)}
-                        color={theme.selectCard}
-                      />
-                    </View>
-                  </TouchableOpacity>
-                )}
-                {/* Staff Section - Always show */}
-                <View
-                  style={[styles.serviceDivider, { marginHorizontal: 0 }]}
-                />
-                <View style={styles.serviceDetailsStaff}>
-                  {selectedStaffId === "anyone" ? (
-                    <>
-                      <Image
-                        source={{
-                          uri: "https://www.w3schools.com/howto/img_avatar2.png",
-                        }}
-                        style={styles.serviceDetailsStaffImage}
-                        resizeMode="cover"
-                      />
-                      <Text
-                        style={[
-                          styles.serviceDetailsStaffName,
-                          { marginLeft: 8 },
-                        ]}
-                      >
-                        Anyone available
-                      </Text>
-                    </>
-                  ) : selectedStaffMember ? (
-                    <>
-                      <View style={styles.serviceDetailsStaffImageWrapper}>
-                        <Image
-                          source={{ uri: selectedStaffMember.image ?? "" }}
-                          style={styles.serviceDetailsStaffImage}
-                          resizeMode="cover"
-                        />
-                        <View
-                          style={[
-                            styles.serviceDetailsStaffStatusDot,
-                            selectedStaffMember.active
-                              ? styles.serviceDetailsStaffStatusDotActive
-                              : styles.serviceDetailsStaffStatusDotInactive,
-                          ]}
-                        />
-                      </View>
-
-                      <Text style={styles.serviceDetailsStaffName}>
-                        {selectedStaffMember.name}
-                      </Text>
-                    </>
+              {/* Staff — card with avatar */}
+              <Text style={styles.sectionLabel}>Staff</Text>
+              <View style={styles.staffSection}>
+                <View style={styles.staffAvatarWrap}>
+                  {staffImageUri ? (
+                    <Image
+                      source={{ uri: staffImageUri }}
+                      style={styles.staffAvatar}
+                      resizeMode="cover"
+                    />
                   ) : (
-                    <>
-                      <Image
-                        source={{
-                          uri: "https://www.w3schools.com/howto/img_avatar2.png",
-                        }}
-                        style={styles.serviceDetailsStaffImage}
-                        resizeMode="cover"
-                      />
-                      <Text
-                        style={[
-                          styles.serviceDetailsStaffName,
-                          { marginLeft: 8 },
-                        ]}
-                      >
-                        Anyone available
-                      </Text>
-                    </>
+                    <View style={styles.staffAvatar} />
                   )}
-                  <TouchableOpacity
-                    style={styles.serviceDetailsChangeButton}
-                    onPress={() => setStaffSelectionModalVisible(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.serviceDetailsChangeButtonText}>
-                      Change
-                    </Text>
-                  </TouchableOpacity>
+                  {selectedStaffId !== "anyone" && selectedStaffMember && (
+                    <View
+                      style={[
+                        styles.staffStatusDot,
+                        selectedStaffMember.active
+                          ? styles.staffStatusDotActive
+                          : styles.staffStatusDotInactive,
+                      ]}
+                    />
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.staffName}>
+                    {selectedStaffId === "anyone"
+                      ? "Anyone available"
+                      : (selectedStaffMember?.name ?? "—")}
+                  </Text>
+                  {selectedStaffId !== "anyone" &&
+                    selectedStaffMember?.experience != null && (
+                      <Text style={styles.staffExperience} numberOfLines={1}>
+                        {selectedStaffMember.experience === 1
+                          ? "1 year experience"
+                          : `${selectedStaffMember.experience} years experience`}
+                      </Text>
+                    )}
+                </View>
+                <SummaryIcon type="person" color={theme.lightGreen} />
+              </View>
+
+              {/* Services */}
+              <Text
+                style={[
+                  styles.sectionLabel,
+                  { marginBottom: moderateHeightScale(10) },
+                ]}
+              >
+                Services
+              </Text>
+              {selectedServices.map((service) => (
+                <View key={service.id} style={styles.serviceRow}>
+                  <Text style={styles.serviceName} numberOfLines={2}>
+                    {service.name}
+                  </Text>
+                  <Text style={styles.servicePrice}>
+                    ${service.price.toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+
+              {note.trim() ? (
+                <View style={styles.noteBlock}>
+                  <Text style={styles.noteLabel}>Note</Text>
+                  <Text style={styles.noteText} numberOfLines={4}>
+                    {note.trim()}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Payment */}
+              <View style={styles.paymentRow}>
+                <Text style={styles.paymentLabel}>Payment</Text>
+                <View style={styles.paymentBadge}>
+                  <SummaryIcon type="payment" color={theme.darkGreen} />
+                  <Text style={styles.paymentBadgeText}>
+                    {paymentMethod === "payNow" ? "Pay now" : "Pay later"}
+                  </Text>
                 </View>
               </View>
             </View>
+          </View>
 
-            {/* Price Breakdown Section */}
-            <View style={styles.priceBreakdown}>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Subtotal:</Text>
-                <Text style={styles.priceValue}>
-                  ${totalPrice.toFixed(2)} USD
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.line,
-                  {
-                    backgroundColor: theme.lightGreen2,
-                    marginBottom: moderateHeightScale(12),
-                  },
-                ]}
-              />
-              <View style={styles.priceRow}>
-                <Text
-                  style={[styles.priceLabel, { fontFamily: fonts.fontBold }]}
-                >
-                  Estimated Total:
-                </Text>
-                <Text
-                  style={[styles.priceValue, { fontFamily: fonts.fontBold }]}
-                >
+          {/* Footer card — Total + Checkout button */}
+          <View style={styles.footerCard}>
+            <View style={styles.footerCardBody}>
+              <View style={styles.footerTotalRow}>
+                <Text style={styles.footerTotalLabel}>Total</Text>
+                <Text style={styles.footerTotalValue}>
                   ${estimatedTotal.toFixed(2)} USD
                 </Text>
               </View>
+              <View style={styles.footerButtonWrap}>
+                <Button title={t("checkout")} onPress={handleBookNow} />
+              </View>
             </View>
-
-          </ScrollView>
-
-          <View style={styles.bottom}>
-            {/* Final Total */}
-            <View style={styles.totalSection}>
-              <Text style={styles.totalLabel}>Order total:</Text>
-              <Text style={styles.totalValue}>
-                ${estimatedTotal.toFixed(2)} USD
-              </Text>
-            </View>
-
-            {/* Checkout Button */}
-            <Button
-              // title="Book now"
-              title={t("checkout")}
-              onPress={handleBookNow}
-            />
           </View>
-        </KeyboardAvoidingView>
+        </ScrollView>
       </View>
 
-      {/* Add Service Bottom Sheet */}
-      <AddServiceBottomSheet
-        visible={addServiceModalVisible}
-        onClose={handleCloseModal}
-        services={allServices}
-        selectedServiceIds={selectedServiceIds}
-        onUpdateServices={handleUpdateSelectedServices}
-      />
-
-      {/* Staff Selection Bottom Sheet */}
-      <StaffSelectionBottomSheet
-        visible={staffSelectionModalVisible}
-        onClose={() => setStaffSelectionModalVisible(false)}
-        staffMembers={staffMembers}
-        selectedStaffId={selectedStaffId}
-        onSelectStaff={(staffId) => {
-          dispatch(setSelectedStaff(staffId));
-          if (staffId === "anyone") {
-            setSelectedStaffMember(null);
-          } else {
-            const foundStaff = staffMembers.find(
-              (s) => s.id.toString() === staffId,
-            );
-            if (foundStaff) {
-              setSelectedStaffMember(foundStaff);
-            } else {
-              setSelectedStaffMember(dummyStaff);
-            }
-          }
-        }}
-      />
-
-      {/* Processing Payment Overlay */}
       {processingPayment && (
         <View style={styles.processingOverlay}>
           <View style={styles.processingContainer}>
