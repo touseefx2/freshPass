@@ -900,6 +900,27 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    rescheduleHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(12),
+    },
+    rescheduleIconWrap: {
+      marginRight: moderateWidthScale(12),
+    },
+    rescheduleTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(4),
+    },
+    rescheduleSubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
   });
 
 export default function BookingNow() {
@@ -915,8 +936,13 @@ export default function BookingNow() {
     service_id?: string;
     subscription_id?: string;
     item?: string;
+    is_reschedule?: string;
+    booking_id?: string;
+    appointment_type?: string;
+    notes?: string;
   }>();
 
+  const isReschedule = params.is_reschedule === "1";
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
 
   const subscriptionData: SubscriptionData | null = useMemo(() => {
@@ -978,6 +1004,14 @@ export default function BookingNow() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [apiSlots, setApiSlots] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const [rescheduleLoading, setRescheduleLoading] = useState(false);
+
+  // Pre-fill note when in reschedule mode and notes param is passed
+  useEffect(() => {
+    if (isReschedule && params.notes != null && String(params.notes).trim() !== "") {
+      setNote(String(params.notes).trim());
+    }
+  }, [isReschedule, params.notes]);
 
   // Always fetch business data - API call happens in both cases
   const fetchBusinessDetails = useCallback(async () => {
@@ -1328,6 +1362,14 @@ export default function BookingNow() {
     const dateStr = selectedDate.format("YYYY-MM-DD");
     const staffId =
       selectedStaff !== "anyone" ? parseInt(selectedStaff, 10) : undefined;
+    const excludeAppointmentId =
+      isReschedule && params.booking_id
+        ? parseInt(String(params.booking_id), 10)
+        : undefined;
+    if (excludeAppointmentId && isNaN(excludeAppointmentId)) {
+      setApiSlots([]);
+      return;
+    }
     setSlotsLoading(true);
     ApiService.get<{
       success?: boolean;
@@ -1338,6 +1380,9 @@ export default function BookingNow() {
         date: dateStr,
         staff_id: staffId,
         slot_minutes: 30,
+        ...(excludeAppointmentId != null && !isNaN(excludeAppointmentId)
+          ? { exclude_appointment_id: excludeAppointmentId }
+          : {}),
       }),
     )
       .then((res) => {
@@ -1350,7 +1395,14 @@ export default function BookingNow() {
       .finally(() => {
         setSlotsLoading(false);
       });
-  }, [selectedDate, reduxBusinessId, params.business_id, selectedStaff]);
+  }, [
+    selectedDate,
+    reduxBusinessId,
+    params.business_id,
+    params.booking_id,
+    selectedStaff,
+    isReschedule,
+  ]);
 
   const availableTimeSlots = apiSlots;
 
@@ -1635,6 +1687,24 @@ export default function BookingNow() {
       </View>
 
       <View style={styles.line} />
+
+      {isReschedule && (
+        <View style={styles.rescheduleHeaderRow}>
+          <View style={styles.rescheduleIconWrap}>
+            <Feather
+              name="calendar"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rescheduleTitle}>Reschedule Appointment</Text>
+            <Text style={styles.rescheduleSubtitle}>
+              Select a new date and time for your appointment.
+            </Text>
+          </View>
+        </View>
+      )}
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -1948,6 +2018,57 @@ export default function BookingNow() {
 
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
+        {isReschedule ? (
+          <>
+            {/* Privacy Policy Section - reschedule mode */}
+            <View style={styles.section}>
+              <Text style={styles.privacyText}>
+                By placing this order, you agree to our{" "}
+                <Text
+                  style={styles.privacyLink}
+                  onPress={() => {
+                    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+                    if (url) Linking.openURL(url);
+                  }}
+                >
+                  Privacy Policy
+                </Text>
+                . Your personal data will be processed by the partner with whom
+                you're booking an appointment.
+              </Text>
+            </View>
+
+            {/* Leave a Note Section - reschedule mode */}
+            <View style={styles.noteInputContainer}>
+              <View style={styles.noteInputIcon}>
+                <Feather
+                  name="file-text"
+                  size={moderateWidthScale(18)}
+                  color={theme.lightGreen}
+                />
+              </View>
+              <TextInput
+                style={[styles.noteInput, styles.noteInputWithIcon]}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Leave a note (optional)"
+                placeholderTextColor={theme.lightGreen2}
+                multiline
+                numberOfLines={4}
+              />
+              {note.length > 0 && (
+                <Pressable
+                  onPress={() => setNote("")}
+                  style={styles.noteClearButton}
+                  hitSlop={moderateWidthScale(8)}
+                >
+                  <CloseIcon color={theme.darkGreen} />
+                </Pressable>
+              )}
+            </View>
+          </>
+        ) : (
+          <>
         {/* Service Details - hide for subscription booking */}
         {!isSubscriptionBooking &&
           selectedServices.map((service) => (
@@ -2269,11 +2390,13 @@ export default function BookingNow() {
           </View> */}
           </View>
         )}
+          </>
+        )}
       </ScrollView>
 
       <View style={styles.bottom}>
-        {/* Final Total - hide for subscription booking */}
-        {!isSubscriptionBooking && (
+        {/* Final Total - hide for subscription booking and reschedule */}
+        {!isSubscriptionBooking && !isReschedule && (
           <View style={styles.totalSection}>
             <Text style={styles.totalLabel}>Estimated total:</Text>
             <Text style={styles.totalValue}>
@@ -2282,7 +2405,89 @@ export default function BookingNow() {
           </View>
         )}
 
-        {/* Checkout Button */}
+        {/* Reschedule Appointment Button */}
+        {isReschedule ? (
+          <Button
+            title="Reschedule Appointment"
+            onPress={async () => {
+              const bookingId = params.booking_id;
+              const businessId = params.business_id;
+              if (!bookingId || !businessId) {
+                showBanner(
+                  t("error"),
+                  "Booking or business missing.",
+                  "error",
+                  4000,
+                );
+                return;
+              }
+              if (!selectedTimeSlot) {
+                showBanner(
+                  "Select time",
+                  "Please select a date and time slot.",
+                  "warning",
+                  4000,
+                );
+                return;
+              }
+              const staffId =
+                selectedStaff === "anyone" ? 0 : parseInt(selectedStaff, 10);
+              const appointmentDate = selectedDate.format("YYYY-MM-DD");
+              const appointmentTime = selectedTimeSlot;
+              const appointmentType =
+                params.appointment_type === "subscription"
+                  ? "subscription"
+                  : "service";
+              setRescheduleLoading(true);
+              try {
+                const response = await ApiService.put<{
+                  success: boolean;
+                  message: string;
+                  data?: {
+                    id: number;
+                    appointmentDate: string;
+                    appointmentTime: string;
+                    status: string;
+                  };
+                }>(appointmentsEndpoints.reschedule(bookingId), {
+                  business_id: parseInt(businessId, 10),
+                  appointment_type: appointmentType,
+                  staff_id: staffId,
+                  appointment_date: appointmentDate,
+                  appointment_time: appointmentTime,
+                  notes: note.trim() || undefined,
+                });
+                if (response.success) {
+                  showBanner(
+                    t("success"),
+                    response.message || "Appointment rescheduled successfully.",
+                    "success",
+                    3000,
+                  );
+                  router.back();
+                } else {
+                  showBanner(
+                    t("error"),
+                    response.message || "Failed to reschedule.",
+                    "error",
+                    4000,
+                  );
+                }
+              } catch (err: any) {
+                showBanner(
+                  t("error"),
+                  err?.message || err?.data?.message || "Failed to reschedule. Please try again.",
+                  "error",
+                  4000,
+                );
+              } finally {
+                setRescheduleLoading(false);
+              }
+            }}
+            disabled={rescheduleLoading}
+            loading={rescheduleLoading}
+          />
+        ) : (
         <Button
           // title={t("checkout")}
           title={"Book now"}
@@ -2336,6 +2541,7 @@ export default function BookingNow() {
             });
           }}
         />
+        )}
       </View>
 
       {/* Add Service Bottom Sheet */}

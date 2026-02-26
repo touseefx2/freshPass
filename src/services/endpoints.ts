@@ -165,6 +165,8 @@ export const appointmentsEndpoints = {
   getById: (bookingId: string | number) => `/api/appointments/${bookingId}`,
   cancel: (bookingId: string | number) =>
     `/api/appointments/${bookingId}/cancel`,
+  reschedule: (appointmentId: string | number) =>
+    `/api/appointments/${appointmentId}/reschedule`,
   availableSlots: (params: {
     business_id: number;
     date: string;

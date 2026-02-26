@@ -1233,6 +1233,13 @@ export default function bookingDetailsById() {
                       pathname: "/(main)/bookingNow",
                       params: {
                         business_id: booking?.businessId?.toString() ?? "",
+                        is_reschedule: "1",
+                        booking_id: booking?.id ?? "",
+                        appointment_type:
+                          booking?.type === "subscription"
+                            ? "subscription"
+                            : "service",
+                        notes: booking?.notes ?? "",
                       },
                     });
                   }}
