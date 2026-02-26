@@ -3,7 +3,6 @@ import React, {
   useState,
   useEffect,
   useCallback,
-  useRef,
 } from "react";
 import {
   StyleSheet,
@@ -26,7 +25,6 @@ import {
   setSelectedServices,
   setSelectedStaff,
   type StaffMember,
-  type BusinessHours,
 } from "@/src/state/slices/bsnsSlice";
 import {
   setActionLoader,
@@ -50,17 +48,9 @@ import { SvgXml } from "react-native-svg";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Feather, Octicons } from "@expo/vector-icons";
-import { MorningIcon, EveningIcon, NightIcon, CloseIcon } from "@/assets/icons";
+import { CloseIcon } from "@/assets/icons";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import StaffSelectionBottomSheet from "@/src/components/StaffSelectionBottomSheet";
-import dayjs from "dayjs";
-import weekOfYear from "dayjs/plugin/weekOfYear";
-import isoWeek from "dayjs/plugin/isoWeek";
-
-dayjs.extend(weekOfYear);
-dayjs.extend(isoWeek);
-
-// Back Arrow Icon SVG
 const backArrowIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
@@ -84,84 +74,6 @@ interface Service {
   duration: string;
   label?: string | null;
 }
-
-const getWeekDays = (date: dayjs.Dayjs) => {
-  const startOfWeek = date.startOf("week");
-  return Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, "day"));
-};
-
-const formatWeekRange = (week: dayjs.Dayjs[]) => {
-  if (week.length === 0) return "";
-  const start = week[0];
-  const end = week[6];
-  return `${start.format("MMM D")} - ${end.format("MMM D, YYYY")}`;
-};
-
-const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-// Time slots in 24-hour format (HH:mm)
-const allTimeSlots = [
-  "08:00",
-  "08:30",
-  "09:00",
-  "09:30",
-  "10:00",
-  "10:30",
-  "11:00",
-  "11:30",
-  "12:00",
-  "12:30",
-  "13:00",
-  "13:30",
-  "14:00",
-  "14:30",
-  "15:00",
-  "15:30",
-  "16:00",
-  "16:30",
-  "17:00",
-  "17:30",
-  "18:00",
-  "18:30",
-  "19:00",
-  "19:30",
-  "20:00",
-  "20:30",
-  "21:00",
-  "21:30",
-  "22:00",
-];
-
-// Convert 24-hour format to 12-hour format for display (with AM/PM)
-const convertTo12Hour = (time24: string): string => {
-  const [hours, minutes] = time24.split(":").map(Number);
-  const hour12 =
-    hours === 0 ? 12 : hours > 12 ? hours - 12 : hours === 12 ? 12 : hours;
-  const ampm = hours < 12 ? "AM" : "PM";
-  return `${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
-};
-
-// Categorize time slots into Morning, Evening, and Night
-const categorizeTimeSlots = (slots: string[]) => {
-  const morning: string[] = [];
-  const evening: string[] = [];
-  const night: string[] = [];
-
-  slots.forEach((slot) => {
-    const [hours, minutes] = slot.split(":").map(Number);
-    const hour24 = hours;
-
-    if (hour24 >= 6 && hour24 < 12) {
-      morning.push(slot);
-    } else if (hour24 >= 12 && hour24 < 18) {
-      evening.push(slot);
-    } else {
-      night.push(slot);
-    }
-  });
-
-  return { morning, evening, night };
-};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -726,6 +638,8 @@ function CheckoutContent() {
     selectedStaff: reduxSelectedStaff,
     businessId,
     businessHours,
+    selectedDate: reduxSelectedDate,
+    selectedTimeSlot: reduxSelectedTimeSlot,
   } = businessData;
 
   // Use Redux directly - no local state needed
@@ -736,132 +650,11 @@ function CheckoutContent() {
     useState(false);
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
-  // Initialize with today's date (not in past)
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const today = dayjs();
-    return today;
-  });
-  const [week, setWeek] = useState(() => getWeekDays(dayjs()));
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<
-    "morning" | "evening" | "night"
-  >("morning");
   const [paymentMethod, setPaymentMethod] = useState<"payNow" | "payLater">(
     "payNow",
   );
   const [note, setNote] = useState<string>("");
   const [processingPayment, setProcessingPayment] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
-
-  // Get all slots in order (morning, evening, night)
-  const getAllSlots = () => {
-    return [...morning, ...evening, ...night];
-  };
-
-  // Get category of a slot
-  const getSlotCategory = (slot: string): "morning" | "evening" | "night" => {
-    if (morning.includes(slot)) return "morning";
-    if (evening.includes(slot)) return "evening";
-    return "night";
-  };
-
-  // Get index of first slot in a category
-  const getCategoryStartIndex = (
-    category: "morning" | "evening" | "night",
-  ): number => {
-    const allSlots = getAllSlots();
-    switch (category) {
-      case "morning":
-        return 0;
-      case "evening":
-        return morning.length;
-      case "night":
-        return morning.length + evening.length;
-      default:
-        return 0;
-    }
-  };
-
-  // Scroll to category
-  const scrollToCategory = (category: "morning" | "evening" | "night") => {
-    const startIndex = getCategoryStartIndex(category);
-    const slotWidth = widthScale(90);
-    const gap = moderateWidthScale(12);
-    const paddingHorizontal = moderateWidthScale(20);
-    const scrollPosition = startIndex * (slotWidth + gap) + paddingHorizontal;
-
-    scrollViewRef.current?.scrollTo({
-      x: scrollPosition,
-      animated: true,
-    });
-  };
-
-  // Handle scroll to detect which category is visible
-  const handleScroll = (event: any) => {
-    const scrollX = event.nativeEvent.contentOffset.x;
-    const slotWidth = widthScale(90);
-    const gap = moderateWidthScale(12);
-    const paddingHorizontal = moderateWidthScale(20);
-
-    // Calculate which slot index is currently visible (centered)
-    const visibleIndex = Math.round(
-      (scrollX - paddingHorizontal + slotWidth / 2) / (slotWidth + gap),
-    );
-
-    // Clamp to valid range
-    const allSlots = getAllSlots();
-    const clampedIndex = Math.max(
-      0,
-      Math.min(visibleIndex, allSlots.length - 1),
-    );
-
-    // Get the slot at this index
-    const visibleSlot = allSlots[clampedIndex];
-
-    // Determine category based on visible slot
-    const category = getSlotCategory(visibleSlot);
-
-    // Update selected category if it changed
-    if (category !== selectedCategory) {
-      setSelectedCategory(category);
-    }
-  };
-
-  // Check if a time slot is disabled (past time for today's date)
-  const isSlotDisabled = (slot: string): boolean => {
-    const today = dayjs().startOf("day");
-    const selectedDay = selectedDate.startOf("day");
-
-    // Only disable if selected date is today
-    if (!selectedDay.isSame(today, "day")) {
-      return false;
-    }
-
-    // Get current time
-    const now = dayjs();
-    const [hours, minutes] = slot.split(":").map(Number);
-
-    // Create slot time for today
-    const slotTime = dayjs()
-      .hour(hours)
-      .minute(minutes)
-      .second(0)
-      .millisecond(0);
-
-    // Disable if slot time has passed
-    return slotTime.isBefore(now);
-  };
-
-  // Handle slot selection
-  const handleSlotSelect = (slot: string) => {
-    // Don't allow selection of disabled slots
-    if (isSlotDisabled(slot)) {
-      return;
-    }
-    setSelectedTimeSlot(slot);
-    const category = getSlotCategory(slot);
-    setSelectedCategory(category);
-  };
 
   // Handle service deletion
   const handleDeleteService = (serviceId: number) => {
@@ -950,8 +743,6 @@ function CheckoutContent() {
         setSelectedStaffMember(dummyStaff);
       }
     }
-    // Clear selected time slot when staff changes
-    setSelectedTimeSlot(null);
   }, [selectedStaffId, staffMembers]);
 
   // Update Redux when local state changes
@@ -963,212 +754,13 @@ function CheckoutContent() {
     dispatch(setSelectedStaff(selectedStaffId));
   }, [selectedStaffId, dispatch]);
 
-  const prevWeek = () => {
-    const newWeek = week[0].subtract(1, "week");
-    const newWeekDays = getWeekDays(newWeek);
-    // Don't allow going to past weeks
-    const today = dayjs().startOf("day");
-    const weekStart = newWeekDays[0].startOf("day");
-    if (weekStart.isBefore(today)) {
-      // If the week start is in the past, set to current week
-      setWeek(getWeekDays(dayjs()));
-    } else {
-      setWeek(newWeekDays);
-    }
-  };
-
-  const nextWeek = () => {
-    const newWeek = week[0].add(1, "week");
-    setWeek(getWeekDays(newWeek));
-  };
-
-  const handleDateSelect = (date: dayjs.Dayjs) => {
-    // Don't allow selecting past dates or closed days
-    if (isDateDisabled(date)) {
-      return;
-    }
-    setSelectedDate(date);
-    setWeek(getWeekDays(date));
-  };
-
-  // Check if a date is disabled (past date or closed day)
-  const isDateDisabled = (date: dayjs.Dayjs): boolean => {
-    const today = dayjs().startOf("day");
-    const selectedDay = date.startOf("day");
-
-    // Disable past dates
-    if (selectedDay.isBefore(today)) {
-      return true;
-    }
-
-    const dayName = getDayNameFromDate(date);
-
-    // If staff member is selected, check staff working hours
-    if (selectedStaffId !== "anyone" && selectedStaffMember?.working_hours) {
-      const staffDayHours = selectedStaffMember.working_hours[dayName];
-      if (staffDayHours && !staffDayHours.isOpen) {
-        return true; // Staff is closed on this day
-      }
-    }
-
-    // Check if business is closed on this day (for "anyone" or fallback)
-    if (businessHours) {
-      const dayHours = businessHours[dayName];
-      if (dayHours && !dayHours.isOpen) {
-        return true; // Business is closed on this day
-      }
-    }
-
-    return false;
-  };
-
-  // Auto-select current date if available, otherwise select first available date
-  useEffect(() => {
-    if (!businessHours) {
-      return; // Wait for business hours to load
-    }
-
-    const today = dayjs().startOf("day");
-    const currentSelected = selectedDate.startOf("day");
-
-    // If current date is already today and available, don't change
-    if (currentSelected.isSame(today, "day") && !isDateDisabled(today)) {
-      return;
-    }
-
-    // Check if today is available (not disabled)
-    if (!isDateDisabled(today)) {
-      setSelectedDate(today);
-      setWeek(getWeekDays(today));
-      return;
-    }
-
-    // If today is not available, find first available date (next 30 days)
-    for (let i = 0; i < 30; i++) {
-      const checkDate = today.add(i, "day");
-      if (!isDateDisabled(checkDate)) {
-        setSelectedDate(checkDate);
-        setWeek(getWeekDays(checkDate));
-        return;
-      }
-    }
-  }, [businessHours, selectedStaffId, selectedStaffMember]);
-
-  // Get day name from date (e.g., "Monday", "Tuesday")
-  const getDayNameFromDate = (date: dayjs.Dayjs): string => {
-    const dayIndex = date.day();
-    const dayNamesFull = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
-    return dayNamesFull[dayIndex];
-  };
-
-  // Get available time slots for selected date based on business hours or staff working hours
-  const availableTimeSlots = useMemo(() => {
-    if (!selectedDate) {
-      return [];
-    }
-
-    // Determine which hours to use: staff working_hours if staff is selected, otherwise business hours
-    let hoursToUse: BusinessHours | null = null;
-
-    if (selectedStaffId !== "anyone") {
-      // Staff member is selected - use staff working hours
-      if (selectedStaffMember?.working_hours) {
-        hoursToUse = selectedStaffMember.working_hours;
-      } else {
-        // Staff member selected but has no working_hours (null or empty) - show no slots
-        return [];
-      }
-    } else {
-      // "Anyone" selected - use business hours
-      hoursToUse = businessHours || null;
-    }
-
-    // If no hours available, return empty array (don't show all slots)
-    if (!hoursToUse) {
-      return [];
-    }
-
-    const dayName = getDayNameFromDate(selectedDate);
-    const dayHours = hoursToUse[dayName];
-
-    // If business/staff is closed on this day, return empty array
-    if (!dayHours || !dayHours.isOpen) {
-      return [];
-    }
-
-    // Calculate opening and closing time in minutes from midnight
-    const openingMinutes = dayHours.fromHours * 60 + dayHours.fromMinutes;
-    const closingMinutes = dayHours.tillHours * 60 + dayHours.tillMinutes;
-
-    // Get break times
-    const breakTimes = (dayHours.breaks || []).map((breakTime: any) => {
-      const breakStart = breakTime.fromHours * 60 + breakTime.fromMinutes;
-      const breakEnd = breakTime.tillHours * 60 + breakTime.tillMinutes;
-      return { start: breakStart, end: breakEnd };
-    });
-
-    // Filter slots that are within business/staff hours and not during breaks
-    const availableSlots = allTimeSlots.filter((slot) => {
-      const [hours, minutes] = slot.split(":").map(Number);
-      const slotMinutes = hours * 60 + minutes;
-
-      // Check if slot is within hours
-      if (slotMinutes < openingMinutes || slotMinutes >= closingMinutes) {
-        return false;
-      }
-
-      // Check if slot is during a break
-      const isDuringBreak = breakTimes.some(
-        (breakTime) =>
-          slotMinutes >= breakTime.start && slotMinutes < breakTime.end,
-      );
-      if (isDuringBreak) {
-        return false;
-      }
-
-      return true;
-    });
-
-    return availableSlots;
-  }, [businessHours, selectedDate, selectedStaffId, selectedStaffMember]);
-
-  // Re-categorize available slots
-  const { morning, evening, night } = useMemo(
-    () => categorizeTimeSlots(availableTimeSlots),
-    [availableTimeSlots],
-  );
-
-  const getTimezoneText = () => {
-    try {
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const offset = new Date().getTimezoneOffset();
-      const offsetHours = Math.abs(Math.floor(offset / 60));
-      const offsetMinutes = Math.abs(offset % 60);
-      const sign = offset <= 0 ? "+" : "-";
-      const gmtOffset = `GMT${sign}${offsetHours}${
-        offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""
-      }`;
-      return `In your time zone, ${timezone} (${gmtOffset})`;
-    } catch (error) {
-      return "In your time zone, South Africa (GMT +1:00)";
-    }
-  };
-
   const params = useLocalSearchParams<{ subscription_id?: string }>();
   const subscriptionId = params.subscription_id
     ? parseInt(params.subscription_id, 10)
     : undefined;
 
   const handleBookNow = async () => {
-    if (!selectedTimeSlot) {
+    if (!reduxSelectedTimeSlot) {
       showBanner(
         "Time Slot Required",
         "Please select a time slot to proceed with booking.",
@@ -1210,8 +802,8 @@ function CheckoutContent() {
       appointment_type: subscriptionId ? "subscription" : "service",
       payment_method: paymentMethod === "payNow" ? "pay_now" : "pay_later",
       service_ids: selectedServices.map((service) => service.id),
-      appointment_date: selectedDate.format("YYYY-MM-DD"),
-      appointment_time: selectedTimeSlot || "",
+      appointment_date: reduxSelectedDate || "",
+      appointment_time: reduxSelectedTimeSlot || "",
     };
 
     // Add notes only if it exists
@@ -1401,8 +993,8 @@ function CheckoutContent() {
                   selectedStaffMember: selectedStaffMember
                     ? JSON.stringify(selectedStaffMember)
                     : "",
-                  selectedDate: selectedDate.format("YYYY-MM-DD"),
-                  selectedTimeSlot: selectedTimeSlot || "",
+                  selectedDate: reduxSelectedDate || "",
+                  selectedTimeSlot: reduxSelectedTimeSlot || "",
                   paymentMethod: paymentMethod,
                   totalPrice: totalPrice.toFixed(2),
                   tax: tax.toFixed(2),
@@ -1462,8 +1054,8 @@ function CheckoutContent() {
               selectedStaffMember: selectedStaffMember
                 ? JSON.stringify(selectedStaffMember)
                 : "",
-              selectedDate: selectedDate.format("YYYY-MM-DD"),
-              selectedTimeSlot: selectedTimeSlot || "",
+              selectedDate: reduxSelectedDate || "",
+              selectedTimeSlot: reduxSelectedTimeSlot || "",
               paymentMethod: paymentMethod,
               totalPrice: totalPrice.toFixed(2),
               tax: tax.toFixed(2),
@@ -1534,228 +1126,6 @@ function CheckoutContent() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Availability Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Availability</Text>
-
-              {/* Week Navigation */}
-              <View style={styles.weekNavigation}>
-                <TouchableOpacity
-                  onPress={prevWeek}
-                  style={styles.weekNavigationButton}
-                  activeOpacity={0.7}
-                >
-                  <Feather
-                    name="chevron-left"
-                    size={moderateWidthScale(17)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-                <Text style={styles.weekRangeText}>
-                  {formatWeekRange(week)}
-                </Text>
-                <TouchableOpacity
-                  onPress={nextWeek}
-                  style={styles.weekNavigationButton}
-                  activeOpacity={0.7}
-                >
-                  <Feather
-                    name="chevron-right"
-                    size={moderateWidthScale(17)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {/* Calendar Grid */}
-              <View style={styles.calendarGrid}>
-                {/* Days Header */}
-                <View style={styles.daysHeader}>
-                  {dayNames.map((dayName) => (
-                    <View key={dayName} style={styles.dayHeader}>
-                      <Text style={styles.dayHeaderText}>{dayName}</Text>
-                    </View>
-                  ))}
-                </View>
-
-                {/* Days Row */}
-                <View style={styles.daysRow}>
-                  {week.map((day) => {
-                    const isSelected = day.isSame(selectedDate, "day");
-                    const isDisabled = isDateDisabled(day);
-                    return (
-                      <TouchableOpacity
-                        key={day.format("YYYY-MM-DD")}
-                        style={styles.dayContainer}
-                        onPress={() => handleDateSelect(day)}
-                        disabled={isDisabled}
-                        activeOpacity={isDisabled ? 1 : 0.7}
-                      >
-                        <View
-                          style={[
-                            styles.dayNumberContainer,
-                            isSelected && styles.dayNumberSelected,
-                            isDisabled && styles.dayNumberDisabled,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.dayNumber,
-                              isSelected && styles.dayNumberSelectedText,
-                              isDisabled && styles.dayNumberDisabledText,
-                            ]}
-                          >
-                            {day.format("D")}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-
-              {/* Timezone Information */}
-              <Text style={styles.timezoneText}>{getTimezoneText()}</Text>
-
-              {/* Time Slots */}
-              <View style={styles.timeSlotSection}>
-                {/* Category Selector - Horizontal Tabs */}
-                <View style={styles.timeSlotCategoryRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.timeSlotCategoryButton}
-                    onPress={() => {
-                      setSelectedCategory("morning");
-                      scrollToCategory("morning");
-                    }}
-                  >
-                    <View style={styles.timeSlotCategoryIcon}>
-                      <MorningIcon
-                        width={moderateWidthScale(18)}
-                        height={moderateHeightScale(13)}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.timeSlotCategoryText,
-                        selectedCategory === "morning" &&
-                          styles.timeSlotCategoryTextSelected,
-                      ]}
-                    >
-                      Morning
-                    </Text>
-                    {selectedCategory === "morning" && (
-                      <View style={styles.timeSlotCategoryUnderline} />
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.timeSlotCategoryButton}
-                    onPress={() => {
-                      setSelectedCategory("evening");
-                      scrollToCategory("evening");
-                    }}
-                  >
-                    <View style={styles.timeSlotCategoryIcon}>
-                      <EveningIcon
-                        width={moderateWidthScale(18)}
-                        height={moderateHeightScale(10)}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.timeSlotCategoryText,
-                        selectedCategory === "evening" &&
-                          styles.timeSlotCategoryTextSelected,
-                      ]}
-                    >
-                      Evening
-                    </Text>
-                    {selectedCategory === "evening" && (
-                      <View style={styles.timeSlotCategoryUnderline} />
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.timeSlotCategoryButton}
-                    onPress={() => {
-                      setSelectedCategory("night");
-                      scrollToCategory("night");
-                    }}
-                  >
-                    <View style={styles.timeSlotCategoryIcon}>
-                      <NightIcon
-                        width={moderateWidthScale(15)}
-                        height={moderateHeightScale(15)}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.timeSlotCategoryText,
-                        selectedCategory === "night" &&
-                          styles.timeSlotCategoryTextSelected,
-                      ]}
-                    >
-                      Night
-                    </Text>
-                    {selectedCategory === "night" && (
-                      <View style={styles.timeSlotCategoryUnderline} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                {/* Time Slots - All slots in one horizontal scroll */}
-                <ScrollView
-                  ref={scrollViewRef}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  onScroll={handleScroll}
-                  scrollEventThrottle={16}
-                  style={styles.timeSlotsContainer}
-                  contentContainerStyle={styles.timeSlotsContentContainer}
-                >
-                  {availableTimeSlots.length > 0 ? (
-                    getAllSlots().map((slot) => {
-                      const isDisabled = isSlotDisabled(slot);
-                      return (
-                        <TouchableOpacity
-                          activeOpacity={isDisabled ? 1 : 0.7}
-                          key={slot}
-                          style={[
-                            styles.timeSlotButton,
-                            selectedTimeSlot === slot &&
-                              styles.timeSlotButtonSelected,
-                            isDisabled && styles.timeSlotButtonDisabled,
-                          ]}
-                          onPress={() => handleSlotSelect(slot)}
-                          disabled={isDisabled}
-                        >
-                          <Text
-                            style={[
-                              styles.timeSlotText,
-                              selectedTimeSlot === slot &&
-                                styles.timeSlotTextSelected,
-                              isDisabled && styles.timeSlotTextDisabled,
-                            ]}
-                          >
-                            {convertTo12Hour(slot)}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })
-                  ) : (
-                    <View style={styles.noSlotsContainer}>
-                      <Text style={styles.noSlotsText}>
-                        No available time slots for this day
-                      </Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
-            </View>
-
             <View style={[styles.line, { marginTop: 0 }]} />
 
             {/* Payment Method Section */}

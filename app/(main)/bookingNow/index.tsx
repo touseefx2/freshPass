@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   View,
@@ -15,9 +21,12 @@ import { useTranslation } from "react-i18next";
 import {
   setSelectedServices,
   setSelectedStaff,
+  setSelectedDate,
+  setSelectedTimeSlot,
   resetBusiness,
   setBusinessData as setBusinessDataAction,
   type StaffMember,
+  type BusinessHours,
 } from "@/src/state/slices/bsnsSlice";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -35,7 +44,82 @@ import { LeafLogo } from "@/assets/icons";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
+import { MorningIcon, EveningIcon, NightIcon } from "@/assets/icons";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
+import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear";
+import isoWeek from "dayjs/plugin/isoWeek";
+
+dayjs.extend(weekOfYear);
+dayjs.extend(isoWeek);
+
+const getWeekDays = (date: dayjs.Dayjs) => {
+  const startOfWeek = date.startOf("week");
+  return Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, "day"));
+};
+
+const formatWeekRange = (week: dayjs.Dayjs[]) => {
+  if (week.length === 0) return "";
+  const start = week[0];
+  const end = week[6];
+  return `${start.format("MMM D")} - ${end.format("MMM D, YYYY")}`;
+};
+
+const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const allTimeSlots = [
+  "08:00",
+  "08:30",
+  "09:00",
+  "09:30",
+  "10:00",
+  "10:30",
+  "11:00",
+  "11:30",
+  "12:00",
+  "12:30",
+  "13:00",
+  "13:30",
+  "14:00",
+  "14:30",
+  "15:00",
+  "15:30",
+  "16:00",
+  "16:30",
+  "17:00",
+  "17:30",
+  "18:00",
+  "18:30",
+  "19:00",
+  "19:30",
+  "20:00",
+  "20:30",
+  "21:00",
+  "21:30",
+  "22:00",
+];
+
+const convertTo12Hour = (time24: string): string => {
+  const [hours, minutes] = time24.split(":").map(Number);
+  const hour12 =
+    hours === 0 ? 12 : hours > 12 ? hours - 12 : hours === 12 ? 12 : hours;
+  const ampm = hours < 12 ? "AM" : "PM";
+  return `${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+};
+
+const categorizeTimeSlots = (slots: string[]) => {
+  const morning: string[] = [];
+  const evening: string[] = [];
+  const night: string[] = [];
+  slots.forEach((slot) => {
+    const [hours] = slot.split(":").map(Number);
+    if (hours >= 6 && hours < 12) morning.push(slot);
+    else if (hours >= 12 && hours < 18) evening.push(slot);
+    else night.push(slot);
+  });
+  return { morning, evening, night };
+};
 
 // Back Arrow Icon SVG
 const backArrowIconSvg = `
@@ -275,6 +359,181 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(5),
       backgroundColor: theme.orangeBrown,
     },
+    section: {
+      marginTop: moderateHeightScale(16),
+    },
+    sectionTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    weekNavigation: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    weekNavigationButton: {
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(6),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    weekRangeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    calendarGrid: {
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    daysHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(12),
+    },
+    dayHeader: {
+      flex: 1,
+      alignItems: "center",
+    },
+    dayHeaderText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    daysRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+    },
+    dayContainer: {
+      flex: 1,
+      alignItems: "center",
+    },
+    dayNumberContainer: {
+      width: widthScale(35),
+      height: widthScale(35),
+      borderRadius: widthScale(35 / 2),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: "transparent",
+    },
+    dayNumberSelected: {
+      backgroundColor: theme.orangeBrown30,
+      borderColor: theme.selectCard,
+    },
+    dayNumber: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    dayNumberSelectedText: {
+      color: theme.darkGreen,
+    },
+    dayNumberDisabled: {
+      opacity: 0.3,
+    },
+    dayNumberDisabledText: {
+      color: theme.lightGreen,
+    },
+    timezoneText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(5),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    timeSlotSection: {
+      marginTop: moderateHeightScale(16),
+    },
+    timeSlotCategoryRow: {
+      flexDirection: "row",
+      paddingHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(16),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen2,
+    },
+    timeSlotCategoryButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(12),
+      position: "relative",
+    },
+    timeSlotCategoryUnderline: {
+      position: "absolute",
+      bottom: -1,
+      left: 0,
+      right: 0,
+      height: 2,
+      backgroundColor: theme.orangeBrown,
+    },
+    timeSlotCategoryIcon: {
+      marginRight: moderateWidthScale(6),
+    },
+    timeSlotCategoryText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+    },
+    timeSlotCategoryTextSelected: {
+      color: theme.darkGreen,
+    },
+    timeSlotsContainer: {
+      marginBottom: moderateHeightScale(5),
+    },
+    timeSlotsContentContainer: {
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+      gap: moderateWidthScale(12),
+    },
+    timeSlotButton: {
+      width: widthScale(90),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    timeSlotButtonSelected: {
+      backgroundColor: theme.darkGreenLight,
+      borderColor: theme.darkGreen,
+    },
+    timeSlotButtonDisabled: {
+      opacity: 0.4,
+      backgroundColor: theme.background,
+    },
+    timeSlotText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    timeSlotTextSelected: {
+      color: theme.white,
+    },
+    timeSlotTextDisabled: {
+      color: theme.lightGreen,
+    },
+    noSlotsContainer: {
+      paddingVertical: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      alignItems: "center",
+    },
+    noSlotsText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
     priceBreakdown: {
       padding: moderateWidthScale(20),
     },
@@ -343,6 +602,7 @@ export default function BookingNow() {
     selectedServices: reduxSelectedServices,
     selectedStaff: reduxSelectedStaff,
     businessId: reduxBusinessId,
+    businessHours,
   } = businessData || {
     selectedService: null,
     allServices: [],
@@ -350,6 +610,7 @@ export default function BookingNow() {
     selectedServices: [],
     selectedStaff: "anyone",
     businessId: "",
+    businessHours: null,
   };
 
   // Use Redux directly - no local state needed
@@ -365,6 +626,17 @@ export default function BookingNow() {
   const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedStaffMember, setSelectedStaffMember] =
+    useState<StaffMember | null>(null);
+  const [selectedDate, setSelectedDateState] = useState(() => dayjs());
+  const [week, setWeek] = useState(() => getWeekDays(dayjs()));
+  const [selectedTimeSlot, setSelectedTimeSlotState] = useState<string | null>(
+    null,
+  );
+  const [selectedCategory, setSelectedCategory] = useState<
+    "morning" | "evening" | "night"
+  >("morning");
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Always fetch business data - API call happens in both cases
   const fetchBusinessDetails = useCallback(async () => {
@@ -666,6 +938,225 @@ export default function BookingNow() {
     };
   }, []);
 
+  // Update selected staff member when staff ID changes
+  useEffect(() => {
+    if (selectedStaff === "anyone") {
+      setSelectedStaffMember(null);
+    } else {
+      const foundStaff = staffMembers.find(
+        (s) => s.id.toString() === selectedStaff,
+      );
+      if (foundStaff) {
+        setSelectedStaffMember(foundStaff);
+      } else {
+        setSelectedStaffMember(null);
+      }
+    }
+    setSelectedTimeSlotState(null);
+    dispatch(setSelectedTimeSlot(null));
+  }, [selectedStaff, staffMembers, dispatch]);
+
+  const getDayNameFromDate = (date: dayjs.Dayjs): string => {
+    const dayNamesFull = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    return dayNamesFull[date.day()];
+  };
+
+  const availableTimeSlots = useMemo(() => {
+    if (!selectedDate) return [];
+    let hoursToUse: BusinessHours | null = null;
+    if (selectedStaff !== "anyone") {
+      if (selectedStaffMember?.working_hours) {
+        hoursToUse = selectedStaffMember.working_hours;
+      } else {
+        return [];
+      }
+    } else {
+      hoursToUse = businessHours || null;
+    }
+    if (!hoursToUse) return [];
+    const dayName = getDayNameFromDate(selectedDate);
+    const dayHours = hoursToUse[dayName];
+    if (!dayHours || !dayHours.isOpen) return [];
+    const openingMinutes = dayHours.fromHours * 60 + dayHours.fromMinutes;
+    const closingMinutes = dayHours.tillHours * 60 + dayHours.tillMinutes;
+    const breakTimes = (dayHours.breaks || []).map((b: any) => ({
+      start: b.fromHours * 60 + b.fromMinutes,
+      end: b.tillHours * 60 + b.tillMinutes,
+    }));
+    return allTimeSlots.filter((slot) => {
+      const [hours, minutes] = slot.split(":").map(Number);
+      const slotMinutes = hours * 60 + minutes;
+      if (slotMinutes < openingMinutes || slotMinutes >= closingMinutes)
+        return false;
+      const isDuringBreak = breakTimes.some(
+        (bt: { start: number; end: number }) =>
+          slotMinutes >= bt.start && slotMinutes < bt.end,
+      );
+      return !isDuringBreak;
+    });
+  }, [businessHours, selectedDate, selectedStaff, selectedStaffMember]);
+
+  const { morning, evening, night } = useMemo(
+    () => categorizeTimeSlots(availableTimeSlots),
+    [availableTimeSlots],
+  );
+
+  const getAllSlots = () => [...morning, ...evening, ...night];
+
+  const getSlotCategory = (slot: string): "morning" | "evening" | "night" => {
+    if (morning.includes(slot)) return "morning";
+    if (evening.includes(slot)) return "evening";
+    return "night";
+  };
+
+  const getCategoryStartIndex = (
+    category: "morning" | "evening" | "night",
+  ): number => {
+    switch (category) {
+      case "morning":
+        return 0;
+      case "evening":
+        return morning.length;
+      case "night":
+        return morning.length + evening.length;
+      default:
+        return 0;
+    }
+  };
+
+  const scrollToCategory = (category: "morning" | "evening" | "night") => {
+    const startIndex = getCategoryStartIndex(category);
+    const slotWidth = widthScale(90);
+    const gap = moderateWidthScale(12);
+    const paddingHorizontal = moderateWidthScale(20);
+    const scrollPosition = startIndex * (slotWidth + gap) + paddingHorizontal;
+    scrollViewRef.current?.scrollTo({ x: scrollPosition, animated: true });
+  };
+
+  const handleScroll = (event: any) => {
+    const scrollX = event.nativeEvent.contentOffset.x;
+    const slotWidth = widthScale(90);
+    const gap = moderateWidthScale(12);
+    const paddingHorizontal = moderateWidthScale(20);
+    const visibleIndex = Math.round(
+      (scrollX - paddingHorizontal + slotWidth / 2) / (slotWidth + gap),
+    );
+    const allSlots = getAllSlots();
+    const clampedIndex = Math.max(
+      0,
+      Math.min(visibleIndex, allSlots.length - 1),
+    );
+    const visibleSlot = allSlots[clampedIndex];
+    const category = getSlotCategory(visibleSlot);
+    if (category !== selectedCategory) setSelectedCategory(category);
+  };
+
+  const isSlotDisabled = (slot: string): boolean => {
+    const today = dayjs().startOf("day");
+    const selectedDay = selectedDate.startOf("day");
+    if (!selectedDay.isSame(today, "day")) return false;
+    const now = dayjs();
+    const [hours, minutes] = slot.split(":").map(Number);
+    const slotTime = dayjs()
+      .hour(hours)
+      .minute(minutes)
+      .second(0)
+      .millisecond(0);
+    return slotTime.isBefore(now);
+  };
+
+  const handleSlotSelect = (slot: string) => {
+    if (isSlotDisabled(slot)) return;
+    setSelectedTimeSlotState(slot);
+    dispatch(setSelectedTimeSlot(slot));
+    setSelectedCategory(getSlotCategory(slot));
+  };
+
+  const prevWeek = () => {
+    const newWeek = week[0].subtract(1, "week");
+    const newWeekDays = getWeekDays(newWeek);
+    const today = dayjs().startOf("day");
+    const weekStart = newWeekDays[0].startOf("day");
+    if (weekStart.isBefore(today)) {
+      setWeek(getWeekDays(dayjs()));
+    } else {
+      setWeek(newWeekDays);
+    }
+  };
+
+  const nextWeek = () => {
+    setWeek(getWeekDays(week[0].add(1, "week")));
+  };
+
+  const handleDateSelect = (date: dayjs.Dayjs) => {
+    if (isDateDisabled(date)) return;
+    setSelectedDateState(date);
+    dispatch(setSelectedDate(date.format("YYYY-MM-DD")));
+    setWeek(getWeekDays(date));
+  };
+
+  const isDateDisabled = (date: dayjs.Dayjs): boolean => {
+    const today = dayjs().startOf("day");
+    const selectedDay = date.startOf("day");
+    if (selectedDay.isBefore(today)) return true;
+    const dayName = getDayNameFromDate(date);
+    if (selectedStaff !== "anyone" && selectedStaffMember?.working_hours) {
+      const staffDayHours = selectedStaffMember.working_hours[dayName];
+      if (staffDayHours && !staffDayHours.isOpen) return true;
+    }
+    if (businessHours) {
+      const dayHours = businessHours[dayName];
+      if (dayHours && !dayHours.isOpen) return true;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    if (!businessHours) return;
+    const today = dayjs().startOf("day");
+    const currentSelected = selectedDate.startOf("day");
+    if (currentSelected.isSame(today, "day") && !isDateDisabled(today)) return;
+    if (!isDateDisabled(today)) {
+      setSelectedDateState(today);
+      dispatch(setSelectedDate(today.format("YYYY-MM-DD")));
+      setWeek(getWeekDays(today));
+      return;
+    }
+    for (let i = 0; i < 30; i++) {
+      const checkDate = today.add(i, "day");
+      if (!isDateDisabled(checkDate)) {
+        setSelectedDateState(checkDate);
+        dispatch(setSelectedDate(checkDate.format("YYYY-MM-DD")));
+        setWeek(getWeekDays(checkDate));
+        return;
+      }
+    }
+  }, [businessHours, selectedStaff, selectedStaffMember]);
+
+  const getTimezoneText = () => {
+    try {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const offset = new Date().getTimezoneOffset();
+      const offsetHours = Math.abs(Math.floor(offset / 60));
+      const offsetMinutes = Math.abs(offset % 60);
+      const sign = offset <= 0 ? "+" : "-";
+      const gmtOffset = `GMT${sign}${offsetHours}${
+        offsetMinutes > 0 ? `:${offsetMinutes.toString().padStart(2, "0")}` : ""
+      }`;
+      return `In your time zone, ${timezone} (${gmtOffset})`;
+    } catch {
+      return "In your time zone, South Africa (GMT +1:00)";
+    }
+  };
+
   const staffList = [
     {
       id: "anyone",
@@ -876,6 +1367,220 @@ export default function BookingNow() {
 
         <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
 
+        {/* Availability Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Availability</Text>
+
+          <View style={styles.weekNavigation}>
+            <TouchableOpacity
+              onPress={prevWeek}
+              style={styles.weekNavigationButton}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="chevron-left"
+                size={moderateWidthScale(17)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+            <Text style={styles.weekRangeText}>{formatWeekRange(week)}</Text>
+            <TouchableOpacity
+              onPress={nextWeek}
+              style={styles.weekNavigationButton}
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="chevron-right"
+                size={moderateWidthScale(17)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.calendarGrid}>
+            <View style={styles.daysHeader}>
+              {dayNames.map((dayName) => (
+                <View key={dayName} style={styles.dayHeader}>
+                  <Text style={styles.dayHeaderText}>{dayName}</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.daysRow}>
+              {week.map((day) => {
+                const isSelected = day.isSame(selectedDate, "day");
+                const isDisabled = isDateDisabled(day);
+                return (
+                  <TouchableOpacity
+                    key={day.format("YYYY-MM-DD")}
+                    style={styles.dayContainer}
+                    onPress={() => handleDateSelect(day)}
+                    disabled={isDisabled}
+                    activeOpacity={isDisabled ? 1 : 0.7}
+                  >
+                    <View
+                      style={[
+                        styles.dayNumberContainer,
+                        isSelected && styles.dayNumberSelected,
+                        isDisabled && styles.dayNumberDisabled,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayNumber,
+                          isSelected && styles.dayNumberSelectedText,
+                          isDisabled && styles.dayNumberDisabledText,
+                        ]}
+                      >
+                        {day.format("D")}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <Text style={styles.timezoneText}>{getTimezoneText()}</Text>
+
+          <View style={styles.timeSlotSection}>
+            <View style={styles.timeSlotCategoryRow}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.timeSlotCategoryButton}
+                onPress={() => {
+                  setSelectedCategory("morning");
+                  scrollToCategory("morning");
+                }}
+              >
+                <View style={styles.timeSlotCategoryIcon}>
+                  <MorningIcon
+                    width={moderateWidthScale(18)}
+                    height={moderateHeightScale(13)}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.timeSlotCategoryText,
+                    selectedCategory === "morning" &&
+                      styles.timeSlotCategoryTextSelected,
+                  ]}
+                >
+                  Morning
+                </Text>
+                {selectedCategory === "morning" && (
+                  <View style={styles.timeSlotCategoryUnderline} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.timeSlotCategoryButton}
+                onPress={() => {
+                  setSelectedCategory("evening");
+                  scrollToCategory("evening");
+                }}
+              >
+                <View style={styles.timeSlotCategoryIcon}>
+                  <EveningIcon
+                    width={moderateWidthScale(18)}
+                    height={moderateHeightScale(10)}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.timeSlotCategoryText,
+                    selectedCategory === "evening" &&
+                      styles.timeSlotCategoryTextSelected,
+                  ]}
+                >
+                  Evening
+                </Text>
+                {selectedCategory === "evening" && (
+                  <View style={styles.timeSlotCategoryUnderline} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.timeSlotCategoryButton}
+                onPress={() => {
+                  setSelectedCategory("night");
+                  scrollToCategory("night");
+                }}
+              >
+                <View style={styles.timeSlotCategoryIcon}>
+                  <NightIcon
+                    width={moderateWidthScale(15)}
+                    height={moderateHeightScale(15)}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.timeSlotCategoryText,
+                    selectedCategory === "night" &&
+                      styles.timeSlotCategoryTextSelected,
+                  ]}
+                >
+                  Night
+                </Text>
+                {selectedCategory === "night" && (
+                  <View style={styles.timeSlotCategoryUnderline} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              ref={scrollViewRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              style={styles.timeSlotsContainer}
+              contentContainerStyle={styles.timeSlotsContentContainer}
+            >
+              {availableTimeSlots.length > 0 ? (
+                getAllSlots().map((slot) => {
+                  const isDisabled = isSlotDisabled(slot);
+                  return (
+                    <TouchableOpacity
+                      activeOpacity={isDisabled ? 1 : 0.7}
+                      key={slot}
+                      style={[
+                        styles.timeSlotButton,
+                        selectedTimeSlot === slot &&
+                          styles.timeSlotButtonSelected,
+                        isDisabled && styles.timeSlotButtonDisabled,
+                      ]}
+                      onPress={() => handleSlotSelect(slot)}
+                      disabled={isDisabled}
+                    >
+                      <Text
+                        style={[
+                          styles.timeSlotText,
+                          selectedTimeSlot === slot &&
+                            styles.timeSlotTextSelected,
+                          isDisabled && styles.timeSlotTextDisabled,
+                        ]}
+                      >
+                        {convertTo12Hour(slot)}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <View style={styles.noSlotsContainer}>
+                  <Text style={styles.noSlotsText}>
+                    No available time slots for this day
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+
+        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
+
         {/* Service Details */}
         {selectedServices.map((service) => (
           <View key={service.id} style={styles.serviceCard}>
@@ -978,7 +1683,17 @@ export default function BookingNow() {
               );
               return;
             }
-            // Data is already in Redux, just navigate
+            if (!selectedTimeSlot) {
+              showBanner(
+                "Select time",
+                "Please select a date and time slot before checkout.",
+                "warning",
+                4000,
+              );
+              return;
+            }
+            dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
+            dispatch(setSelectedTimeSlot(selectedTimeSlot));
             router.push({
               pathname: "/(main)/bookingNow/checkout",
             });

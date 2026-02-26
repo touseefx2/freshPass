@@ -43,6 +43,8 @@ export interface BusinessState {
   selectedServices: Service[];
   selectedStaff: string; // "anyone" or staff id as string
   businessHours: BusinessHours | null;
+  selectedDate: string | null; // YYYY-MM-DD
+  selectedTimeSlot: string | null; // e.g. "09:00"
 }
 
 const initialState: BusinessState = {
@@ -53,6 +55,8 @@ const initialState: BusinessState = {
   selectedServices: [],
   selectedStaff: "anyone",
   businessHours: null,
+  selectedDate: null,
+  selectedTimeSlot: null,
 };
 
 const bsnsSlice = createSlice({
@@ -100,6 +104,12 @@ const bsnsSlice = createSlice({
     setSelectedStaff(state, action: PayloadAction<string>) {
       state.selectedStaff = action.payload;
     },
+    setSelectedDate(state, action: PayloadAction<string | null>) {
+      state.selectedDate = action.payload;
+    },
+    setSelectedTimeSlot(state, action: PayloadAction<string | null>) {
+      state.selectedTimeSlot = action.payload;
+    },
     addService(state, action: PayloadAction<Service>) {
       const service = action.payload;
       if (!state.selectedServices.find((s) => s.id === service.id)) {
@@ -118,6 +128,8 @@ export const {
   setBusinessData,
   setSelectedServices,
   setSelectedStaff,
+  setSelectedDate,
+  setSelectedTimeSlot,
   addService,
   removeService,
   resetBusiness,
