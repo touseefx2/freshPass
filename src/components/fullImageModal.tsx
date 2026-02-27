@@ -60,7 +60,7 @@ const createStyles = (theme: Theme) =>
     },
     dotsContainer: {
       position: "absolute",
-      bottom: moderateHeightScale(40),
+      bottom: moderateHeightScale(50),
       left: 0,
       right: 0,
       flexDirection: "row",
