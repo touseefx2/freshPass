@@ -189,6 +189,7 @@ export default function ExploreHeader({
   const selectedDate = selectedDateISO ? dayjs(selectedDateISO) : null;
   const categoryScrollRef = useRef<ScrollView>(null);
   const categoryXPositionsRef = useRef<number[]>([]);
+  const hasSearchValue = (search.search ?? "").trim() !== "";
 
   // Scroll category list so selected category is at start (when coming from Home)
   useEffect(() => {
@@ -215,11 +216,6 @@ export default function ExploreHeader({
     });
   };
 
-  const handleFilterPress = () => {
-    // TODO: Open filter modal
-    console.log("Filter pressed");
-  };
-
   const handleWherePress = () => {
     router.push("./location");
   };
@@ -233,9 +229,6 @@ export default function ExploreHeader({
       setSelectedCategory(categoryId === "all" ? undefined : categoryId),
     );
   };
-
-  const hasSearchValue = (search.search ?? "").trim() !== "";
-  console.log("------> hasSearchValue", search);
 
   return (
     <View

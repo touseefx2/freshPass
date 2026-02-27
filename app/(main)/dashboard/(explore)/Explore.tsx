@@ -41,6 +41,10 @@ import {
   clearSearchState,
 } from "@/src/state/slices/generalSlice";
 import TryOnBanner from "./TryOnBanner";
+import * as Location from "expo-location";
+import { tryGetPosition } from "@/src/constant/functions";
+import { handleLocationPermission } from "@/src/services/locationPermissionService";
+import { setLocation } from "@/src/state/slices/userSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -522,6 +526,83 @@ export default function ExploreScreen() {
       search,
     ]),
   );
+
+  useEffect(() => {
+    checkLocationServices();
+  }, []);
+
+  const checkLocationServices = async () => {
+    const servicesEnabled = await Location.hasServicesEnabledAsync();
+    if (servicesEnabled) {
+      const permissionResult = await handleLocationPermission();
+      if (permissionResult.granted) {
+        getCurrentLocation();
+      }
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    try {
+      let currentPosition: Location.LocationObject | null = null;
+      try {
+        const cachedPosition = await Location.getLastKnownPositionAsync({
+          maxAge: 60000,
+        });
+        if (cachedPosition) {
+          currentPosition = cachedPosition;
+        } else {
+          currentPosition = await tryGetPosition();
+        }
+      } catch (error) {}
+      if (!currentPosition) {
+        return;
+      }
+      const coordinates = {
+        latitude: currentPosition.coords.latitude,
+        longitude: currentPosition.coords.longitude,
+      };
+      let locationName: string | null = null;
+      let countryName: string | null = null;
+      let cityName: string | null = null;
+      let countryCode: string | null = null;
+      let zipCode: string | null = null;
+      try {
+        const reverseResults = await Location.reverseGeocodeAsync(coordinates, {
+          useGoogleMaps: true,
+          timeout: 10000,
+        });
+        if (reverseResults && reverseResults.length > 0) {
+          const address = reverseResults[0];
+          countryName = (address as { country?: string }).country ?? null;
+          cityName = address.city ?? null;
+          countryCode =
+            (address as { isoCountryCode?: string }).isoCountryCode ?? null;
+          zipCode = address.postalCode ?? null;
+          const addressParts = [
+            address.street,
+            address.city,
+            address.region,
+          ].filter(Boolean);
+          locationName =
+            addressParts.length > 0 ? addressParts.join(", ") : null;
+        }
+      } catch (error) {}
+      if (!locationName) {
+        return;
+      }
+      const locationPayload = {
+        lat: coordinates.latitude,
+        long: coordinates.longitude,
+        locationName,
+        countryName,
+        cityName,
+        countryCode,
+        zipCode,
+      };
+
+      dispatch(setLocation(locationPayload));
+    } catch (error) {}
+  };
 
   return (
     <>
