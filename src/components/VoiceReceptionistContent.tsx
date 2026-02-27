@@ -38,6 +38,18 @@ const formatElapsedTime = (seconds: number): string => {
   return `${mins}:${secs}`;
 };
 
+/** Tuning for real-time feel: lower = faster TTS start and earlier user mic send. */
+const VOICE_RECEPTIONIST_CONFIG = {
+  /** Flush buffered PCM and start playback after no new chunk for this long (ms). */
+  playAfterChunksStopMs: 150,
+  /** After agent stops, send silence for this long to avoid echo before sending user mic (ms). */
+  echoGuardMs: 450,
+  /** When queue is empty and no AgentAudioDone, treat turn done after this (ms). */
+  agentDoneFallbackMs: 900,
+  /** Not used when playing full response at once; kept for reference. */
+  flushSampleThreshold: 8192,
+} as const;
+
 export type VoiceReceptionistContentProps = {
   theme: Theme;
   styles: ChatBoxStyles;
@@ -74,8 +86,6 @@ export const VoiceReceptionistContent: React.FC<
   const audioQueueRef = useRef<string[]>([]);
   const pendingPcmChunksRef = useRef<Int16Array[]>([]);
   const pendingSamplesRef = useRef(0);
-  /** Not used when playing full response at once; kept for reference (was 8192). */
-  const FLUSH_SAMPLE_THRESHOLD = 8192;
   const isMicMutedRef = useRef(false);
   const isSpeakerMutedRef = useRef(false);
   const isListeningRef = useRef(false);
@@ -97,7 +107,6 @@ export const VoiceReceptionistContent: React.FC<
   const lastAgentContentRef = useRef<string | null>(null);
   const lastUserTranscriptRef = useRef<string | null>(null);
   const userMicUnblockAfterRef = useRef(0);
-  const ECHO_GUARD_MS = 1000;
   const silenceChunkRef = useRef<ArrayBuffer | null>(null);
   /** When true, all WS/mic callbacks no-op so we don't run after close. */
   const isClosedRef = useRef(false);
@@ -105,7 +114,6 @@ export const VoiceReceptionistContent: React.FC<
   const playAfterChunksStopRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
-  const PLAY_AFTER_CHUNKS_STOP_MS = 500;
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -389,13 +397,14 @@ export const VoiceReceptionistContent: React.FC<
               agentAudioDoneForTurnRef.current = true;
               playNextInQueue().catch(() => {});
             }
-          }, 2000);
+          }, VOICE_RECEPTIONIST_CONFIG.agentDoneFallbackMs);
           return;
         }
         isPlayingRef.current = false;
         isAgentSpeakingRef.current = false;
         setIsAgentSpeaking(false);
-        userMicUnblockAfterRef.current = Date.now() + ECHO_GUARD_MS;
+        userMicUnblockAfterRef.current =
+          Date.now() + VOICE_RECEPTIONIST_CONFIG.echoGuardMs;
         flushPendingAgentTextRef.current();
         setAgentStatus(isListeningRef.current ? "listening" : "idle");
         return;
@@ -513,6 +522,27 @@ export const VoiceReceptionistContent: React.FC<
     flushChunksToWavAndQueue(chunks, totalSamples);
   }, [flushChunksToWavAndQueue]);
 
+  /** Schedule flush and play after no new chunk for playAfterChunksStopMs. */
+  const scheduleFlushAndPlayWhenQuiet = useCallback(() => {
+    if (playAfterChunksStopRef.current) {
+      clearTimeout(playAfterChunksStopRef.current);
+      playAfterChunksStopRef.current = null;
+    }
+    playAfterChunksStopRef.current = setTimeout(() => {
+      playAfterChunksStopRef.current = null;
+      if (isClosedRef.current) return;
+      if (
+        pendingSamplesRef.current > 0 &&
+        !isPlayingRef.current &&
+        audioQueueRef.current.length === 0
+      ) {
+        flushPendingAgentTextRef.current();
+        agentAudioDoneForTurnRef.current = true;
+        flushPendingAudio().catch(() => {});
+      }
+    }, VOICE_RECEPTIONIST_CONFIG.playAfterChunksStopMs);
+  }, [flushPendingAudio]);
+
   const enqueuePcmChunk = useCallback(
     (buffer: ArrayBuffer) => {
       try {
@@ -520,28 +550,12 @@ export const VoiceReceptionistContent: React.FC<
         if (!pcm.length) return;
         pendingPcmChunksRef.current.push(pcm);
         pendingSamplesRef.current += pcm.length;
-        if (playAfterChunksStopRef.current) {
-          clearTimeout(playAfterChunksStopRef.current);
-          playAfterChunksStopRef.current = null;
-        }
-        playAfterChunksStopRef.current = setTimeout(() => {
-          playAfterChunksStopRef.current = null;
-          if (isClosedRef.current) return;
-          if (
-            pendingSamplesRef.current > 0 &&
-            !isPlayingRef.current &&
-            audioQueueRef.current.length === 0
-          ) {
-            flushPendingAgentTextRef.current();
-            agentAudioDoneForTurnRef.current = true;
-            flushPendingAudio().catch(() => {});
-          }
-        }, PLAY_AFTER_CHUNKS_STOP_MS);
+        scheduleFlushAndPlayWhenQuiet();
       } catch (err) {
         console.error("Failed to buffer voice agent audio chunk", err);
       }
     },
-    [flushPendingAudio]
+    [scheduleFlushAndPlayWhenQuiet]
   );
 
   const flushPendingAgentText = useCallback(() => {
@@ -665,7 +679,8 @@ export const VoiceReceptionistContent: React.FC<
               agentAudioDoneForTurnRef.current = true;
               isAgentSpeakingRef.current = false;
               setIsAgentSpeaking(false);
-              userMicUnblockAfterRef.current = Date.now() + ECHO_GUARD_MS;
+              userMicUnblockAfterRef.current =
+                Date.now() + VOICE_RECEPTIONIST_CONFIG.echoGuardMs;
               flushPendingAgentTextRef.current();
               flushPendingAudio().catch(() => {});
               setTimeout(() => {
