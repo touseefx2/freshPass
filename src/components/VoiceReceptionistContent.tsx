@@ -294,6 +294,7 @@ export const VoiceReceptionistContent: React.FC<
 
   useEffect(() => {
     isMicMutedRef.current = isMicMuted;
+    // Mic mute = only send silence instead of real audio. No clear, no other state change.
   }, [isMicMuted]);
 
   useEffect(() => {
