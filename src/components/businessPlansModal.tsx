@@ -92,27 +92,35 @@ const createStyles = (theme: Theme) =>
       marginLeft: moderateWidthScale(12),
     },
     introSection: {
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(14),
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: moderateHeightScale(12),
       marginHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(4),
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
+      paddingLeft: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      paddingRight: moderateWidthScale(4),
+      borderLeftWidth: 4,
+      borderLeftColor: theme.buttonBack,
+      borderRadius: moderateWidthScale(2),
+      backgroundColor: theme.lightGreen05,
+    },
+    introIconWrap: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: moderateWidthScale(14),
     },
     introRow: {
-      flexDirection: "row",
-    },
-    introIcon: {
-      marginRight: moderateWidthScale(10),
+      flex: 1,
     },
     introText: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
-      color: theme.text,
+      color: theme.darkGreen,
       lineHeight: fontSize.size22,
-      flex: 1,
     },
     content: {
       flex: 1,
@@ -598,13 +606,14 @@ function BusinessPlansModalContent({
         </View>
 
         <View style={styles.introSection}>
-          <View style={styles.introRow}>
+          <View style={styles.introIconWrap}>
             <Feather
               name="globe"
               size={moderateWidthScale(20)}
-              color={theme.darkGreen}
-              style={styles.introIcon}
+              color={theme.buttonBack}
             />
+          </View>
+          <View style={styles.introRow}>
             <Text style={styles.introText}>
               If you want to list your business publicly and keep it active,
               choose a plan from the list below.
