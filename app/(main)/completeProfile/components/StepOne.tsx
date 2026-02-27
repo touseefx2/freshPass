@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Keyboard,
   TouchableWithoutFeedback,
+  ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -49,6 +50,9 @@ type CategoryItem = {
 
 type StepOneProps = {
   onContinueFromSearch?: () => void;
+  onSearchDropdownOpenChange?: (open: boolean) => void;
+  /** When false, dropdown is closed by parent (e.g. on parent scroll) */
+  parentDropdownOpen?: boolean;
 };
 
 export const createStyles = (theme: Theme) =>
@@ -84,8 +88,6 @@ export const createStyles = (theme: Theme) =>
       position: "absolute",
       left: moderateWidthScale(20),
       right: moderateWidthScale(20),
-      top: "100%",
-      marginTop: moderateHeightScale(4),
       maxHeight: heightScale(220),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
@@ -93,6 +95,12 @@ export const createStyles = (theme: Theme) =>
       borderColor: theme.borderLight,
       overflow: "hidden",
       zIndex: 10,
+    },
+    searchDropdownScroll: {
+      maxHeight: heightScale(220),
+    },
+    searchDropdownScrollContent: {
+      paddingBottom: moderateHeightScale(8),
     },
     searchDropdownItem: {
       paddingVertical: moderateHeightScale(12),
@@ -181,9 +189,17 @@ export const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       textAlign: "center",
     },
+    searchDropdownBackdrop: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 5,
+    },
   });
 
-export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
+export default function StepOne({ onContinueFromSearch, onSearchDropdownOpenChange, parentDropdownOpen = true }: StepOneProps = {}) {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -202,10 +218,18 @@ export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
   const [searchResultsLoading, setSearchResultsLoading] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
+  const [searchContainerLayout, setSearchContainerLayout] = useState({ y: 0, height: 0 });
 
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (parentDropdownOpen === false) {
+      setIsSearchFocused(false);
+      setSearchQuery("");
+    }
+  }, [parentDropdownOpen]);
 
   const fetchCategories = async () => {
     try {
@@ -288,24 +312,28 @@ export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
 
   const handleSearchFocus = useCallback(() => {
     setIsSearchFocused(true);
-  }, []);
+    onSearchDropdownOpenChange?.(true);
+  }, [onSearchDropdownOpenChange]);
 
   const handleSearchBlur = useCallback(() => {
     setIsSearchFocused(false);
     setSearchQuery("");
-  }, []);
+    onSearchDropdownOpenChange?.(false);
+  }, [onSearchDropdownOpenChange]);
 
   const handleSearchClear = useCallback(() => {
     setSearchQuery("");
     setIsSearchFocused(false);
-  }, []);
+    onSearchDropdownOpenChange?.(false);
+  }, [onSearchDropdownOpenChange]);
 
   const handleDismissSearch = useCallback(() => {
     Keyboard.dismiss();
     searchInputRef.current?.blur();
     setIsSearchFocused(false);
     setSearchQuery("");
-  }, []);
+    onSearchDropdownOpenChange?.(false);
+  }, [onSearchDropdownOpenChange]);
 
   const handleSelectSearchResult = useCallback(
     (item: CategoryItem) => {
@@ -314,8 +342,9 @@ export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
       dispatch(setBusinessCategory({ id: item.id, name: item.name }));
       setSearchQuery("");
       setIsSearchFocused(false);
+      onSearchDropdownOpenChange?.(false);
     },
-    [dispatch, onContinueFromSearch],
+    [dispatch, onSearchDropdownOpenChange],
   );
 
   const handleSelectCategory = useCallback(
@@ -327,6 +356,68 @@ export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
 
   const hasNoData = !categoriesLoading && !apiError && categories.length === 0;
   const showSkeleton = categoriesLoading && categories.length === 0;
+
+  const dropdownContent = isSearchFocused ? (
+    <>
+      <Pressable
+        style={styles.searchDropdownBackdrop}
+        onPress={handleDismissSearch}
+        accessibilityRole="button"
+        accessibilityLabel={t("close")}
+      />
+      <View
+        style={[
+          styles.searchDropdown,
+          {
+            top: searchContainerLayout.y + searchContainerLayout.height + moderateHeightScale(4),
+          },
+        ]}
+      >
+        {searchResultsLoading ? (
+          <View style={styles.searchDropdownLoader}>
+            <ActivityIndicator
+              size="small"
+              color={(colors as Theme).darkGreen}
+            />
+          </View>
+        ) : searchResults.length > 0 ? (
+          <ScrollView
+            style={styles.searchDropdownScroll}
+            contentContainerStyle={styles.searchDropdownScrollContent}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={true}
+            bounces={false}
+          >
+            {searchResults.map((item, index) => (
+              <Pressable
+                key={item.id}
+                style={[
+                  styles.searchDropdownItem,
+                  index === searchResults.length - 1 &&
+                    styles.searchDropdownItemLast,
+                ]}
+                onPress={() => handleSelectSearchResult(item)}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={styles.searchDropdownItemText}
+                >
+                  {item.name}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.searchDropdownEmpty}>
+            <Text style={styles.searchDropdownEmptyText}>
+              {t("noDataFound")}
+            </Text>
+          </View>
+        )}
+      </View>
+    </>
+  ) : null;
 
   return (
     <View style={styles.container}>
@@ -350,7 +441,13 @@ export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
               <Text style={styles.subtitle}>{t("selectCategorySubtitle")}</Text>
             </View>
 
-            <View style={styles.searchContainer}>
+            <View
+              style={styles.searchContainer}
+              onLayout={(e) => {
+                const { y, height } = e.nativeEvent.layout;
+                setSearchContainerLayout({ y, height });
+              }}
+            >
               <FloatingInput
                 ref={searchInputRef}
                 label={t("search")}
@@ -375,45 +472,6 @@ export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
                   />
                 )}
               />
-              {isSearchFocused && (
-                <View style={styles.searchDropdown}>
-                  {searchResultsLoading ? (
-                    <View style={styles.searchDropdownLoader}>
-                      <ActivityIndicator
-                        size="small"
-                        color={(colors as Theme).darkGreen}
-                      />
-                    </View>
-                  ) : searchResults.length > 0 ? (
-                    <View>
-                      {searchResults.map((item, index) => (
-                        <Pressable
-                          key={item.id}
-                          style={[
-                            styles.searchDropdownItem,
-                            index === searchResults.length - 1 &&
-                              styles.searchDropdownItemLast,
-                          ]}
-                          onPress={() => handleSelectSearchResult(item)}
-                        >
-                          <Text
-                            numberOfLines={1}
-                            style={styles.searchDropdownItemText}
-                          >
-                            {item.name}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ) : (
-                    <View style={styles.searchDropdownEmpty}>
-                      <Text style={styles.searchDropdownEmptyText}>
-                        {t("noDataFound")}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
             </View>
 
             <View style={styles.categoriesContainer}>
@@ -447,6 +505,7 @@ export default function StepOne({ onContinueFromSearch }: StepOneProps = {}) {
                 })}
               </View>
             </View>
+            {dropdownContent}
           </View>
         </TouchableWithoutFeedback>
       )}

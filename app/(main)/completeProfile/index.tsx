@@ -51,6 +51,7 @@ export default function CompleteProfile() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSkipLoading, setIsSkipLoading] = useState(false);
+  const [isStepOneDropdownOpen, setIsStepOneDropdownOpen] = useState(false);
   const {
     currentStep,
     totalSteps,
@@ -600,7 +601,11 @@ export default function CompleteProfile() {
     switch (currentStep) {
       case 1:
         return (
-          <StepOne onContinueFromSearch={handleContinue} />
+          <StepOne
+            onContinueFromSearch={handleContinue}
+            onSearchDropdownOpenChange={setIsStepOneDropdownOpen}
+            parentDropdownOpen={isStepOneDropdownOpen}
+          />
         );
       case 2:
         return <StepTwo />;
@@ -653,6 +658,9 @@ export default function CompleteProfile() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={() => {
+            if (isStepOneDropdownOpen) setIsStepOneDropdownOpen(false);
+          }}
         >
           {renderStep}
         </KeyboardAwareScrollView>
