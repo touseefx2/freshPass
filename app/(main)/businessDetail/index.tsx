@@ -133,6 +133,10 @@ const createStyles = (theme: Theme) =>
       position: "relative",
       backgroundColor: theme.darkGreen,
     },
+    heroImageSlide: {
+      width: SCREEN_WIDTH,
+      height: heightScale(270),
+    },
     heroImage: {
       width: "100%",
       height: "100%",
@@ -1309,7 +1313,10 @@ export default function BusinessDetailScreen() {
   const serviceSectionRef = useRef<View>(null);
   const ratingsSectionRef = useRef<View>(null);
   const staffSectionRef = useRef<View>(null);
+  const heroScrollRef = useRef<ScrollView>(null);
   const sectionPositions = useRef<{ [key: string]: number }>({});
+  const heroScrollStartX = useRef(0);
+  const heroScrollStartTime = useRef(0);
 
   // Default portfolio images
   const DEFAULT_PORTFOLIO_IMAGES = [
@@ -1800,6 +1807,28 @@ export default function BusinessDetailScreen() {
 
   const thumbnails = portfolioPhotos;
 
+  const extendedHeroImages =
+    thumbnails.length > 1
+      ? [
+          thumbnails[thumbnails.length - 1],
+          ...thumbnails,
+          thumbnails[0],
+        ]
+      : thumbnails.length === 1
+        ? thumbnails
+        : currentHeroImage
+          ? [currentHeroImage]
+          : [];
+
+  useEffect(() => {
+    if (extendedHeroImages.length > 2 && heroScrollRef.current) {
+      heroScrollRef.current.scrollTo({
+        x: SCREEN_WIDTH,
+        animated: false,
+      });
+    }
+  }, [extendedHeroImages.length]);
+
   const handleOpenFullImage = () => {
     if (thumbnails.length) {
       const idx = thumbnails.indexOf(currentHeroImage);
@@ -1814,7 +1843,68 @@ export default function BusinessDetailScreen() {
 
   const handleThumbnailSelect = (image: string) => {
     setCurrentHeroImage(image);
+    const idx = thumbnails.indexOf(image);
+    if (idx < 0) return;
+    const isExtended = thumbnails.length > 1;
+    const targetX = isExtended
+      ? (idx + 1) * SCREEN_WIDTH
+      : idx * SCREEN_WIDTH;
+    heroScrollRef.current?.scrollTo({ x: targetX, animated: true });
   };
+
+  const handleHeroScrollEnd = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      const x = e.nativeEvent.contentOffset.x;
+      const pageIndex = Math.round(x / SCREEN_WIDTH);
+      if (thumbnails.length > 1 && extendedHeroImages.length > 2) {
+        if (pageIndex === 0) {
+          setCurrentHeroImage(thumbnails[thumbnails.length - 1]);
+          setTimeout(() => {
+            heroScrollRef.current?.scrollTo({
+              x: thumbnails.length * SCREEN_WIDTH,
+              animated: false,
+            });
+          }, 50);
+        } else if (pageIndex === extendedHeroImages.length - 1) {
+          setCurrentHeroImage(thumbnails[0]);
+          setTimeout(() => {
+            heroScrollRef.current?.scrollTo({
+              x: SCREEN_WIDTH,
+              animated: false,
+            });
+          }, 50);
+        } else {
+          setCurrentHeroImage(thumbnails[pageIndex - 1]);
+        }
+      } else {
+        const idx = Math.min(
+          Math.max(0, pageIndex),
+          thumbnails.length - 1,
+        );
+        if (thumbnails[idx]) setCurrentHeroImage(thumbnails[idx]);
+      }
+    },
+    [thumbnails, extendedHeroImages.length],
+  );
+
+  const handleHeroScrollBeginDrag = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      heroScrollStartX.current = e.nativeEvent.contentOffset.x;
+      heroScrollStartTime.current = Date.now();
+    },
+    [],
+  );
+
+  const handleHeroScrollEndDrag = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      const dx = Math.abs(e.nativeEvent.contentOffset.x - heroScrollStartX.current);
+      const dt = Date.now() - heroScrollStartTime.current;
+      if (dx < 10 && dt < 400) {
+        handleOpenFullImage();
+      }
+    },
+    [handleOpenFullImage],
+  );
 
   // Map business hours from API
   const formatTime = (time: string | null) => {
@@ -3500,18 +3590,37 @@ export default function BusinessDetailScreen() {
             </View>
           </View>
 
-          {/* Hero Image */}
-          <TouchableOpacity
+          {/* Hero Image - horizontally scrollable with wrap-around */}
+          <ScrollView
+            ref={heroScrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleHeroScrollEnd}
+            onScrollBeginDrag={handleHeroScrollBeginDrag}
+            onScrollEndDrag={handleHeroScrollEndDrag}
             style={styles.heroImageContainer}
-            onPress={handleOpenFullImage}
-            activeOpacity={1}
+            contentContainerStyle={
+              extendedHeroImages.length
+                ? { width: SCREEN_WIDTH * extendedHeroImages.length }
+                : undefined
+            }
+            scrollEventThrottle={16}
           >
-            <Image
-              source={{ uri: currentHeroImage }}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
+            {extendedHeroImages.map((uri: string, index: number) => (
+              <TouchableOpacity
+                key={`${uri}-${index}`}
+                style={styles.heroImageSlide}
+                activeOpacity={1}
+              >
+                <Image
+                  source={{ uri }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
           {/* Thumbnail Carousel */}
           <View style={styles.thumbnailContainer}>
