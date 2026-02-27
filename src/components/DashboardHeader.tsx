@@ -180,6 +180,7 @@ function DashboardHeader({
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "pending";
+
   const showBusinessSubscriptipn =
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&

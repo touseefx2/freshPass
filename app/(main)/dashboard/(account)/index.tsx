@@ -144,6 +144,11 @@ export default function AccountScreen() {
   const userRole = user.userRole;
   const isGuest = user.isGuest;
   const isCustomer = user.userRole === "customer";
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const showStripeBanner =
+    userRole === "business" &&
+    businessStatus?.onboarding_completed === true &&
+    businessStatus?.stripe_onboarding_status === "pending";
   const currentLanguage = useAppSelector((state) => state.general.language);
   const countryName = user.countryName;
 
@@ -342,7 +347,7 @@ export default function AccountScreen() {
     ...(userRole === "business" && !isGuest
       ? [{ key: "viewBusiness" as const, title: t("viewBusiness") }]
       : []),
-    ...(userRole === "business" || isCustomer
+    ...(isCustomer || (userRole === "business" && !showStripeBanner)
       ? [{ key: "subscriptions" as const, title: t("subscription") }]
       : []),
     {
