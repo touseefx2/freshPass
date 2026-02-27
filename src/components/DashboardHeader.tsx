@@ -186,6 +186,9 @@ function DashboardHeader({
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "completed" &&
     businessStatus?.has_subscription === false;
+
+  console.log("-----> showBusinessSubscriptipn", showBusinessSubscriptipn);
+
   // For staff and client, always allow going online
   const actualCanGoOnline =
     userRole !== "business" || (!showStripeBanner && !showBusinessSubscriptipn);
