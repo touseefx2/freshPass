@@ -46,6 +46,8 @@ const VOICE_RECEPTIONIST_CONFIG = {
   echoGuardMs: 450,
   /** When queue is empty and no AgentAudioDone, treat turn done after this (ms). */
   agentDoneFallbackMs: 900,
+  /** Delay before showing "Processing..." after AgentThinking (ms). Lets user finish sentence after a short breath without mode switching. */
+  thinkingDebounceMs: 1200,
   /** Not used when playing full response at once; kept for reference. */
   flushSampleThreshold: 8192,
 } as const;
@@ -114,6 +116,10 @@ export const VoiceReceptionistContent: React.FC<
   const playAfterChunksStopRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
+  /** When set, we will switch to "thinking" after delay unless user resumes (UserStartedSpeaking). */
+  const pendingThinkingTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   useEffect(() => {
     if (conversation.length > 0) {
@@ -206,6 +212,10 @@ export const VoiceReceptionistContent: React.FC<
       clearTimeout(playAfterChunksStopRef.current);
       playAfterChunksStopRef.current = null;
     }
+    if (pendingThinkingTimeoutRef.current) {
+      clearTimeout(pendingThinkingTimeoutRef.current);
+      pendingThinkingTimeoutRef.current = null;
+    }
     try {
       if (soundRef.current) soundRef.current.unloadAsync();
     } catch {}
@@ -262,6 +272,10 @@ export const VoiceReceptionistContent: React.FC<
     if (playAfterChunksStopRef.current) {
       clearTimeout(playAfterChunksStopRef.current);
       playAfterChunksStopRef.current = null;
+    }
+    if (pendingThinkingTimeoutRef.current) {
+      clearTimeout(pendingThinkingTimeoutRef.current);
+      pendingThinkingTimeoutRef.current = null;
     }
     try {
       if (soundRef.current) soundRef.current.unloadAsync();
@@ -594,6 +608,10 @@ export const VoiceReceptionistContent: React.FC<
               break;
             case "ConversationText":
               if (parsed.content) {
+                if (pendingThinkingTimeoutRef.current) {
+                  clearTimeout(pendingThinkingTimeoutRef.current);
+                  pendingThinkingTimeoutRef.current = null;
+                }
                 const role =
                   typeof parsed.role === "string" ? parsed.role : "assistant";
                 const content = String(parsed.content).trim();
@@ -619,6 +637,10 @@ export const VoiceReceptionistContent: React.FC<
               break;
             case "UserStartedSpeaking":
             case "user_started_speaking":
+              if (pendingThinkingTimeoutRef.current) {
+                clearTimeout(pendingThinkingTimeoutRef.current);
+                pendingThinkingTimeoutRef.current = null;
+              }
               setAgentStatus("listening");
               isAgentSpeakingRef.current = false;
               setIsAgentSpeaking(false);
@@ -633,11 +655,23 @@ export const VoiceReceptionistContent: React.FC<
               soundRef.current = null;
               break;
             case "AgentThinking":
-            case "agent_thinking":
-              setAgentStatus("thinking");
+            case "agent_thinking": {
+              if (pendingThinkingTimeoutRef.current) {
+                clearTimeout(pendingThinkingTimeoutRef.current);
+                pendingThinkingTimeoutRef.current = null;
+              }
+              pendingThinkingTimeoutRef.current = setTimeout(() => {
+                pendingThinkingTimeoutRef.current = null;
+                if (!isClosedRef.current) setAgentStatus("thinking");
+              }, VOICE_RECEPTIONIST_CONFIG.thinkingDebounceMs);
               break;
+            }
             case "AgentStartedSpeaking":
             case "agent_started_speaking":
+              if (pendingThinkingTimeoutRef.current) {
+                clearTimeout(pendingThinkingTimeoutRef.current);
+                pendingThinkingTimeoutRef.current = null;
+              }
               setAgentStatus("speaking");
               isAgentSpeakingRef.current = true;
               setIsAgentSpeaking(true);
@@ -672,6 +706,10 @@ export const VoiceReceptionistContent: React.FC<
               }
               break;
             case "AgentAudioDone":
+              if (pendingThinkingTimeoutRef.current) {
+                clearTimeout(pendingThinkingTimeoutRef.current);
+                pendingThinkingTimeoutRef.current = null;
+              }
               if (playAfterChunksStopRef.current) {
                 clearTimeout(playAfterChunksStopRef.current);
                 playAfterChunksStopRef.current = null;
