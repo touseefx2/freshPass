@@ -16,7 +16,14 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMicrophoneUsageDescription": "Fresh Pass uses your microphone so the AI Receptionist can talk with you."
+        "NSMicrophoneUsageDescription": "Fresh Pass uses your microphone so the AI Receptionist can talk with you.",
+        "NSAppTransportSecurity": {
+          "NSExceptionDomains": {
+            "159.89.190.185": {
+              "NSExceptionAllowsInsecureHTTPLoads": true
+            }
+          }
+        }
       },
       "entitlements": {
         "com.apple.developer.applesignin": ["Default"]
