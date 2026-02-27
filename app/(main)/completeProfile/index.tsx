@@ -530,16 +530,8 @@ export default function CompleteProfile() {
       return false;
     }
     if (currentStep === 8) {
-      // Step 8: Disable continue if:
-      // 1. No service templates available (no services found for category)
-      // 2. Services are available but none selected (must select at least 1)
-
-      // If no service templates available, disable continue
-      if (serviceTemplates.length === 0) {
-        return true;
-      }
-
-      // If services are available, must have at least 1 selected
+      // Step 8: Require at least one service (template-based OR custom).
+      // Custom services (no template_id) are added via + and still count.
       return services.length === 0;
     }
     if (currentStep === 9) {
@@ -590,7 +582,6 @@ export default function CompleteProfile() {
     teamSize,
     businessHours,
     services,
-    serviceTemplates,
     facebookUrl,
     instagramUrl,
     tiktokUrl,
