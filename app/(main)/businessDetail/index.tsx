@@ -1447,7 +1447,7 @@ export default function BusinessDetailScreen() {
 
   const handleShareBusiness = async () => {
     try {
-      const shareUrl = `https://getfreshpass.com/business/${businessData?.slug ?? ""}`;
+      const shareUrl = `https://getfreshpass.com/businesses/${businessData?.slug ?? ""}`;
       const message = `Discover ${businessName} on FreshPass.\n\nAddress: ${businessAddress}\n\nView details & book here:\n${shareUrl}\n\nImage preview:\n${currentHeroImage}`;
 
       await Share.share({
@@ -1810,11 +1810,7 @@ export default function BusinessDetailScreen() {
 
   const extendedHeroImages =
     thumbnails.length > 1
-      ? [
-          thumbnails[thumbnails.length - 1],
-          ...thumbnails,
-          thumbnails[0],
-        ]
+      ? [thumbnails[thumbnails.length - 1], ...thumbnails, thumbnails[0]]
       : thumbnails.length === 1
         ? thumbnails
         : currentHeroImage
@@ -1847,9 +1843,7 @@ export default function BusinessDetailScreen() {
     const idx = thumbnails.indexOf(image);
     if (idx < 0) return;
     const isExtended = thumbnails.length > 1;
-    const targetX = isExtended
-      ? (idx + 1) * SCREEN_WIDTH
-      : idx * SCREEN_WIDTH;
+    const targetX = isExtended ? (idx + 1) * SCREEN_WIDTH : idx * SCREEN_WIDTH;
     heroScrollRef.current?.scrollTo({ x: targetX, animated: true });
   };
 
@@ -1878,10 +1872,7 @@ export default function BusinessDetailScreen() {
           setCurrentHeroImage(thumbnails[pageIndex - 1]);
         }
       } else {
-        const idx = Math.min(
-          Math.max(0, pageIndex),
-          thumbnails.length - 1,
-        );
+        const idx = Math.min(Math.max(0, pageIndex), thumbnails.length - 1);
         if (thumbnails[idx]) setCurrentHeroImage(thumbnails[idx]);
       }
     },
