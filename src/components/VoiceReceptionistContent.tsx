@@ -309,19 +309,8 @@ export const VoiceReceptionistContent: React.FC<
     if (soundRef.current) {
       soundRef.current.setVolumeAsync(isSpeakerMuted ? 0 : 1).catch(() => {});
     }
-    if (isSpeakerMuted) {
-      // When speaker is muted, aggressively stop any queued/playing TTS so we mirror web behavior
-      audioQueueRef.current = [];
-      pendingPcmChunksRef.current = [];
-      pendingSamplesRef.current = 0;
-      isPlayingRef.current = false;
-      try {
-        if (soundRef.current) soundRef.current.unloadAsync();
-      } catch {}
-      soundRef.current = null;
-      isAgentSpeakingRef.current = false;
-      setIsAgentSpeaking(false);
-    }
+    // Speaker mute = only mute playback. Do NOT clear queue or set agent speaking to false;
+    // agent's turn continues in background so status stays "Agent is speaking..." until done.
   }, [isSpeakerMuted]);
 
   useEffect(() => () => cleanup(), [cleanup]);
