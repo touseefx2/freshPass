@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
-import { setToggleLoading } from "@/src/state/slices/generalSlice";
+import { setToggleLoading, setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -29,7 +29,6 @@ import {
 } from "@/src/state/thunks/businessThunks";
 import { checkInternetConnection } from "@/src/services/api";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import BusinessPlansModal from "@/src/components/businessPlansModal";
 import { IMAGES } from "../constant/images";
 
 const createStyles = (theme: Theme) =>
@@ -105,8 +104,6 @@ function DashboardHeader({
   const isOnline = businessStatus?.active ?? false;
   const insets = useSafeAreaInsets();
 
-  const [businessPlansModalVisible, setBusinessPlansModalVisible] =
-    useState(false);
   const [isFetchingStripeLink, setIsFetchingStripeLink] = useState(false);
   const toggleLoading = useAppSelector((state) => state.general.toggleLoading);
   const bannerAnimation = useRef(new Animated.Value(0)).current;
@@ -171,7 +168,7 @@ function DashboardHeader({
   };
 
   const handleBusinessSubscriptionPress = () => {
-    setBusinessPlansModalVisible(true);
+    dispatch(setBusinessPlansModalVisible(true));
   };
 
   // Only apply restrictions for business users
@@ -187,8 +184,7 @@ function DashboardHeader({
     businessStatus?.stripe_onboarding_status === "completed" &&
     businessStatus?.has_subscription === false;
 
-  console.log("-----> showBusinessSubscriptipn", showBusinessSubscriptipn);
-
+ 
   // For staff and client, always allow going online
   const actualCanGoOnline =
     userRole !== "business" || (!showStripeBanner && !showBusinessSubscriptipn);
@@ -338,10 +334,6 @@ function DashboardHeader({
           </TouchableOpacity>
         )}
 
-      <BusinessPlansModal
-        visible={businessPlansModalVisible}
-        onClose={() => setBusinessPlansModalVisible(false)}
-      />
     </View>
   );
 }

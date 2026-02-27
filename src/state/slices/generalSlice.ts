@@ -83,6 +83,7 @@ export interface GeneralState {
   chatContactsLoading: boolean;
   chatContactsRefreshing: boolean;
   chatContactsLoadingMore: boolean;
+  businessPlansModalVisible: boolean;
 }
 
 export interface ChatContactItem {
@@ -134,6 +135,7 @@ const initialState: GeneralState = {
   chatContactsLoading: true,
   chatContactsRefreshing: false,
   chatContactsLoadingMore: false,
+  businessPlansModalVisible: false,
 };
 
 const generalSlice = createSlice({
@@ -253,6 +255,9 @@ const generalSlice = createSlice({
     setGuestModeModalVisible(state, action: PayloadAction<boolean>) {
       state.guestModeModalVisible = action.payload;
     },
+    setBusinessPlansModalVisible(state, action: PayloadAction<boolean>) {
+      state.businessPlansModalVisible = action.payload;
+    },
     setIsFirstShowTryOn(state, action: PayloadAction<boolean>) {
       state.isFirstShowTryOn = action.payload;
     },
@@ -337,6 +342,7 @@ const generalSlice = createSlice({
       state.chatContactsLoading = false;
       state.chatContactsRefreshing = false;
       state.chatContactsLoadingMore = false;
+      state.businessPlansModalVisible = false;
     },
   },
 });
@@ -364,6 +370,7 @@ export const {
   openFullImageModal,
   closeFullImageModal,
   setGuestModeModalVisible,
+  setBusinessPlansModalVisible,
   setIsFirstShowTryOn,
   setCurrentLocation,
   addToRecentLocations,
