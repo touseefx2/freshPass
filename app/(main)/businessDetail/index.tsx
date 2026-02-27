@@ -1317,6 +1317,7 @@ export default function BusinessDetailScreen() {
   const sectionPositions = useRef<{ [key: string]: number }>({});
   const heroScrollStartX = useRef(0);
   const heroScrollStartTime = useRef(0);
+  const heroDragStarted = useRef(false);
 
   // Default portfolio images
   const DEFAULT_PORTFOLIO_IMAGES = [
@@ -1889,6 +1890,7 @@ export default function BusinessDetailScreen() {
 
   const handleHeroScrollBeginDrag = useCallback(
     (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      heroDragStarted.current = true;
       heroScrollStartX.current = e.nativeEvent.contentOffset.x;
       heroScrollStartTime.current = Date.now();
     },
@@ -1897,11 +1899,18 @@ export default function BusinessDetailScreen() {
 
   const handleHeroScrollEndDrag = useCallback(
     (e: { nativeEvent: { contentOffset: { x: number } } }) => {
-      const dx = Math.abs(e.nativeEvent.contentOffset.x - heroScrollStartX.current);
-      const dt = Date.now() - heroScrollStartTime.current;
-      if (dx < 10 && dt < 400) {
+      if (!heroDragStarted.current) {
         handleOpenFullImage();
+      } else {
+        const dx = Math.abs(
+          e.nativeEvent.contentOffset.x - heroScrollStartX.current,
+        );
+        const dt = Date.now() - heroScrollStartTime.current;
+        if (dx < 25 && dt < 500) {
+          handleOpenFullImage();
+        }
       }
+      heroDragStarted.current = false;
     },
     [handleOpenFullImage],
   );
@@ -3612,6 +3621,7 @@ export default function BusinessDetailScreen() {
                 key={`${uri}-${index}`}
                 style={styles.heroImageSlide}
                 activeOpacity={1}
+                onPress={handleOpenFullImage}
               >
                 <Image
                   source={{ uri }}
