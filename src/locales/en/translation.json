@@ -666,5 +666,20 @@
   "price": "Price",
   "createdAt": "Created at",
   "viewInvoice": "View invoice",
-  "myPurchases": "My Purchases"
+  "myPurchases": "My Purchases",
+  "failedToLoadSubscription": "Failed to load subscription",
+  "cancelTrialConfirm": "Are you sure you want to cancel your trial?",
+  "cancelSubscriptionConfirm": "Are you sure you want to cancel your subscription?",
+  "no": "No",
+  "yesCancelTrial": "Yes, cancel trial",
+  "noActiveSubscriptionFound": "No active subscription found",
+  "freeTrialActive": "Free trial active",
+  "yourTrialEndsOn": "Your trial ends on",
+  "cardLast4Digits": "Card (last 4 digits)",
+  "subscriptionDetails": "Subscription details",
+  "daysRemaining": "Days remaining",
+  "trialStarted": "Trial started",
+  "subscriptionStarted": "Subscription started",
+  "nextPaymentDate": "Next payment date",
+  "notAvailable": "N/A"
 }

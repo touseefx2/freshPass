@@ -412,10 +412,6 @@ export default function SubscriptionScreen() {
     subscription?.status === "active" &&
     subscription?.stripeStatus === "active";
 
-  console.log("----->isTrialing", isTrialing);
-  console.log("------>isActive", isActive);
-  console.log("------>sub", subscription);
-
   const fetchSubscription = async () => {
     setLoading(true);
     setError(null);
@@ -669,7 +665,7 @@ export default function SubscriptionScreen() {
                     {isTrialing ? t("trialStarted") : t("subscriptionStarted")}
                   </Text>
                   <Text style={styles.infoValue}>
-                    {subscription.createdAt || "N/A"}
+                    {subscription.createdAt || t("notAvailable")}
                   </Text>
                 </View>
               </View>
@@ -685,7 +681,7 @@ export default function SubscriptionScreen() {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>{t("nextPaymentDate")}</Text>
                   <Text style={styles.infoValue}>
-                    {subscription.nextPaymentDate || "N/A"}
+                    {subscription.nextPaymentDate || t("notAvailable")}
                   </Text>
                 </View>
               </View>
