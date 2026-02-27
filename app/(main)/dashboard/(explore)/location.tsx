@@ -220,9 +220,9 @@ export default function LocationScreen() {
   const [isFetchingDetails, setIsFetchingDetails] = useState(false);
   const sessionTokenRef = useRef<string>(generateSessionToken());
 
-  // useEffect(() => {
-  //   // getCurrentLocation();
-  // }, []);
+  useEffect(() => {
+    checkLocationServices();
+  }, []);
 
   const ensureSessionToken = useCallback(() => {
     if (!sessionTokenRef.current) {
@@ -462,6 +462,11 @@ export default function LocationScreen() {
       Logger.error("Error getting location:", error);
       showBanner(t("locationError"), t("unableToGetCurrentLocation"), "error");
     }
+  };
+
+  const checkLocationServices = async () => {
+    const servicesEnabled = await Location.hasServicesEnabledAsync();
+    setEnablingLocation(servicesEnabled);
   };
 
   const currentStatusText = enablingLocation

@@ -91,7 +91,6 @@ export default function ExploreScreen() {
   const location = useAppSelector((state) => state.user.location);
   const selectedDateISO = useAppSelector((state) => state.general.selectedDate);
   const search = useAppSelector((state) => state.general.searchState);
-  const hasSearchValue = (search.search ?? "").trim() !== "";
   const hasSearchId = search.serviceId ?? null;
   const aiQuota = useAppSelector((state) => state.user.ai_quota);
   const aiService = useAppSelector((state) => state.general.aiService);
