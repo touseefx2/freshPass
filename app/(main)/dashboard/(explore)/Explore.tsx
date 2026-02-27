@@ -39,6 +39,7 @@ import {
   setTryOnBannerDismissed,
   setSearchState,
   clearSearchState,
+  setCurrentLocation,
 } from "@/src/state/slices/generalSlice";
 import TryOnBanner from "./TryOnBanner";
 import * as Location from "expo-location";
@@ -601,6 +602,7 @@ export default function ExploreScreen() {
       };
 
       dispatch(setLocation(locationPayload));
+      dispatch(setCurrentLocation(locationPayload));
     } catch (error) {}
   };
 
