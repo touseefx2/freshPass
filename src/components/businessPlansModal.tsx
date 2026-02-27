@@ -91,6 +91,29 @@ const createStyles = (theme: Theme) =>
       padding: moderateWidthScale(8),
       marginLeft: moderateWidthScale(12),
     },
+    introSection: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(14),
+      marginHorizontal: moderateWidthScale(20),
+      marginTop: moderateHeightScale(4),
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    introRow: {
+      flexDirection: "row",
+    },
+    introIcon: {
+      marginRight: moderateWidthScale(10),
+    },
+    introText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      lineHeight: fontSize.size22,
+      flex: 1,
+    },
     content: {
       flex: 1,
       paddingHorizontal: moderateWidthScale(20),
@@ -383,6 +406,13 @@ function BusinessPlansModalContent({
   const isServiceSelectedForPlan = (planId: number, serviceId: number) =>
     (selectedServicesByPlanId[planId] ?? []).includes(serviceId);
 
+  const getAddOnDisplayName = (service: AdditionalService): string => {
+    const isFeatured =
+      service.type?.toLowerCase() === "featured" ||
+      service.name?.toLowerCase().includes("feature");
+    return isFeatured ? "Featured listing" : service.name;
+  };
+
   const getTotalPriceForPlan = (plan: SubscriptionPlan): string => {
     const planPriceNum = parseFloat(plan.price) || 0;
     const selectedIds = selectedServicesByPlanId[plan.id] ?? [];
@@ -567,6 +597,21 @@ function BusinessPlansModalContent({
           </TouchableOpacity>
         </View>
 
+        <View style={styles.introSection}>
+          <View style={styles.introRow}>
+            <Feather
+              name="globe"
+              size={moderateWidthScale(20)}
+              color={theme.darkGreen}
+              style={styles.introIcon}
+            />
+            <Text style={styles.introText}>
+              If you want to list your business publicly and keep it active,
+              choose a plan from the list below.
+            </Text>
+          </View>
+        </View>
+
         {loading && plans.length === 0 ? (
           <Skeleton screenType="BusinessPlans" styles={styles} />
         ) : apiError ? (
@@ -679,7 +724,7 @@ function BusinessPlansModalContent({
                                   style={styles.serviceName}
                                   numberOfLines={2}
                                 >
-                                  {service.name}
+                                  {getAddOnDisplayName(service)}
                                 </Text>
                                 <Text style={styles.servicePrice}>
                                   +${service.price}
@@ -691,7 +736,7 @@ function BusinessPlansModalContent({
                     </View>
                   )}
                 <Button
-                  title={t("subscribeNow")}
+                  title={`Start my ${process.env.EXPO_PUBLIC_TRAILDAY || "0"} day trial`}
                   onPress={() => handleSubscribe(plan.id)}
                   loading={subscribingPlanId === plan.id}
                   disabled={subscribingPlanId !== null}
@@ -742,6 +787,7 @@ export default function BusinessPlansModal({
       animationType="slide"
       onRequestClose={onClose}
     >
+      <StatusBar barStyle="dark-content" />
       <BusinessPlansModalContent
         visible={visible}
         onClose={onClose}
