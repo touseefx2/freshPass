@@ -94,8 +94,6 @@ const createStyles = (theme: Theme) =>
     introSection: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: moderateHeightScale(12),
-      marginHorizontal: moderateWidthScale(20),
       paddingLeft: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(14),
       paddingRight: moderateWidthScale(4),
@@ -605,22 +603,6 @@ function BusinessPlansModalContent({
           </TouchableOpacity>
         </View>
 
-        <View style={styles.introSection}>
-          <View style={styles.introIconWrap}>
-            <Feather
-              name="globe"
-              size={moderateWidthScale(20)}
-              color={theme.buttonBack}
-            />
-          </View>
-          <View style={styles.introRow}>
-            <Text style={styles.introText}>
-              If you want to list your business publicly and keep it active,
-              choose a plan from the list below.
-            </Text>
-          </View>
-        </View>
-
         {loading && plans.length === 0 ? (
           <Skeleton screenType="BusinessPlans" styles={styles} />
         ) : apiError ? (
@@ -640,6 +622,22 @@ function BusinessPlansModalContent({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.plansContainer}
           >
+            <View style={styles.introSection}>
+              <View style={styles.introIconWrap}>
+                <Feather
+                  name="globe"
+                  size={moderateWidthScale(20)}
+                  color={theme.buttonBack}
+                />
+              </View>
+              <View style={styles.introRow}>
+                <Text style={styles.introText}>
+                  If you want to list your business publicly and keep it active,
+                  choose a plan from the list below.
+                </Text>
+              </View>
+            </View>
+
             {plans.map((plan) => (
               <View key={plan.id} style={[styles.planCard, styles.shadow]}>
                 <View style={styles.planHeader}>
