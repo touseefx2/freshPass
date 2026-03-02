@@ -92,8 +92,7 @@ const createStyles = (theme: Theme) =>
       marginLeft: moderateWidthScale(12),
     },
     introSection: {
-      flexDirection: "row",
-      alignItems: "center",
+      flexDirection: "column",
       paddingLeft: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(14),
       paddingRight: moderateWidthScale(4),
@@ -101,6 +100,13 @@ const createStyles = (theme: Theme) =>
       borderLeftColor: theme.buttonBack,
       borderRadius: moderateWidthScale(2),
       backgroundColor: theme.lightGreen05,
+    },
+    introSectionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    introSectionRowSecond: {
+      marginTop: moderateHeightScale(10),
     },
     introIconWrap: {
       width: moderateWidthScale(40),
@@ -124,7 +130,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
     },
     introTextMargin: {
-      marginTop: moderateHeightScale(8),
+      marginTop: 0,
     },
     content: {
       flex: 1,
@@ -640,30 +646,43 @@ function BusinessPlansModalContent({
             contentContainerStyle={styles.plansContainer}
           >
             <View style={styles.introSection}>
-              <View style={styles.introIconWrap}>
-                <Feather
-                  name="globe"
-                  size={moderateWidthScale(20)}
-                  color={theme.buttonBack}
-                />
+              <View style={styles.introSectionRow}>
+                <View style={styles.introIconWrap}>
+                  <Feather
+                    name="globe"
+                    size={moderateWidthScale(20)}
+                    color={theme.buttonBack}
+                  />
+                </View>
+                <View style={styles.introRow}>
+                  <Text style={styles.introText}>
+                    Choose one plan to activate your account and list your
+                    business publicly.
+                  </Text>
+                </View>
               </View>
-              <View style={styles.introRow}>
-                <Text style={styles.introText}>
-                  You need to choose one subscription plan to activate your
-                  account and list your business publicly.
-                </Text>
-                <Text style={[styles.introText, styles.introTextMargin]}>
-                  For more visibility, you can add the Featured listing add-on
-                  to appear in Featured businesses —{" "}
-                  {featuredAddOnPrice != null ? (
-                    <Text style={styles.introTextBold}>
-                      ${featuredAddOnPrice}/month
-                    </Text>
-                  ) : (
-                    "see add-ons below"
-                  )}
-                  .
-                </Text>
+              <View style={[styles.introSectionRow, styles.introSectionRowSecond]}>
+                <View style={styles.introIconWrap}>
+                  <Feather
+                    name="star"
+                    size={moderateWidthScale(20)}
+                    color={theme.buttonBack}
+                  />
+                </View>
+                <View style={styles.introRow}>
+                  <Text style={styles.introText}>
+                    For more visibility, add the Featured add-on to appear in
+                    Featured businesses —{" "}
+                    {featuredAddOnPrice != null ? (
+                      <Text style={styles.introTextBold}>
+                        ${featuredAddOnPrice}/month
+                      </Text>
+                    ) : (
+                      "see below"
+                    )}
+                    .
+                  </Text>
+                </View>
               </View>
             </View>
 
