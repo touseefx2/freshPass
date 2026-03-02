@@ -13,6 +13,7 @@ import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import HowToUseVideoModal from "@/src/components/HowToUseVideoModal";
 import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIcons } from "@expo/vector-icons";
 import {
   GeneratePostIcon,
   GenerateCollageIcon,
@@ -35,7 +36,10 @@ export default function ToolList() {
   const isCustomer = userRole === "customer";
 
   const [howToUseModalVisible, setHowToUseModalVisible] = useState(false);
-  const openHowToUseModal = useCallback(() => setHowToUseModalVisible(true), []);
+  const openHowToUseModal = useCallback(
+    () => setHowToUseModalVisible(true),
+    [],
+  );
   const closeHowToUseModal = useCallback(
     () => setHowToUseModalVisible(false),
     [],
@@ -65,13 +69,31 @@ export default function ToolList() {
     },
   ];
 
-  // Customer features
+  // Customer features – Tutorial first, then Hair Tryon
   const customerFeatures = [
+    {
+      id: "tutorial",
+      titleKey: "tutorial" as const,
+      paramTitle: "",
+      icon: ({
+        width,
+        height,
+        color,
+      }: {
+        width: number;
+        height: number;
+        color: string;
+      }) => (
+        <MaterialIcons name="play-circle-filled" size={width} color={color} />
+      ),
+      openTutorial: true,
+    },
     {
       id: "hairTryon",
       titleKey: "hairTryon" as const,
       paramTitle: "Hair Tryon",
       icon: PersonScissorsIcon,
+      openTutorial: false,
     },
   ];
 
@@ -138,11 +160,17 @@ export default function ToolList() {
         <View style={styles.featuresContainer}>
           {features.map((feature, index) => {
             const IconComponent = feature.icon;
+            const openTutorial =
+              "openTutorial" in feature && feature.openTutorial;
             return (
               <TouchableOpacity
                 key={feature.id}
                 style={styles.featureBox}
-                onPress={() => handleFeaturePress(feature.paramTitle)}
+                onPress={() =>
+                  openTutorial
+                    ? openHowToUseModal()
+                    : handleFeaturePress(feature.paramTitle)
+                }
                 activeOpacity={0.7}
               >
                 <LinearGradient
@@ -168,12 +196,6 @@ export default function ToolList() {
           })}
         </View>
       </ScrollView>
-
-      {isCustomer && (
-        <View style={styles.footerContainer}>
-          <Button title={t("howToUse")} onPress={openHowToUseModal} />
-        </View>
-      )}
 
       <HowToUseVideoModal
         visible={howToUseModalVisible}
