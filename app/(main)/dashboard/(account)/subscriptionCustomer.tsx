@@ -29,11 +29,33 @@ import { Dropdown } from "react-native-element-dropdown";
 import subscription from "./subscription";
 import { useTranslation } from "react-i18next";
 
+interface SubscriptionPlanService {
+  id: number;
+  name: string;
+  price: string;
+  description: string | null;
+  durationHours: number;
+  durationMinutes: number;
+}
+
+interface AdditionalService {
+  id: number;
+  name: string;
+  price: string;
+  ai_requests?: number;
+  type: string | null;
+  active: boolean;
+}
+
 interface SubscriptionData {
   id: number;
   subscriptionPlanId: number;
   subscriptionPlan: string;
   subscriptionPlanPrice: string;
+  additionalServicesTotal?: number;
+  totalPrice?: number;
+  additionalServices?: AdditionalService[];
+  subscriptionPlanServices?: SubscriptionPlanService[];
   subscriptionPlanType: string;
   subscriptionPlanDescription: string;
   userId: number;
@@ -593,6 +615,68 @@ const createStyles = (theme: Theme) =>
       opacity: 0.8,
       lineHeight: fontSize.size18,
     },
+    seeDetailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(8),
+      marginTop: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(4),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    seeDetailText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      marginRight: moderateWidthScale(6),
+    },
+    expandedDetailSection: {
+      marginTop: moderateHeightScale(4),
+      paddingTop: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    servicesSectionTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    serviceItem: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen015,
+      borderRadius: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    serviceName: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginRight: moderateWidthScale(8),
+    },
+    serviceNameContainer: {
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    servicePrice: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    serviceDuration: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      opacity: 0.7,
+      marginTop: moderateHeightScale(2),
+    },
   });
 
 export default function subscriptionCustomer() {
@@ -617,6 +701,18 @@ export default function subscriptionCustomer() {
     useState<SubscriptionData | null>(null);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<number>>(
+    new Set(),
+  );
+
+  const toggleCardExpand = useCallback((id: number) => {
+    setExpandedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const fetchSubscriptions = useCallback(
     async (page: number = 1, append: boolean = false, status?: string) => {
@@ -774,12 +870,30 @@ export default function subscriptionCustomer() {
     }
   }, []);
 
+  const formatServiceDuration = useCallback(
+    (hours: number, minutes: number): string => {
+      if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+      if (hours > 0) return `${hours}h`;
+      if (minutes > 0) return `${minutes}m`;
+      return "";
+    },
+    [],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: SubscriptionData }) => {
       const isCancelledButActive =
         item.status?.trim()?.toLowerCase() === "active" &&
         item.stripeStatus?.trim()?.toLowerCase() === "cancelled" &&
         item.endsAt;
+      const isExpanded = expandedCardIds.has(item.id);
+      const hasDetail =
+        (item.subscriptionPlanDescription &&
+          item.subscriptionPlanDescription.length > 0) ||
+        (item.paymentDate ||
+          item.status?.trim()?.toLowerCase() === "active") ||
+        (item.subscriptionPlanServices &&
+          item.subscriptionPlanServices.length > 0);
 
       return (
         <View style={styles.subscriptionCard}>
@@ -820,13 +934,6 @@ export default function subscriptionCustomer() {
             </View>
           </View>
 
-          {/* Description */}
-          {item.subscriptionPlanDescription && (
-            <Text style={styles.descriptionText} numberOfLines={2}>
-              {item.subscriptionPlanDescription}
-            </Text>
-          )}
-
           {/* Usage Section */}
           <View style={styles.usageSection}>
             <View style={styles.usageHeader}>
@@ -855,41 +962,94 @@ export default function subscriptionCustomer() {
             </View>
           </View>
 
-          {/* Payment Date and Next Renewal - Side by Side */}
-          {(item.paymentDate ||
-            item.status?.trim()?.toLowerCase() === "active") && (
-            <View style={styles.paymentRenewalRow}>
-              {item.paymentDate && (
-                <View style={styles.paymentDateContainer}>
-                  <Feather
-                    name="credit-card"
-                    size={moderateWidthScale(12)}
-                    color={theme.darkGreen}
-                  />
-                  <View style={styles.dateInfoContainer}>
-                    <Text style={styles.dateLabel}>Payment</Text>
-                    <Text style={styles.dateValue}>{item.paymentDate}</Text>
-                  </View>
+          {/* See detail / See less row */}
+          {hasDetail && (
+            <TouchableOpacity
+              style={styles.seeDetailRow}
+              onPress={() => toggleCardExpand(item.id)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.seeDetailText}>
+                {isExpanded ? "See less" : "See detail"}
+              </Text>
+              <Feather
+                name={isExpanded ? "chevron-up" : "chevron-down"}
+                size={moderateWidthScale(18)}
+                color={theme.orangeBrown}
+              />
+            </TouchableOpacity>
+          )}
+
+          {/* Expanded: Description, Payment/Renewal, Plan Services */}
+          {isExpanded && (
+            <View style={styles.expandedDetailSection}>
+              {item.subscriptionPlanDescription && (
+                <Text style={styles.descriptionText}>
+                  {item.subscriptionPlanDescription}
+                </Text>
+              )}
+              {(item.paymentDate ||
+                item.status?.trim()?.toLowerCase() === "active") && (
+                <View style={styles.paymentRenewalRow}>
+                  {item.paymentDate && (
+                    <View style={styles.paymentDateContainer}>
+                      <Feather
+                        name="credit-card"
+                        size={moderateWidthScale(12)}
+                        color={theme.darkGreen}
+                      />
+                      <View style={styles.dateInfoContainer}>
+                        <Text style={styles.dateLabel}>Payment</Text>
+                        <Text style={styles.dateValue}>{item.paymentDate}</Text>
+                      </View>
+                    </View>
+                  )}
+                  {item.status?.trim()?.toLowerCase() === "active" && (
+                    <View
+                      style={[
+                        styles.renewalContainer,
+                        !item.paymentDate && { marginLeft: 0 },
+                      ]}
+                    >
+                      <Feather
+                        name="calendar"
+                        size={moderateWidthScale(12)}
+                        color={theme.darkGreen}
+                      />
+                      <View style={styles.dateInfoContainer}>
+                        <Text style={styles.dateLabel}>Renewal</Text>
+                        <Text style={styles.dateValue}>
+                          {item.nextPaymentDate}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
               )}
-              {item.status?.trim()?.toLowerCase() === "active" && (
-                <View
-                  style={[
-                    styles.renewalContainer,
-                    !item.paymentDate && { marginLeft: 0 },
-                  ]}
-                >
-                  <Feather
-                    name="calendar"
-                    size={moderateWidthScale(12)}
-                    color={theme.darkGreen}
-                  />
-                  <View style={styles.dateInfoContainer}>
-                    <Text style={styles.dateLabel}>Renewal</Text>
-                    <Text style={styles.dateValue}>{item.nextPaymentDate}</Text>
-                  </View>
-                </View>
-              )}
+              {item.subscriptionPlanServices &&
+                item.subscriptionPlanServices.length > 0 && (
+                  <>
+                    <Text style={styles.servicesSectionTitle}>
+                      Plan services
+                    </Text>
+                    {item.subscriptionPlanServices.map((svc) => (
+                      <View key={svc.id} style={styles.serviceItem}>
+                        <View style={styles.serviceNameContainer}>
+                          <Text style={styles.serviceName}>{svc.name}</Text>
+                          {(svc.durationHours > 0 || svc.durationMinutes > 0) && (
+                            <Text style={styles.serviceDuration}>
+                              {formatServiceDuration(
+                                svc.durationHours,
+                                svc.durationMinutes,
+                              )}
+                            </Text>
+                          )}
+                        </View>
+                        <Text style={styles.servicePrice}>${svc.price}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
             </View>
           )}
 
@@ -946,9 +1106,12 @@ export default function subscriptionCustomer() {
     [
       styles,
       theme,
+      expandedCardIds,
+      toggleCardExpand,
       handleCancelSubscription,
       handleBookAppointment,
       formatEndsAtDate,
+      formatServiceDuration,
     ],
   );
 
