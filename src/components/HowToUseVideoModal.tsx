@@ -48,6 +48,7 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateHeightScale(16),
       paddingBottom: moderateHeightScale(12),
       alignItems: "center",
+      justifyContent: "center",
       zIndex: 2,
       backgroundColor: "rgba(0,0,0,0.5)",
     },
@@ -247,13 +248,6 @@ export default function HowToUseVideoModal({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.overlay} edges={["top", "bottom"]}>
-        {!isVideoReady && (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator size="small" color={theme.white} />
-            <Text style={styles.loaderText}>{t("loading")}</Text>
-          </View>
-        )}
-
         <Pressable style={styles.closeButton} onPress={onClose}>
           <CloseIcon
             width={widthScale(24)}
@@ -288,7 +282,12 @@ export default function HowToUseVideoModal({
                   />
                 </View>
               </TouchableOpacity>
-            ) : null}
+            ) : (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="small" color={theme.white} />
+                <Text style={styles.loaderText}>{t("loading")}</Text>
+              </View>
+            )}
           </View>
 
           {isVideoReady && (
