@@ -677,6 +677,14 @@ const createStyles = (theme: Theme) =>
       opacity: 0.7,
       marginTop: moderateHeightScale(2),
     },
+    serviceDescription: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      opacity: 0.65,
+      marginTop: moderateHeightScale(2),
+      lineHeight: fontSize.size14,
+    },
   });
 
 export default function subscriptionCustomer() {
@@ -1040,6 +1048,11 @@ export default function subscriptionCustomer() {
                                 svc.durationHours,
                                 svc.durationMinutes,
                               )}
+                            </Text>
+                          )}
+                          {!!svc.description && (
+                            <Text style={styles.serviceDescription}>
+                              {svc.description}
                             </Text>
                           )}
                         </View>
