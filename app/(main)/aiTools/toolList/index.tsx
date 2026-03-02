@@ -160,6 +160,12 @@ export default function ToolList() {
           })}
         </View>
       </ScrollView>
+
+      {isCustomer && (
+        <View style={styles.footerContainer}>
+          <Button title={t("howToUse")} onPress={() => {}} />
+        </View>
+      )}
     </View>
   );
 }

@@ -80,4 +80,8 @@ export const createStyles = (theme: Theme) =>
     actionButtonFlex: {
       flex: 1,
     },
+    footerContainer: {
+      paddingVertical: moderateHeightScale(44),
+      paddingHorizontal: moderateWidthScale(20),
+    },
   });
