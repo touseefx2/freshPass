@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
 import { ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
@@ -11,6 +11,7 @@ import {
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
+import HowToUseVideoModal from "@/src/components/HowToUseVideoModal";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   GeneratePostIcon,
@@ -32,6 +33,13 @@ export default function ToolList() {
 
   const isGuest = user.isGuest;
   const isCustomer = userRole === "customer";
+
+  const [howToUseModalVisible, setHowToUseModalVisible] = useState(false);
+  const openHowToUseModal = useCallback(() => setHowToUseModalVisible(true), []);
+  const closeHowToUseModal = useCallback(
+    () => setHowToUseModalVisible(false),
+    [],
+  );
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
 
@@ -163,9 +171,14 @@ export default function ToolList() {
 
       {isCustomer && (
         <View style={styles.footerContainer}>
-          <Button title={t("howToUse")} onPress={() => {}} />
+          <Button title={t("howToUse")} onPress={openHowToUseModal} />
         </View>
       )}
+
+      <HowToUseVideoModal
+        visible={howToUseModalVisible}
+        onClose={closeHowToUseModal}
+      />
     </View>
   );
 }
