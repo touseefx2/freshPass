@@ -121,7 +121,7 @@ const createStyles = (theme: Theme) =>
       right: 0,
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.orangeBrown,
+      color: theme.acceptTermsCheckbox,
       textAlign: "center",
       zIndex: 10,
     },
@@ -151,6 +151,7 @@ export default function HowToUseVideoModal({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const videoRef = useRef<Video>(null);
+  const hasAutoPlayedRef = useRef(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
@@ -158,6 +159,7 @@ export default function HowToUseVideoModal({
   );
 
   const resetOnClose = useCallback(() => {
+    hasAutoPlayedRef.current = false;
     setIsVideoReady(false);
     setIsPlaying(false);
     setPlaybackStatus(null);
@@ -178,11 +180,18 @@ export default function HowToUseVideoModal({
         !status.isBuffering &&
         status.durationMillis != null &&
         status.durationMillis > 0;
-      if (ready) setIsVideoReady(true);
+      if (ready) {
+        setIsVideoReady(true);
+        if (!hasAutoPlayedRef.current) {
+          hasAutoPlayedRef.current = true;
+          videoRef.current?.playAsync();
+        }
+      }
       setIsPlaying(status.isPlaying);
       if (status.didJustFinish) {
-        setIsPlaying(false);
+        videoRef.current?.pauseAsync();
         videoRef.current?.setPositionAsync(0);
+        setIsPlaying(false);
       }
     }
   }, []);
@@ -232,10 +241,9 @@ export default function HowToUseVideoModal({
       visible={visible}
       transparent
       animationType="fade"
-      statusBarTranslucent
+      statusBarTranslucent={true}
       onRequestClose={onClose}
     >
-      <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.overlay} edges={["top", "bottom"]}>
         <View style={styles.videoWrapper}>
           <Video
