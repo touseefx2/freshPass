@@ -210,11 +210,11 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(8),
     },
     addOnSection: {
-      marginTop: moderateHeightScale(16),
+      // marginTop: moderateHeightScale(16),
       marginBottom: moderateHeightScale(16),
-      paddingTop: moderateHeightScale(16),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
+      // paddingTop: moderateHeightScale(16),
+      // borderTopWidth: 1,
+      // borderTopColor: theme.borderLight,
     },
     addOnTitle: {
       fontSize: fontSize.size15,
@@ -649,14 +649,12 @@ function BusinessPlansModalContent({
               </View>
               <View style={styles.introRow}>
                 <Text style={styles.introText}>
-                  To activate your business account and list it publicly, you
-                  must choose one plan.
+                  You need to choose one subscription plan to activate your
+                  account and list your business publicly.
                 </Text>
                 <Text style={[styles.introText, styles.introTextMargin]}>
-                  To appear in{" "}
-                  <Text style={styles.introTextBold}>Featured businesses</Text>{" "}
-                  and get more visibility, add the Featured listing add-on for
-                  an extra{" "}
+                  For more visibility, you can add the Featured listing add-on
+                  to appear in Featured businesses —{" "}
                   {featuredAddOnPrice != null ? (
                     <Text style={styles.introTextBold}>
                       ${featuredAddOnPrice}/month
@@ -722,9 +720,6 @@ function BusinessPlansModalContent({
                 {!loadingAdditionalServices &&
                   additionalServices.length > 0 && (
                     <View style={styles.addOnSection}>
-                      <Text style={styles.addOnTitle}>
-                        {t("addOnServices") || "Add-on services"}
-                      </Text>
                       {additionalServices
                         .filter((s) => s.active)
                         .map((service) => {
