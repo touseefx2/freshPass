@@ -154,11 +154,21 @@ interface Service {
   label?: string | null;
 }
 
+interface SubscriptionPlanService {
+  id: number;
+  name: string;
+  price: string;
+  description: string | null;
+  durationHours: number;
+  durationMinutes: number;
+}
+
 interface SubscriptionData {
   id: number;
   subscriptionPlanId: number;
   subscriptionPlan: string;
   subscriptionPlanPrice: string;
+  subscriptionPlanServices?: SubscriptionPlanService[];
   subscriptionPlanType: string;
   subscriptionPlanDescription: string;
   userId: number;
@@ -900,6 +910,67 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    subSeeDetailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(8),
+      marginTop: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(4),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    subSeeDetailText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      marginRight: moderateWidthScale(6),
+    },
+    subExpandedDetailSection: {
+      marginTop: moderateHeightScale(4),
+      paddingTop: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    subServicesSectionTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    subServiceRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen015,
+      borderRadius: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(6),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    subServiceNameContainer: {
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    subServiceNameText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    subServicePriceText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    subServiceDurationText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      opacity: 0.7,
+      marginTop: moderateHeightScale(2),
+    },
     rescheduleHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -948,6 +1019,8 @@ export default function BookingNow() {
 
   const isReschedule = params.is_reschedule === "1";
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
+  const [isSubscriptionDetailExpanded, setIsSubscriptionDetailExpanded] =
+    useState(false);
 
   const subscriptionData: SubscriptionData | null = useMemo(() => {
     if (params.item) {
@@ -959,6 +1032,24 @@ export default function BookingNow() {
     }
     return null;
   }, [params.item]);
+
+  useEffect(() => {
+    setIsSubscriptionDetailExpanded(false);
+  }, [params.item]);
+
+  const toggleSubscriptionDetail = useCallback(() => {
+    setIsSubscriptionDetailExpanded((prev) => !prev);
+  }, []);
+
+  const formatServiceDuration = useCallback(
+    (hours: number, minutes: number): string => {
+      if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+      if (hours > 0) return `${hours}h`;
+      if (minutes > 0) return `${minutes}m`;
+      return "";
+    },
+    [],
+  );
 
   // Get data from Redux
   const businessData = useAppSelector((state) => state.bsns);
@@ -2394,14 +2485,6 @@ export default function BookingNow() {
                     <Text style={styles.planPriceLabel}>/month</Text>
                   </View>
                 </View>
-                {subscriptionData.subscriptionPlanDescription && (
-                  <Text
-                    style={styles.subscriptionDescriptionText}
-                    numberOfLines={2}
-                  >
-                    {subscriptionData.subscriptionPlanDescription}
-                  </Text>
-                )}
                 <View style={styles.usageSection}>
                   <View style={styles.usageHeader}>
                     <Feather
@@ -2434,46 +2517,116 @@ export default function BookingNow() {
                     </View>
                   </View>
                 </View>
-                {(subscriptionData.paymentDate ||
-                  subscriptionData.status?.trim()?.toLowerCase() ===
-                    "active") && (
-                  <View style={styles.paymentRenewalRow}>
-                    {subscriptionData.paymentDate && (
-                      <View style={styles.paymentDateContainer}>
-                        <Feather
-                          name="credit-card"
-                          size={moderateWidthScale(12)}
-                          color={theme.darkGreen}
-                        />
-                        <View style={styles.dateInfoContainer}>
-                          <Text style={styles.dateLabel}>Payment</Text>
-                          <Text style={styles.dateValue}>
-                            {subscriptionData.paymentDate}
-                          </Text>
-                        </View>
+                {((subscriptionData.subscriptionPlanDescription &&
+                  subscriptionData.subscriptionPlanDescription.length > 0) ||
+                  subscriptionData.paymentDate ||
+                  subscriptionData.status?.trim()?.toLowerCase() === "active" ||
+                  (subscriptionData.subscriptionPlanServices &&
+                    subscriptionData.subscriptionPlanServices.length > 0)) && (
+                  <TouchableOpacity
+                    style={styles.subSeeDetailRow}
+                    onPress={toggleSubscriptionDetail}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.subSeeDetailText}>
+                      {isSubscriptionDetailExpanded ? "See less" : "See detail"}
+                    </Text>
+                    <Feather
+                      name={
+                        isSubscriptionDetailExpanded
+                          ? "chevron-up"
+                          : "chevron-down"
+                      }
+                      size={moderateWidthScale(18)}
+                      color={theme.orangeBrown}
+                    />
+                  </TouchableOpacity>
+                )}
+
+                {isSubscriptionDetailExpanded && (
+                  <View style={styles.subExpandedDetailSection}>
+                    {subscriptionData.subscriptionPlanDescription && (
+                      <Text style={styles.subscriptionDescriptionText}>
+                        {subscriptionData.subscriptionPlanDescription}
+                      </Text>
+                    )}
+
+                    {(subscriptionData.paymentDate ||
+                      subscriptionData.status?.trim()?.toLowerCase() ===
+                        "active") && (
+                      <View style={styles.paymentRenewalRow}>
+                        {subscriptionData.paymentDate && (
+                          <View style={styles.paymentDateContainer}>
+                            <Feather
+                              name="credit-card"
+                              size={moderateWidthScale(12)}
+                              color={theme.darkGreen}
+                            />
+                            <View style={styles.dateInfoContainer}>
+                              <Text style={styles.dateLabel}>Payment</Text>
+                              <Text style={styles.dateValue}>
+                                {subscriptionData.paymentDate}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+                        {subscriptionData.status?.trim()?.toLowerCase() ===
+                          "active" && (
+                          <View
+                            style={[
+                              styles.renewalContainer,
+                              !subscriptionData.paymentDate && {
+                                marginLeft: 0,
+                              },
+                            ]}
+                          >
+                            <Feather
+                              name="calendar"
+                              size={moderateWidthScale(12)}
+                              color={theme.darkGreen}
+                            />
+                            <View style={styles.dateInfoContainer}>
+                              <Text style={styles.dateLabel}>Renewal</Text>
+                              <Text style={styles.dateValue}>
+                                {subscriptionData.nextPaymentDate}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
                       </View>
                     )}
-                    {subscriptionData.status?.trim()?.toLowerCase() ===
-                      "active" && (
-                      <View
-                        style={[
-                          styles.renewalContainer,
-                          !subscriptionData.paymentDate && { marginLeft: 0 },
-                        ]}
-                      >
-                        <Feather
-                          name="calendar"
-                          size={moderateWidthScale(12)}
-                          color={theme.darkGreen}
-                        />
-                        <View style={styles.dateInfoContainer}>
-                          <Text style={styles.dateLabel}>Renewal</Text>
-                          <Text style={styles.dateValue}>
-                            {subscriptionData.nextPaymentDate}
+
+                    {subscriptionData.subscriptionPlanServices &&
+                      subscriptionData.subscriptionPlanServices.length > 0 && (
+                        <>
+                          <Text style={styles.subServicesSectionTitle}>
+                            Plan services
                           </Text>
-                        </View>
-                      </View>
-                    )}
+                          {subscriptionData.subscriptionPlanServices.map(
+                            (svc) => (
+                              <View key={svc.id} style={styles.subServiceRow}>
+                                <View style={styles.subServiceNameContainer}>
+                                  <Text style={styles.subServiceNameText}>
+                                    {svc.name}
+                                  </Text>
+                                  {(svc.durationHours > 0 ||
+                                    svc.durationMinutes > 0) && (
+                                    <Text style={styles.subServiceDurationText}>
+                                      {formatServiceDuration(
+                                        svc.durationHours,
+                                        svc.durationMinutes,
+                                      )}
+                                    </Text>
+                                  )}
+                                </View>
+                                <Text style={styles.subServicePriceText}>
+                                  ${svc.price}
+                                </Text>
+                              </View>
+                            ),
+                          )}
+                        </>
+                      )}
                   </View>
                 )}
               </View>
