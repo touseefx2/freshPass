@@ -261,6 +261,57 @@ const createSkeletonStyles = (theme: Theme) =>
     memeberDivider: {
       marginVertical: 3,
     },
+    trialBannerTitleSkeleton: {
+      height: moderateHeightScale(16),
+      width: "50%",
+      borderRadius: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(4),
+    },
+    trialBannerSubtitleSkeleton: {
+      height: moderateHeightScale(13),
+      width: "70%",
+      borderRadius: moderateWidthScale(4),
+    },
+    trialBannerIconSkeleton: {
+      width: moderateWidthScale(48),
+      height: moderateWidthScale(48),
+      borderRadius: moderateWidthScale(24),
+    },
+    statusBadgeSkeleton: {
+      height: moderateHeightScale(32),
+      width: moderateWidthScale(70),
+      borderRadius: moderateWidthScale(20),
+    },
+    cardLabelSkeleton: {
+      height: moderateHeightScale(12),
+      width: "45%",
+      borderRadius: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(4),
+    },
+    cardNumberSkeleton: {
+      height: moderateHeightScale(24),
+      width: "75%",
+      borderRadius: moderateWidthScale(4),
+    },
+    subscriptionInfoIconSkeleton: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(8),
+    },
+    subscriptionInfoLabelSkeleton: {
+      height: moderateHeightScale(10),
+      width: "80%",
+      borderRadius: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(4),
+      alignSelf: "center",
+    },
+    subscriptionInfoValueSkeleton: {
+      height: moderateHeightScale(13),
+      width: "60%",
+      borderRadius: moderateWidthScale(4),
+      alignSelf: "center",
+    },
   });
 
 export const Skeleton = ({
@@ -272,6 +323,7 @@ export const Skeleton = ({
     | "StepOne"
     | "StepEight"
     | "BusinessPlans"
+    | "Subscription"
     | "SummaryStats"
     | "StaffOnDuty"
     | "AppointmentsSection"
@@ -288,7 +340,7 @@ export const Skeleton = ({
   const { colors } = useTheme();
   const skeletonStyles = useMemo(
     () => createSkeletonStyles(colors as Theme),
-    [colors]
+    [colors],
   );
   const userRole = useAppSelector((state) => state.user.userRole);
   const isStaff = userRole === "staff";
@@ -383,6 +435,87 @@ export const Skeleton = ({
               <View style={skeletonStyles.planButtonSkeleton} />
             </View>
           ))}
+        </View>
+      </SkeletonPlaceholder>
+    </ScrollView>
+  ) : null;
+
+  const subscriptionSkeleton = styles ? (
+    <ScrollView
+      style={styles.content}
+      contentContainerStyle={[
+        styles.contentContainer,
+        { paddingBottom: moderateHeightScale(30) },
+      ]}
+      showsVerticalScrollIndicator={false}
+    >
+      <SkeletonPlaceholder backgroundColor="#E8DFB8" highlightColor="#DCCF9E">
+        <View style={{ gap: 0 }}>
+          {/* Trial banner */}
+          <View style={styles.trialBanner}>
+            <View style={styles.trialBannerGradient}>
+              <View style={styles.trialBannerLeft}>
+                <View style={skeletonStyles.trialBannerTitleSkeleton} />
+                <View style={skeletonStyles.trialBannerSubtitleSkeleton} />
+              </View>
+              <View style={skeletonStyles.trialBannerIconSkeleton} />
+            </View>
+          </View>
+          {/* Plan card */}
+          <View style={styles.headerCard}>
+            <View style={styles.headerGradient}>
+              <View style={styles.headerTop}>
+                <View style={{ flex: 1 }}>
+                  <View style={skeletonStyles.planHeaderSkeleton} />
+                  <View style={skeletonStyles.planPriceSkeleton} />
+                </View>
+                <View style={skeletonStyles.statusBadgeSkeleton} />
+              </View>
+              <View style={skeletonStyles.planDescriptionSkeleton} />
+              <View style={skeletonStyles.planDescriptionSkeleton} />
+            </View>
+          </View>
+          {/* Card last 4 digits */}
+          <View style={styles.daysRemainingCard}>
+            <View style={styles.cardGradient}>
+              <View style={styles.cardMiddle}>
+                <View style={skeletonStyles.cardLabelSkeleton} />
+                <View style={skeletonStyles.cardNumberSkeleton} />
+              </View>
+            </View>
+          </View>
+          {/* Subscription details */}
+          <View style={styles.infoSection}>
+            <View
+              style={[
+                skeletonStyles.otherCategoriesTitleSkeleton,
+                { marginBottom: moderateHeightScale(16) },
+              ]}
+            />
+            <View style={styles.infoCard}>
+              <View style={styles.infoRow}>
+                <View style={skeletonStyles.subscriptionInfoIconSkeleton} />
+                <View style={skeletonStyles.subscriptionInfoLabelSkeleton} />
+                <View style={skeletonStyles.subscriptionInfoValueSkeleton} />
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <View style={skeletonStyles.subscriptionInfoIconSkeleton} />
+                <View style={skeletonStyles.subscriptionInfoLabelSkeleton} />
+                <View style={skeletonStyles.subscriptionInfoValueSkeleton} />
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <View style={skeletonStyles.subscriptionInfoIconSkeleton} />
+                <View style={skeletonStyles.subscriptionInfoLabelSkeleton} />
+                <View style={skeletonStyles.subscriptionInfoValueSkeleton} />
+              </View>
+            </View>
+          </View>
+          {/* Button */}
+          <View style={styles.buttonContainer}>
+            <View style={skeletonStyles.planButtonSkeleton} />
+          </View>
         </View>
       </SkeletonPlaceholder>
     </ScrollView>
@@ -630,6 +763,7 @@ export const Skeleton = ({
         </SkeletonPlaceholder>
       )}
       {screenType === "BusinessPlans" && businessPlansSkeleton}
+      {screenType === "Subscription" && subscriptionSkeleton}
       {screenType === "SummaryStats" && (
         <SkeletonPlaceholder backgroundColor="#E8DFB8" highlightColor="#DCCF9E">
           {summaryStatsSkeleton}

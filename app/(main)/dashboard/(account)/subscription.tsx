@@ -514,7 +514,7 @@ export default function SubscriptionScreen() {
       <StackHeader title={t("subscription")} />
       {loading && !subscription ? (
         <View style={styles.content}>
-          <Skeleton screenType="BusinessPlans" styles={styles} />
+          <Skeleton screenType="Subscription" styles={styles} />
         </View>
       ) : apiError ? (
         <View style={styles.errorContainer}>
