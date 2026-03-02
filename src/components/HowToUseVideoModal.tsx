@@ -13,6 +13,7 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
+  StatusBar,
 } from "react-native";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -30,27 +31,30 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { CloseIcon } from "@/assets/icons";
 
 const SEEK_STEP_MS = 10000;
-const VIDEO_HEIGHT = heightScale(220);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
       backgroundColor: theme.black,
-      justifyContent: "center",
-      alignItems: "center",
+    },
+    videoWrapper: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.black,
+    },
+    video: {
+      width: "100%",
+      height: "100%",
     },
     loaderContainer: {
-      position: "absolute",
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
       top: 0,
       left: 0,
       right: 0,
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(12),
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 2,
-      backgroundColor: "rgba(0,0,0,0.5)",
+      bottom: 0,
+      zIndex: 10,
     },
     loaderText: {
       fontSize: fontSize.size14,
@@ -66,33 +70,9 @@ const createStyles = (theme: Theme) =>
       width: widthScale(40),
       height: widthScale(40),
       borderRadius: widthScale(20),
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      backgroundColor: theme.orangeBrown,
       alignItems: "center",
       justifyContent: "center",
-    },
-    content: {
-      width: "100%",
-      flex: 1,
-      justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    title: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(16),
-    },
-    videoWrapper: {
-      width: "100%",
-      height: VIDEO_HEIGHT,
-      borderRadius: moderateWidthScale(12),
-      overflow: "hidden",
-      backgroundColor: theme.black,
-    },
-    video: {
-      width: "100%",
-      height: "100%",
     },
     playOverlay: {
       ...StyleSheet.absoluteFillObject,
@@ -109,10 +89,14 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
     },
     controlsRow: {
+      position: "absolute",
+      bottom: moderateHeightScale(100),
+      left: moderateWidthScale(20),
+      right: moderateWidthScale(20),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      marginTop: moderateHeightScale(16),
+      zIndex: 10,
       gap: moderateWidthScale(24),
     },
     controlButton: {
@@ -122,7 +106,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(10),
       paddingHorizontal: moderateWidthScale(16),
       borderRadius: moderateWidthScale(8),
-      backgroundColor: "rgba(255, 255, 255, 0.15)",
+      backgroundColor: theme.orangeBrown,
     },
     controlButtonText: {
       fontSize: fontSize.size14,
@@ -131,11 +115,15 @@ const createStyles = (theme: Theme) =>
       marginLeft: moderateWidthScale(6),
     },
     timeText: {
+      position: "absolute",
+      bottom: moderateHeightScale(56),
+      left: 0,
+      right: 0,
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
-      marginTop: moderateHeightScale(8),
+      color: theme.orangeBrown,
       textAlign: "center",
+      zIndex: 10,
     },
   });
 
@@ -247,7 +235,36 @@ export default function HowToUseVideoModal({
       statusBarTranslucent
       onRequestClose={onClose}
     >
+      <StatusBar barStyle="dark-content" />
       <SafeAreaView style={styles.overlay} edges={["top", "bottom"]}>
+        <View style={styles.videoWrapper}>
+          <Video
+            ref={videoRef}
+            source={{ uri: VIDEO_URI }}
+            style={styles.video}
+            resizeMode={ResizeMode.COVER}
+            isLooping={false}
+            shouldPlay={false}
+            useNativeControls={false}
+            onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
+          />
+          {!isVideoReady ? (
+            <TouchableOpacity
+              style={styles.playOverlay}
+              onPress={handlePlayPause}
+              activeOpacity={1}
+            >
+              <View style={styles.playButtonCircle}>
+                <MaterialIcons
+                  name={isPlaying ? "pause" : "play-arrow"}
+                  size={widthScale(32)}
+                  color={theme.white}
+                />
+              </View>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         <Pressable style={styles.closeButton} onPress={onClose}>
           <CloseIcon
             width={widthScale(24)}
@@ -256,91 +273,63 @@ export default function HowToUseVideoModal({
           />
         </Pressable>
 
-        <View style={styles.content}>
-          <View style={styles.videoWrapper}>
-            <Video
-              ref={videoRef}
-              source={{ uri: VIDEO_URI }}
-              style={styles.video}
-              resizeMode={ResizeMode.CONTAIN}
-              isLooping={false}
-              shouldPlay={false}
-              useNativeControls={false}
-              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-            />
-            {isVideoReady ? (
+        {isVideoReady && (
+          <>
+            <View style={styles.controlsRow}>
               <TouchableOpacity
-                style={styles.playOverlay}
-                onPress={handlePlayPause}
-                activeOpacity={1}
+                style={styles.controlButton}
+                onPress={() => handleSeek(-SEEK_STEP_MS)}
+                activeOpacity={0.7}
               >
-                <View style={styles.playButtonCircle}>
-                  <MaterialIcons
-                    name={isPlaying ? "pause" : "play-arrow"}
-                    size={widthScale(32)}
-                    color={theme.white}
-                  />
-                </View>
+                <MaterialIcons
+                  name="replay-10"
+                  size={moderateWidthScale(22)}
+                  color={theme.white}
+                />
+                <Text style={styles.controlButtonText}>10s</Text>
               </TouchableOpacity>
-            ) : (
-              <View style={styles.loaderContainer}>
-                <ActivityIndicator size="small" color={theme.white} />
-                <Text style={styles.loaderText}>{t("loading")}</Text>
-              </View>
-            )}
+
+              <TouchableOpacity
+                style={styles.controlButton}
+                onPress={handlePlayPause}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name={isPlaying ? "pause" : "play-arrow"}
+                  size={moderateWidthScale(24)}
+                  color={theme.white}
+                />
+                <Text style={styles.controlButtonText}>
+                  {isPlaying ? "Pause" : "Play"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.controlButton}
+                onPress={() => handleSeek(SEEK_STEP_MS)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="forward-10"
+                  size={moderateWidthScale(22)}
+                  color={theme.white}
+                />
+                <Text style={styles.controlButtonText}>10s</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.timeText}>
+              {formatTime(positionMs)} / {formatTime(durationMs)}
+            </Text>
+          </>
+        )}
+
+        {!isVideoReady && (
+          <View style={styles.loaderContainer}>
+            <ActivityIndicator size="small" color={theme.white} />
+            <Text style={styles.loaderText}>{t("loading")}</Text>
           </View>
-
-          {isVideoReady && (
-            <>
-              <View style={styles.controlsRow}>
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={() => handleSeek(-SEEK_STEP_MS)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="replay-10"
-                    size={moderateWidthScale(22)}
-                    color={theme.white}
-                  />
-                  <Text style={styles.controlButtonText}>10s</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={handlePlayPause}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name={isPlaying ? "pause" : "play-arrow"}
-                    size={moderateWidthScale(24)}
-                    color={theme.white}
-                  />
-                  <Text style={styles.controlButtonText}>
-                    {isPlaying ? "Pause" : "Play"}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.controlButton}
-                  onPress={() => handleSeek(SEEK_STEP_MS)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="forward-10"
-                    size={moderateWidthScale(22)}
-                    color={theme.white}
-                  />
-                  <Text style={styles.controlButtonText}>10s</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.timeText}>
-                {formatTime(positionMs)} / {formatTime(durationMs)}
-              </Text>
-            </>
-          )}
-        </View>
+        )}
       </SafeAreaView>
     </Modal>
   );
