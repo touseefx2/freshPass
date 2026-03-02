@@ -651,7 +651,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(10),
       backgroundColor: theme.lightGreen015,
       borderRadius: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(6),
+      marginVertical: moderateHeightScale(6),
       borderWidth: 1,
       borderColor: theme.borderLight,
     },
@@ -890,8 +890,8 @@ export default function subscriptionCustomer() {
       const hasDetail =
         (item.subscriptionPlanDescription &&
           item.subscriptionPlanDescription.length > 0) ||
-        (item.paymentDate ||
-          item.status?.trim()?.toLowerCase() === "active") ||
+        item.paymentDate ||
+        item.status?.trim()?.toLowerCase() === "active" ||
         (item.subscriptionPlanServices &&
           item.subscriptionPlanServices.length > 0);
 
@@ -1029,14 +1029,12 @@ export default function subscriptionCustomer() {
               {item.subscriptionPlanServices &&
                 item.subscriptionPlanServices.length > 0 && (
                   <>
-                    <Text style={styles.servicesSectionTitle}>
-                      Plan services
-                    </Text>
                     {item.subscriptionPlanServices.map((svc) => (
                       <View key={svc.id} style={styles.serviceItem}>
                         <View style={styles.serviceNameContainer}>
                           <Text style={styles.serviceName}>{svc.name}</Text>
-                          {(svc.durationHours > 0 || svc.durationMinutes > 0) && (
+                          {(svc.durationHours > 0 ||
+                            svc.durationMinutes > 0) && (
                             <Text style={styles.serviceDuration}>
                               {formatServiceDuration(
                                 svc.durationHours,
