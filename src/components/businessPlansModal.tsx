@@ -115,7 +115,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     introText: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
       lineHeight: fontSize.size22,
@@ -425,6 +425,17 @@ function BusinessPlansModalContent({
     return isFeatured ? "Featured listing" : service.name;
   };
 
+  const featuredAddOnPrice = (() => {
+    const featured = additionalServices.find(
+      (s) =>
+        s.type?.toLowerCase() === "featured" ||
+        s.name?.toLowerCase().includes("feature"),
+    );
+    if (!featured) return null;
+    const p = parseFloat(featured.price);
+    return Number.isNaN(p) ? null : p.toFixed(2);
+  })();
+
   const getTotalPriceForPlan = (plan: SubscriptionPlan): string => {
     const planPriceNum = parseFloat(plan.price) || 0;
     const selectedIds = selectedServicesByPlanId[plan.id] ?? [];
@@ -645,7 +656,15 @@ function BusinessPlansModalContent({
                   To appear in{" "}
                   <Text style={styles.introTextBold}>Featured businesses</Text>{" "}
                   and get more visibility, add the Featured listing add-on for
-                  an extra <Text style={styles.introTextBold}>$20/month</Text>.
+                  an extra{" "}
+                  {featuredAddOnPrice != null ? (
+                    <Text style={styles.introTextBold}>
+                      ${featuredAddOnPrice}/month
+                    </Text>
+                  ) : (
+                    "see add-ons below"
+                  )}
+                  .
                 </Text>
               </View>
             </View>
