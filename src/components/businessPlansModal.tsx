@@ -120,6 +120,12 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: fontSize.size22,
     },
+    introTextBold: {
+      fontFamily: fonts.fontBold,
+    },
+    introTextMargin: {
+      marginTop: moderateHeightScale(8),
+    },
     content: {
       flex: 1,
       paddingHorizontal: moderateWidthScale(20),
@@ -632,8 +638,14 @@ function BusinessPlansModalContent({
               </View>
               <View style={styles.introRow}>
                 <Text style={styles.introText}>
-                  If you want to list your business publicly and keep it active,
-                  choose a plan from the list below.
+                  To activate your business account and list it publicly, you
+                  must choose one plan.
+                </Text>
+                <Text style={[styles.introText, styles.introTextMargin]}>
+                  To appear in{" "}
+                  <Text style={styles.introTextBold}>Featured businesses</Text>{" "}
+                  and get more visibility, add the Featured listing add-on for
+                  an extra <Text style={styles.introTextBold}>$20/month</Text>.
                 </Text>
               </View>
             </View>
