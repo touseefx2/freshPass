@@ -20,11 +20,7 @@ import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import {
-  moderateWidthScale,
-  moderateHeightScale,
-} from "@/src/theme/dimensions";
-import { fontSize, fonts } from "@/src/theme/fonts";
+import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
@@ -36,10 +32,7 @@ import {
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import HairPipelineProcessingModal, {
   type HairPipelineModalState,
   INITIAL_HAIR_PIPELINE_STATE,
@@ -51,12 +44,9 @@ import {
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import Logger from "@/src/services/logger";
-import { useStripe } from "@stripe/stripe-react-native";
-import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
-import UnlockAIFeaturesModal from "@/src/components/UnlockAIFeaturesModal";
 
 interface MediaFile {
   id: string;
@@ -111,11 +101,6 @@ export default function Tools() {
   const hairTryOnService =
     aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
   const isCustomerOrGuest = user.isGuest || user.userRole === "customer";
-
-  // console.log("------> hairTryOnService", hairTryOnService);
-  // console.log("------> aiQuota", aiQuota);
-
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   // State for Post (single image)
   const [postImage, setPostImage] = useState<string | null>(null);
@@ -1107,9 +1092,7 @@ export default function Tools() {
             <TouchableOpacity
               onPress={() =>
                 hairTryonSourceImage &&
-                dispatch(
-                  openFullImageModal({ images: [hairTryonSourceImage] }),
-                )
+                dispatch(openFullImageModal({ images: [hairTryonSourceImage] }))
               }
               activeOpacity={0.9}
               style={{ width: "100%", height: "100%" }}
