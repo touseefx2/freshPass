@@ -8,6 +8,7 @@ import React, {
 import {
   Modal,
   Pressable,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -146,7 +147,7 @@ const createStyles = (theme: Theme) =>
     },
     modalHeader: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(12),
       backgroundColor: theme.background,
       gap: moderateHeightScale(5),
     },
@@ -337,8 +338,10 @@ export default function LocationScreen() {
 
         const response = await fetchSuggestionsApi(
           query,
-          sessionTokenRef.current
+          sessionTokenRef.current,
         );
+
+        console.log("response", response);
 
         if (response.status === "OK" || response.status === "ZERO_RESULTS") {
           setPredictions(response.predictions);
@@ -357,7 +360,7 @@ export default function LocationScreen() {
         setIsLoadingSuggestions(false);
       }
     },
-    [apiKey, ensureSessionToken]
+    [apiKey, ensureSessionToken],
   );
 
   useEffect(() => {
@@ -386,7 +389,7 @@ export default function LocationScreen() {
 
         const details = await fetchPlaceDetailsApi(
           placeId,
-          sessionTokenRef.current
+          sessionTokenRef.current,
         );
 
         const isUS = details.countryCode?.toUpperCase() === "US";
@@ -440,7 +443,7 @@ export default function LocationScreen() {
         sessionTokenRef.current = generateSessionToken();
       }
     },
-    [apiKey, ensureSessionToken, showBanner]
+    [apiKey, ensureSessionToken, showBanner],
   );
 
   const handleSuggestionPress = useCallback(
@@ -448,7 +451,7 @@ export default function LocationScreen() {
       setAddressSearch(prediction.description);
       handleFetchPlaceDetails(prediction.place_id, prediction.description);
     },
-    [handleFetchPlaceDetails]
+    [handleFetchPlaceDetails],
   );
 
   const handleUseCurrentLocation = async () => {
@@ -541,7 +544,7 @@ export default function LocationScreen() {
       const latitudeDelta = Math.max(mapRegion.latitudeDelta * factor, 0.0005);
       const longitudeDelta = Math.max(
         mapRegion.longitudeDelta * factor,
-        0.0005
+        0.0005,
       );
 
       setMapRegion({
@@ -550,7 +553,7 @@ export default function LocationScreen() {
         longitudeDelta,
       });
     },
-    [mapRegion]
+    [mapRegion],
   );
 
   const handleSaveMapLocation = useCallback(() => {
@@ -595,7 +598,7 @@ export default function LocationScreen() {
           "Success",
           response.message || "Location updated successfully",
           "success",
-          3000
+          3000,
         );
         router.back();
       } else {
@@ -603,7 +606,7 @@ export default function LocationScreen() {
           "Error",
           response.message || "Failed to update location",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -612,7 +615,7 @@ export default function LocationScreen() {
         "Error",
         error?.message || "Failed to update location. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsUpdating(false);
@@ -741,7 +744,7 @@ export default function LocationScreen() {
       {/* Search Modal */}
       <Modal
         visible={searchModalVisible}
-        animationType="slide"
+        animationType="none"
         transparent={false}
         onRequestClose={() => {
           setSearchModalVisible(false);
@@ -755,10 +758,12 @@ export default function LocationScreen() {
             type: "info",
           });
         }}
-        statusBarTranslucent
+        statusBarTranslucent={true}
       >
+        <StatusBar barStyle="dark-content" />
+
         <SafeAreaView
-          style={[styles.modalContainer, { paddingBottom: 20 }]}
+          style={[styles.modalContainer, { paddingVertical: 15 }]}
           edges={["top", "bottom"]}
         >
           <View style={styles.modalHeader}>
@@ -847,7 +852,10 @@ export default function LocationScreen() {
                 Is the pin placed correctly
                 {firstName ? (
                   <>
-                    , <Text style={styles.modalHeaderFirstName}>{firstName}?</Text>
+                    ,{" "}
+                    <Text style={styles.modalHeaderFirstName}>
+                      {firstName}?
+                    </Text>
                   </>
                 ) : (
                   "?"
