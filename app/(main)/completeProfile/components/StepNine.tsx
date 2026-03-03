@@ -296,14 +296,13 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.25,
       shadowRadius: 6,
       elevation: 8,
+      alignItems: "center",
     },
     aiTooltipOverlayBoxRight: {
       position: "absolute",
-      left: moderateWidthScale(64),
+      left: 0,
       bottom: moderateHeightScale(56 + 14),
-      top: undefined,
-      right: undefined,
-      minWidth: moderateWidthScale(220),
+      minWidth: moderateWidthScale(250),
       backgroundColor: theme.background,
       borderRadius: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(10),
@@ -316,6 +315,7 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.25,
       shadowRadius: 6,
       elevation: 8,
+      alignItems: "center",
     },
     aiTooltipOverlayText: {
       fontSize: fontSize.size12,
@@ -343,6 +343,16 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.25,
       shadowRadius: 3.84,
       elevation: 5,
+    },
+    starContainer: {
+      position: "absolute",
+      width: moderateWidthScale(56),
+      height: moderateWidthScale(56),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    star: {
+      position: "absolute",
     },
   });
 
@@ -973,7 +983,7 @@ export default function StepNine() {
         onAddCustomSuggestion={handleAddCustomSuggestion}
       />
 
-      {/* AI Tool Button - Fixed Position using Portal */}
+      {/* AI Tool Button - Portal + Overlay (same as subscriptions) */}
       <Portal>
         <GestureDetector gesture={panGesture}>
           <AnimatedReanimated.View
@@ -1020,10 +1030,11 @@ export default function StepNine() {
             {/* First-time overlay: tap to create subscription with AI */}
             {showAiTooltipOverlay && (
               <View
-                style={[
-                  styles.aiTooltipOverlayBox,
-                  isButtonOnLeft && styles.aiTooltipOverlayBoxRight,
-                ]}
+                style={
+                  isButtonOnLeft
+                    ? styles.aiTooltipOverlayBoxRight
+                    : styles.aiTooltipOverlayBox
+                }
                 pointerEvents="box-none"
               >
                 <TouchableOpacity
@@ -1047,7 +1058,8 @@ export default function StepNine() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => {
-                if (!aiButtonDidDragRef.current) onClickAi();
+                // if (!aiButtonDidDragRef.current)
+                onClickAi();
               }}
             >
               <Animated.View
