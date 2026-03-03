@@ -1250,7 +1250,6 @@ export default function AddStaffScreen() {
         formData.append("phone", phoneNumber.replace(/\D/g, ""));
         formData.append("description", description.trim());
         formData.append("is_onboarded", "true");
-        formData.append("active", isActive ? "true" : "false");
         formData.append(
           "working_hours",
           JSON.stringify(buildWorkingHoursArray()),
@@ -1521,10 +1520,12 @@ export default function AddStaffScreen() {
           ) : null}
         </View>
 
-        <View style={styles.toggleRow}>
-          <CustomToggle value={isActive} onValueChange={handleActiveToggle} />
-          <Text style={styles.toggleTitle}>Active</Text>
-        </View>
+        {isEditMode && (
+          <View style={styles.toggleRow}>
+            <CustomToggle value={isActive} onValueChange={handleActiveToggle} />
+            <Text style={styles.toggleTitle}>Active</Text>
+          </View>
+        )}
 
         <Text style={styles.sectionTitle}>Working hours</Text>
 
