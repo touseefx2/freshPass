@@ -392,20 +392,6 @@ export default function LocationScreen() {
           sessionTokenRef.current,
         );
 
-        const isUS = details.countryCode?.toUpperCase() === "US";
-
-        if (!isUS) {
-          setModalBanner({
-            visible: true,
-            title: "Location Not Supported",
-            message: "Just US related country city acceptable",
-            type: "error",
-          });
-          setIsFetchingDetails(false);
-          sessionTokenRef.current = generateSessionToken();
-          return;
-        }
-
         setStreetAddress(details.street || "");
         setCity(details.area || "");
         setState(details.state || "");
@@ -483,18 +469,6 @@ export default function LocationScreen() {
     }
 
     const { details } = result;
-
-    const isUS = details.countryCode?.toUpperCase() === "US";
-
-    if (!isUS) {
-      setModalBanner({
-        visible: true,
-        title: "Location Not Supported",
-        message: "Just US related country city acceptable",
-        type: "error",
-      });
-      return;
-    }
 
     setStreetAddress(details.street ?? "");
     setCity(details.area ?? "");
