@@ -806,6 +806,7 @@ export default function LocationScreen() {
           onRequestClose={() => setMapModalVisible(false)}
           statusBarTranslucent
         >
+          <StatusBar barStyle="dark-content" />
           <SafeAreaView style={styles.modalContainer} edges={["top", "bottom"]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderTop}>
