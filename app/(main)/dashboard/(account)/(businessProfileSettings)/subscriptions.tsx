@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
+  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
@@ -309,8 +311,6 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       zIndex: 1000,
       position: "absolute",
-      bottom: moderateHeightScale(160),
-      right: moderateWidthScale(20),
       opacity: 0.9,
     },
     aiTooltipOverlayBox: {
@@ -403,6 +403,24 @@ export default function ManageSubscriptionsScreen() {
   >(null);
   const [addSubscriptionVisible, setAddSubscriptionVisible] = useState(false);
   const [showAiTooltipOverlay, setShowAiTooltipOverlay] = useState(true);
+  const AI_BUTTON_SIZE = moderateWidthScale(56);
+  const AI_BUTTON_MARGIN = moderateWidthScale(20);
+  // Just above Update button: container (16+48+24) + gap so icon sits a bit higher
+  const AI_BUTTON_BOTTOM_OFFSET = moderateHeightScale(16) + moderateHeightScale(48) + moderateHeightScale(24) + moderateHeightScale(36);
+  const getDefaultAiButtonPosition = () => {
+    const { width: W, height: H } = Dimensions.get("window");
+    return {
+      left: W - AI_BUTTON_MARGIN - AI_BUTTON_SIZE,
+      top: H - AI_BUTTON_BOTTOM_OFFSET - AI_BUTTON_SIZE,
+    };
+  };
+  const [aiButtonPosition, setAiButtonPosition] = useState<{
+    left: number;
+    top: number;
+  }>(getDefaultAiButtonPosition);
+  const dragStartPosition = useRef({ left: 0, top: 0 });
+  const aiButtonPositionRef = useRef(aiButtonPosition);
+  const aiButtonDidDragRef = useRef(false);
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
       id: string;
@@ -417,6 +435,45 @@ export default function ManageSubscriptionsScreen() {
   const dismissAiTooltipOverlay = () => {
     setShowAiTooltipOverlay(false);
   };
+
+  const aiButtonPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        aiButtonDidDragRef.current = false;
+        dragStartPosition.current = { ...aiButtonPositionRef.current };
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > 8 || Math.abs(gestureState.dy) > 8) {
+          aiButtonDidDragRef.current = true;
+        }
+        const { width: W, height: H } = Dimensions.get("window");
+        const padding = moderateWidthScale(16);
+        const left = Math.max(
+          padding,
+          Math.min(
+            W - AI_BUTTON_SIZE - padding,
+            dragStartPosition.current.left + gestureState.dx,
+          ),
+        );
+        const top = Math.max(
+          padding,
+          Math.min(
+            H - AI_BUTTON_SIZE - padding,
+            dragStartPosition.current.top + gestureState.dy,
+          ),
+        );
+        setAiButtonPosition({ left, top });
+      },
+      onPanResponderRelease: () => {},
+    }),
+  ).current;
+
+  useEffect(() => {
+    aiButtonPositionRef.current = aiButtonPosition;
+    dragStartPosition.current = aiButtonPosition;
+  }, [aiButtonPosition]);
 
   // Animation values for AI tool button
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -1088,7 +1145,17 @@ export default function ManageSubscriptionsScreen() {
       {/* AI Tool Button - Portal + Overlay (same as Step Nine) */}
       {!loading && (
         <Portal>
-          <View style={styles.aiToolButtonContainer} pointerEvents="box-none">
+          <View
+            style={[
+              styles.aiToolButtonContainer,
+              {
+                left: aiButtonPosition.left,
+                top: aiButtonPosition.top,
+              },
+            ]}
+            pointerEvents="box-none"
+            {...aiButtonPanResponder.panHandlers}
+          >
             {/* Sparkling Stars */}
             {starAnimations.map((star, index) => {
               const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
@@ -1147,7 +1214,13 @@ export default function ManageSubscriptionsScreen() {
             )}
 
             {/* Ai Tool Button with Zoom Animation */}
-            <TouchableOpacity activeOpacity={0.8} onPress={onClickAi}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                // if (!aiButtonDidDragRef.current)
+                onClickAi();
+              }}
+            >
               <Animated.View
                 style={[
                   styles.aiToolButton,
