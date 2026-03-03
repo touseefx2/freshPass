@@ -323,6 +323,7 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       bottom: moderateHeightScale(56 + 14),
       right: 0,
+
       left: moderateWidthScale(-200),
       minWidth: moderateWidthScale(220),
       backgroundColor: theme.background,
@@ -337,6 +338,26 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.25,
       shadowRadius: 6,
       elevation: 8,
+      alignItems: "center",
+    },
+    aiTooltipOverlayBoxRight: {
+      position: "absolute",
+      left: 0,
+      bottom: moderateHeightScale(56 + 14),
+      minWidth: moderateWidthScale(250),
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingRight: moderateWidthScale(32),
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 8,
+      alignItems: "center",
     },
     aiTooltipOverlayText: {
       fontSize: fontSize.size12,
@@ -412,7 +433,11 @@ export default function ManageSubscriptionsScreen() {
   const AI_BUTTON_SIZE = moderateWidthScale(56);
   const AI_BUTTON_MARGIN = moderateWidthScale(20);
   // Just above Update button: container (16+48+24) + gap so icon sits a bit higher
-  const AI_BUTTON_BOTTOM_OFFSET = moderateHeightScale(16) + moderateHeightScale(48) + moderateHeightScale(24) + moderateHeightScale(36);
+  const AI_BUTTON_BOTTOM_OFFSET =
+    moderateHeightScale(16) +
+    moderateHeightScale(48) +
+    moderateHeightScale(24) +
+    moderateHeightScale(36);
   const getDefaultAiButtonPosition = () => {
     const { width: W, height: H } = Dimensions.get("window");
     return {
@@ -452,7 +477,12 @@ export default function ManageSubscriptionsScreen() {
     buttonWidthV.value = AI_BUTTON_SIZE;
   }, [minLeftV, maxLeftV, minTopV, maxTopV, buttonWidthV]);
 
-  const syncPositionToState = (left: number, top: number, tx: number, ty: number) => {
+  const syncPositionToState = (
+    left: number,
+    top: number,
+    tx: number,
+    ty: number,
+  ) => {
     if (Math.abs(tx) > 6 || Math.abs(ty) > 6) {
       aiButtonDidDragRef.current = true;
     }
@@ -476,17 +506,11 @@ export default function ManageSubscriptionsScreen() {
           "worklet";
           const newLeft = Math.min(
             maxLeftV.value,
-            Math.max(
-              minLeftV.value,
-              startLeftValue.value + e.translationX,
-            ),
+            Math.max(minLeftV.value, startLeftValue.value + e.translationX),
           );
           const newTop = Math.min(
             maxTopV.value,
-            Math.max(
-              minTopV.value,
-              startTopValue.value + e.translationY,
-            ),
+            Math.max(minTopV.value, startTopValue.value + e.translationY),
           );
           leftValue.value = newLeft;
           topValue.value = newTop;
@@ -531,6 +555,10 @@ export default function ManageSubscriptionsScreen() {
   useEffect(() => {
     aiButtonPositionRef.current = aiButtonPosition;
   }, [aiButtonPosition]);
+
+  const isButtonOnLeft =
+    aiButtonPosition.left + AI_BUTTON_SIZE / 2 <
+    Dimensions.get("window").width / 2;
 
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
@@ -1219,101 +1247,107 @@ export default function ManageSubscriptionsScreen() {
         <Portal>
           <GestureDetector gesture={panGesture}>
             <AnimatedReanimated.View
-              style={[
-                styles.aiToolButtonContainer,
-                animatedButtonStyle,
-              ]}
+              style={[styles.aiToolButtonContainer, animatedButtonStyle]}
               pointerEvents="box-none"
             >
-            {/* Sparkling Stars */}
-            {starAnimations.map((star, index) => {
-              const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
-              const radius = moderateWidthScale(35);
-              const x = Math.cos(angle) * radius;
-              const y = Math.sin(angle) * radius;
+              {/* Sparkling Stars */}
+              {starAnimations.map((star, index) => {
+                const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
+                const radius = moderateWidthScale(35);
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
 
-              const rotateInterpolate = star.rotate.interpolate({
-                inputRange: [0, 1],
-                outputRange: ["0deg", "360deg"],
-              });
+                const rotateInterpolate = star.rotate.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["0deg", "360deg"],
+                });
 
-              return (
+                return (
+                  <Animated.View
+                    key={index}
+                    style={[
+                      {
+                        position: "absolute",
+                        left:
+                          moderateWidthScale(28) + x - moderateWidthScale(6),
+                        top:
+                          moderateHeightScale(28) + y - moderateHeightScale(6),
+                        transform: [
+                          { scale: star.scale },
+                          { rotate: rotateInterpolate },
+                        ],
+                        opacity: star.opacity,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="star"
+                      size={moderateWidthScale(12)}
+                      color={theme.white}
+                    />
+                  </Animated.View>
+                );
+              })}
+
+              {/* First-time overlay: tap to create subscription with AI */}
+              {showAiTooltipOverlay && (
+                <View
+                  style={
+                    isButtonOnLeft
+                      ? styles.aiTooltipOverlayBoxRight
+                      : styles.aiTooltipOverlayBox
+                  }
+                  pointerEvents="box-none"
+                >
+                  <TouchableOpacity
+                    style={styles.aiTooltipOverlayClose}
+                    onPress={dismissAiTooltipOverlay}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(18)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.aiTooltipOverlayText}>
+                    {t("tapToCreateSubscriptionWithAi")}
+                  </Text>
+                </View>
+              )}
+
+              {/* Ai Tool Button with Zoom Animation */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  // if (!aiButtonDidDragRef.current)
+                  onClickAi();
+                }}
+              >
                 <Animated.View
-                  key={index}
                   style={[
+                    styles.aiToolButton,
                     {
-                      position: "absolute",
-                      left: moderateWidthScale(28) + x - moderateWidthScale(6),
-                      top: moderateHeightScale(28) + y - moderateHeightScale(6),
                       transform: [
-                        { scale: star.scale },
-                        { rotate: rotateInterpolate },
+                        { scale: scaleAnim },
+                        {
+                          rotate: rotateAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: ["0deg", "360deg"],
+                          }),
+                        },
                       ],
-                      opacity: star.opacity,
                     },
                   ]}
                 >
                   <MaterialIcons
-                    name="star"
-                    size={moderateWidthScale(12)}
+                    name="auto-awesome"
+                    size={moderateWidthScale(28)}
                     color={theme.white}
                   />
                 </Animated.View>
-              );
-            })}
-
-            {/* First-time overlay: tap to create subscription with AI */}
-            {showAiTooltipOverlay && (
-              <View style={styles.aiTooltipOverlayBox} pointerEvents="box-none">
-                <TouchableOpacity
-                  style={styles.aiTooltipOverlayClose}
-                  onPress={dismissAiTooltipOverlay}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Feather
-                    name="x"
-                    size={moderateWidthScale(18)}
-                    color={theme.darkGreen}
-                  />
-                </TouchableOpacity>
-                <Text style={styles.aiTooltipOverlayText}>
-                  {t("tapToCreateSubscriptionWithAi")}
-                </Text>
-              </View>
-            )}
-
-            {/* Ai Tool Button with Zoom Animation */}
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                // if (!aiButtonDidDragRef.current)
-                onClickAi();
-              }}
-            >
-              <Animated.View
-                style={[
-                  styles.aiToolButton,
-                  {
-                    transform: [
-                      { scale: scaleAnim },
-                      {
-                        rotate: rotateAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: ["0deg", "360deg"],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              >
-                <MaterialIcons
-                  name="auto-awesome"
-                  size={moderateWidthScale(28)}
-                  color={theme.white}
-                />
-              </Animated.View>
-            </TouchableOpacity>
-          </AnimatedReanimated.View>
+              </TouchableOpacity>
+            </AnimatedReanimated.View>
           </GestureDetector>
         </Portal>
       )}

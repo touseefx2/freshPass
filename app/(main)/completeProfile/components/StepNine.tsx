@@ -1,13 +1,19 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
   Dimensions,
-  PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   Animated,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import AnimatedReanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  runOnJS,
+  withSpring,
+} from "react-native-reanimated";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -291,6 +297,26 @@ const createStyles = (theme: Theme) =>
       shadowRadius: 6,
       elevation: 8,
     },
+    aiTooltipOverlayBoxRight: {
+      position: "absolute",
+      left: moderateWidthScale(64),
+      bottom: moderateHeightScale(56 + 14),
+      top: undefined,
+      right: undefined,
+      minWidth: moderateWidthScale(220),
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingRight: moderateWidthScale(32),
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 8,
+    },
     aiTooltipOverlayText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
@@ -344,7 +370,11 @@ export default function StepNine() {
   const AI_BUTTON_SIZE = moderateWidthScale(56);
   const AI_BUTTON_MARGIN = moderateWidthScale(20);
   // Above footer buttons: container (16+48+24) + gap
-  const AI_BUTTON_BOTTOM_OFFSET = moderateHeightScale(16) + moderateHeightScale(48) + moderateHeightScale(24) + moderateHeightScale(36);
+  const AI_BUTTON_BOTTOM_OFFSET =
+    moderateHeightScale(16) +
+    moderateHeightScale(48) +
+    moderateHeightScale(24) +
+    moderateHeightScale(36);
   const getDefaultAiButtonPosition = () => {
     const { width: W, height: H } = Dimensions.get("window");
     return {
@@ -352,13 +382,121 @@ export default function StepNine() {
       top: H - AI_BUTTON_BOTTOM_OFFSET - AI_BUTTON_SIZE,
     };
   };
+  const initialAiPos = getDefaultAiButtonPosition();
   const [aiButtonPosition, setAiButtonPosition] = useState<{
     left: number;
     top: number;
-  }>(getDefaultAiButtonPosition);
-  const dragStartPosition = useRef({ left: 0, top: 0 });
-  const aiButtonPositionRef = useRef(getDefaultAiButtonPosition());
+  }>(initialAiPos);
+  const aiButtonPositionRef = useRef(aiButtonPosition);
   const aiButtonDidDragRef = useRef(false);
+
+  const leftValue = useSharedValue(initialAiPos.left);
+  const topValue = useSharedValue(initialAiPos.top);
+  const startLeftValue = useSharedValue(initialAiPos.left);
+  const startTopValue = useSharedValue(initialAiPos.top);
+  const minLeftV = useSharedValue(moderateWidthScale(16));
+  const maxLeftV = useSharedValue(
+    Dimensions.get("window").width - AI_BUTTON_SIZE - moderateWidthScale(16),
+  );
+  const minTopV = useSharedValue(moderateHeightScale(16));
+  const maxTopV = useSharedValue(
+    Dimensions.get("window").height - AI_BUTTON_SIZE - moderateHeightScale(16),
+  );
+  const buttonWidthV = useSharedValue(AI_BUTTON_SIZE);
+
+  useEffect(() => {
+    const { width: W, height: H } = Dimensions.get("window");
+    const padding = moderateWidthScale(16);
+    minLeftV.value = padding;
+    maxLeftV.value = W - AI_BUTTON_SIZE - padding;
+    minTopV.value = padding;
+    maxTopV.value = H - AI_BUTTON_SIZE - padding;
+    buttonWidthV.value = AI_BUTTON_SIZE;
+  }, [minLeftV, maxLeftV, minTopV, maxTopV, buttonWidthV]);
+
+  const syncPositionToState = (
+    left: number,
+    top: number,
+    tx: number,
+    ty: number,
+  ) => {
+    if (Math.abs(tx) > 6 || Math.abs(ty) > 6) {
+      aiButtonDidDragRef.current = true;
+    }
+    setAiButtonPosition({ left, top });
+  };
+
+  const resetDidDragRef = () => {
+    aiButtonDidDragRef.current = false;
+  };
+
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onStart(() => {
+          "worklet";
+          runOnJS(resetDidDragRef)();
+          startLeftValue.value = leftValue.value;
+          startTopValue.value = topValue.value;
+        })
+        .onUpdate((e) => {
+          "worklet";
+          const newLeft = Math.min(
+            maxLeftV.value,
+            Math.max(minLeftV.value, startLeftValue.value + e.translationX),
+          );
+          const newTop = Math.min(
+            maxTopV.value,
+            Math.max(minTopV.value, startTopValue.value + e.translationY),
+          );
+          leftValue.value = newLeft;
+          topValue.value = newTop;
+        })
+        .onEnd((e) => {
+          "worklet";
+          const halfBtn = buttonWidthV.value / 2;
+          const screenCenterX =
+            (minLeftV.value + maxLeftV.value + buttonWidthV.value) / 2;
+          const buttonCenterX = leftValue.value + halfBtn;
+          const snapLeft =
+            buttonCenterX < screenCenterX ? minLeftV.value : maxLeftV.value;
+          leftValue.value = withSpring(snapLeft, {
+            damping: 18,
+            stiffness: 180,
+          });
+          runOnJS(syncPositionToState)(
+            snapLeft,
+            topValue.value,
+            e.translationX,
+            e.translationY,
+          );
+        }),
+    [
+      leftValue,
+      topValue,
+      startLeftValue,
+      startTopValue,
+      minLeftV,
+      maxLeftV,
+      minTopV,
+      maxTopV,
+      buttonWidthV,
+    ],
+  );
+
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    left: leftValue.value,
+    top: topValue.value,
+  }));
+
+  useEffect(() => {
+    aiButtonPositionRef.current = aiButtonPosition;
+  }, [aiButtonPosition]);
+
+  const isButtonOnLeft =
+    aiButtonPosition.left + AI_BUTTON_SIZE / 2 <
+    Dimensions.get("window").width / 2;
+
   // Store custom suggestions added via "+" button (not in Redux subscriptions)
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
@@ -387,49 +525,7 @@ export default function StepNine() {
     setShowAiTooltipOverlay(false);
   };
 
-  const aiButtonPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        aiButtonDidDragRef.current = false;
-        dragStartPosition.current = { ...aiButtonPositionRef.current };
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (
-          Math.abs(gestureState.dx) > 8 ||
-          Math.abs(gestureState.dy) > 8
-        ) {
-          aiButtonDidDragRef.current = true;
-        }
-        const { width: W, height: H } = Dimensions.get("window");
-        const padding = moderateWidthScale(16);
-        const left = Math.max(
-          padding,
-          Math.min(
-            W - AI_BUTTON_SIZE - padding,
-            dragStartPosition.current.left + gestureState.dx,
-          ),
-        );
-        const top = Math.max(
-          padding,
-          Math.min(
-            H - AI_BUTTON_SIZE - padding,
-            dragStartPosition.current.top + gestureState.dy,
-          ),
-        );
-        setAiButtonPosition({ left, top });
-      },
-      onPanResponderRelease: () => {},
-    }),
-  ).current;
-
-  useEffect(() => {
-    aiButtonPositionRef.current = aiButtonPosition;
-    dragStartPosition.current = aiButtonPosition;
-  }, [aiButtonPosition]);
-
-  // Start animations when component mounts
+  // Animation values for AI tool button
   useEffect(() => {
     // Pulse/zoom animation for button
     const pulseAnimation = Animated.loop(
@@ -879,105 +975,106 @@ export default function StepNine() {
 
       {/* AI Tool Button - Fixed Position using Portal */}
       <Portal>
-        <View
-          style={[
-            styles.aiToolButtonContainer,
-            {
-              left: aiButtonPosition.left,
-              top: aiButtonPosition.top,
-            },
-          ]}
-          pointerEvents="box-none"
-          {...aiButtonPanResponder.panHandlers}
-        >
-          {/* Sparkling Stars */}
-          {starAnimations.map((star, index) => {
-            const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
-            const radius = moderateWidthScale(35);
-            const x = Math.cos(angle) * radius;
-            const y = Math.sin(angle) * radius;
+        <GestureDetector gesture={panGesture}>
+          <AnimatedReanimated.View
+            style={[styles.aiToolButtonContainer, animatedButtonStyle]}
+            pointerEvents="box-none"
+          >
+            {/* Sparkling Stars */}
+            {starAnimations.map((star, index) => {
+              const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
+              const radius = moderateWidthScale(35);
+              const x = Math.cos(angle) * radius;
+              const y = Math.sin(angle) * radius;
 
-            const rotateInterpolate = star.rotate.interpolate({
-              inputRange: [0, 1],
-              outputRange: ["0deg", "360deg"],
-            });
+              const rotateInterpolate = star.rotate.interpolate({
+                inputRange: [0, 1],
+                outputRange: ["0deg", "360deg"],
+              });
 
-            return (
-              <Animated.View
-                key={index}
+              return (
+                <Animated.View
+                  key={index}
+                  style={[
+                    {
+                      position: "absolute",
+                      left: moderateWidthScale(28) + x - moderateWidthScale(6),
+                      top: moderateHeightScale(28) + y - moderateHeightScale(6),
+                      transform: [
+                        { scale: star.scale },
+                        { rotate: rotateInterpolate },
+                      ],
+                      opacity: star.opacity,
+                    },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="star"
+                    size={moderateWidthScale(12)}
+                    color={theme.white}
+                  />
+                </Animated.View>
+              );
+            })}
+
+            {/* First-time overlay: tap to create subscription with AI */}
+            {showAiTooltipOverlay && (
+              <View
                 style={[
+                  styles.aiTooltipOverlayBox,
+                  isButtonOnLeft && styles.aiTooltipOverlayBoxRight,
+                ]}
+                pointerEvents="box-none"
+              >
+                <TouchableOpacity
+                  style={styles.aiTooltipOverlayClose}
+                  onPress={dismissAiTooltipOverlay}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Feather
+                    name="x"
+                    size={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+                <Text style={styles.aiTooltipOverlayText}>
+                  {t("tapToCreateSubscriptionWithAi")}
+                </Text>
+              </View>
+            )}
+
+            {/* Ai Tool Button with Zoom Animation */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                if (!aiButtonDidDragRef.current) onClickAi();
+              }}
+            >
+              <Animated.View
+                style={[
+                  styles.aiToolButton,
                   {
-                    position: "absolute",
-                    left: moderateWidthScale(28) + x - moderateWidthScale(6),
-                    top: moderateHeightScale(28) + y - moderateHeightScale(6),
                     transform: [
-                      { scale: star.scale },
-                      { rotate: rotateInterpolate },
+                      { scale: scaleAnim },
+                      {
+                        rotate: rotateAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ["0deg", "360deg"],
+                        }),
+                      },
                     ],
-                    opacity: star.opacity,
                   },
                 ]}
               >
                 <MaterialIcons
-                  name="star"
-                  size={moderateWidthScale(12)}
+                  name="auto-awesome"
+                  size={moderateWidthScale(28)}
                   color={theme.white}
                 />
               </Animated.View>
-            );
-          })}
-
-          {/* First-time overlay: tap to create subscription with AI */}
-          {showAiTooltipOverlay && (
-            <View style={styles.aiTooltipOverlayBox} pointerEvents="box-none">
-              <TouchableOpacity
-                style={styles.aiTooltipOverlayClose}
-                onPress={dismissAiTooltipOverlay}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Feather
-                  name="x"
-                  size={moderateWidthScale(18)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <Text style={styles.aiTooltipOverlayText}>
-                {t("tapToCreateSubscriptionWithAi")}
-              </Text>
-            </View>
-          )}
-
-          {/* Ai Tool Button with Zoom Animation */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              if (!aiButtonDidDragRef.current) onClickAi();
-            }}
-          >
-            <Animated.View
-              style={[
-                styles.aiToolButton,
-                {
-                  transform: [
-                    { scale: scaleAnim },
-                    {
-                      rotate: rotateAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ["0deg", "360deg"],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <MaterialIcons
-                name="auto-awesome"
-                size={moderateWidthScale(28)}
-                color={theme.white}
-              />
-            </Animated.View>
-          </TouchableOpacity>
-        </View>
+            </TouchableOpacity>
+          </AnimatedReanimated.View>
+        </GestureDetector>
       </Portal>
 
       <GeneratedSubscriptionPlansModal
