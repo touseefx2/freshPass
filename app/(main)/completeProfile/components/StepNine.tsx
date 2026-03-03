@@ -1,5 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import {
+  Dimensions,
+  PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -268,7 +270,6 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       zIndex: 1000,
       position: "absolute",
-      right: moderateWidthScale(20),
       opacity: 0.9,
     },
     aiTooltipOverlayBox: {
@@ -332,8 +333,6 @@ export default function StepNine() {
     (state) => state.completeProfile,
   );
 
-  // Button bottom offset for fixed positioning
-  const buttonBottomOffset = moderateHeightScale(40);
   const [editSubscriptionVisible, setEditSubscriptionVisible] = useState(false);
   const [addSubscriptionVisible, setAddSubscriptionVisible] = useState(false);
   const [editingSubscriptionId, setEditingSubscriptionId] = useState<
@@ -342,6 +341,24 @@ export default function StepNine() {
   const [generatedResult, setGeneratedResult] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [showAiTooltipOverlay, setShowAiTooltipOverlay] = useState(true);
+  const AI_BUTTON_SIZE = moderateWidthScale(56);
+  const AI_BUTTON_MARGIN = moderateWidthScale(20);
+  // Above footer buttons: container (16+48+24) + gap
+  const AI_BUTTON_BOTTOM_OFFSET = moderateHeightScale(16) + moderateHeightScale(48) + moderateHeightScale(24) + moderateHeightScale(36);
+  const getDefaultAiButtonPosition = () => {
+    const { width: W, height: H } = Dimensions.get("window");
+    return {
+      left: W - AI_BUTTON_MARGIN - AI_BUTTON_SIZE,
+      top: H - AI_BUTTON_BOTTOM_OFFSET - AI_BUTTON_SIZE,
+    };
+  };
+  const [aiButtonPosition, setAiButtonPosition] = useState<{
+    left: number;
+    top: number;
+  }>(getDefaultAiButtonPosition);
+  const dragStartPosition = useRef({ left: 0, top: 0 });
+  const aiButtonPositionRef = useRef(getDefaultAiButtonPosition());
+  const aiButtonDidDragRef = useRef(false);
   // Store custom suggestions added via "+" button (not in Redux subscriptions)
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
@@ -369,6 +386,48 @@ export default function StepNine() {
   const dismissAiTooltipOverlay = () => {
     setShowAiTooltipOverlay(false);
   };
+
+  const aiButtonPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        aiButtonDidDragRef.current = false;
+        dragStartPosition.current = { ...aiButtonPositionRef.current };
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (
+          Math.abs(gestureState.dx) > 8 ||
+          Math.abs(gestureState.dy) > 8
+        ) {
+          aiButtonDidDragRef.current = true;
+        }
+        const { width: W, height: H } = Dimensions.get("window");
+        const padding = moderateWidthScale(16);
+        const left = Math.max(
+          padding,
+          Math.min(
+            W - AI_BUTTON_SIZE - padding,
+            dragStartPosition.current.left + gestureState.dx,
+          ),
+        );
+        const top = Math.max(
+          padding,
+          Math.min(
+            H - AI_BUTTON_SIZE - padding,
+            dragStartPosition.current.top + gestureState.dy,
+          ),
+        );
+        setAiButtonPosition({ left, top });
+      },
+      onPanResponderRelease: () => {},
+    }),
+  ).current;
+
+  useEffect(() => {
+    aiButtonPositionRef.current = aiButtonPosition;
+    dragStartPosition.current = aiButtonPosition;
+  }, [aiButtonPosition]);
 
   // Start animations when component mounts
   useEffect(() => {
@@ -824,10 +883,12 @@ export default function StepNine() {
           style={[
             styles.aiToolButtonContainer,
             {
-              bottom: buttonBottomOffset + 180,
+              left: aiButtonPosition.left,
+              top: aiButtonPosition.top,
             },
           ]}
           pointerEvents="box-none"
+          {...aiButtonPanResponder.panHandlers}
         >
           {/* Sparkling Stars */}
           {starAnimations.map((star, index) => {
@@ -887,7 +948,12 @@ export default function StepNine() {
           )}
 
           {/* Ai Tool Button with Zoom Animation */}
-          <TouchableOpacity activeOpacity={0.8} onPress={onClickAi}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              if (!aiButtonDidDragRef.current) onClickAi();
+            }}
+          >
             <Animated.View
               style={[
                 styles.aiToolButton,

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  PanResponder,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +10,13 @@ import {
   View,
   Animated,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import AnimatedReanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  runOnJS,
+  withSpring,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -414,13 +420,118 @@ export default function ManageSubscriptionsScreen() {
       top: H - AI_BUTTON_BOTTOM_OFFSET - AI_BUTTON_SIZE,
     };
   };
+  const initialAiPos = getDefaultAiButtonPosition();
   const [aiButtonPosition, setAiButtonPosition] = useState<{
     left: number;
     top: number;
-  }>(getDefaultAiButtonPosition);
-  const dragStartPosition = useRef({ left: 0, top: 0 });
+  }>(initialAiPos);
   const aiButtonPositionRef = useRef(aiButtonPosition);
   const aiButtonDidDragRef = useRef(false);
+
+  const leftValue = useSharedValue(initialAiPos.left);
+  const topValue = useSharedValue(initialAiPos.top);
+  const startLeftValue = useSharedValue(initialAiPos.left);
+  const startTopValue = useSharedValue(initialAiPos.top);
+  const minLeftV = useSharedValue(moderateWidthScale(16));
+  const maxLeftV = useSharedValue(
+    Dimensions.get("window").width - AI_BUTTON_SIZE - moderateWidthScale(16),
+  );
+  const minTopV = useSharedValue(moderateHeightScale(16));
+  const maxTopV = useSharedValue(
+    Dimensions.get("window").height - AI_BUTTON_SIZE - moderateHeightScale(16),
+  );
+  const buttonWidthV = useSharedValue(AI_BUTTON_SIZE);
+
+  useEffect(() => {
+    const { width: W, height: H } = Dimensions.get("window");
+    const padding = moderateWidthScale(16);
+    minLeftV.value = padding;
+    maxLeftV.value = W - AI_BUTTON_SIZE - padding;
+    minTopV.value = padding;
+    maxTopV.value = H - AI_BUTTON_SIZE - padding;
+    buttonWidthV.value = AI_BUTTON_SIZE;
+  }, [minLeftV, maxLeftV, minTopV, maxTopV, buttonWidthV]);
+
+  const syncPositionToState = (left: number, top: number, tx: number, ty: number) => {
+    if (Math.abs(tx) > 6 || Math.abs(ty) > 6) {
+      aiButtonDidDragRef.current = true;
+    }
+    setAiButtonPosition({ left, top });
+  };
+
+  const resetDidDragRef = () => {
+    aiButtonDidDragRef.current = false;
+  };
+
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onStart(() => {
+          "worklet";
+          runOnJS(resetDidDragRef)();
+          startLeftValue.value = leftValue.value;
+          startTopValue.value = topValue.value;
+        })
+        .onUpdate((e) => {
+          "worklet";
+          const newLeft = Math.min(
+            maxLeftV.value,
+            Math.max(
+              minLeftV.value,
+              startLeftValue.value + e.translationX,
+            ),
+          );
+          const newTop = Math.min(
+            maxTopV.value,
+            Math.max(
+              minTopV.value,
+              startTopValue.value + e.translationY,
+            ),
+          );
+          leftValue.value = newLeft;
+          topValue.value = newTop;
+        })
+        .onEnd((e) => {
+          "worklet";
+          const halfBtn = buttonWidthV.value / 2;
+          const screenCenterX =
+            (minLeftV.value + maxLeftV.value + buttonWidthV.value) / 2;
+          const buttonCenterX = leftValue.value + halfBtn;
+          const snapLeft =
+            buttonCenterX < screenCenterX ? minLeftV.value : maxLeftV.value;
+          leftValue.value = withSpring(snapLeft, {
+            damping: 18,
+            stiffness: 180,
+          });
+          runOnJS(syncPositionToState)(
+            snapLeft,
+            topValue.value,
+            e.translationX,
+            e.translationY,
+          );
+        }),
+    [
+      leftValue,
+      topValue,
+      startLeftValue,
+      startTopValue,
+      minLeftV,
+      maxLeftV,
+      minTopV,
+      maxTopV,
+      buttonWidthV,
+    ],
+  );
+
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    left: leftValue.value,
+    top: topValue.value,
+  }));
+
+  useEffect(() => {
+    aiButtonPositionRef.current = aiButtonPosition;
+  }, [aiButtonPosition]);
+
   const [customSuggestions, setCustomSuggestions] = useState<
     Array<{
       id: string;
@@ -435,45 +546,6 @@ export default function ManageSubscriptionsScreen() {
   const dismissAiTooltipOverlay = () => {
     setShowAiTooltipOverlay(false);
   };
-
-  const aiButtonPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        aiButtonDidDragRef.current = false;
-        dragStartPosition.current = { ...aiButtonPositionRef.current };
-      },
-      onPanResponderMove: (_, gestureState) => {
-        if (Math.abs(gestureState.dx) > 8 || Math.abs(gestureState.dy) > 8) {
-          aiButtonDidDragRef.current = true;
-        }
-        const { width: W, height: H } = Dimensions.get("window");
-        const padding = moderateWidthScale(16);
-        const left = Math.max(
-          padding,
-          Math.min(
-            W - AI_BUTTON_SIZE - padding,
-            dragStartPosition.current.left + gestureState.dx,
-          ),
-        );
-        const top = Math.max(
-          padding,
-          Math.min(
-            H - AI_BUTTON_SIZE - padding,
-            dragStartPosition.current.top + gestureState.dy,
-          ),
-        );
-        setAiButtonPosition({ left, top });
-      },
-      onPanResponderRelease: () => {},
-    }),
-  ).current;
-
-  useEffect(() => {
-    aiButtonPositionRef.current = aiButtonPosition;
-    dragStartPosition.current = aiButtonPosition;
-  }, [aiButtonPosition]);
 
   // Animation values for AI tool button
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -1145,17 +1217,14 @@ export default function ManageSubscriptionsScreen() {
       {/* AI Tool Button - Portal + Overlay (same as Step Nine) */}
       {!loading && (
         <Portal>
-          <View
-            style={[
-              styles.aiToolButtonContainer,
-              {
-                left: aiButtonPosition.left,
-                top: aiButtonPosition.top,
-              },
-            ]}
-            pointerEvents="box-none"
-            {...aiButtonPanResponder.panHandlers}
-          >
+          <GestureDetector gesture={panGesture}>
+            <AnimatedReanimated.View
+              style={[
+                styles.aiToolButtonContainer,
+                animatedButtonStyle,
+              ]}
+              pointerEvents="box-none"
+            >
             {/* Sparkling Stars */}
             {starAnimations.map((star, index) => {
               const angle = (index * 60 * Math.PI) / 180; // 6 stars, 60 degrees apart
@@ -1244,7 +1313,8 @@ export default function ManageSubscriptionsScreen() {
                 />
               </Animated.View>
             </TouchableOpacity>
-          </View>
+          </AnimatedReanimated.View>
+          </GestureDetector>
         </Portal>
       )}
 
