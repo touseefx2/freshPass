@@ -37,7 +37,10 @@ import { CloseIcon } from "@/assets/icons";
 import { IMAGES } from "@/src/constant/images";
 import { Ionicons } from "@expo/vector-icons";
 import { AiChatContent } from "@/src/components/AiChatContent";
-import { VoiceReceptionistContent } from "@/src/components/VoiceReceptionistContent";
+import {
+  VoiceReceptionistContent,
+  type VoiceReceptionistHandle,
+} from "@/src/components/VoiceReceptionistContent";
 import {
   toggleChat,
   openChat,
@@ -657,6 +660,7 @@ const AiChatBot: React.FC = () => {
   const chatBoxAnim = useRef(new Animated.Value(0)).current;
   // Float animation for FAB when chat is closed (gentle up-down bob)
   const floatAnim = useRef(new Animated.Value(0)).current;
+  const voiceReceptionistRef = useRef<VoiceReceptionistHandle>(null);
 
   let VOICE_AGENT_WS_URL = process.env.EXPO_PUBLIC_WEBHOOK_URL || "";
   if (!isGuest && accessToken) {
@@ -732,8 +736,11 @@ const AiChatBot: React.FC = () => {
 
   const handleCloseChat = useCallback(() => {
     Keyboard.dismiss();
+    if (chatMode === "ai_receptionist") {
+      voiceReceptionistRef.current?.disconnect();
+    }
     dispatch(closeChat());
-  }, [dispatch]);
+  }, [dispatch, chatMode]);
 
   const handleDeleteChat = useCallback(() => {
     Alert.alert(t("clearChat"), t("clearChatConfirm"), [
@@ -989,6 +996,7 @@ const AiChatBot: React.FC = () => {
               />
             ) : (
               <VoiceReceptionistContent
+                ref={voiceReceptionistRef}
                 theme={theme}
                 styles={styles}
                 websocketUrl={VOICE_AGENT_WS_URL}
