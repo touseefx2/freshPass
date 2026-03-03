@@ -204,6 +204,15 @@ export const createStyles = (theme: Theme) =>
       color: theme.text,
       lineHeight: moderateHeightScale(20),
     },
+    editableCaptionInput: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      lineHeight: moderateHeightScale(20),
+      padding: 0,
+      minHeight: moderateHeightScale(80),
+      textAlignVertical: "top",
+    },
     hashtagsContainer: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -225,6 +234,15 @@ export const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.text,
       lineHeight: moderateHeightScale(20),
+    },
+    editableCompletePostInput: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      lineHeight: moderateHeightScale(20),
+      padding: 0,
+      minHeight: moderateHeightScale(120),
+      textAlignVertical: "top",
     },
     videoContainer: {
       width: "100%",

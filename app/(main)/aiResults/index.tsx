@@ -6,9 +6,9 @@ import React, {
   useRef,
 } from "react";
 import {
-  ScrollView,
   View,
   Text,
+  TextInput,
   Image,
   TouchableOpacity,
   ActivityIndicator,
@@ -18,6 +18,7 @@ import {
   StyleSheet,
   Share,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams } from "expo-router";
@@ -292,6 +293,8 @@ export default function AiResults() {
   const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
     null,
   );
+  const [editableCaption, setEditableCaption] = useState("");
+  const [editableCompletePost, setEditableCompletePost] = useState("");
 
   const fetchStatus = useCallback(
     async (isPolling = false) => {
@@ -335,6 +338,22 @@ export default function AiResults() {
       }
     };
   }, [normalized?.status, jobId, fetchStatus]);
+
+  // Sync editable caption and complete post from API when social media result loads
+  useEffect(() => {
+    if (
+      normalized?.status === "completed" &&
+      normalized.socialMedia?.content
+    ) {
+      const c = normalized.socialMedia.content;
+      setEditableCaption(c.caption ?? "");
+      setEditableCompletePost(c.complete_post ?? "");
+    }
+  }, [
+    normalized?.status,
+    normalized?.socialMedia?.content?.caption,
+    normalized?.socialMedia?.content?.complete_post,
+  ]);
 
   const handleDownload = async (uri: string) => {
     try {
@@ -421,14 +440,14 @@ export default function AiResults() {
             ? t("collage")
             : t("post");
         message = `${t("aiResults")} – ${typeLabel}\n\n`;
-        if (sm.content?.caption) {
-          message += `${sm.content.caption}\n\n`;
+        if (editableCaption) {
+          message += `${editableCaption}\n\n`;
         }
         if (sm.content?.hashtags?.length) {
           message += `${sm.content.hashtags.join(" ")}\n\n`;
         }
-        if (sm.content?.complete_post) {
-          message += `${sm.content.complete_post}\n\n`;
+        if (editableCompletePost) {
+          message += `${editableCompletePost}\n\n`;
         }
         if (isReel && sm.video?.url) {
           url = sm.video.url;
@@ -469,7 +488,7 @@ export default function AiResults() {
     } catch (_error) {
       // Silently ignore share errors
     }
-  }, [normalized, t]);
+  }, [normalized, t, editableCaption, editableCompletePost]);
 
   const canShare =
     normalized?.status === "completed" &&
@@ -529,7 +548,7 @@ export default function AiResults() {
     const downloadUri = isReel ? sm.video?.url : sm.images?.processed;
 
     content = (
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -723,13 +742,13 @@ export default function AiResults() {
           </TouchableOpacity>
         )}
 
-        {sm.content?.caption && (
+        {sm.content?.caption != null && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitleUppercase}>{t("caption")}</Text>
               <TouchableOpacity
                 style={styles.copyButton}
-                onPress={() => handleCopy(sm.content!.caption!)}
+                onPress={() => handleCopy(editableCaption)}
                 activeOpacity={0.7}
               >
                 <MaterialIcons
@@ -740,7 +759,13 @@ export default function AiResults() {
               </TouchableOpacity>
             </View>
             <View style={styles.sectionContent}>
-              <Text style={styles.captionText}>{sm.content.caption}</Text>
+              <TextInput
+                value={editableCaption}
+                onChangeText={setEditableCaption}
+                style={styles.editableCaptionInput}
+                multiline
+                placeholderTextColor={theme.lightGreen4}
+              />
             </View>
           </View>
         )}
@@ -773,7 +798,7 @@ export default function AiResults() {
           </View>
         )}
 
-        {sm.content?.complete_post && (
+        {sm.content?.complete_post != null && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitleUppercase}>
@@ -781,7 +806,7 @@ export default function AiResults() {
               </Text>
               <TouchableOpacity
                 style={styles.copyButton}
-                onPress={() => handleCopy(sm.content!.complete_post!)}
+                onPress={() => handleCopy(editableCompletePost)}
                 activeOpacity={0.7}
               >
                 <MaterialIcons
@@ -792,13 +817,17 @@ export default function AiResults() {
               </TouchableOpacity>
             </View>
             <View style={styles.sectionContent}>
-              <Text style={styles.completePostText}>
-                {sm.content.complete_post}
-              </Text>
+              <TextInput
+                value={editableCompletePost}
+                onChangeText={setEditableCompletePost}
+                style={styles.editableCompletePostInput}
+                multiline
+                placeholderTextColor={theme.lightGreen4}
+              />
             </View>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     );
   } else if (
     !normalized ||
@@ -812,7 +841,7 @@ export default function AiResults() {
     );
   } else {
     content = (
-      <ScrollView
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -868,7 +897,7 @@ export default function AiResults() {
             </View>
           </View>
         ))}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     );
   }
 
