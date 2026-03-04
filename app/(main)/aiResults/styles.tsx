@@ -305,6 +305,18 @@ export const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(20),
       position: "relative",
     },
+    videoPlaceholder: {
+      width: "100%",
+      height: heightScale(400),
+      borderRadius: moderateWidthScale(12),
+      overflow: "hidden",
+      backgroundColor: theme.black,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      marginBottom: moderateHeightScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+    },
     video: {
       width: "100%",
       height: "100%",

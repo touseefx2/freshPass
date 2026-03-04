@@ -307,7 +307,11 @@ type ReelVideoPlayerProps = {
   theme: Theme;
 };
 
-function ReelVideoPlayer({ videoUrl, styles, theme }: ReelVideoPlayerProps) {
+function ReelVideoPlayerInner({
+  videoUrl,
+  styles,
+  theme,
+}: ReelVideoPlayerProps) {
   const { t } = useTranslation();
   const [isVideoReady, setIsVideoReady] = useState(false);
   const player = useVideoPlayer(videoUrl, (p) => {
@@ -337,6 +341,34 @@ function ReelVideoPlayer({ videoUrl, styles, theme }: ReelVideoPlayerProps) {
         </View>
       )}
     </View>
+  );
+}
+
+function ReelVideoPlayer({ videoUrl, styles, theme }: ReelVideoPlayerProps) {
+  const [showVideo, setShowVideo] = useState(false);
+
+  if (showVideo) {
+    return (
+      <ReelVideoPlayerInner
+        videoUrl={videoUrl}
+        styles={styles}
+        theme={theme}
+      />
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={styles.videoPlaceholder}
+      onPress={() => setShowVideo(true)}
+      activeOpacity={0.8}
+    >
+      <Feather
+        name="play-circle"
+        size={moderateWidthScale(72)}
+        color={theme.white}
+      />
+    </TouchableOpacity>
   );
 }
 
