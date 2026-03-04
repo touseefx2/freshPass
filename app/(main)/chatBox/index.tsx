@@ -304,6 +304,38 @@ function MessageContent({
         result.push({ type: "images", items });
       }
     }
+    // Merge consecutive (numbering-only inline + single-image block) into previous images block
+    // so "Originals:\n1. url1\n2. url2\n3. url3" becomes one grid with 2 images per row
+    const numberingOnlyRegex = /^(\s*\d+\.\s*)+$/;
+    const isNumberingOnlyInline = (block: Block): boolean => {
+      if (block.type !== "inline") return false;
+      const combined = block.segments
+        .filter((s): s is MessageSegment & { type: "text" } => s.type === "text")
+        .map((s) => s.value)
+        .join("");
+      return numberingOnlyRegex.test(combined.trim());
+    };
+    let merged = true;
+    while (merged) {
+      merged = false;
+      for (let j = 0; j < result.length - 2; j++) {
+        const curr = result[j];
+        const next = result[j + 1];
+        const nextNext = result[j + 2];
+        if (
+          curr.type === "images" &&
+          next.type === "inline" &&
+          isNumberingOnlyInline(next) &&
+          nextNext.type === "images" &&
+          nextNext.items.length === 1
+        ) {
+          curr.items.push(nextNext.items[0]);
+          result.splice(j + 1, 2);
+          merged = true;
+          break;
+        }
+      }
+    }
     return result;
   }, [segments]);
 
