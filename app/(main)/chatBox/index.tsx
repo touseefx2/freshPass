@@ -256,7 +256,7 @@ type ChatVideoPlayerProps = {
   downloadingUrl?: string | null;
 };
 
-function ChatVideoPlayer({
+function ChatVideoPlayerInner({
   videoUrl,
   styles,
   theme,
@@ -271,7 +271,7 @@ function ChatVideoPlayer({
   });
 
   return (
-    <View style={styles.bubbleVideoWrap}>
+    <>
       <View style={styles.bubbleVideoContainer}>
         <View style={StyleSheet.absoluteFill}>
           <VideoView
@@ -315,6 +315,46 @@ function ChatVideoPlayer({
           </TouchableOpacity>
         </View>
       ) : null}
+    </>
+  );
+}
+
+function ChatVideoPlayer({
+  videoUrl,
+  styles,
+  theme,
+  onDownloadPress,
+  downloadingUrl,
+}: ChatVideoPlayerProps) {
+  const [showVideo, setShowVideo] = useState(false);
+
+  if (showVideo) {
+    return (
+      <View style={styles.bubbleVideoWrap}>
+        <ChatVideoPlayerInner
+          videoUrl={videoUrl}
+          styles={styles}
+          theme={theme}
+          onDownloadPress={onDownloadPress}
+          downloadingUrl={downloadingUrl}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.bubbleVideoWrap}>
+      <TouchableOpacity
+        style={styles.bubbleVideoPlaceholder}
+        onPress={() => setShowVideo(true)}
+        activeOpacity={0.8}
+      >
+        <Feather
+          name="play-circle"
+          size={moderateWidthScale(56)}
+          color={theme.white}
+        />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -707,6 +747,14 @@ const createStyles = (theme: Theme) =>
     bubbleVideoWrap: {
       marginTop: moderateHeightScale(6),
       alignSelf: "flex-start",
+    },
+    bubbleVideoPlaceholder: {
+      width: widthScale(260),
+      height: heightScale(200),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.black,
+      alignItems: "center",
+      justifyContent: "center",
     },
     bubbleVideoContainer: {
       width: widthScale(260),
