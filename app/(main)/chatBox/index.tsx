@@ -541,7 +541,7 @@ const createStyles = (theme: Theme) =>
     bubbleLink: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.link,
+      color: theme.primary,
       textDecorationLine: "underline",
     },
     bubbleInlineImagesRow: {
