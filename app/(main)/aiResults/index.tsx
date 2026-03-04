@@ -249,9 +249,7 @@ function normalizeAiRequestResponse(
           ? {
               original: imgs.original,
               processed: imgs.processed,
-              originals: Array.isArray(imgs.originals)
-                ? imgs.originals
-                : [],
+              originals: Array.isArray(imgs.originals) ? imgs.originals : [],
             }
           : undefined,
         content: res.content,
@@ -967,11 +965,7 @@ export default function AiResults() {
             <TouchableOpacity
               style={styles.shareIconOverlay}
               onPress={() =>
-                openShareSheetForImage(
-                  sm.images!.processed!,
-                  "image",
-                  true,
-                )
+                openShareSheetForImage(sm.images!.processed!, "image", true)
               }
               activeOpacity={0.7}
             >
@@ -983,9 +977,7 @@ export default function AiResults() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.downloadIconOverlay}
-              onPress={() =>
-                handleDownloadPrimary(sm.images?.processed)
-              }
+              onPress={() => handleDownloadPrimary(sm.images?.processed)}
               disabled={downloadingUrl === sm.images?.processed}
               activeOpacity={0.7}
             >
@@ -1021,17 +1013,11 @@ export default function AiResults() {
             {originalsExpanded && (
               <View style={styles.originalsGrid}>
                 {sm.images.originals.map((url, index) => (
-                  <View
-                    key={`${url}-${index}`}
-                    style={styles.originalsCard}
-                  >
+                  <View key={`${url}-${index}`} style={styles.originalsCard}>
                     <TouchableOpacity
                       style={styles.singleImageTouchable}
                       onPress={() =>
-                        openFullImage(
-                          url,
-                          sm.images!.originals ?? undefined,
-                        )
+                        openFullImage(url, sm.images!.originals ?? undefined)
                       }
                       activeOpacity={1}
                     >
@@ -1043,9 +1029,7 @@ export default function AiResults() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.shareIconOverlay}
-                      onPress={() =>
-                        openShareSheetForImage(url, "image", true)
-                      }
+                      onPress={() => openShareSheetForImage(url, "image", true)}
                       activeOpacity={0.7}
                     >
                       <Feather
@@ -1061,10 +1045,7 @@ export default function AiResults() {
                       activeOpacity={0.7}
                     >
                       {downloadingUrl === url ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={theme.white}
-                        />
+                        <ActivityIndicator size="small" color={theme.white} />
                       ) : (
                         <Feather
                           name="download"
@@ -1231,10 +1212,7 @@ export default function AiResults() {
                       activeOpacity={0.7}
                     >
                       {downloadingUrl === url ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={theme.white}
-                        />
+                        <ActivityIndicator size="small" color={theme.white} />
                       ) : (
                         <Feather
                           name="download"

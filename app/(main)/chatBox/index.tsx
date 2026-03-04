@@ -392,10 +392,7 @@ function MessageContent({
                     activeOpacity={0.7}
                   >
                     {downloadingUrl === item.url ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={theme.white}
-                      />
+                      <ActivityIndicator size="small" color={theme.white} />
                     ) : (
                       <Feather
                         name="download"
@@ -866,10 +863,7 @@ const ChatContent = ({
                         activeOpacity={0.7}
                       >
                         {downloadingUrl === uri ? (
-                          <ActivityIndicator
-                            size="small"
-                            color={theme.white}
-                          />
+                          <ActivityIndicator size="small" color={theme.white} />
                         ) : (
                           <Feather
                             name="download"
