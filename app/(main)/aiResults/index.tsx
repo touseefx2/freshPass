@@ -224,7 +224,8 @@ function isSocialMediaResponse(
 function normalizeAiRequestResponse(
   raw: AiRequestByJobIdResponse,
 ): NormalizedResult {
-  const d = raw?.data;
+  // Support both { data: payload } and { data: { data: payload } } (double-wrapped), or payload at top level
+  const d = (raw as any)?.data?.data ?? (raw as any)?.data ?? raw;
   const status = d?.status ?? "failed";
   const sections: NormalizedSection[] = [];
 
@@ -238,12 +239,21 @@ function normalizeAiRequestResponse(
       | "generate_post"
       | "generate_collage"
       | "generate_reel";
+    const imgs = res.images;
     return {
       status,
       sections: [],
       socialMedia: {
         jobType,
-        images: res.images,
+        images: imgs
+          ? {
+              original: imgs.original,
+              processed: imgs.processed,
+              originals: Array.isArray(imgs.originals)
+                ? imgs.originals
+                : [],
+            }
+          : undefined,
         content: res.content,
         video: res.video,
         music: res.music,
@@ -335,6 +345,7 @@ export default function AiResults() {
   const [potentialLoadingMore, setPotentialLoadingMore] = useState(false);
   const [potentialError, setPotentialError] = useState(false);
   const [shareSending, setShareSending] = useState(false);
+  const [originalsExpanded, setOriginalsExpanded] = useState(false);
 
   const fetchStatus = useCallback(
     async (isPolling = false) => {
@@ -988,6 +999,84 @@ export default function AiResults() {
                 />
               )}
             </TouchableOpacity>
+          </View>
+        )}
+
+        {!isReel && sm.images?.originals && sm.images.originals.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.originalsDropdownHeader}
+              onPress={() => setOriginalsExpanded((prev) => !prev)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionTitleUppercase}>
+                {t("originalImages")}
+              </Text>
+              <Feather
+                name={originalsExpanded ? "chevron-up" : "chevron-down"}
+                size={moderateWidthScale(22)}
+                color={theme.text}
+              />
+            </TouchableOpacity>
+            {originalsExpanded && (
+              <View style={styles.originalsGrid}>
+                {sm.images.originals.map((url, index) => (
+                  <View
+                    key={`${url}-${index}`}
+                    style={styles.originalsCard}
+                  >
+                    <TouchableOpacity
+                      style={styles.singleImageTouchable}
+                      onPress={() =>
+                        openFullImage(
+                          url,
+                          sm.images!.originals ?? undefined,
+                        )
+                      }
+                      activeOpacity={1}
+                    >
+                      <Image
+                        source={{ uri: url }}
+                        style={styles.singleImage}
+                        resizeMode="cover"
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.shareIconOverlay}
+                      onPress={() =>
+                        openShareSheetForImage(url, "image", true)
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Feather
+                        name="share-2"
+                        size={moderateWidthScale(20)}
+                        color={theme.white}
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.downloadIconOverlay}
+                      onPress={() => handleDownloadPrimary(url)}
+                      disabled={downloadingUrl === url}
+                      activeOpacity={0.7}
+                    >
+                      {downloadingUrl === url ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.white}
+                        />
+                      ) : (
+                        <Feather
+                          name="download"
+                          size={moderateWidthScale(20)}
+                          color={theme.white}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 

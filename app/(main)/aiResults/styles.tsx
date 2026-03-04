@@ -199,6 +199,28 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    originalsDropdownHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(8),
+    },
+    originalsGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(12),
+    },
+    originalsCard: {
+      width: "48%",
+      height: heightScale(180),
+      borderRadius: moderateWidthScale(12),
+      overflow: "hidden",
+      backgroundColor: theme.lightGreen2,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      position: "relative",
+    },
     sectionHeader: {
       flexDirection: "row",
       alignItems: "center",
