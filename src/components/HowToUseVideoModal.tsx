@@ -163,9 +163,12 @@ function VideoModalContent({ onClose }: { onClose: () => void }) {
         }
       }
     });
-    const playingSub = player.addListener("playingChange", ({ isPlaying: playing }) => {
-      setIsPlaying(playing);
-    });
+    const playingSub = player.addListener(
+      "playingChange",
+      ({ isPlaying: playing }) => {
+        setIsPlaying(playing);
+      },
+    );
     const timeSub = player.addListener("timeUpdate", (payload) => {
       setCurrentTime(payload.currentTime);
       if (duration <= 0 && player.duration > 0) setDuration(player.duration);
@@ -211,7 +214,7 @@ function VideoModalContent({ onClose }: { onClose: () => void }) {
           player={player}
           style={styles.video}
           contentFit="cover"
-          nativeControls={false}
+          nativeControls={true}
           onFirstFrameRender={() => {
             if (!isVideoReady) {
               setIsVideoReady(true);

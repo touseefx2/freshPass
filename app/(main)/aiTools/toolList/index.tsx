@@ -132,11 +132,7 @@ function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
           player={player}
           style={styles.tutorialVideo}
           contentFit="cover"
-          nativeControls={false}
-          showsTimecodes={false}
-          allowsPictureInPicture={false}
-          requiresLinearPlayback={true}
-          startsPictureInPictureAutomatically={false}
+          nativeControls={true}
           onFirstFrameRender={() => {
             if (!isVideoReady) {
               setIsVideoReady(true);
@@ -149,71 +145,6 @@ function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
           }}
         />
       </View>
-
-      <TouchableOpacity
-        style={styles.tutorialExpandBtn}
-        onPress={onExpand}
-        activeOpacity={0.7}
-      >
-        <MaterialIcons
-          name="fullscreen"
-          size={moderateWidthScale(18)}
-          color={theme.white}
-        />
-      </TouchableOpacity>
-
-      {isVideoReady && (
-        <>
-          <View style={styles.tutorialControlsRowWrapper}>
-            <View style={styles.tutorialControlsRow}>
-              <TouchableOpacity
-                style={styles.tutorialControlBtn}
-                onPress={() => handleSeek(-SEEK_STEP_SEC)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons
-                  name="replay-10"
-                  size={moderateWidthScale(12)}
-                  color={theme.white}
-                />
-                <Text style={styles.tutorialControlBtnText}>5s</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.tutorialControlBtn}
-                onPress={handlePlayPause}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons
-                  name={isPlaying ? "pause" : "play-arrow"}
-                  size={moderateWidthScale(14)}
-                  color={theme.white}
-                />
-                <Text style={styles.tutorialControlBtnText}>
-                  {isPlaying ? t("pause") : t("play")}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.tutorialControlBtn}
-                onPress={() => handleSeek(SEEK_STEP_SEC)}
-                activeOpacity={0.7}
-              >
-                <MaterialIcons
-                  name="forward-10"
-                  size={moderateWidthScale(12)}
-                  color={theme.white}
-                />
-                <Text style={styles.tutorialControlBtnText}>5s</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <Text style={styles.tutorialTimeTextAbsolute}>
-            {formatTime(displayCurrentTime)} / {formatTime(displayDuration)}
-          </Text>
-        </>
-      )}
 
       {!isVideoReady && (
         <View

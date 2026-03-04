@@ -132,7 +132,7 @@ export const createStyles = (theme: Theme) =>
       justifyContent: "center",
       paddingVertical: moderateHeightScale(2),
       paddingHorizontal: moderateWidthScale(2),
-      gap: moderateWidthScale(4),
+      gap: moderateWidthScale(12),
     },
     tutorialControlsRowWrapper: {
       position: "absolute",
