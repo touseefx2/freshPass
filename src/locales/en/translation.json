@@ -489,6 +489,8 @@
   "registrationFailedTitle": "Registration Failed",
   "noVideoAvailableToDownload": "No video available to download",
   "noImageAvailableToDownload": "No image available to download",
+  "imageSavedToGallery": "Image saved to gallery",
+  "videoSavedToGallery": "Video saved to gallery",
   "durationLabel": "Duration",
   "letsAddYourFirstService": "Let's add your first service",
   "enterYourBusinessAddress": "Enter your business address",

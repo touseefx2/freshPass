@@ -73,6 +73,13 @@
           "cameraPermission": "The app accesses your camera to let you take photos for your portfolio."
         }
       ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "The app accesses your photos to let you share them with your clients.",
+          "savePhotosPermission": "Allow Fresh Pass to save photos and images to your gallery."
+        }
+      ],
       "expo-font",
       ["expo-build-properties",{"android":{"usesCleartextTraffic":true}}],
       [
