@@ -1,10 +1,4 @@
-import React, {
-  useMemo,
-  useEffect,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
 import {
   ScrollView,
   View,
@@ -59,71 +53,11 @@ function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
 
-  const hasAutoPlayedRef = useRef(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
 
   const player = useVideoPlayer(TUTORIAL_VIDEO_URI, (p) => {
     p.loop = false;
-    p.timeUpdateEventInterval = 0.5;
   });
-
-  useEffect(() => {
-    const statusSub = player.addListener("statusChange", ({ status }) => {
-      if (status === "readyToPlay") {
-        setIsVideoReady(true);
-        setDuration(player.duration);
-        if (!hasAutoPlayedRef.current) {
-          hasAutoPlayedRef.current = true;
-          player.play();
-        }
-      }
-    });
-    const playingSub = player.addListener(
-      "playingChange",
-      ({ isPlaying: playing }) => {
-        setIsPlaying(playing);
-      },
-    );
-    const timeSub = player.addListener("timeUpdate", (payload) => {
-      setCurrentTime(payload.currentTime);
-      if (duration <= 0 && player.duration > 0) setDuration(player.duration);
-    });
-    const endSub = player.addListener("playToEnd", () => {
-      player.pause();
-      player.currentTime = 0;
-      setIsPlaying(false);
-    });
-    return () => {
-      statusSub.remove();
-      playingSub.remove();
-      timeSub.remove();
-      endSub.remove();
-    };
-  }, [player]);
-
-  const handlePlayPause = useCallback(() => {
-    if (isPlaying) {
-      player.pause();
-    } else {
-      if (duration > 0 && currentTime >= duration - 0.1) {
-        player.replay();
-      }
-      player.play();
-    }
-  }, [isPlaying, player, currentTime, duration]);
-
-  const handleSeek = useCallback(
-    (deltaSec: number) => {
-      player.seekBy(deltaSec);
-    },
-    [player],
-  );
-
-  const displayDuration = duration > 0 ? duration : player.duration;
-  const displayCurrentTime = duration > 0 ? currentTime : player.currentTime;
 
   return (
     <View style={styles.tutorialVideoRoot}>
@@ -133,14 +67,14 @@ function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
           style={styles.tutorialVideo}
           contentFit="cover"
           nativeControls={true}
+          showsTimecodes={false}
+          allowsPictureInPicture={false}
+          requiresLinearPlayback={false}
+          startsPictureInPictureAutomatically={false}
           onFirstFrameRender={() => {
             if (!isVideoReady) {
               setIsVideoReady(true);
-              setDuration(player.duration);
-              if (!hasAutoPlayedRef.current) {
-                hasAutoPlayedRef.current = true;
-                player.play();
-              }
+              player.play();
             }
           }}
         />

@@ -170,7 +170,7 @@ export const createStyles = (theme: Theme) =>
     tutorialTimeText: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.white70,
       textAlign: "center",
       marginTop: moderateHeightScale(2),
     },
