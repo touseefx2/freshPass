@@ -133,6 +133,10 @@ function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
           style={styles.tutorialVideo}
           contentFit="cover"
           nativeControls={false}
+          showsTimecodes={false}
+          allowsPictureInPicture={false}
+          requiresLinearPlayback={true}
+          startsPictureInPictureAutomatically={false}
           onFirstFrameRender={() => {
             if (!isVideoReady) {
               setIsVideoReady(true);
