@@ -462,7 +462,7 @@ export default function AiResults() {
   const handleShareAiResult = useCallback(async () => {
     try {
       if (shareContext) {
-        const msg = `${t("aiResults")} – ${t(shareContext.labelKey)}\n\n${shareContext.url}`;
+        const msg = `${t("aiResults")} – ${t(shareContext.labelKey)}: ${shareContext.url}`;
         await Share.share({ message: msg.trim(), url: shareContext.url });
         return;
       }
@@ -533,7 +533,7 @@ export default function AiResults() {
   /** Build the same message text used for native share / send to user */
   const getShareMessageText = useCallback((): string => {
     if (shareContext) {
-      return `${t("aiResults")} – ${t(shareContext.labelKey)}\n\n${shareContext.url}`;
+      return shareContext.url;
     }
     if (!normalized || normalized.status !== "completed") return "";
     let message = "";
@@ -651,6 +651,7 @@ export default function AiResults() {
 
         if (res?.success) {
           setShareToUserModalVisible(false);
+          setShareContext(null);
           showBanner(
             t("success"),
             t("messageSentSuccessfully"),
@@ -1134,10 +1135,7 @@ export default function AiResults() {
 
       <ShareOptionsBottomSheet
         visible={shareSheetVisible}
-        onClose={() => {
-          setShareSheetVisible(false);
-          setShareContext(null);
-        }}
+        onClose={() => setShareSheetVisible(false)}
         onSelectInAppUser={openShareToUserModal}
         onSelectNativeShare={handleShareAiResult}
       />
