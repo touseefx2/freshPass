@@ -21,7 +21,7 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useTranslation } from "react-i18next";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
@@ -32,11 +32,19 @@ import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
-  getPotentialContactAvatar,
 } from "@/src/components/PotentialContactsModal";
+
+const SEND_MESSAGE_URL = "/api/chat/messages";
+
+type SendMessageResponse = {
+  success: boolean;
+  message: string;
+  data?: unknown;
+};
 
 /** API: GET /api/ai-requests/{job_id} - response can be processing, replicate, hair_pipeline, or social media */
 export interface AiRequestByJobIdResponse {
@@ -293,7 +301,7 @@ export default function AiResults() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ jobId?: string }>();
   const jobId = params.jobId;
-  const router = useRouter();
+  const { showBanner } = useNotificationContext();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -320,6 +328,7 @@ export default function AiResults() {
   const [potentialLoading, setPotentialLoading] = useState(false);
   const [potentialLoadingMore, setPotentialLoadingMore] = useState(false);
   const [potentialError, setPotentialError] = useState(false);
+  const [shareSending, setShareSending] = useState(false);
 
   const fetchStatus = useCallback(
     async (isPolling = false) => {
@@ -512,6 +521,49 @@ export default function AiResults() {
     }
   }, [normalized, t, editableCaption, editableCompletePost]);
 
+  /** Build the same message text used for native share / send to user */
+  const getShareMessageText = useCallback((): string => {
+    if (!normalized || normalized.status !== "completed") return "";
+    let message = "";
+    if (normalized.socialMedia) {
+      const sm = normalized.socialMedia;
+      const isReel = sm.jobType === "generate_reel";
+      const typeLabel = isReel
+        ? t("video")
+        : sm.jobType === "generate_collage"
+          ? t("collage")
+          : t("post");
+      message = `${t("aiResults")} – ${typeLabel}\n\n`;
+      if (editableCaption) message += `${editableCaption}\n\n`;
+      if (sm.content?.hashtags?.length) {
+        message += `${sm.content.hashtags.join(" ")}\n\n`;
+      }
+      if (editableCompletePost) message += `${editableCompletePost}\n\n`;
+      if (isReel && sm.video?.url) {
+        message += `${t("video")}: ${sm.video.url}`;
+      } else if (sm.images?.processed) {
+        message += `${t("image")}: ${sm.images.processed}`;
+      }
+      if (sm.images?.originals?.length) {
+        message += `\n\n${t("originals")}:\n`;
+        sm.images.originals.forEach((u, i) => {
+          message += `${i + 1}. ${u}\n`;
+        });
+      }
+    } else if (normalized.sections.length > 0) {
+      message = `${t("aiResults")}\n\n`;
+      normalized.sections.forEach((section, sectionIndex) => {
+        message += `${section.name}\n`;
+        if (section.description) message += `${section.description}\n`;
+        section.views.forEach((v) => {
+          message += `${t(v.labelKey)}: ${v.url}\n`;
+        });
+        if (sectionIndex < normalized.sections.length - 1) message += "\n";
+      });
+    }
+    return message.trim();
+  }, [normalized, t, editableCaption, editableCompletePost]);
+
   const fetchPotentialContacts = useCallback(
     async (pageNum: number, append: boolean) => {
       try {
@@ -556,20 +608,54 @@ export default function AiResults() {
   }, [fetchPotentialContacts]);
 
   const onPotentialContactPress = useCallback(
-    (contact: PotentialContact) => {
-      setShareToUserModalVisible(false);
-      const image = getPotentialContactAvatar(contact.avatar);
-      const chatItem = {
-        id: String(contact.id),
-        name: contact.name,
-        image,
-      };
-      router.push({
-        pathname: "/(main)/chatBox",
-        params: { id: String(contact.id), chatItem: JSON.stringify(chatItem) },
-      });
+    async (contact: PotentialContact) => {
+      const messageText = getShareMessageText();
+      if (!messageText.trim()) return;
+
+      setShareSending(true);
+      try {
+        const formData = new FormData();
+        formData.append("receiver_id", String(Number(contact.id)));
+        formData.append("message", messageText);
+
+        const res = await ApiService.post<SendMessageResponse>(
+          SEND_MESSAGE_URL,
+          formData,
+          {
+            headers: {
+              "Content-Type": false as any,
+            },
+          },
+        );
+
+        if (res?.success) {
+          setShareToUserModalVisible(false);
+          showBanner(
+            t("success"),
+            t("messageSentSuccessfully"),
+            "success",
+            3000,
+          );
+        } else {
+          showBanner(
+            t("error"),
+            t("somethingWentWrong") || "Something went wrong.",
+            "error",
+            3000,
+          );
+        }
+      } catch {
+        showBanner(
+          t("error"),
+          t("somethingWentWrong") || "Something went wrong.",
+          "error",
+          3000,
+        );
+      } finally {
+        setShareSending(false);
+      }
     },
-    [router],
+    [getShareMessageText, showBanner, t],
   );
 
   const onPotentialEndReached = useCallback(() => {
@@ -1033,6 +1119,7 @@ export default function AiResults() {
         onRetry={() => fetchPotentialContacts(1, false)}
         onContactPress={onPotentialContactPress}
         onEndReached={onPotentialEndReached}
+        sending={shareSending}
       />
     </View>
   );

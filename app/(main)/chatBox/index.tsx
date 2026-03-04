@@ -731,6 +731,8 @@ export default function ChatBoxScreen() {
   const name = chatItem?.name || "-----";
   let image = chatItem?.image || "";
 
+  console.log("--------->message : ", messages);
+
   if (!image) {
     image = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
   } else if (image.startsWith("http") || image.startsWith("https")) {

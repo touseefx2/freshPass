@@ -120,6 +120,18 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(40),
       alignItems: "center",
     },
+    sendingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(255,255,255,0.7)",
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    sendingText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginTop: moderateHeightScale(8),
+    },
     footerLoader: {
       paddingVertical: moderateHeightScale(12),
       alignItems: "center",
@@ -154,6 +166,8 @@ type PotentialContactsModalProps = {
   onRetry?: () => void;
   onContactPress: (contact: PotentialContact) => void;
   onEndReached: () => void;
+  /** When true, show sending overlay (e.g. when sharing content to selected user) */
+  sending?: boolean;
 };
 
 export default function PotentialContactsModal({
@@ -166,6 +180,7 @@ export default function PotentialContactsModal({
   onRetry,
   onContactPress,
   onEndReached,
+  sending = false,
 }: PotentialContactsModalProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -221,44 +236,53 @@ export default function PotentialContactsModal({
               </TouchableOpacity>
             </View>
           ) : (
-            <FlatList
-              showsVerticalScrollIndicator={false}
-              data={contacts}
-              keyExtractor={(item) => String(item.id)}
-              renderItem={({ item }) => {
-                const avatarUri = getPotentialContactAvatar(item.avatar);
-                return (
-                  <TouchableOpacity
-                    style={styles.modalContactRow}
-                    onPress={() => onContactPress(item)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.avatarContainer}>
-                      {avatarUri ? (
-                        <Image
-                          style={styles.avatarImage}
-                          source={{ uri: avatarUri }}
-                        />
-                      ) : (
-                        <Text style={styles.avatarInitials}>
-                          {renderInitials(item.name)}
-                        </Text>
-                      )}
+            <View style={{ flex: 1 }}>
+              <FlatList
+                showsVerticalScrollIndicator={false}
+                data={contacts}
+                keyExtractor={(item) => String(item.id)}
+                renderItem={({ item }) => {
+                  const avatarUri = getPotentialContactAvatar(item.avatar);
+                  return (
+                    <TouchableOpacity
+                      style={styles.modalContactRow}
+                      onPress={() => onContactPress(item)}
+                      activeOpacity={0.8}
+                      disabled={sending}
+                    >
+                      <View style={styles.avatarContainer}>
+                        {avatarUri ? (
+                          <Image
+                            style={styles.avatarImage}
+                            source={{ uri: avatarUri }}
+                          />
+                        ) : (
+                          <Text style={styles.avatarInitials}>
+                            {renderInitials(item.name)}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={styles.nameText}>{item.name}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+                onEndReached={onEndReached}
+                onEndReachedThreshold={0.3}
+                ListFooterComponent={
+                  loadingMore ? (
+                    <View style={styles.footerLoader}>
+                      <ActivityIndicator size="small" color={theme.darkGreen} />
                     </View>
-                    <Text style={styles.nameText}>{item.name}</Text>
-                  </TouchableOpacity>
-                );
-              }}
-              onEndReached={onEndReached}
-              onEndReachedThreshold={0.3}
-              ListFooterComponent={
-                loadingMore ? (
-                  <View style={styles.footerLoader}>
-                    <ActivityIndicator size="small" color={theme.darkGreen} />
-                  </View>
-                ) : null
-              }
-            />
+                  ) : null
+                }
+              />
+              {sending && (
+                <View style={styles.sendingOverlay}>
+                  <ActivityIndicator size="small" color={theme.darkGreen} />
+                  <Text style={styles.sendingText}>{t("sending")}</Text>
+                </View>
+              )}
+            </View>
           )}
         </TouchableOpacity>
       </TouchableOpacity>
