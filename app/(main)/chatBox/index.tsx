@@ -55,6 +55,7 @@ import {
   CHAT_WHISPER_TYPING,
   CHAT_WHISPER_STOP_TYPING,
 } from "@/src/services/echo";
+import { useVideoPlayer, VideoView } from "expo-video";
 
 const PER_PAGE = 20;
 const MAX_ATTACHMENTS = 5;
@@ -172,6 +173,7 @@ function formatMessageDateTime(isoString: string): string {
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp)(\?.*)?$/i;
+const VIDEO_EXT = /\.(mp4|webm|mov|m4v)(\?.*)?$/i;
 
 function isImageUrl(url: string): boolean {
   const trimmed = url.trim();
@@ -179,10 +181,17 @@ function isImageUrl(url: string): boolean {
   return IMAGE_EXT.test(trimmed);
 }
 
+function isVideoUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  return VIDEO_EXT.test(trimmed);
+}
+
 type MessageSegment =
   | { type: "text"; value: string }
   | { type: "link"; value: string; url: string }
-  | { type: "image"; value: string; url: string; label?: string };
+  | { type: "image"; value: string; url: string; label?: string }
+  | { type: "video"; value: string; url: string };
 
 function extractLabelFromPreviousText(text: string): {
   label: string;
@@ -211,6 +220,7 @@ function parseMessageText(text: string): MessageSegment[] {
     }
     const url = m[1];
     const isImage = isImageUrl(url);
+    const isVideo = isVideoUrl(url);
     if (isImage) {
       const prev = segments[segments.length - 1];
       let label: string | undefined;
@@ -225,6 +235,8 @@ function parseMessageText(text: string): MessageSegment[] {
         }
       }
       segments.push({ type: "image", value: url, url, label });
+    } else if (isVideo) {
+      segments.push({ type: "video", value: url, url });
     } else {
       segments.push({ type: "link", value: url, url });
     }
@@ -236,6 +248,77 @@ function parseMessageText(text: string): MessageSegment[] {
   return segments;
 }
 
+type ChatVideoPlayerProps = {
+  videoUrl: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+  onDownloadPress?: (url: string, options?: { isVideo?: boolean }) => void;
+  downloadingUrl?: string | null;
+};
+
+function ChatVideoPlayer({
+  videoUrl,
+  styles,
+  theme,
+  onDownloadPress,
+  downloadingUrl,
+}: ChatVideoPlayerProps) {
+  const { t } = useTranslation();
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const resolvedUrl = getMessageImageUrl(videoUrl) || videoUrl;
+  const player = useVideoPlayer(resolvedUrl, (p) => {
+    p.loop = false;
+  });
+
+  return (
+    <View style={styles.bubbleVideoWrap}>
+      <View style={styles.bubbleVideoContainer}>
+        <View style={StyleSheet.absoluteFill}>
+          <VideoView
+            player={player}
+            style={styles.bubbleVideo}
+            contentFit="contain"
+            nativeControls={true}
+            onFirstFrameRender={async () => {
+              if (!isVideoReady) {
+                await player.play();
+                setTimeout(() => setIsVideoReady(true), 200);
+              }
+            }}
+          />
+        </View>
+        {!isVideoReady && (
+          <View style={styles.bubbleVideoLoadingOverlay}>
+            <ActivityIndicator size="small" color={theme.white} />
+            <Text style={styles.bubbleVideoLoadingText}>{t("loading")}</Text>
+          </View>
+        )}
+      </View>
+      {onDownloadPress ? (
+        <View style={styles.bubbleVideoDownloadRow}>
+          <View style={styles.bubbleVideoDownloadSpacer} />
+          <TouchableOpacity
+            style={styles.bubbleVideoDownloadButton}
+            onPress={() => onDownloadPress(resolvedUrl, { isVideo: true })}
+            disabled={downloadingUrl === resolvedUrl}
+            activeOpacity={0.7}
+          >
+            {downloadingUrl === resolvedUrl ? (
+              <ActivityIndicator size="small" color={theme.white} />
+            ) : (
+              <Feather
+                name="download"
+                size={moderateWidthScale(18)}
+                color={theme.white}
+              />
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 type MessageContentProps = {
   text: string;
   isMe: boolean;
@@ -244,7 +327,7 @@ type MessageContentProps = {
   theme: Theme;
   onLinkPress: (url: string) => void;
   onImagePress: (url: string, allUrls: string[]) => void;
-  onDownloadPress?: (url: string) => void;
+  onDownloadPress?: (url: string, options?: { isVideo?: boolean }) => void;
   downloadingUrl?: string | null;
 };
 
@@ -273,7 +356,8 @@ function MessageContent({
   const blocks = useMemo(() => {
     type Block =
       | { type: "inline"; segments: MessageSegment[] }
-      | { type: "images"; items: { url: string; label?: string }[] };
+      | { type: "images"; items: { url: string; label?: string }[] }
+      | { type: "videos"; items: { url: string }[] };
     const result: Block[] = [];
     let i = 0;
     while (i < segments.length) {
@@ -288,6 +372,16 @@ function MessageContent({
           i++;
         }
         result.push({ type: "inline", segments: inline });
+        continue;
+      }
+      if (seg.type === "video") {
+        const items: { url: string }[] = [];
+        while (i < segments.length && segments[i].type === "video") {
+          const s = segments[i] as MessageSegment & { type: "video"; url: string };
+          items.push({ url: s.url });
+          i++;
+        }
+        result.push({ type: "videos", items });
         continue;
       }
       if (seg.type === "image") {
@@ -382,6 +476,22 @@ function MessageContent({
                   </TouchableOpacity>
                 );
               })}
+            </View>
+          );
+        }
+        if (block.type === "videos") {
+          return (
+            <View key={blockIdx} style={styles.bubbleVideosRow}>
+              {block.items.map((item, idx) => (
+                <ChatVideoPlayer
+                  key={idx}
+                  videoUrl={item.url}
+                  styles={styles}
+                  theme={theme}
+                  onDownloadPress={onDownloadPress}
+                  downloadingUrl={downloadingUrl}
+                />
+              ))}
             </View>
           );
         }
@@ -594,6 +704,57 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
       textTransform: "capitalize",
     },
+    bubbleVideoWrap: {
+      marginTop: moderateHeightScale(6),
+      alignSelf: "flex-start",
+    },
+    bubbleVideoContainer: {
+      width: widthScale(260),
+      height: heightScale(200),
+      borderRadius: moderateWidthScale(8),
+      overflow: "hidden",
+      backgroundColor: theme.black,
+      position: "relative",
+    },
+    bubbleVideo: {
+      width: "100%",
+      height: "100%",
+    },
+    bubbleVideoLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.black,
+    },
+    bubbleVideoLoadingText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      textAlign: "center",
+      marginTop: moderateHeightScale(8),
+    },
+    bubbleVideoDownloadRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      marginTop: moderateHeightScale(6),
+    },
+    bubbleVideoDownloadSpacer: {
+      flex: 1,
+    },
+    bubbleVideoDownloadButton: {
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bubbleVideosRow: {
+      flexDirection: "column",
+      gap: moderateHeightScale(10),
+      marginTop: moderateHeightScale(6),
+    },
     bubbleImage: {
       width: widthScale(160),
       height: heightScale(160),
@@ -768,7 +929,7 @@ type ChatContentProps = {
   onLoadMore?: () => void;
   loadingMore?: boolean;
   onImagePress?: (uri: string, allUris?: string[]) => void;
-  onDownloadPress?: (url: string) => void;
+  onDownloadPress?: (url: string, options?: { isVideo?: boolean }) => void;
   downloadingUrl?: string | null;
   onAttachmentPress?: () => void;
   selectedAttachments?: string[];
@@ -1101,8 +1262,6 @@ export default function ChatBoxScreen() {
   const userId = params.id ?? chatItem?.id ?? "";
   const name = chatItem?.name || "-----";
   let image = chatItem?.image || "";
-
-  console.log("--------->message : ", messages);
 
   if (!image) {
     image = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
@@ -1440,7 +1599,7 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
-            onDownloadPress={(url) => downloadMedia(url)}
+            onDownloadPress={(url, options) => downloadMedia(url, options ?? {})}
             downloadingUrl={downloadingUrl}
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
@@ -1483,7 +1642,7 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
-            onDownloadPress={(url) => downloadMedia(url)}
+            onDownloadPress={(url, options) => downloadMedia(url, options ?? {})}
             downloadingUrl={downloadingUrl}
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
