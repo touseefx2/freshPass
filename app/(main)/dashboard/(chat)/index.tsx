@@ -329,14 +329,14 @@ export default function ChatScreen() {
     [],
   );
 
-  const openPotentialModal = useCallback(() => {
+  const openPotentialModal = () => {
     setPotentialModalVisible(true);
     setPotentialContacts([]);
     setPotentialPage(1);
     setPotentialLastPage(1);
     setPotentialError(false);
     fetchPotentialContacts(1, false);
-  }, [fetchPotentialContacts]);
+  };
 
   const onPotentialContactPress = useCallback(
     (contact: PotentialContact) => {
@@ -445,8 +445,7 @@ export default function ChatScreen() {
     await ApiService.logout();
   };
 
-  const showHeaderClient =
-    !isGuest && user.userRole === "customer";
+  const showHeaderClient = !isGuest && user.userRole === "customer";
 
   return (
     <View style={styles.container}>
@@ -457,12 +456,8 @@ export default function ChatScreen() {
       ) : (
         <DashboardHeader />
       )}
-      <View
-        style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}
-      >
-        <Text style={styles.titleRowText}>
-          {isGuest ? "Chat box" : t("chatBox")}
-        </Text>
+      <View style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}>
+        <Text style={styles.titleRowText}>t("chatBox")</Text>
         {!isGuest && (
           <TouchableOpacity
             style={styles.plusBox}

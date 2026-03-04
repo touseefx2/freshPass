@@ -739,8 +739,6 @@ export default function ChatBoxScreen() {
     image = process.env.EXPO_PUBLIC_API_BASE_URL + image;
   }
 
-  console.log("--------->hatItem?.image  : ", chatItem?.image);
-  console.log("--------->image : ", image);
   const apiMessageToItem = useCallback(
     (m: ApiMessage): MessageItem => {
       const isMe = currentUserId != null && m.sender.id === currentUserId;
