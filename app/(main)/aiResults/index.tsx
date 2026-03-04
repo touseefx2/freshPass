@@ -319,6 +319,10 @@ export default function AiResults() {
   const [editableCompletePost, setEditableCompletePost] = useState("");
 
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [shareContext, setShareContext] = useState<null | {
+    url: string;
+    labelKey: string;
+  }>(null);
   const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
   const [potentialContacts, setPotentialContacts] = useState<
     PotentialContact[]
@@ -457,6 +461,11 @@ export default function AiResults() {
 
   const handleShareAiResult = useCallback(async () => {
     try {
+      if (shareContext) {
+        const msg = `${t("aiResults")} – ${t(shareContext.labelKey)}\n\n${shareContext.url}`;
+        await Share.share({ message: msg.trim(), url: shareContext.url });
+        return;
+      }
       if (!normalized || normalized.status !== "completed") return;
 
       let message = "";
@@ -519,10 +528,13 @@ export default function AiResults() {
     } catch (_error) {
       // Silently ignore share errors
     }
-  }, [normalized, t, editableCaption, editableCompletePost]);
+  }, [normalized, t, editableCaption, editableCompletePost, shareContext]);
 
   /** Build the same message text used for native share / send to user */
   const getShareMessageText = useCallback((): string => {
+    if (shareContext) {
+      return `${t("aiResults")} – ${t(shareContext.labelKey)}\n\n${shareContext.url}`;
+    }
     if (!normalized || normalized.status !== "completed") return "";
     let message = "";
     if (normalized.socialMedia) {
@@ -562,7 +574,7 @@ export default function AiResults() {
       });
     }
     return message.trim();
-  }, [normalized, t, editableCaption, editableCompletePost]);
+  }, [normalized, t, editableCaption, editableCompletePost, shareContext]);
 
   const fetchPotentialContacts = useCallback(
     async (pageNum: number, append: boolean) => {
@@ -595,8 +607,17 @@ export default function AiResults() {
   );
 
   const openShareSheet = useCallback(() => {
+    setShareContext(null);
     setShareSheetVisible(true);
   }, []);
+
+  const openShareSheetForImage = useCallback(
+    (url: string, labelKey: string) => {
+      setShareContext({ url, labelKey });
+      setShareSheetVisible(true);
+    },
+    [],
+  );
 
   const openShareToUserModal = useCallback(() => {
     setShareToUserModalVisible(true);
@@ -1058,9 +1079,18 @@ export default function AiResults() {
                         resizeMode="cover"
                       />
                     </TouchableOpacity>
-                    <View style={styles.imageLabel}>
+                    <TouchableOpacity
+                      style={styles.imageLabel}
+                      onPress={() => openShareSheetForImage(url, labelKey)}
+                      activeOpacity={0.8}
+                    >
                       <Text style={styles.imageLabelText}>{t(labelKey)}</Text>
-                    </View>
+                      <MaterialIcons
+                        name="share"
+                        size={moderateWidthScale(14)}
+                        color={theme.white}
+                      />
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.downloadButton}
                       onPress={() => handleDownload(url)}
@@ -1068,12 +1098,12 @@ export default function AiResults() {
                     >
                       <Feather
                         name="download"
-                        size={moderateWidthScale(12)}
+                        size={moderateWidthScale(14)}
                         color={theme.white}
                       />
-                      <Text style={styles.downloadButtonText}>
+                      {/* <Text style={styles.downloadButtonText}>
                         {t("download")}
-                      </Text>
+                      </Text> */}
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1104,7 +1134,10 @@ export default function AiResults() {
 
       <ShareOptionsBottomSheet
         visible={shareSheetVisible}
-        onClose={() => setShareSheetVisible(false)}
+        onClose={() => {
+          setShareSheetVisible(false);
+          setShareContext(null);
+        }}
         onSelectInAppUser={openShareToUserModal}
         onSelectNativeShare={handleShareAiResult}
       />
