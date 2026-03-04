@@ -12,15 +12,12 @@ import {
   Image,
   TouchableOpacity,
   ActivityIndicator,
-  Linking,
   Clipboard,
   Alert,
   StyleSheet,
   Share,
   Platform,
 } from "react-native";
-import * as FileSystem from "expo-file-system/legacy";
-import * as MediaLibrary from "expo-media-library";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useTranslation } from "react-i18next";
@@ -36,6 +33,7 @@ import { useDispatch } from "react-redux";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
@@ -311,10 +309,7 @@ export default function AiResults() {
   const [normalized, setNormalized] = useState<NormalizedResult | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dispatch = useDispatch();
-  const [downloading, setDownloading] = useState(false);
-  const [downloadingImageUrl, setDownloadingImageUrl] = useState<string | null>(
-    null,
-  );
+  const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isVideoReady, setIsVideoReady] = useState(false);
@@ -396,101 +391,21 @@ export default function AiResults() {
     normalized?.socialMedia?.content?.complete_post,
   ]);
 
-  const saveMediaToGallery = useCallback(
-    async (uri: string): Promise<boolean> => {
-      if (Platform.OS === "web") {
-        try {
-          const canOpen = await Linking.canOpenURL(uri);
-          if (canOpen) await Linking.openURL(uri);
-          return true;
-        } catch {
-          return false;
-        }
-      }
-      try {
-        const filename = uri.split("/").pop()?.split("?")[0] || "image.jpg";
-        const ext =
-          filename.includes(".")
-            ? filename.substring(filename.lastIndexOf("."))
-            : ".jpg";
-        const cacheDir = FileSystem.cacheDirectory;
-        if (!cacheDir) return false;
-        const localUri = `${cacheDir}${Date.now()}${ext}`;
-        const { uri: downloadedUri } = await FileSystem.downloadAsync(
-          uri,
-          localUri,
-        );
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status !== "granted") return false;
-        await MediaLibrary.saveToLibraryAsync(downloadedUri);
-        return true;
-      } catch {
-        return false;
-      }
+  const handleDownload = useCallback(
+    (uri: string) => {
+      downloadMedia(uri);
     },
-    [],
+    [downloadMedia],
   );
 
-  const handleDownload = async (uri: string) => {
-    if (downloadingImageUrl) return;
-    setDownloadingImageUrl(uri);
-    try {
-      const saved = await saveMediaToGallery(uri);
-      if (saved) {
-        showBanner(t("success"), t("imageSavedToGallery"), "success", 3000);
-      } else {
-        showBanner(
-          t("error"),
-          t("noImageAvailableToDownload") || t("somethingWentWrong"),
-          "error",
-          3000,
-        );
-      }
-    } catch (_e) {
-      showBanner(
-        t("error"),
-        t("somethingWentWrong") || "Download failed.",
-        "error",
-        3000,
-      );
-    } finally {
-      setDownloadingImageUrl(null);
-    }
-  };
-
-  const handleDownloadPrimary = async (uri?: string) => {
-    if (!uri || downloading) return;
-    setDownloading(true);
-    try {
-      const saved = await saveMediaToGallery(uri);
-      if (saved) {
-        showBanner(
-          t("success"),
-          normalized?.socialMedia?.jobType === "generate_reel"
-            ? t("videoSavedToGallery")
-            : t("imageSavedToGallery"),
-          "success",
-          3000,
-        );
-      } else {
-        showBanner(
-          t("error"),
-          t("somethingWentWrong") || "Download failed.",
-          "error",
-          3000,
-        );
-      }
-    } catch (_e) {
-      showBanner(
-        t("error"),
-        t("somethingWentWrong") || "Download failed.",
-        "error",
-        3000,
-      );
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const handleDownloadPrimary = useCallback(
+    (uri?: string) => {
+      if (!uri) return;
+      const isVideo = normalized?.socialMedia?.jobType === "generate_reel";
+      downloadMedia(uri, { isVideo });
+    },
+    [downloadMedia, normalized?.socialMedia?.jobType],
+  );
 
   const handleCopy = async (text: string) => {
     try {
@@ -849,10 +764,10 @@ export default function AiResults() {
             <TouchableOpacity
               style={styles.downloadButtonPrimary}
               onPress={() => handleDownloadPrimary(downloadUri)}
-              disabled={downloading}
+              disabled={downloadingUrl === downloadUri}
               activeOpacity={0.7}
             >
-              {downloading ? (
+              {downloadingUrl === downloadUri ? (
                 <ActivityIndicator size="small" color={theme.white} />
               ) : (
                 <>
@@ -1180,10 +1095,10 @@ export default function AiResults() {
                     <TouchableOpacity
                       style={styles.downloadButton}
                       onPress={() => handleDownload(url)}
-                      disabled={downloadingImageUrl === url}
+                      disabled={downloadingUrl === url}
                       activeOpacity={0.7}
                     >
-                      {downloadingImageUrl === url ? (
+                      {downloadingUrl === url ? (
                         <ActivityIndicator
                           size="small"
                           color={theme.white}

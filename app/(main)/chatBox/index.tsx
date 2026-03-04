@@ -25,6 +25,7 @@ import {
   type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -244,6 +245,7 @@ type MessageContentProps = {
   onLinkPress: (url: string) => void;
   onImagePress: (url: string, allUrls: string[]) => void;
   onDownloadPress?: (url: string) => void;
+  downloadingUrl?: string | null;
 };
 
 function MessageContent({
@@ -255,6 +257,7 @@ function MessageContent({
   onLinkPress,
   onImagePress,
   onDownloadPress,
+  downloadingUrl,
 }: MessageContentProps) {
   const segments = useMemo(() => parseMessageText(text), [text]);
   const imageUrls = useMemo(
@@ -385,13 +388,21 @@ function MessageContent({
                       e.stopPropagation?.();
                       onDownloadPress(item.url);
                     }}
+                    disabled={downloadingUrl === item.url}
                     activeOpacity={0.7}
                   >
-                    <Feather
-                      name="download"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
+                    {downloadingUrl === item.url ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.white}
+                      />
+                    ) : (
+                      <Feather
+                        name="download"
+                        size={moderateWidthScale(14)}
+                        color={theme.white}
+                      />
+                    )}
                   </TouchableOpacity>
                 ) : null}
               </TouchableOpacity>
@@ -722,6 +733,8 @@ type ChatContentProps = {
   onLoadMore?: () => void;
   loadingMore?: boolean;
   onImagePress?: (uri: string, allUris?: string[]) => void;
+  onDownloadPress?: (url: string) => void;
+  downloadingUrl?: string | null;
   onAttachmentPress?: () => void;
   selectedAttachments?: string[];
   onRemoveAttachment?: (index: number) => void;
@@ -745,6 +758,8 @@ const ChatContent = ({
   onLoadMore,
   loadingMore,
   onImagePress,
+  onDownloadPress,
+  downloadingUrl,
   onAttachmentPress,
   selectedAttachments = [],
   onRemoveAttachment,
@@ -845,15 +860,23 @@ const ChatContent = ({
                         style={styles.bubbleImageDownloadButton}
                         onPress={(e) => {
                           e.stopPropagation?.();
-                          Linking.openURL(uri).catch(() => {});
+                          onDownloadPress?.(uri);
                         }}
+                        disabled={downloadingUrl === uri}
                         activeOpacity={0.7}
                       >
-                        <Feather
-                          name="download"
-                          size={moderateWidthScale(14)}
-                          color={theme.white}
-                        />
+                        {downloadingUrl === uri ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={theme.white}
+                          />
+                        ) : (
+                          <Feather
+                            name="download"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        )}
                       </TouchableOpacity>
                     </TouchableOpacity>
                   ))}
@@ -872,9 +895,8 @@ const ChatContent = ({
                     Linking.openURL(url).catch(() => {});
                   }}
                   onImagePress={(url, allUrls) => onImagePress?.(url, allUrls)}
-                  onDownloadPress={(url) => {
-                    Linking.openURL(url).catch(() => {});
-                  }}
+                  onDownloadPress={onDownloadPress}
+                  downloadingUrl={downloadingUrl}
                 />
               ) : null}
             </View>
@@ -996,6 +1018,7 @@ export default function ChatBoxScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { showBanner } = useNotificationContext();
+  const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const { t } = useTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ chatItem?: string; id?: string }>();
@@ -1385,6 +1408,8 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
+            onDownloadPress={(url) => downloadMedia(url)}
+            downloadingUrl={downloadingUrl}
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
             onRemoveAttachment={(idx) =>
@@ -1426,6 +1451,8 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
+            onDownloadPress={(url) => downloadMedia(url)}
+            downloadingUrl={downloadingUrl}
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
             onRemoveAttachment={(idx) =>
