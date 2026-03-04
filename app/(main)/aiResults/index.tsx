@@ -249,7 +249,11 @@ function normalizeAiRequestResponse(
           ? {
               original: imgs.original,
               processed: imgs.processed,
-              originals: Array.isArray(imgs.originals) ? imgs.originals : [],
+              originals: Array.isArray(imgs.originals)
+                ? imgs.originals
+                : imgs.original
+                  ? [imgs.original]
+                  : [],
             }
           : undefined,
         content: res.content,
