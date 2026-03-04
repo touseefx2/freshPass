@@ -41,7 +41,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { CloseIcon, SendIcon } from "@/assets/icons";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { ApiService } from "@/src/services/api";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
@@ -240,8 +240,10 @@ type MessageContentProps = {
   isMe: boolean;
   hasAttachmentsAbove: boolean;
   styles: ReturnType<typeof createStyles>;
+  theme: Theme;
   onLinkPress: (url: string) => void;
   onImagePress: (url: string, allUrls: string[]) => void;
+  onDownloadPress?: (url: string) => void;
 };
 
 function MessageContent({
@@ -249,8 +251,10 @@ function MessageContent({
   isMe,
   hasAttachmentsAbove,
   styles,
+  theme,
   onLinkPress,
   onImagePress,
+  onDownloadPress,
 }: MessageContentProps) {
   const segments = useMemo(() => parseMessageText(text), [text]);
   const imageUrls = useMemo(
@@ -369,6 +373,22 @@ function MessageContent({
                       {item.label}
                     </Text>
                   </View>
+                ) : null}
+                {onDownloadPress ? (
+                  <TouchableOpacity
+                    style={styles.bubbleImageDownloadButton}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      onDownloadPress(item.url);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name="download"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
                 ) : null}
               </TouchableOpacity>
             ))}
@@ -547,6 +567,17 @@ const createStyles = (theme: Theme) =>
       height: "100%",
       borderRadius: moderateWidthScale(8),
       backgroundColor: theme.galleryPhotoBack,
+    },
+    bubbleImageDownloadButton: {
+      position: "absolute",
+      bottom: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      width: moderateWidthScale(24),
+      height: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.primary,
+      alignItems: "center",
+      justifyContent: "center",
     },
     bubbleTextBelow: {
       marginTop: moderateHeightScale(8),
@@ -797,6 +828,20 @@ const ChatContent = ({
                         source={{ uri }}
                         resizeMode="cover"
                       />
+                      <TouchableOpacity
+                        style={styles.bubbleImageDownloadButton}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          Linking.openURL(uri).catch(() => {});
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather
+                          name="download"
+                          size={moderateWidthScale(14)}
+                          color={theme.white}
+                        />
+                      </TouchableOpacity>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -809,10 +854,14 @@ const ChatContent = ({
                     !!(item.attachments && item.attachments.length > 0)
                   }
                   styles={styles}
+                  theme={theme}
                   onLinkPress={(url) => {
                     Linking.openURL(url).catch(() => {});
                   }}
                   onImagePress={(url, allUrls) => onImagePress?.(url, allUrls)}
+                  onDownloadPress={(url) => {
+                    Linking.openURL(url).catch(() => {});
+                  }}
                 />
               ) : null}
             </View>
