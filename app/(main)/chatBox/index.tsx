@@ -335,13 +335,7 @@ function MessageContent({
                     onPress={() => onLinkPress(seg.url)}
                     activeOpacity={0.7}
                   >
-                    <Text
-                      style={[
-                        styles.bubbleText,
-                        styles.bubbleLink,
-                        isMe && styles.bubbleTextMe,
-                      ]}
-                    >
+                    <Text style={[styles.bubbleText, styles.bubbleLink]}>
                       {seg.value}
                     </Text>
                   </TouchableOpacity>
@@ -351,11 +345,21 @@ function MessageContent({
           );
         }
         return (
-          <View key={blockIdx} style={styles.bubbleInlineImagesRow}>
+          <View
+            key={blockIdx}
+            style={[
+              styles.bubbleInlineImagesRow,
+              block.items.length === 1 && { alignSelf: "flex-start" },
+            ]}
+          >
             {block.items.map((item, idx) => (
               <TouchableOpacity
                 key={idx}
-                style={styles.bubbleInlineImageGridCell}
+                style={[
+                  styles.bubbleInlineImageGridCell,
+                  block.items.length === 1 &&
+                    styles.bubbleInlineImageGridCellSingle,
+                ]}
                 onPress={() => onImagePress(item.url, imageUrls)}
                 activeOpacity={0.9}
               >
@@ -513,6 +517,14 @@ const createStyles = (theme: Theme) =>
       aspectRatio: 1,
       overflow: "hidden",
       borderRadius: moderateWidthScale(8),
+      position: "relative",
+    },
+    bubbleInlineImageGridCellSingle: {
+      width: widthScale(160),
+      height: heightScale(160),
+      overflow: "hidden",
+      borderRadius: moderateWidthScale(8),
+      position: "relative",
     },
     bubbleInlineImage: {
       width: "100%",
@@ -557,6 +569,7 @@ const createStyles = (theme: Theme) =>
       width: (widthScale(260) - moderateWidthScale(6)) / 2,
       height: (widthScale(260) - moderateWidthScale(6)) / 2,
       overflow: "hidden",
+      position: "relative",
     },
     bubbleImageGridWrapSingle: {
       width: widthScale(160),
