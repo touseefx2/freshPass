@@ -1,9 +1,19 @@
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
-import { moderateWidthScale, moderateHeightScale } from "@/src/theme/dimensions";
+import {
+  moderateWidthScale,
+  moderateHeightScale,
+} from "@/src/theme/dimensions";
 import React, { useMemo } from "react";
-import { Text, TouchableOpacity, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from "react-native";
+import {
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ViewStyle,
+  TextStyle,
+  ActivityIndicator,
+} from "react-native";
 
 interface ButtonProps {
   title: string;
@@ -16,12 +26,16 @@ interface ButtonProps {
   backgroundColor?: string;
 }
 
-const createStyles = (theme: Theme, textColor?: string, backgroundColor?: string) =>
+const createStyles = (
+  theme: Theme,
+  textColor?: string,
+  backgroundColor?: string,
+) =>
   StyleSheet.create({
     button: {
       backgroundColor: backgroundColor || theme.buttonBack,
       borderRadius: moderateWidthScale(12),
-      height:moderateHeightScale(48),
+      height: moderateHeightScale(48),
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
@@ -48,7 +62,10 @@ export default function Button({
   backgroundColor,
 }: ButtonProps) {
   const { colors } = useTheme();
-  const styles = useMemo(() => createStyles(colors as Theme, textColor, backgroundColor), [colors, textColor, backgroundColor]);
+  const styles = useMemo(
+    () => createStyles(colors as Theme, textColor, backgroundColor),
+    [colors, textColor, backgroundColor],
+  );
 
   // If loading, disable button but don't apply disabled opacity
   const isDisabled = disabled || loading;
@@ -66,11 +83,13 @@ export default function Button({
       activeOpacity={0.7}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={textColor || (colors as Theme).buttonText} />
+        <ActivityIndicator
+          size="small"
+          color={textColor || (colors as Theme).buttonText}
+        />
       ) : (
         <Text style={[styles.buttonText, textStyle]}>{title}</Text>
       )}
     </TouchableOpacity>
   );
 }
-

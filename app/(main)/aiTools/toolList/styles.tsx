@@ -4,6 +4,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   heightScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 
@@ -42,13 +43,25 @@ export const createStyles = (theme: Theme) =>
     featuresContainer: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(16),
+      justifyContent: "space-between",
     },
     featureBox: {
-      width: "45%",
+      width: "48%",
       height: heightScale(140),
       borderRadius: moderateWidthScale(16),
       overflow: "hidden",
+      marginTop: moderateHeightScale(16),
+      borderWidth: 0.5,
+      borderColor: theme.lightGreen4,
+    },
+    featureBoxLarge: {
+      width: "48%",
+      height: heightScale(220),
+      borderRadius: moderateWidthScale(16),
+      overflow: "hidden",
+      marginTop: moderateHeightScale(16),
+      borderWidth: 0.5,
+      borderColor: theme.lightGreen4,
     },
     gradientContainer: {
       flex: 1,
@@ -80,8 +93,95 @@ export const createStyles = (theme: Theme) =>
     actionButtonFlex: {
       flex: 1,
     },
+    actionButton: {
+      borderRadius: 6,
+    },
     footerContainer: {
       paddingVertical: moderateHeightScale(44),
       paddingHorizontal: moderateWidthScale(20),
+    },
+    // Inline tutorial video (inside box)
+    tutorialVideoRoot: {
+      flex: 1,
+      width: "100%",
+      backgroundColor: theme.black,
+      borderRadius: moderateWidthScale(16),
+    },
+    tutorialVideo: {
+      width: "100%",
+      flex: 1,
+      minHeight: heightScale(120),
+    },
+    tutorialPlayOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: "transparent",
+    },
+    tutorialPlayCircle: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: widthScale(22),
+      backgroundColor: theme.orangeBrown,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    tutorialControlsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(2),
+      paddingHorizontal: moderateWidthScale(2),
+      gap: moderateWidthScale(4),
+    },
+    tutorialControlsRowWrapper: {
+      position: "absolute",
+      bottom: moderateHeightScale(10),
+      left: 0,
+      right: 0,
+    },
+    tutorialControlBtn: {
+      paddingVertical: moderateHeightScale(2),
+      paddingHorizontal: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.lightGreen,
+      alignItems: "center",
+      justifyContent: "center",
+      opacity: 0.8,
+    },
+    tutorialControlBtnText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    tutorialExpandBtn: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+      width: widthScale(28),
+      height: widthScale(28),
+      borderRadius: widthScale(14),
+      backgroundColor: theme.lightGreen,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 10,
+      opacity: 0.8,
+    },
+    tutorialTimeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      marginTop: moderateHeightScale(2),
+    },
+    tutorialTimeTextAbsolute: {
+      position: "absolute",
+      bottom: moderateHeightScale(48),
+      left: 0,
+      right: 0,
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      textAlign: "center",
     },
   });

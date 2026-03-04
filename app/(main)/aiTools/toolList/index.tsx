@@ -1,5 +1,18 @@
-import React, { useMemo, useEffect, useState, useCallback } from "react";
-import { ScrollView, View, Text, TouchableOpacity } from "react-native";
+import React, {
+  useMemo,
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+} from "react";
+import {
+  ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -7,6 +20,7 @@ import { Theme } from "@/src/theme/colors";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
@@ -14,6 +28,7 @@ import Button from "@/src/components/button";
 import HowToUseVideoModal from "@/src/components/HowToUseVideoModal";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useVideoPlayer, VideoView } from "expo-video";
 import {
   GeneratePostIcon,
   GenerateCollageIcon,
@@ -23,6 +38,194 @@ import {
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
+
+const TUTORIAL_VIDEO_URI = "https://getfreshpass.com/videos/hair-tryon.MP4";
+const SEEK_STEP_SEC = 5;
+
+function formatTime(seconds: number): string {
+  const totalSeconds = Math.floor(seconds);
+  const m = Math.floor(totalSeconds / 60);
+  const s = totalSeconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+interface TutorialInlineVideoProps {
+  onExpand: () => void;
+}
+
+function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { t } = useTranslation();
+
+  const hasAutoPlayedRef = useRef(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const player = useVideoPlayer(TUTORIAL_VIDEO_URI, (p) => {
+    p.loop = false;
+    p.timeUpdateEventInterval = 0.5;
+  });
+
+  useEffect(() => {
+    const statusSub = player.addListener("statusChange", ({ status }) => {
+      if (status === "readyToPlay") {
+        setIsVideoReady(true);
+        setDuration(player.duration);
+        if (!hasAutoPlayedRef.current) {
+          hasAutoPlayedRef.current = true;
+          player.play();
+        }
+      }
+    });
+    const playingSub = player.addListener(
+      "playingChange",
+      ({ isPlaying: playing }) => {
+        setIsPlaying(playing);
+      },
+    );
+    const timeSub = player.addListener("timeUpdate", (payload) => {
+      setCurrentTime(payload.currentTime);
+      if (duration <= 0 && player.duration > 0) setDuration(player.duration);
+    });
+    const endSub = player.addListener("playToEnd", () => {
+      player.pause();
+      player.currentTime = 0;
+      setIsPlaying(false);
+    });
+    return () => {
+      statusSub.remove();
+      playingSub.remove();
+      timeSub.remove();
+      endSub.remove();
+    };
+  }, [player]);
+
+  const handlePlayPause = useCallback(() => {
+    if (isPlaying) {
+      player.pause();
+    } else {
+      if (duration > 0 && currentTime >= duration - 0.1) {
+        player.replay();
+      }
+      player.play();
+    }
+  }, [isPlaying, player, currentTime, duration]);
+
+  const handleSeek = useCallback(
+    (deltaSec: number) => {
+      player.seekBy(deltaSec);
+    },
+    [player],
+  );
+
+  const displayDuration = duration > 0 ? duration : player.duration;
+  const displayCurrentTime = duration > 0 ? currentTime : player.currentTime;
+
+  return (
+    <View style={styles.tutorialVideoRoot}>
+      <View style={StyleSheet.absoluteFill}>
+        <VideoView
+          player={player}
+          style={styles.tutorialVideo}
+          contentFit="cover"
+          nativeControls={false}
+          onFirstFrameRender={() => {
+            if (!isVideoReady) {
+              setIsVideoReady(true);
+              setDuration(player.duration);
+              if (!hasAutoPlayedRef.current) {
+                hasAutoPlayedRef.current = true;
+                player.play();
+              }
+            }
+          }}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={styles.tutorialExpandBtn}
+        onPress={onExpand}
+        activeOpacity={0.7}
+      >
+        <MaterialIcons
+          name="fullscreen"
+          size={moderateWidthScale(18)}
+          color={theme.white}
+        />
+      </TouchableOpacity>
+
+      {isVideoReady && (
+        <>
+          <View style={styles.tutorialControlsRowWrapper}>
+            <View style={styles.tutorialControlsRow}>
+              <TouchableOpacity
+                style={styles.tutorialControlBtn}
+                onPress={() => handleSeek(-SEEK_STEP_SEC)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="replay-10"
+                  size={moderateWidthScale(12)}
+                  color={theme.white}
+                />
+                <Text style={styles.tutorialControlBtnText}>5s</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.tutorialControlBtn}
+                onPress={handlePlayPause}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name={isPlaying ? "pause" : "play-arrow"}
+                  size={moderateWidthScale(14)}
+                  color={theme.white}
+                />
+                <Text style={styles.tutorialControlBtnText}>
+                  {isPlaying ? t("pause") : t("play")}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.tutorialControlBtn}
+                onPress={() => handleSeek(SEEK_STEP_SEC)}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="forward-10"
+                  size={moderateWidthScale(12)}
+                  color={theme.white}
+                />
+                <Text style={styles.tutorialControlBtnText}>5s</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.tutorialTimeTextAbsolute}>
+            {formatTime(displayCurrentTime)} / {formatTime(displayDuration)}
+          </Text>
+        </>
+      )}
+
+      {!isVideoReady && (
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ActivityIndicator size="small" color={theme.white} />
+          <Text style={styles.tutorialTimeText}>{t("loading")}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function ToolList() {
   const router = useRouter();
@@ -36,6 +239,7 @@ export default function ToolList() {
   const isCustomer = userRole === "customer";
 
   const [howToUseModalVisible, setHowToUseModalVisible] = useState(false);
+  const [tutorialVideoActive, setTutorialVideoActive] = useState(false);
   const openHowToUseModal = useCallback(
     () => setHowToUseModalVisible(true),
     [],
@@ -143,6 +347,7 @@ export default function ToolList() {
             {isCustomer && (
               <View style={styles.actionButtonFlex}>
                 <Button
+                  containerStyle={styles.actionButton}
                   title={t("myPurchases")}
                   onPress={() => router.push("/aiTransactions")}
                 />
@@ -150,6 +355,7 @@ export default function ToolList() {
             )}
             <View style={styles.actionButtonFlex}>
               <Button
+                containerStyle={styles.actionButton}
                 title={t("aiRequests")}
                 onPress={() => router.push("/aiRequests")}
               />
@@ -162,15 +368,33 @@ export default function ToolList() {
             const IconComponent = feature.icon;
             const openTutorial =
               "openTutorial" in feature && feature.openTutorial;
+            const isTutorial = feature.id === "tutorial";
+            const useLargeBox =
+              userRole !== "business" &&
+              (feature.id === "tutorial" || feature.id === "hairTryon");
+            const boxStyle = useLargeBox
+              ? styles.featureBoxLarge
+              : styles.featureBox;
+
+            if (isTutorial && tutorialVideoActive) {
+              return (
+                <View key={feature.id} style={boxStyle}>
+                  <TutorialInlineVideo onExpand={openHowToUseModal} />
+                </View>
+              );
+            }
+
             return (
               <TouchableOpacity
                 key={feature.id}
-                style={styles.featureBox}
-                onPress={() =>
-                  openTutorial
-                    ? openHowToUseModal()
-                    : handleFeaturePress(feature.paramTitle)
-                }
+                style={boxStyle}
+                onPress={() => {
+                  if (openTutorial) {
+                    setTutorialVideoActive(true);
+                  } else {
+                    handleFeaturePress(feature.paramTitle);
+                  }
+                }}
                 activeOpacity={0.7}
               >
                 <LinearGradient
