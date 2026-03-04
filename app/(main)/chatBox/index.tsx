@@ -351,6 +351,10 @@ function MessageContent({
     <View style={hasAttachmentsAbove ? styles.bubbleTextBelow : undefined}>
       {blocks.map((block, blockIdx) => {
         if (block.type === "inline") {
+          const nextBlockIsImages =
+            blockIdx + 1 < blocks.length && blocks[blockIdx + 1].type === "images";
+          const stripTrailingNumbering = (val: string) =>
+            nextBlockIsImages ? val.replace(/\s*\d+\.\s*$/, "") : val;
           return (
             <View
               key={blockIdx}
@@ -358,9 +362,11 @@ function MessageContent({
             >
               {block.segments.map((seg, idx) => {
                 if (seg.type === "text") {
+                  const display = stripTrailingNumbering(seg.value);
+                  if (!display) return null;
                   return (
                     <Text key={idx} style={contentStyle}>
-                      {seg.value}
+                      {display}
                     </Text>
                   );
                 }
