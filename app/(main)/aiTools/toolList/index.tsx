@@ -11,15 +11,10 @@ import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import {
-  moderateHeightScale,
-  moderateWidthScale,
-  widthScale,
-} from "@/src/theme/dimensions";
+import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
-import HowToUseVideoModal from "@/src/components/HowToUseVideoModal";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -34,20 +29,10 @@ import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 
 const TUTORIAL_VIDEO_URI = "https://getfreshpass.com/videos/hair-tryon.MP4";
-const SEEK_STEP_SEC = 5;
 
-function formatTime(seconds: number): string {
-  const totalSeconds = Math.floor(seconds);
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
+interface TutorialInlineVideoProps {}
 
-interface TutorialInlineVideoProps {
-  onExpand: () => void;
-}
-
-function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
+function TutorialInlineVideo({}: TutorialInlineVideoProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -67,14 +52,16 @@ function TutorialInlineVideo({ onExpand }: TutorialInlineVideoProps) {
           style={styles.tutorialVideo}
           contentFit="cover"
           nativeControls={true}
-          showsTimecodes={false}
-          allowsPictureInPicture={false}
-          requiresLinearPlayback={false}
-          startsPictureInPictureAutomatically={false}
-          onFirstFrameRender={() => {
+          // showsTimecodes={true}
+          // allowsPictureInPicture={false}
+          // requiresLinearPlayback={false}
+          // startsPictureInPictureAutomatically={false}
+          onFirstFrameRender={async () => {
             if (!isVideoReady) {
-              setIsVideoReady(true);
-              player.play();
+              await player.play();
+              setTimeout(() => {
+                setIsVideoReady(true);
+              }, 200);
             }
           }}
         />
@@ -107,16 +94,7 @@ export default function ToolList() {
   const isGuest = user.isGuest;
   const isCustomer = userRole === "customer";
 
-  const [howToUseModalVisible, setHowToUseModalVisible] = useState(false);
   const [tutorialVideoActive, setTutorialVideoActive] = useState(false);
-  const openHowToUseModal = useCallback(
-    () => setHowToUseModalVisible(true),
-    [],
-  );
-  const closeHowToUseModal = useCallback(
-    () => setHowToUseModalVisible(false),
-    [],
-  );
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
 
@@ -169,15 +147,10 @@ export default function ToolList() {
       openTutorial: false,
     },
   ];
-
   // Select features based on user role
   // Business users see social media tools, customers/staff/others see Hair Tryon
   const features =
     userRole === "business" ? businessFeatures : customerFeatures;
-
-  // Header title based on role (localized)
-  const headerTitle =
-    userRole === "business" ? t("socialMediaAiTool") : t("aiTool");
 
   useEffect(() => {
     fetchQuota();
@@ -248,7 +221,7 @@ export default function ToolList() {
             if (isTutorial && tutorialVideoActive) {
               return (
                 <View key={feature.id} style={boxStyle}>
-                  <TutorialInlineVideo onExpand={openHowToUseModal} />
+                  <TutorialInlineVideo />
                 </View>
               );
             }
@@ -289,11 +262,6 @@ export default function ToolList() {
           })}
         </View>
       </ScrollView>
-
-      <HowToUseVideoModal
-        visible={howToUseModalVisible}
-        onClose={closeHowToUseModal}
-      />
     </View>
   );
 }
