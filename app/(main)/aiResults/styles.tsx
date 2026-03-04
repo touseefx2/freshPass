@@ -296,10 +296,10 @@ export const createStyles = (theme: Theme) =>
     },
     videoContainer: {
       width: "100%",
-      height: heightScale(300),
+      height: heightScale(400),
       borderRadius: moderateWidthScale(12),
       overflow: "hidden",
-      backgroundColor: theme.orangeBrown30,
+      backgroundColor: theme.black,
       borderWidth: 1,
       borderColor: theme.borderLight,
       marginBottom: moderateHeightScale(20),
@@ -308,6 +308,19 @@ export const createStyles = (theme: Theme) =>
     video: {
       width: "100%",
       height: "100%",
+    },
+    videoLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.black,
+    },
+    videoLoadingText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+      textAlign: "center",
+      marginTop: moderateHeightScale(8),
     },
     playButton: {
       position: "absolute",

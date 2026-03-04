@@ -19,7 +19,7 @@ import {
   Platform,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
@@ -297,6 +297,45 @@ function normalizeAiRequestResponse(
 
 const POLL_INTERVAL_MS = 3000;
 
+type ReelVideoPlayerProps = {
+  videoUrl: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+};
+
+function ReelVideoPlayer({ videoUrl, styles, theme }: ReelVideoPlayerProps) {
+  const { t } = useTranslation();
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const player = useVideoPlayer(videoUrl, (p) => {
+    p.loop = false;
+  });
+
+  return (
+    <View style={styles.videoContainer}>
+      <View style={StyleSheet.absoluteFill}>
+        <VideoView
+          player={player}
+          style={styles.video}
+          contentFit="contain"
+          nativeControls={true}
+          onFirstFrameRender={async () => {
+            if (!isVideoReady) {
+              await player.play();
+              setTimeout(() => setIsVideoReady(true), 200);
+            }
+          }}
+        />
+      </View>
+      {!isVideoReady && (
+        <View style={styles.videoLoadingOverlay}>
+          <ActivityIndicator size="small" color={theme.white} />
+          <Text style={styles.videoLoadingText}>{t("loading")}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 type PotentialContactsResponse = {
   success: boolean;
   data: {
@@ -318,12 +357,6 @@ export default function AiResults() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const dispatch = useDispatch();
   const { downloadMedia, downloadingUrl } = useDownloadMedia();
-  const videoRef = useRef<Video>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isVideoReady, setIsVideoReady] = useState(false);
-  const [playbackStatus, setPlaybackStatus] = useState<AVPlaybackStatus | null>(
-    null,
-  );
   const [editableCaption, setEditableCaption] = useState("");
   const [editableCompletePost, setEditableCompletePost] = useState("");
 
@@ -422,41 +455,6 @@ export default function AiResults() {
       Clipboard.setString(text);
     } catch (_) {
       Alert.alert(t("error"), t("failedToCopyToClipboard"));
-    }
-  };
-
-  const handlePlayPause = async () => {
-    if (!videoRef.current) return;
-    if (isPlaying) {
-      await videoRef.current.pauseAsync();
-      setIsPlaying(false);
-    } else {
-      if (
-        playbackStatus?.isLoaded &&
-        playbackStatus.positionMillis !== undefined &&
-        playbackStatus.durationMillis !== undefined &&
-        playbackStatus.positionMillis >= playbackStatus.durationMillis - 100
-      ) {
-        await videoRef.current.setPositionAsync(0);
-      }
-      await videoRef.current.playAsync();
-      setIsPlaying(true);
-    }
-  };
-
-  const handlePlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    setPlaybackStatus(status);
-    if (status.isLoaded) {
-      const isReady =
-        !status.isBuffering &&
-        status.durationMillis !== undefined &&
-        status.durationMillis > 0;
-      if (isReady && !isVideoReady) setIsVideoReady(true);
-      setIsPlaying(status.isPlaying);
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        videoRef.current?.setPositionAsync(0);
-      }
     }
   };
 
@@ -801,51 +799,11 @@ export default function AiResults() {
         )}
 
         {isReel && sm.video?.url && (
-          <View style={styles.videoContainer}>
-            <Video
-              ref={videoRef}
-              source={{ uri: sm.video.url }}
-              style={styles.video}
-              resizeMode={ResizeMode.CONTAIN}
-              isLooping={false}
-              shouldPlay={false}
-              onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-            />
-            {!isVideoReady ? (
-              <View style={styles.playButton}>
-                <ActivityIndicator size="large" color={theme.white} />
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.playButton}
-                onPress={handlePlayPause}
-                activeOpacity={0.7}
-              >
-                <View style={styles.playButtonInner}>
-                  {isPlaying ? (
-                    <MaterialIcons
-                      name="pause"
-                      size={moderateWidthScale(40)}
-                      color={theme.white}
-                    />
-                  ) : (
-                    <MaterialIcons
-                      name="play-arrow"
-                      size={moderateWidthScale(40)}
-                      color={theme.white}
-                    />
-                  )}
-                </View>
-              </TouchableOpacity>
-            )}
-            <View style={styles.videoInfoContainer}>
-              {sm.video.duration != null && (
-                <Text style={styles.videoInfoText}>
-                  {sm.video.duration.toFixed(1)}s
-                </Text>
-              )}
-            </View>
-          </View>
+          <ReelVideoPlayer
+            videoUrl={sm.video.url}
+            styles={styles}
+            theme={theme}
+          />
         )}
 
         {isReel && sm.video && (
