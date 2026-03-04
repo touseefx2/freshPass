@@ -457,7 +457,7 @@ export default function ChatScreen() {
         <DashboardHeader />
       )}
       <View style={[styles.titleRow, { paddingTop: moderateHeightScale(20) }]}>
-        <Text style={styles.titleRowText}>t("chatBox")</Text>
+        <Text style={styles.titleRowText}>{t("chatBox")}</Text>
         {!isGuest && (
           <TouchableOpacity
             style={styles.plusBox}

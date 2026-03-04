@@ -21,17 +21,22 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { useTranslation } from "react-i18next";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
-import { aiRequestsEndpoints } from "@/src/services/endpoints";
+import { aiRequestsEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
+import PotentialContactsModal, {
+  type PotentialContact,
+  getPotentialContactAvatar,
+} from "@/src/components/PotentialContactsModal";
 
 /** API: GET /api/ai-requests/{job_id} - response can be processing, replicate, hair_pipeline, or social media */
 export interface AiRequestByJobIdResponse {
@@ -275,11 +280,20 @@ function normalizeAiRequestResponse(
 
 const POLL_INTERVAL_MS = 3000;
 
+type PotentialContactsResponse = {
+  success: boolean;
+  data: {
+    data: PotentialContact[];
+    meta: { current_page: number; last_page: number };
+  };
+};
+
 export default function AiResults() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ jobId?: string }>();
   const jobId = params.jobId;
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -295,6 +309,17 @@ export default function AiResults() {
   );
   const [editableCaption, setEditableCaption] = useState("");
   const [editableCompletePost, setEditableCompletePost] = useState("");
+
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
+  const [potentialContacts, setPotentialContacts] = useState<
+    PotentialContact[]
+  >([]);
+  const [potentialPage, setPotentialPage] = useState(1);
+  const [potentialLastPage, setPotentialLastPage] = useState(1);
+  const [potentialLoading, setPotentialLoading] = useState(false);
+  const [potentialLoadingMore, setPotentialLoadingMore] = useState(false);
+  const [potentialError, setPotentialError] = useState(false);
 
   const fetchStatus = useCallback(
     async (isPolling = false) => {
@@ -341,10 +366,7 @@ export default function AiResults() {
 
   // Sync editable caption and complete post from API when social media result loads
   useEffect(() => {
-    if (
-      normalized?.status === "completed" &&
-      normalized.socialMedia?.content
-    ) {
+    if (normalized?.status === "completed" && normalized.socialMedia?.content) {
       const c = normalized.socialMedia.content;
       setEditableCaption(c.caption ?? "");
       setEditableCompletePost(c.complete_post ?? "");
@@ -489,6 +511,82 @@ export default function AiResults() {
       // Silently ignore share errors
     }
   }, [normalized, t, editableCaption, editableCompletePost]);
+
+  const fetchPotentialContacts = useCallback(
+    async (pageNum: number, append: boolean) => {
+      try {
+        setPotentialError(false);
+        if (append) setPotentialLoadingMore(true);
+        else setPotentialLoading(true);
+        const url = chatEndpoints.potentialContacts({
+          page: pageNum,
+          per_page: 20,
+        });
+        const res = await ApiService.get<PotentialContactsResponse>(url);
+        const list = res.data?.data ?? [];
+        const meta = res.data?.meta;
+        if (append) {
+          setPotentialContacts((prev) => [...prev, ...list]);
+        } else {
+          setPotentialContacts(list);
+        }
+        setPotentialPage(meta?.current_page ?? pageNum);
+        setPotentialLastPage(meta?.last_page ?? 1);
+      } catch {
+        if (!append) setPotentialError(true);
+      } finally {
+        setPotentialLoading(false);
+        setPotentialLoadingMore(false);
+      }
+    },
+    [],
+  );
+
+  const openShareSheet = useCallback(() => {
+    setShareSheetVisible(true);
+  }, []);
+
+  const openShareToUserModal = useCallback(() => {
+    setShareToUserModalVisible(true);
+    setPotentialContacts([]);
+    setPotentialPage(1);
+    setPotentialLastPage(1);
+    setPotentialError(false);
+    fetchPotentialContacts(1, false);
+  }, [fetchPotentialContacts]);
+
+  const onPotentialContactPress = useCallback(
+    (contact: PotentialContact) => {
+      setShareToUserModalVisible(false);
+      const image = getPotentialContactAvatar(contact.avatar);
+      const chatItem = {
+        id: String(contact.id),
+        name: contact.name,
+        image,
+      };
+      router.push({
+        pathname: "/(main)/chatBox",
+        params: { id: String(contact.id), chatItem: JSON.stringify(chatItem) },
+      });
+    },
+    [router],
+  );
+
+  const onPotentialEndReached = useCallback(() => {
+    if (
+      potentialLoadingMore ||
+      potentialLoading ||
+      potentialPage >= potentialLastPage
+    )
+      return;
+    fetchPotentialContacts(potentialPage + 1, true);
+  }, [
+    potentialLoadingMore,
+    potentialLoading,
+    potentialPage,
+    potentialLastPage,
+    fetchPotentialContacts,
+  ]);
 
   const canShare =
     normalized?.status === "completed" &&
@@ -914,9 +1012,28 @@ export default function AiResults() {
             />
           ) : undefined
         }
-        onRightPress={canShare ? handleShareAiResult : undefined}
+        onRightPress={canShare ? openShareSheet : undefined}
       />
       {content}
+
+      <ShareOptionsBottomSheet
+        visible={shareSheetVisible}
+        onClose={() => setShareSheetVisible(false)}
+        onSelectInAppUser={openShareToUserModal}
+        onSelectNativeShare={handleShareAiResult}
+      />
+
+      <PotentialContactsModal
+        visible={shareToUserModalVisible}
+        onClose={() => setShareToUserModalVisible(false)}
+        contacts={potentialContacts}
+        loading={potentialLoading}
+        loadingMore={potentialLoadingMore}
+        error={potentialError}
+        onRetry={() => fetchPotentialContacts(1, false)}
+        onContactPress={onPotentialContactPress}
+        onEndReached={onPotentialEndReached}
+      />
     </View>
   );
 }
