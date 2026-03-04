@@ -52,10 +52,6 @@ function TutorialInlineVideo({}: TutorialInlineVideoProps) {
           style={styles.tutorialVideo}
           contentFit="cover"
           nativeControls={true}
-          // showsTimecodes={true}
-          // allowsPictureInPicture={false}
-          // requiresLinearPlayback={false}
-          // startsPictureInPictureAutomatically={false}
           onFirstFrameRender={async () => {
             if (!isVideoReady) {
               await player.play();
