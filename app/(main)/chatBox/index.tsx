@@ -181,7 +181,19 @@ function isImageUrl(url: string): boolean {
 type MessageSegment =
   | { type: "text"; value: string }
   | { type: "link"; value: string; url: string }
-  | { type: "image"; value: string; url: string };
+  | { type: "image"; value: string; url: string; label?: string };
+
+function extractLabelFromPreviousText(text: string): { label: string; rest: string } {
+  const trimmed = text.trimEnd();
+  const lastNewline = trimmed.lastIndexOf("\n");
+  const lastLine = lastNewline >= 0 ? trimmed.slice(lastNewline + 1) : trimmed;
+  const match = lastLine.match(/^(\s*)([A-Za-z]+):\s*$/);
+  if (match) {
+    const rest = lastNewline >= 0 ? trimmed.slice(0, lastNewline + 1) : "";
+    return { label: match[2], rest };
+  }
+  return { label: "", rest: text };
+}
 
 function parseMessageText(text: string): MessageSegment[] {
   if (!text || typeof text !== "string") return [];
@@ -194,11 +206,22 @@ function parseMessageText(text: string): MessageSegment[] {
       segments.push({ type: "text", value: text.slice(lastIndex, m.index) });
     }
     const url = m[1];
-    segments.push(
-      isImageUrl(url)
-        ? { type: "image", value: url, url }
-        : { type: "link", value: url, url },
-    );
+    const isImage = isImageUrl(url);
+    if (isImage) {
+      const prev = segments[segments.length - 1];
+      let label: string | undefined;
+      if (prev?.type === "text") {
+        const { label: extracted, rest } = extractLabelFromPreviousText(prev.value);
+        if (extracted) {
+          label = extracted;
+          prev.value = rest;
+          if (!rest.trim()) segments.pop();
+        }
+      }
+      segments.push({ type: "image", value: url, url, label });
+    } else {
+      segments.push({ type: "link", value: url, url });
+    }
     lastIndex = re.lastIndex;
   }
   if (lastIndex < text.length) {
@@ -233,7 +256,37 @@ function MessageContent({
     [segments],
   );
 
-  if (segments.length === 0) return null;
+  const blocks = useMemo(() => {
+    type Block =
+      | { type: "inline"; segments: MessageSegment[] }
+      | { type: "images"; items: { url: string; label?: string }[] };
+    const result: Block[] = [];
+    let i = 0;
+    while (i < segments.length) {
+      const seg = segments[i];
+      if (seg.type === "text" || seg.type === "link") {
+        const inline: MessageSegment[] = [];
+        while (i < segments.length && (segments[i].type === "text" || segments[i].type === "link")) {
+          inline.push(segments[i]);
+          i++;
+        }
+        result.push({ type: "inline", segments: inline });
+        continue;
+      }
+      if (seg.type === "image") {
+        const items: { url: string; label?: string }[] = [];
+        while (i < segments.length && segments[i].type === "image") {
+          const s = segments[i] as MessageSegment & { type: "image"; url: string; label?: string };
+          items.push({ url: s.url, label: s.label });
+          i++;
+        }
+        result.push({ type: "images", items });
+      }
+    }
+    return result;
+  }, [segments]);
+
+  if (blocks.length === 0) return null;
 
   const contentStyle = [
     styles.bubbleText,
@@ -243,42 +296,59 @@ function MessageContent({
 
   return (
     <View style={hasAttachmentsAbove ? styles.bubbleTextBelow : undefined}>
-      {segments.map((seg, idx) => {
-        if (seg.type === "text") {
+      {blocks.map((block, blockIdx) => {
+        if (block.type === "inline") {
           return (
-            <Text key={idx} style={contentStyle}>
-              {seg.value}
-            </Text>
-          );
-        }
-        if (seg.type === "link") {
-          return (
-            <TouchableOpacity
-              key={idx}
-              onPress={() => onLinkPress(seg.url)}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={[styles.bubbleText, styles.bubbleLink, isMe && styles.bubbleTextMe]}
-              >
-                {seg.value}
-              </Text>
-            </TouchableOpacity>
+            <View key={blockIdx} style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              {block.segments.map((seg, idx) => {
+                if (seg.type === "text") {
+                  return (
+                    <Text key={idx} style={contentStyle}>
+                      {seg.value}
+                    </Text>
+                  );
+                }
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    onPress={() => onLinkPress(seg.url)}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[styles.bubbleText, styles.bubbleLink, isMe && styles.bubbleTextMe]}
+                    >
+                      {seg.value}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           );
         }
         return (
-          <TouchableOpacity
-            key={idx}
-            style={styles.bubbleInlineImageWrap}
-            onPress={() => onImagePress(seg.url, imageUrls)}
-            activeOpacity={0.9}
-          >
-            <Image
-              source={{ uri: seg.url }}
-              style={styles.bubbleInlineImage}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
+          <View key={blockIdx} style={styles.bubbleInlineImagesRow}>
+            {block.items.map((item, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.bubbleInlineImageGridCell}
+                onPress={() => onImagePress(item.url, imageUrls)}
+                activeOpacity={0.9}
+              >
+                <Image
+                  source={{ uri: item.url }}
+                  style={styles.bubbleInlineImage}
+                  resizeMode="cover"
+                />
+                {item.label ? (
+                  <View style={styles.bubbleInlineImageLabelWrap}>
+                    <Text style={styles.bubbleInlineImageLabel} numberOfLines={1}>
+                      {item.label}
+                    </Text>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+            ))}
+          </View>
         );
       })}
     </View>
@@ -386,21 +456,17 @@ const createStyles = (theme: Theme) =>
       color: theme.link,
       textDecorationLine: "underline",
     },
-    bubbleInlineImageWrap: {
-      marginTop: moderateHeightScale(6),
-      alignSelf: "flex-start",
-    },
     bubbleInlineImagesRow: {
       flexDirection: "row",
       flexWrap: "wrap",
       gap: moderateWidthScale(6),
-      alignSelf: "flex-start",
-      width: widthScale(260),
+      alignSelf: "stretch",
+      width: "100%",
       marginTop: moderateHeightScale(6),
     },
     bubbleInlineImageGridCell: {
-      width: (widthScale(260) - moderateWidthScale(6)) / 2,
-      height: (widthScale(260) - moderateWidthScale(6)) / 2,
+      width: "48%",
+      aspectRatio: 1,
       overflow: "hidden",
       borderRadius: moderateWidthScale(8),
     },
@@ -409,6 +475,21 @@ const createStyles = (theme: Theme) =>
       height: "100%",
       borderRadius: moderateWidthScale(8),
       backgroundColor: theme.galleryPhotoBack,
+    },
+    bubbleInlineImageLabelWrap: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+      backgroundColor: theme.darkGreen15,
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(4),
+      maxWidth: "85%",
+    },
+    bubbleInlineImageLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
     },
     bubbleImage: {
       width: widthScale(160),
