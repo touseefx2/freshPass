@@ -183,7 +183,10 @@ type MessageSegment =
   | { type: "link"; value: string; url: string }
   | { type: "image"; value: string; url: string; label?: string };
 
-function extractLabelFromPreviousText(text: string): { label: string; rest: string } {
+function extractLabelFromPreviousText(text: string): {
+  label: string;
+  rest: string;
+} {
   const trimmed = text.trimEnd();
   const lastNewline = trimmed.lastIndexOf("\n");
   const lastLine = lastNewline >= 0 ? trimmed.slice(lastNewline + 1) : trimmed;
@@ -211,7 +214,9 @@ function parseMessageText(text: string): MessageSegment[] {
       const prev = segments[segments.length - 1];
       let label: string | undefined;
       if (prev?.type === "text") {
-        const { label: extracted, rest } = extractLabelFromPreviousText(prev.value);
+        const { label: extracted, rest } = extractLabelFromPreviousText(
+          prev.value,
+        );
         if (extracted) {
           label = extracted;
           prev.value = rest;
@@ -251,7 +256,9 @@ function MessageContent({
   const imageUrls = useMemo(
     () =>
       segments
-        .filter((s): s is MessageSegment & { type: "image" } => s.type === "image")
+        .filter(
+          (s): s is MessageSegment & { type: "image" } => s.type === "image",
+        )
         .map((s) => s.url),
     [segments],
   );
@@ -266,7 +273,10 @@ function MessageContent({
       const seg = segments[i];
       if (seg.type === "text" || seg.type === "link") {
         const inline: MessageSegment[] = [];
-        while (i < segments.length && (segments[i].type === "text" || segments[i].type === "link")) {
+        while (
+          i < segments.length &&
+          (segments[i].type === "text" || segments[i].type === "link")
+        ) {
           inline.push(segments[i]);
           i++;
         }
@@ -276,7 +286,11 @@ function MessageContent({
       if (seg.type === "image") {
         const items: { url: string; label?: string }[] = [];
         while (i < segments.length && segments[i].type === "image") {
-          const s = segments[i] as MessageSegment & { type: "image"; url: string; label?: string };
+          const s = segments[i] as MessageSegment & {
+            type: "image";
+            url: string;
+            label?: string;
+          };
           items.push({ url: s.url, label: s.label });
           i++;
         }
@@ -299,7 +313,10 @@ function MessageContent({
       {blocks.map((block, blockIdx) => {
         if (block.type === "inline") {
           return (
-            <View key={blockIdx} style={{ flexDirection: "row", flexWrap: "wrap" }}>
+            <View
+              key={blockIdx}
+              style={{ flexDirection: "row", flexWrap: "wrap" }}
+            >
               {block.segments.map((seg, idx) => {
                 if (seg.type === "text") {
                   return (
@@ -315,7 +332,11 @@ function MessageContent({
                     activeOpacity={0.7}
                   >
                     <Text
-                      style={[styles.bubbleText, styles.bubbleLink, isMe && styles.bubbleTextMe]}
+                      style={[
+                        styles.bubbleText,
+                        styles.bubbleLink,
+                        isMe && styles.bubbleTextMe,
+                      ]}
                     >
                       {seg.value}
                     </Text>
@@ -341,7 +362,10 @@ function MessageContent({
                 />
                 {item.label ? (
                   <View style={styles.bubbleInlineImageLabelWrap}>
-                    <Text style={styles.bubbleInlineImageLabel} numberOfLines={1}>
+                    <Text
+                      style={styles.bubbleInlineImageLabel}
+                      numberOfLines={1}
+                    >
                       {item.label}
                     </Text>
                   </View>
@@ -478,18 +502,19 @@ const createStyles = (theme: Theme) =>
     },
     bubbleInlineImageLabelWrap: {
       position: "absolute",
-      top: moderateHeightScale(6),
-      right: moderateWidthScale(6),
-      backgroundColor: theme.darkGreen15,
+      top: moderateHeightScale(4),
+      left: moderateWidthScale(4),
+      backgroundColor: "rgba(0, 0, 0, 0.6)",
       paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(2),
-      borderRadius: moderateWidthScale(4),
-      maxWidth: "85%",
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(6),
+      maxWidth: "90%",
     },
     bubbleInlineImageLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
       color: theme.white,
+      textTransform: "capitalize",
     },
     bubbleImage: {
       width: widthScale(160),
