@@ -21,6 +21,7 @@ import {
   RefreshControl,
   ScrollView,
   AppState,
+  Linking,
   type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
@@ -168,6 +169,122 @@ function formatMessageDateTime(isoString: string): string {
   return `${day} ${month} ${year}, ${time}`;
 }
 
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+const IMAGE_EXT = /\.(jpe?g|png|gif|webp)(\?.*)?$/i;
+
+function isImageUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  return IMAGE_EXT.test(trimmed);
+}
+
+type MessageSegment =
+  | { type: "text"; value: string }
+  | { type: "link"; value: string; url: string }
+  | { type: "image"; value: string; url: string };
+
+function parseMessageText(text: string): MessageSegment[] {
+  if (!text || typeof text !== "string") return [];
+  const segments: MessageSegment[] = [];
+  let lastIndex = 0;
+  const re = new RegExp(URL_REGEX.source, "g");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIndex) {
+      segments.push({ type: "text", value: text.slice(lastIndex, m.index) });
+    }
+    const url = m[1];
+    segments.push(
+      isImageUrl(url)
+        ? { type: "image", value: url, url }
+        : { type: "link", value: url, url },
+    );
+    lastIndex = re.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", value: text.slice(lastIndex) });
+  }
+  return segments;
+}
+
+type MessageContentProps = {
+  text: string;
+  isMe: boolean;
+  hasAttachmentsAbove: boolean;
+  styles: ReturnType<typeof createStyles>;
+  onLinkPress: (url: string) => void;
+  onImagePress: (url: string, allUrls: string[]) => void;
+};
+
+function MessageContent({
+  text,
+  isMe,
+  hasAttachmentsAbove,
+  styles,
+  onLinkPress,
+  onImagePress,
+}: MessageContentProps) {
+  const segments = useMemo(() => parseMessageText(text), [text]);
+  const imageUrls = useMemo(
+    () =>
+      segments
+        .filter((s): s is MessageSegment & { type: "image" } => s.type === "image")
+        .map((s) => s.url),
+    [segments],
+  );
+
+  if (segments.length === 0) return null;
+
+  const contentStyle = [
+    styles.bubbleText,
+    isMe && styles.bubbleTextMe,
+    hasAttachmentsAbove ? styles.bubbleTextBelow : null,
+  ];
+
+  return (
+    <View style={hasAttachmentsAbove ? styles.bubbleTextBelow : undefined}>
+      {segments.map((seg, idx) => {
+        if (seg.type === "text") {
+          return (
+            <Text key={idx} style={contentStyle}>
+              {seg.value}
+            </Text>
+          );
+        }
+        if (seg.type === "link") {
+          return (
+            <TouchableOpacity
+              key={idx}
+              onPress={() => onLinkPress(seg.url)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[styles.bubbleText, styles.bubbleLink, isMe && styles.bubbleTextMe]}
+              >
+                {seg.value}
+              </Text>
+            </TouchableOpacity>
+          );
+        }
+        return (
+          <TouchableOpacity
+            key={idx}
+            style={styles.bubbleInlineImageWrap}
+            onPress={() => onImagePress(seg.url, imageUrls)}
+            activeOpacity={0.9}
+          >
+            <Image
+              source={{ uri: seg.url }}
+              style={styles.bubbleInlineImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     main: {
@@ -262,6 +379,36 @@ const createStyles = (theme: Theme) =>
     },
     bubbleTextMe: {
       color: theme.darkGreen,
+    },
+    bubbleLink: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.link,
+      textDecorationLine: "underline",
+    },
+    bubbleInlineImageWrap: {
+      marginTop: moderateHeightScale(6),
+      alignSelf: "flex-start",
+    },
+    bubbleInlineImagesRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(6),
+      alignSelf: "flex-start",
+      width: widthScale(260),
+      marginTop: moderateHeightScale(6),
+    },
+    bubbleInlineImageGridCell: {
+      width: (widthScale(260) - moderateWidthScale(6)) / 2,
+      height: (widthScale(260) - moderateWidthScale(6)) / 2,
+      overflow: "hidden",
+      borderRadius: moderateWidthScale(8),
+    },
+    bubbleInlineImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.galleryPhotoBack,
     },
     bubbleImage: {
       width: widthScale(160),
@@ -549,17 +696,18 @@ const ChatContent = ({
                 </View>
               ) : null}
               {item.text ? (
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    item.isMe && styles.bubbleTextMe,
-                    item.attachments && item.attachments.length > 0
-                      ? styles.bubbleTextBelow
-                      : null,
-                  ]}
-                >
-                  {item.text}
-                </Text>
+                <MessageContent
+                  text={item.text}
+                  isMe={item.isMe}
+                  hasAttachmentsAbove={
+                    !!(item.attachments && item.attachments.length > 0)
+                  }
+                  styles={styles}
+                  onLinkPress={(url) => {
+                    Linking.openURL(url).catch(() => {});
+                  }}
+                  onImagePress={(url, allUrls) => onImagePress?.(url, allUrls)}
+                />
               ) : null}
             </View>
             <Text style={styles.messageDateTimeLabel}>
