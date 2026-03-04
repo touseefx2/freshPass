@@ -323,6 +323,7 @@ export default function AiResults() {
   const [shareContext, setShareContext] = useState<null | {
     url: string;
     labelKey: string;
+    linkOnly?: boolean;
   }>(null);
   const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
   const [potentialContacts, setPotentialContacts] = useState<
@@ -462,8 +463,13 @@ export default function AiResults() {
   const handleShareAiResult = useCallback(async () => {
     try {
       if (shareContext) {
-        const msg = `${t("aiResults")} – ${t(shareContext.labelKey)}: ${shareContext.url}`;
-        await Share.share({ message: msg.trim(), url: shareContext.url });
+        const message = shareContext.linkOnly
+          ? shareContext.url
+          : `${t("aiResults")} – ${t(shareContext.labelKey)}: ${shareContext.url}`;
+        await Share.share({
+          message: message.trim(),
+          url: shareContext.linkOnly ? undefined : shareContext.url,
+        });
         return;
       }
       if (!normalized || normalized.status !== "completed") return;
@@ -612,8 +618,8 @@ export default function AiResults() {
   }, []);
 
   const openShareSheetForImage = useCallback(
-    (url: string, labelKey: string) => {
-      setShareContext({ url, labelKey });
+    (url: string, labelKey: string, linkOnly?: boolean) => {
+      setShareContext({ url, labelKey, linkOnly });
       setShareSheetVisible(true);
     },
     [],
@@ -759,7 +765,7 @@ export default function AiResults() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {downloadUri && (
+        {isReel && downloadUri && (
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.downloadButtonPrimary}
@@ -777,7 +783,7 @@ export default function AiResults() {
                     color={theme.white}
                   />
                   <Text style={styles.downloadButtonPrimaryText}>
-                    {t("download")} {isReel ? t("video") : t("image")}
+                    {t("download")} {t("video")}
                   </Text>
                 </>
               )}
@@ -933,19 +939,56 @@ export default function AiResults() {
         )}
 
         {!isReel && sm.images?.processed && (
-          <TouchableOpacity
-            style={styles.singleImageContainer}
-            onPress={() =>
-              sm.images?.processed && openFullImage(sm.images.processed)
-            }
-            activeOpacity={1}
-          >
-            <Image
-              source={{ uri: sm.images.processed }}
-              style={styles.singleImage}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
+          <View style={styles.singleImageContainer}>
+            <TouchableOpacity
+              style={styles.singleImageTouchable}
+              onPress={() =>
+                sm.images?.processed && openFullImage(sm.images.processed)
+              }
+              activeOpacity={1}
+            >
+              <Image
+                source={{ uri: sm.images.processed }}
+                style={styles.singleImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shareIconOverlay}
+              onPress={() =>
+                openShareSheetForImage(
+                  sm.images!.processed!,
+                  "image",
+                  true,
+                )
+              }
+              activeOpacity={0.7}
+            >
+              <Feather
+                name="share-2"
+                size={moderateWidthScale(20)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.downloadIconOverlay}
+              onPress={() =>
+                handleDownloadPrimary(sm.images?.processed)
+              }
+              disabled={downloadingUrl === sm.images?.processed}
+              activeOpacity={0.7}
+            >
+              {downloadingUrl === sm.images?.processed ? (
+                <ActivityIndicator size="small" color={theme.white} />
+              ) : (
+                <Feather
+                  name="download"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         )}
 
         {sm.content?.caption != null && (
