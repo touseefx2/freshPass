@@ -81,7 +81,14 @@
         }
       ],
       "expo-font",
-      ["expo-build-properties",{"android":{"usesCleartextTraffic":true}}],
+      ["expo-build-properties", {
+        "android": { "usesCleartextTraffic": true },
+        "ios": {
+          "infoPlist": {
+            "LSApplicationQueriesSchemes": ["app-settings"]
+          }
+        }
+      }],
       [
         "@react-native-google-signin/google-signin",
         {

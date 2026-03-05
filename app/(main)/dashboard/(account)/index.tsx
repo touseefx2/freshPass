@@ -27,6 +27,7 @@ import Logger from "@/src/services/logger";
 import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
+import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 
 const CARD_GAP = 10;
 const CARD_WIDTH_PERCENT = "48%";
@@ -238,7 +239,8 @@ export default function AccountScreen() {
     } else if (key === "rules") {
       router.push("./rulesAndTerms");
     } else if (key === "notifications") {
-      router.push("./notificationSettings");
+      await openNotificationSettings();
+      // router.push("./notificationSettings");
     } else if (key === "language") {
       router.push("./languageChange");
     } else if (key === "country") {
@@ -353,7 +355,6 @@ export default function AccountScreen() {
     {
       key: "notifications",
       title: t("notificationSettings"),
-      subtitle: t("turnedOn"),
     },
     ...(isCustomer
       ? [

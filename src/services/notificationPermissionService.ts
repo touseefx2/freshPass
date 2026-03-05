@@ -1,5 +1,6 @@
 import * as Notifications from "expo-notifications";
 import { Platform, Alert, Linking } from "react-native";
+import Constants from "expo-constants";
 import Logger from "./logger";
 
 export interface NotificationPermissionResult {
@@ -112,7 +113,7 @@ export const requestNotificationPermission =
  */
 export const showNotificationPermissionAlert = (
   message: string,
-  onOpenSettings: () => void
+  onOpenSettings: () => void,
 ) => {
   Alert.alert(
     "Notification Permission Required",
@@ -127,27 +128,60 @@ export const showNotificationPermissionAlert = (
         onPress: onOpenSettings,
       },
     ],
-    { cancelable: true }
+    { cancelable: true },
   );
 };
 
 /**
  * Open device settings (iOS or Android)
+ * Android: Opens app notification settings directly (API 26+), not just App info.
+ * iOS: Opens app's Notification settings screen directly (Allow Notifications, Banners, etc.).
  */
 export const openNotificationSettings = async (): Promise<void> => {
   try {
     if (Platform.OS === "ios") {
-      // iOS: Open app settings
-      await Linking.openURL("app-settings:");
+      const bundleId =
+        Constants.expoConfig?.ios?.bundleIdentifier ?? "com.freshpass";
+      const notificationSettingsURL = `app-settings:root=NOTIFICATIONS&path=${bundleId}`;
+
+      try {
+        await Linking.openURL(notificationSettingsURL);
+        return;
+      } catch {
+        // Deep link not supported or blocked; fallback to app settings page
+        console.log(
+          "Deep link not supported or blocked; fallback to app settings page",
+        );
+        await Linking.openSettings();
+      }
     } else {
-      // Android: Open app settings
+      // Android: open notification settings directly (skips App info screen)
+      const apiLevel = Platform.Version as number;
+      const packageName =
+        Constants.expoConfig?.android?.package ?? "com.freshpass";
+      if (apiLevel >= 26 && "sendIntent" in Linking) {
+        try {
+          await (Linking as any).sendIntent(
+            "android.settings.APP_NOTIFICATION_SETTINGS",
+            [
+              {
+                key: "android.provider.extra.APP_PACKAGE",
+                value: packageName,
+              },
+            ],
+          );
+          return;
+        } catch {
+          // Fallback to app settings if intent fails
+        }
+      }
       await Linking.openSettings();
     }
   } catch (error) {
     Logger.error("Error opening settings:", error);
     Alert.alert(
       "Unable to open settings",
-      "Please manually enable notification permissions in your device settings."
+      "Please manually enable notification permissions in your device settings.",
     );
   }
 };
@@ -174,4 +208,3 @@ export const handleNotificationPermission = async (): Promise<boolean> => {
 
   return false;
 };
-
