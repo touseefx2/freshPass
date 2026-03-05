@@ -254,6 +254,8 @@ type ChatVideoPlayerProps = {
   theme: Theme;
   onDownloadPress?: (url: string, options?: { isVideo?: boolean }) => void;
   downloadingUrl?: string | null;
+  compact?: boolean;
+  compactSingle?: boolean;
 };
 
 function ChatVideoPlayerInner({
@@ -262,6 +264,7 @@ function ChatVideoPlayerInner({
   theme,
   onDownloadPress,
   downloadingUrl,
+  compact = false,
 }: ChatVideoPlayerProps) {
   const { t } = useTranslation();
   const [isVideoReady, setIsVideoReady] = useState(false);
@@ -270,13 +273,18 @@ function ChatVideoPlayerInner({
     p.loop = false;
   });
 
+  const containerStyle = compact ? styles.bubbleMediaVideoContainer : styles.bubbleVideoContainer;
+  const videoStyle = compact ? styles.bubbleMediaVideo : styles.bubbleVideo;
+  const loadingStyle = compact ? styles.bubbleMediaVideoLoadingOverlay : styles.bubbleVideoLoadingOverlay;
+  const downloadStyle = compact ? styles.bubbleMediaVideoDownloadButtonOverlay : styles.bubbleVideoDownloadButtonOverlay;
+
   return (
     <>
-      <View style={styles.bubbleVideoContainer}>
+      <View style={containerStyle}>
         <View style={StyleSheet.absoluteFill}>
           <VideoView
             player={player}
-            style={styles.bubbleVideo}
+            style={videoStyle}
             contentFit="contain"
             nativeControls={true}
             onFirstFrameRender={async () => {
@@ -288,14 +296,14 @@ function ChatVideoPlayerInner({
           />
         </View>
         {!isVideoReady && (
-          <View style={styles.bubbleVideoLoadingOverlay}>
+          <View style={loadingStyle}>
             <ActivityIndicator size="small" color={theme.white} />
             <Text style={styles.bubbleVideoLoadingText}>{t("loading")}</Text>
           </View>
         )}
         {onDownloadPress ? (
           <TouchableOpacity
-            style={styles.bubbleVideoDownloadButtonOverlay}
+            style={downloadStyle}
             onPress={(e) => {
               e.stopPropagation?.();
               onDownloadPress(resolvedUrl, { isVideo: true });
@@ -325,33 +333,48 @@ function ChatVideoPlayer({
   theme,
   onDownloadPress,
   downloadingUrl,
+  compact = false,
+  compactSingle = false,
 }: ChatVideoPlayerProps) {
   const [showVideo, setShowVideo] = useState(false);
 
+  const wrapStyle = compact
+    ? compactSingle
+      ? styles.bubbleMediaVideoWrapSingle
+      : styles.bubbleMediaVideoWrap
+    : styles.bubbleVideoWrap;
+  const placeholderStyle = compact
+    ? styles.bubbleMediaVideoPlaceholder
+    : styles.bubbleVideoPlaceholder;
+  const downloadOverlayStyle = compact
+    ? styles.bubbleMediaVideoDownloadButtonOverlay
+    : styles.bubbleVideoDownloadButtonOverlay;
+
   if (showVideo) {
     return (
-      <View style={styles.bubbleVideoWrap}>
+      <View style={wrapStyle}>
         <ChatVideoPlayerInner
           videoUrl={videoUrl}
           styles={styles}
           theme={theme}
           onDownloadPress={onDownloadPress}
           downloadingUrl={downloadingUrl}
+          compact={compact}
         />
       </View>
     );
   }
 
   return (
-    <View style={styles.bubbleVideoWrap}>
+    <View style={wrapStyle}>
       <TouchableOpacity
-        style={styles.bubbleVideoPlaceholder}
+        style={placeholderStyle}
         onPress={() => setShowVideo(true)}
         activeOpacity={0.8}
       >
         <Feather
           name="play-circle"
-          size={moderateWidthScale(56)}
+          size={compact ? moderateWidthScale(32) : moderateWidthScale(56)}
           color={theme.white}
         />
       </TouchableOpacity>
@@ -360,7 +383,7 @@ function ChatVideoPlayer({
             const resolvedUrl = getMessageImageUrl(videoUrl) || videoUrl;
             return (
               <TouchableOpacity
-                style={styles.bubbleVideoDownloadButtonOverlay}
+                style={downloadOverlayStyle}
                 onPress={(e) => {
                   e.stopPropagation?.();
                   onDownloadPress(resolvedUrl, { isVideo: true });
@@ -423,7 +446,11 @@ function MessageContent({
     type Block =
       | { type: "inline"; segments: MessageSegment[] }
       | { type: "images"; items: { url: string; label?: string }[] }
-      | { type: "videos"; items: { url: string }[] };
+      | { type: "videos"; items: { url: string }[] }
+      | {
+          type: "media";
+          items: { url: string; type: "image" | "video"; label?: string }[];
+        };
     const result: Block[] = [];
     let i = 0;
     while (i < segments.length) {
@@ -501,6 +528,45 @@ function MessageContent({
         }
       }
     }
+    // Merge (images + optional numbering-only inline + videos) into one "media" block
+    // so Original Media shows images and videos in same grid, 2 per row, same size
+    merged = true;
+    while (merged) {
+      merged = false;
+      for (let j = 0; j < result.length - 1; j++) {
+        const curr = result[j];
+        const next = result[j + 1];
+        if (curr.type === "images" && next.type === "videos") {
+          const mediaItems: { url: string; type: "image" | "video"; label?: string }[] = [
+            ...curr.items.map((it) => ({ url: it.url, type: "image" as const, label: it.label })),
+            ...next.items.map((it) => ({ url: it.url, type: "video" as const })),
+          ];
+          result.splice(j, 2, { type: "media", items: mediaItems });
+          merged = true;
+          break;
+        }
+      }
+      if (merged) continue;
+      for (let j = 0; j < result.length - 2; j++) {
+        const curr = result[j];
+        const mid = result[j + 1];
+        const next = result[j + 2];
+        if (
+          curr.type === "images" &&
+          mid.type === "inline" &&
+          isNumberingOnlyInline(mid) &&
+          next.type === "videos"
+        ) {
+          const mediaItems: { url: string; type: "image" | "video"; label?: string }[] = [
+            ...curr.items.map((it) => ({ url: it.url, type: "image" as const, label: it.label })),
+            ...next.items.map((it) => ({ url: it.url, type: "video" as const })),
+          ];
+          result.splice(j, 3, { type: "media", items: mediaItems });
+          merged = true;
+          break;
+        }
+      }
+    }
     return result;
   }, [segments]);
 
@@ -516,11 +582,15 @@ function MessageContent({
     <View style={hasAttachmentsAbove ? styles.bubbleTextBelow : undefined}>
       {blocks.map((block, blockIdx) => {
         if (block.type === "inline") {
-          const nextBlockIsImages =
-            blockIdx + 1 < blocks.length &&
-            blocks[blockIdx + 1].type === "images";
+          const nextBlock = blockIdx + 1 < blocks.length ? blocks[blockIdx + 1] : null;
+          const nextBlockIsImages = nextBlock?.type === "images";
+          const nextBlockIsVideos = nextBlock?.type === "videos";
+          const nextBlockIsMedia = nextBlock?.type === "media";
           const stripTrailingNumbering = (val: string) =>
-            nextBlockIsImages ? val.replace(/\s*\d+\.\s*$/, "") : val;
+            nextBlockIsImages || nextBlockIsVideos || nextBlockIsMedia
+              ? val.replace(/\s*\d+\.\s*$/, "")
+              : val;
+          const isNumberingOnly = (s: string) => /^\s*\d+\.\s*$/.test(s.trim());
           return (
             <View
               key={blockIdx}
@@ -529,7 +599,7 @@ function MessageContent({
               {block.segments.map((seg, idx) => {
                 if (seg.type === "text") {
                   const display = stripTrailingNumbering(seg.value);
-                  if (!display) return null;
+                  if (!display || isNumberingOnly(display)) return null;
                   return (
                     <Text key={idx} style={contentStyle}>
                       {display}
@@ -564,6 +634,80 @@ function MessageContent({
                   downloadingUrl={downloadingUrl}
                 />
               ))}
+            </View>
+          );
+        }
+        if (block.type === "media") {
+          return (
+            <View
+              key={blockIdx}
+              style={[
+                styles.bubbleInlineImagesRow,
+                block.items.length === 1 && { alignSelf: "flex-start" },
+              ]}
+            >
+              {block.items.map((item, idx) =>
+                item.type === "image" ? (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[
+                      styles.bubbleInlineImageGridCell,
+                      block.items.length === 1 &&
+                        styles.bubbleInlineImageGridCellSingle,
+                    ]}
+                    onPress={() => onImagePress(item.url, imageUrls)}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: item.url }}
+                      style={styles.bubbleInlineImage}
+                      resizeMode="cover"
+                    />
+                    {item.label ? (
+                      <View style={styles.bubbleInlineImageLabelWrap}>
+                        <Text
+                          style={styles.bubbleInlineImageLabel}
+                          numberOfLines={1}
+                        >
+                          {item.label}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {onDownloadPress ? (
+                      <TouchableOpacity
+                        style={styles.bubbleImageDownloadButton}
+                        onPress={(e) => {
+                          e.stopPropagation?.();
+                          onDownloadPress(item.url);
+                        }}
+                        disabled={downloadingUrl === item.url}
+                        activeOpacity={0.7}
+                      >
+                        {downloadingUrl === item.url ? (
+                          <ActivityIndicator size="small" color={theme.white} />
+                        ) : (
+                          <Feather
+                            name="download"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ) : null}
+                  </TouchableOpacity>
+                ) : (
+                  <ChatVideoPlayer
+                    key={idx}
+                    videoUrl={item.url}
+                    styles={styles}
+                    theme={theme}
+                    onDownloadPress={onDownloadPress}
+                    downloadingUrl={downloadingUrl}
+                    compact
+                    compactSingle={block.items.length === 1}
+                  />
+                ),
+              )}
             </View>
           );
         }
@@ -829,6 +973,58 @@ const createStyles = (theme: Theme) =>
       flexDirection: "column",
       gap: moderateHeightScale(10),
       marginTop: moderateHeightScale(6),
+    },
+    bubbleMediaVideoWrap: {
+      width: "48%",
+      aspectRatio: 1,
+      marginTop: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(8),
+      overflow: "hidden",
+      position: "relative",
+      backgroundColor: theme.black,
+    },
+    bubbleMediaVideoWrapSingle: {
+      width: widthScale(160),
+      height: heightScale(160),
+      marginTop: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(8),
+      overflow: "hidden",
+      position: "relative",
+      backgroundColor: theme.black,
+    },
+    bubbleMediaVideoPlaceholder: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.black,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bubbleMediaVideoContainer: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: moderateWidthScale(8),
+      overflow: "hidden",
+      backgroundColor: theme.black,
+      position: "relative",
+    },
+    bubbleMediaVideo: {
+      width: "100%",
+      height: "100%",
+    },
+    bubbleMediaVideoLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.black,
+    },
+    bubbleMediaVideoDownloadButtonOverlay: {
+      position: "absolute",
+      bottom: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      width: moderateWidthScale(24),
+      height: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.primary,
+      alignItems: "center",
+      justifyContent: "center",
     },
     bubbleImage: {
       width: widthScale(160),
