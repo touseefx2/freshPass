@@ -343,4 +343,5 @@ export const favoritesEndpoints = {
  */
 export const generalEndpoints = {
   proTipCards: `/api/pro-tip-cards`,
+  checkEmail: `/api/check-email`,
 };

@@ -28,6 +28,9 @@ import SectionSeparator from "@/src/components/sectionSeparator";
 import { validateEmail } from "@/src/services/validationService";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
+import { ApiService } from "@/src/services/api";
+import { generalEndpoints } from "@/src/services/endpoints";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -134,6 +137,7 @@ export default function Register() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const router = useRouter();
+  const { showBanner } = useNotificationContext();
 
   // Get saved email from general state (if exists from previous registration)
   const savedEmail = useAppSelector((state) => state.general.registerEmail);
@@ -143,6 +147,7 @@ export default function Register() {
   const [email, setEmail] = useState(savedEmail || DEFAULT_EMAIL);
   const [isSubscribed, setIsSubscribed] = useState(true);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   // Validate email when it changes
   useEffect(() => {
@@ -167,13 +172,42 @@ export default function Register() {
     setIsSubscribed((prev) => !prev);
   }, []);
 
-  const handleContinue = useCallback(() => {
+  const handleContinue = useCallback(async () => {
     Keyboard.dismiss();
-    router.push({
-      pathname: `/${MAIN_ROUTES.REGISTER_PASSWORD}`,
-      params: { email: email.trim(), isSubscribed: isSubscribed.toString() },
-    });
-  }, [email, isSubscribed, router]);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !validateEmail(trimmedEmail).isValid) return;
+
+    setIsCheckingEmail(true);
+    try {
+      const response = await ApiService.post<{
+        success: boolean;
+        data: { exists: boolean };
+      }>(generalEndpoints.checkEmail, { email: trimmedEmail });
+
+      if (response?.data?.exists) {
+        showBanner(
+          "User already exists",
+          "An account with this email address already exists. Please sign in or use a different email.",
+          "error",
+          5000,
+        );
+        return;
+      }
+
+      router.push({
+        pathname: `/${MAIN_ROUTES.REGISTER_PASSWORD}`,
+        params: { email: trimmedEmail, isSubscribed: isSubscribed.toString() },
+      });
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Unable to check email. Please try again.";
+      showBanner("Error", message, "error", 5000);
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  }, [email, isSubscribed, router, showBanner]);
 
   const handleLogin = useCallback(() => {
     router.back();
@@ -255,6 +289,7 @@ export default function Register() {
                   title="Continue"
                   onPress={handleContinue}
                   disabled={!isFormValid}
+                  loading={isCheckingEmail}
                   containerStyle={styles.primaryButtonWrapper}
                 />
 
