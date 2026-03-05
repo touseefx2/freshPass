@@ -256,6 +256,7 @@ type ChatVideoPlayerProps = {
   downloadingUrl?: string | null;
   compact?: boolean;
   compactSingle?: boolean;
+  useOriginalMediaLayout?: boolean;
 };
 
 function ChatVideoPlayerInner({
@@ -265,6 +266,7 @@ function ChatVideoPlayerInner({
   onDownloadPress,
   downloadingUrl,
   compact = false,
+  useOriginalMediaLayout = false,
 }: ChatVideoPlayerProps) {
   const { t } = useTranslation();
   const [isVideoReady, setIsVideoReady] = useState(false);
@@ -276,7 +278,12 @@ function ChatVideoPlayerInner({
   const containerStyle = compact ? styles.bubbleMediaVideoContainer : styles.bubbleVideoContainer;
   const videoStyle = compact ? styles.bubbleMediaVideo : styles.bubbleVideo;
   const loadingStyle = compact ? styles.bubbleMediaVideoLoadingOverlay : styles.bubbleVideoLoadingOverlay;
-  const downloadStyle = compact ? styles.bubbleMediaVideoDownloadButtonOverlay : styles.bubbleVideoDownloadButtonOverlay;
+  const downloadStyle =
+    useOriginalMediaLayout && compact
+      ? styles.bubbleOriginalMediaDownloadButton
+      : compact
+        ? styles.bubbleMediaVideoDownloadButtonOverlay
+        : styles.bubbleVideoDownloadButtonOverlay;
 
   return (
     <>
@@ -335,20 +342,25 @@ function ChatVideoPlayer({
   downloadingUrl,
   compact = false,
   compactSingle = false,
+  useOriginalMediaLayout = false,
 }: ChatVideoPlayerProps) {
   const [showVideo, setShowVideo] = useState(false);
 
-  const wrapStyle = compact
-    ? compactSingle
-      ? styles.bubbleMediaVideoWrapSingle
-      : styles.bubbleMediaVideoWrap
-    : styles.bubbleVideoWrap;
+  const wrapStyle = useOriginalMediaLayout && compact
+    ? (compactSingle ? styles.bubbleOriginalMediaVideoWrapSingle : styles.bubbleOriginalMediaVideoWrap)
+    : compact
+      ? compactSingle
+        ? styles.bubbleMediaVideoWrapSingle
+        : styles.bubbleMediaVideoWrap
+      : styles.bubbleVideoWrap;
   const placeholderStyle = compact
     ? styles.bubbleMediaVideoPlaceholder
     : styles.bubbleVideoPlaceholder;
-  const downloadOverlayStyle = compact
-    ? styles.bubbleMediaVideoDownloadButtonOverlay
-    : styles.bubbleVideoDownloadButtonOverlay;
+  const downloadOverlayStyle = useOriginalMediaLayout && compact
+    ? styles.bubbleOriginalMediaDownloadButton
+    : compact
+      ? styles.bubbleMediaVideoDownloadButtonOverlay
+      : styles.bubbleVideoDownloadButtonOverlay;
 
   if (showVideo) {
     return (
@@ -360,6 +372,7 @@ function ChatVideoPlayer({
           onDownloadPress={onDownloadPress}
           downloadingUrl={downloadingUrl}
           compact={compact}
+          useOriginalMediaLayout={useOriginalMediaLayout}
         />
       </View>
     );
@@ -440,6 +453,10 @@ function MessageContent({
         )
         .map((s) => s.url),
     [segments],
+  );
+  const resolvedImageUrls = useMemo(
+    () => imageUrls.map((u) => getMessageImageUrl(u) || u),
+    [imageUrls],
   );
 
   const blocks = useMemo(() => {
@@ -638,76 +655,112 @@ function MessageContent({
           );
         }
         if (block.type === "media") {
+          const mediaImages = block.items.filter(
+            (it): it is typeof it & { type: "image" } => it.type === "image",
+          );
+          const mediaVideos = block.items.filter(
+            (it): it is typeof it & { type: "video" } => it.type === "video",
+          );
+          const imageRows: typeof mediaImages[] = [];
+          for (let i = 0; i < mediaImages.length; i += 2) {
+            imageRows.push(mediaImages.slice(i, i + 2));
+          }
+          const isSingleImageOnly =
+            mediaImages.length === 1 && mediaVideos.length === 0;
           return (
-            <View
-              key={blockIdx}
-              style={[
-                styles.bubbleInlineImagesRow,
-                block.items.length === 1 && { alignSelf: "flex-start" },
-              ]}
-            >
-              {block.items.map((item, idx) =>
-                item.type === "image" ? (
-                  <TouchableOpacity
-                    key={idx}
-                    style={[
-                      styles.bubbleInlineImageGridCell,
-                      block.items.length === 1 &&
-                        styles.bubbleInlineImageGridCellSingle,
-                    ]}
-                    onPress={() => onImagePress(item.url, imageUrls)}
-                    activeOpacity={0.9}
-                  >
-                    <Image
-                      source={{ uri: item.url }}
-                      style={styles.bubbleInlineImage}
-                      resizeMode="cover"
-                    />
-                    {item.label ? (
-                      <View style={styles.bubbleInlineImageLabelWrap}>
-                        <Text
-                          style={styles.bubbleInlineImageLabel}
-                          numberOfLines={1}
+            <View key={blockIdx} style={{ alignSelf: "stretch" }}>
+              {mediaImages.length > 0 ? (
+                <View
+                  style={[
+                    styles.bubbleOriginalMediaGrid,
+                    isSingleImageOnly && { alignSelf: "flex-start" },
+                  ]}
+                >
+                  {imageRows.map((row, rowIdx) => (
+                    <View
+                      key={`row-${rowIdx}`}
+                      style={[
+                        styles.bubbleOriginalMediaGridRow,
+                        rowIdx === imageRows.length - 1 &&
+                          styles.bubbleOriginalMediaGridRowSingle,
+                      ]}
+                    >
+                      {row.map((item, idx) => (
+                        <TouchableOpacity
+                          key={`img-${rowIdx}-${idx}`}
+                          style={[
+                            styles.bubbleOriginalMediaCard,
+                            isSingleImageOnly &&
+                              styles.bubbleOriginalMediaCardSingle,
+                          ]}
+                          onPress={() =>
+                            onImagePress(
+                              getMessageImageUrl(item.url) || item.url,
+                              resolvedImageUrls,
+                            )
+                          }
+                          activeOpacity={0.9}
                         >
-                          {item.label}
-                        </Text>
-                      </View>
-                    ) : null}
-                    {onDownloadPress ? (
-                      <TouchableOpacity
-                        style={styles.bubbleImageDownloadButton}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          onDownloadPress(item.url);
-                        }}
-                        disabled={downloadingUrl === item.url}
-                        activeOpacity={0.7}
-                      >
-                        {downloadingUrl === item.url ? (
-                          <ActivityIndicator size="small" color={theme.white} />
-                        ) : (
-                          <Feather
-                            name="download"
-                            size={moderateWidthScale(14)}
-                            color={theme.white}
+                          <Image
+                            source={{
+                              uri: getMessageImageUrl(item.url) || item.url,
+                            }}
+                            style={styles.bubbleOriginalMediaCardImage}
+                            resizeMode="cover"
                           />
-                        )}
-                      </TouchableOpacity>
-                    ) : null}
-                  </TouchableOpacity>
-                ) : (
-                  <ChatVideoPlayer
-                    key={idx}
-                    videoUrl={item.url}
-                    styles={styles}
-                    theme={theme}
-                    onDownloadPress={onDownloadPress}
-                    downloadingUrl={downloadingUrl}
-                    compact
-                    compactSingle={block.items.length === 1}
-                  />
-                ),
-              )}
+                          {onDownloadPress ? (
+                            <TouchableOpacity
+                              style={styles.bubbleOriginalMediaDownloadButton}
+                              onPress={(e) => {
+                                e.stopPropagation?.();
+                                onDownloadPress(
+                                  getMessageImageUrl(item.url) || item.url,
+                                );
+                              }}
+                              disabled={
+                                downloadingUrl ===
+                                (getMessageImageUrl(item.url) || item.url)
+                              }
+                              activeOpacity={0.7}
+                            >
+                              {downloadingUrl ===
+                              (getMessageImageUrl(item.url) || item.url) ? (
+                                <ActivityIndicator
+                                  size="small"
+                                  color={theme.white}
+                                />
+                              ) : (
+                                <Feather
+                                  name="download"
+                                  size={moderateWidthScale(16)}
+                                  color={theme.white}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          ) : null}
+                        </TouchableOpacity>
+                      ))}
+                      {row.length === 1 && !isSingleImageOnly ? (
+                        <View style={styles.bubbleOriginalMediaCardSpacer} />
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              {mediaVideos.length > 0 ? (
+                <View style={styles.bubbleVideosRow}>
+                  {mediaVideos.map((item, idx) => (
+                    <ChatVideoPlayer
+                      key={`vid-${idx}`}
+                      videoUrl={item.url}
+                      styles={styles}
+                      theme={theme}
+                      onDownloadPress={onDownloadPress}
+                      downloadingUrl={downloadingUrl}
+                    />
+                  ))}
+                </View>
+              ) : null}
             </View>
           );
         }
@@ -727,11 +780,18 @@ function MessageContent({
                   block.items.length === 1 &&
                     styles.bubbleInlineImageGridCellSingle,
                 ]}
-                onPress={() => onImagePress(item.url, imageUrls)}
+                onPress={() =>
+                  onImagePress(
+                    getMessageImageUrl(item.url) || item.url,
+                    resolvedImageUrls,
+                  )
+                }
                 activeOpacity={0.9}
               >
                 <Image
-                  source={{ uri: item.url }}
+                  source={{
+                    uri: getMessageImageUrl(item.url) || item.url,
+                  }}
                   style={styles.bubbleInlineImage}
                   resizeMode="cover"
                 />
@@ -750,12 +810,16 @@ function MessageContent({
                     style={styles.bubbleImageDownloadButton}
                     onPress={(e) => {
                       e.stopPropagation?.();
-                      onDownloadPress(item.url);
+                      onDownloadPress(getMessageImageUrl(item.url) || item.url);
                     }}
-                    disabled={downloadingUrl === item.url}
+                    disabled={
+                      downloadingUrl ===
+                      (getMessageImageUrl(item.url) || item.url)
+                    }
                     activeOpacity={0.7}
                   >
-                    {downloadingUrl === item.url ? (
+                    {downloadingUrl ===
+                    (getMessageImageUrl(item.url) || item.url) ? (
                       <ActivityIndicator size="small" color={theme.white} />
                     ) : (
                       <Feather
@@ -1025,6 +1089,74 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.primary,
       alignItems: "center",
       justifyContent: "center",
+    },
+    // Original media grid (same look as AI Results, chat: download only, no share)
+    // Enforce exactly 2 images per row
+    bubbleOriginalMediaGrid: {
+      alignSelf: "stretch",
+      width: "100%",
+      marginTop: moderateHeightScale(6),
+    },
+    bubbleOriginalMediaGridRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(12),
+      width: "100%",
+    },
+    bubbleOriginalMediaGridRowSingle: {
+      marginBottom: 0,
+    },
+    bubbleOriginalMediaCardSpacer: {
+      flex: 1,
+      minWidth: 0,
+    },
+    bubbleOriginalMediaCard: {
+      flex: 1,
+      minWidth: 0,
+      height: heightScale(140),
+      borderRadius: moderateWidthScale(10),
+      overflow: "hidden",
+      backgroundColor: theme.black,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      position: "relative",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    bubbleOriginalMediaCardSingle: {
+      width: widthScale(160),
+      height: heightScale(160),
+    },
+    bubbleOriginalMediaCardImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(8),
+    },
+    bubbleOriginalMediaVideoWrap: {
+      width: "48%",
+      height: heightScale(140),
+      borderRadius: moderateWidthScale(10),
+      overflow: "hidden",
+      position: "relative",
+      backgroundColor: theme.black,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    bubbleOriginalMediaVideoWrapSingle: {
+      width: widthScale(160),
+      height: heightScale(160),
+    },
+    bubbleOriginalMediaDownloadButton: {
+      position: "absolute",
+      bottom: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2,
     },
     bubbleImage: {
       width: widthScale(160),
@@ -1805,8 +1937,6 @@ export default function ChatBoxScreen() {
     const second = parts[1]?.[0] ?? "";
     return `${first}${second}`.toUpperCase();
   };
-
-  console.log("--->messages : ", messages);
 
   return (
     <View style={styles.main}>

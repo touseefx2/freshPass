@@ -233,6 +233,12 @@ export function useSocialLogin() {
         });
       }
 
+      // If already signed in with Google, sign out first so account picker shows every time
+      const currentUser = await GoogleSignin.getCurrentUser();
+      if (currentUser) {
+        await GoogleSignin.signOut();
+      }
+
       const userInfo = await GoogleSignin.signIn();
 
       if (!userInfo.data) {
