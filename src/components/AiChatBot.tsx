@@ -20,6 +20,7 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
+  BackHandler,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -741,6 +742,35 @@ const AiChatBot: React.FC = () => {
     }
     dispatch(closeChat());
   }, [dispatch, chatMode]);
+
+  // Android hardware back: close chat/voice modal first, then close options menu
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+
+    const onBackPress = () => {
+      if (isOpen) {
+        handleCloseChat();
+        return true;
+      }
+      if (canShowMenu && menuExpanded) {
+        handleCloseMenu();
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress,
+    );
+    return () => subscription.remove();
+  }, [
+    isOpen,
+    menuExpanded,
+    canShowMenu,
+    handleCloseChat,
+    handleCloseMenu,
+  ]);
 
   const handleDeleteChat = useCallback(() => {
     Alert.alert(t("clearChat"), t("clearChatConfirm"), [
