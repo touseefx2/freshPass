@@ -22,6 +22,7 @@ import {
   ScrollView,
   AppState,
   Linking,
+  Clipboard,
   type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
@@ -649,7 +650,12 @@ function MessageContent({
                   const display = stripTrailingNumbering(seg.value);
                   if (!display || isNumberingOnly(display)) return null;
                   return (
-                    <Text key={idx} style={contentStyle}>
+                    <Text
+                      key={idx}
+                      style={contentStyle}
+                      selectable
+                      selectionColor={theme.primary}
+                    >
                       {display}
                     </Text>
                   );
@@ -660,7 +666,11 @@ function MessageContent({
                     onPress={() => onLinkPress(seg.url)}
                     activeOpacity={0.7}
                   >
-                    <Text style={[styles.bubbleText, styles.bubbleLink]}>
+                    <Text
+                      style={[styles.bubbleText, styles.bubbleLink]}
+                      selectable
+                      selectionColor={theme.primary}
+                    >
                       {seg.value}
                     </Text>
                   </TouchableOpacity>
@@ -956,6 +966,12 @@ const createStyles = (theme: Theme) =>
     bubbleOther: {
       backgroundColor: theme.lightGreen05,
       borderBottomLeftRadius: moderateWidthScale(4),
+    },
+    bubbleLongPressLayer: {
+      zIndex: 0,
+    },
+    bubbleContentLayer: {
+      zIndex: 1,
     },
     bubbleText: {
       fontSize: fontSize.size13,
@@ -1373,6 +1389,7 @@ type ChatContentProps = {
   sending?: boolean;
   onSend?: () => void;
   isTyping?: boolean;
+  onMessageCopied?: () => void;
 };
 
 const ChatContent = ({
@@ -1398,6 +1415,7 @@ const ChatContent = ({
   sending = false,
   onSend,
   isTyping = false,
+  onMessageCopied,
 }: ChatContentProps) => {
   const hasInputValue = Boolean(inputValue && inputValue.trim().length > 0);
   const canSend = hasInputValue || selectedAttachments.length > 0;
@@ -1446,7 +1464,20 @@ const ChatContent = ({
             </View>
           ) : null
         }
-        renderItem={({ item }) => (
+        renderItem={({ item }) => {
+          const copyFullMessage = () => {
+            const textPart = item.text?.trim() ?? "";
+            const attachmentPart =
+              item.attachments && item.attachments.length > 0
+                ? item.attachments.join("\n")
+                : "";
+            const fullText = [textPart, attachmentPart].filter(Boolean).join("\n");
+            if (fullText) {
+              Clipboard.setString(fullText);
+              onMessageCopied?.();
+            }
+          };
+          return (
           <View
             style={[
               styles.messageRow,
@@ -1462,7 +1493,17 @@ const ChatContent = ({
                 item.isMe ? styles.bubbleMe : styles.bubbleOther,
               ]}
             >
-              {item.attachments && item.attachments.length > 0 ? (
+              <TouchableOpacity
+                style={[StyleSheet.absoluteFillObject, styles.bubbleLongPressLayer]}
+                onLongPress={copyFullMessage}
+                delayLongPress={500}
+                activeOpacity={1}
+              />
+              <View
+                style={styles.bubbleContentLayer}
+                pointerEvents="box-none"
+              >
+                {item.attachments && item.attachments.length > 0 ? (
                 <View
                   style={[
                     styles.bubbleAttachmentsRow,
@@ -1526,12 +1567,14 @@ const ChatContent = ({
                   downloadingUrl={downloadingUrl}
                 />
               ) : null}
+              </View>
             </View>
             <Text style={styles.messageDateTimeLabel}>
               {item.dateTimeLabel}
             </Text>
           </View>
-        )}
+          );
+        }}
         showsVerticalScrollIndicator={false}
       />
       {selectedAttachments.length > 0 ? (
@@ -2042,6 +2085,14 @@ export default function ChatBoxScreen() {
             onRemoveAttachment={(idx) =>
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
             }
+            onMessageCopied={() =>
+              showBanner(
+                t("copied") || "Copied",
+                "",
+                "success",
+                1500,
+              )
+            }
             inputValue={inputText}
             onInputChange={setInputText}
             sending={sending}
@@ -2086,6 +2137,14 @@ export default function ChatBoxScreen() {
             selectedAttachments={selectedAttachments}
             onRemoveAttachment={(idx) =>
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
+            }
+            onMessageCopied={() =>
+              showBanner(
+                t("copied") || "Copied",
+                "",
+                "success",
+                1500,
+              )
             }
             inputValue={inputText}
             onInputChange={setInputText}
