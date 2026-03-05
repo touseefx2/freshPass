@@ -480,6 +480,9 @@ export const createStyles = (theme: Theme) =>
       justifyContent: "center",
       zIndex: 2,
     },
+    originalMediaDownloadIconVideo: {
+      bottom: moderateHeightScale(40),
+    },
     originalMediaMiniVideoContainer: {
       width: "100%",
       height: "100%",

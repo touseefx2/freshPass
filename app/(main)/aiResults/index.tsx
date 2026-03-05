@@ -559,7 +559,10 @@ function OriginalMediaCard({
       )}
       {onDownloadPress && (
         <TouchableOpacity
-          style={styles.originalMediaDownloadIcon}
+          style={[
+            styles.originalMediaDownloadIcon,
+            isVideo && styles.originalMediaDownloadIconVideo,
+          ]}
           onPress={() =>
             onDownloadPress(item.url, { isVideo: Boolean(isVideo) })
           }
@@ -761,6 +764,12 @@ export default function AiResults() {
             message += `${i + 1}. ${u}\n`;
           });
         }
+        if (sm.original_media?.length) {
+          message += `\n\n${t("originalMedia")}:\n`;
+          sm.original_media.forEach((item, i) => {
+            message += `${item.index}. ${item.url}\n`;
+          });
+        }
       } else if (normalized.sections.length > 0) {
         message = `${t("aiResults")}\n\n`;
         normalized.sections.forEach((section, sectionIndex) => {
@@ -819,6 +828,12 @@ export default function AiResults() {
         message += `\n\n${t("originals")}:\n`;
         sm.images.originals.forEach((u, i) => {
           message += `${i + 1}. ${u}\n`;
+        });
+      }
+      if (sm.original_media?.length) {
+        message += `\n\n${t("originalMedia")}:\n`;
+        sm.original_media.forEach((item) => {
+          message += `${item.index}. ${item.url}\n`;
         });
       }
     } else if (normalized.sections.length > 0) {
