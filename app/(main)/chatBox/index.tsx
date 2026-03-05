@@ -355,30 +355,32 @@ function ChatVideoPlayer({
           color={theme.white}
         />
       </TouchableOpacity>
-      {onDownloadPress ? (() => {
-        const resolvedUrl = getMessageImageUrl(videoUrl) || videoUrl;
-        return (
-          <TouchableOpacity
-            style={styles.bubbleVideoDownloadButtonOverlay}
-            onPress={(e) => {
-              e.stopPropagation?.();
-              onDownloadPress(resolvedUrl, { isVideo: true });
-            }}
-            disabled={downloadingUrl === resolvedUrl}
-            activeOpacity={0.7}
-          >
-            {downloadingUrl === resolvedUrl ? (
-              <ActivityIndicator size="small" color={theme.white} />
-            ) : (
-              <Feather
-                name="download"
-                size={moderateWidthScale(14)}
-                color={theme.white}
-              />
-            )}
-          </TouchableOpacity>
-        );
-      })() : null}
+      {onDownloadPress
+        ? (() => {
+            const resolvedUrl = getMessageImageUrl(videoUrl) || videoUrl;
+            return (
+              <TouchableOpacity
+                style={styles.bubbleVideoDownloadButtonOverlay}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onDownloadPress(resolvedUrl, { isVideo: true });
+                }}
+                disabled={downloadingUrl === resolvedUrl}
+                activeOpacity={0.7}
+              >
+                {downloadingUrl === resolvedUrl ? (
+                  <ActivityIndicator size="small" color={theme.white} />
+                ) : (
+                  <Feather
+                    name="download"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })()
+        : null}
     </View>
   );
 }
@@ -441,7 +443,10 @@ function MessageContent({
       if (seg.type === "video") {
         const items: { url: string }[] = [];
         while (i < segments.length && segments[i].type === "video") {
-          const s = segments[i] as MessageSegment & { type: "video"; url: string };
+          const s = segments[i] as MessageSegment & {
+            type: "video";
+            url: string;
+          };
           items.push({ url: s.url });
           i++;
         }
@@ -468,7 +473,9 @@ function MessageContent({
     const isNumberingOnlyInline = (block: Block): boolean => {
       if (block.type !== "inline") return false;
       const combined = block.segments
-        .filter((s): s is MessageSegment & { type: "text" } => s.type === "text")
+        .filter(
+          (s): s is MessageSegment & { type: "text" } => s.type === "text",
+        )
         .map((s) => s.value)
         .join("");
       return numberingOnlyRegex.test(combined.trim());
@@ -510,7 +517,8 @@ function MessageContent({
       {blocks.map((block, blockIdx) => {
         if (block.type === "inline") {
           const nextBlockIsImages =
-            blockIdx + 1 < blocks.length && blocks[blockIdx + 1].type === "images";
+            blockIdx + 1 < blocks.length &&
+            blocks[blockIdx + 1].type === "images";
           const stripTrailingNumbering = (val: string) =>
             nextBlockIsImages ? val.replace(/\s*\d+\.\s*$/, "") : val;
           return (
@@ -1602,6 +1610,8 @@ export default function ChatBoxScreen() {
     return `${first}${second}`.toUpperCase();
   };
 
+  console.log("--->messages : ", messages);
+
   return (
     <View style={styles.main}>
       <StatusBar
@@ -1666,7 +1676,9 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
-            onDownloadPress={(url, options) => downloadMedia(url, options ?? {})}
+            onDownloadPress={(url, options) =>
+              downloadMedia(url, options ?? {})
+            }
             downloadingUrl={downloadingUrl}
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
@@ -1709,7 +1721,9 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
-            onDownloadPress={(url, options) => downloadMedia(url, options ?? {})}
+            onDownloadPress={(url, options) =>
+              downloadMedia(url, options ?? {})
+            }
             downloadingUrl={downloadingUrl}
             onAttachmentPress={() => setImagePickerVisible(true)}
             selectedAttachments={selectedAttachments}
