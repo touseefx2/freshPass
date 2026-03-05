@@ -20,7 +20,7 @@ interface SocialAuthOptionsProps {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      gap: moderateHeightScale(15),
+      gap: moderateHeightScale(16),
     },
     buttonWrapper: {
       width: "100%",
@@ -40,7 +40,13 @@ export default function SocialAuthOptions({
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
 
   return (
-    <View style={[styles.container, containerStyle]}>
+    <View
+      style={[
+        styles.container,
+        containerStyle,
+        !isGuest && { gap: moderateHeightScale(24) },
+      ]}
+    >
       <View style={styles.buttonWrapper}>
         <SocialLoginButton
           icon={<GoogleIcon width={30} height={30} />}
