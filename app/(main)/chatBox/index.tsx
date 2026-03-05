@@ -1428,6 +1428,7 @@ const ChatContent = ({
         data={messages}
         inverted={true}
         keyExtractor={(item) => item.id}
+        onScrollBeginDrag={() => Keyboard.dismiss()}
         refreshControl={
           onRefresh ? (
             <RefreshControl
@@ -1496,6 +1497,7 @@ const ChatContent = ({
               <TouchableOpacity
                 style={[StyleSheet.absoluteFillObject, styles.bubbleLongPressLayer]}
                 onLongPress={copyFullMessage}
+                onPress={() => Keyboard.dismiss()}
                 delayLongPress={500}
                 activeOpacity={1}
               />
