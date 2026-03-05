@@ -94,26 +94,6 @@ export default function SocialLogin() {
             },
           ]}
         />
-        <View style={styles.topSection}>
-          <View style={styles.logoContainer}>
-            <LeafLogo
-              width={moderateWidthScale(25)}
-              height={moderateWidthScale(33)}
-              color1={(colors as Theme).white}
-              color2={(colors as Theme).white}
-            />
-            <Text style={styles.logoText}>{t("freshPass")}</Text>
-          </View>
-
-          <View style={styles.taglineContainer}>
-            <Text style={styles.tagline1}>
-              {t("alwaysReadyAlwaysYouShort").split(" ").slice(0, 2).join(" ")}{" "}
-              <Text style={styles.tagline2}>
-                {t("alwaysReadyAlwaysYouShort").split(" ").slice(2).join(" ")}
-              </Text>
-            </Text>
-          </View>
-        </View>
       </View>
 
       <View
@@ -122,7 +102,7 @@ export default function SocialLogin() {
           {
             paddingBottom: isButtonMode
               ? insets.bottom + 12
-              : moderateHeightScale(25),
+              : moderateHeightScale(24),
           },
           !isGuest && { gap: moderateHeightScale(18) },
         ]}
@@ -130,6 +110,7 @@ export default function SocialLogin() {
         <Button
           title={t("signInOrRegister")}
           onPress={handleSignInOrRegister}
+          containerStyle={{ width: "100%" }}
         />
 
         <SectionSeparator />
@@ -139,8 +120,7 @@ export default function SocialLogin() {
           onApple={() => handleSocialLogin("apple")}
           onFacebook={() => handleSocialLogin("facebook")}
           onGuest={handleGuestLogin}
-          // isGuest={isGuest}
-          isGuest={true}
+          isGuest={isGuest}
         />
 
         <Text style={styles.legalText}>

@@ -23,8 +23,7 @@ export default function Index() {
       router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
       // router.replace(`/(main)/aiTools/toolList` as any);
     } else {
-      // router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
-      router.replace(`/(main)/${MAIN_ROUTES.SOCIAL_LOGIN}` as any);
+      router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
     }
   };
 

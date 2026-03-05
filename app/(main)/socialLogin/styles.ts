@@ -14,16 +14,16 @@ export const createStyles = (theme: Theme) =>
     },
     backgroundImageContainer: {
       width: "100%",
-      height: Dimensions.get("window").height / 1.8,
+      height: Dimensions.get("screen").height / 1.85,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor:theme.darkGreen
+      backgroundColor: theme.darkGreen,
     },
     backgroundImage: {
       width: "100%",
       height: "100%",
       resizeMode: "contain",
-      backgroundColor:theme.darkGreen
+      backgroundColor: theme.darkGreen,
     },
     topSection: {
       gap: moderateHeightScale(20),
@@ -83,7 +83,7 @@ export const createStyles = (theme: Theme) =>
       borderTopLeftRadius: moderateWidthScale(24),
       borderTopRightRadius: moderateWidthScale(24),
       padding: moderateWidthScale(25),
-      gap: moderateHeightScale(12),
+      gap: moderateHeightScale(8),
       position: "absolute",
       bottom: 0,
     },
