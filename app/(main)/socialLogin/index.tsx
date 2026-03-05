@@ -44,24 +44,27 @@ export default function SocialLogin() {
     router.push(`/${MAIN_ROUTES.INTRODUCTION_CLIENT}`);
   };
 
-  const handleOpenLink = useCallback(async (url: string, title: string) => {
-    if (!url) {
-      Alert.alert(t("error"), `${title} ${t("urlNotConfigured")}`);
-      return;
-    }
-
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert(t("error"), `${t("cannotOpen")} ${title}`);
+  const handleOpenLink = useCallback(
+    async (url: string, title: string) => {
+      if (!url) {
+        Alert.alert(t("error"), `${title} ${t("urlNotConfigured")}`);
+        return;
       }
-    } catch (error) {
-      Logger.error("Error opening link:", error);
-      Alert.alert(t("error"), `${t("failedToOpenLink")} ${title}`);
-    }
-  }, [t]);
+
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          Alert.alert(t("error"), `${t("cannotOpen")} ${title}`);
+        }
+      } catch (error) {
+        Logger.error("Error opening link:", error);
+        Alert.alert(t("error"), `${t("failedToOpenLink")} ${title}`);
+      }
+    },
+    [t],
+  );
 
   const handleTermsPress = useCallback(() => {
     handleOpenLink(TERMS_AND_CONDITIONS_URL, "Terms of Services");
@@ -110,13 +113,6 @@ export default function SocialLogin() {
               </Text>
             </Text>
           </View>
-
-          {/* <View style={styles.paginationDots}>
-            <View style={styles.dotOuter} />
-            <View style={styles.dotActive} />
-            <View style={styles.dotOuter} />
-            <View style={styles.dotOuter} />
-          </View> */}
         </View>
       </View>
 
@@ -143,15 +139,8 @@ export default function SocialLogin() {
           onApple={() => handleSocialLogin("apple")}
           onFacebook={() => handleSocialLogin("facebook")}
           onGuest={handleGuestLogin}
-          isGuest={isGuest}
-          containerStyle={
-            // !isGuest
-            //   ? {
-            //       gap: moderateHeightScale(18),
-            //     }
-            //   :
-            {}
-          }
+          // isGuest={isGuest}
+          isGuest={true}
         />
 
         <Text style={styles.legalText}>
