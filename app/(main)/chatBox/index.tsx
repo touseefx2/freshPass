@@ -293,13 +293,13 @@ function ChatVideoPlayerInner({
             <Text style={styles.bubbleVideoLoadingText}>{t("loading")}</Text>
           </View>
         )}
-      </View>
-      {onDownloadPress ? (
-        <View style={styles.bubbleVideoDownloadRow}>
-          <View style={styles.bubbleVideoDownloadSpacer} />
+        {onDownloadPress ? (
           <TouchableOpacity
-            style={styles.bubbleVideoDownloadButton}
-            onPress={() => onDownloadPress(resolvedUrl, { isVideo: true })}
+            style={styles.bubbleVideoDownloadButtonOverlay}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onDownloadPress(resolvedUrl, { isVideo: true });
+            }}
             disabled={downloadingUrl === resolvedUrl}
             activeOpacity={0.7}
           >
@@ -308,13 +308,13 @@ function ChatVideoPlayerInner({
             ) : (
               <Feather
                 name="download"
-                size={moderateWidthScale(18)}
+                size={moderateWidthScale(14)}
                 color={theme.white}
               />
             )}
           </TouchableOpacity>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
     </>
   );
 }
@@ -355,6 +355,30 @@ function ChatVideoPlayer({
           color={theme.white}
         />
       </TouchableOpacity>
+      {onDownloadPress ? (() => {
+        const resolvedUrl = getMessageImageUrl(videoUrl) || videoUrl;
+        return (
+          <TouchableOpacity
+            style={styles.bubbleVideoDownloadButtonOverlay}
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onDownloadPress(resolvedUrl, { isVideo: true });
+            }}
+            disabled={downloadingUrl === resolvedUrl}
+            activeOpacity={0.7}
+          >
+            {downloadingUrl === resolvedUrl ? (
+              <ActivityIndicator size="small" color={theme.white} />
+            ) : (
+              <Feather
+                name="download"
+                size={moderateWidthScale(14)}
+                color={theme.white}
+              />
+            )}
+          </TouchableOpacity>
+        );
+      })() : null}
     </View>
   );
 }
@@ -747,6 +771,7 @@ const createStyles = (theme: Theme) =>
     bubbleVideoWrap: {
       marginTop: moderateHeightScale(6),
       alignSelf: "flex-start",
+      position: "relative",
     },
     bubbleVideoPlaceholder: {
       width: widthScale(260),
@@ -781,19 +806,13 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       marginTop: moderateHeightScale(8),
     },
-    bubbleVideoDownloadRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "flex-end",
-      marginTop: moderateHeightScale(6),
-    },
-    bubbleVideoDownloadSpacer: {
-      flex: 1,
-    },
-    bubbleVideoDownloadButton: {
-      width: moderateWidthScale(36),
-      height: moderateWidthScale(36),
-      borderRadius: moderateWidthScale(8),
+    bubbleVideoDownloadButtonOverlay: {
+      position: "absolute",
+      bottom: moderateHeightScale(40),
+      right: moderateWidthScale(8),
+      width: moderateWidthScale(26),
+      height: moderateWidthScale(26),
+      borderRadius: moderateWidthScale(6),
       backgroundColor: theme.primary,
       alignItems: "center",
       justifyContent: "center",
