@@ -2016,14 +2016,17 @@ function CheckoutContent() {
                     subscriptionData.status?.trim()?.toLowerCase() ===
                       "active" ||
                     (subscriptionData.subscriptionPlanServices &&
-                      subscriptionData.subscriptionPlanServices.length > 0)) && (
+                      subscriptionData.subscriptionPlanServices.length >
+                        0)) && (
                     <TouchableOpacity
                       style={styles.subSeeDetailRow}
                       onPress={toggleSubscriptionDetail}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.subSeeDetailText}>
-                        {isSubscriptionDetailExpanded ? "See less" : "See detail"}
+                        {isSubscriptionDetailExpanded
+                          ? "See less"
+                          : "See detail"}
                       </Text>
                       <Feather
                         name={
@@ -2091,7 +2094,8 @@ function CheckoutContent() {
                       )}
 
                       {subscriptionData.subscriptionPlanServices &&
-                        subscriptionData.subscriptionPlanServices.length > 0 && (
+                        subscriptionData.subscriptionPlanServices.length >
+                          0 && (
                           <>
                             <Text style={styles.subServicesSectionTitle}>
                               Plan services
@@ -2105,7 +2109,9 @@ function CheckoutContent() {
                                     </Text>
                                     {(svc.durationHours > 0 ||
                                       svc.durationMinutes > 0) && (
-                                      <Text style={styles.subServiceDurationText}>
+                                      <Text
+                                        style={styles.subServiceDurationText}
+                                      >
                                         {formatServiceDuration(
                                           svc.durationHours,
                                           svc.durationMinutes,
@@ -2162,7 +2168,7 @@ function CheckoutContent() {
                 </>
               )}
               <View style={styles.footerButtonWrap}>
-                <Button title={t("checkout")} onPress={handleBookNow} />
+                <Button title={t("confirmBooking")} onPress={handleBookNow} />
               </View>
             </View>
           </View>

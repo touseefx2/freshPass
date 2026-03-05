@@ -253,7 +253,7 @@ const createStyles = (theme: Theme) =>
       // backgroundColor: theme.white,
       // paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(16),
-      marginVertical : moderateHeightScale(16),
+      marginVertical: moderateHeightScale(16),
     },
     subscribeButton: {
       marginTop: moderateHeightScale(8),
@@ -408,7 +408,7 @@ function CheckoutSubscriptionContent() {
   const [subscriptionPickerVisible, setSubscriptionPickerVisible] =
     useState(false);
   const [availableSubscriptions, setAvailableSubscriptions] = useState<any[]>(
-    []
+    [],
   );
 
   // Fetch business details and find matching subscription (only when coming from DashboardContent)
@@ -442,7 +442,7 @@ function CheckoutSubscriptionContent() {
         const subscriptionId = parseInt(params.subscriptionId, 10);
         const subscriptionPlan =
           response.data.business.subscription_plans?.find(
-            (plan: any) => plan.id === subscriptionId
+            (plan: any) => plan.id === subscriptionId,
           );
 
         if (subscriptionPlan) {
@@ -459,7 +459,8 @@ function CheckoutSubscriptionContent() {
               : parseFloat(subscriptionPlan.price) * 1.25, // Fallback calculation if not provided
             inclusions:
               subscriptionPlan.services?.map(
-                (service: any, index: number) => `${index + 1}. ${service.name}`
+                (service: any, index: number) =>
+                  `${index + 1}. ${service.name}`,
               ) || [],
           };
           setSubscriptionData(mappedSubscription);
@@ -493,7 +494,7 @@ function CheckoutSubscriptionContent() {
         title: params.subscriptionName,
         price: parseFloat(params.subscriptionPrice || "0"),
         originalPrice: parseFloat(
-          params.subscriptionOriginalPrice || params.subscriptionPrice || "0"
+          params.subscriptionOriginalPrice || params.subscriptionPrice || "0",
         ),
         visits: params.subscriptionVisits,
         inclusions: params.subscriptionInclusions
@@ -567,7 +568,7 @@ function CheckoutSubscriptionContent() {
         "Error",
         "Subscription ID is missing. Please try again.",
         "error",
-        4000
+        4000,
       );
       return;
     }
@@ -610,7 +611,7 @@ function CheckoutSubscriptionContent() {
         paymentConfig.customerEphemeralKeySecret = ephemeralKey;
       } else {
         throw new Error(
-          "Either customerSessionClientSecret or ephemeralKey must be provided"
+          "Either customerSessionClientSecret or ephemeralKey must be provided",
         );
       }
 
@@ -621,7 +622,7 @@ function CheckoutSubscriptionContent() {
         paymentConfig.setupIntentClientSecret = setupIntent;
       } else {
         throw new Error(
-          "Either Payment Intent or Setup Intent must be provided"
+          "Either Payment Intent or Setup Intent must be provided",
         );
       }
 
@@ -643,7 +644,7 @@ function CheckoutSubscriptionContent() {
             "Payment Failed",
             presentError.message || "Payment could not be completed",
             "error",
-            4000
+            4000,
           );
         }
         // If user canceled, don't show error (silent cancel)
@@ -661,7 +662,7 @@ function CheckoutSubscriptionContent() {
           "Success",
           "Payment successful! Your subscription will be activated.",
           "success",
-          4000
+          4000,
         );
 
         dispatch(fetchUserStatus({ showError: true })).unwrap();
@@ -711,7 +712,7 @@ function CheckoutSubscriptionContent() {
         : parseFloat(subscription.price) * 1.25,
       inclusions:
         subscription.services?.map(
-          (service: any, index: number) => `${index + 1}. ${service.name}`
+          (service: any, index: number) => `${index + 1}. ${service.name}`,
         ) || [],
     };
     setSubscriptionData(mappedSubscription);
@@ -719,7 +720,7 @@ function CheckoutSubscriptionContent() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="light-content" />
       {/* Header */}
       <StackHeader title="Subscription Plans" />
 
@@ -755,17 +756,15 @@ function CheckoutSubscriptionContent() {
             Your subscription is now active and ready to use.
           </Text>
 
-          <View style={[styles.bottomContainer,{width:"60%"}]}>
-              <Button
-                title={"View Subscriptions"  }
-                onPress={
-                   handleViewSubscriptions  
-                }
-                loading={isSubscribing}
-                disabled={isSubscribing}
-                containerStyle={styles.subscribeButton}
-              />
-            </View>
+          <View style={[styles.bottomContainer, { width: "60%" }]}>
+            <Button
+              title={"View Subscriptions"}
+              onPress={handleViewSubscriptions}
+              loading={isSubscribing}
+              disabled={isSubscribing}
+              containerStyle={styles.subscribeButton}
+            />
+          </View>
         </View>
       ) : subscriptionData ? (
         <ScrollView
@@ -934,7 +933,7 @@ function CheckoutSubscriptionContent() {
                                 {inclusion.replace(/^\d+\.\s*/, "")}
                               </Text>
                             </View>
-                          )
+                          ),
                         )}
                       </View>
                     </View>

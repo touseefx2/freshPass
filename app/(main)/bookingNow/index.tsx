@@ -2814,7 +2814,7 @@ export default function BookingNow() {
         ) : (
           <Button
             // title={t("checkout")}
-            title={"Book now"}
+            title={t("continue")}
             onPress={() => {
               if (isSubscriptionBooking) {
                 if (!selectedTimeSlot) {
