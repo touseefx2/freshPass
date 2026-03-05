@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Share,
   Platform,
+  Linking,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -164,7 +165,15 @@ export interface SocialMediaNormalized {
     has_music?: boolean;
   };
   media_count?: number;
+  original_media?: OriginalMediaItem[];
 }
+
+/** One item in original_media: image, video, or audio */
+export type OriginalMediaItem = {
+  url: string;
+  type: string;
+  index: number;
+};
 
 /** Normalized result: status + sections for completed (or socialMedia for post/collage/reel) */
 interface NormalizedResult {
@@ -260,6 +269,9 @@ function normalizeAiRequestResponse(
         video: res.video,
         music: res.music,
         media_count: res.media_count,
+        original_media: Array.isArray(res.original_media)
+          ? res.original_media
+          : undefined,
       },
     };
   }
@@ -372,6 +384,203 @@ function ReelVideoPlayer({ videoUrl, styles, theme }: ReelVideoPlayerProps) {
   );
 }
 
+type MiniVideoPlayerProps = {
+  videoUrl: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+};
+
+function MiniVideoPlayerInner({
+  videoUrl,
+  styles,
+  theme,
+}: MiniVideoPlayerProps) {
+  const { t } = useTranslation();
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const player = useVideoPlayer(videoUrl, (p) => {
+    p.loop = false;
+  });
+
+  return (
+    <View style={styles.originalMediaMiniVideoContainer}>
+      <View style={StyleSheet.absoluteFill}>
+        <VideoView
+          player={player}
+          style={styles.originalMediaMiniVideo}
+          contentFit="contain"
+          nativeControls={true}
+          onFirstFrameRender={async () => {
+            if (!isVideoReady) {
+              await player.play();
+              setTimeout(() => setIsVideoReady(true), 200);
+            }
+          }}
+        />
+      </View>
+      {!isVideoReady && (
+        <View style={styles.originalMediaMiniVideoLoading}>
+          <ActivityIndicator size="small" color={theme.white} />
+          <Text style={styles.originalMediaMiniVideoLoadingText}>
+            {t("loading")}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function MiniVideoPlayer({ videoUrl, styles, theme }: MiniVideoPlayerProps) {
+  const [showVideo, setShowVideo] = useState(false);
+
+  if (showVideo) {
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <MiniVideoPlayerInner
+          videoUrl={videoUrl}
+          styles={styles}
+          theme={theme}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      style={[StyleSheet.absoluteFill, { backgroundColor: "transparent" }]}
+      onPress={() => setShowVideo(true)}
+      activeOpacity={0.9}
+    >
+      <View style={styles.originalMediaCardIconWrap}>
+        <Feather
+          name="play-circle"
+          size={moderateWidthScale(28)}
+          color={theme.white}
+        />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+type OriginalMediaCardProps = {
+  item: OriginalMediaItem;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+  onImagePress: (uri: string, allUris?: string[]) => void;
+  allUrls: string[];
+  onSharePress?: (url: string, labelKey: string) => void;
+  onDownloadPress?: (url: string, options?: { isVideo?: boolean }) => void;
+  downloadingUrl?: string | null;
+};
+
+function OriginalMediaCard({
+  item,
+  styles,
+  theme,
+  onImagePress,
+  allUrls,
+  onSharePress,
+  onDownloadPress,
+  downloadingUrl,
+}: OriginalMediaCardProps) {
+  const { t } = useTranslation();
+  const isImage = item.type === "image";
+  const isVideo =
+    item.type === "video" ||
+    (item.url && /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(item.url));
+  const isAudio =
+    !isImage &&
+    !isVideo &&
+    (item.type === "audio" ||
+      item.type === "mp3" ||
+      (item.url && /\.(mp3|m4a|aac|wav)(\?.*)?$/i.test(item.url)));
+
+  const shareLabelKey = isVideo ? "video" : isImage ? "image" : "audio";
+
+  return (
+    <View style={styles.originalMediaCard}>
+      <Text style={styles.originalMediaCardIndex}>{item.index}</Text>
+      {isImage && (
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          onPress={() => onImagePress(item.url, allUrls)}
+          activeOpacity={0.9}
+        >
+          <Image
+            source={{ uri: item.url }}
+            style={styles.originalMediaCardImage}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+      )}
+      {isVideo && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.black }]}>
+          <Image
+            source={{ uri: item.url }}
+            style={[styles.originalMediaCardImage, StyleSheet.absoluteFillObject]}
+            resizeMode="cover"
+          />
+          <MiniVideoPlayer videoUrl={item.url} styles={styles} theme={theme} />
+        </View>
+      )}
+      {isAudio && (
+        <View style={styles.originalMediaCardIconWrap}>
+          <Feather
+            name="music"
+            size={moderateWidthScale(28)}
+            color={theme.white}
+          />
+          <Text style={styles.originalMediaAudioLabel}>{t("audio")}</Text>
+        </View>
+      )}
+      {!isImage && !isVideo && !isAudio && (
+        <View style={styles.originalMediaCardIconWrap}>
+          <Feather
+            name="file"
+            size={moderateWidthScale(28)}
+            color={theme.white}
+          />
+          <Text style={styles.originalMediaAudioLabel} numberOfLines={1}>
+            {item.type || "File"}
+          </Text>
+        </View>
+      )}
+      {onSharePress && (
+        <TouchableOpacity
+          style={styles.originalMediaShareIcon}
+          onPress={() => onSharePress(item.url, shareLabelKey)}
+          activeOpacity={0.7}
+        >
+          <Feather
+            name="share-2"
+            size={moderateWidthScale(16)}
+            color={theme.white}
+          />
+        </TouchableOpacity>
+      )}
+      {onDownloadPress && (
+        <TouchableOpacity
+          style={styles.originalMediaDownloadIcon}
+          onPress={() =>
+            onDownloadPress(item.url, { isVideo: Boolean(isVideo) })
+          }
+          disabled={downloadingUrl === item.url}
+          activeOpacity={0.7}
+        >
+          {downloadingUrl === item.url ? (
+            <ActivityIndicator size="small" color={theme.white} />
+          ) : (
+            <Feather
+              name="download"
+              size={moderateWidthScale(16)}
+              color={theme.white}
+            />
+          )}
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 type PotentialContactsResponse = {
   success: boolean;
   data: {
@@ -413,6 +622,7 @@ export default function AiResults() {
   const [potentialError, setPotentialError] = useState(false);
   const [shareSending, setShareSending] = useState(false);
   const [originalsExpanded, setOriginalsExpanded] = useState(false);
+  const [originalMediaExpanded, setOriginalMediaExpanded] = useState(false);
 
   const fetchStatus = useCallback(
     async (isPolling = false) => {
@@ -938,6 +1148,50 @@ export default function AiResults() {
                 </View>
               )}
             </View>
+          </View>
+        )}
+
+        {sm.original_media && sm.original_media.length > 0 && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.originalMediaDropdownHeader}
+              onPress={() =>
+                setOriginalMediaExpanded((prev) => !prev)
+              }
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionTitleUppercase}>
+                {t("originalMedia")}
+              </Text>
+              <Feather
+                name={
+                  originalMediaExpanded ? "chevron-up" : "chevron-down"
+                }
+                size={moderateWidthScale(22)}
+                color={theme.text}
+              />
+            </TouchableOpacity>
+            {originalMediaExpanded && (
+              <View style={styles.originalMediaGrid}>
+                {sm.original_media.map((mediaItem, idx) => (
+                  <OriginalMediaCard
+                    key={`${mediaItem.url}-${mediaItem.index}-${idx}`}
+                    item={mediaItem}
+                    styles={styles}
+                    theme={theme}
+                    onImagePress={openFullImage}
+                    allUrls={sm.original_media!.map((m) => m.url)}
+                    onSharePress={(url, labelKey) =>
+                      openShareSheetForImage(url, labelKey, true)
+                    }
+                    onDownloadPress={(url, options) =>
+                      downloadMedia(url, options ?? {})
+                    }
+                    downloadingUrl={downloadingUrl}
+                  />
+                ))}
+              </View>
+            )}
           </View>
         )}
 

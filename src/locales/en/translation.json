@@ -522,6 +522,8 @@
   "collage": "Collage",
   "originals": "Originals",
   "originalImages": "Original Images",
+  "originalMedia": "Original Media",
+  "audio": "Audio",
   "choosePaymentMethod": "Choose payment method",
   "payNow": "Pay now",
   "payLater": "Pay later",
