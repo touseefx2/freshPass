@@ -275,9 +275,13 @@ function ChatVideoPlayerInner({
     p.loop = false;
   });
 
-  const containerStyle = compact ? styles.bubbleMediaVideoContainer : styles.bubbleVideoContainer;
+  const containerStyle = compact
+    ? styles.bubbleMediaVideoContainer
+    : styles.bubbleVideoContainer;
   const videoStyle = compact ? styles.bubbleMediaVideo : styles.bubbleVideo;
-  const loadingStyle = compact ? styles.bubbleMediaVideoLoadingOverlay : styles.bubbleVideoLoadingOverlay;
+  const loadingStyle = compact
+    ? styles.bubbleMediaVideoLoadingOverlay
+    : styles.bubbleVideoLoadingOverlay;
   const downloadStyle =
     useOriginalMediaLayout && compact
       ? styles.bubbleOriginalMediaDownloadButton
@@ -346,21 +350,25 @@ function ChatVideoPlayer({
 }: ChatVideoPlayerProps) {
   const [showVideo, setShowVideo] = useState(false);
 
-  const wrapStyle = useOriginalMediaLayout && compact
-    ? (compactSingle ? styles.bubbleOriginalMediaVideoWrapSingle : styles.bubbleOriginalMediaVideoWrap)
-    : compact
+  const wrapStyle =
+    useOriginalMediaLayout && compact
       ? compactSingle
-        ? styles.bubbleMediaVideoWrapSingle
-        : styles.bubbleMediaVideoWrap
-      : styles.bubbleVideoWrap;
+        ? styles.bubbleOriginalMediaVideoWrapSingle
+        : styles.bubbleOriginalMediaVideoWrap
+      : compact
+        ? compactSingle
+          ? styles.bubbleMediaVideoWrapSingle
+          : styles.bubbleMediaVideoWrap
+        : styles.bubbleVideoWrap;
   const placeholderStyle = compact
     ? styles.bubbleMediaVideoPlaceholder
     : styles.bubbleVideoPlaceholder;
-  const downloadOverlayStyle = useOriginalMediaLayout && compact
-    ? styles.bubbleOriginalMediaDownloadButton
-    : compact
-      ? styles.bubbleMediaVideoDownloadButtonOverlay
-      : styles.bubbleVideoDownloadButtonOverlay;
+  const downloadOverlayStyle =
+    useOriginalMediaLayout && compact
+      ? styles.bubbleOriginalMediaDownloadButton
+      : compact
+        ? styles.bubbleMediaVideoDownloadButtonOverlay
+        : styles.bubbleVideoDownloadButtonOverlay;
 
   if (showVideo) {
     return (
@@ -554,9 +562,20 @@ function MessageContent({
         const curr = result[j];
         const next = result[j + 1];
         if (curr.type === "images" && next.type === "videos") {
-          const mediaItems: { url: string; type: "image" | "video"; label?: string }[] = [
-            ...curr.items.map((it) => ({ url: it.url, type: "image" as const, label: it.label })),
-            ...next.items.map((it) => ({ url: it.url, type: "video" as const })),
+          const mediaItems: {
+            url: string;
+            type: "image" | "video";
+            label?: string;
+          }[] = [
+            ...curr.items.map((it) => ({
+              url: it.url,
+              type: "image" as const,
+              label: it.label,
+            })),
+            ...next.items.map((it) => ({
+              url: it.url,
+              type: "video" as const,
+            })),
           ];
           result.splice(j, 2, { type: "media", items: mediaItems });
           merged = true;
@@ -574,9 +593,20 @@ function MessageContent({
           isNumberingOnlyInline(mid) &&
           next.type === "videos"
         ) {
-          const mediaItems: { url: string; type: "image" | "video"; label?: string }[] = [
-            ...curr.items.map((it) => ({ url: it.url, type: "image" as const, label: it.label })),
-            ...next.items.map((it) => ({ url: it.url, type: "video" as const })),
+          const mediaItems: {
+            url: string;
+            type: "image" | "video";
+            label?: string;
+          }[] = [
+            ...curr.items.map((it) => ({
+              url: it.url,
+              type: "image" as const,
+              label: it.label,
+            })),
+            ...next.items.map((it) => ({
+              url: it.url,
+              type: "video" as const,
+            })),
           ];
           result.splice(j, 3, { type: "media", items: mediaItems });
           merged = true;
@@ -599,7 +629,8 @@ function MessageContent({
     <View style={hasAttachmentsAbove ? styles.bubbleTextBelow : undefined}>
       {blocks.map((block, blockIdx) => {
         if (block.type === "inline") {
-          const nextBlock = blockIdx + 1 < blocks.length ? blocks[blockIdx + 1] : null;
+          const nextBlock =
+            blockIdx + 1 < blocks.length ? blocks[blockIdx + 1] : null;
           const nextBlockIsImages = nextBlock?.type === "images";
           const nextBlockIsVideos = nextBlock?.type === "videos";
           const nextBlockIsMedia = nextBlock?.type === "media";
@@ -661,7 +692,7 @@ function MessageContent({
           const mediaVideos = block.items.filter(
             (it): it is typeof it & { type: "video" } => it.type === "video",
           );
-          const imageRows: typeof mediaImages[] = [];
+          const imageRows: (typeof mediaImages)[] = [];
           for (let i = 0; i < mediaImages.length; i += 2) {
             imageRows.push(mediaImages.slice(i, i + 2));
           }
