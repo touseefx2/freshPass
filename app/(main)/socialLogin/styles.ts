@@ -26,10 +26,12 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.darkGreen,
     },
     topSection: {
-      gap: moderateHeightScale(20),
+      gap: moderateHeightScale(18),
       alignItems: "center",
       justifyContent: "center",
       position: "absolute",
+      alignSelf: "center",
+      top: Dimensions.get("screen").height * 0.21,
     },
     logoContainer: {
       flexDirection: "row",
@@ -47,7 +49,7 @@ export const createStyles = (theme: Theme) =>
       alignSelf: "center",
     },
     tagline1: {
-      fontSize: fontSize.size48,
+      fontSize: fontSize.size46,
       fontFamily: fonts.fontMedium,
       color: theme.white,
       textAlign: "center",

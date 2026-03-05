@@ -94,6 +94,26 @@ export default function SocialLogin() {
             },
           ]}
         />
+        {/* <View style={styles.topSection}>
+          <View style={styles.logoContainer}>
+            <LeafLogo
+              width={moderateWidthScale(25)}
+              height={moderateWidthScale(33)}
+              color1={(colors as Theme).white}
+              color2={(colors as Theme).white}
+            />
+            <Text style={styles.logoText}>{t("freshPass")}</Text>
+          </View>
+
+          <View style={styles.taglineContainer}>
+            <Text style={styles.tagline1}>
+              {t("alwaysReadyAlwaysYouShort").split(" ").slice(0, 2).join(" ")}{" "}
+              <Text style={styles.tagline2}>
+                {t("alwaysReadyAlwaysYouShort").split(" ").slice(2).join(" ")}
+              </Text>
+            </Text>
+          </View>
+        </View> */}
       </View>
 
       <View
@@ -133,6 +153,27 @@ export default function SocialLogin() {
             {t("privacyPolicy")}
           </Text>
         </Text>
+      </View>
+
+      <View style={styles.topSection}>
+        <View style={styles.logoContainer}>
+          <LeafLogo
+            width={moderateWidthScale(25)}
+            height={moderateWidthScale(33)}
+            color1={(colors as Theme).white}
+            color2={(colors as Theme).white}
+          />
+          <Text style={styles.logoText}>{t("freshPass")}</Text>
+        </View>
+
+        <View style={styles.taglineContainer}>
+          <Text style={styles.tagline1}>
+            {t("alwaysReadyAlwaysYouShort").split(" ").slice(0, 2).join(" ")}{" "}
+            <Text style={styles.tagline2}>
+              {t("alwaysReadyAlwaysYouShort").split(" ").slice(2).join(" ")}
+            </Text>
+          </Text>
+        </View>
       </View>
     </SafeAreaView>
   );
