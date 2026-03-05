@@ -361,11 +361,7 @@ function ReelVideoPlayer({ videoUrl, styles, theme }: ReelVideoPlayerProps) {
 
   if (showVideo) {
     return (
-      <ReelVideoPlayerInner
-        videoUrl={videoUrl}
-        styles={styles}
-        theme={theme}
-      />
+      <ReelVideoPlayerInner videoUrl={videoUrl} styles={styles} theme={theme} />
     );
   }
 
@@ -513,10 +509,15 @@ function OriginalMediaCard({
         </TouchableOpacity>
       )}
       {isVideo && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.black }]}>
+        <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: theme.black }]}
+        >
           <Image
             source={{ uri: item.url }}
-            style={[styles.originalMediaCardImage, StyleSheet.absoluteFillObject]}
+            style={[
+              styles.originalMediaCardImage,
+              StyleSheet.absoluteFillObject,
+            ]}
             resizeMode="cover"
           />
           <MiniVideoPlayer videoUrl={item.url} styles={styles} theme={theme} />
@@ -613,6 +614,8 @@ export default function AiResults() {
     url: string;
     labelKey: string;
     linkOnly?: boolean;
+    /** When true, share only video + simple text (AI Result - Video) */
+    simpleReelShare?: boolean;
   }>(null);
   const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
   const [potentialContacts, setPotentialContacts] = useState<
@@ -719,9 +722,11 @@ export default function AiResults() {
   const handleShareAiResult = useCallback(async () => {
     try {
       if (shareContext) {
-        const message = shareContext.linkOnly
-          ? shareContext.url
-          : `${t("aiResults")} – ${t(shareContext.labelKey)}: ${shareContext.url}`;
+        const message = shareContext.simpleReelShare
+          ? `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`
+          : shareContext.linkOnly
+            ? shareContext.url
+            : `${t("aiResults")} – ${t(shareContext.labelKey)}: ${shareContext.url}`;
         await Share.share({
           message: message.trim(),
           url: shareContext.linkOnly ? undefined : shareContext.url,
@@ -801,6 +806,9 @@ export default function AiResults() {
   /** Build the same message text used for native share / send to user */
   const getShareMessageText = useCallback((): string => {
     if (shareContext) {
+      if (shareContext.simpleReelShare) {
+        return `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`;
+      }
       return shareContext.url;
     }
     if (!normalized || normalized.status !== "completed") return "";
@@ -892,6 +900,15 @@ export default function AiResults() {
     },
     [],
   );
+
+  const openShareSheetForReelVideo = useCallback((videoUrl: string) => {
+    setShareContext({
+      url: videoUrl,
+      labelKey: "video",
+      simpleReelShare: true,
+    });
+    setShareSheetVisible(true);
+  }, []);
 
   const openShareToUserModal = useCallback(() => {
     setShareToUserModalVisible(true);
@@ -1056,6 +1073,17 @@ export default function AiResults() {
                 </>
               )}
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.reelShareIconButton}
+              onPress={() => sm.video?.url && openShareSheetForReelVideo(sm.video.url)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons
+                name="share"
+                size={moderateWidthScale(20)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -1170,18 +1198,14 @@ export default function AiResults() {
           <View style={styles.section}>
             <TouchableOpacity
               style={styles.originalMediaDropdownHeader}
-              onPress={() =>
-                setOriginalMediaExpanded((prev) => !prev)
-              }
+              onPress={() => setOriginalMediaExpanded((prev) => !prev)}
               activeOpacity={0.7}
             >
               <Text style={styles.sectionTitleUppercase}>
                 {t("originalMedia")}
               </Text>
               <Feather
-                name={
-                  originalMediaExpanded ? "chevron-up" : "chevron-down"
-                }
+                name={originalMediaExpanded ? "chevron-up" : "chevron-down"}
                 size={moderateWidthScale(22)}
                 color={theme.text}
               />

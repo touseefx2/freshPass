@@ -152,6 +152,14 @@ export const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(8),
       gap: moderateWidthScale(8),
     },
+    reelShareIconButton: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     downloadButtonPrimaryText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
