@@ -354,7 +354,10 @@ export default function ListMemories() {
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
-                      style={styles.modalShareButton}
+                      style={[
+                        styles.modalShareButton,
+                        isVideo && styles.modalShareButtonVideo,
+                      ]}
                       onPress={() => openShareSheetForImage(itemUrl)}
                       activeOpacity={0.8}
                     >

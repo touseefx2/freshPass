@@ -276,10 +276,10 @@ export const createStyles = (theme: Theme) =>
     modalImageGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(8),
+      gap: moderateWidthScale(6),
     },
     modalImageCard: {
-      width: "47%",
+      width: "48%",
       borderRadius: moderateWidthScale(12),
       overflow: "hidden",
       backgroundColor: theme.lightGreen2,
@@ -288,7 +288,7 @@ export const createStyles = (theme: Theme) =>
     },
     modalImageCardInner: {
       width: "100%",
-      aspectRatio: 1,
+      aspectRatio: 0.85,
       position: "relative",
     },
     modalResultImageTouchable: {
@@ -339,6 +339,9 @@ export const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(4),
     },
+    modalShareButtonVideo: {
+      top: moderateHeightScale(38),
+    },
     modalDownloadButton: {
       position: "absolute",
       bottom: moderateHeightScale(8),
@@ -349,6 +352,6 @@ export const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(6),
     },
     modalDownloadButtonVideo: {
-      bottom: moderateHeightScale(28),
+      bottom: moderateHeightScale(44),
     },
   });
