@@ -46,10 +46,17 @@ type MemoriesResponse = {
 };
 
 type PotentialContactsResponse = {
-  data?: { data: PotentialContact[]; meta?: { current_page: number; last_page: number } };
+  data?: {
+    data: PotentialContact[];
+    meta?: { current_page: number; last_page: number };
+  };
 };
 
-type SendMessageResponse = { success: boolean; message: string; data?: unknown };
+type SendMessageResponse = {
+  success: boolean;
+  message: string;
+  data?: unknown;
+};
 
 /** Get ISO week key (e.g. "2026-W10") for grouping */
 function getWeekKey(dateStr: string): string {
@@ -59,7 +66,9 @@ function getWeekKey(dateStr: string): string {
   const monday = new Date(d);
   monday.setDate(diff);
   const y = monday.getFullYear();
-  const w = Math.ceil((monday.getTime() - new Date(y, 0, 1).getTime()) / 604800000);
+  const w = Math.ceil(
+    (monday.getTime() - new Date(y, 0, 1).getTime()) / 604800000,
+  );
   return `${y}-W${String(w).padStart(2, "0")}`;
 }
 
@@ -109,13 +118,17 @@ export default function AiMemories() {
   const [lastPage, setLastPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [selectedSection, setSelectedSection] = useState<MemorySection | null>(null);
+  const [selectedSection, setSelectedSection] = useState<MemorySection | null>(
+    null,
+  );
   const [modalVisible, setModalVisible] = useState(false);
 
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
-  const [potentialContacts, setPotentialContacts] = useState<PotentialContact[]>([]);
+  const [potentialContacts, setPotentialContacts] = useState<
+    PotentialContact[]
+  >([]);
   const [potentialPage, setPotentialPage] = useState(1);
   const [potentialLastPage, setPotentialLastPage] = useState(1);
   const [potentialLoading, setPotentialLoading] = useState(false);
@@ -125,30 +138,36 @@ export default function AiMemories() {
 
   const sections = useMemo(() => groupByWeek(list), [list]);
 
-  const fetchMemories = useCallback(async (pageNum: number, append: boolean) => {
-    try {
-      if (append) setLoadingMore(true);
-      else setLoading(true);
-      const url = memoriesEndpoints.list({ page: pageNum, per_page: PER_PAGE });
-      const res = await ApiService.get<MemoriesResponse>(url);
-      const data = res?.data ?? [];
-      const currentPage = res?.current_page ?? pageNum;
-      const last = res?.last_page ?? 1;
-      setLastPage(last);
-      if (append) {
-        setList((prev) => [...prev, ...data]);
-        setPage(currentPage);
-      } else {
-        setList(data);
-        setPage(currentPage);
+  const fetchMemories = useCallback(
+    async (pageNum: number, append: boolean) => {
+      try {
+        if (append) setLoadingMore(true);
+        else setLoading(true);
+        const url = memoriesEndpoints.list({
+          page: pageNum,
+          per_page: PER_PAGE,
+        });
+        const res = await ApiService.get<MemoriesResponse>(url);
+        const data = res?.data ?? [];
+        const currentPage = res?.current_page ?? pageNum;
+        const last = res?.last_page ?? 1;
+        setLastPage(last);
+        if (append) {
+          setList((prev) => [...prev, ...data]);
+          setPage(currentPage);
+        } else {
+          setList(data);
+          setPage(currentPage);
+        }
+      } catch {
+        if (!append) setList([]);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
       }
-    } catch {
-      if (!append) setList([]);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     fetchMemories(1, false);
@@ -344,7 +363,9 @@ export default function AiMemories() {
       />
       <StackHeader title={t("memories")} />
       {loading && list.length === 0 ? (
-        <View style={[styles.emptyStateContainer, { justifyContent: "center" }]}>
+        <View
+          style={[styles.emptyStateContainer, { justifyContent: "center" }]}
+        >
           <ActivityIndicator size="small" color={theme.primary} />
         </View>
       ) : (
@@ -361,15 +382,6 @@ export default function AiMemories() {
         />
       )}
 
-      <MemorySectionModal
-        visible={modalVisible}
-        onClose={handleCloseModal}
-        section={selectedSection}
-        onShareImage={openShareSheetForImage}
-        onDownloadImage={downloadMedia}
-        downloadingUrl={downloadingUrl}
-      />
-
       <ShareOptionsBottomSheet
         visible={shareSheetVisible}
         onClose={() => {
@@ -378,6 +390,15 @@ export default function AiMemories() {
         }}
         onSelectInAppUser={openShareToUserModal}
         onSelectNativeShare={handleNativeShareImage}
+      />
+
+      <MemorySectionModal
+        visible={modalVisible}
+        onClose={handleCloseModal}
+        section={selectedSection}
+        onShareImage={openShareSheetForImage}
+        onDownloadImage={downloadMedia}
+        downloadingUrl={downloadingUrl}
       />
 
       <PotentialContactsModal
