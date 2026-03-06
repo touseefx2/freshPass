@@ -236,6 +236,32 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.borderLight,
       marginTop: moderateHeightScale(12),
     },
+    attachmentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    hairIconsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    hairIconBox: {},
+    attachmentButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    attachmentLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
     scrollContent: {},
     title: {
       fontSize: fontSize.size24,
@@ -416,6 +442,15 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
+    },
+    sectionTitleTryon: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    sectionSubTitleTryon: {
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     paymentCard: {
       backgroundColor: theme.white,
@@ -2406,6 +2441,24 @@ export default function BookingNow() {
               style={[styles.line, { marginTop: moderateHeightScale(20) }]}
             />
 
+            <View style={styles.attachmentRow}>
+              <View style={styles.hairIconsRow}>
+                <Feather
+                  name="scissors"
+                  size={moderateWidthScale(14)}
+                  color={theme.darkGreen}
+                />
+                <Text style={styles.sectionTitleTryon}>
+                  Attach try-on image{" "}
+                  <Text style={styles.sectionSubTitleTryon}>(optional)</Text>
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+            />
+
             {/* Privacy Policy Section */}
             <View style={styles.section}>
               <Text style={styles.privacyText}>
@@ -2813,7 +2866,6 @@ export default function BookingNow() {
           />
         ) : (
           <Button
-            // title={t("checkout")}
             title={t("continue")}
             onPress={() => {
               if (isSubscriptionBooking) {
