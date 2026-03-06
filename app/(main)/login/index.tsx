@@ -29,6 +29,7 @@ import { useSocialLogin } from "@/src/hooks/useSocialLogin";
 import SectionSeparator from "@/src/components/sectionSeparator";
 import VerificationCodeModal from "@/src/components/verificationCodeModal";
 import { validateEmail } from "@/src/services/validationService";
+import { getExpoPushToken } from "@/src/services/notificationPermissionService";
 import Logger from "@/src/services/logger";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
@@ -233,9 +234,11 @@ export default function Login() {
     Keyboard.dismiss();
     setIsLoading(true);
     try {
+      const expo_push_token = await getExpoPushToken();
       const response = await ApiService.post(businessEndpoints.login, {
         email: email.trim(),
         password: password,
+        ...(expo_push_token ? { expo_push_token } : {}),
       });
 
       // Handle successful login

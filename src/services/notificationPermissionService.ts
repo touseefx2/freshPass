@@ -3,6 +3,45 @@ import { Platform, Alert, Linking } from "react-native";
 import Constants from "expo-constants";
 import Logger from "./logger";
 
+/**
+ * Get Expo push token for sending to backend (e.g. on login).
+ * Returns token string or null if permission denied / unavailable.
+ * On Android, FCM must be configured (see https://docs.expo.dev/push-notifications/fcm-credentials/);
+ * if not, this returns null and login continues without the token.
+ */
+export const getExpoPushToken = async (): Promise<string | null> => {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") {
+      return null;
+    }
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    const tokenResult = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : undefined,
+    );
+    const token = tokenResult?.data ?? null;
+    if (token) {
+      Logger.log("Expo push token obtained");
+    }
+    return token;
+  } catch (error: any) {
+    const message = error?.message ?? String(error);
+    const isFcmNotSetup =
+      Platform.OS === "android" &&
+      (message.includes("FirebaseApp") ||
+        message.includes("FCM") ||
+        message.includes("fcm-credentials"));
+    if (isFcmNotSetup) {
+      Logger.log(
+        "Push token skipped: configure FCM for Android (see expo.dev/push-notifications/fcm-credentials)",
+      );
+    } else {
+      Logger.error("Error getting Expo push token:", error);
+    }
+    return null;
+  }
+};
+
 export interface NotificationPermissionResult {
   granted: boolean;
   canRequestAgain: boolean;

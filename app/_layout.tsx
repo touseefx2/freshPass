@@ -17,6 +17,7 @@ import { PortalProvider } from "@gorhom/portal";
 import { StripeProvider } from "@stripe/stripe-react-native";
 import { NotificationProvider } from "@/src/contexts/NotificationContext";
 import SessionExpiredHandler from "@/src/components/SessionExpiredHandler";
+import ExpoNotificationHandler from "@/src/components/ExpoNotificationHandler";
 import ActionLoader from "@/src/components/actionLoader";
 import OnboardingHandler from "@/src/components/OnboardingHandler";
 import GuestModeModal from "@/src/components/guestModeModal";
@@ -98,6 +99,7 @@ export default function RootLayout() {
                     <BusinessPlansModalHandler />
                     <OnboardingHandler />
                     <SessionExpiredHandler />
+                    <ExpoNotificationHandler />
                   </NotificationProvider>
                 </I18nextProvider>
               </PortalProvider>
