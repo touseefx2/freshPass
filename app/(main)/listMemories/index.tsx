@@ -229,7 +229,7 @@ export default function ListMemories() {
         visible={shareSheetVisible}
         onClose={() => {
           setShareSheetVisible(false);
-          setShareImageUrl(null);
+          // Do not clear shareImageUrl here - "Share with in-app user" calls onClose then onSelectInAppUser, so URL would be lost before send
         }}
         onSelectInAppUser={openShareToUserModal}
         onSelectNativeShare={handleNativeShareImage}
@@ -292,7 +292,10 @@ export default function ListMemories() {
 
       <PotentialContactsModal
         visible={shareToUserModalVisible}
-        onClose={() => setShareToUserModalVisible(false)}
+        onClose={() => {
+          setShareToUserModalVisible(false);
+          setShareImageUrl(null);
+        }}
         contacts={potentialContacts}
         loading={potentialLoading}
         loadingMore={potentialLoadingMore}
