@@ -96,6 +96,11 @@ export const createStyles = (theme: Theme) =>
     actionButton: {
       borderRadius: 6,
     },
+    actionButtonText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
     footerContainer: {
       paddingVertical: moderateHeightScale(44),
       paddingHorizontal: moderateWidthScale(20),

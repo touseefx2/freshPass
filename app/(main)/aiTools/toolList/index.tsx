@@ -87,7 +87,6 @@ export default function ToolList() {
   const userRole = user?.userRole;
   const dispatch = useAppDispatch();
 
-  const isGuest = user.isGuest;
   const isCustomer = userRole === "customer";
 
   const [tutorialVideoActive, setTutorialVideoActive] = useState(false);
@@ -180,26 +179,34 @@ export default function ToolList() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {!isGuest && (
-          <View style={styles.actionButtonsRow}>
-            {isCustomer && (
-              <View style={styles.actionButtonFlex}>
-                <Button
-                  containerStyle={styles.actionButton}
-                  title={t("myPurchases")}
-                  onPress={() => router.push("/aiTransactions")}
-                />
-              </View>
-            )}
+        <View style={styles.actionButtonsRow}>
+          {isCustomer && (
             <View style={styles.actionButtonFlex}>
               <Button
                 containerStyle={styles.actionButton}
-                title={t("aiRequests")}
-                onPress={() => router.push("/aiRequests")}
+                textStyle={styles.actionButtonText}
+                title={t("myPurchases")}
+                onPress={() => router.push("/aiTransactions")}
               />
             </View>
+          )}
+          <View style={styles.actionButtonFlex}>
+            <Button
+              containerStyle={styles.actionButton}
+              textStyle={styles.actionButtonText}
+              title={t("aiRequests")}
+              onPress={() => router.push("/aiRequests")}
+            />
           </View>
-        )}
+          <View style={styles.actionButtonFlex}>
+            <Button
+              containerStyle={styles.actionButton}
+              textStyle={styles.actionButtonText}
+              title={t("memories")}
+              onPress={() => router.push("/aiMemories")}
+            />
+          </View>
+        </View>
 
         <View style={styles.featuresContainer}>
           {features.map((feature, index) => {

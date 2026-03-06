@@ -345,3 +345,18 @@ export const generalEndpoints = {
   proTipCards: `/api/pro-tip-cards`,
   checkEmail: `/api/check-email`,
 };
+
+/**
+ * Memories (AI outputs) endpoints
+ */
+export const memoriesEndpoints = {
+  list: (params?: { page?: number; per_page?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null)
+      queryParams.append("page", params.page.toString());
+    if (params?.per_page != null)
+      queryParams.append("per_page", params.per_page.toString());
+    const query = queryParams.toString();
+    return `/api/memories${query ? `?${query}` : ""}`;
+  },
+};
