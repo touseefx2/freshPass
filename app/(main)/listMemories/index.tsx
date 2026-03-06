@@ -1,47 +1,207 @@
-import React, {
-  useMemo,
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-} from "react";
-import {
-  View,
-  Text,
-  Image,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  Share,
-  StatusBar,
-} from "react-native";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
+import { View, Share, StatusBar } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useDispatch } from "react-redux";
+import { useLocalSearchParams } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
-import { memoriesEndpoints, chatEndpoints } from "@/src/services/endpoints";
+import { chatEndpoints } from "@/src/services/endpoints";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
+import PotentialContactsModal, {
+  type PotentialContact,
+} from "@/src/components/PotentialContactsModal";
 import MemorySectionModal, {
-  type MemoryItem,
   type MemorySection,
 } from "@/src/components/MemorySectionModal";
-import type { PotentialContact } from "@/src/components/PotentialContactsModal";
 
-/** Get ISO week key (e.g. "2026-W10") for grouping */
+const SEND_MESSAGE_URL = "/api/chat/messages";
 
-export default function AiMemories() {
-  const dispatch = useDispatch();
+type PotentialContactsResponse = {
+  data?: {
+    data: PotentialContact[];
+    meta?: { current_page: number; last_page: number };
+  };
+};
+
+type SendMessageResponse = {
+  success: boolean;
+  message: string;
+  data?: unknown;
+};
+
+function parseSectionParam(param: string | undefined): MemorySection | null {
+  if (!param) return null;
+  try {
+    const parsed = JSON.parse(param) as MemorySection;
+    if (parsed?.weekKey && parsed?.dateLabel && Array.isArray(parsed?.items))
+      return parsed;
+  } catch {}
+  return null;
+}
+
+export default function ListMemories() {
+  const params = useLocalSearchParams<{ openSection?: string }>();
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-
+  const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const { showBanner } = useNotificationContext();
+
+  const [selectedSection, setSelectedSection] = useState<MemorySection | null>(
+    null,
+  );
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
+  const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
+  const [potentialContacts, setPotentialContacts] = useState<
+    PotentialContact[]
+  >([]);
+  const [potentialPage, setPotentialPage] = useState(1);
+  const [potentialLastPage, setPotentialLastPage] = useState(1);
+  const [potentialLoading, setPotentialLoading] = useState(false);
+  const [potentialLoadingMore, setPotentialLoadingMore] = useState(false);
+  const [potentialError, setPotentialError] = useState(false);
+  const [shareSending, setShareSending] = useState(false);
+
+  // Open modal when navigated with openSection param (from aiMemories)
+  useEffect(() => {
+    const section = parseSectionParam(params.openSection);
+    if (section) {
+      setSelectedSection(section);
+      setModalVisible(true);
+    }
+  }, [params.openSection]);
+
+  const fetchPotentialContacts = useCallback(
+    async (pageNum: number, append: boolean) => {
+      try {
+        setPotentialError(false);
+        if (append) setPotentialLoadingMore(true);
+        else setPotentialLoading(true);
+        const url = chatEndpoints.potentialContacts({
+          page: pageNum,
+          per_page: 20,
+        });
+        const res = await ApiService.get<PotentialContactsResponse>(url);
+        const listData = res?.data?.data ?? [];
+        const meta = res?.data?.meta;
+        if (append) {
+          setPotentialContacts((prev) => [...prev, ...listData]);
+        } else {
+          setPotentialContacts(listData);
+        }
+        setPotentialPage(meta?.current_page ?? pageNum);
+        setPotentialLastPage(meta?.last_page ?? 1);
+      } catch {
+        if (!append) setPotentialError(true);
+      } finally {
+        setPotentialLoading(false);
+        setPotentialLoadingMore(false);
+      }
+    },
+    [],
+  );
+
+  const openShareSheetForImage = useCallback((url: string) => {
+    setShareImageUrl(url);
+    setShareSheetVisible(true);
+  }, []);
+
+  const handleNativeShareImage = useCallback(async () => {
+    if (!shareImageUrl) return;
+    try {
+      await Share.share({
+        message: shareImageUrl,
+        url: shareImageUrl,
+      });
+    } catch (_err) {}
+    setShareSheetVisible(false);
+    setShareImageUrl(null);
+  }, [shareImageUrl]);
+
+  const openShareToUserModal = useCallback(() => {
+    setShareSheetVisible(false);
+    setShareToUserModalVisible(true);
+    setPotentialContacts([]);
+    setPotentialPage(1);
+    setPotentialLastPage(1);
+    setPotentialError(false);
+    fetchPotentialContacts(1, false);
+  }, [fetchPotentialContacts]);
+
+  const onPotentialContactPress = useCallback(
+    async (contact: PotentialContact) => {
+      if (!shareImageUrl?.trim()) return;
+      setShareSending(true);
+      try {
+        const formData = new FormData();
+        formData.append("receiver_id", String(Number(contact.id)));
+        formData.append("message", shareImageUrl);
+
+        const res = await ApiService.post<SendMessageResponse>(
+          SEND_MESSAGE_URL,
+          formData,
+          { headers: { "Content-Type": false as any } },
+        );
+
+        if (res?.success) {
+          setShareToUserModalVisible(false);
+          setShareImageUrl(null);
+          showBanner(
+            t("success"),
+            t("messageSentSuccessfully"),
+            "success",
+            3000,
+          );
+        } else {
+          showBanner(
+            t("error"),
+            t("somethingWentWrong") || "Something went wrong.",
+            "error",
+            3000,
+          );
+        }
+      } catch {
+        showBanner(
+          t("error"),
+          t("somethingWentWrong") || "Something went wrong.",
+          "error",
+          3000,
+        );
+      } finally {
+        setShareSending(false);
+      }
+    },
+    [shareImageUrl, showBanner, t],
+  );
+
+  const onPotentialEndReached = useCallback(() => {
+    if (
+      potentialLoadingMore ||
+      potentialLoading ||
+      potentialPage >= potentialLastPage
+    )
+      return;
+    fetchPotentialContacts(potentialPage + 1, true);
+  }, [
+    potentialLoadingMore,
+    potentialLoading,
+    potentialPage,
+    potentialLastPage,
+    fetchPotentialContacts,
+  ]);
+
+  const handleCloseModal = useCallback(() => {
+    setModalVisible(false);
+    setSelectedSection(null);
+  }, []);
 
   return (
     <View style={styles.safeArea}>
@@ -50,7 +210,39 @@ export default function AiMemories() {
         backgroundColor={theme.darkGreen}
         translucent
       />
-      <StackHeader title={"List"} />
+      <StackHeader title={t("memories")} />
+
+      <ShareOptionsBottomSheet
+        visible={shareSheetVisible}
+        onClose={() => {
+          setShareSheetVisible(false);
+          setShareImageUrl(null);
+        }}
+        onSelectInAppUser={openShareToUserModal}
+        onSelectNativeShare={handleNativeShareImage}
+      />
+
+      <MemorySectionModal
+        visible={modalVisible}
+        onClose={handleCloseModal}
+        section={selectedSection}
+        onShareImage={openShareSheetForImage}
+        onDownloadImage={downloadMedia}
+        downloadingUrl={downloadingUrl}
+      />
+
+      <PotentialContactsModal
+        visible={shareToUserModalVisible}
+        onClose={() => setShareToUserModalVisible(false)}
+        contacts={potentialContacts}
+        loading={potentialLoading}
+        loadingMore={potentialLoadingMore}
+        error={potentialError}
+        onRetry={() => fetchPotentialContacts(1, false)}
+        onContactPress={onPotentialContactPress}
+        onEndReached={onPotentialEndReached}
+        sending={shareSending}
+      />
     </View>
   );
 }
