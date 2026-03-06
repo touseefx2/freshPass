@@ -16,12 +16,17 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Share,
+  Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { setActionLoader } from "@/src/state/slices/generalSlice";
+import {
+  setActionLoader,
+  openFullImageModal,
+} from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -32,7 +37,7 @@ import {
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { SvgXml } from "react-native-svg";
-import { Ionicons, Entypo } from "@expo/vector-icons";
+import { Ionicons, Entypo, Feather } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet";
 import RetryButton from "@/src/components/retryButton";
@@ -54,6 +59,7 @@ import {
 } from "@/assets/icons";
 import StackHeader from "@/src/components/StackHeader";
 import ReviewPromptModal from "@/src/components/reviewPromptModal";
+import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 
 // Back Arrow Icon SVG
 const backArrowIconSvg = `
@@ -111,6 +117,13 @@ interface BookingItem {
   staffId?: number | null;
   subscription_id?: number | null;
   service_ids: number[] | null;
+  images?: Array<{
+    id: number;
+    name: string;
+    url: string;
+    mime_type?: string | null;
+    size?: number | null;
+  }>;
 }
 
 interface ApiBookingResponse {
@@ -167,6 +180,13 @@ interface ApiBookingResponse {
   cancelDate: string | null;
   createdAt: string;
   deleted_at: string | null;
+  images?: Array<{
+    id: number;
+    name: string;
+    url: string;
+    mime_type?: string | null;
+    size?: number | null;
+  }>;
 }
 
 const createStyles = (theme: Theme) =>
@@ -557,6 +577,65 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       marginBottom: moderateHeightScale(16),
     },
+    imagesSection: {
+      marginBottom: moderateHeightScale(24),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    imagesSectionTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(12),
+    },
+    imagesGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+    },
+    imageCard: {
+      width: (Dimensions.get("window").width -
+        moderateWidthScale(20) * 2 -
+        moderateWidthScale(8) * 2) /
+        3,
+      height: (Dimensions.get("window").width -
+        moderateWidthScale(20) * 2 -
+        moderateWidthScale(8) * 2) /
+        3,
+      borderRadius: moderateWidthScale(10),
+      overflow: "hidden",
+      backgroundColor: theme.lightGreen2,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      position: "relative",
+    },
+    imageCardImage: {
+      width: "100%",
+      height: "100%",
+    },
+    imageShareIcon: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      left: moderateWidthScale(6),
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2,
+    },
+    imageDownloadIcon: {
+      position: "absolute",
+      bottom: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2,
+    },
   });
 
 export default function bookingDetailsById() {
@@ -570,6 +649,7 @@ export default function bookingDetailsById() {
   const params = useLocalSearchParams();
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state: any) => state.user);
+  const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const hasShownReviewPromptForVisit = useRef(false);
@@ -800,6 +880,16 @@ export default function bookingDetailsById() {
       staffId: apiData.staffId,
       subscription_id: apiData.subscriptionId,
       service_ids: service_ids,
+      images:
+        Array.isArray(apiData.images) && apiData.images.length > 0
+          ? apiData.images.map((img: any) => ({
+              id: img.id,
+              name: img.name ?? "",
+              url: img.url ?? "",
+              mime_type: img.mime_type ?? null,
+              size: img.size ?? null,
+            }))
+          : undefined,
     };
   };
 
@@ -984,6 +1074,24 @@ export default function bookingDetailsById() {
       },
     });
   }, [booking?.owner, router]);
+
+  const handleShareImage = useCallback(async (url: string) => {
+    try {
+      await Share.share({
+        message: url,
+        url: url,
+      });
+    } catch (_err) {}
+  }, []);
+
+  const handleOpenFullImage = useCallback(
+    (initialIndex: number) => {
+      if (!booking?.images?.length) return;
+      const urls = booking.images.map((img) => img.url);
+      dispatch(openFullImageModal({ images: urls, initialIndex }));
+    },
+    [booking?.images, dispatch],
+  );
 
   // Handle location navigation to Google Maps
   const handleLocationPress = async () => {
@@ -1340,6 +1448,69 @@ export default function bookingDetailsById() {
               </TouchableOpacity>
             )}
           </View>
+
+          <View style={styles.line} />
+
+          {/* Try-on Images Section */}
+          {booking.images &&
+            Array.isArray(booking.images) &&
+            booking.images.length > 0 && (
+              <View style={styles.imagesSection}>
+                <Text style={styles.imagesSectionTitle}>
+                  {t("tryOnImages") || "Try-on images"}
+                </Text>
+                <View style={styles.imagesGrid}>
+                  {booking.images.map((img, index) => (
+                    <View key={img.id || index} style={styles.imageCard}>
+                      <TouchableOpacity
+                        style={StyleSheet.absoluteFill}
+                        onPress={() => handleOpenFullImage(index)}
+                        activeOpacity={0.9}
+                      >
+                        <Image
+                          source={{ uri: img.url }}
+                          style={styles.imageCardImage}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.imageShareIcon}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleShareImage(img.url);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Feather
+                          name="share-2"
+                          size={moderateWidthScale(16)}
+                          color={theme.white}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.imageDownloadIcon}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          downloadMedia(img.url);
+                        }}
+                        disabled={downloadingUrl === img.url}
+                        activeOpacity={0.7}
+                      >
+                        {downloadingUrl === img.url ? (
+                          <ActivityIndicator size="small" color={theme.white} />
+                        ) : (
+                          <Feather
+                            name="download"
+                            size={moderateWidthScale(16)}
+                            color={theme.white}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
 
           <View style={styles.line} />
 
