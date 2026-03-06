@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams } from "expo-router";
+import { useDispatch } from "react-redux";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -20,6 +21,7 @@ import { ApiService } from "@/src/services/api";
 import { chatEndpoints } from "@/src/services/endpoints";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
@@ -63,6 +65,7 @@ function parseSectionParam(param: string | undefined): MemorySection | null {
 
 export default function ListMemories() {
   const params = useLocalSearchParams<{ openSection?: string }>();
+  const dispatch = useDispatch();
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
@@ -151,6 +154,15 @@ export default function ListMemories() {
     setPotentialError(false);
     fetchPotentialContacts(1, false);
   }, [fetchPotentialContacts]);
+
+  const openFullImage = useCallback(
+    (imageUrl: string, index: number) => {
+      if (!selectedSection?.items?.length) return;
+      const allUrls = selectedSection.items.map((i) => i.image_url);
+      dispatch(openFullImageModal({ images: allUrls, initialIndex: index }));
+    },
+    [selectedSection?.items, dispatch],
+  );
 
   const onPotentialContactPress = useCallback(
     async (contact: PotentialContact) => {
@@ -248,11 +260,17 @@ export default function ListMemories() {
                 style={styles.modalImageCard}
               >
                 <View style={styles.modalImageCardInner}>
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={styles.modalResultImage}
-                    resizeMode="cover"
-                  />
+                  <TouchableOpacity
+                    style={styles.modalResultImageTouchable}
+                    onPress={() => openFullImage(item.image_url, index)}
+                    activeOpacity={0.9}
+                  >
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={styles.modalResultImage}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.modalShareButton}
                     onPress={() => openShareSheetForImage(item.image_url)}
