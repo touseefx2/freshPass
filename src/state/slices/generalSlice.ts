@@ -88,6 +88,8 @@ export interface GeneralState {
   bookingTryOnImageUrls: string[];
   /** When opening AI Results from booking, pre-select these URLs (intersection with result) */
   bookingTryOnPreselectedUrls: string[];
+  /** Per-jobId selected try-on URLs so reopening same result restores selection */
+  bookingTryOnSelectionByJobId: Record<string, string[]>;
 }
 
 export interface ChatContactItem {
@@ -142,6 +144,7 @@ const initialState: GeneralState = {
   businessPlansModalVisible: false,
   bookingTryOnImageUrls: [],
   bookingTryOnPreselectedUrls: [],
+  bookingTryOnSelectionByJobId: {},
 };
 
 const generalSlice = createSlice({
@@ -276,6 +279,16 @@ const generalSlice = createSlice({
     clearBookingTryOnPreselectedUrls(state) {
       state.bookingTryOnPreselectedUrls = [];
     },
+    setBookingTryOnSelectionForJob(
+      state,
+      action: PayloadAction<{ jobId: string; urls: string[] }>,
+    ) {
+      const { jobId, urls } = action.payload;
+      if (!state.bookingTryOnSelectionByJobId) {
+        state.bookingTryOnSelectionByJobId = {};
+      }
+      state.bookingTryOnSelectionByJobId[jobId] = urls;
+    },
     setIsFirstShowTryOn(state, action: PayloadAction<boolean>) {
       state.isFirstShowTryOn = action.payload;
     },
@@ -363,6 +376,7 @@ const generalSlice = createSlice({
       state.businessPlansModalVisible = false;
       state.bookingTryOnImageUrls = [];
       state.bookingTryOnPreselectedUrls = [];
+      state.bookingTryOnSelectionByJobId = {};
     },
   },
 });
@@ -394,6 +408,7 @@ export const {
   clearBookingTryOnImageUrls,
   setBookingTryOnPreselectedUrls,
   clearBookingTryOnPreselectedUrls,
+  setBookingTryOnSelectionForJob,
   setIsFirstShowTryOn,
   setCurrentLocation,
   addToRecentLocations,

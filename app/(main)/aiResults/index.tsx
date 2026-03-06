@@ -40,6 +40,7 @@ import {
   openFullImageModal,
   setBookingTryOnImageUrls,
   clearBookingTryOnPreselectedUrls,
+  setBookingTryOnSelectionForJob,
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
@@ -728,34 +729,46 @@ export default function AiResults() {
   const bookingPreselectedUrls = useAppSelector(
     (state) => state.general.bookingTryOnPreselectedUrls,
   );
-  const bookingTryOnImageUrls = useAppSelector(
-    (state) => state.general.bookingTryOnImageUrls,
+  const bookingTryOnSelectionByJobId = useAppSelector(
+    (state) => state.general.bookingTryOnSelectionByJobId,
   );
   const hasSyncedPreselected = useRef(false);
   useEffect(() => {
     if (
-      !fromBooking ||
       normalized?.status !== "completed" ||
       allSelectableUrls.length === 0 ||
       hasSyncedPreselected.current
     )
       return;
-    const preselected = Array.isArray(bookingPreselectedUrls)
-      ? bookingPreselectedUrls
-      : [];
-    const intersection = preselected.filter((u) =>
+    const preselected =
+      fromBooking && Array.isArray(bookingPreselectedUrls)
+        ? bookingPreselectedUrls
+        : [];
+    const fromPreselected = preselected.filter((u) =>
       allSelectableUrls.includes(u),
     );
-    if (intersection.length > 0) {
-      setSelectedUrls(new Set(intersection));
+    const storedForJob =
+      !fromBooking &&
+      jobId &&
+      bookingTryOnSelectionByJobId?.[jobId]
+        ? (bookingTryOnSelectionByJobId[jobId] || []).filter((u) =>
+            allSelectableUrls.includes(u),
+          )
+        : [];
+    if (fromPreselected.length > 0) {
+      setSelectedUrls(new Set(fromPreselected));
+      dispatch(clearBookingTryOnPreselectedUrls());
+    } else if (storedForJob.length > 0) {
+      setSelectedUrls(new Set(storedForJob));
     }
     hasSyncedPreselected.current = true;
-    dispatch(clearBookingTryOnPreselectedUrls());
   }, [
     fromBooking,
+    jobId,
     normalized?.status,
     allSelectableUrls,
     bookingPreselectedUrls,
+    bookingTryOnSelectionByJobId,
     dispatch,
   ]);
 
@@ -1920,13 +1933,15 @@ export default function AiResults() {
                 selectedUrls.size === 0 && styles.selectButtonDisabled,
               ]}
               onPress={() => {
-                if (selectedUrls.size > 0) {
-                  const existing = Array.isArray(bookingTryOnImageUrls)
-                    ? bookingTryOnImageUrls
-                    : [];
-                  const merged = [...existing, ...Array.from(selectedUrls)];
-                  const deduped = Array.from(new Set(merged));
-                  dispatch(setBookingTryOnImageUrls(deduped));
+                if (selectedUrls.size > 0 && jobId) {
+                  dispatch(
+                    setBookingTryOnSelectionForJob({
+                      jobId,
+                      urls: Array.from(selectedUrls),
+                    }),
+                  );
+                  // One-way: result selection = booking try-on list (replace, no merge)
+                  dispatch(setBookingTryOnImageUrls(Array.from(selectedUrls)));
                   router.back();
                   router.back();
                 }

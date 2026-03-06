@@ -1211,11 +1211,11 @@ export default function BookingNow() {
   const bookingTryOnFromRedux = useAppSelector(
     (state) => state.general.bookingTryOnImageUrls,
   );
-  // When returning from AI Results: add selected URLs to try-on list (append), then clear Redux
+  // When returning from AI Results: replace try-on list with Redux (one-way), then clear Redux
   useFocusEffect(
     useCallback(() => {
       if (bookingTryOnFromRedux?.length) {
-        setTryOnImageUrls((prev) => [...prev, ...bookingTryOnFromRedux]);
+        setTryOnImageUrls([...bookingTryOnFromRedux]);
         dispatch(clearBookingTryOnImageUrls());
       }
     }, [bookingTryOnFromRedux, dispatch]),
