@@ -45,6 +45,7 @@ import { ApiService } from "@/src/services/api";
 import {
   appointmentsEndpoints,
   reviewsEndpoints,
+  chatEndpoints,
 } from "@/src/services/endpoints";
 import { useStripe } from "@stripe/stripe-react-native";
 import { fetchAppointmentPaymentSheetParams } from "@/src/services/stripeService";
@@ -60,6 +61,26 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import ReviewPromptModal from "@/src/components/reviewPromptModal";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
+import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
+import PotentialContactsModal, {
+  type PotentialContact,
+} from "@/src/components/PotentialContactsModal";
+
+const SEND_MESSAGE_URL = "/api/chat/messages";
+
+type PotentialContactsResponse = {
+  success: boolean;
+  data: {
+    data: PotentialContact[];
+    meta: { current_page: number; last_page: number };
+  };
+};
+
+type SendMessageResponse = {
+  success: boolean;
+  message: string;
+  data?: unknown;
+};
 
 // Back Arrow Icon SVG
 const backArrowIconSvg = `
@@ -653,6 +674,18 @@ export default function bookingDetailsById() {
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const hasShownReviewPromptForVisit = useRef(false);
+  const [shareSheetVisible, setShareSheetVisible] = useState(false);
+  const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
+  const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
+  const [potentialContacts, setPotentialContacts] = useState<PotentialContact[]>(
+    [],
+  );
+  const [potentialPage, setPotentialPage] = useState(1);
+  const [potentialLastPage, setPotentialLastPage] = useState(1);
+  const [potentialLoading, setPotentialLoading] = useState(false);
+  const [potentialLoadingMore, setPotentialLoadingMore] = useState(false);
+  const [potentialError, setPotentialError] = useState(false);
+  const [shareSending, setShareSending] = useState(false);
   const [booking, setBooking] = useState<BookingItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1076,13 +1109,127 @@ export default function bookingDetailsById() {
   }, [booking?.owner, router]);
 
   const handleShareImage = useCallback(async (url: string) => {
+    setShareImageUrl(url);
+    setShareSheetVisible(true);
+  }, []);
+
+  const handleNativeShare = useCallback(async () => {
+    if (!shareImageUrl) return;
     try {
       await Share.share({
-        message: url,
-        url: url,
+        message: shareImageUrl,
+        url: shareImageUrl,
       });
     } catch (_err) {}
-  }, []);
+    setShareSheetVisible(false);
+    setShareImageUrl(null);
+  }, [shareImageUrl]);
+
+  const fetchPotentialContacts = useCallback(
+    async (pageNum: number, append: boolean) => {
+      try {
+        setPotentialError(false);
+        if (append) setPotentialLoadingMore(true);
+        else setPotentialLoading(true);
+        const url = chatEndpoints.potentialContacts({
+          page: pageNum,
+          per_page: 20,
+        });
+        const res = await ApiService.get<PotentialContactsResponse>(url);
+        const list = res.data?.data ?? [];
+        const meta = res.data?.meta;
+        if (append) {
+          setPotentialContacts((prev) => [...prev, ...list]);
+        } else {
+          setPotentialContacts(list);
+        }
+        setPotentialPage(meta?.current_page ?? pageNum);
+        setPotentialLastPage(meta?.last_page ?? 1);
+      } catch {
+        if (!append) setPotentialError(true);
+      } finally {
+        setPotentialLoading(false);
+        setPotentialLoadingMore(false);
+      }
+    },
+    [],
+  );
+
+  const openShareToUserModal = useCallback(() => {
+    setShareSheetVisible(false);
+    setShareToUserModalVisible(true);
+    setPotentialContacts([]);
+    setPotentialPage(1);
+    setPotentialLastPage(1);
+    setPotentialError(false);
+    fetchPotentialContacts(1, false);
+  }, [fetchPotentialContacts]);
+
+  const onPotentialContactPress = useCallback(
+    async (contact: PotentialContact) => {
+      if (!shareImageUrl?.trim()) return;
+      setShareSending(true);
+      try {
+        const formData = new FormData();
+        formData.append("receiver_id", String(Number(contact.id)));
+        formData.append("message", shareImageUrl);
+
+        const res = await ApiService.post<SendMessageResponse>(
+          SEND_MESSAGE_URL,
+          formData,
+          {
+            headers: {
+              "Content-Type": false as any,
+            },
+          },
+        );
+
+        if (res?.success) {
+          setShareToUserModalVisible(false);
+          setShareImageUrl(null);
+          showBanner(
+            t("success"),
+            t("messageSentSuccessfully"),
+            "success",
+            3000,
+          );
+        } else {
+          showBanner(
+            t("error"),
+            t("somethingWentWrong") || "Something went wrong.",
+            "error",
+            3000,
+          );
+        }
+      } catch {
+        showBanner(
+          t("error"),
+          t("somethingWentWrong") || "Something went wrong.",
+          "error",
+          3000,
+        );
+      } finally {
+        setShareSending(false);
+      }
+    },
+    [shareImageUrl, showBanner, t],
+  );
+
+  const onPotentialEndReached = useCallback(() => {
+    if (
+      potentialLoadingMore ||
+      potentialLoading ||
+      potentialPage >= potentialLastPage
+    )
+      return;
+    fetchPotentialContacts(potentialPage + 1, true);
+  }, [
+    potentialLoadingMore,
+    potentialLoading,
+    potentialPage,
+    potentialLastPage,
+    fetchPotentialContacts,
+  ]);
 
   const handleOpenFullImage = useCallback(
     (initialIndex: number) => {
@@ -1732,6 +1879,33 @@ export default function bookingDetailsById() {
             });
           }}
           businessName={businessName}
+        />
+
+        {/* Share options bottom sheet – from try-on image share */}
+        <ShareOptionsBottomSheet
+          visible={shareSheetVisible}
+          onClose={() => {
+            setShareSheetVisible(false);
+          }}
+          onSelectInAppUser={openShareToUserModal}
+          onSelectNativeShare={handleNativeShare}
+        />
+
+        {/* Contacts modal – send try-on image to user */}
+        <PotentialContactsModal
+          visible={shareToUserModalVisible}
+          onClose={() => {
+            setShareToUserModalVisible(false);
+            setShareImageUrl(null);
+          }}
+          contacts={potentialContacts}
+          loading={potentialLoading}
+          loadingMore={potentialLoadingMore}
+          error={potentialError}
+          onRetry={() => fetchPotentialContacts(1, false)}
+          onContactPress={onPotentialContactPress}
+          onEndReached={onPotentialEndReached}
+          sending={shareSending}
         />
       </>
     );
