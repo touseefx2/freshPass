@@ -24,6 +24,7 @@ import { ApiService } from "@/src/services/api";
 import { memoriesEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
 } from "@/src/components/PotentialContactsModal";
@@ -381,6 +382,16 @@ export default function AiMemories() {
         />
       )}
 
+      <ShareOptionsBottomSheet
+        visible={shareSheetVisible}
+        onClose={() => {
+          setShareSheetVisible(false);
+          setShareImageUrl(null);
+        }}
+        onSelectInAppUser={openShareToUserModal}
+        onSelectNativeShare={handleNativeShareImage}
+      />
+
       <MemorySectionModal
         visible={modalVisible}
         onClose={handleCloseModal}
@@ -388,13 +399,6 @@ export default function AiMemories() {
         onShareImage={openShareSheetForImage}
         onDownloadImage={downloadMedia}
         downloadingUrl={downloadingUrl}
-        shareSheetVisible={shareSheetVisible}
-        onCloseShareSheet={() => {
-          setShareSheetVisible(false);
-          setShareImageUrl(null);
-        }}
-        onSelectInAppUser={openShareToUserModal}
-        onSelectNativeShare={handleNativeShareImage}
       />
 
       <PotentialContactsModal
