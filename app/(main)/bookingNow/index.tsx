@@ -17,6 +17,7 @@ import {
   TextInput,
   Pressable,
   Linking,
+  Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
@@ -199,8 +200,17 @@ interface SubscriptionData {
   appointments: any[];
 }
 
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
+const createStyles = (theme: Theme) => {
+  const { width: screenWidth } = Dimensions.get("window");
+  const tryOnPaddingH = moderateWidthScale(20);
+  const tryOnGap = moderateWidthScale(12);
+  const tryOnNumCols = 4;
+  const tryOnBoxSize = Math.floor(
+    (screenWidth - tryOnPaddingH * 2 - tryOnGap * (tryOnNumCols - 1)) /
+      tryOnNumCols,
+  );
+
+  return StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.background,
@@ -467,8 +477,8 @@ const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(8),
     },
     tryOnImageBox: {
-      width: widthScale(72),
-      height: widthScale(72),
+      width: tryOnBoxSize,
+      height: tryOnBoxSize,
       borderRadius: moderateWidthScale(8),
       overflow: "hidden",
       backgroundColor: theme.borderLight,
@@ -492,8 +502,8 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     tryOnPlusBox: {
-      width: widthScale(72),
-      height: widthScale(72),
+      width: tryOnBoxSize,
+      height: tryOnBoxSize,
       borderRadius: moderateWidthScale(8),
       borderWidth: 2,
       borderStyle: "dashed",
@@ -1086,6 +1096,7 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
   });
+};
 
 export default function BookingNow() {
   const { colors } = useTheme();
