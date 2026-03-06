@@ -18,10 +18,19 @@ import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
 import { memoriesEndpoints } from "@/src/services/endpoints";
-import type {
-  MemoryItem,
-  MemorySection,
-} from "@/src/components/MemorySectionModal";
+
+export interface MemorySection {
+  weekKey: string;
+  dateLabel: string;
+  items: MemoryItem[];
+}
+
+export interface MemoryItem {
+  url: string;
+  date: string;
+  /** @deprecated Use url. Kept for backward compatibility. */
+  image_url?: string;
+}
 
 const PER_PAGE = 20;
 
