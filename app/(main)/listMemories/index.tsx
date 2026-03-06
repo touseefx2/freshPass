@@ -1,9 +1,19 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
-import { View, Share, StatusBar } from "react-native";
+import {
+  View,
+  Image,
+  Share,
+  StatusBar,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams } from "expo-router";
+import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
+import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
@@ -14,11 +24,19 @@ import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
 } from "@/src/components/PotentialContactsModal";
-import MemorySectionModal, {
-  type MemorySection,
-} from "@/src/components/MemorySectionModal";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
+
+export interface MemoryItem {
+  image_url: string;
+  date: string;
+}
+
+export interface MemorySection {
+  weekKey: string;
+  dateLabel: string;
+  items: MemoryItem[];
+}
 
 type PotentialContactsResponse = {
   data?: {
@@ -55,7 +73,6 @@ export default function ListMemories() {
   const [selectedSection, setSelectedSection] = useState<MemorySection | null>(
     null,
   );
-  const [modalVisible, setModalVisible] = useState(false);
 
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
@@ -70,12 +87,11 @@ export default function ListMemories() {
   const [potentialError, setPotentialError] = useState(false);
   const [shareSending, setShareSending] = useState(false);
 
-  // Open modal when navigated with openSection param (from aiMemories)
+  // Show section content when navigated with openSection param (from aiMemories)
   useEffect(() => {
     const section = parseSectionParam(params.openSection);
     if (section) {
       setSelectedSection(section);
-      setModalVisible(true);
     }
   }, [params.openSection]);
 
@@ -198,11 +214,6 @@ export default function ListMemories() {
     fetchPotentialContacts,
   ]);
 
-  const handleCloseModal = useCallback(() => {
-    setModalVisible(false);
-    setSelectedSection(null);
-  }, []);
-
   return (
     <View style={styles.safeArea}>
       <StatusBar
@@ -210,7 +221,9 @@ export default function ListMemories() {
         backgroundColor={theme.darkGreen}
         translucent
       />
-      <StackHeader title={t("memories")} />
+      <StackHeader
+        title={selectedSection ? selectedSection.dateLabel : t("memories")}
+      />
 
       <ShareOptionsBottomSheet
         visible={shareSheetVisible}
@@ -222,14 +235,60 @@ export default function ListMemories() {
         onSelectNativeShare={handleNativeShareImage}
       />
 
-      <MemorySectionModal
-        visible={modalVisible}
-        onClose={handleCloseModal}
-        section={selectedSection}
-        onShareImage={openShareSheetForImage}
-        onDownloadImage={downloadMedia}
-        downloadingUrl={downloadingUrl}
-      />
+      {selectedSection ? (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.modalScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.modalImageGrid}>
+            {selectedSection.items.map((item, index) => (
+              <View
+                key={`${item.image_url}-${index}`}
+                style={styles.modalImageCard}
+              >
+                <View style={styles.modalImageCardInner}>
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={styles.modalResultImage}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.modalShareButton}
+                    onPress={() => openShareSheetForImage(item.image_url)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons
+                      name="share"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalDownloadButton}
+                    onPress={() => downloadMedia(item.image_url)}
+                    disabled={downloadingUrl === item.image_url}
+                    activeOpacity={0.7}
+                  >
+                    {downloadingUrl === item.image_url ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={theme.white}
+                      />
+                    ) : (
+                      <Feather
+                        name="download"
+                        size={moderateWidthScale(14)}
+                        color={theme.white}
+                      />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      ) : null}
 
       <PotentialContactsModal
         visible={shareToUserModalVisible}
