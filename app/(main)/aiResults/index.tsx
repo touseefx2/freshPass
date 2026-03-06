@@ -22,7 +22,7 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
@@ -31,8 +31,16 @@ import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
-import { moderateWidthScale } from "@/src/theme/dimensions";
-import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import { useAppSelector } from "@/src/hooks/hooks";
+import {
+  moderateWidthScale,
+  moderateHeightScale,
+} from "@/src/theme/dimensions";
+import {
+  openFullImageModal,
+  setBookingTryOnImageUrls,
+  clearBookingTryOnPreselectedUrls,
+} from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
@@ -466,6 +474,9 @@ type OriginalMediaCardProps = {
   onSharePress?: (url: string, labelKey: string) => void;
   onDownloadPress?: (url: string, options?: { isVideo?: boolean }) => void;
   downloadingUrl?: string | null;
+  selectionMode?: boolean;
+  selectedUrls?: Set<string>;
+  onToggleUrl?: (url: string) => void;
 };
 
 function OriginalMediaCard({
@@ -477,6 +488,9 @@ function OriginalMediaCard({
   onSharePress,
   onDownloadPress,
   downloadingUrl,
+  selectionMode,
+  selectedUrls,
+  onToggleUrl,
 }: OriginalMediaCardProps) {
   const { t } = useTranslation();
   const isImage = item.type === "image";
@@ -491,6 +505,7 @@ function OriginalMediaCard({
       (item.url && /\.(mp3|m4a|aac|wav)(\?.*)?$/i.test(item.url)));
 
   const shareLabelKey = isVideo ? "video" : isImage ? "image" : "audio";
+  const isSelected = selectionMode && isImage && selectedUrls?.has(item.url);
 
   return (
     <View style={styles.originalMediaCard}>
@@ -498,7 +513,11 @@ function OriginalMediaCard({
       {isImage && (
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
-          onPress={() => onImagePress(item.url, allUrls)}
+          onPress={() =>
+            selectionMode && onToggleUrl
+              ? onToggleUrl(item.url)
+              : onImagePress(item.url, allUrls)
+          }
           activeOpacity={0.9}
         >
           <Image
@@ -545,7 +564,23 @@ function OriginalMediaCard({
           </Text>
         </View>
       )}
-      {onSharePress && (
+      {isImage && selectionMode && (
+        <View
+          style={[
+            styles.selectionOverlay,
+            isSelected && styles.selectionOverlaySelected,
+          ]}
+        >
+          {isSelected ? (
+            <Feather
+              name="check"
+              size={moderateWidthScale(14)}
+              color={theme.white}
+            />
+          ) : null}
+        </View>
+      )}
+      {onSharePress && !selectionMode && (
         <TouchableOpacity
           style={styles.originalMediaShareIcon}
           onPress={() => onSharePress(item.url, shareLabelKey)}
@@ -558,7 +593,7 @@ function OriginalMediaCard({
           />
         </TouchableOpacity>
       )}
-      {onDownloadPress && (
+      {onDownloadPress && !selectionMode && (
         <TouchableOpacity
           style={[
             styles.originalMediaDownloadIcon,
@@ -596,8 +631,10 @@ type PotentialContactsResponse = {
 export default function AiResults() {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ jobId?: string }>();
+  const params = useLocalSearchParams<{ jobId?: string; returnTo?: string }>();
   const jobId = params.jobId;
+  const fromBooking = params.returnTo === "booking";
+  const router = useRouter();
   const { showBanner } = useNotificationContext();
 
   const [loading, setLoading] = useState(true);
@@ -610,13 +647,17 @@ export default function AiResults() {
   const [editableCompletePost, setEditableCompletePost] = useState("");
 
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
-  const [shareContext, setShareContext] = useState<null | {
-    url: string;
-    labelKey: string;
-    linkOnly?: boolean;
-    /** When true, share only video + simple text (AI Result - Video) */
-    simpleReelShare?: boolean;
-  } | { section: NormalizedSection }>(null);
+  const [shareContext, setShareContext] = useState<
+    | null
+    | {
+        url: string;
+        labelKey: string;
+        linkOnly?: boolean;
+        /** When true, share only video + simple text (AI Result - Video) */
+        simpleReelShare?: boolean;
+      }
+    | { section: NormalizedSection }
+  >(null);
   const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
   const [potentialContacts, setPotentialContacts] = useState<
     PotentialContact[]
@@ -629,6 +670,94 @@ export default function AiResults() {
   const [shareSending, setShareSending] = useState(false);
   const [originalsExpanded, setOriginalsExpanded] = useState(false);
   const [originalMediaExpanded, setOriginalMediaExpanded] = useState(false);
+  const [selectedUrls, setSelectedUrls] = useState<Set<string>>(new Set());
+
+  const toggleUrl = useCallback((url: string) => {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url);
+      else next.add(url);
+      return next;
+    });
+  }, []);
+  const selectSection = useCallback((urls: string[]) => {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      urls.forEach((u) => next.add(u));
+      return next;
+    });
+  }, []);
+  const unselectSection = useCallback((urls: string[]) => {
+    setSelectedUrls((prev) => {
+      const next = new Set(prev);
+      urls.forEach((u) => next.delete(u));
+      return next;
+    });
+  }, []);
+  const selectAll = useCallback((urls: string[]) => {
+    setSelectedUrls(new Set(urls));
+  }, []);
+  const unselectAll = useCallback(() => {
+    setSelectedUrls(new Set());
+  }, []);
+  const allSelectableUrls = useMemo(() => {
+    if (!normalized || normalized.status !== "completed") return [];
+    if (normalized.socialMedia) {
+      const sm = normalized.socialMedia;
+      const list: string[] = [];
+      if (sm.images?.processed) list.push(sm.images.processed);
+      if (sm.images?.originals?.length) list.push(...sm.images.originals);
+      if (sm.original_media?.length) {
+        sm.original_media
+          .filter((m) => m.type === "image")
+          .forEach((m) => list.push(m.url));
+      }
+      return list;
+    }
+    const list: string[] = [];
+    normalized.sections.forEach((s) =>
+      s.views.forEach((v) => list.push(v.url)),
+    );
+    return list;
+  }, [normalized]);
+
+  const allSelected =
+    allSelectableUrls.length > 0 &&
+    selectedUrls.size === allSelectableUrls.length;
+
+  const bookingPreselectedUrls = useAppSelector(
+    (state) => state.general.bookingTryOnPreselectedUrls,
+  );
+  const bookingTryOnImageUrls = useAppSelector(
+    (state) => state.general.bookingTryOnImageUrls,
+  );
+  const hasSyncedPreselected = useRef(false);
+  useEffect(() => {
+    if (
+      !fromBooking ||
+      normalized?.status !== "completed" ||
+      allSelectableUrls.length === 0 ||
+      hasSyncedPreselected.current
+    )
+      return;
+    const preselected = Array.isArray(bookingPreselectedUrls)
+      ? bookingPreselectedUrls
+      : [];
+    const intersection = preselected.filter((u) =>
+      allSelectableUrls.includes(u),
+    );
+    if (intersection.length > 0) {
+      setSelectedUrls(new Set(intersection));
+    }
+    hasSyncedPreselected.current = true;
+    dispatch(clearBookingTryOnPreselectedUrls());
+  }, [
+    fromBooking,
+    normalized?.status,
+    allSelectableUrls,
+    bookingPreselectedUrls,
+    dispatch,
+  ]);
 
   const fetchStatus = useCallback(
     async (isPolling = false) => {
@@ -686,6 +815,21 @@ export default function AiResults() {
     normalized?.socialMedia?.content?.complete_post,
   ]);
 
+  useEffect(() => {
+    if (
+      fromBooking &&
+      normalized?.status === "completed" &&
+      normalized.socialMedia
+    ) {
+      setOriginalsExpanded(!!normalized.socialMedia.images?.originals?.length);
+      setOriginalMediaExpanded(
+        !!normalized.socialMedia.original_media?.some(
+          (m) => m.type === "image",
+        ),
+      );
+    }
+  }, [fromBooking, normalized?.status, normalized?.socialMedia]);
+
   const handleDownload = useCallback(
     (uri: string) => {
       downloadMedia(uri);
@@ -739,15 +883,17 @@ export default function AiResults() {
           setShareContext(null);
           return;
         }
-        const message = shareContext.simpleReelShare
-          ? `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`
-          : shareContext.linkOnly
-            ? shareContext.url
-            : `${t("aiResults")} – ${t(shareContext.labelKey)}: ${shareContext.url}`;
-        await Share.share({
-          message: message.trim(),
-          url: shareContext.linkOnly ? undefined : shareContext.url,
-        });
+        if ("url" in shareContext) {
+          const message = shareContext.simpleReelShare
+            ? `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`
+            : shareContext.linkOnly
+              ? shareContext.url
+              : `${t("aiResults")} – ${t(shareContext.labelKey)}: ${shareContext.url}`;
+          await Share.share({
+            message: message.trim(),
+            url: shareContext.linkOnly ? undefined : shareContext.url,
+          });
+        }
         return;
       }
       if (!normalized || normalized.status !== "completed") return;
@@ -832,10 +978,12 @@ export default function AiResults() {
         });
         return message.trim();
       }
-      if (shareContext.simpleReelShare) {
-        return `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`;
+      if ("url" in shareContext) {
+        if (shareContext.simpleReelShare) {
+          return `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`;
+        }
+        return shareContext.url;
       }
-      return shareContext.url;
     }
     if (!normalized || normalized.status !== "completed") return "";
     let message = "";
@@ -1020,7 +1168,8 @@ export default function AiResults() {
 
   const canShare =
     normalized?.status === "completed" &&
-    (normalized.sections.length > 0 || !!normalized.socialMedia);
+    (normalized.sections.length > 0 || !!normalized.socialMedia) &&
+    !fromBooking;
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -1077,11 +1226,32 @@ export default function AiResults() {
 
     content = (
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          fromBooking && { paddingBottom: moderateHeightScale(100) },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {isReel && downloadUri && (
+        {fromBooking && allSelectableUrls.length > 0 && (
+          <View style={styles.selectAllRow}>
+            <Text style={styles.sectionTitleUppercase}>
+              {t("selectImagesForTryOn")}
+            </Text>
+            <TouchableOpacity
+              style={styles.selectAllButton}
+              onPress={() =>
+                allSelected ? unselectAll() : selectAll(allSelectableUrls)
+              }
+              activeOpacity={0.7}
+            >
+              <Text style={styles.selectAllButtonText}>
+                {allSelected ? t("unselectAll") : t("selectAll")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        {isReel && downloadUri && !fromBooking && (
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.downloadButtonPrimary}
@@ -1253,13 +1423,21 @@ export default function AiResults() {
                     theme={theme}
                     onImagePress={openFullImage}
                     allUrls={sm.original_media!.map((m) => m.url)}
-                    onSharePress={(url, labelKey) =>
-                      openShareSheetForImage(url, labelKey, true)
+                    onSharePress={
+                      fromBooking
+                        ? undefined
+                        : (url, labelKey) =>
+                            openShareSheetForImage(url, labelKey, true)
                     }
-                    onDownloadPress={(url, options) =>
-                      downloadMedia(url, options ?? {})
+                    onDownloadPress={
+                      fromBooking
+                        ? undefined
+                        : (url, options) => downloadMedia(url, options ?? {})
                     }
                     downloadingUrl={downloadingUrl}
+                    selectionMode={fromBooking}
+                    selectedUrls={fromBooking ? selectedUrls : undefined}
+                    onToggleUrl={fromBooking ? toggleUrl : undefined}
                   />
                 ))}
               </View>
@@ -1271,9 +1449,12 @@ export default function AiResults() {
           <View style={styles.singleImageContainer}>
             <TouchableOpacity
               style={styles.singleImageTouchable}
-              onPress={() =>
-                sm.images?.processed && openFullImage(sm.images.processed)
-              }
+              onPress={() => {
+                const url = sm.images?.processed;
+                if (!url) return;
+                if (fromBooking) toggleUrl(url);
+                else openFullImage(url);
+              }}
               activeOpacity={1}
             >
               <Image
@@ -1282,35 +1463,55 @@ export default function AiResults() {
                 resizeMode="cover"
               />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.shareIconOverlay}
-              onPress={() =>
-                openShareSheetForImage(sm.images!.processed!, "image", true)
-              }
-              activeOpacity={0.7}
-            >
-              <Feather
-                name="share-2"
-                size={moderateWidthScale(20)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.downloadIconOverlay}
-              onPress={() => handleDownloadPrimary(sm.images?.processed)}
-              disabled={downloadingUrl === sm.images?.processed}
-              activeOpacity={0.7}
-            >
-              {downloadingUrl === sm.images?.processed ? (
-                <ActivityIndicator size="small" color={theme.white} />
-              ) : (
-                <Feather
-                  name="download"
-                  size={moderateWidthScale(20)}
-                  color={theme.white}
-                />
-              )}
-            </TouchableOpacity>
+            {fromBooking ? (
+              <View
+                style={[
+                  styles.selectionOverlay,
+                  selectedUrls.has(sm.images.processed) &&
+                    styles.selectionOverlaySelected,
+                ]}
+              >
+                {selectedUrls.has(sm.images.processed) ? (
+                  <Feather
+                    name="check"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                ) : null}
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.shareIconOverlay}
+                  onPress={() =>
+                    openShareSheetForImage(sm.images!.processed!, "image", true)
+                  }
+                  activeOpacity={0.7}
+                >
+                  <Feather
+                    name="share-2"
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.downloadIconOverlay}
+                  onPress={() => handleDownloadPrimary(sm.images?.processed)}
+                  disabled={downloadingUrl === sm.images?.processed}
+                  activeOpacity={0.7}
+                >
+                  {downloadingUrl === sm.images?.processed ? (
+                    <ActivityIndicator size="small" color={theme.white} />
+                  ) : (
+                    <Feather
+                      name="download"
+                      size={moderateWidthScale(20)}
+                      color={theme.white}
+                    />
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         )}
 
@@ -1337,7 +1538,12 @@ export default function AiResults() {
                     <TouchableOpacity
                       style={styles.singleImageTouchable}
                       onPress={() =>
-                        openFullImage(url, sm.images!.originals ?? undefined)
+                        fromBooking
+                          ? toggleUrl(url)
+                          : openFullImage(
+                              url,
+                              sm.images!.originals ?? undefined,
+                            )
                       }
                       activeOpacity={1}
                     >
@@ -1347,33 +1553,58 @@ export default function AiResults() {
                         resizeMode="cover"
                       />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.shareIconOverlay}
-                      onPress={() => openShareSheetForImage(url, "image", true)}
-                      activeOpacity={0.7}
-                    >
-                      <Feather
-                        name="share-2"
-                        size={moderateWidthScale(20)}
-                        color={theme.white}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.downloadIconOverlay}
-                      onPress={() => handleDownloadPrimary(url)}
-                      disabled={downloadingUrl === url}
-                      activeOpacity={0.7}
-                    >
-                      {downloadingUrl === url ? (
-                        <ActivityIndicator size="small" color={theme.white} />
-                      ) : (
-                        <Feather
-                          name="download"
-                          size={moderateWidthScale(20)}
-                          color={theme.white}
-                        />
-                      )}
-                    </TouchableOpacity>
+                    {fromBooking ? (
+                      <View
+                        style={[
+                          styles.selectionOverlay,
+                          selectedUrls.has(url) &&
+                            styles.selectionOverlaySelected,
+                        ]}
+                      >
+                        {selectedUrls.has(url) ? (
+                          <Feather
+                            name="check"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        ) : null}
+                      </View>
+                    ) : (
+                      <>
+                        <TouchableOpacity
+                          style={styles.shareIconOverlay}
+                          onPress={() =>
+                            openShareSheetForImage(url, "image", true)
+                          }
+                          activeOpacity={0.7}
+                        >
+                          <Feather
+                            name="share-2"
+                            size={moderateWidthScale(20)}
+                            color={theme.white}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.downloadIconOverlay}
+                          onPress={() => handleDownloadPrimary(url)}
+                          disabled={downloadingUrl === url}
+                          activeOpacity={0.7}
+                        >
+                          {downloadingUrl === url ? (
+                            <ActivityIndicator
+                              size="small"
+                              color={theme.white}
+                            />
+                          ) : (
+                            <Feather
+                              name="download"
+                              size={moderateWidthScale(20)}
+                              color={theme.white}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      </>
+                    )}
                   </View>
                 ))}
               </View>
@@ -1481,28 +1712,76 @@ export default function AiResults() {
   } else {
     content = (
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          fromBooking && { paddingBottom: moderateHeightScale(100) },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {fromBooking && allSelectableUrls.length > 0 && (
+          <View style={styles.selectAllRow}>
+            <Text style={styles.sectionTitleUppercase}>
+              {t("selectImagesForTryOn")}
+            </Text>
+            <TouchableOpacity
+              style={styles.selectAllButton}
+              onPress={() =>
+                allSelected ? unselectAll() : selectAll(allSelectableUrls)
+              }
+              activeOpacity={0.7}
+            >
+              <Text style={styles.selectAllButtonText}>
+                {allSelected ? t("unselectAll") : t("selectAll")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
         {normalized.sections.map((section, idx) => (
           <View key={idx} style={styles.section}>
             <View style={styles.sectionTitleRow}>
               <Text style={styles.sectionTitleFlex} numberOfLines={1}>
                 {section.name}
               </Text>
-              <TouchableOpacity
-                style={styles.sectionShareButton}
-                onPress={() => openShareSheetForSection(section)}
-                activeOpacity={0.7}
-                accessibilityLabel={t("share")}
-              >
-                <MaterialIcons
-                  name="share"
-                  size={moderateWidthScale(18)}
-                  color={theme.text}
-                />
-              </TouchableOpacity>
+              {!fromBooking && (
+                <TouchableOpacity
+                  style={styles.sectionShareButton}
+                  onPress={() => openShareSheetForSection(section)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={t("share")}
+                >
+                  <MaterialIcons
+                    name="share"
+                    size={moderateWidthScale(18)}
+                    color={theme.text}
+                  />
+                </TouchableOpacity>
+              )}
+              {fromBooking &&
+                section.views.length > 0 &&
+                (() => {
+                  const sectionUrls = section.views.map((v) => v.url);
+                  const sectionAllSelected = sectionUrls.every((u) =>
+                    selectedUrls.has(u),
+                  );
+                  return (
+                    <TouchableOpacity
+                      style={styles.selectSectionButton}
+                      onPress={() =>
+                        sectionAllSelected
+                          ? unselectSection(sectionUrls)
+                          : selectSection(sectionUrls)
+                      }
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.selectSectionButtonText}>
+                        {sectionAllSelected
+                          ? t("unselectSection")
+                          : t("selectSection")}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
             </View>
             {section.description ? (
               <Text style={styles.sectionDescription}>
@@ -1516,10 +1795,12 @@ export default function AiResults() {
                     <TouchableOpacity
                       style={StyleSheet.absoluteFill}
                       onPress={() =>
-                        openFullImage(
-                          url,
-                          section.views.map((v) => v.url),
-                        )
+                        fromBooking
+                          ? toggleUrl(url)
+                          : openFullImage(
+                              url,
+                              section.views.map((v) => v.url),
+                            )
                       }
                       activeOpacity={1}
                     >
@@ -1529,37 +1810,59 @@ export default function AiResults() {
                         resizeMode="cover"
                       />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.imageLabel}
-                      onPress={() => openShareSheetForImage(url, labelKey)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.imageLabelText}>{t(labelKey)}</Text>
-                      <MaterialIcons
-                        name="share"
-                        size={moderateWidthScale(14)}
-                        color={theme.white}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.downloadButton}
-                      onPress={() => handleDownload(url)}
-                      disabled={downloadingUrl === url}
-                      activeOpacity={0.7}
-                    >
-                      {downloadingUrl === url ? (
-                        <ActivityIndicator size="small" color={theme.white} />
-                      ) : (
-                        <Feather
-                          name="download"
-                          size={moderateWidthScale(14)}
-                          color={theme.white}
-                        />
-                      )}
-                      {/* <Text style={styles.downloadButtonText}>
-                        {t("download")}
-                      </Text> */}
-                    </TouchableOpacity>
+                    {fromBooking ? (
+                      <View
+                        style={[
+                          styles.selectionOverlay,
+                          selectedUrls.has(url) &&
+                            styles.selectionOverlaySelected,
+                        ]}
+                      >
+                        {selectedUrls.has(url) ? (
+                          <Feather
+                            name="check"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        ) : null}
+                      </View>
+                    ) : (
+                      <>
+                        <TouchableOpacity
+                          style={styles.imageLabel}
+                          onPress={() => openShareSheetForImage(url, labelKey)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.imageLabelText}>
+                            {t(labelKey)}
+                          </Text>
+                          <MaterialIcons
+                            name="share"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.downloadButton}
+                          onPress={() => handleDownload(url)}
+                          disabled={downloadingUrl === url}
+                          activeOpacity={0.7}
+                        >
+                          {downloadingUrl === url ? (
+                            <ActivityIndicator
+                              size="small"
+                              color={theme.white}
+                            />
+                          ) : (
+                            <Feather
+                              name="download"
+                              size={moderateWidthScale(14)}
+                              color={theme.white}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      </>
+                    )}
                   </View>
                 </View>
               ))}
@@ -1606,6 +1909,37 @@ export default function AiResults() {
         onEndReached={onPotentialEndReached}
         sending={shareSending}
       />
+
+      {fromBooking &&
+        normalized?.status === "completed" &&
+        allSelectableUrls.length > 0 && (
+          <View style={styles.selectFooter}>
+            <TouchableOpacity
+              style={[
+                styles.selectButton,
+                selectedUrls.size === 0 && styles.selectButtonDisabled,
+              ]}
+              onPress={() => {
+                if (selectedUrls.size > 0) {
+                  const existing = Array.isArray(bookingTryOnImageUrls)
+                    ? bookingTryOnImageUrls
+                    : [];
+                  const merged = [...existing, ...Array.from(selectedUrls)];
+                  const deduped = Array.from(new Set(merged));
+                  dispatch(setBookingTryOnImageUrls(deduped));
+                  router.back();
+                  router.back();
+                }
+              }}
+              disabled={selectedUrls.size === 0}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.selectButtonText}>
+                {t("select") || "Select"} ({selectedUrls.size})
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
     </View>
   );
 }

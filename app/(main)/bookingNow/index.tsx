@@ -33,6 +33,11 @@ import {
   type StaffMember,
   type BusinessHours,
 } from "@/src/state/slices/bsnsSlice";
+import {
+  setBookingTryOnImageUrls,
+  clearBookingTryOnImageUrls,
+  setBookingTryOnPreselectedUrls,
+} from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
 import {
   businessEndpoints,
@@ -451,6 +456,51 @@ const createStyles = (theme: Theme) =>
     sectionSubTitleTryon: {
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+    },
+    tryOnImagesRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      marginTop: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingBottom: moderateHeightScale(8),
+    },
+    tryOnImageBox: {
+      width: widthScale(72),
+      height: widthScale(72),
+      borderRadius: moderateWidthScale(8),
+      overflow: "hidden",
+      backgroundColor: theme.borderLight,
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+      position: "relative",
+    },
+    tryOnImageThumb: {
+      width: "100%",
+      height: "100%",
+    },
+    tryOnImageRemoveBtn: {
+      position: "absolute",
+      top: moderateWidthScale(2),
+      right: moderateWidthScale(2),
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      backgroundColor: "rgba(0,0,0,0.6)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tryOnPlusBox: {
+      width: widthScale(72),
+      height: widthScale(72),
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 2,
+      borderStyle: "dashed",
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.lightGreen015,
+      alignItems: "center",
+      justifyContent: "center",
     },
     paymentCard: {
       backgroundColor: theme.white,
@@ -1142,6 +1192,7 @@ export default function BookingNow() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [apiSlots, setApiSlots] = useState<string[]>([]);
   const [note, setNote] = useState("");
+  const [tryOnImageUrls, setTryOnImageUrls] = useState<string[]>([]);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const hasInitializedReschedulePreset = useRef(false);
   const hasScrolledToRescheduleSlot = useRef(false);
@@ -1156,6 +1207,19 @@ export default function BookingNow() {
       setNote(String(params.notes).trim());
     }
   }, [isReschedule, params.notes]);
+
+  const bookingTryOnFromRedux = useAppSelector(
+    (state) => state.general.bookingTryOnImageUrls,
+  );
+  // When returning from AI Results: add selected URLs to try-on list (append), then clear Redux
+  useFocusEffect(
+    useCallback(() => {
+      if (bookingTryOnFromRedux?.length) {
+        setTryOnImageUrls((prev) => [...prev, ...bookingTryOnFromRedux]);
+        dispatch(clearBookingTryOnImageUrls());
+      }
+    }, [bookingTryOnFromRedux, dispatch]),
+  );
 
   // When reschedule mode and params have date/time/staff, pre-select them once data is loaded
   useEffect(() => {
@@ -2453,6 +2517,50 @@ export default function BookingNow() {
                   <Text style={styles.sectionSubTitleTryon}>(optional)</Text>
                 </Text>
               </View>
+            </View>
+
+            <View style={styles.tryOnImagesRow}>
+              {tryOnImageUrls.map((uri, index) => (
+                <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.tryOnImageThumb}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.tryOnImageRemoveBtn}
+                    onPress={() =>
+                      setTryOnImageUrls((prev) =>
+                        prev.filter((_, i) => i !== index),
+                      )
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              <TouchableOpacity
+                style={styles.tryOnPlusBox}
+                onPress={() => {
+                  dispatch(setBookingTryOnPreselectedUrls(tryOnImageUrls));
+                  router.push({
+                    pathname: "/aiRequests",
+                    params: { returnTo: "booking" },
+                  });
+                }}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="plus"
+                  size={moderateWidthScale(28)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
             </View>
 
             <View

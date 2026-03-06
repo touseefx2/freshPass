@@ -13,7 +13,7 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints } from "@/src/services/endpoints";
 import dayjs from "dayjs";
@@ -74,6 +74,7 @@ function formatDateTime(value: string): string {
 export default function AiRequests() {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const params = useLocalSearchParams<{ returnTo?: string }>();
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
 
@@ -175,7 +176,7 @@ export default function AiRequests() {
           onPress={() => {
             router.push({
               pathname: "/aiResults",
-              params: { jobId: item.job_id },
+              params: { jobId: item.job_id, ...(params.returnTo ? { returnTo: params.returnTo } : {}) },
             });
           }}
         >

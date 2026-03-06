@@ -84,6 +84,10 @@ export interface GeneralState {
   chatContactsRefreshing: boolean;
   chatContactsLoadingMore: boolean;
   businessPlansModalVisible: boolean;
+  /** When user selects images from AI Results to attach to booking (not persisted) */
+  bookingTryOnImageUrls: string[];
+  /** When opening AI Results from booking, pre-select these URLs (intersection with result) */
+  bookingTryOnPreselectedUrls: string[];
 }
 
 export interface ChatContactItem {
@@ -136,6 +140,8 @@ const initialState: GeneralState = {
   chatContactsRefreshing: false,
   chatContactsLoadingMore: false,
   businessPlansModalVisible: false,
+  bookingTryOnImageUrls: [],
+  bookingTryOnPreselectedUrls: [],
 };
 
 const generalSlice = createSlice({
@@ -258,6 +264,18 @@ const generalSlice = createSlice({
     setBusinessPlansModalVisible(state, action: PayloadAction<boolean>) {
       state.businessPlansModalVisible = action.payload;
     },
+    setBookingTryOnImageUrls(state, action: PayloadAction<string[]>) {
+      state.bookingTryOnImageUrls = action.payload;
+    },
+    clearBookingTryOnImageUrls(state) {
+      state.bookingTryOnImageUrls = [];
+    },
+    setBookingTryOnPreselectedUrls(state, action: PayloadAction<string[]>) {
+      state.bookingTryOnPreselectedUrls = action.payload;
+    },
+    clearBookingTryOnPreselectedUrls(state) {
+      state.bookingTryOnPreselectedUrls = [];
+    },
     setIsFirstShowTryOn(state, action: PayloadAction<boolean>) {
       state.isFirstShowTryOn = action.payload;
     },
@@ -343,10 +361,11 @@ const generalSlice = createSlice({
       state.chatContactsRefreshing = false;
       state.chatContactsLoadingMore = false;
       state.businessPlansModalVisible = false;
+      state.bookingTryOnImageUrls = [];
+      state.bookingTryOnPreselectedUrls = [];
     },
   },
 });
-
 export const {
   setTheme,
   setThemeType,
@@ -371,6 +390,10 @@ export const {
   closeFullImageModal,
   setGuestModeModalVisible,
   setBusinessPlansModalVisible,
+  setBookingTryOnImageUrls,
+  clearBookingTryOnImageUrls,
+  setBookingTryOnPreselectedUrls,
+  clearBookingTryOnPreselectedUrls,
   setIsFirstShowTryOn,
   setCurrentLocation,
   addToRecentLocations,
