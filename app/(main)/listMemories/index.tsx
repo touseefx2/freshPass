@@ -30,8 +30,14 @@ import PotentialContactsModal, {
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
 export interface MemoryItem {
-  image_url: string;
+  url: string;
   date: string;
+  /** @deprecated Use url. */
+  image_url?: string;
+}
+
+function getItemUrl(item: MemoryItem): string {
+  return item.url ?? item.image_url ?? "";
 }
 
 export interface MemorySection {
@@ -158,7 +164,7 @@ export default function ListMemories() {
   const openFullImage = useCallback(
     (imageUrl: string, index: number) => {
       if (!selectedSection?.items?.length) return;
-      const allUrls = selectedSection.items.map((i) => i.image_url);
+      const allUrls = selectedSection.items.map((i) => getItemUrl(i));
       dispatch(openFullImageModal({ images: allUrls, initialIndex: index }));
     },
     [selectedSection?.items, dispatch],
@@ -254,56 +260,59 @@ export default function ListMemories() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.modalImageGrid}>
-            {selectedSection.items.map((item, index) => (
-              <View
-                key={`${item.image_url}-${index}`}
-                style={styles.modalImageCard}
-              >
-                <View style={styles.modalImageCardInner}>
-                  <TouchableOpacity
-                    style={styles.modalResultImageTouchable}
-                    onPress={() => openFullImage(item.image_url, index)}
-                    activeOpacity={0.9}
-                  >
-                    <Image
-                      source={{ uri: item.image_url }}
-                      style={styles.modalResultImage}
-                      resizeMode="cover"
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalShareButton}
-                    onPress={() => openShareSheetForImage(item.image_url)}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialIcons
-                      name="share"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.modalDownloadButton}
-                    onPress={() => downloadMedia(item.image_url)}
-                    disabled={downloadingUrl === item.image_url}
-                    activeOpacity={0.7}
-                  >
-                    {downloadingUrl === item.image_url ? (
-                      <ActivityIndicator
-                        size="small"
-                        color={theme.white}
+            {selectedSection.items.map((item, index) => {
+              const itemUrl = getItemUrl(item);
+              return (
+                <View
+                  key={itemUrl ? `${itemUrl}-${index}` : `item-${index}`}
+                  style={styles.modalImageCard}
+                >
+                  <View style={styles.modalImageCardInner}>
+                    <TouchableOpacity
+                      style={styles.modalResultImageTouchable}
+                      onPress={() => openFullImage(itemUrl, index)}
+                      activeOpacity={0.9}
+                    >
+                      <Image
+                        source={{ uri: itemUrl }}
+                        style={styles.modalResultImage}
+                        resizeMode="cover"
                       />
-                    ) : (
-                      <Feather
-                        name="download"
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.modalShareButton}
+                      onPress={() => openShareSheetForImage(itemUrl)}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons
+                        name="share"
                         size={moderateWidthScale(14)}
                         color={theme.white}
                       />
-                    )}
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.modalDownloadButton}
+                      onPress={() => downloadMedia(itemUrl)}
+                      disabled={downloadingUrl === itemUrl}
+                      activeOpacity={0.7}
+                    >
+                      {downloadingUrl === itemUrl ? (
+                        <ActivityIndicator
+                          size="small"
+                          color={theme.white}
+                        />
+                      ) : (
+                        <Feather
+                          name="download"
+                          size={moderateWidthScale(14)}
+                          color={theme.white}
+                        />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
       ) : null}

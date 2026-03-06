@@ -24,8 +24,15 @@ const BOX_WIDTH_PERCENT = 0.92;
 const BOX_HEIGHT_PERCENT = 0.85;
 
 export interface MemoryItem {
-  image_url: string;
+  url: string;
   date: string;
+  /** @deprecated Use url. Kept for backward compatibility. */
+  image_url?: string;
+}
+
+/** Prefer url; fallback to image_url for old data. */
+export function getMemoryItemUrl(item: MemoryItem): string {
+  return item.url ?? (item as { image_url?: string }).image_url ?? "";
 }
 
 export interface MemorySection {
@@ -183,47 +190,50 @@ export default function MemorySectionModal({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.imageGrid}>
-              {section.items.map((item, index) => (
-                <View
-                  key={`${item.image_url}-${index}`}
-                  style={styles.imageCard}
-                >
-                  <View style={styles.imageCardInner}>
-                    <Image
-                      source={{ uri: item.image_url }}
-                      style={styles.resultImage}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      style={styles.shareButton}
-                      onPress={() => onShareImage(item.image_url)}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialIcons
-                        name="share"
-                        size={moderateWidthScale(14)}
-                        color={theme.white}
+              {section.items.map((item, index) => {
+                const itemUrl = getMemoryItemUrl(item);
+                return (
+                  <View
+                    key={itemUrl ? `${itemUrl}-${index}` : `item-${index}`}
+                    style={styles.imageCard}
+                  >
+                    <View style={styles.imageCardInner}>
+                      <Image
+                        source={{ uri: itemUrl }}
+                        style={styles.resultImage}
+                        resizeMode="cover"
                       />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.downloadButton}
-                      onPress={() => onDownloadImage(item.image_url)}
-                      disabled={downloadingUrl === item.image_url}
-                      activeOpacity={0.7}
-                    >
-                      {downloadingUrl === item.image_url ? (
-                        <ActivityIndicator size="small" color={theme.white} />
-                      ) : (
-                        <Feather
-                          name="download"
+                      <TouchableOpacity
+                        style={styles.shareButton}
+                        onPress={() => onShareImage(itemUrl)}
+                        activeOpacity={0.8}
+                      >
+                        <MaterialIcons
+                          name="share"
                           size={moderateWidthScale(14)}
                           color={theme.white}
                         />
-                      )}
-                    </TouchableOpacity>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.downloadButton}
+                        onPress={() => onDownloadImage(itemUrl)}
+                        disabled={downloadingUrl === itemUrl}
+                        activeOpacity={0.7}
+                      >
+                        {downloadingUrl === itemUrl ? (
+                          <ActivityIndicator size="small" color={theme.white} />
+                        ) : (
+                          <Feather
+                            name="download"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
           </ScrollView>
         </TouchableOpacity>

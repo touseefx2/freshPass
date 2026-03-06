@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   StatusBar,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
+import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
@@ -102,7 +104,12 @@ export default function AiMemories() {
           per_page: PER_PAGE,
         });
         const res = await ApiService.get<MemoriesResponse>(url);
-        const data = res?.data ?? [];
+        const rawData = res?.data ?? [];
+        const data = rawData.map((item: any) => ({
+          date: item.date,
+          url: item.url ?? item.image_url ?? "",
+          image_url: item.image_url,
+        })) as MemoryItem[];
         const currentPage = res?.current_page ?? pageNum;
         const last = res?.last_page ?? 1;
         setLastPage(last);
@@ -144,19 +151,32 @@ export default function AiMemories() {
 
   const renderSection = useCallback(
     ({ item }: { item: MemorySection }) => {
-      const firstImage = item.items[0]?.image_url;
-      if (!firstImage) return null;
+      const firstItem = item.items[0];
+      const firstImageUrl =
+        firstItem && (firstItem.url ?? (firstItem as any).image_url);
       return (
         <TouchableOpacity
           style={styles.sectionCard}
           onPress={() => handleSectionPress(item)}
           activeOpacity={0.9}
         >
-          <Image
-            source={{ uri: firstImage }}
-            style={styles.sectionCardImage}
-            resizeMode="cover"
-          />
+          <View style={styles.sectionCardImage}>
+            {firstImageUrl ? (
+              <Image
+                source={{ uri: firstImageUrl }}
+                style={styles.sectionCardImageInner}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.sectionCardIconPlaceholder}>
+                <MaterialIcons
+                  name="photo-library"
+                  size={moderateWidthScale(48)}
+                  color={theme.lightGreen4}
+                />
+              </View>
+            )}
+          </View>
           <View style={styles.sectionCardOverlay}>
             <Text style={styles.sectionCardTitle}>{t("happyWeekend")}</Text>
             <Text style={styles.sectionCardDate}>{item.dateLabel}</Text>
@@ -164,7 +184,7 @@ export default function AiMemories() {
         </TouchableOpacity>
       );
     },
-    [styles, handleSectionPress, t],
+    [styles, handleSectionPress, t, theme.lightGreen4],
   );
 
   const keyExtractor = useCallback((item: MemorySection) => item.weekKey, []);

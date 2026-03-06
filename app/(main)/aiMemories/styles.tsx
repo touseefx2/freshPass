@@ -222,6 +222,15 @@ export const createStyles = (theme: Theme) =>
       width: "100%",
       aspectRatio: 16 / 10,
       backgroundColor: theme.lightGreen2,
+      position: "relative",
+    },
+    sectionCardImageInner: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    sectionCardIconPlaceholder: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
     },
     sectionCardOverlay: {
       position: "absolute",
