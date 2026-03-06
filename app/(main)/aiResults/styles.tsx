@@ -65,6 +65,22 @@ export const createStyles = (theme: Theme) =>
       color: theme.text,
       marginBottom: moderateHeightScale(8),
     },
+    sectionTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(8),
+    },
+    sectionTitleFlex: {
+      flex: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    sectionShareButton: {
+      padding: moderateWidthScale(8),
+      marginRight: moderateWidthScale(-8),
+    },
     sectionDescription: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,

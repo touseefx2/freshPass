@@ -616,7 +616,7 @@ export default function AiResults() {
     linkOnly?: boolean;
     /** When true, share only video + simple text (AI Result - Video) */
     simpleReelShare?: boolean;
-  }>(null);
+  } | { section: NormalizedSection }>(null);
   const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
   const [potentialContacts, setPotentialContacts] = useState<
     PotentialContact[]
@@ -722,6 +722,23 @@ export default function AiResults() {
   const handleShareAiResult = useCallback(async () => {
     try {
       if (shareContext) {
+        if ("section" in shareContext && shareContext.section) {
+          const section = shareContext.section;
+          let message = `${section.name}\n`;
+          if (section.description) message += `${section.description}\n`;
+          section.views.forEach((v) => {
+            message += `${t(v.labelKey)}: ${v.url}\n`;
+          });
+          const url = section.views?.[0]?.url;
+          if (message.trim()) {
+            await Share.share({
+              message: message.trim(),
+              url: url || undefined,
+            });
+          }
+          setShareContext(null);
+          return;
+        }
         const message = shareContext.simpleReelShare
           ? `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`
           : shareContext.linkOnly
@@ -806,6 +823,15 @@ export default function AiResults() {
   /** Build the same message text used for native share / send to user */
   const getShareMessageText = useCallback((): string => {
     if (shareContext) {
+      if ("section" in shareContext && shareContext.section) {
+        const section = shareContext.section;
+        let message = `${section.name}\n`;
+        if (section.description) message += `${section.description}\n`;
+        section.views.forEach((v) => {
+          message += `${t(v.labelKey)}: ${v.url}\n`;
+        });
+        return message.trim();
+      }
       if (shareContext.simpleReelShare) {
         return `${t("aiResults")} – ${t("video")}\n\n${t("video")}: ${shareContext.url}`;
       }
@@ -907,6 +933,11 @@ export default function AiResults() {
       labelKey: "video",
       simpleReelShare: true,
     });
+    setShareSheetVisible(true);
+  }, []);
+
+  const openShareSheetForSection = useCallback((section: NormalizedSection) => {
+    setShareContext({ section });
     setShareSheetVisible(true);
   }, []);
 
@@ -1075,7 +1106,9 @@ export default function AiResults() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.reelShareIconButton}
-              onPress={() => sm.video?.url && openShareSheetForReelVideo(sm.video.url)}
+              onPress={() =>
+                sm.video?.url && openShareSheetForReelVideo(sm.video.url)
+              }
               activeOpacity={0.7}
             >
               <MaterialIcons
@@ -1454,7 +1487,23 @@ export default function AiResults() {
       >
         {normalized.sections.map((section, idx) => (
           <View key={idx} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.name}</Text>
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionTitleFlex} numberOfLines={1}>
+                {section.name}
+              </Text>
+              <TouchableOpacity
+                style={styles.sectionShareButton}
+                onPress={() => openShareSheetForSection(section)}
+                activeOpacity={0.7}
+                accessibilityLabel={t("share")}
+              >
+                <MaterialIcons
+                  name="share"
+                  size={moderateWidthScale(18)}
+                  color={theme.text}
+                />
+              </TouchableOpacity>
+            </View>
             {section.description ? (
               <Text style={styles.sectionDescription}>
                 {section.description}

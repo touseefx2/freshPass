@@ -1,9 +1,5 @@
 import React, { useMemo } from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";

@@ -27,8 +27,8 @@ import {
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
-
-const TUTORIAL_VIDEO_URI = "https://getfreshpass.com/videos/hair-tryon.MP4";
+const TUTORIAL_VIDEO_URI =
+  process.env.EXPO_PUBLIC_TUTORIAL_VIDEO_TRYON_URI || "";
 
 interface TutorialInlineVideoProps {}
 
