@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -41,6 +42,11 @@ interface MemorySectionModalProps {
   onShareImage: (url: string) => void;
   onDownloadImage: (url: string) => void;
   downloadingUrl: string | null;
+  /** Share sheet shown inside this modal so it appears on top */
+  shareSheetVisible?: boolean;
+  onCloseShareSheet?: () => void;
+  onSelectInAppUser?: () => void;
+  onSelectNativeShare?: () => void;
 }
 
 const createStyles = (theme: Theme) =>
@@ -128,6 +134,43 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(6),
     },
+    shareSheetOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    shareSheetPanel: {
+      backgroundColor: theme.background,
+      borderTopLeftRadius: moderateWidthScale(24),
+      borderTopRightRadius: moderateWidthScale(24),
+      paddingBottom: moderateHeightScale(32),
+    },
+    shareSheetTitle: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    shareSheetOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    shareSheetOptionIcon: {
+      marginRight: moderateWidthScale(16),
+    },
+    shareSheetOptionText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      flex: 1,
+    },
   });
 
 export default function MemorySectionModal({
@@ -137,8 +180,13 @@ export default function MemorySectionModal({
   onShareImage,
   onDownloadImage,
   downloadingUrl,
+  shareSheetVisible = false,
+  onCloseShareSheet,
+  onSelectInAppUser,
+  onSelectNativeShare,
 }: MemorySectionModalProps) {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -227,6 +275,62 @@ export default function MemorySectionModal({
             </View>
           </ScrollView>
         </TouchableOpacity>
+
+        {shareSheetVisible && (
+          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+            <TouchableOpacity
+              style={styles.shareSheetOverlay}
+              activeOpacity={1}
+              onPress={onCloseShareSheet}
+            >
+              <TouchableOpacity
+                style={styles.shareSheetPanel}
+                activeOpacity={1}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <Text style={styles.shareSheetTitle}>
+                  {t("shareOptions")}
+                </Text>
+                <TouchableOpacity
+                  style={styles.shareSheetOption}
+                  onPress={() => {
+                    onCloseShareSheet?.();
+                    onSelectInAppUser?.();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name="people"
+                    size={moderateWidthScale(24)}
+                    color={theme.darkGreen}
+                    style={styles.shareSheetOptionIcon}
+                  />
+                  <Text style={styles.shareSheetOptionText}>
+                    {t("shareWithInAppUser")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.shareSheetOption}
+                  onPress={() => {
+                    onCloseShareSheet?.();
+                    onSelectNativeShare?.();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name="share"
+                    size={moderateWidthScale(24)}
+                    color={theme.darkGreen}
+                    style={styles.shareSheetOptionIcon}
+                  />
+                  <Text style={styles.shareSheetOptionText}>
+                    {t("shareViaPhoneApp")}
+                  </Text>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+        )}
       </TouchableOpacity>
     </Modal>
   );
