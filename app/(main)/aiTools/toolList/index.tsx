@@ -14,7 +14,6 @@ import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
-import Button from "@/src/components/button";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -181,31 +180,55 @@ export default function ToolList() {
       >
         <View style={styles.actionButtonsRow}>
           {isCustomer && (
-            <View style={styles.actionButtonFlex}>
-              <Button
-                containerStyle={styles.actionButton}
-                textStyle={styles.actionButtonText}
-                title={t("myPurchases")}
-                onPress={() => router.push("/aiTransactions")}
+            <TouchableOpacity
+              style={styles.actionButtonCard}
+              onPress={() => router.push("/aiTransactions")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.actionButtonIconWrap}>
+                <MaterialIcons
+                  name="shopping-bag"
+                  size={moderateWidthScale(22)}
+                  color={(colors as Theme).white}
+                />
+              </View>
+              <Text style={styles.actionButtonLabel} numberOfLines={1}>
+                {t("myPurchases")}
+              </Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.actionButtonCard}
+            onPress={() => router.push("/aiRequests")}
+            activeOpacity={0.8}
+          >
+            <View style={styles.actionButtonIconWrap}>
+              <MaterialIcons
+                name="list-alt"
+                size={moderateWidthScale(22)}
+                color={(colors as Theme).white}
               />
             </View>
-          )}
-          <View style={styles.actionButtonFlex}>
-            <Button
-              containerStyle={styles.actionButton}
-              textStyle={styles.actionButtonText}
-              title={t("aiRequests")}
-              onPress={() => router.push("/aiRequests")}
-            />
-          </View>
-          <View style={styles.actionButtonFlex}>
-            <Button
-              containerStyle={styles.actionButton}
-              textStyle={styles.actionButtonText}
-              title={t("memories")}
-              onPress={() => router.push("/aiMemories")}
-            />
-          </View>
+            <Text style={styles.actionButtonLabel} numberOfLines={1}>
+              {t("aiRequests")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButtonCard}
+            onPress={() => router.push("/aiMemories")}
+            activeOpacity={0.8}
+          >
+            <View style={styles.actionButtonIconWrap}>
+              <MaterialIcons
+                name="psychology"
+                size={moderateWidthScale(22)}
+                color={(colors as Theme).white}
+              />
+            </View>
+            <Text style={styles.actionButtonLabel} numberOfLines={1}>
+              {t("memories")}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.featuresContainer}>

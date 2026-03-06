@@ -87,19 +87,30 @@ export const createStyles = (theme: Theme) =>
     },
     actionButtonsRow: {
       flexDirection: "row",
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(10),
       marginBottom: moderateHeightScale(20),
     },
     actionButtonFlex: {
       flex: 1,
     },
-    actionButton: {
-      borderRadius: 6,
+    actionButtonCard: {
+      flex: 1,
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(8),
+      minHeight: moderateHeightScale(72),
     },
-    actionButtonText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
+    actionButtonIconWrap: {
+      marginBottom: moderateHeightScale(6),
+    },
+    actionButtonLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
       color: theme.white,
+      textAlign: "center",
     },
     footerContainer: {
       paddingVertical: moderateHeightScale(44),
