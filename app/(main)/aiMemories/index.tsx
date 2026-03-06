@@ -28,6 +28,8 @@ export interface MemorySection {
 export interface MemoryItem {
   url: string;
   date: string;
+  /** "video" | "image" from API */
+  type?: "video" | "image";
   /** @deprecated Use url. Kept for backward compatibility. */
   image_url?: string;
 }
@@ -117,6 +119,7 @@ export default function AiMemories() {
         const data = rawData.map((item: any) => ({
           date: item.date,
           url: item.url ?? item.image_url ?? "",
+          type: item.type,
           image_url: item.image_url,
         })) as MemoryItem[];
         const currentPage = res?.current_page ?? pageNum;
@@ -160,9 +163,13 @@ export default function AiMemories() {
 
   const renderSection = useCallback(
     ({ item }: { item: MemorySection }) => {
-      const firstItem = item.items[0];
-      const firstImageUrl =
-        firstItem && (firstItem.url ?? (firstItem as any).image_url);
+      const firstImageItem = item.items.find((i) => i.type === "image");
+      const firstImageUrl = firstImageItem
+        ? firstImageItem.url ?? firstImageItem.image_url ?? ""
+        : "";
+      const hasOnlyVideos =
+        item.items.length > 0 &&
+        !item.items.some((i) => i.type === "image");
       return (
         <TouchableOpacity
           style={styles.sectionCard}
@@ -179,7 +186,7 @@ export default function AiMemories() {
             ) : (
               <View style={styles.sectionCardIconPlaceholder}>
                 <MaterialIcons
-                  name="photo-library"
+                  name={hasOnlyVideos ? "videocam" : "photo-library"}
                   size={moderateWidthScale(48)}
                   color={theme.lightGreen4}
                 />

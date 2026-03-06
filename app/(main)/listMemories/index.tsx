@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useLocalSearchParams } from "expo-router";
 import { useDispatch } from "react-redux";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
@@ -32,12 +33,38 @@ const SEND_MESSAGE_URL = "/api/chat/messages";
 export interface MemoryItem {
   url: string;
   date: string;
+  /** "video" | "image" from API */
+  type?: "video" | "image";
   /** @deprecated Use url. */
   image_url?: string;
 }
 
 function getItemUrl(item: MemoryItem): string {
   return item.url ?? item.image_url ?? "";
+}
+
+function MemoryVideoCard({
+  videoUrl,
+  styles,
+  theme,
+}: {
+  videoUrl: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+}) {
+  const player = useVideoPlayer(videoUrl, (p) => {
+    p.loop = false;
+  });
+  return (
+    <View style={styles.modalImageCardInner}>
+      <VideoView
+        player={player}
+        style={styles.modalResultImage}
+        contentFit="cover"
+        nativeControls={true}
+      />
+    </View>
+  );
 }
 
 export interface MemorySection {
@@ -262,23 +289,32 @@ export default function ListMemories() {
           <View style={styles.modalImageGrid}>
             {selectedSection.items.map((item, index) => {
               const itemUrl = getItemUrl(item);
+              const isVideo = item.type === "video";
               return (
                 <View
                   key={itemUrl ? `${itemUrl}-${index}` : `item-${index}`}
                   style={styles.modalImageCard}
                 >
                   <View style={styles.modalImageCardInner}>
-                    <TouchableOpacity
-                      style={styles.modalResultImageTouchable}
-                      onPress={() => openFullImage(itemUrl, index)}
-                      activeOpacity={0.9}
-                    >
-                      <Image
-                        source={{ uri: itemUrl }}
-                        style={styles.modalResultImage}
-                        resizeMode="cover"
+                    {isVideo ? (
+                      <MemoryVideoCard
+                        videoUrl={itemUrl}
+                        styles={styles}
+                        theme={theme}
                       />
-                    </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.modalResultImageTouchable}
+                        onPress={() => openFullImage(itemUrl, index)}
+                        activeOpacity={0.9}
+                      >
+                        <Image
+                          source={{ uri: itemUrl }}
+                          style={styles.modalResultImage}
+                          resizeMode="cover"
+                        />
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity
                       style={styles.modalShareButton}
                       onPress={() => openShareSheetForImage(itemUrl)}
