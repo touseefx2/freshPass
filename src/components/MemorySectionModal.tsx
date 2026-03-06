@@ -18,6 +18,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -140,25 +141,41 @@ const createStyles = (theme: Theme) =>
       justifyContent: "flex-end",
     },
     shareSheetPanel: {
-      backgroundColor: theme.background,
+      backgroundColor: theme.white,
       borderTopLeftRadius: moderateWidthScale(24),
       borderTopRightRadius: moderateWidthScale(24),
-      paddingBottom: moderateHeightScale(32),
+    },
+    shareSheetHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingTop: moderateHeightScale(22),
+      paddingHorizontal: moderateWidthScale(20),
     },
     shareSheetTitle: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
-      color: theme.text,
-      paddingVertical: moderateHeightScale(16),
+      color: theme.darkGreen,
+      flex: 1,
+    },
+    shareSheetCloseButton: {
+      width: widthScale(18),
+      height: widthScale(18),
+      borderRadius: widthScale(18 / 2),
+      borderWidth: 1,
+      borderColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    shareSheetContent: {
       paddingHorizontal: moderateWidthScale(20),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
+      paddingTop: moderateHeightScale(7),
+      paddingBottom: moderateHeightScale(20),
     },
     shareSheetOption: {
       flexDirection: "row",
       alignItems: "center",
       paddingVertical: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
     },
@@ -288,45 +305,60 @@ export default function MemorySectionModal({
                 activeOpacity={1}
                 onPress={(e) => e.stopPropagation()}
               >
-                <Text style={styles.shareSheetTitle}>
-                  {t("shareOptions")}
-                </Text>
-                <TouchableOpacity
-                  style={styles.shareSheetOption}
-                  onPress={() => {
-                    onCloseShareSheet?.();
-                    onSelectInAppUser?.();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="people"
-                    size={moderateWidthScale(24)}
-                    color={theme.darkGreen}
-                    style={styles.shareSheetOptionIcon}
-                  />
-                  <Text style={styles.shareSheetOptionText}>
-                    {t("shareWithInAppUser")}
+                <View style={styles.shareSheetHeader}>
+                  <Text style={styles.shareSheetTitle}>
+                    {t("shareOptions")}
                   </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.shareSheetOption}
-                  onPress={() => {
-                    onCloseShareSheet?.();
-                    onSelectNativeShare?.();
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="share"
-                    size={moderateWidthScale(24)}
-                    color={theme.darkGreen}
-                    style={styles.shareSheetOptionIcon}
-                  />
-                  <Text style={styles.shareSheetOptionText}>
-                    {t("shareViaPhoneApp")}
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.shareSheetCloseButton}
+                    onPress={onCloseShareSheet}
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(12)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.shareSheetContent}>
+                  <TouchableOpacity
+                    style={styles.shareSheetOption}
+                    onPress={() => {
+                      onCloseShareSheet?.();
+                      onSelectInAppUser?.();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name="people"
+                      size={moderateWidthScale(24)}
+                      color={theme.darkGreen}
+                      style={styles.shareSheetOptionIcon}
+                    />
+                    <Text style={styles.shareSheetOptionText}>
+                      {t("shareWithInAppUser")}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.shareSheetOption}
+                    onPress={() => {
+                      onCloseShareSheet?.();
+                      onSelectNativeShare?.();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <MaterialIcons
+                      name="share"
+                      size={moderateWidthScale(24)}
+                      color={theme.darkGreen}
+                      style={styles.shareSheetOptionIcon}
+                    />
+                    <Text style={styles.shareSheetOptionText}>
+                      {t("shareViaPhoneApp")}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
             </TouchableOpacity>
           </View>
