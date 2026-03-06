@@ -1206,6 +1206,34 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(2),
       lineHeight: fontSize.size14,
     },
+    tryOnSectionLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(10),
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+    },
+    tryOnImagesRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(16),
+    },
+    tryOnImageBox: {
+      width: widthScale(72),
+      height: widthScale(72),
+      borderRadius: moderateWidthScale(8),
+      overflow: "hidden",
+      backgroundColor: theme.borderLight,
+      borderWidth: 1,
+      borderColor: theme.borderLine,
+    },
+    tryOnImageThumb: {
+      width: "100%",
+      height: "100%",
+    },
   });
 
 function CheckoutContent() {
@@ -1233,6 +1261,30 @@ function CheckoutContent() {
     selectedPaymentMethod: reduxPaymentMethod,
     selectedNote: reduxNote,
   } = businessData;
+  const bookingTryOnImageUrls = useAppSelector(
+    (state) => state.general.bookingTryOnImageUrls,
+  );
+
+  const params = useLocalSearchParams<{
+    subscription_id?: string;
+    business_id?: string;
+    item?: string;
+    try_on_image_urls?: string;
+  }>();
+
+  // Prefer try-on URLs from route params (passed from bookingNow) so they're always in sync
+  const tryOnImageUrls = useMemo(() => {
+    const fromParams = params.try_on_image_urls;
+    if (fromParams && typeof fromParams === "string" && fromParams.trim()) {
+      try {
+        const parsed = JSON.parse(fromParams) as string[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (_) {}
+    }
+    return Array.isArray(bookingTryOnImageUrls) && bookingTryOnImageUrls.length > 0
+      ? bookingTryOnImageUrls
+      : [];
+  }, [params.try_on_image_urls, bookingTryOnImageUrls]);
 
   // Use Redux directly - no local state needed
   const selectedServices = reduxSelectedServices || [];
@@ -1302,11 +1354,6 @@ function CheckoutContent() {
     }
   }, [selectedStaffId, staffMembers]);
 
-  const params = useLocalSearchParams<{
-    subscription_id?: string;
-    business_id?: string;
-    item?: string;
-  }>();
   const [isSubscriptionDetailExpanded, setIsSubscriptionDetailExpanded] =
     useState(false);
 
@@ -1378,6 +1425,7 @@ function CheckoutContent() {
         notes?: string;
         staff_id?: number;
         subscription_id?: number;
+        image_urls?: string[];
       } = {
         business_id: parseInt(params.business_id || businessId || "0", 10),
         appointment_type: "subscription",
@@ -1392,6 +1440,12 @@ function CheckoutContent() {
       }
       if (subscriptionId != null) {
         requestBody.subscription_id = subscriptionId;
+      }
+      if (
+        Array.isArray(tryOnImageUrls) &&
+        tryOnImageUrls.length > 0
+      ) {
+        requestBody.image_urls = tryOnImageUrls;
       }
       Logger.log("requestBody (subscription)", requestBody);
       dispatch(setActionLoader(true));
@@ -1510,6 +1564,7 @@ function CheckoutContent() {
       notes?: string;
       staff_id?: number;
       subscription_id?: number;
+      image_urls?: string[];
     } = {
       business_id: parseInt(businessId || "0", 10),
       appointment_type: subscriptionId ? "subscription" : "service",
@@ -1532,6 +1587,13 @@ function CheckoutContent() {
     // Add subscription_id only if it exists
     if (subscriptionId) {
       requestBody.subscription_id = subscriptionId;
+    }
+
+    if (
+      Array.isArray(tryOnImageUrls) &&
+      tryOnImageUrls.length > 0
+    ) {
+      requestBody.image_urls = tryOnImageUrls;
     }
 
     Logger.log("requestBody", requestBody);
@@ -1913,6 +1975,25 @@ function CheckoutContent() {
                       </Text>
                     </View>
                   ))}
+                </>
+              )}
+
+              {tryOnImageUrls.length > 0 && (
+                <>
+                  <Text style={styles.tryOnSectionLabel}>
+                    Try-on images
+                  </Text>
+                  <View style={styles.tryOnImagesRow}>
+                    {tryOnImageUrls.map((uri, index) => (
+                      <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
+                        <Image
+                          source={{ uri }}
+                          style={styles.tryOnImageThumb}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    ))}
+                  </View>
                 </>
               )}
 

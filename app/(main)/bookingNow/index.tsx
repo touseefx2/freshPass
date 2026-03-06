@@ -3000,12 +3000,17 @@ export default function BookingNow() {
                 dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
                 dispatch(setSelectedTimeSlot(selectedTimeSlot));
                 dispatch(setSelectedNote(note));
+                dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
                 router.push({
                   pathname: "/(main)/bookingNow/checkout",
                   params: {
                     subscription_id: params.subscription_id || "",
                     business_id: params.business_id || "",
                     item: params.item || "",
+                    try_on_image_urls:
+                      tryOnImageUrls.length > 0
+                        ? JSON.stringify(tryOnImageUrls)
+                        : "",
                   },
                 });
                 return;
@@ -3031,8 +3036,15 @@ export default function BookingNow() {
               dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
               dispatch(setSelectedTimeSlot(selectedTimeSlot));
               dispatch(setSelectedNote(note));
+              dispatch(setBookingTryOnImageUrls(tryOnImageUrls));
               router.push({
                 pathname: "/(main)/bookingNow/checkout",
+                params: {
+                  try_on_image_urls:
+                    tryOnImageUrls.length > 0
+                      ? JSON.stringify(tryOnImageUrls)
+                      : "",
+                },
               });
             }}
           />
