@@ -313,18 +313,31 @@ const generalSlice = createSlice({
       const item = action.payload;
       if (!item.search.trim()) return;
       const itemSearch = (item.search ?? "").toLowerCase();
-      const idx = state.recentSearches.findIndex((s) => {
-        const searchStr =
-          typeof s === "string" ? s : ((s as SearchState).search ?? "");
-        const sid =
-          typeof s === "string" ? null : ((s as SearchState).serviceId ?? null);
-        return (
-          searchStr.toLowerCase() === itemSearch &&
-          sid === (item.serviceId ?? null)
-        );
-      });
-      if (idx >= 0) {
-        state.recentSearches.splice(idx, 1);
+      // If this is a business, remove any existing entry with same businessId (dedupe)
+      if (item.businessId?.trim()) {
+        const bizIdx = state.recentSearches.findIndex((s) => {
+          const existing = typeof s === "string" ? null : (s as SearchState);
+          return existing?.businessId === item.businessId;
+        });
+        if (bizIdx >= 0) {
+          state.recentSearches.splice(bizIdx, 1);
+        }
+      }
+      // For non-business or when no duplicate business: dedupe by search + serviceId
+      if (!item.businessId?.trim()) {
+        const idx = state.recentSearches.findIndex((s) => {
+          const searchStr =
+            typeof s === "string" ? s : ((s as SearchState).search ?? "");
+          const sid =
+            typeof s === "string" ? null : ((s as SearchState).serviceId ?? null);
+          return (
+            searchStr.toLowerCase() === itemSearch &&
+            sid === (item.serviceId ?? null)
+          );
+        });
+        if (idx >= 0) {
+          state.recentSearches.splice(idx, 1);
+        }
       }
       state.recentSearches.unshift({ ...item });
       if (state.recentSearches.length > 4) {
