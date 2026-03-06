@@ -8,6 +8,7 @@ import {
   Modal,
   ScrollView,
   StyleSheet,
+  Dimensions,
 } from "react-native";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
@@ -17,6 +18,10 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const BOX_WIDTH_PERCENT = 0.92;
+const BOX_HEIGHT_PERCENT = 0.85;
 
 export interface MemoryItem {
   image_url: string;
@@ -43,13 +48,15 @@ const createStyles = (theme: Theme) =>
     overlay: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.5)",
-      justifyContent: "flex-end",
+      justifyContent: "center",
+      alignItems: "center",
     },
     container: {
+      width: SCREEN_WIDTH * BOX_WIDTH_PERCENT,
+      height: SCREEN_HEIGHT * BOX_HEIGHT_PERCENT,
       backgroundColor: theme.background,
-      borderTopLeftRadius: moderateWidthScale(24),
-      borderTopRightRadius: moderateWidthScale(24),
-      maxHeight: "90%",
+      borderRadius: moderateWidthScale(20),
+      overflow: "hidden",
     },
     header: {
       flexDirection: "row",
@@ -71,14 +78,15 @@ const createStyles = (theme: Theme) =>
     scrollContent: {
       padding: moderateWidthScale(16),
       paddingBottom: moderateHeightScale(32),
+      flexGrow: 1,
     },
     imageGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(8),
     },
     imageCard: {
-      width: "48%",
+      width: "47%",
       borderRadius: moderateWidthScale(12),
       overflow: "hidden",
       backgroundColor: theme.lightGreen2,
@@ -170,13 +178,16 @@ export default function MemorySectionModal({
             </TouchableOpacity>
           </View>
           <ScrollView
-            style={{ maxHeight: 500 }}
+            style={{ flex: 1 }}
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.imageGrid}>
               {section.items.map((item, index) => (
-                <View key={`${item.image_url}-${index}`} style={styles.imageCard}>
+                <View
+                  key={`${item.image_url}-${index}`}
+                  style={styles.imageCard}
+                >
                   <View style={styles.imageCardInner}>
                     <Image
                       source={{ uri: item.image_url }}
