@@ -309,6 +309,24 @@ export const createStyles = (theme: Theme) =>
       right: 0,
       bottom: 0,
     },
+    modalVideoPlaceholder: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    modalVideoLoading: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.4)",
+    },
+    modalVideoLoadingText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.white,
+      marginTop: moderateHeightScale(4),
+    },
     modalShareButton: {
       position: "absolute",
       top: moderateHeightScale(8),
@@ -329,5 +347,8 @@ export const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(6),
+    },
+    modalDownloadButtonVideo: {
+      bottom: moderateHeightScale(28),
     },
   });

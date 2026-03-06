@@ -1,12 +1,14 @@
 import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
+  Text,
   Image,
   Share,
   StatusBar,
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useLocalSearchParams } from "expo-router";
@@ -52,17 +54,53 @@ function MemoryVideoCard({
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
 }) {
+  const { t } = useTranslation();
+  const [showVideo, setShowVideo] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
   const player = useVideoPlayer(videoUrl, (p) => {
     p.loop = false;
   });
+
+  if (!showVideo) {
+    return (
+      <View style={styles.modalImageCardInner}>
+        <TouchableOpacity
+          style={styles.modalVideoPlaceholder}
+          onPress={() => setShowVideo(true)}
+          activeOpacity={0.9}
+        >
+          <Feather
+            name="play-circle"
+            size={moderateWidthScale(48)}
+            color={theme.white}
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.modalImageCardInner}>
-      <VideoView
-        player={player}
-        style={styles.modalResultImage}
-        contentFit="cover"
-        nativeControls={true}
-      />
+      <View style={StyleSheet.absoluteFill}>
+        <VideoView
+          player={player}
+          style={styles.modalResultImage}
+          contentFit="cover"
+          nativeControls={true}
+          onFirstFrameRender={async () => {
+            if (!isVideoReady) {
+              await player.play();
+              setTimeout(() => setIsVideoReady(true), 200);
+            }
+          }}
+        />
+      </View>
+      {!isVideoReady && (
+        <View style={styles.modalVideoLoading}>
+          <ActivityIndicator size="small" color={theme.white} />
+          <Text style={styles.modalVideoLoadingText}>{t("loading")}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -327,7 +365,10 @@ export default function ListMemories() {
                       />
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={styles.modalDownloadButton}
+                      style={[
+                        styles.modalDownloadButton,
+                        isVideo && styles.modalDownloadButtonVideo,
+                      ]}
                       onPress={() => downloadMedia(itemUrl)}
                       disabled={downloadingUrl === itemUrl}
                       activeOpacity={0.7}
