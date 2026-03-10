@@ -37,6 +37,8 @@ import {
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { setUser } from "@/src/state/slices/userSlice";
+import { getExpoPushToken } from "@/src/services/notificationPermissionService";
+import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -208,17 +210,22 @@ export default function RegisterPassword() {
 
   const handleContinue = async () => {
     Keyboard.dismiss();
-
     setIsLoading(true);
     try {
-      const response = await ApiService.post(businessEndpoints.register, {
+      const expo_push_token = await getExpoPushToken();
+      const body = {
         email: email.trim(),
         password: password,
         password_confirmation: confirmPassword,
         role: selectedRole?.toLowerCase() || "",
         isSubscribed: isSubscribed,
         name: "",
-      });
+        ...(expo_push_token ? { expo_push_token } : {}),
+      };
+
+      Logger.log("---->body", body);
+
+      const response = await ApiService.post(businessEndpoints.register, body);
 
       // Handle successful registration
       if (response.success && response.data) {

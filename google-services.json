@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "286312226658",
+    "project_id": "freshpass-871cb",
+    "storage_bucket": "freshpass-871cb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:286312226658:android:2e0b1ef1146807b29ed63b",
+        "android_client_info": {
+          "package_name": "com.freshpass"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCJW2HV75bgsbkym6Bp1fjL0YgRbvk-Vw0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

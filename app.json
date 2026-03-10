@@ -43,7 +43,8 @@
         }
       },
       "permissions": ["android.permission.RECORD_AUDIO"],
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "pan",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -52,6 +53,7 @@
       "viewport": "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover"
     },
     "plugins": [
+      "expo-notifications",
       "expo-router",
       "expo-video",
       [
@@ -81,14 +83,17 @@
         }
       ],
       "expo-font",
-      ["expo-build-properties", {
-        "android": { "usesCleartextTraffic": true },
-        "ios": {
-          "infoPlist": {
-            "LSApplicationQueriesSchemes": ["app-settings"]
+      [
+        "expo-build-properties",
+        {
+          "android": { "usesCleartextTraffic": true },
+          "ios": {
+            "infoPlist": {
+              "LSApplicationQueriesSchemes": ["app-settings"]
+            }
           }
         }
-      }],
+      ],
       [
         "@react-native-google-signin/google-signin",
         {
