@@ -107,7 +107,7 @@ const createStyles = (theme: Theme) =>
     socialList: {},
     footer: {
       alignItems: "center",
-      marginTop: moderateHeightScale(16),
+      marginTop: moderateHeightScale(5),
       flexShrink: 0,
     },
     footerText: {

@@ -44,7 +44,7 @@ export default function SocialAuthOptions({
       style={[
         styles.container,
         containerStyle,
-        !isGuest && { gap: moderateHeightScale(26) },
+        !isGuest && { gap: moderateHeightScale(22) },
       ]}
     >
       <View style={styles.buttonWrapper}>
