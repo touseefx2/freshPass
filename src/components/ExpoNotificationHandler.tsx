@@ -23,7 +23,6 @@ export default function ExpoNotificationHandler() {
     // Show notification when app is in foreground (banner + sound)
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
-        shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: true,
         shouldShowBanner: true,
@@ -35,10 +34,7 @@ export default function ExpoNotificationHandler() {
     // Fired when notification is received while app is open
     receivedListenerRef.current = Notifications.addNotificationReceivedListener(
       (notification) => {
-        Logger.log(
-          "Notification frontend received:",
-          notification.request.content,
-        );
+        Logger.log("Notification   received:", notification.request.content);
         // const { title, body, data } = notification.request.content;
         // if (title || body) {
         //   showBanner(title ?? "Notification", body ?? "", "info", 4000);
@@ -55,21 +51,21 @@ export default function ExpoNotificationHandler() {
         Logger.log("Notification tapped, data:", data);
 
         // Navigate based on notification data if needed
-        if (data?.screen) {
-          const screen = String(data.screen);
-          try {
-            if (screen === "booking" && data?.booking_id) {
-              router.push({
-                pathname: "/bookingDetailsById",
-                params: { id: String(data.booking_id) },
-              });
-            } else if (screen && screen !== "booking") {
-              router.push(screen as any);
-            }
-          } catch (err) {
-            Logger.error("Notification navigation error:", err);
-          }
-        }
+        // if (data?.screen) {
+        //   const screen = String(data.screen);
+        //   try {
+        //     if (screen === "booking" && data?.booking_id) {
+        //       router.push({
+        //         pathname: "/bookingDetailsById",
+        //         params: { id: String(data.booking_id) },
+        //       });
+        //     } else if (screen && screen !== "booking") {
+        //       router.push(screen as any);
+        //     }
+        //   } catch (err) {
+        //     Logger.error("Notification navigation error:", err);
+        //   }
+        // }
       });
 
     return () => {
