@@ -154,7 +154,12 @@ export default function Tools() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const showCreditBanner =
-    !!hairTryOnService && aiQuota >= 0 && toolType === "Hair Tryon";
+    // !!hairTryOnService &&
+    aiQuota >= 0 && toolType === "Hair Tryon";
+
+  console.log("------>aiQuota", aiQuota);
+  console.log("------>toolType", toolType);
+  console.log("------>hairTryOnService", hairTryOnService);
 
   const creditBannerMessage =
     aiQuota === 0

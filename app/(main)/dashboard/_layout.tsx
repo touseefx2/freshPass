@@ -155,6 +155,7 @@ export default function DashboardLayout() {
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
+        console.log("------>response.data ai_quota", response.data.ai_quota);
         dispatch(
           setUserDetails({
             name: response.data.name,
