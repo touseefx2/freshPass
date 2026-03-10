@@ -253,10 +253,6 @@ export default function DashboardLayout() {
     Array.isArray(segments) &&
     segments.includes("(explore)") &&
     segments.includes("search");
-  const isSearch2Screen =
-    Array.isArray(segments) &&
-    segments.includes("(explore)") &&
-    segments.includes("search2");
   const isFavoritesScreen =
     Array.isArray(segments) &&
     segments.includes("(account)") &&
@@ -284,7 +280,6 @@ export default function DashboardLayout() {
     isSubscriptionCustomerScreen ||
     isLocationScreen ||
     isSearchScreen ||
-    isSearch2Screen ||
     isFavoritesScreen;
 
   return (

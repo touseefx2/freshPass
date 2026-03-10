@@ -1,13 +1,23 @@
-import React, { useMemo, useState, useCallback, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+} from "react";
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
   ScrollView,
-  StatusBar,
+  TextInput,
   Pressable,
   Image,
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -31,9 +41,66 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
+import FloatingInput from "@/src/components/floatingInput";
 import { SearchIcon, CloseIcon } from "@/assets/icons";
+import { ApiService } from "@/src/services/api";
+import { exploreEndpoints } from "@/src/services/endpoints";
 
 export type PopularServiceItem = { id: number | null; name: string };
+
+const DEBOUNCE_MS = 400;
+
+export type ServiceTemplateItem = {
+  id: number;
+  name: string;
+  category_id: number;
+  category: string;
+  base_price: number;
+  duration_hours: number;
+  duration_minutes: number;
+  active: boolean;
+  createdAt: string;
+};
+
+export type BusinessSearchItem = {
+  id: number;
+  slug: string;
+  title: string;
+  logo_url?: string | null;
+  street_address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  phone: string;
+  country_code: string;
+  category: { id: number; name: string };
+  owner: { id: number; name: string };
+  createdAt: string;
+};
+
+type ServiceBusinessListResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    service_templates: ServiceTemplateItem[];
+    businesses: BusinessSearchItem[];
+  };
+};
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
+const DEFAULT_BUSINESS_LOGO =
+  process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+
+function getBusinessLogoUrl(logo: string | null | undefined): string {
+  if (logo == null || logo.trim() === "") {
+    return DEFAULT_BUSINESS_LOGO;
+  }
+  const trimmed = logo.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return `${BASE_URL}${trimmed}`;
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -79,6 +146,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.text,
       marginBottom: moderateHeightScale(12),
+    },
+    recentSectionTitleWithResults: {
+      marginTop: moderateHeightScale(24),
     },
     recentItem: {
       flexDirection: "row",
@@ -165,6 +235,96 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.text,
     },
+    searchInputContainer: {
+      width: "100%",
+      marginTop: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(20),
+    },
+    sectionHeading: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(12),
+    },
+    serviceItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    serviceItemLast: {
+      borderBottomWidth: 0,
+    },
+    serviceItemText: {
+      flex: 1,
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      textTransform: "capitalize",
+    },
+    businessItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    businessItemLast: {
+      borderBottomWidth: 0,
+    },
+    businessPlaceholder: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    businessLogoImage: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
+    },
+    businessContent: {
+      flex: 1,
+    },
+    businessTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+      textTransform: "capitalize",
+    },
+    businessAddress: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      marginTop: moderateHeightScale(2),
+    },
+    emptyState: {
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
+    },
+    emptyStateText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    loadingContainer: {
+      paddingVertical: moderateHeightScale(24),
+      alignItems: "center",
+    },
+    servicesSection: {
+      marginBottom: moderateHeightScale(8),
+    },
+    businessesSection: {
+      marginTop: moderateHeightScale(8),
+    },
     footer: {
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(16),
@@ -204,6 +364,42 @@ function RecentBusinessLogo({
         style={styles.recentBusinessLogoImage}
         resizeMode="cover"
         onError={() => setImageError(true)}
+      />
+    </View>
+  );
+}
+
+function BusinessLogoImage({
+  logo,
+  theme,
+  styles,
+}: {
+  logo: string | null | undefined;
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const [imageError, setImageError] = useState(false);
+  const uri = getBusinessLogoUrl(logo);
+  const showPlaceholder = !uri || imageError;
+
+  if (showPlaceholder) {
+    return (
+      <View style={styles.businessPlaceholder}>
+        <Ionicons
+          name="person-outline"
+          size={moderateWidthScale(22)}
+          color={theme.lightGreen}
+        />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.businessPlaceholder}>
+      <Image
+        source={{ uri }}
+        style={styles.businessLogoImage}
+        onError={() => setImageError(true)}
+        resizeMode="cover"
       />
     </View>
   );
@@ -267,6 +463,55 @@ export default function SearchScreen() {
   );
   const [selectedServiceName, setSelectedServiceName] = useState("");
   const justAppliedReturnRef = useRef(false);
+  const inputRef = useRef<TextInput>(null);
+  const [serviceTemplates, setServiceTemplates] = useState<
+    ServiceTemplateItem[]
+  >([]);
+  const [businesses, setBusinesses] = useState<BusinessSearchItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const fetchServiceBusinessList = useCallback(async (search: string) => {
+    const trimmed = search.trim();
+    if (!trimmed) {
+      setServiceTemplates([]);
+      setBusinesses([]);
+      setHasSearched(false);
+      return;
+    }
+    setLoading(true);
+    setHasSearched(true);
+    try {
+      const url = exploreEndpoints.serviceBusinessList(trimmed);
+      const res = (await ApiService.get(url)) as ServiceBusinessListResponse;
+      if (res?.success && res?.data) {
+        setServiceTemplates(res.data.service_templates ?? []);
+        setBusinesses(res.data.businesses ?? []);
+      } else {
+        setServiceTemplates([]);
+        setBusinesses([]);
+      }
+    } catch {
+      setServiceTemplates([]);
+      setBusinesses([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setServiceTemplates([]);
+      setBusinesses([]);
+      setHasSearched(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchServiceBusinessList(searchQuery);
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchQuery, fetchServiceBusinessList]);
 
   useFocusEffect(
     useCallback(() => {
@@ -297,19 +542,22 @@ export default function SearchScreen() {
   const displayValue = (searchQuery || (searchState.search ?? "")).trim();
   const hasSearchValue = displayValue !== "";
 
-  const handleSearchBoxPress = () => {
-    const sid = selectedServiceId ?? searchState.serviceId ?? null;
-    const query = (searchQuery || (searchState.search ?? "")).trim();
-    router.push({
-      pathname: "./search2",
-      params: {
-        popularServices: params.popularServices ?? "",
-        searchQuery: query,
-        serviceId: sid != null ? String(sid) : "",
-        serviceName: selectedServiceName || (searchState.serviceName ?? ""),
-        fromSearchScreen: "1",
-      },
-    });
+  const handleSearchInputChange = (text: string) => {
+    setSearchQuery(text);
+    setSelectedServiceId(null);
+    setSelectedServiceName("");
+  };
+
+  const handleInputClear = () => {
+    setSearchQuery("");
+    setSelectedServiceId(null);
+    setSelectedServiceName("");
+    setServiceTemplates([]);
+    setBusinesses([]);
+    setHasSearched(false);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 0);
   };
 
   const handleSearchBoxClear = () => {
@@ -321,7 +569,12 @@ export default function SearchScreen() {
 
   const handleSearch = () => {
     const query = displayValue;
-    if (!query) return;
+    Keyboard.dismiss();
+    if (!query) {
+      dispatch(clearSearchState());
+      router.back();
+      return;
+    }
     const sid = selectedServiceId ?? searchState.serviceId ?? null;
     const sname = selectedServiceName || (searchState.serviceName ?? "");
     const payload: SearchState = {
@@ -335,6 +588,44 @@ export default function SearchScreen() {
     dispatch(addToRecentSearches(payload));
     dispatch(setSearchState(payload));
     router.back();
+  };
+
+  const onServicePress = (item: ServiceTemplateItem) => {
+    const query = (item.name || "").trim();
+    if (!query) return;
+    const payload: SearchState = {
+      search: query,
+      serviceId: item.id,
+      businessId: "",
+      businessName: "",
+      businessLocationName: "",
+      ...(item.name ? { serviceName: item.name } : {}),
+    };
+    Keyboard.dismiss();
+    dispatch(addToRecentSearches(payload));
+    dispatch(setSearchState(payload));
+    router.back();
+  };
+
+  const onBusinessPress = (item: BusinessSearchItem) => {
+    const address = [item.street_address, item.city, item.state, item.zip_code]
+      .filter(Boolean)
+      .join(", ");
+    const payload: SearchState = {
+      search: searchQuery.trim(),
+      serviceId: selectedServiceId ?? null,
+      businessId: String(item.id),
+      businessName: item.title,
+      businessLocationName: address,
+      ...(selectedServiceName ? { serviceName: selectedServiceName } : {}),
+      businessLogoUrl: getBusinessLogoUrl(item.logo_url),
+    };
+    Keyboard.dismiss();
+    dispatch(addToRecentSearches(payload));
+    router.push({
+      pathname: "/(main)/businessDetail",
+      params: { business_id: item.id.toString() },
+    } as any);
   };
 
   const handleRecentSearchPress = (item: SearchState) => {
@@ -359,146 +650,259 @@ export default function SearchScreen() {
     setSelectedServiceName(service.name);
   };
 
+  const hasServices = serviceTemplates.length > 0;
+  const hasBusinesses = businesses.length > 0;
+  const showEmptyState =
+    hasSearched &&
+    !loading &&
+    !hasServices &&
+    !hasBusinesses;
+  const hasSearchResults =
+    loading || hasServices || hasBusinesses || showEmptyState;
+
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <StackHeader title={t("hiWhatAreYouLookingFor")} />
 
-      <ScrollView
+      <KeyboardAvoidingView
         style={styles.container}
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
       >
-        <TouchableOpacity
-          style={styles.searchBox}
-          onPress={handleSearchBoxPress}
-          activeOpacity={0.8}
-        >
-          <SearchIcon
-            width={widthScale(18)}
-            height={heightScale(18)}
-            color={theme.darkGreen}
-          />
-          <Text
-            style={[
-              styles.searchBoxText,
-              !hasSearchValue && styles.searchBoxPlaceholder,
-            ]}
-            numberOfLines={1}
-          >
-            {hasSearchValue ? displayValue : t("searchServicesOrBusinesses")}
-          </Text>
-          {hasSearchValue && (
-            <Pressable
-              onPress={handleSearchBoxClear}
-              style={styles.searchBoxClear}
-              hitSlop={moderateWidthScale(8)}
-            >
-              <CloseIcon
+        <View style={styles.content}>
+          <FloatingInput
+            ref={inputRef}
+            label={t("searchServicesOrBusinesses")}
+            value={searchQuery}
+            onChangeText={handleSearchInputChange}
+            placeholder={t("searchServicesOrBusinesses")}
+            placeholderTextColor={theme.lightGreen}
+            containerStyle={styles.searchInputContainer}
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+            onClear={handleInputClear}
+            showClearButton
+            renderLeftAccessory={() => (
+              <SearchIcon
                 width={widthScale(18)}
                 height={heightScale(18)}
                 color={theme.darkGreen}
               />
-            </Pressable>
+            )}
+          />
+        </View>
+
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {loading && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={theme.darkGreen} />
+            </View>
           )}
-        </TouchableOpacity>
 
-        <Text style={styles.recentSectionTitle}>{t("recentSearches")}</Text>
-        {recentSearches.length > 0 ? (
-          recentSearches.map((item, index) => {
-            const isLast = index === recentSearches.length - 1;
-            const hasBusiness = Boolean(item.businessId);
-            const key = hasBusiness
-              ? `b-${item.businessId}-${index}`
-              : `${item.search}-${item.serviceId ?? "n"}-${index}`;
-            if (hasBusiness) {
-              return (
+          {!loading && hasServices && (
+            <View style={styles.servicesSection}>
+              <Text style={styles.sectionHeading}>{t("services")}</Text>
+              {serviceTemplates.map((item, index) => (
                 <TouchableOpacity
-                  key={key}
-                  style={[styles.recentItem, isLast && styles.recentItemLast]}
-                  onPress={() => handleRecentSearchPress(item)}
+                  key={`service-${item.id}`}
+                  style={[
+                    styles.serviceItem,
+                    index === serviceTemplates.length - 1 &&
+                      styles.serviceItemLast,
+                  ]}
+                  onPress={() => onServicePress(item)}
                   activeOpacity={0.7}
                 >
-                  <RecentBusinessLogo
-                    logoUrl={item.businessLogoUrl?.trim()}
-                    theme={theme}
-                    styles={styles}
+                  <SearchIcon
+                    width={widthScale(20)}
+                    height={heightScale(20)}
+                    color={theme.darkGreen}
                   />
-                  <View style={styles.recentBusinessContent}>
-                    <Text style={styles.recentBusinessTitle} numberOfLines={1}>
-                      {item.businessName || item.search}
-                    </Text>
-                    {item.businessLocationName ? (
-                      <Text
-                        style={styles.recentBusinessAddress}
-                        numberOfLines={1}
-                      >
-                        {item.businessLocationName}
-                      </Text>
-                    ) : null}
-                  </View>
-                </TouchableOpacity>
-              );
-            }
-            return (
-              <TouchableOpacity
-                key={key}
-                style={[styles.recentItem, isLast && styles.recentItemLast]}
-                onPress={() => handleRecentSearchPress(item)}
-                activeOpacity={0.7}
-              >
-                <SearchIcon
-                  width={widthScale(18)}
-                  height={heightScale(18)}
-                  color={theme.lightGreen}
-                />
-                <View style={styles.recentItemContent}>
-                  <Text style={styles.recentItemText} numberOfLines={1}>
-                    {item.search}
+                  <Text style={styles.serviceItemText} numberOfLines={1}>
+                    {item.name}
                   </Text>
-                  {(item.serviceName || item.serviceId != null) && (
-                    <Text style={styles.recentItemSubtitle} numberOfLines={1}>
-                      {item.serviceName
-                        ? `Service: ${item.serviceName}`
-                        : `Service ID: ${item.serviceId}`}
-                    </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        ) : (
-          <Text style={styles.recentEmpty}>{t("noRecentSearchFound")}</Text>
-        )}
-
-        {popularList.length > 0 && (
-          <>
-            <Text style={styles.popularSectionTitle}>
-              {t("popularServices")}
-            </Text>
-            <View style={styles.popularServicesContainer}>
-              {popularList.map((service) => (
-                <TouchableOpacity
-                  key={service.id ?? service.name}
-                  style={styles.popularServiceTag}
-                  onPress={() => handlePopularServicePress(service)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.popularServiceText}>{service.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          </>
-        )}
-      </ScrollView>
+          )}
 
-      <View style={styles.footer}>
-        <Button
-          title={t("search")}
-          onPress={handleSearch}
-          disabled={!displayValue}
-        />
-      </View>
+          {!loading && hasBusinesses && (
+            <View style={styles.businessesSection}>
+              <Text style={styles.sectionHeading}>{t("businesses")}</Text>
+              {businesses.map((item, index) => {
+                const address = [
+                  item.street_address,
+                  item.city,
+                  item.state,
+                  item.zip_code,
+                ]
+                  .filter(Boolean)
+                  .join(", ");
+                return (
+                  <TouchableOpacity
+                    key={`business-${item.id}`}
+                    style={[
+                      styles.businessItem,
+                      index === businesses.length - 1 &&
+                        styles.businessItemLast,
+                    ]}
+                    onPress={() => onBusinessPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <BusinessLogoImage
+                      logo={item.logo_url}
+                      theme={theme}
+                      styles={styles}
+                    />
+                    <View style={styles.businessContent}>
+                      <Text style={styles.businessTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      {address ? (
+                        <Text style={styles.businessAddress} numberOfLines={1}>
+                          {address}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {showEmptyState && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
+                {t("noAnyServiceOrBusinessFound")}
+              </Text>
+            </View>
+          )}
+
+          <Text
+            style={[
+              styles.recentSectionTitle,
+              hasSearchResults && styles.recentSectionTitleWithResults,
+            ]}
+          >
+            {t("recentSearches")}
+          </Text>
+          {recentSearches.length > 0 ? (
+            recentSearches.map((item, index) => {
+                  const isLast = index === recentSearches.length - 1;
+                  const hasBusiness = Boolean(item.businessId);
+                  const key = hasBusiness
+                    ? `b-${item.businessId}-${index}`
+                    : `${item.search}-${item.serviceId ?? "n"}-${index}`;
+                  if (hasBusiness) {
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.recentItem,
+                          isLast && styles.recentItemLast,
+                        ]}
+                        onPress={() => handleRecentSearchPress(item)}
+                        activeOpacity={0.7}
+                      >
+                        <RecentBusinessLogo
+                          logoUrl={item.businessLogoUrl?.trim()}
+                          theme={theme}
+                          styles={styles}
+                        />
+                        <View style={styles.recentBusinessContent}>
+                          <Text
+                            style={styles.recentBusinessTitle}
+                            numberOfLines={1}
+                          >
+                            {item.businessName || item.search}
+                          </Text>
+                          {item.businessLocationName ? (
+                            <Text
+                              style={styles.recentBusinessAddress}
+                              numberOfLines={1}
+                            >
+                              {item.businessLocationName}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[
+                        styles.recentItem,
+                        isLast && styles.recentItemLast,
+                      ]}
+                      onPress={() => handleRecentSearchPress(item)}
+                      activeOpacity={0.7}
+                    >
+                      <SearchIcon
+                        width={widthScale(18)}
+                        height={heightScale(18)}
+                        color={theme.lightGreen}
+                      />
+                      <View style={styles.recentItemContent}>
+                        <Text style={styles.recentItemText} numberOfLines={1}>
+                          {item.search}
+                        </Text>
+                        {(item.serviceName || item.serviceId != null) && (
+                          <Text
+                            style={styles.recentItemSubtitle}
+                            numberOfLines={1}
+                          >
+                            {item.serviceName
+                              ? `Service: ${item.serviceName}`
+                              : `Service ID: ${item.serviceId}`}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <Text style={styles.recentEmpty}>
+                  {t("noRecentSearchFound")}
+                </Text>
+              )}
+
+              {popularList.length > 0 && (
+                <>
+                  <Text style={styles.popularSectionTitle}>
+                    {t("popularServices")}
+                  </Text>
+                  <View style={styles.popularServicesContainer}>
+                    {popularList.map((service) => (
+                      <TouchableOpacity
+                        key={service.id ?? service.name}
+                        style={styles.popularServiceTag}
+                        onPress={() => handlePopularServicePress(service)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.popularServiceText}>
+                          {service.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Button
+            title={t("search")}
+            onPress={handleSearch}
+            disabled={!displayValue}
+          />
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

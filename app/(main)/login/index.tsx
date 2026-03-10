@@ -367,6 +367,143 @@ export default function Login() {
     }
   }, [email, password, savePassword, dispatch, router]);
 
+  // const handleLogin = useCallback(async () => {
+  //   Keyboard.dismiss();
+  //   // setIsLoading(true);
+  //   // try {
+  //   const expo_push_token = await getExpoPushToken();
+  //   const body = {
+  //     email: email.trim(),
+  //     password: password,
+  //     ...(expo_push_token ? { expo_push_token } : {}),
+  //   };
+
+  //   Logger.log("---->body", body);
+  //   // const response = await ApiService.post(businessEndpoints.login, body);
+
+  //   // Handle successful login
+  //   //   if (response.success && response.data) {
+  //   //     const { user, token, email_verification_required } = response.data;
+
+  //   //     // Set user data in Redux
+  //   //     if (user && token) {
+  //   //       dispatch(setRegisterEmail(user.email || email.trim()));
+  //   //       if (savePassword) {
+  //   //         dispatch(setSavedPassword(password));
+  //   //       } else {
+  //   //         // Clear saved password if checkbox is unchecked
+  //   //         dispatch(setSavedPassword(null));
+  //   //       }
+
+  //   //       if (user?.role?.toLowerCase() === "business") {
+  //   //         setUserData(response.data);
+  //   //         router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+  //   //       } else if (user?.role?.toLowerCase() === "customer") {
+  //   //         if (email_verification_required) {
+  //   //           setData(response.data);
+  //   //           setIsVerificationModalVisible(true);
+  //   //         } else {
+  //   //           setUserData(response.data);
+  //   //           router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+  //   //         }
+  //   //       } else if (user?.role?.toLowerCase() === "staff") {
+  //   //         setUserData(response.data);
+  //   //         // Save salon business hours from login response if available
+  //   //         if (user?.business_hours && Array.isArray(user.business_hours)) {
+  //   //           const parsedBusinessHours: {
+  //   //             [key: string]: {
+  //   //               isOpen: boolean;
+  //   //               fromHours: number;
+  //   //               fromMinutes: number;
+  //   //               tillHours: number;
+  //   //               tillMinutes: number;
+  //   //               breaks: Array<{
+  //   //                 fromHours: number;
+  //   //                 fromMinutes: number;
+  //   //                 tillHours: number;
+  //   //                 tillMinutes: number;
+  //   //               }>;
+  //   //             };
+  //   //           } = {};
+  //   //           user.business_hours.forEach((bh: any) => {
+  //   //             // Convert day name to capitalized format (e.g., "monday" -> "Monday")
+  //   //             const dayName =
+  //   //               bh.day.charAt(0).toUpperCase() +
+  //   //               bh.day.slice(1).toLowerCase();
+
+  //   //             // Parse opening_time (HH:MM format) - handle null values
+  //   //             const [openingHours, openingMinutes] = bh.opening_time
+  //   //               ? bh.opening_time.split(":").map(Number)
+  //   //               : [0, 0];
+
+  //   //             // Parse closing_time (HH:MM format) - handle null values
+  //   //             const [closingHours, closingMinutes] = bh.closing_time
+  //   //               ? bh.closing_time.split(":").map(Number)
+  //   //               : [0, 0];
+
+  //   //             // Parse break_hours
+  //   //             const breaks = (bh.break_hours || []).map((breakTime: any) => {
+  //   //               const [breakStartHours, breakStartMinutes] = breakTime.start
+  //   //                 ? breakTime.start.split(":").map(Number)
+  //   //                 : [0, 0];
+  //   //               const [breakEndHours, breakEndMinutes] = breakTime.end
+  //   //                 ? breakTime.end.split(":").map(Number)
+  //   //                 : [0, 0];
+
+  //   //               return {
+  //   //                 fromHours: breakStartHours,
+  //   //                 fromMinutes: breakStartMinutes,
+  //   //                 tillHours: breakEndHours,
+  //   //                 tillMinutes: breakEndMinutes,
+  //   //               };
+  //   //             });
+
+  //   //             parsedBusinessHours[dayName] = {
+  //   //               isOpen: !bh.closed,
+  //   //               fromHours: openingHours,
+  //   //               fromMinutes: openingMinutes,
+  //   //               tillHours: closingHours,
+  //   //               tillMinutes: closingMinutes,
+  //   //               breaks,
+  //   //             };
+  //   //           });
+
+  //   //           dispatch(setSalonBusinessHours(parsedBusinessHours));
+  //   //         }
+  //   //         dispatch(setFullName(user?.name || ""));
+  //   //         dispatch(setAboutYourself(user?.description || ""));
+  //   //         dispatch(setBusinessName(user?.business_name || ""));
+
+  //   //         if (user?.is_onboarded) {
+  //   //           router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+  //   //         } else {
+  //   //           router.replace(
+  //   //             `/(main)/${MAIN_ROUTES.COMPLETE_STAFF_PROFILE}` as any,
+  //   //           );
+  //   //         }
+  //   //         if (currentBusinessStatus) {
+  //   //           dispatch(
+  //   //             setBusinessStatus({
+  //   //               ...currentBusinessStatus,
+  //   //               onboarding_completed: user?.is_onboarded || false,
+  //   //             }),
+  //   //           );
+  //   //         }
+  //   //       }
+  //   //     } else {
+  //   //       Alert.alert(t("error"), t("invalidResponseFromServer"));
+  //   //     }
+  //   //   } else {
+  //   //     Alert.alert(t("error"), response.message || t("loginFailedMessage"));
+  //   //   }
+  //   // } catch (error: any) {
+  //   //   // Error message is already formatted by ApiService
+  //   //   Alert.alert(t("loginFailed"), error.message || t("anErrorOccurred"));
+  //   // } finally {
+  //   //   setIsLoading(false);
+  //   // }
+  // }, [email, password, savePassword, dispatch, router]);
+
   const { handleSocialLogin } = useSocialLogin();
 
   const handleForgetPassword = useCallback(() => {
