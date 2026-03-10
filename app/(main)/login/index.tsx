@@ -235,11 +235,14 @@ export default function Login() {
     setIsLoading(true);
     try {
       const expo_push_token = await getExpoPushToken();
-      const response = await ApiService.post(businessEndpoints.login, {
+      const body = {
         email: email.trim(),
         password: password,
         ...(expo_push_token ? { expo_push_token } : {}),
-      });
+      };
+
+      Logger.log("---->body", body);
+      const response = await ApiService.post(businessEndpoints.login, body);
 
       // Handle successful login
       if (response.success && response.data) {
