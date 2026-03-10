@@ -135,7 +135,7 @@ export default function SocialLogin() {
         </Text>
       </View>
 
-      {/* <View style={styles.topSection}>
+      <View style={styles.topSection}>
         <View style={styles.logoContainer}>
           <LeafLogo
             width={moderateWidthScale(25)}
@@ -154,7 +154,7 @@ export default function SocialLogin() {
             </Text>
           </Text>
         </View>
-      </View> */}
+      </View>
     </SafeAreaView>
   );
 }

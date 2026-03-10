@@ -26,12 +26,12 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.darkGreen,
     },
     topSection: {
-      gap: moderateHeightScale(18),
+      gap: moderateHeightScale(8),
       alignItems: "center",
       justifyContent: "center",
       position: "absolute",
       alignSelf: "center",
-      top: Dimensions.get("screen").height * 0.21,
+      bottom: Dimensions.get("screen").height * 0.62,
     },
     logoContainer: {
       flexDirection: "row",
