@@ -560,13 +560,6 @@ export default function SearchScreen() {
     }, 0);
   };
 
-  const handleSearchBoxClear = () => {
-    setSearchQuery("");
-    setSelectedServiceId(null);
-    setSelectedServiceName("");
-    dispatch(clearSearchState());
-  };
-
   const handleSearch = () => {
     const query = displayValue;
     Keyboard.dismiss();
@@ -653,10 +646,7 @@ export default function SearchScreen() {
   const hasServices = serviceTemplates.length > 0;
   const hasBusinesses = businesses.length > 0;
   const showEmptyState =
-    hasSearched &&
-    !loading &&
-    !hasServices &&
-    !hasBusinesses;
+    hasSearched && !loading && !hasServices && !hasBusinesses;
   const hasSearchResults =
     loading || hasServices || hasBusinesses || showEmptyState;
 
@@ -793,106 +783,95 @@ export default function SearchScreen() {
           </Text>
           {recentSearches.length > 0 ? (
             recentSearches.map((item, index) => {
-                  const isLast = index === recentSearches.length - 1;
-                  const hasBusiness = Boolean(item.businessId);
-                  const key = hasBusiness
-                    ? `b-${item.businessId}-${index}`
-                    : `${item.search}-${item.serviceId ?? "n"}-${index}`;
-                  if (hasBusiness) {
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.recentItem,
-                          isLast && styles.recentItemLast,
-                        ]}
-                        onPress={() => handleRecentSearchPress(item)}
-                        activeOpacity={0.7}
+              const isLast = index === recentSearches.length - 1;
+              const hasBusiness = Boolean(item.businessId);
+              const key = hasBusiness
+                ? `b-${item.businessId}-${index}`
+                : `${item.search}-${item.serviceId ?? "n"}-${index}`;
+              if (hasBusiness) {
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.recentItem, isLast && styles.recentItemLast]}
+                    onPress={() => handleRecentSearchPress(item)}
+                    activeOpacity={0.7}
+                  >
+                    <RecentBusinessLogo
+                      logoUrl={item.businessLogoUrl?.trim()}
+                      theme={theme}
+                      styles={styles}
+                    />
+                    <View style={styles.recentBusinessContent}>
+                      <Text
+                        style={styles.recentBusinessTitle}
+                        numberOfLines={1}
                       >
-                        <RecentBusinessLogo
-                          logoUrl={item.businessLogoUrl?.trim()}
-                          theme={theme}
-                          styles={styles}
-                        />
-                        <View style={styles.recentBusinessContent}>
-                          <Text
-                            style={styles.recentBusinessTitle}
-                            numberOfLines={1}
-                          >
-                            {item.businessName || item.search}
-                          </Text>
-                          {item.businessLocationName ? (
-                            <Text
-                              style={styles.recentBusinessAddress}
-                              numberOfLines={1}
-                            >
-                              {item.businessLocationName}
-                            </Text>
-                          ) : null}
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  }
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      style={[
-                        styles.recentItem,
-                        isLast && styles.recentItemLast,
-                      ]}
-                      onPress={() => handleRecentSearchPress(item)}
-                      activeOpacity={0.7}
-                    >
-                      <SearchIcon
-                        width={widthScale(18)}
-                        height={heightScale(18)}
-                        color={theme.lightGreen}
-                      />
-                      <View style={styles.recentItemContent}>
-                        <Text style={styles.recentItemText} numberOfLines={1}>
-                          {item.search}
+                        {item.businessName || item.search}
+                      </Text>
+                      {item.businessLocationName ? (
+                        <Text
+                          style={styles.recentBusinessAddress}
+                          numberOfLines={1}
+                        >
+                          {item.businessLocationName}
                         </Text>
-                        {(item.serviceName || item.serviceId != null) && (
-                          <Text
-                            style={styles.recentItemSubtitle}
-                            numberOfLines={1}
-                          >
-                            {item.serviceName
-                              ? `Service: ${item.serviceName}`
-                              : `Service ID: ${item.serviceId}`}
-                          </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                <Text style={styles.recentEmpty}>
-                  {t("noRecentSearchFound")}
-                </Text>
-              )}
-
-              {popularList.length > 0 && (
-                <>
-                  <Text style={styles.popularSectionTitle}>
-                    {t("popularServices")}
-                  </Text>
-                  <View style={styles.popularServicesContainer}>
-                    {popularList.map((service) => (
-                      <TouchableOpacity
-                        key={service.id ?? service.name}
-                        style={styles.popularServiceTag}
-                        onPress={() => handlePopularServicePress(service)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.popularServiceText}>
-                          {service.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={[styles.recentItem, isLast && styles.recentItemLast]}
+                  onPress={() => handleRecentSearchPress(item)}
+                  activeOpacity={0.7}
+                >
+                  <SearchIcon
+                    width={widthScale(18)}
+                    height={heightScale(18)}
+                    color={theme.lightGreen}
+                  />
+                  <View style={styles.recentItemContent}>
+                    <Text style={styles.recentItemText} numberOfLines={1}>
+                      {item.search}
+                    </Text>
+                    {(item.serviceName || item.serviceId != null) && (
+                      <Text style={styles.recentItemSubtitle} numberOfLines={1}>
+                        {item.serviceName
+                          ? `Service: ${item.serviceName}`
+                          : `Service ID: ${item.serviceId}`}
+                      </Text>
+                    )}
                   </View>
-                </>
-              )}
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <Text style={styles.recentEmpty}>{t("noRecentSearchFound")}</Text>
+          )}
+
+          {popularList.length > 0 && (
+            <>
+              <Text style={styles.popularSectionTitle}>
+                {t("popularServices")}
+              </Text>
+              <View style={styles.popularServicesContainer}>
+                {popularList.map((service) => (
+                  <TouchableOpacity
+                    key={service.id ?? service.name}
+                    style={styles.popularServiceTag}
+                    onPress={() => handlePopularServicePress(service)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.popularServiceText}>
+                      {service.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
