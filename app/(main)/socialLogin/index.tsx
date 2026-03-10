@@ -100,11 +100,11 @@ export default function SocialLogin() {
         style={[
           styles.bottomSection,
           {
-            paddingBottom: isButtonMode
-              ? insets.bottom + 12
-              : moderateHeightScale(24),
+            // paddingBottom: isButtonMode
+            //   ? insets.bottom + 12
+            //   : moderateHeightScale(24),
           },
-          !isGuest && { gap: moderateHeightScale(18) },
+          // !isGuest && { gap: moderateHeightScale(18) },
         ]}
       >
         <Button
