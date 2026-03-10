@@ -4,6 +4,29 @@ import { useRouter } from "expo-router";
 import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
+/** Navigate using notification data (screen + optional booking_id) */
+function navigateFromNotificationData(
+  router: ReturnType<typeof useRouter>,
+  data: Record<string, unknown> | undefined,
+) {
+  router.push("/(main)/notification" as any);
+  Logger.log("------>navigateFromNotificationData", data);
+  // if (!data?.screen) return;
+  // const screen = String(data.screen);
+  // try {
+  //   if (screen === "booking" && data?.booking_id) {
+  //     router.push({
+  //       pathname: "/bookingDetailsById",
+  //       params: { id: String(data.booking_id) },
+  //     });
+  //   } else if (screen && screen !== "booking") {
+  //     router.push(screen as any);
+  //   }
+  // } catch (err) {
+  //   Logger.error("Notification navigation error:", err);
+  // }
+}
+
 /**
  * Configure how notifications are presented when app is in foreground,
  * and handle when a notification is received or tapped.
@@ -31,41 +54,38 @@ export default function ExpoNotificationHandler() {
       }),
     });
 
+    // Handle app opened from KILLED state by notification tap (listener doesn't fire in that case)
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (!response) return;
+      const data = response.notification.request.content.data as
+        | Record<string, unknown>
+        | undefined;
+      Logger.log("------>Notification tap (cold start), data:", data);
+      // Small delay so app shell is mounted and router is ready
+      setTimeout(() => navigateFromNotificationData(router, data), 400);
+    });
+
     // Fired when notification is received while app is open
     receivedListenerRef.current = Notifications.addNotificationReceivedListener(
       (notification) => {
-        Logger.log("Notification   received:", notification.request.content);
-        // const { title, body, data } = notification.request.content;
-        // if (title || body) {
-        //   showBanner(title ?? "Notification", body ?? "", "info", 4000);
-        // }
+        Logger.log(
+          "------>Notification received:",
+          notification.request.content,
+        );
       },
     );
 
-    // Fired when user taps on notification (from background or quit state)
+    // Fired when user taps on notification (app in BACKGROUND - when killed, use getLastNotificationResponseAsync above)
     responseListenerRef.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data as
           | Record<string, unknown>
           | undefined;
-        Logger.log("Notification tapped, data:", data);
-
-        // Navigate based on notification data if needed
-        // if (data?.screen) {
-        //   const screen = String(data.screen);
-        //   try {
-        //     if (screen === "booking" && data?.booking_id) {
-        //       router.push({
-        //         pathname: "/bookingDetailsById",
-        //         params: { id: String(data.booking_id) },
-        //       });
-        //     } else if (screen && screen !== "booking") {
-        //       router.push(screen as any);
-        //     }
-        //   } catch (err) {
-        //     Logger.error("Notification navigation error:", err);
-        //   }
-        // }
+        Logger.log(
+          "------>Notification tapped (background/foreground), data:",
+          data,
+        );
+        navigateFromNotificationData(router, data);
       });
 
     return () => {
