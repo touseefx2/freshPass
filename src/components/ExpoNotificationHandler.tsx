@@ -57,6 +57,7 @@ export default function ExpoNotificationHandler() {
     // Fired when notification is received while app is open
     receivedListenerRef.current = Notifications.addNotificationReceivedListener(
       (notification) => {
+        Logger.log("------>Notification :", JSON.stringify(notification));
         Logger.log(
           "------>Notification received:",
           notification.request.content,
