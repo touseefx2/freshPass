@@ -33,27 +33,25 @@ export default function ExpoNotificationHandler() {
     });
 
     // Fired when notification is received while app is open
-    receivedListenerRef.current =
-      Notifications.addNotificationReceivedListener((notification) => {
-        Logger.log("Notification received:", notification.request.content);
-        const { title, body, data } = notification.request.content;
-        if (title || body) {
-          showBanner(
-            title ?? "Notification",
-            body ?? "",
-            "info",
-            4000,
-          );
-        }
-      });
+    receivedListenerRef.current = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        Logger.log(
+          "Notification frontend received:",
+          notification.request.content,
+        );
+        // const { title, body, data } = notification.request.content;
+        // if (title || body) {
+        //   showBanner(title ?? "Notification", body ?? "", "info", 4000);
+        // }
+      },
+    );
 
     // Fired when user taps on notification (from background or quit state)
     responseListenerRef.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
-        const data = response.notification.request.content.data as Record<
-          string,
-          unknown
-        > | undefined;
+        const data = response.notification.request.content.data as
+          | Record<string, unknown>
+          | undefined;
         Logger.log("Notification tapped, data:", data);
 
         // Navigate based on notification data if needed
@@ -76,15 +74,11 @@ export default function ExpoNotificationHandler() {
 
     return () => {
       if (receivedListenerRef.current) {
-        Notifications.removeNotificationSubscription(
-          receivedListenerRef.current,
-        );
+        receivedListenerRef.current.remove();
         receivedListenerRef.current = null;
       }
       if (responseListenerRef.current) {
-        Notifications.removeNotificationSubscription(
-          responseListenerRef.current,
-        );
+        responseListenerRef.current.remove();
         responseListenerRef.current = null;
       }
     };
