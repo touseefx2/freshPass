@@ -54,17 +54,6 @@ export default function ExpoNotificationHandler() {
       }),
     });
 
-    // Handle app opened from KILLED state by notification tap (listener doesn't fire in that case)
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (!response) return;
-      const data = response.notification.request.content.data as
-        | Record<string, unknown>
-        | undefined;
-      Logger.log("------>Notification tap (cold start), data:", data);
-      // Small delay so app shell is mounted and router is ready
-      setTimeout(() => navigateFromNotificationData(router, data), 400);
-    });
-
     // Fired when notification is received while app is open
     receivedListenerRef.current = Notifications.addNotificationReceivedListener(
       (notification) => {
@@ -74,6 +63,17 @@ export default function ExpoNotificationHandler() {
         );
       },
     );
+
+    // Handle app opened from KILLED state by notification tap (listener doesn't fire in that case)
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (!response) return;
+      const data = response.notification.request.content.data as
+        | Record<string, unknown>
+        | undefined;
+      Logger.log("------>Notification tap (cold start), data:", data);
+      // Small delay so app shell is mounted and router is ready
+      setTimeout(() => navigateFromNotificationData(router, data), 1200);
+    });
 
     // Fired when user taps on notification (app in BACKGROUND - when killed, use getLastNotificationResponseAsync above)
     responseListenerRef.current =
