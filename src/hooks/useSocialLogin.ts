@@ -16,7 +16,10 @@ import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { MAIN_ROUTES } from "@/src/constant/routes";
-import { setActionLoader, setActionLoaderTitle } from "@/src/state/slices/generalSlice";
+import {
+  setActionLoader,
+  setActionLoaderTitle,
+} from "@/src/state/slices/generalSlice";
 import {
   setBusinessStatus,
   setUser,
@@ -32,6 +35,7 @@ import type {
   SocialProvider,
   SocialLoginApiResponse,
 } from "@/src/types/socialLogin";
+import { getExpoPushToken } from "../services/notificationPermissionService";
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
@@ -255,12 +259,14 @@ export function useSocialLogin() {
       dispatch(setActionLoader(true));
       dispatch(setActionLoaderTitle(t("pleaseWait")));
       try {
+        const expo_push_token = await getExpoPushToken();
         const response = await ApiService.post<SocialLoginApiResponse>(
           businessEndpoints.socialLogin,
           {
             provider: "google",
             token: idToken,
             role: selectedRole?.toLowerCase() ?? "",
+            ...(expo_push_token ? { expo_push_token } : {}),
           },
         );
         handleSocialLoginResponse(response);
@@ -322,12 +328,14 @@ export function useSocialLogin() {
         dispatch(setActionLoader(true));
         dispatch(setActionLoaderTitle(t("pleaseWait")));
         try {
+          const expo_push_token = await getExpoPushToken();
           const response = await ApiService.post<SocialLoginApiResponse>(
             businessEndpoints.socialLogin,
             {
               provider: "apple",
               token: identityToken,
               role: selectedRole?.toLowerCase() ?? "",
+              ...(expo_push_token ? { expo_push_token } : {}),
             },
           );
           handleSocialLoginResponse(response);
@@ -396,12 +404,14 @@ export function useSocialLogin() {
       dispatch(setActionLoader(true));
       dispatch(setActionLoaderTitle(t("pleaseWait")));
       try {
+        const expo_push_token = await getExpoPushToken();
         const apiResponse = await ApiService.post<SocialLoginApiResponse>(
           businessEndpoints.socialLogin,
           {
             provider: "apple",
             token: idToken,
             role: selectedRole?.toLowerCase() ?? "",
+            ...(expo_push_token ? { expo_push_token } : {}),
           },
         );
         handleSocialLoginResponse(apiResponse);
@@ -441,12 +451,14 @@ export function useSocialLogin() {
       dispatch(setActionLoader(true));
       dispatch(setActionLoaderTitle(t("pleaseWait")));
       try {
+        const expo_push_token = await getExpoPushToken();
         const response = await ApiService.post<SocialLoginApiResponse>(
           businessEndpoints.socialLogin,
           {
             provider: "facebook",
             token: fbAccessToken,
             role: selectedRole?.toLowerCase() ?? "",
+            ...(expo_push_token ? { expo_push_token } : {}),
           },
         );
         handleSocialLoginResponse(response);
