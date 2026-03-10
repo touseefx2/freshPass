@@ -20,7 +20,7 @@ interface SocialAuthOptionsProps {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
-      gap: moderateHeightScale(18),
+      gap: moderateHeightScale(16),
     },
     buttonWrapper: {
       width: "100%",
