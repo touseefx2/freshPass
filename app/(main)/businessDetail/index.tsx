@@ -23,7 +23,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from "react-native";
-import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
+import { MaterialIcons, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -393,14 +393,12 @@ const createStyles = (theme: Theme) =>
     },
     callNowButton: {
       backgroundColor: theme.darkGreenLight,
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(999),
-    },
-    callNowButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
+      width: widthScale(35),
+      height: widthScale(35),
+      borderRadius: widthScale(35 / 2),
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: moderateWidthScale(8),
     },
     contactActionsRow: {
       flexDirection: "row",
@@ -2383,9 +2381,11 @@ export default function BusinessDetailScreen() {
                       style={styles.callNowButton}
                       onPress={handleCallNow}
                     >
-                      <Text style={styles.callNowButtonText}>
-                        {t("callNow")}
-                      </Text>
+                      <Ionicons
+                        name="call"
+                        size={widthScale(18)}
+                        color={theme.white}
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -2441,9 +2441,11 @@ export default function BusinessDetailScreen() {
                       style={styles.callNowButton}
                       onPress={handleCallNow}
                     >
-                      <Text style={styles.callNowButtonText}>
-                        {t("callNow")}
-                      </Text>
+                      <Ionicons
+                        name="call"
+                        size={widthScale(18)}
+                        color={theme.white}
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
