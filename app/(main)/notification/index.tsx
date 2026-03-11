@@ -36,6 +36,7 @@ import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useFocusEffect } from "expo-router";
 import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
+import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import StackHeader from "@/src/components/StackHeader";
@@ -54,6 +55,13 @@ type NotificationItem = {
   highlight?: string;
   createdAt: string; // full ISO datetime e.g. "2024-01-17T09:30:00Z"
   apiId: number; // API notification ID for marking as read
+  type?: string | null;
+  model_id?: number | null;
+  sender?: {
+    id: number;
+    name?: string;
+    profile_image_url?: string | null;
+  } | null;
 };
 
 type NotificationSection = {
@@ -235,11 +243,19 @@ const createStyles = (theme: Theme) =>
 type ApiNotification = {
   id: number;
   user_id: number;
+  type?: string | null;
+  model_id?: number | null;
   title: string;
   message: string;
   is_read: boolean;
   created_at: string;
   updated_at: string;
+  sender?: {
+    id: number;
+    name?: string;
+    email?: string;
+    profile_image_url?: string | null;
+  } | null;
 };
 
 export default function NotificationsScreen() {
@@ -307,6 +323,9 @@ export default function NotificationsScreen() {
       icon: getIconType(apiNotif.title),
       isRead: apiNotif.is_read,
       createdAt: apiNotif.created_at,
+      type: apiNotif.type ?? null,
+      model_id: apiNotif.model_id ?? null,
+      sender: apiNotif.sender ?? null,
     };
   };
 
@@ -692,6 +711,11 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               style={styles.notificationRow}
               onPress={() => {
+                navigateFromNotificationData(router, {
+                  type: item.type,
+                  model_id: item.model_id,
+                  sender: item.sender,
+                });
                 if (!item.isRead) {
                   handleMarkAsRead(item.apiId, item.id);
                 }
