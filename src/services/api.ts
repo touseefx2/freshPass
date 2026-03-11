@@ -8,12 +8,13 @@ import axios, {
 import NetInfo from "@react-native-community/netinfo";
 import { persistor, store } from "@/src/state/store";
 import { setTokens, resetUser } from "@/src/state/slices/userSlice";
-import { clearGeneral } from "../state/slices/generalSlice";
+import { clearGeneral, setActionLoader } from "@/src/state/slices/generalSlice";
 import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
 import { Platform } from "react-native";
 import { router } from "expo-router";
 import { MAIN_ROUTES } from "../constant/routes";
 import Logger from "./logger";
+import { businessEndpoints } from "./endpoints";
 import { resetCategories } from "../state/slices/categoriesSlice";
 import { resetBusiness } from "../state/slices/bsnsSlice";
 import { resetChat } from "../state/slices/chatSlice";
@@ -223,11 +224,25 @@ const removeAbortController = (controller: AbortController) => {
 };
 
 /**
- * Handle logout - clear Redux state and persisted cache (AsyncStorage)
- * Dispatches reset for all slices, purges redux-persist storage, then navigates to role screen.
+ * Handle logout - call API to revoke token and clear Expo push token, then clear Redux state and persisted cache.
+ * Shows general action loader until API completes; only clears state and navigates on API success.
  */
 const handleLogout = async () => {
-  // Clear Redux state (in-memory)
+  store.dispatch(setActionLoader(true));
+
+  try {
+    const response = await apiClient.post(businessEndpoints.logout);
+    if (response.status !== 200) {
+      store.dispatch(setActionLoader(false));
+      return;
+    }
+  } catch (err) {
+    Logger.error("Logout API failed", err);
+    store.dispatch(setActionLoader(false));
+    return;
+  }
+
+  // API succeeded: clear Redux state (in-memory)
   store.dispatch(resetCompleteProfile());
   store.dispatch(clearGeneral());
   store.dispatch(resetCategories());
