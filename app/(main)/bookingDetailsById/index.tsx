@@ -614,13 +614,15 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(8),
     },
     imageCard: {
-      width: (Dimensions.get("window").width -
-        moderateWidthScale(20) * 2 -
-        moderateWidthScale(8) * 2) /
+      width:
+        (Dimensions.get("window").width -
+          moderateWidthScale(20) * 2 -
+          moderateWidthScale(8) * 2) /
         3,
-      height: (Dimensions.get("window").width -
-        moderateWidthScale(20) * 2 -
-        moderateWidthScale(8) * 2) /
+      height:
+        (Dimensions.get("window").width -
+          moderateWidthScale(20) * 2 -
+          moderateWidthScale(8) * 2) /
         3,
       borderRadius: moderateWidthScale(10),
       overflow: "hidden",
@@ -677,9 +679,9 @@ export default function bookingDetailsById() {
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
   const [shareToUserModalVisible, setShareToUserModalVisible] = useState(false);
-  const [potentialContacts, setPotentialContacts] = useState<PotentialContact[]>(
-    [],
-  );
+  const [potentialContacts, setPotentialContacts] = useState<
+    PotentialContact[]
+  >([]);
   const [potentialPage, setPotentialPage] = useState(1);
   const [potentialLastPage, setPotentialLastPage] = useState(1);
   const [potentialLoading, setPotentialLoading] = useState(false);
