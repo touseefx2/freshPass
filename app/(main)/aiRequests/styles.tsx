@@ -73,20 +73,18 @@ export const createStyles = (theme: Theme) =>
     },
     jobCard: {
       flexDirection: "row",
-      backgroundColor: theme.white80,
-      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(24),
       marginBottom: moderateHeightScale(16),
-      minHeight: heightScale(116),
       overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     shadow: {
       shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.06,
+      shadowRadius: 16,
       elevation: 4,
     },
     jobCardInner: {
@@ -96,52 +94,59 @@ export const createStyles = (theme: Theme) =>
     jobCardAccent: {
       width: moderateWidthScale(4),
       backgroundColor: theme.primary,
-      borderTopLeftRadius: moderateWidthScale(16),
-      borderBottomLeftRadius: moderateWidthScale(16),
+      borderTopLeftRadius: moderateWidthScale(24),
+      borderBottomLeftRadius: moderateWidthScale(24),
     },
     jobCardContent: {
       flex: 1,
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingRight: moderateWidthScale(18),
-      justifyContent: "space-between",
+      paddingVertical: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingLeft: moderateWidthScale(22),
     },
-    jobCardHeader: {
+    jobCardTopRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      gap: moderateWidthScale(12),
       marginBottom: moderateHeightScale(8),
-      gap: moderateWidthScale(8),
-    },
-    jobCardId: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.text,
-      flex: 1,
     },
     jobCardTypeTitle: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.primary,
-      textTransform: "capitalize",
       flex: 1,
+      textTransform: "capitalize",
     },
     jobCardJobIdMuted: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(12),
+    },
+    jobCardPromptBlock: {
+      marginBottom: moderateHeightScale(14),
+      paddingVertical: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+    },
+    jobCardPromptText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      lineHeight: fontSize.size18,
     },
     jobCardStatusBadge: {
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(20),
-      minWidth: moderateWidthScale(72),
+      borderRadius: moderateWidthScale(100),
       alignItems: "center",
       justifyContent: "center",
     },
     jobCardStatusBadgeCompleted: {
-      backgroundColor: theme.secondary,
+      backgroundColor: theme.lightGreen015,
     },
     jobCardStatusBadgeFailed: {
       backgroundColor: theme.appointmentStatus,
@@ -151,34 +156,12 @@ export const createStyles = (theme: Theme) =>
     },
     jobCardStatusText: {
       fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-    },
-    jobCardTypeRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    jobCardLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.borderMedium,
-      marginRight: moderateWidthScale(4),
-    },
-    jobCardTypeValue: {
-      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.primary,
     },
-    jobCardMetaRow: {
+    jobCardFooter: {
       flexDirection: "row",
       alignItems: "center",
-      marginTop: moderateHeightScale(6),
-      gap: moderateWidthScale(20),
-    },
-    jobCardMetaItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
+      gap: moderateWidthScale(6),
     },
     jobCardMetaLabel: {
       fontSize: fontSize.size11,
@@ -189,7 +172,6 @@ export const createStyles = (theme: Theme) =>
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.text,
-      marginLeft: moderateWidthScale(4),
     },
     jobCardImageWrap: {
       width: heightScale(72),
@@ -203,11 +185,6 @@ export const createStyles = (theme: Theme) =>
     jobCardImage: {
       width: "100%",
       height: "100%",
-    },
-    jobCardPrompt: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
     },
     listContent: {
       flexGrow: 1,

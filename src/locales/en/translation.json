@@ -655,6 +655,7 @@
   "goToAiRequestsList": "Go to AI requests list",
   "aiRequests": "Requests",
   "jobId": "Job ID",
+  "prompt": "Prompt",
   "aiResults": "AI Result",
   "selectImagesForTryOn": "Try-on",
   "selectAll": "Select all",

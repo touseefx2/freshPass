@@ -168,7 +168,10 @@ export default function AiRequests() {
         item.status?.charAt(0).toUpperCase() + (item.status?.slice(1) ?? "");
       const statusBadgeStyle = getStatusBadgeStyle(item.status);
       const statusColor = getStatusTextColor(item.status);
-      const prompt = item.request_payload?.prompt ? item.response?.prompt : "";
+      const promptRaw =
+        item.request_payload?.prompt ?? item.response?.prompt ?? "";
+      const prompt =
+        typeof promptRaw === "string" ? promptRaw.trim() : String(promptRaw ?? "").trim();
 
       return (
         <TouchableOpacity
@@ -187,7 +190,7 @@ export default function AiRequests() {
           <View style={styles.jobCardInner}>
             <View style={styles.jobCardAccent} />
             <View style={styles.jobCardContent}>
-              <View style={styles.jobCardHeader}>
+              <View style={styles.jobCardTopRow}>
                 <Text
                   style={styles.jobCardTypeTitle}
                   numberOfLines={1}
@@ -210,13 +213,22 @@ export default function AiRequests() {
               >
                 {t("jobId")}: {item.job_id}
               </Text>
-              <View style={styles.jobCardMetaRow}>
-                <View style={styles.jobCardMetaItem}>
-                  <Text style={styles.jobCardMetaLabel}>Created</Text>
-                  <Text style={styles.jobCardMetaValue} numberOfLines={1}>
-                    {formatDateTime(item.created_at)}
+              {prompt.length > 0 ? (
+                <View style={styles.jobCardPromptBlock}>
+                  <Text
+                    style={styles.jobCardPromptText}
+                    numberOfLines={2}
+                    ellipsizeMode="tail"
+                  >
+                    {prompt}
                   </Text>
                 </View>
+              ) : null}
+              <View style={styles.jobCardFooter}>
+                <Text style={styles.jobCardMetaLabel}>Created</Text>
+                <Text style={styles.jobCardMetaValue} numberOfLines={1}>
+                  {formatDateTime(item.created_at)}
+                </Text>
               </View>
             </View>
           </View>
