@@ -711,12 +711,17 @@ const AiChatBot: React.FC = () => {
 
   // console.log("VOICE_AGENT_WS_URL : ", VOICE_AGENT_WS_URL);
 
-  // Gentle float (up then down) when chat is closed
+  // Gentle float (up then down) when chat closed and FAB visible (not minimized)
   useEffect(() => {
     if (isOpen) {
       floatAnim.setValue(0);
       return;
     }
+    if (isMinimized) {
+      floatAnim.setValue(0);
+      return;
+    }
+    floatAnim.setValue(0);
     const bob = Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
@@ -735,7 +740,7 @@ const AiChatBot: React.FC = () => {
     );
     bob.start();
     return () => bob.stop();
-  }, [isOpen, floatAnim]);
+  }, [isOpen, isMinimized, floatAnim]);
 
   // Animate chat box open/close
   useEffect(() => {
