@@ -66,6 +66,13 @@ export interface AiRequestByJobIdResponse {
     /** Empty array when processing; object when completed */
     response?: [] | ApiResponsePayload;
     message?: string;
+    /** Present for hair try-on / replicate: source image and prompt used for the job */
+    request_payload?: {
+      image?: { url: string; filename?: string; content_type?: string };
+      prompt?: string;
+      job_type?: string;
+      generate_all_views?: boolean;
+    };
   };
 }
 
@@ -190,6 +197,11 @@ interface NormalizedResult {
   status: string;
   sections: NormalizedSection[];
   socialMedia?: SocialMediaNormalized;
+  /** For hair try-on / replicate: original source image and prompt from request */
+  requestPayload?: {
+    originalImageUrl?: string;
+    prompt?: string;
+  };
 }
 
 const VIEW_KEYS = [
@@ -247,10 +259,18 @@ function normalizeAiRequestResponse(
   const d = (raw as any)?.data?.data ?? (raw as any)?.data ?? raw;
   const status = d?.status ?? "failed";
   const sections: NormalizedSection[] = [];
+  const rp = d?.request_payload;
+  const requestPayload: NormalizedResult["requestPayload"] =
+    rp && (rp.image?.url || (rp.prompt && String(rp.prompt).trim()))
+      ? {
+          originalImageUrl: rp.image?.url,
+          prompt: rp.prompt && String(rp.prompt).trim() ? String(rp.prompt).trim() : undefined,
+        }
+      : undefined;
 
   const res = d?.response;
   if (Array.isArray(res) || !res || status !== "completed") {
-    return { status, sections };
+    return { status, sections, requestPayload };
   }
 
   if (isSocialMediaResponse(res)) {
@@ -298,7 +318,7 @@ function normalizeAiRequestResponse(
     if (views.length > 0) {
       sections.push({ name: "Results", views });
     }
-    return { status, sections };
+    return { status, sections, requestPayload };
   }
 
   for (const key of HAIR_PIPELINE_SECTION_KEYS) {
@@ -318,7 +338,7 @@ function normalizeAiRequestResponse(
     }
   }
 
-  return { status, sections };
+  return { status, sections, requestPayload };
 }
 
 const POLL_INTERVAL_MS = 3000;
@@ -1125,6 +1145,11 @@ export default function AiResults() {
     [],
   );
 
+  const openShareSheetForOriginalImage = useCallback((url: string) => {
+    setShareContext({ url, labelKey: "sourceImage", linkOnly: false });
+    setShareSheetVisible(true);
+  }, []);
+
   const openShareSheetForReelVideo = useCallback((videoUrl: string) => {
     setShareContext({
       url: videoUrl,
@@ -1816,6 +1841,77 @@ export default function AiResults() {
                 {allSelected ? t("unselectAll") : t("selectAll")}
               </Text>
             </TouchableOpacity>
+          </View>
+        )}
+        {normalized.requestPayload?.prompt && !isSelectionMode && (
+          <View style={styles.originalImagesSection}>
+            <View style={styles.requestPromptChip}>
+              <Text style={styles.requestPromptChipText}>
+                {t("prompt")}: {normalized.requestPayload.prompt}
+              </Text>
+            </View>
+          </View>
+        )}
+        {normalized.requestPayload?.originalImageUrl && !isSelectionMode && (
+          <View style={styles.originalImagesSection}>
+            <View style={styles.originalImagesContent}>
+              <View style={styles.originalImageSourceCard}>
+                <Image
+                  source={{
+                    uri: normalized.requestPayload!.originalImageUrl,
+                  }}
+                  style={styles.originalImageSourceImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.originalImageSourceLabel}>
+                  <Text style={styles.originalImageSourceLabelText}>
+                    {t("sourceImage")}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.originalImageShareOverlay}
+                  onPress={() =>
+                    openShareSheetForOriginalImage(
+                      normalized.requestPayload!.originalImageUrl!,
+                    )
+                  }
+                  activeOpacity={0.7}
+                >
+                  <MaterialIcons
+                    name="share"
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.originalImageDownloadOverlay}
+                  onPress={() =>
+                    handleDownload(
+                      normalized.requestPayload!.originalImageUrl!,
+                    )
+                  }
+                  disabled={
+                    downloadingUrl ===
+                    normalized.requestPayload?.originalImageUrl
+                  }
+                  activeOpacity={0.7}
+                >
+                  {downloadingUrl ===
+                  normalized.requestPayload?.originalImageUrl ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.white}
+                    />
+                  ) : (
+                      <Feather
+                        name="download"
+                        size={moderateWidthScale(20)}
+                        color={theme.white}
+                      />
+                    )}
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         )}
         {normalized.sections.map((section, idx) => (
