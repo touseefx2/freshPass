@@ -37,6 +37,21 @@ function navigateFromNotificationData(
     }
   }
 
+  if (type === "appointment") {
+    const appointmentId = data.appointment_id as number | undefined;
+    if (appointmentId != null) {
+      router.push({
+        pathname: "/(main)/bookingDetailsById",
+        params: { bookingId: appointmentId },
+      });
+      Logger.log(
+        "------>navigateFromNotificationData (appointment) -> bookingDetailsById",
+        { bookingId: appointmentId },
+      );
+      return;
+    }
+  }
+
   router.push("/(main)/notification" as any);
 }
 
