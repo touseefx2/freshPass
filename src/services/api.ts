@@ -6,7 +6,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import NetInfo from "@react-native-community/netinfo";
-import { store } from "@/src/state/store";
+import { persistor, store } from "@/src/state/store";
 import { setTokens, resetUser } from "@/src/state/slices/userSlice";
 import { clearGeneral } from "../state/slices/generalSlice";
 import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
@@ -223,20 +223,23 @@ const removeAbortController = (controller: AbortController) => {
 };
 
 /**
- * Handle logout - clear tokens and persisted storage
- * Note: Navigation and Redux reset should be handled in the component calling logout
- * This function clears tokens from Redux state and all persisted data from SecureStore
+ * Handle logout - clear Redux state and persisted cache (AsyncStorage)
+ * Dispatches reset for all slices, purges redux-persist storage, then navigates to role screen.
  */
 const handleLogout = async () => {
-  // Cancel all pending API requests
-  // cancelAllPendingRequests();
-  // Clear Redux state
+  // Clear Redux state (in-memory)
   store.dispatch(resetCompleteProfile());
   store.dispatch(clearGeneral());
   store.dispatch(resetCategories());
   store.dispatch(resetBusiness());
   store.dispatch(resetChat());
   store.dispatch(resetUser());
+  // Purge persisted cache so rehydration doesn't restore old user/general data
+  try {
+    await persistor.purge();
+  } catch (err) {
+    Logger.error("Logout: persistor.purge failed", err);
+  }
   router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
 };
 
