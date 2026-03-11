@@ -711,11 +711,15 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               style={styles.notificationRow}
               onPress={() => {
-                navigateFromNotificationData(router, {
-                  type: item.type,
-                  model_id: item.model_id,
-                  sender: item.sender,
-                });
+                navigateFromNotificationData(
+                  router,
+                  {
+                    type: item.type,
+                    model_id: item.model_id,
+                    sender: item.sender,
+                  },
+                  { skipNotificationScreen: true },
+                );
                 if (!item.isRead) {
                   handleMarkAsRead(item.apiId, item.id);
                 }

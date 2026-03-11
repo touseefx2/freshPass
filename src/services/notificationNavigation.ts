@@ -16,11 +16,12 @@ export type NotificationNavigationData = {
  * Used by ExpoNotificationHandler (push tap) and Notifications screen (list item tap).
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
- * - otherwise → notification screen
+ * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 export function navigateFromNotificationData(
   router: Router,
   data: NotificationNavigationData | undefined,
+  options?: { skipNotificationScreen?: boolean },
 ): void {
   if (!data) return;
   Logger.log("------>navigateFromNotificationData", data);
@@ -64,5 +65,7 @@ export function navigateFromNotificationData(
     }
   }
 
-  router.push("/(main)/notification" as any);
+  if (!options?.skipNotificationScreen) {
+    router.push("/(main)/notification" as any);
+  }
 }
