@@ -42,7 +42,6 @@ import {
   clearBookingTryOnPreselectedUrls,
   setBookingTryOnSelectionForJob,
   setChatAttachmentUrls,
-  clearChatTryOnPreselectedUrls,
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
@@ -781,14 +780,10 @@ export default function AiResults() {
     );
     const chatPreselected =
       fromChat && Array.isArray(chatTryOnPreselectedUrls)
-        ? chatTryOnPreselectedUrls.filter((u) =>
-            allSelectableUrls.includes(u),
-          )
+        ? chatTryOnPreselectedUrls.filter((u) => allSelectableUrls.includes(u))
         : [];
     const storedForJob =
-      !fromBooking &&
-      jobId &&
-      bookingTryOnSelectionByJobId?.[jobId]
+      !fromBooking && jobId && bookingTryOnSelectionByJobId?.[jobId]
         ? (bookingTryOnSelectionByJobId[jobId] || []).filter((u) =>
             allSelectableUrls.includes(u),
           )
@@ -1345,8 +1340,9 @@ export default function AiResults() {
           </View>
         )}
 
-        {isReel && sm.video?.url && (
-          isSelectionMode ? (
+        {isReel &&
+          sm.video?.url &&
+          (isSelectionMode ? (
             <View style={styles.videoContainer}>
               <ReelVideoPlayer
                 videoUrl={sm.video.url}
@@ -1377,8 +1373,7 @@ export default function AiResults() {
               styles={styles}
               theme={theme}
             />
-          )
-        )}
+          ))}
 
         {isReel && sm.video && (
           <View style={styles.section}>
@@ -2016,7 +2011,9 @@ export default function AiResults() {
                         urls: Array.from(selectedUrls),
                       }),
                     );
-                    dispatch(setBookingTryOnImageUrls(Array.from(selectedUrls)));
+                    dispatch(
+                      setBookingTryOnImageUrls(Array.from(selectedUrls)),
+                    );
                   }
                   if (fromChat) {
                     dispatch(setChatAttachmentUrls(Array.from(selectedUrls)));
