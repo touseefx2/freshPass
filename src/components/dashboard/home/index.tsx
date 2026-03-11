@@ -37,13 +37,12 @@ import {
   dashboardEndpoints,
   staffEndpoints,
   appointmentsEndpoints,
-  notificationsEndpoints,
   chatEndpoints,
 } from "@/src/services/endpoints";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
+import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
 import { Appointment } from "@/src/components/appointmentDetail";
 import {
-  setUnreadCount,
   setTotalUnreadChat,
 } from "@/src/state/slices/userSlice";
 import { IMAGES } from "@/src/constant/images";
@@ -177,22 +176,6 @@ export default function HomeScreen() {
             }),
           }),
         );
-      }
-    } catch (error: any) {}
-  };
-
-  const handleFetchUnreadCount = async () => {
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: {
-          unread_count: number;
-        };
-      }>(notificationsEndpoints.unreadCount);
-
-      if (response.success && response.data) {
-        dispatch(setUnreadCount(response.data.unread_count));
       }
     } catch (error: any) {}
   };
@@ -435,7 +418,7 @@ export default function HomeScreen() {
     // Only proceed with other APIs if status fetch succeeded
     if (statusSuccess) {
       handleFetchUserDetails();
-      handleFetchUnreadCount();
+      dispatch(fetchNotificationUnreadCount());
       handleFetchChatUnreadCount();
       handleFetchDashboardStats();
       if (userRole === "business") {
@@ -454,7 +437,7 @@ export default function HomeScreen() {
           Logger.log("app comes to foreground");
           // Refresh data when app comes to foreground
           handleFetchUserStatus();
-          handleFetchUnreadCount();
+          dispatch(fetchNotificationUnreadCount());
           handleFetchChatUnreadCount();
         }
       },

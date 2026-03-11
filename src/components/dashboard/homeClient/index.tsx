@@ -12,7 +12,6 @@ import LocationEnableModal from "@/src/components/locationEnableModal";
 import {
   setLocation,
   setTotalUnreadChat,
-  setUnreadCount,
   setUserDetails,
 } from "@/src/state/slices/userSlice";
 import { parseDateOfBirth, tryGetPosition } from "@/src/constant/functions";
@@ -26,9 +25,9 @@ import { ApiService } from "@/src/services/api";
 import {
   businessEndpoints,
   chatEndpoints,
-  notificationsEndpoints,
   userEndpoints,
 } from "@/src/services/endpoints";
+import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
 import { useFocusEffect } from "expo-router";
 
 const createStyles = (theme: Theme) =>
@@ -186,22 +185,6 @@ export default function HomeScreen() {
     }
   };
 
-  const handleFetchUnreadCount = async () => {
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: {
-          unread_count: number;
-        };
-      }>(notificationsEndpoints.unreadCount);
-
-      if (response.success && response.data) {
-        dispatch(setUnreadCount(response.data.unread_count));
-      }
-    } catch (error: any) {}
-  };
-
   const handleFetchChatUnreadCount = async () => {
     try {
       const response = await ApiService.get<{
@@ -296,7 +279,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       if (isCustomer) {
-        handleFetchUnreadCount();
+        dispatch(fetchNotificationUnreadCount());
         handleFetchChatUnreadCount();
       }
     }, []),

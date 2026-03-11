@@ -35,7 +35,7 @@ import { notificationsEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useFocusEffect } from "expo-router";
-import { setUnreadCount } from "@/src/state/slices/userSlice";
+import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import StackHeader from "@/src/components/StackHeader";
@@ -363,25 +363,7 @@ export default function NotificationsScreen() {
     }
   };
 
-  // Fetch unread count
-  const handleFetchUnreadCount = async () => {
-    if (isGuest) {
-      return;
-    }
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: {
-          unread_count: number;
-        };
-      }>(notificationsEndpoints.unreadCount);
-
-      if (response.success && response.data) {
-        dispatch(setUnreadCount(response.data.unread_count));
-      }
-    } catch (error: any) {}
-  };
+  // Fetch unread count uses shared thunk (isGuest checked at call sites).
 
   // Mark notification as read
   const handleMarkAsRead = async (notificationId: number, itemId: string) => {
@@ -402,7 +384,7 @@ export default function NotificationsScreen() {
           ),
         );
         // Fetch updated unread count
-        handleFetchUnreadCount();
+        dispatch(fetchNotificationUnreadCount());
       }
     } catch (error: any) {
       showBanner(
@@ -428,7 +410,7 @@ export default function NotificationsScreen() {
 
       if (response.success) {
         fetchNotifications(1, false);
-        handleFetchUnreadCount();
+        dispatch(fetchNotificationUnreadCount());
       }
     } catch (error: any) {
       showBanner(
@@ -446,7 +428,7 @@ export default function NotificationsScreen() {
     useCallback(() => {
       if (!isGuest) {
         fetchNotifications(1, false);
-        handleFetchUnreadCount();
+        dispatch(fetchNotificationUnreadCount());
       } else {
         setLoading(false);
       }
@@ -479,7 +461,7 @@ export default function NotificationsScreen() {
       // Call both APIs in parallel
       await Promise.all([
         fetchNotifications(1, false),
-        handleFetchUnreadCount(),
+        dispatch(fetchNotificationUnreadCount()),
       ]);
     } catch (error: any) {
       // Error handling is done in individual functions

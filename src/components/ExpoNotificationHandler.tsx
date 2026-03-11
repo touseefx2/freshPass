@@ -3,6 +3,8 @@ import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
+import { useAppDispatch } from "../hooks/hooks";
 
 /** Navigate using notification data (screen + optional booking_id) */
 function navigateFromNotificationData(
@@ -34,6 +36,7 @@ function navigateFromNotificationData(
  */
 export default function ExpoNotificationHandler() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(
     null,
@@ -57,11 +60,12 @@ export default function ExpoNotificationHandler() {
     // Fired when notification is received while app is open
     receivedListenerRef.current = Notifications.addNotificationReceivedListener(
       (notification) => {
-        Logger.log("------>Notification :", JSON.stringify(notification));
         Logger.log(
           "------>Notification received:",
           notification.request.content,
         );
+
+        dispatch(fetchNotificationUnreadCount());
       },
     );
 
