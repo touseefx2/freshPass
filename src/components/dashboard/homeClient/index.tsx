@@ -199,9 +199,7 @@ export default function HomeScreen() {
       if (response.success && response.data) {
         dispatch(setUnreadCount(response.data.unread_count));
       }
-    } catch (error: any) {
-      // Silent fail - no banner or console
-    }
+    } catch (error: any) {}
   };
 
   const handleFetchChatUnreadCount = async () => {

@@ -380,9 +380,7 @@ export default function NotificationsScreen() {
       if (response.success && response.data) {
         dispatch(setUnreadCount(response.data.unread_count));
       }
-    } catch (error: any) {
-      // Silent fail - no banner or console
-    }
+    } catch (error: any) {}
   };
 
   // Mark notification as read

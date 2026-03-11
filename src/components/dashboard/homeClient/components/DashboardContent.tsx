@@ -511,7 +511,6 @@ export default function DashboardContent() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state: any) => state.user.userRole);
   const isGuest = useAppSelector((state: any) => state.user.isGuest);
   const isCusotmerandGuest = isGuest || userRole === "customer";
