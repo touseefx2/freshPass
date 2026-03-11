@@ -37,7 +37,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -46,7 +46,7 @@ import { CloseIcon, SendIcon } from "@/assets/icons";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { ApiService } from "@/src/services/api";
-import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import { openFullImageModal, clearChatAttachmentUrls, setChatTryOnPreselectedUrls } from "@/src/state/slices/generalSlice";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import {
   getEcho,
@@ -1721,6 +1721,27 @@ export default function ChatBoxScreen() {
   const channelRef = useRef<ChannelHandle | null>(null);
   const channelActiveRef = useRef(false);
 
+  const chatAttachmentUrlsFromRedux = useAppSelector(
+    (state) => state.general.chatAttachmentUrls,
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (chatAttachmentUrlsFromRedux?.length > 0) {
+        setSelectedAttachments((prev) => {
+          const existingSet = new Set(prev);
+          const toAdd = chatAttachmentUrlsFromRedux.filter(
+            (url) => !existingSet.has(url),
+          );
+          if (toAdd.length === 0) return prev;
+          const combined = [...prev, ...toAdd];
+          return combined.slice(0, MAX_ATTACHMENTS);
+        });
+        dispatch(clearChatAttachmentUrls());
+      }
+    }, [chatAttachmentUrlsFromRedux, dispatch]),
+  );
+
   const chatItem = useMemo(() => {
     if (params.chatItem) {
       try {
@@ -2160,6 +2181,15 @@ export default function ChatBoxScreen() {
         visible={imagePickerVisible}
         onClose={() => setImagePickerVisible(false)}
         allowsMultipleSelection
+        showTryOnOption
+        onFromTryOnPress={() => {
+          setImagePickerVisible(false);
+          dispatch(setChatTryOnPreselectedUrls(selectedAttachments));
+          router.push({
+            pathname: "/aiRequests",
+            params: { returnTo: "chat" },
+          });
+        }}
         onImageSelected={(uri) => {
           setSelectedAttachments((prev) => {
             if (prev.length >= MAX_ATTACHMENTS) {

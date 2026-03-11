@@ -90,6 +90,10 @@ export interface GeneralState {
   bookingTryOnPreselectedUrls: string[];
   /** Per-jobId selected try-on URLs so reopening same result restores selection */
   bookingTryOnSelectionByJobId: Record<string, string[]>;
+  /** When user selects images from AI Results to attach to chat (not persisted) */
+  chatAttachmentUrls: string[];
+  /** When opening AI Results from chat, pre-select these URLs (current chat attachments) */
+  chatTryOnPreselectedUrls: string[];
 }
 
 export interface ChatContactItem {
@@ -145,6 +149,8 @@ const initialState: GeneralState = {
   bookingTryOnImageUrls: [],
   bookingTryOnPreselectedUrls: [],
   bookingTryOnSelectionByJobId: {},
+  chatAttachmentUrls: [],
+  chatTryOnPreselectedUrls: [],
 };
 
 const generalSlice = createSlice({
@@ -279,6 +285,18 @@ const generalSlice = createSlice({
     clearBookingTryOnPreselectedUrls(state) {
       state.bookingTryOnPreselectedUrls = [];
     },
+    setChatAttachmentUrls(state, action: PayloadAction<string[]>) {
+      state.chatAttachmentUrls = action.payload;
+    },
+    clearChatAttachmentUrls(state) {
+      state.chatAttachmentUrls = [];
+    },
+    setChatTryOnPreselectedUrls(state, action: PayloadAction<string[]>) {
+      state.chatTryOnPreselectedUrls = action.payload;
+    },
+    clearChatTryOnPreselectedUrls(state) {
+      state.chatTryOnPreselectedUrls = [];
+    },
     setBookingTryOnSelectionForJob(
       state,
       action: PayloadAction<{ jobId: string; urls: string[] }>,
@@ -390,6 +408,8 @@ const generalSlice = createSlice({
       state.bookingTryOnImageUrls = [];
       state.bookingTryOnPreselectedUrls = [];
       state.bookingTryOnSelectionByJobId = {};
+      state.chatAttachmentUrls = [];
+      state.chatTryOnPreselectedUrls = [];
     },
   },
 });
@@ -421,6 +441,10 @@ export const {
   clearBookingTryOnImageUrls,
   setBookingTryOnPreselectedUrls,
   clearBookingTryOnPreselectedUrls,
+  setChatAttachmentUrls,
+  clearChatAttachmentUrls,
+  setChatTryOnPreselectedUrls,
+  clearChatTryOnPreselectedUrls,
   setBookingTryOnSelectionForJob,
   setIsFirstShowTryOn,
   setCurrentLocation,

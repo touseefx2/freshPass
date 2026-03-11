@@ -41,6 +41,8 @@ import {
   setBookingTryOnImageUrls,
   clearBookingTryOnPreselectedUrls,
   setBookingTryOnSelectionForJob,
+  setChatAttachmentUrls,
+  clearChatTryOnPreselectedUrls,
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
@@ -635,6 +637,8 @@ export default function AiResults() {
   const params = useLocalSearchParams<{ jobId?: string; returnTo?: string }>();
   const jobId = params.jobId;
   const fromBooking = params.returnTo === "booking";
+  const fromChat = params.returnTo === "chat";
+  const isSelectionMode = fromBooking || fromChat;
   const router = useRouter();
   const { showBanner } = useNotificationContext();
 
@@ -732,7 +736,13 @@ export default function AiResults() {
   const bookingTryOnSelectionByJobId = useAppSelector(
     (state) => state.general.bookingTryOnSelectionByJobId,
   );
+  const chatTryOnPreselectedUrls = useAppSelector(
+    (state) => state.general.chatTryOnPreselectedUrls,
+  );
   const hasSyncedPreselected = useRef(false);
+  useEffect(() => {
+    hasSyncedPreselected.current = false;
+  }, [jobId]);
   useEffect(() => {
     if (
       normalized?.status !== "completed" ||
@@ -747,6 +757,12 @@ export default function AiResults() {
     const fromPreselected = preselected.filter((u) =>
       allSelectableUrls.includes(u),
     );
+    const chatPreselected =
+      fromChat && Array.isArray(chatTryOnPreselectedUrls)
+        ? chatTryOnPreselectedUrls.filter((u) =>
+            allSelectableUrls.includes(u),
+          )
+        : [];
     const storedForJob =
       !fromBooking &&
       jobId &&
@@ -758,17 +774,22 @@ export default function AiResults() {
     if (fromPreselected.length > 0) {
       setSelectedUrls(new Set(fromPreselected));
       dispatch(clearBookingTryOnPreselectedUrls());
+    } else if (chatPreselected.length > 0) {
+      setSelectedUrls(new Set(chatPreselected));
+      dispatch(clearChatTryOnPreselectedUrls());
     } else if (storedForJob.length > 0) {
       setSelectedUrls(new Set(storedForJob));
     }
     hasSyncedPreselected.current = true;
   }, [
     fromBooking,
+    fromChat,
     jobId,
     normalized?.status,
     allSelectableUrls,
     bookingPreselectedUrls,
     bookingTryOnSelectionByJobId,
+    chatTryOnPreselectedUrls,
     dispatch,
   ]);
 
@@ -1182,7 +1203,7 @@ export default function AiResults() {
   const canShare =
     normalized?.status === "completed" &&
     (normalized.sections.length > 0 || !!normalized.socialMedia) &&
-    !fromBooking;
+    !isSelectionMode;
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -1241,12 +1262,12 @@ export default function AiResults() {
       <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          fromBooking && { paddingBottom: moderateHeightScale(100) },
+          isSelectionMode && { paddingBottom: moderateHeightScale(100) },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {fromBooking && allSelectableUrls.length > 0 && (
+        {isSelectionMode && allSelectableUrls.length > 0 && (
           <View style={styles.selectAllRow}>
             <Text style={styles.sectionTitleUppercase}>
               {t("selectImagesForTryOn")}
@@ -1264,7 +1285,7 @@ export default function AiResults() {
             </TouchableOpacity>
           </View>
         )}
-        {isReel && downloadUri && !fromBooking && (
+        {isReel && downloadUri && !isSelectionMode && (
           <View style={styles.headerContainer}>
             <TouchableOpacity
               style={styles.downloadButtonPrimary}
@@ -1437,20 +1458,20 @@ export default function AiResults() {
                     onImagePress={openFullImage}
                     allUrls={sm.original_media!.map((m) => m.url)}
                     onSharePress={
-                      fromBooking
+                      isSelectionMode
                         ? undefined
                         : (url, labelKey) =>
                             openShareSheetForImage(url, labelKey, true)
                     }
                     onDownloadPress={
-                      fromBooking
+                      isSelectionMode
                         ? undefined
                         : (url, options) => downloadMedia(url, options ?? {})
                     }
                     downloadingUrl={downloadingUrl}
-                    selectionMode={fromBooking}
-                    selectedUrls={fromBooking ? selectedUrls : undefined}
-                    onToggleUrl={fromBooking ? toggleUrl : undefined}
+                    selectionMode={isSelectionMode}
+                    selectedUrls={isSelectionMode ? selectedUrls : undefined}
+                    onToggleUrl={isSelectionMode ? toggleUrl : undefined}
                   />
                 ))}
               </View>
@@ -1465,7 +1486,7 @@ export default function AiResults() {
               onPress={() => {
                 const url = sm.images?.processed;
                 if (!url) return;
-                if (fromBooking) toggleUrl(url);
+                if (isSelectionMode) toggleUrl(url);
                 else openFullImage(url);
               }}
               activeOpacity={1}
@@ -1476,7 +1497,7 @@ export default function AiResults() {
                 resizeMode="cover"
               />
             </TouchableOpacity>
-            {fromBooking ? (
+            {isSelectionMode ? (
               <View
                 style={[
                   styles.selectionOverlay,
@@ -1551,7 +1572,7 @@ export default function AiResults() {
                     <TouchableOpacity
                       style={styles.singleImageTouchable}
                       onPress={() =>
-                        fromBooking
+                        isSelectionMode
                           ? toggleUrl(url)
                           : openFullImage(
                               url,
@@ -1566,7 +1587,7 @@ export default function AiResults() {
                         resizeMode="cover"
                       />
                     </TouchableOpacity>
-                    {fromBooking ? (
+                    {isSelectionMode ? (
                       <View
                         style={[
                           styles.selectionOverlay,
@@ -1727,12 +1748,12 @@ export default function AiResults() {
       <KeyboardAwareScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          fromBooking && { paddingBottom: moderateHeightScale(100) },
+          isSelectionMode && { paddingBottom: moderateHeightScale(100) },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {fromBooking && allSelectableUrls.length > 0 && (
+        {isSelectionMode && allSelectableUrls.length > 0 && (
           <View style={styles.selectAllRow}>
             <Text style={styles.sectionTitleUppercase}>
               {t("selectImagesForTryOn")}
@@ -1756,7 +1777,7 @@ export default function AiResults() {
               <Text style={styles.sectionTitleFlex} numberOfLines={1}>
                 {section.name}
               </Text>
-              {!fromBooking && (
+              {!isSelectionMode && (
                 <TouchableOpacity
                   style={styles.sectionShareButton}
                   onPress={() => openShareSheetForSection(section)}
@@ -1770,7 +1791,7 @@ export default function AiResults() {
                   />
                 </TouchableOpacity>
               )}
-              {fromBooking &&
+              {isSelectionMode &&
                 section.views.length > 0 &&
                 (() => {
                   const sectionUrls = section.views.map((v) => v.url);
@@ -1808,7 +1829,7 @@ export default function AiResults() {
                     <TouchableOpacity
                       style={StyleSheet.absoluteFill}
                       onPress={() =>
-                        fromBooking
+                        isSelectionMode
                           ? toggleUrl(url)
                           : openFullImage(
                               url,
@@ -1823,7 +1844,7 @@ export default function AiResults() {
                         resizeMode="cover"
                       />
                     </TouchableOpacity>
-                    {fromBooking ? (
+                    {isSelectionMode ? (
                       <View
                         style={[
                           styles.selectionOverlay,
@@ -1923,7 +1944,7 @@ export default function AiResults() {
         sending={shareSending}
       />
 
-      {fromBooking &&
+      {(fromBooking || fromChat) &&
         normalized?.status === "completed" &&
         allSelectableUrls.length > 0 && (
           <View style={styles.selectFooter}>
@@ -1934,14 +1955,18 @@ export default function AiResults() {
               ]}
               onPress={() => {
                 if (selectedUrls.size > 0 && jobId) {
-                  dispatch(
-                    setBookingTryOnSelectionForJob({
-                      jobId,
-                      urls: Array.from(selectedUrls),
-                    }),
-                  );
-                  // One-way: result selection = booking try-on list (replace, no merge)
-                  dispatch(setBookingTryOnImageUrls(Array.from(selectedUrls)));
+                  if (fromBooking) {
+                    dispatch(
+                      setBookingTryOnSelectionForJob({
+                        jobId,
+                        urls: Array.from(selectedUrls),
+                      }),
+                    );
+                    dispatch(setBookingTryOnImageUrls(Array.from(selectedUrls)));
+                  }
+                  if (fromChat) {
+                    dispatch(setChatAttachmentUrls(Array.from(selectedUrls)));
+                  }
                   router.back();
                   router.back();
                 }

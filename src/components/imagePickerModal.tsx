@@ -25,6 +25,9 @@ interface ImagePickerModalProps {
   onImagesSelected?: (uris: string[]) => void;
   allowsMultipleSelection?: boolean;
   quality?: number;
+  /** When true, shows "From try-on image" option that calls onFromTryOnPress */
+  showTryOnOption?: boolean;
+  onFromTryOnPress?: () => void;
 }
 
 const createStyles = (theme: Theme) =>
@@ -54,6 +57,8 @@ export default function ImagePickerModal({
   onImagesSelected,
   allowsMultipleSelection = false,
   quality = 0.8,
+  showTryOnOption = false,
+  onFromTryOnPress,
 }: ImagePickerModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -148,6 +153,25 @@ export default function ImagePickerModal({
         />
         <Text style={styles.optionText}>{t("fromCamera")}</Text>
       </TouchableOpacity>
+
+      {showTryOnOption && onFromTryOnPress ? (
+        <TouchableOpacity
+          style={styles.optionItem}
+          onPress={() => {
+            onClose();
+            onFromTryOnPress();
+          }}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons
+            name="image"
+            size={moderateWidthScale(24)}
+            color={theme.darkGreen}
+            style={styles.optionIcon}
+          />
+          <Text style={styles.optionText}>{t("fromTryOnImage")}</Text>
+        </TouchableOpacity>
+      ) : null}
     </ModalizeBottomSheet>
   );
 }
