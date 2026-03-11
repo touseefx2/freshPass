@@ -225,24 +225,28 @@ const removeAbortController = (controller: AbortController) => {
 
 /**
  * Handle logout - call API to revoke token and clear Expo push token, then clear Redux state and persisted cache.
+ * For guest users, skips the API and only clears state and navigates to role/sign-in screen.
  * Shows general action loader until API completes; only clears state and navigates on API success.
  */
 const handleLogout = async () => {
-  store.dispatch(setActionLoader(true));
+  const isGuest = store.getState().user.isGuest;
 
-  try {
-    const response = await apiClient.post(businessEndpoints.logout);
-    if (response.status !== 200) {
+  if (!isGuest) {
+    store.dispatch(setActionLoader(true));
+    try {
+      const response = await apiClient.post(businessEndpoints.logout);
+      if (response.status !== 200) {
+        store.dispatch(setActionLoader(false));
+        return;
+      }
+    } catch (err) {
+      Logger.error("Logout API failed", err);
       store.dispatch(setActionLoader(false));
       return;
     }
-  } catch (err) {
-    Logger.error("Logout API failed", err);
-    store.dispatch(setActionLoader(false));
-    return;
   }
 
-  // API succeeded: clear Redux state (in-memory)
+  // API succeeded (or guest): clear Redux state (in-memory)
   store.dispatch(resetCompleteProfile());
   store.dispatch(clearGeneral());
   store.dispatch(resetCategories());
@@ -255,6 +259,7 @@ const handleLogout = async () => {
   } catch (err) {
     Logger.error("Logout: persistor.purge failed", err);
   }
+  store.dispatch(setActionLoader(false));
   router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
 };
 
