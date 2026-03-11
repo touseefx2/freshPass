@@ -2195,6 +2195,9 @@ export default function ChatBoxScreen() {
         onClose={() => setImagePickerVisible(false)}
         allowsMultipleSelection
         showTryOnOption
+        attachmentOptionMode={
+          user?.userRole === "business" ? "social" : "tryon"
+        }
         onFromTryOnPress={() => {
           setImagePickerVisible(false);
           dispatch(setChatTryOnPreselectedUrls(selectedAttachments));

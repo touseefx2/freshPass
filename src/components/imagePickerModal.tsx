@@ -16,7 +16,7 @@ import {
   handleMediaLibraryPermission,
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
-import { PersonScissorsIcon } from "@/assets/icons";
+import { PersonScissorsIcon, ShareIcon } from "@/assets/icons";
 
 interface ImagePickerModalProps {
   visible: boolean;
@@ -29,6 +29,8 @@ interface ImagePickerModalProps {
   /** When true, shows "From try-on image" option that calls onFromTryOnPress */
   showTryOnOption?: boolean;
   onFromTryOnPress?: () => void;
+  /** When "social", label/icon show "Select from social media" (e.g. for business role); default "tryon" */
+  attachmentOptionMode?: "tryon" | "social";
 }
 
 const createStyles = (theme: Theme) =>
@@ -60,6 +62,7 @@ export default function ImagePickerModal({
   quality = 0.8,
   showTryOnOption = false,
   onFromTryOnPress,
+  attachmentOptionMode = "tryon",
 }: ImagePickerModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -171,15 +174,27 @@ export default function ImagePickerModal({
           activeOpacity={0.7}
         >
           <View style={styles.optionIcon}>
-            <PersonScissorsIcon
-              width={moderateWidthScale(24)}
-              height={moderateWidthScale(24)}
-              color1={theme.darkGreen}
-              color2={theme.darkGreen}
-              color3={theme.darkGreen}
-            />
+            {attachmentOptionMode === "social" ? (
+              <ShareIcon
+                width={moderateWidthScale(24)}
+                height={moderateWidthScale(24)}
+                color={theme.darkGreen}
+              />
+            ) : (
+              <PersonScissorsIcon
+                width={moderateWidthScale(24)}
+                height={moderateWidthScale(24)}
+                color1={theme.darkGreen}
+                color2={theme.darkGreen}
+                color3={theme.darkGreen}
+              />
+            )}
           </View>
-          <Text style={styles.optionText}>{t("fromTryOnImage")}</Text>
+          <Text style={styles.optionText}>
+            {attachmentOptionMode === "social"
+              ? t("fromSocialMedia")
+              : t("fromTryOnImage")}
+          </Text>
         </TouchableOpacity>
       ) : null}
     </ModalizeBottomSheet>

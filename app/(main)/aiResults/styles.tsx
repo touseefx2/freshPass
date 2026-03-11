@@ -579,6 +579,22 @@ export const createStyles = (theme: Theme) =>
     selectionOverlaySelected: {
       backgroundColor: theme.primary,
     },
+    /** Lighter circle for video so it’s visible on dark video area */
+    selectionOverlayVideo: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      right: moderateWidthScale(6),
+      width: moderateWidthScale(24),
+      height: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: "rgba(255,255,255,0.85)",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2,
+    },
+    selectionOverlayVideoSelected: {
+      backgroundColor: theme.primary,
+    },
     selectAllRow: {
       flexDirection: "row",
       alignItems: "center",

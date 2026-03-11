@@ -508,7 +508,8 @@ function OriginalMediaCard({
       (item.url && /\.(mp3|m4a|aac|wav)(\?.*)?$/i.test(item.url)));
 
   const shareLabelKey = isVideo ? "video" : isImage ? "image" : "audio";
-  const isSelected = selectionMode && isImage && selectedUrls?.has(item.url);
+  const isSelected =
+    selectionMode && selectedUrls != null && selectedUrls.has(item.url);
 
   return (
     <View style={styles.originalMediaCard}>
@@ -582,6 +583,24 @@ function OriginalMediaCard({
             />
           ) : null}
         </View>
+      )}
+      {isVideo && selectionMode && onToggleUrl && (
+        <TouchableOpacity
+          style={[
+            styles.selectionOverlayVideo,
+            isSelected && styles.selectionOverlayVideoSelected,
+          ]}
+          onPress={() => onToggleUrl(item.url)}
+          activeOpacity={0.8}
+        >
+          {isSelected ? (
+            <Feather
+              name="check"
+              size={moderateWidthScale(14)}
+              color={theme.white}
+            />
+          ) : null}
+        </TouchableOpacity>
       )}
       {onSharePress && !selectionMode && (
         <TouchableOpacity
@@ -712,9 +731,10 @@ export default function AiResults() {
       const list: string[] = [];
       if (sm.images?.processed) list.push(sm.images.processed);
       if (sm.images?.originals?.length) list.push(...sm.images.originals);
+      if (sm.video?.url) list.push(sm.video.url);
       if (sm.original_media?.length) {
         sm.original_media
-          .filter((m) => m.type === "image")
+          .filter((m) => m.type === "image" || m.type === "video")
           .forEach((m) => list.push(m.url));
       }
       return list;
@@ -1324,11 +1344,38 @@ export default function AiResults() {
         )}
 
         {isReel && sm.video?.url && (
-          <ReelVideoPlayer
-            videoUrl={sm.video.url}
-            styles={styles}
-            theme={theme}
-          />
+          isSelectionMode ? (
+            <View style={styles.videoContainer}>
+              <ReelVideoPlayer
+                videoUrl={sm.video.url}
+                styles={styles}
+                theme={theme}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.selectionOverlayVideo,
+                  selectedUrls.has(sm.video.url) &&
+                    styles.selectionOverlayVideoSelected,
+                ]}
+                onPress={() => toggleUrl(sm.video!.url!)}
+                activeOpacity={0.8}
+              >
+                {selectedUrls.has(sm.video.url) ? (
+                  <Feather
+                    name="check"
+                    size={moderateWidthScale(14)}
+                    color={theme.white}
+                  />
+                ) : null}
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <ReelVideoPlayer
+              videoUrl={sm.video.url}
+              styles={styles}
+              theme={theme}
+            />
+          )
         )}
 
         {isReel && sm.video && (
