@@ -491,12 +491,16 @@ const createStyles = (theme: Theme) =>
     filterContainer: {
       flexDirection: "row",
       gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(16),
+    },
+    filterStripWrapper: {
+      width: "100%",
+      alignSelf: "stretch",
       backgroundColor: theme.lightGreen05,
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(12),
       borderTopRightRadius: moderateWidthScale(12),
       borderTopLeftRadius: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(16),
     },
     filterButton: {
       paddingHorizontal: moderateWidthScale(16),
@@ -1297,9 +1301,9 @@ export default function BusinessDetailScreen() {
     useState(false);
   const [selectedMembershipFilter, setSelectedMembershipFilter] =
     useState("All");
-  const [selectedServiceFilter, setSelectedServiceFilter] = useState<
-    string | null
-  >(null);
+  const [selectedServiceFilter, setSelectedServiceFilter] = useState<string>(
+    "All",
+  );
   const [inclusionsModalVisible, setInclusionsModalVisible] = useState(false);
   const [selectedInclusions, setSelectedInclusions] = useState<string[]>([]);
   const [breaksModalVisible, setBreaksModalVisible] = useState(false);
@@ -1477,7 +1481,7 @@ export default function BusinessDetailScreen() {
     if (!categoryId) {
       setServiceTemplates([]);
       // Reset filter to show all services
-      setSelectedServiceFilter(null);
+      setSelectedServiceFilter("All");
       return;
     }
 
@@ -2612,12 +2616,13 @@ export default function BusinessDetailScreen() {
           <>
             {hasMemberships ? (
               <>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.filterContainer}
-                >
-                  {membershipFilters.map((filter) => (
+                <View style={styles.filterStripWrapper}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterContainer}
+                  >
+                    {membershipFilters.map((filter) => (
                     <TouchableOpacity
                       key={filter}
                       style={[
@@ -2639,6 +2644,7 @@ export default function BusinessDetailScreen() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+                </View>
 
                 {displayedMembershipSubscriptions.map(
                   (subscription: any, index: number) => (
@@ -2822,12 +2828,13 @@ export default function BusinessDetailScreen() {
           <>
             {hasAnyIndividualServices ? (
               <>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.filterContainer}
-                >
-                  {serviceFilters.map((filter) => (
+                <View style={styles.filterStripWrapper}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.filterContainer}
+                  >
+                    {serviceFilters.map((filter) => (
                     <TouchableOpacity
                       key={filter}
                       style={[
@@ -2849,6 +2856,7 @@ export default function BusinessDetailScreen() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+                </View>
 
                 {hasFilteredIndividualServices ? (
                   <>
