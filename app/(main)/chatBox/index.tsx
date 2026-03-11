@@ -66,6 +66,9 @@ import { useVideoPlayer, VideoView } from "expo-video";
 
 const PER_PAGE = 20;
 const MAX_ATTACHMENTS = 10;
+/** API allows max 5 files and max 5 links per message */
+const MAX_ATTACHMENT_FILES = 5;
+const MAX_LINKS = 5;
 const MESSAGES_URL = (userId: string) => `/api/chat/messages/${userId}`;
 const MARK_READ_URL = (userId: string) => `/api/chat/messages/${userId}/read`;
 const SEND_MESSAGE_URL = "/api/chat/messages";
@@ -130,6 +133,12 @@ function getMimeAndName(uri: string): { mimeType: string; name: string } {
                     : "image/jpeg";
   const name = raw.split("/").pop() || (ext === "mp4" ? "video.mp4" : `image.${ext}`);
   return { mimeType, name };
+}
+
+/** True if URI is an online link (https/http), false for local file (file://, content://, etc.) */
+function isOnlineLink(uri: string): boolean {
+  const u = (uri || "").trim();
+  return u.startsWith("https://") || u.startsWith("http://");
 }
 
 /** Normalize attachment item from API/socket (can be string or object with url/path) to string. */
@@ -2163,8 +2172,16 @@ export default function ChatBoxScreen() {
 
   const handleSend = useCallback(async () => {
     const trimmed = inputText.trim();
-    const hasAttachments = selectedAttachments.length > 0;
-    if (!userId || sending || (!trimmed && !hasAttachments)) return;
+    const localUris = selectedAttachments.filter((uri) => !isOnlineLink(uri));
+    const linkUris = selectedAttachments.filter((uri) => isOnlineLink(uri));
+    const hasAttachments = localUris.length > 0;
+    const hasLinks = linkUris.length > 0;
+    if (
+      !userId ||
+      sending ||
+      (!trimmed && !hasAttachments && !hasLinks)
+    )
+      return;
 
     setSending(true);
     try {
@@ -2172,14 +2189,18 @@ export default function ChatBoxScreen() {
       formData.append("receiver_id", String(Number(userId)));
       formData.append("message", trimmed || "");
 
-      for (let i = 0; i < selectedAttachments.length; i++) {
-        const uri = selectedAttachments[i];
+      for (let i = 0; i < Math.min(localUris.length, MAX_ATTACHMENT_FILES); i++) {
+        const uri = localUris[i];
         const { mimeType, name } = getMimeAndName(uri);
         formData.append("attachments[]", {
           uri,
           type: mimeType,
           name,
         } as any);
+      }
+
+      for (let i = 0; i < Math.min(linkUris.length, MAX_LINKS); i++) {
+        formData.append("links[]", linkUris[i]);
       }
 
       const res = await ApiService.post<SendMessageResponse>(
