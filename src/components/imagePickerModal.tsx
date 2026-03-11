@@ -1,7 +1,11 @@
 import React, { useMemo, useCallback } from "react";
 import Logger from "@/src/services/logger";
 import { StyleSheet, Text, View, TouchableOpacity, Alert } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import {
+  MaterialIcons,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -16,7 +20,7 @@ import {
   handleMediaLibraryPermission,
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
-import { PersonScissorsIcon, ShareIcon } from "@/assets/icons";
+import { PersonScissorsIcon } from "@/assets/icons";
 
 interface ImagePickerModalProps {
   visible: boolean;
@@ -175,9 +179,9 @@ export default function ImagePickerModal({
         >
           <View style={styles.optionIcon}>
             {attachmentOptionMode === "social" ? (
-              <ShareIcon
-                width={moderateWidthScale(24)}
-                height={moderateWidthScale(24)}
+              <MaterialCommunityIcons
+                name="multimedia"
+                size={moderateWidthScale(24)}
                 color={theme.darkGreen}
               />
             ) : (
