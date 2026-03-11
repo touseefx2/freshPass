@@ -16,21 +16,22 @@ function navigateFromNotificationData(
 
   const type = data.type as string | undefined;
   if (type === "message") {
+    const modelId = data.model_id as number | undefined;
     const sender = data.sender as
       | { id: number; name?: string; profile_image_url?: string | null }
       | undefined;
-    if (sender?.id != null) {
+    if (modelId != null && sender != null) {
       const chatItem = {
-        id: String(sender.id),
+        id: String(modelId),
         name: sender.name ?? "-----",
         image: sender.profile_image_url ?? "",
       };
       router.push({
         pathname: "/(main)/chatBox",
-        params: { id: String(sender.id), chatItem: JSON.stringify(chatItem) },
+        params: { id: String(modelId), chatItem: JSON.stringify(chatItem) },
       });
       Logger.log("------>navigateFromNotificationData (message) -> chatBox", {
-        id: sender.id,
+        id: modelId,
         chatItem,
       });
       return;
@@ -38,15 +39,15 @@ function navigateFromNotificationData(
   }
 
   if (type === "appointment") {
-    const appointmentId = data.appointment_id as number | undefined;
-    if (appointmentId != null) {
+    const modelId = data.model_id as number | undefined;
+    if (modelId != null) {
       router.push({
         pathname: "/(main)/bookingDetailsById",
-        params: { bookingId: appointmentId },
+        params: { bookingId: modelId },
       });
       Logger.log(
         "------>navigateFromNotificationData (appointment) -> bookingDetailsById",
-        { bookingId: appointmentId },
+        { bookingId: modelId },
       );
       return;
     }
