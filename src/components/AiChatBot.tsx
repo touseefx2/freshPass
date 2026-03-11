@@ -138,12 +138,15 @@ const createStyles = (
     },
     minimizeArrow: {
       position: "absolute",
-      bottom: moderateHeightScale(chatBottomOffset) + bottomInset,
+      bottom:
+        moderateHeightScale(chatBottomOffset) +
+        bottomInset +
+        (widthScale(45) - widthScale(20)) / 2,
       right:
         moderateWidthScale(16) + widthScale(45) + moderateWidthScale(2),
-      width: widthScale(26),
-      height: widthScale(26),
-      borderRadius: widthScale(26 / 2),
+      width: widthScale(20),
+      height: widthScale(20),
+      borderRadius: widthScale(20 / 2),
       backgroundColor: theme.darkGreenLight,
       borderWidth: 2,
       borderTopColor: theme.white,
@@ -1146,7 +1149,7 @@ const AiChatBot: React.FC = () => {
         >
           <Ionicons
             name="chevron-forward"
-            size={widthScale(16)}
+            size={widthScale(12)}
             color={theme.white}
           />
         </TouchableOpacity>
