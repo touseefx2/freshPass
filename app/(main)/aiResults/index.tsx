@@ -1010,6 +1010,12 @@ export default function AiResults() {
         }
       } else if (normalized.sections.length > 0) {
         message = `${t("aiResults")}\n\n`;
+        if (normalized.requestPayload?.prompt) {
+          message += `${t("prompt")}: ${normalized.requestPayload.prompt}\n\n`;
+        }
+        if (normalized.requestPayload?.originalImageUrl) {
+          message += `${t("sourceImage")}: ${normalized.requestPayload.originalImageUrl}\n\n`;
+        }
         normalized.sections.forEach((section, sectionIndex) => {
           message += `${section.name}\n`;
           if (section.description) {
@@ -1090,6 +1096,12 @@ export default function AiResults() {
       }
     } else if (normalized.sections.length > 0) {
       message = `${t("aiResults")}\n\n`;
+      if (normalized.requestPayload?.prompt) {
+        message += `${t("prompt")}: ${normalized.requestPayload.prompt}\n\n`;
+      }
+      if (normalized.requestPayload?.originalImageUrl) {
+        message += `${t("sourceImage")}: ${normalized.requestPayload.originalImageUrl}\n\n`;
+      }
       normalized.sections.forEach((section, sectionIndex) => {
         message += `${section.name}\n`;
         if (section.description) message += `${section.description}\n`;
