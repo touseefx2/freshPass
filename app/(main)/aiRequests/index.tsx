@@ -176,7 +176,10 @@ export default function AiRequests() {
           onPress={() => {
             router.push({
               pathname: "/aiResults",
-              params: { jobId: item.job_id, ...(params.returnTo ? { returnTo: params.returnTo } : {}) },
+              params: {
+                jobId: item.job_id,
+                ...(params.returnTo ? { returnTo: params.returnTo } : {}),
+              },
             });
           }}
         >
@@ -244,9 +247,7 @@ export default function AiRequests() {
     () =>
       !loading ? (
         <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>
-            {t("noAiRequests") || "No AI requests yet"}
-          </Text>
+          <Text style={styles.emptyStateText}>{t("noAiRequests")}</Text>
         </View>
       ) : null,
     [loading, styles.emptyStateContainer, styles.emptyStateText, t],

@@ -165,11 +165,10 @@ export default function AiMemories() {
     ({ item }: { item: MemorySection }) => {
       const firstImageItem = item.items.find((i) => i.type === "image");
       const firstImageUrl = firstImageItem
-        ? firstImageItem.url ?? firstImageItem.image_url ?? ""
+        ? (firstImageItem.url ?? firstImageItem.image_url ?? "")
         : "";
       const hasOnlyVideos =
-        item.items.length > 0 &&
-        !item.items.some((i) => i.type === "image");
+        item.items.length > 0 && !item.items.some((i) => i.type === "image");
       return (
         <TouchableOpacity
           style={styles.sectionCard}
@@ -219,7 +218,7 @@ export default function AiMemories() {
     () =>
       !loading && sections.length === 0 ? (
         <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>{t("memories")}</Text>
+          <Text style={styles.emptyStateText}>{t("noMemoriesFound")}</Text>
         </View>
       ) : null,
     [loading, sections.length, styles, t],

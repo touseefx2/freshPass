@@ -280,6 +280,8 @@
   "aiTools": "Ai Tools",
   "logOut": "Log out",
   "memories": "Memories",
+  "noMemoriesFound": "No memories yet",
+  "noAiRequests": "No AI requests yet",
   "happyWeekend": "Happy Weekend",
   "deleteAccount": "Delete account",
   "logout": "Logout",
