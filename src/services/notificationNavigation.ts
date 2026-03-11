@@ -16,6 +16,7 @@ export type NotificationNavigationData = {
  * Used by ExpoNotificationHandler (push tap) and Notifications screen (list item tap).
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
+ * - type "ai_memory" → aiMemories (AI memories screen)
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 export function navigateFromNotificationData(
@@ -63,6 +64,12 @@ export function navigateFromNotificationData(
       );
       return;
     }
+  }
+
+  if (type === "ai_memory") {
+    router.push("/(main)/aiMemories" as any);
+    Logger.log("------>navigateFromNotificationData (ai_memory) -> aiMemories");
+    return;
   }
 
   if (!options?.skipNotificationScreen) {
