@@ -1800,7 +1800,7 @@ export default function bookingDetailsById() {
                 )}
               </View>
               {!isCancelled &&
-                !isComplete &&
+                // !isComplete &&
                 userRole === "customer" &&
                 !(
                   booking.paymentMethod === "pay_now" &&
