@@ -12,6 +12,7 @@ function navigateFromNotificationData(
   data: Record<string, unknown> | undefined,
 ) {
   if (!data) return;
+  Logger.log("------>navigateFromNotificationData", data);
 
   const type = data.type as string | undefined;
   if (type === "message") {
@@ -37,7 +38,6 @@ function navigateFromNotificationData(
   }
 
   router.push("/(main)/notification" as any);
-  Logger.log("------>navigateFromNotificationData", data);
 }
 
 /**
