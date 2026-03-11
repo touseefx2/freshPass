@@ -136,6 +136,40 @@ const createStyles = (
       height: widthScale(44),
       top: -15,
     },
+    minimizeArrow: {
+      position: "absolute",
+      bottom: moderateHeightScale(chatBottomOffset) + bottomInset,
+      right:
+        moderateWidthScale(16) + widthScale(45) + moderateWidthScale(2),
+      width: widthScale(26),
+      height: widthScale(26),
+      borderRadius: widthScale(26 / 2),
+      backgroundColor: theme.darkGreenLight,
+      borderWidth: 2,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.orangeBrown,
+      borderBottomColor: theme.orangeBrown,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    minimizedTab: {
+      position: "absolute",
+      bottom: moderateHeightScale(chatBottomOffset) + bottomInset,
+      right: 0,
+      width: widthScale(28),
+      height: widthScale(28),
+      borderTopLeftRadius: moderateWidthScale(14),
+      borderBottomLeftRadius: moderateWidthScale(14),
+      backgroundColor: theme.darkGreenLight,
+      borderWidth: 2,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.orangeBrown,
+      borderBottomColor: theme.orangeBrown,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     menuOptionsContainer: {
       position: "absolute",
       bottom:
@@ -649,6 +683,7 @@ const AiChatBot: React.FC = () => {
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const [menuExpanded, setMenuExpanded] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const canShowMenu = userRole === "customer" || isGuest;
   const [chatMode, setChatMode] = useState<"ai_chat_bot" | "ai_receptionist">(
     "ai_chat_bot",
@@ -726,6 +761,10 @@ const AiChatBot: React.FC = () => {
     setMenuExpanded(false);
   }, []);
 
+  const handleExpand = useCallback(() => {
+    setIsMinimized(false);
+  }, []);
+
   const handleSelectOption = useCallback(
     (mode: "ai_chat_bot" | "ai_receptionist") => {
       setChatMode(mode);
@@ -742,6 +781,14 @@ const AiChatBot: React.FC = () => {
     }
     dispatch(closeChat());
   }, [dispatch, chatMode]);
+
+  const handleMinimize = useCallback(() => {
+    if (isOpen) {
+      handleCloseChat();
+    }
+    setMenuExpanded(false);
+    setIsMinimized(true);
+  }, [isOpen, handleCloseChat]);
 
   // Android hardware back: close chat/voice modal first, then close options menu
   useEffect(() => {
@@ -1036,8 +1083,23 @@ const AiChatBot: React.FC = () => {
         </Animated.View>
       )}
 
+      {/* Minimized tab - right edge, tap to expand; arrow left, small */}
+      {isMinimized && (
+        <TouchableOpacity
+          style={[styles.minimizedTab, styles.shadowLight]}
+          onPress={handleExpand}
+          activeOpacity={0.9}
+        >
+          <Ionicons
+            name="chevron-back"
+            size={widthScale(16)}
+            color={theme.white}
+          />
+        </TouchableOpacity>
+      )}
+
       {/* Expanded menu - two options above the button (only for customer/guest) */}
-      {canShowMenu && menuExpanded && !isOpen && (
+      {!isMinimized && canShowMenu && menuExpanded && !isOpen && (
         <>
           <TouchableWithoutFeedback onPress={handleCloseMenu}>
             <View style={[StyleSheet.absoluteFill, { zIndex: 997 }]} />
@@ -1075,8 +1137,23 @@ const AiChatBot: React.FC = () => {
         </>
       )}
 
+      {/* Minimize arrow - left of FAB, points right (hide to right); small */}
+      {!isMinimized && !isOpen && (
+        <TouchableOpacity
+          style={[styles.minimizeArrow, styles.shadowLight]}
+          onPress={handleMinimize}
+          activeOpacity={0.9}
+        >
+          <Ionicons
+            name="chevron-forward"
+            size={widthScale(16)}
+            color={theme.white}
+          />
+        </TouchableOpacity>
+      )}
+
       {/* Floating AI Button - gentle float animation when chat closed */}
-      {!isOpen && (
+      {!isMinimized && !isOpen && (
         <Animated.View
           style={[
             styles.floatingButton,
