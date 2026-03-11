@@ -498,13 +498,14 @@ const createStyles = (theme: Theme) =>
     actionButtonsContainer: {
       flexDirection: "row",
       justifyContent: "space-around",
+      alignItems: "flex-start",
       marginVertical: moderateHeightScale(16),
       paddingHorizontal: moderateWidthScale(20),
     },
     actionButton: {
       alignItems: "center",
       width: widthScale(70),
-      justifyContent: "center",
+      justifyContent: "flex-start",
     },
     actionButtonCircle: {
       width: widthScale(60),
