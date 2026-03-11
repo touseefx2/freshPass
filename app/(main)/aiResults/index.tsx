@@ -569,11 +569,13 @@ function OriginalMediaCard({
         </View>
       )}
       {isImage && selectionMode && (
-        <View
+        <TouchableOpacity
           style={[
             styles.selectionOverlay,
             isSelected && styles.selectionOverlaySelected,
           ]}
+          onPress={() => onToggleUrl?.(item.url)}
+          activeOpacity={0.8}
         >
           {isSelected ? (
             <Feather
@@ -582,7 +584,7 @@ function OriginalMediaCard({
               color={theme.white}
             />
           ) : null}
-        </View>
+        </TouchableOpacity>
       )}
       {isVideo && selectionMode && onToggleUrl && (
         <TouchableOpacity
@@ -1544,12 +1546,14 @@ export default function AiResults() {
               />
             </TouchableOpacity>
             {isSelectionMode ? (
-              <View
+              <TouchableOpacity
                 style={[
                   styles.selectionOverlay,
                   selectedUrls.has(sm.images.processed) &&
                     styles.selectionOverlaySelected,
                 ]}
+                onPress={() => toggleUrl(sm.images!.processed!)}
+                activeOpacity={0.8}
               >
                 {selectedUrls.has(sm.images.processed) ? (
                   <Feather
@@ -1558,7 +1562,7 @@ export default function AiResults() {
                     color={theme.white}
                   />
                 ) : null}
-              </View>
+              </TouchableOpacity>
             ) : (
               <>
                 <TouchableOpacity
@@ -1634,12 +1638,14 @@ export default function AiResults() {
                       />
                     </TouchableOpacity>
                     {isSelectionMode ? (
-                      <View
+                      <TouchableOpacity
                         style={[
                           styles.selectionOverlay,
                           selectedUrls.has(url) &&
                             styles.selectionOverlaySelected,
                         ]}
+                        onPress={() => toggleUrl(url)}
+                        activeOpacity={0.8}
                       >
                         {selectedUrls.has(url) ? (
                           <Feather
@@ -1648,7 +1654,7 @@ export default function AiResults() {
                             color={theme.white}
                           />
                         ) : null}
-                      </View>
+                      </TouchableOpacity>
                     ) : (
                       <>
                         <TouchableOpacity
@@ -1891,12 +1897,14 @@ export default function AiResults() {
                       />
                     </TouchableOpacity>
                     {isSelectionMode ? (
-                      <View
+                      <TouchableOpacity
                         style={[
                           styles.selectionOverlay,
                           selectedUrls.has(url) &&
                             styles.selectionOverlaySelected,
                         ]}
+                        onPress={() => toggleUrl(url)}
+                        activeOpacity={0.8}
                       >
                         {selectedUrls.has(url) ? (
                           <Feather
@@ -1905,7 +1913,7 @@ export default function AiResults() {
                             color={theme.white}
                           />
                         ) : null}
-                      </View>
+                      </TouchableOpacity>
                     ) : (
                       <>
                         <TouchableOpacity
