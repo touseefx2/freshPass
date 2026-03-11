@@ -1087,7 +1087,7 @@ const createStyles = (theme: Theme) =>
       zIndex: 0,
     },
     bubbleContentLayer: {
-      zIndex: 1,
+      zIndex: 10,
     },
     bubbleText: {
       fontSize: fontSize.size13,
