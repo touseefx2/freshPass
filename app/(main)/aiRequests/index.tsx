@@ -168,6 +168,7 @@ export default function AiRequests() {
         item.status?.charAt(0).toUpperCase() + (item.status?.slice(1) ?? "");
       const statusBadgeStyle = getStatusBadgeStyle(item.status);
       const statusColor = getStatusTextColor(item.status);
+      const prompt = item.request_payload?.prompt ? item.response?.prompt : "";
 
       return (
         <TouchableOpacity
@@ -214,12 +215,6 @@ export default function AiRequests() {
                   <Text style={styles.jobCardMetaLabel}>Created</Text>
                   <Text style={styles.jobCardMetaValue} numberOfLines={1}>
                     {formatDateTime(item.created_at)}
-                  </Text>
-                </View>
-                <View style={styles.jobCardMetaItem}>
-                  <Text style={styles.jobCardMetaLabel}>Expiry</Text>
-                  <Text style={styles.jobCardMetaValue} numberOfLines={1}>
-                    {formatDate(item.expiry_date)}
                   </Text>
                 </View>
               </View>
