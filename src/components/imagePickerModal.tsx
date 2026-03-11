@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback } from "react";
 import Logger from "@/src/services/logger";
-import { StyleSheet, Text, TouchableOpacity, Alert } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Alert } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,7 @@ import {
   handleMediaLibraryPermission,
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
+import { PersonScissorsIcon } from "@/assets/icons";
 
 interface ImagePickerModalProps {
   visible: boolean;
@@ -95,7 +96,13 @@ export default function ImagePickerModal({
         "Failed to select image from gallery. Please try again.",
       );
     }
-  }, [onClose, onImageSelected, onImagesSelected, allowsMultipleSelection, quality]);
+  }, [
+    onClose,
+    onImageSelected,
+    onImagesSelected,
+    allowsMultipleSelection,
+    quality,
+  ]);
 
   const handleTakePhoto = useCallback(async () => {
     onClose();
@@ -163,12 +170,15 @@ export default function ImagePickerModal({
           }}
           activeOpacity={0.7}
         >
-          <MaterialIcons
-            name="image"
-            size={moderateWidthScale(24)}
-            color={theme.darkGreen}
-            style={styles.optionIcon}
-          />
+          <View style={styles.optionIcon}>
+            <PersonScissorsIcon
+              width={moderateWidthScale(24)}
+              height={moderateWidthScale(24)}
+              color1={theme.darkGreen}
+              color2={theme.darkGreen}
+              color3={theme.darkGreen}
+            />
+          </View>
           <Text style={styles.optionText}>{t("fromTryOnImage")}</Text>
         </TouchableOpacity>
       ) : null}
