@@ -1856,13 +1856,26 @@ export default function AiResults() {
           <View style={styles.originalImagesSection}>
             <View style={styles.originalImagesContent}>
               <View style={styles.originalImageSourceCard}>
-                <Image
-                  source={{
-                    uri: normalized.requestPayload!.originalImageUrl,
+                <TouchableOpacity
+                  style={StyleSheet.absoluteFill}
+                  onPress={() => {
+                    const originalUrl =
+                      normalized.requestPayload!.originalImageUrl!;
+                    const resultUrls = normalized.sections.flatMap((s) =>
+                      s.views.map((v) => v.url),
+                    );
+                    openFullImage(originalUrl, [originalUrl, ...resultUrls]);
                   }}
-                  style={styles.originalImageSourceImage}
-                  resizeMode="cover"
-                />
+                  activeOpacity={1}
+                >
+                  <Image
+                    source={{
+                      uri: normalized.requestPayload!.originalImageUrl,
+                    }}
+                    style={styles.originalImageSourceImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
                 <View style={styles.originalImageSourceLabel}>
                   <Text style={styles.originalImageSourceLabelText}>
                     {t("sourceImage")}
