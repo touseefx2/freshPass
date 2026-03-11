@@ -598,6 +598,7 @@
   "pleaseSelect3To15Media": "Please select 3-15 media files (images or videos).",
   "reelLimitMessage": "You can select maximum 15 media files. Only first 15 will be added.",
   "collageMax6Images": "You can select maximum 6 images.",
+  "chatMaxAttachmentsReached": "Maximum limit reached. You can add up to 10 images.",
   "reelMax15Files": "You can select maximum 15 media files.",
   "businessIdNotFound": "Business ID not found. Please complete your business profile.",
   "failedToSelectMedia": "Failed to select media. Please try again.",

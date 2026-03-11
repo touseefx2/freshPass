@@ -46,7 +46,11 @@ import { CloseIcon, SendIcon } from "@/assets/icons";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { ApiService } from "@/src/services/api";
-import { openFullImageModal, clearChatAttachmentUrls, setChatTryOnPreselectedUrls } from "@/src/state/slices/generalSlice";
+import {
+  openFullImageModal,
+  clearChatAttachmentUrls,
+  setChatTryOnPreselectedUrls,
+} from "@/src/state/slices/generalSlice";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import {
   getEcho,
@@ -59,7 +63,7 @@ import {
 import { useVideoPlayer, VideoView } from "expo-video";
 
 const PER_PAGE = 20;
-const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENTS = 10;
 const MESSAGES_URL = (userId: string) => `/api/chat/messages/${userId}`;
 const MARK_READ_URL = (userId: string) => `/api/chat/messages/${userId}/read`;
 const SEND_MESSAGE_URL = "/api/chat/messages";
@@ -1472,109 +1476,119 @@ const ChatContent = ({
               item.attachments && item.attachments.length > 0
                 ? item.attachments.join("\n")
                 : "";
-            const fullText = [textPart, attachmentPart].filter(Boolean).join("\n");
+            const fullText = [textPart, attachmentPart]
+              .filter(Boolean)
+              .join("\n");
             if (fullText) {
               Clipboard.setString(fullText);
               onMessageCopied?.();
             }
           };
           return (
-          <View
-            style={[
-              styles.messageRow,
-              item.isMe ? styles.messageRowMe : styles.messageRowOther,
-            ]}
-          >
-            <Text style={styles.senderLabel}>
-              {item.isMe ? currentUserName : chatItem?.name}
-            </Text>
             <View
               style={[
-                styles.bubble,
-                item.isMe ? styles.bubbleMe : styles.bubbleOther,
+                styles.messageRow,
+                item.isMe ? styles.messageRowMe : styles.messageRowOther,
               ]}
             >
-              <TouchableOpacity
-                style={[StyleSheet.absoluteFillObject, styles.bubbleLongPressLayer]}
-                onLongPress={copyFullMessage}
-                onPress={() => Keyboard.dismiss()}
-                delayLongPress={500}
-                activeOpacity={1}
-              />
+              <Text style={styles.senderLabel}>
+                {item.isMe ? currentUserName : chatItem?.name}
+              </Text>
               <View
-                style={styles.bubbleContentLayer}
-                pointerEvents="box-none"
+                style={[
+                  styles.bubble,
+                  item.isMe ? styles.bubbleMe : styles.bubbleOther,
+                ]}
               >
-                {item.attachments && item.attachments.length > 0 ? (
-                <View
+                <TouchableOpacity
                   style={[
-                    styles.bubbleAttachmentsRow,
-                    item.attachments.length === 1 &&
-                      styles.bubbleAttachmentsRowSingle,
+                    StyleSheet.absoluteFillObject,
+                    styles.bubbleLongPressLayer,
                   ]}
+                  onLongPress={copyFullMessage}
+                  onPress={() => Keyboard.dismiss()}
+                  delayLongPress={500}
+                  activeOpacity={1}
+                />
+                <View
+                  style={styles.bubbleContentLayer}
+                  pointerEvents="box-none"
                 >
-                  {item.attachments.map((uri, idx) => (
-                    <TouchableOpacity
-                      key={`${item.id}-${idx}`}
-                      onPress={() => onImagePress?.(uri, item.attachments)}
-                      activeOpacity={0.9}
+                  {item.attachments && item.attachments.length > 0 ? (
+                    <View
                       style={[
-                        styles.bubbleImageGridWrap,
-                        (item.attachments?.length ?? 0) === 1 &&
-                          styles.bubbleImageGridWrapSingle,
+                        styles.bubbleAttachmentsRow,
+                        item.attachments.length === 1 &&
+                          styles.bubbleAttachmentsRowSingle,
                       ]}
                     >
-                      <Image
-                        style={styles.bubbleImageGrid}
-                        source={{ uri }}
-                        resizeMode="cover"
-                      />
-                      <TouchableOpacity
-                        style={styles.bubbleImageDownloadButton}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          onDownloadPress?.(uri);
-                        }}
-                        disabled={downloadingUrl === uri}
-                        activeOpacity={0.7}
-                      >
-                        {downloadingUrl === uri ? (
-                          <ActivityIndicator size="small" color={theme.white} />
-                        ) : (
-                          <Feather
-                            name="download"
-                            size={moderateWidthScale(14)}
-                            color={theme.white}
+                      {item.attachments.map((uri, idx) => (
+                        <TouchableOpacity
+                          key={`${item.id}-${idx}`}
+                          onPress={() => onImagePress?.(uri, item.attachments)}
+                          activeOpacity={0.9}
+                          style={[
+                            styles.bubbleImageGridWrap,
+                            (item.attachments?.length ?? 0) === 1 &&
+                              styles.bubbleImageGridWrapSingle,
+                          ]}
+                        >
+                          <Image
+                            style={styles.bubbleImageGrid}
+                            source={{ uri }}
+                            resizeMode="cover"
                           />
-                        )}
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  ))}
+                          <TouchableOpacity
+                            style={styles.bubbleImageDownloadButton}
+                            onPress={(e) => {
+                              e.stopPropagation?.();
+                              onDownloadPress?.(uri);
+                            }}
+                            disabled={downloadingUrl === uri}
+                            activeOpacity={0.7}
+                          >
+                            {downloadingUrl === uri ? (
+                              <ActivityIndicator
+                                size="small"
+                                color={theme.white}
+                              />
+                            ) : (
+                              <Feather
+                                name="download"
+                                size={moderateWidthScale(14)}
+                                color={theme.white}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ) : null}
+                  {item.text ? (
+                    <MessageContent
+                      text={item.text}
+                      isMe={item.isMe}
+                      hasAttachmentsAbove={
+                        !!(item.attachments && item.attachments.length > 0)
+                      }
+                      styles={styles}
+                      theme={theme}
+                      onLinkPress={(url) => {
+                        Linking.openURL(url).catch(() => {});
+                      }}
+                      onImagePress={(url, allUrls) =>
+                        onImagePress?.(url, allUrls)
+                      }
+                      onDownloadPress={onDownloadPress}
+                      downloadingUrl={downloadingUrl}
+                    />
+                  ) : null}
                 </View>
-              ) : null}
-              {item.text ? (
-                <MessageContent
-                  text={item.text}
-                  isMe={item.isMe}
-                  hasAttachmentsAbove={
-                    !!(item.attachments && item.attachments.length > 0)
-                  }
-                  styles={styles}
-                  theme={theme}
-                  onLinkPress={(url) => {
-                    Linking.openURL(url).catch(() => {});
-                  }}
-                  onImagePress={(url, allUrls) => onImagePress?.(url, allUrls)}
-                  onDownloadPress={onDownloadPress}
-                  downloadingUrl={downloadingUrl}
-                />
-              ) : null}
               </View>
+              <Text style={styles.messageDateTimeLabel}>
+                {item.dateTimeLabel}
+              </Text>
             </View>
-            <Text style={styles.messageDateTimeLabel}>
-              {item.dateTimeLabel}
-            </Text>
-          </View>
           );
         }}
         showsVerticalScrollIndicator={false}
@@ -1735,11 +1749,20 @@ export default function ChatBoxScreen() {
           );
           if (toAdd.length === 0) return prev;
           const combined = [...prev, ...toAdd];
-          return combined.slice(0, MAX_ATTACHMENTS);
+          const capped = combined.slice(0, MAX_ATTACHMENTS);
+          if (combined.length > MAX_ATTACHMENTS) {
+            showBanner(
+              t("limitExceeded"),
+              t("chatMaxAttachmentsReached"),
+              "error",
+              3000,
+            );
+          }
+          return capped;
         });
         dispatch(clearChatAttachmentUrls());
       }
-    }, [chatAttachmentUrlsFromRedux, dispatch]),
+    }, [chatAttachmentUrlsFromRedux, dispatch, showBanner, t]),
   );
 
   const chatItem = useMemo(() => {
@@ -2109,12 +2132,7 @@ export default function ChatBoxScreen() {
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
             }
             onMessageCopied={() =>
-              showBanner(
-                t("copied") || "Copied",
-                "",
-                "success",
-                1500,
-              )
+              showBanner(t("copied") || "Copied", "", "success", 1500)
             }
             inputValue={inputText}
             onInputChange={setInputText}
@@ -2162,12 +2180,7 @@ export default function ChatBoxScreen() {
               setSelectedAttachments((prev) => prev.filter((_, i) => i !== idx))
             }
             onMessageCopied={() =>
-              showBanner(
-                t("copied") || "Copied",
-                "",
-                "success",
-                1500,
-              )
+              showBanner(t("copied") || "Copied", "", "success", 1500)
             }
             inputValue={inputText}
             onInputChange={setInputText}

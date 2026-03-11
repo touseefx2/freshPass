@@ -776,7 +776,6 @@ export default function AiResults() {
       dispatch(clearBookingTryOnPreselectedUrls());
     } else if (chatPreselected.length > 0) {
       setSelectedUrls(new Set(chatPreselected));
-      dispatch(clearChatTryOnPreselectedUrls());
     } else if (storedForJob.length > 0) {
       setSelectedUrls(new Set(storedForJob));
     }
