@@ -6,27 +6,38 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
 import { useAppDispatch } from "../hooks/hooks";
 
-/** Navigate using notification data (screen + optional booking_id) */
+/** Navigate using notification data (screen + optional booking_id, or message -> chatBox) */
 function navigateFromNotificationData(
   router: ReturnType<typeof useRouter>,
   data: Record<string, unknown> | undefined,
 ) {
+  if (!data) return;
+
+  const type = data.type as string | undefined;
+  if (type === "message") {
+    const sender = data.sender as
+      | { id: number; name?: string; profile_image_url?: string | null }
+      | undefined;
+    if (sender?.id != null) {
+      const chatItem = {
+        id: String(sender.id),
+        name: sender.name ?? "-----",
+        image: sender.profile_image_url ?? "",
+      };
+      router.push({
+        pathname: "/(main)/chatBox",
+        params: { id: String(sender.id), chatItem: JSON.stringify(chatItem) },
+      });
+      Logger.log("------>navigateFromNotificationData (message) -> chatBox", {
+        id: sender.id,
+        chatItem,
+      });
+      return;
+    }
+  }
+
   router.push("/(main)/notification" as any);
   Logger.log("------>navigateFromNotificationData", data);
-  // if (!data?.screen) return;
-  // const screen = String(data.screen);
-  // try {
-  //   if (screen === "booking" && data?.booking_id) {
-  //     router.push({
-  //       pathname: "/bookingDetailsById",
-  //       params: { id: String(data.booking_id) },
-  //     });
-  //   } else if (screen && screen !== "booking") {
-  //     router.push(screen as any);
-  //   }
-  // } catch (err) {
-  //   Logger.error("Notification navigation error:", err);
-  // }
 }
 
 /**
