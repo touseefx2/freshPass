@@ -23,7 +23,7 @@ import {
   ActivityIndicator,
   TextInput,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import dayjs from "dayjs";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -255,12 +255,23 @@ const createStyles = (theme: Theme) =>
     staffRow: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       gap: moderateWidthScale(6),
     },
     staffText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.white80,
+    },
+    staffRowLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    staffRowSocialIcons: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(14),
     },
     tabsContainer: {
       backgroundColor: "rgba(221, 161, 94, 0.3)",
@@ -3714,16 +3725,72 @@ export default function BusinessDetailScreen() {
               </Text>
             </View>
             <View style={styles.staffRow}>
-              <PeopleIcon
-                width={widthScale(12)}
-                height={heightScale(12)}
-                color={theme.selectCard}
-              />
-              <Text style={styles.staffText}>
-                {t("staffMembersCount", {
-                  count: businessData?.staffCount || staffMembers.length,
-                })}
-              </Text>
+              <View style={styles.staffRowLeft}>
+                <PeopleIcon
+                  width={widthScale(12)}
+                  height={heightScale(12)}
+                  color={theme.selectCard}
+                />
+                <Text style={styles.staffText}>
+                  {t("staffMembersCount", {
+                    count: businessData?.staffCount || staffMembers.length,
+                  })}
+                </Text>
+              </View>
+              {(businessData?.social_media_links?.facebook ||
+                businessData?.social_media_links?.instagram ||
+                businessData?.social_media_links?.tiktok) && (
+                <View style={styles.staffRowSocialIcons}>
+                  {businessData?.social_media_links?.facebook ? (
+                    <TouchableOpacity
+                      onPress={() =>
+                        Linking.openURL(
+                          businessData.social_media_links!.facebook!,
+                        ).catch(() => {})
+                      }
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <FontAwesome5
+                        name="facebook"
+                        size={widthScale(16)}
+                        color={theme.orangeBrown}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                  {businessData?.social_media_links?.instagram ? (
+                    <TouchableOpacity
+                      onPress={() =>
+                        Linking.openURL(
+                          businessData.social_media_links!.instagram!,
+                        ).catch(() => {})
+                      }
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <FontAwesome5
+                        name="instagram"
+                        size={widthScale(16)}
+                        color={theme.orangeBrown}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                  {businessData?.social_media_links?.tiktok ? (
+                    <TouchableOpacity
+                      onPress={() =>
+                        Linking.openURL(
+                          businessData.social_media_links!.tiktok!,
+                        ).catch(() => {})
+                      }
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <FontAwesome5
+                        name="tiktok"
+                        size={widthScale(16)}
+                        color={theme.orangeBrown}
+                      />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              )}
             </View>
           </View>
 
