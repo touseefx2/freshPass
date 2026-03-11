@@ -23,6 +23,8 @@ import {
   AppState,
   Linking,
   Clipboard,
+  Modal,
+  Dimensions,
   type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
@@ -106,7 +108,8 @@ type SendMessageResponse = {
 };
 
 function getMimeAndName(uri: string): { mimeType: string; name: string } {
-  const ext = uri.split(".").pop()?.toLowerCase() || "jpg";
+  const raw = uri.split("?").shift() || "";
+  const ext = (raw.split(".").pop() || "jpg").toLowerCase();
   const mimeType =
     ext === "jpg" || ext === "jpeg"
       ? "image/jpeg"
@@ -114,8 +117,18 @@ function getMimeAndName(uri: string): { mimeType: string; name: string } {
         ? "image/png"
         : ext === "gif"
           ? "image/gif"
-          : "image/jpeg";
-  const name = uri.split("/").pop() || `image.${ext}`;
+          : ext === "webp"
+            ? "image/webp"
+            : ext === "mp4"
+              ? "video/mp4"
+              : ext === "webm"
+                ? "video/webm"
+                : ext === "mov"
+                  ? "video/quicktime"
+                  : ext === "m4v"
+                    ? "video/x-m4v"
+                    : "image/jpeg";
+  const name = raw.split("/").pop() || (ext === "mp4" ? "video.mp4" : `image.${ext}`);
   return { mimeType, name };
 }
 
@@ -430,6 +443,105 @@ function ChatVideoPlayer({
             );
           })()
         : null}
+    </View>
+  );
+}
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
+type ChatVideoModalContentProps = {
+  url: string;
+  onClose: () => void;
+  theme: Theme;
+};
+
+function ChatVideoModalContent({
+  url,
+  onClose,
+  theme,
+}: ChatVideoModalContentProps) {
+  const { t } = useTranslation();
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const resolvedUrl = getMessageImageUrl(url) || url;
+  const player = useVideoPlayer(resolvedUrl, (p) => {
+    p.loop = false;
+  });
+
+  return (
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: theme.black,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <TouchableOpacity
+        style={{
+          position: "absolute",
+          top: moderateHeightScale(50),
+          right: moderateWidthScale(16),
+          zIndex: 10,
+          width: moderateWidthScale(40),
+          height: moderateWidthScale(40),
+          borderRadius: moderateWidthScale(20),
+          backgroundColor: "rgba(255,255,255,0.3)",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+        onPress={onClose}
+        activeOpacity={0.8}
+      >
+        <Feather
+          name="x"
+          size={moderateWidthScale(24)}
+          color={theme.white}
+        />
+      </TouchableOpacity>
+      <View
+        style={{
+          width: SCREEN_WIDTH,
+          height: SCREEN_HEIGHT * 0.6,
+          backgroundColor: theme.black,
+        }}
+      >
+        <VideoView
+          player={player}
+          style={StyleSheet.absoluteFill}
+          contentFit="contain"
+          nativeControls={true}
+          onFirstFrameRender={async () => {
+            if (!isVideoReady) {
+              await player.play();
+              setTimeout(() => setIsVideoReady(true), 200);
+            }
+          }}
+        />
+        {!isVideoReady && (
+          <View
+            style={[
+              StyleSheet.absoluteFillObject,
+              {
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: theme.black,
+              },
+            ]}
+          >
+            <ActivityIndicator size="small" color={theme.white} />
+            <Text
+              style={{
+                fontSize: fontSize.size12,
+                fontFamily: fonts.fontRegular,
+                color: theme.white,
+                marginTop: moderateHeightScale(8),
+              }}
+            >
+              {t("loading")}
+            </Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -1222,6 +1334,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(6),
       alignSelf: "flex-start",
       width: widthScale(260),
+      zIndex: 2,
     },
     bubbleAttachmentsRowSingle: {
       width: undefined,
@@ -1394,6 +1507,7 @@ type ChatContentProps = {
   onSend?: () => void;
   isTyping?: boolean;
   onMessageCopied?: () => void;
+  onVideoPress?: (url: string) => void;
 };
 
 const ChatContent = ({
@@ -1420,6 +1534,7 @@ const ChatContent = ({
   onSend,
   isTyping = false,
   onMessageCopied,
+  onVideoPress,
 }: ChatContentProps) => {
   const hasInputValue = Boolean(inputValue && inputValue.trim().length > 0);
   const canSend = hasInputValue || selectedAttachments.length > 0;
@@ -1522,46 +1637,80 @@ const ChatContent = ({
                           styles.bubbleAttachmentsRowSingle,
                       ]}
                     >
-                      {item.attachments.map((uri, idx) => (
-                        <TouchableOpacity
-                          key={`${item.id}-${idx}`}
-                          onPress={() => onImagePress?.(uri, item.attachments)}
-                          activeOpacity={0.9}
-                          style={[
-                            styles.bubbleImageGridWrap,
-                            (item.attachments?.length ?? 0) === 1 &&
-                              styles.bubbleImageGridWrapSingle,
-                          ]}
-                        >
-                          <Image
-                            style={styles.bubbleImageGrid}
-                            source={{ uri }}
-                            resizeMode="cover"
-                          />
+                      {item.attachments.map((uri, idx) => {
+                        const isVideo = isVideoUrl(uri);
+                        const imageUrls = (item.attachments ?? []).filter(
+                          (u) => isImageUrl(u),
+                        );
+                        return (
                           <TouchableOpacity
-                            style={styles.bubbleImageDownloadButton}
-                            onPress={(e) => {
-                              e.stopPropagation?.();
-                              onDownloadPress?.(uri);
-                            }}
-                            disabled={downloadingUrl === uri}
-                            activeOpacity={0.7}
+                            key={`${item.id}-${idx}`}
+                            onPress={() =>
+                              isVideo
+                                ? onVideoPress?.(uri)
+                                : onImagePress?.(
+                                    uri,
+                                    imageUrls.length > 0 ? imageUrls : undefined,
+                                  )
+                            }
+                            activeOpacity={0.9}
+                            style={[
+                              styles.bubbleImageGridWrap,
+                              (item.attachments?.length ?? 0) === 1 &&
+                                styles.bubbleImageGridWrapSingle,
+                            ]}
                           >
-                            {downloadingUrl === uri ? (
-                              <ActivityIndicator
-                                size="small"
-                                color={theme.white}
-                              />
+                            {isVideo ? (
+                              <View
+                                style={[
+                                  styles.bubbleImageGrid,
+                                  {
+                                    backgroundColor: theme.black,
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  },
+                                ]}
+                              >
+                                <Feather
+                                  name="play-circle"
+                                  size={moderateWidthScale(40)}
+                                  color={theme.white}
+                                />
+                              </View>
                             ) : (
-                              <Feather
-                                name="download"
-                                size={moderateWidthScale(14)}
-                                color={theme.white}
+                              <Image
+                                style={styles.bubbleImageGrid}
+                                source={{ uri }}
+                                resizeMode="cover"
                               />
                             )}
+                            {onDownloadPress ? (
+                              <TouchableOpacity
+                                style={styles.bubbleImageDownloadButton}
+                                onPress={(e) => {
+                                  e.stopPropagation?.();
+                                  onDownloadPress(uri);
+                                }}
+                                disabled={downloadingUrl === uri}
+                                activeOpacity={0.7}
+                              >
+                                {downloadingUrl === uri ? (
+                                  <ActivityIndicator
+                                    size="small"
+                                    color={theme.white}
+                                  />
+                                ) : (
+                                  <Feather
+                                    name="download"
+                                    size={moderateWidthScale(14)}
+                                    color={theme.white}
+                                  />
+                                )}
+                              </TouchableOpacity>
+                            ) : null}
                           </TouchableOpacity>
-                        </TouchableOpacity>
-                      ))}
+                        );
+                      })}
                     </View>
                   ) : null}
                   {item.text ? (
@@ -1603,29 +1752,68 @@ const ChatContent = ({
               paddingHorizontal: moderateWidthScale(16),
             }}
           >
-            {selectedAttachments.map((uri, idx) => (
-              <View
-                key={`${uri}-${idx}`}
-                style={styles.attachmentThumbnailWrap}
-              >
-                <Image
-                  style={styles.attachmentThumbnail}
-                  source={{ uri }}
-                  resizeMode="cover"
-                />
+            {selectedAttachments.map((uri, idx) => {
+              const isVideo = isVideoUrl(uri);
+              const imageOnlyUrls = selectedAttachments.filter((u) =>
+                isImageUrl(u),
+              );
+              return (
                 <TouchableOpacity
-                  style={styles.attachmentThumbnailDelete}
-                  onPress={() => onRemoveAttachment?.(idx)}
-                  activeOpacity={0.8}
+                  key={`${uri}-${idx}`}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    if (isVideo) {
+                      onVideoPress?.(uri);
+                    } else {
+                      onImagePress?.(
+                        uri,
+                        imageOnlyUrls.length > 0 ? imageOnlyUrls : undefined,
+                      );
+                    }
+                  }}
+                  style={styles.attachmentThumbnailWrap}
                 >
-                  <MaterialIcons
-                    name="close"
-                    size={moderateWidthScale(10)}
-                    color={theme.white}
-                  />
+                  {isVideo ? (
+                    <View
+                      style={[
+                        styles.attachmentThumbnail,
+                        {
+                          backgroundColor: theme.black,
+                          alignItems: "center",
+                          justifyContent: "center",
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name="play-circle"
+                        size={moderateWidthScale(24)}
+                        color={theme.white}
+                      />
+                    </View>
+                  ) : (
+                    <Image
+                      style={styles.attachmentThumbnail}
+                      source={{ uri }}
+                      resizeMode="cover"
+                    />
+                  )}
+                  <TouchableOpacity
+                    style={styles.attachmentThumbnailDelete}
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      onRemoveAttachment?.(idx);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons
+                      name="close"
+                      size={moderateWidthScale(10)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
                 </TouchableOpacity>
-              </View>
-            ))}
+              );
+            })}
           </ScrollView>
         </View>
       ) : null}
@@ -1723,6 +1911,7 @@ export default function ChatBoxScreen() {
   const dispatch = useDispatch();
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [selectedAttachments, setSelectedAttachments] = useState<string[]>([]);
+  const [videoModalUrl, setVideoModalUrl] = useState<string | null>(null);
   const [inputText, setInputText] = useState("");
   const [sending, setSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -2122,6 +2311,7 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
+            onVideoPress={(url) => setVideoModalUrl(url)}
             onDownloadPress={(url, options) =>
               downloadMedia(url, options ?? {})
             }
@@ -2170,6 +2360,7 @@ export default function ChatBoxScreen() {
                 }),
               )
             }
+            onVideoPress={(url) => setVideoModalUrl(url)}
             onDownloadPress={(url, options) =>
               downloadMedia(url, options ?? {})
             }
@@ -2190,6 +2381,20 @@ export default function ChatBoxScreen() {
           />
         </View>
       )}
+      {videoModalUrl ? (
+        <Modal
+          visible={true}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setVideoModalUrl(null)}
+        >
+          <ChatVideoModalContent
+            url={videoModalUrl}
+            onClose={() => setVideoModalUrl(null)}
+            theme={theme}
+          />
+        </Modal>
+      ) : null}
       <ImagePickerModal
         visible={imagePickerVisible}
         onClose={() => setImagePickerVisible(false)}
