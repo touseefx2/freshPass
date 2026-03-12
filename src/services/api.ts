@@ -236,10 +236,10 @@ const handleLogout = async () => {
       store.dispatch(setActionLoader(true));
       const response = await apiClient.post(businessEndpoints.logout);
       if (response.status !== 200) {
-        store.dispatch(setActionLoader(false));
       }
     } catch (err) {
       Logger.error("Logout API failed", err);
+    } finally {
       store.dispatch(setActionLoader(false));
     }
   }
