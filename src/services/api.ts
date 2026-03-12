@@ -232,17 +232,15 @@ const handleLogout = async () => {
   const isGuest = store.getState().user.isGuest;
 
   if (!isGuest) {
-    store.dispatch(setActionLoader(true));
     try {
+      store.dispatch(setActionLoader(true));
       const response = await apiClient.post(businessEndpoints.logout);
       if (response.status !== 200) {
         store.dispatch(setActionLoader(false));
-        return;
       }
     } catch (err) {
       Logger.error("Logout API failed", err);
       store.dispatch(setActionLoader(false));
-      return;
     }
   }
 
@@ -259,7 +257,7 @@ const handleLogout = async () => {
   } catch (err) {
     Logger.error("Logout: persistor.purge failed", err);
   }
-  store.dispatch(setActionLoader(false));
+
   router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
 };
 
