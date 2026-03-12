@@ -17,10 +17,14 @@ import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
 import { aiTransactionsEndpoints } from "@/src/services/endpoints";
 import dayjs from "dayjs";
+import { useRouter } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import { moderateWidthScale } from "@/src/theme/dimensions";
 
 export default function AiTransactions() {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const router = useRouter();
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -229,7 +233,17 @@ export default function AiTransactions() {
         backgroundColor={theme.darkGreen}
         translucent
       />
-      <StackHeader title={t("myPurchases")} />
+      <StackHeader
+        title={t("myPurchases")}
+        rightIcon={
+          <MaterialIcons
+            name="smart-toy"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        }
+        onRightPress={() => router.push("/(main)/aiTools/toolList")}
+      />
       <FlatList
         data={transactions}
         renderItem={renderItem}

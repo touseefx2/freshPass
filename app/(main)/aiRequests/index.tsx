@@ -17,6 +17,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints } from "@/src/services/endpoints";
 import dayjs from "dayjs";
+import { MaterialIcons } from "@expo/vector-icons";
+import { moderateWidthScale } from "@/src/theme/dimensions";
 
 // const DEFAULT_AI_REQUESTS_IMAGE =
 //   process.env.EXPO_PUBLIC_DEFAULT_AI_REQUESTS_IMAGE || "";
@@ -171,7 +173,9 @@ export default function AiRequests() {
       const promptRaw =
         item.request_payload?.prompt ?? item.response?.prompt ?? "";
       const prompt =
-        typeof promptRaw === "string" ? promptRaw.trim() : String(promptRaw ?? "").trim();
+        typeof promptRaw === "string"
+          ? promptRaw.trim()
+          : String(promptRaw ?? "").trim();
 
       return (
         <TouchableOpacity
@@ -263,7 +267,17 @@ export default function AiRequests() {
   if (loading && jobs.length === 0) {
     return (
       <View style={styles.safeArea}>
-        <StackHeader title={t("aiRequests")} />
+        <StackHeader
+          title={t("aiRequests")}
+          rightIcon={
+            <MaterialIcons
+              name="smart-toy"
+              size={moderateWidthScale(22)}
+              color={theme.white}
+            />
+          }
+          onRightPress={() => router.push("/(main)/aiTools/toolList")}
+        />
         <View style={styles.listContent}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -278,7 +292,17 @@ export default function AiRequests() {
         backgroundColor={theme.darkGreen}
         translucent
       />
-      <StackHeader title={t("aiRequests")} />
+      <StackHeader
+        title={t("aiRequests")}
+        rightIcon={
+          <MaterialIcons
+            name="smart-toy"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        }
+        onRightPress={() => router.push("/(main)/aiTools/toolList")}
+      />
       <FlatList
         data={jobs}
         renderItem={renderItem}

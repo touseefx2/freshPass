@@ -231,7 +231,17 @@ export default function AiMemories() {
         backgroundColor={theme.darkGreen}
         translucent
       />
-      <StackHeader title={t("memories")} />
+      <StackHeader
+        title={t("memories")}
+        rightIcon={
+          <MaterialIcons
+            name="smart-toy"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        }
+        onRightPress={() => router.push("/(main)/aiTools/toolList")}
+      />
       {loading && list.length === 0 ? (
         <View
           style={[styles.emptyStateContainer, { justifyContent: "center" }]}

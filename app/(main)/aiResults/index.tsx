@@ -2082,15 +2082,33 @@ export default function AiResults() {
       <StackHeader
         title={t("aiResults")}
         rightIcon={
-          canShare ? (
-            <MaterialIcons
-              name="share"
-              size={moderateWidthScale(22)}
-              color={theme.white}
-            />
-          ) : undefined
+          <View style={{ flexDirection: "row", alignItems: "center", gap: moderateWidthScale(12) }}>
+            <TouchableOpacity
+              onPress={() => router.push("/(main)/aiTools/toolList")}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons
+                name="smart-toy"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
+            {canShare ? (
+              <TouchableOpacity
+                onPress={openShareSheet}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="share"
+                  size={moderateWidthScale(22)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
         }
-        onRightPress={canShare ? openShareSheet : undefined}
       />
       {content}
 

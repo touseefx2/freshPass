@@ -11,7 +11,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useDispatch } from "react-redux";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -136,6 +136,7 @@ function parseSectionParam(param: string | undefined): MemorySection | null {
 
 export default function ListMemories() {
   const params = useLocalSearchParams<{ openSection?: string }>();
+  const router = useRouter();
   const dispatch = useDispatch();
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -306,6 +307,14 @@ export default function ListMemories() {
       />
       <StackHeader
         title={selectedSection ? selectedSection.dateLabel : t("memories")}
+        rightIcon={
+          <MaterialIcons
+            name="smart-toy"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        }
+        onRightPress={() => router.push("/(main)/aiTools/toolList")}
       />
 
       <ShareOptionsBottomSheet
