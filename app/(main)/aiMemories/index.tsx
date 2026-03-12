@@ -240,7 +240,7 @@ export default function AiMemories() {
             color={theme.white}
           />
         }
-        onRightPress={() => router.push("/(main)/aiTools/toolList")}
+        onRightPress={() => router.back()}
       />
       {loading && list.length === 0 ? (
         <View

@@ -276,7 +276,9 @@ export default function AiRequests() {
               color={theme.white}
             />
           }
-          onRightPress={() => router.push("/(main)/aiTools/toolList")}
+          onRightPress={() => {
+            router.back();
+          }}
         />
         <View style={styles.listContent}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -301,7 +303,9 @@ export default function AiRequests() {
             color={theme.white}
           />
         }
-        onRightPress={() => router.push("/(main)/aiTools/toolList")}
+        onRightPress={() => {
+          router.back();
+        }}
       />
       <FlatList
         data={jobs}

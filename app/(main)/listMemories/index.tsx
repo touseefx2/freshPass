@@ -314,7 +314,10 @@ export default function ListMemories() {
             color={theme.white}
           />
         }
-        onRightPress={() => router.push("/(main)/aiTools/toolList")}
+        onRightPress={() => {
+          router.back();
+          router.back();
+        }}
       />
 
       <ShareOptionsBottomSheet
@@ -386,10 +389,7 @@ export default function ListMemories() {
                       activeOpacity={0.7}
                     >
                       {downloadingUrl === itemUrl ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={theme.white}
-                        />
+                        <ActivityIndicator size="small" color={theme.white} />
                       ) : (
                         <Feather
                           name="download"

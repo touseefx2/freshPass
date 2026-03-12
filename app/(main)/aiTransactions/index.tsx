@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import React, {
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import {
   View,
   StatusBar,
@@ -162,9 +168,7 @@ export default function AiTransactions() {
                   {item.description || "-"}
                 </Text>
                 <View style={[styles.jobCardStatusBadge, badgeStyle]}>
-                  <Text style={styles.jobCardStatusText}>
-                    {statusLabel}
-                  </Text>
+                  <Text style={styles.jobCardStatusText}>{statusLabel}</Text>
                 </View>
               </View>
 
@@ -172,9 +176,7 @@ export default function AiTransactions() {
                 {showPrice && (
                   <View style={styles.jobCardMetaItem}>
                     <Text style={styles.jobCardMetaLabel}>{t("price")}</Text>
-                    <Text style={styles.jobCardMetaValue}>
-                      ${item.price}
-                    </Text>
+                    <Text style={styles.jobCardMetaValue}>${item.price}</Text>
                   </View>
                 )}
                 <View style={styles.jobCardMetaItem}>
@@ -242,7 +244,7 @@ export default function AiTransactions() {
             color={theme.white}
           />
         }
-        onRightPress={() => router.push("/(main)/aiTools/toolList")}
+        onRightPress={() => router.back()}
       />
       <FlatList
         data={transactions}

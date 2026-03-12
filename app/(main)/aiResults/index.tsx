@@ -264,7 +264,10 @@ function normalizeAiRequestResponse(
     rp && (rp.image?.url || (rp.prompt && String(rp.prompt).trim()))
       ? {
           originalImageUrl: rp.image?.url,
-          prompt: rp.prompt && String(rp.prompt).trim() ? String(rp.prompt).trim() : undefined,
+          prompt:
+            rp.prompt && String(rp.prompt).trim()
+              ? String(rp.prompt).trim()
+              : undefined,
         }
       : undefined;
 
@@ -1911,9 +1914,7 @@ export default function AiResults() {
                 <TouchableOpacity
                   style={styles.originalImageDownloadOverlay}
                   onPress={() =>
-                    handleDownload(
-                      normalized.requestPayload!.originalImageUrl!,
-                    )
+                    handleDownload(normalized.requestPayload!.originalImageUrl!)
                   }
                   disabled={
                     downloadingUrl ===
@@ -1923,17 +1924,14 @@ export default function AiResults() {
                 >
                   {downloadingUrl ===
                   normalized.requestPayload?.originalImageUrl ? (
-                    <ActivityIndicator
-                      size="small"
+                    <ActivityIndicator size="small" color={theme.white} />
+                  ) : (
+                    <Feather
+                      name="download"
+                      size={moderateWidthScale(20)}
                       color={theme.white}
                     />
-                  ) : (
-                      <Feather
-                        name="download"
-                        size={moderateWidthScale(20)}
-                        color={theme.white}
-                      />
-                    )}
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -2082,9 +2080,18 @@ export default function AiResults() {
       <StackHeader
         title={t("aiResults")}
         rightIcon={
-          <View style={{ flexDirection: "row", alignItems: "center", gap: moderateWidthScale(12) }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: moderateWidthScale(12),
+            }}
+          >
             <TouchableOpacity
-              onPress={() => router.push("/(main)/aiTools/toolList")}
+              onPress={() => {
+                router.back();
+                router.back();
+              }}
               hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               activeOpacity={0.7}
             >
