@@ -253,11 +253,10 @@ const handleLogout = async () => {
   store.dispatch(resetUser());
   // Purge persisted cache so rehydration doesn't restore old user/general data
   try {
-    await persistor.purge();
+    persistor.purge();
   } catch (err) {
     Logger.error("Logout: persistor.purge failed", err);
   }
-
   router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
 };
 
