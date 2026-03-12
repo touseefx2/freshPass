@@ -326,12 +326,13 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(explore)"
           options={{
-            title: isCustomer ? t("tabExplore") : t("tabNotification"),
+            title:
+              isCustomer || isGuest ? t("tabExplore") : t("tabNotification"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}
               >
-                {isCustomer ? (
+                {isCustomer || isGuest ? (
                   <ExploreIcon
                     width={size}
                     height={size}

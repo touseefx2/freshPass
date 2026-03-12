@@ -1103,6 +1103,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(10),
       borderRadius: moderateWidthScale(18),
+      overflow: "hidden",
     },
     bubbleMe: {
       backgroundColor: theme.orangeBrown,
@@ -1117,6 +1118,7 @@ const createStyles = (theme: Theme) =>
     },
     bubbleContentLayer: {
       zIndex: 10,
+      overflow: "hidden",
     },
     bubbleText: {
       fontSize: fontSize.size13,
