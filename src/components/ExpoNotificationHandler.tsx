@@ -61,7 +61,7 @@ export default function ExpoNotificationHandler() {
           | undefined;
         Logger.log("------>Notification tap (cold start), data:", data);
         // Small delay so app shell is mounted and router is ready
-        setTimeout(() => navigateFromNotificationData(router, data), 1200);
+        setTimeout(() => navigateFromNotificationData(router, data), 4000);
       });
     }
 

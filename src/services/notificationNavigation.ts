@@ -24,7 +24,7 @@ export function navigateFromNotificationData(
   data: NotificationNavigationData | undefined,
   options?: { skipNotificationScreen?: boolean },
 ): void {
-  if (!data) return;
+  if (!data || !data?.type) return;
   Logger.log("------>navigateFromNotificationData", data);
 
   const type = data.type as string | undefined;
