@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
-import { useAppDispatch } from "../hooks/hooks";
+import { useAppDispatch, useAppSelector } from "../hooks/hooks";
 import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
 
 /**
@@ -15,6 +15,7 @@ import { navigateFromNotificationData } from "@/src/services/notificationNavigat
 export default function ExpoNotificationHandler() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const accessToken = useAppSelector((state) => state.user.accessToken);
   const { showBanner } = useNotificationContext();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(
     null,
@@ -43,20 +44,26 @@ export default function ExpoNotificationHandler() {
           notification.request.content,
         );
 
-        dispatch(fetchNotificationUnreadCount());
+        if (accessToken) {
+          dispatch(fetchNotificationUnreadCount());
+        }
       },
     );
 
-    // Handle app opened from KILLED state by notification tap (listener doesn't fire in that case)
-    Notifications.getLastNotificationResponseAsync().then((response) => {
-      if (!response) return;
-      const data = response.notification.request.content.data as
-        | Record<string, unknown>
-        | undefined;
-      Logger.log("------>Notification tap (cold start), data:", data);
-      // Small delay so app shell is mounted and router is ready
-      setTimeout(() => navigateFromNotificationData(router, data), 1200);
-    });
+    // Handle app opened from KILLED state by notification tap (listener doesn't fire in that case).
+    // Only when user is logged in: on Android the "last" response can persist across cold starts,
+    // so we avoid acting on it when not authenticated (no notification was tapped this launch).
+    if (accessToken) {
+      Notifications.getLastNotificationResponseAsync().then((response) => {
+        if (!response) return;
+        const data = response.notification.request.content.data as
+          | Record<string, unknown>
+          | undefined;
+        Logger.log("------>Notification tap (cold start), data:", data);
+        // Small delay so app shell is mounted and router is ready
+        setTimeout(() => navigateFromNotificationData(router, data), 1200);
+      });
+    }
 
     // Fired when user taps on notification (app in BACKGROUND - when killed, use getLastNotificationResponseAsync above)
     responseListenerRef.current =
@@ -68,7 +75,9 @@ export default function ExpoNotificationHandler() {
           "------>Notification tapped (background/foreground), data:",
           data,
         );
-        navigateFromNotificationData(router, data);
+        if (accessToken) {
+          navigateFromNotificationData(router, data);
+        }
       });
 
     return () => {
@@ -81,7 +90,7 @@ export default function ExpoNotificationHandler() {
         responseListenerRef.current = null;
       }
     };
-  }, [showBanner, router]);
+  }, [showBanner, router, accessToken]);
 
   return null;
 }
