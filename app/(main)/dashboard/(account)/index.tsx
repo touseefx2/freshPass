@@ -214,7 +214,6 @@ export default function AccountScreen() {
                 );
                 // Logout after successful deletion
                 await ApiService.logout();
-                router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
               }
             } catch (error: any) {
               showBanner(
