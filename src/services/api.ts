@@ -254,11 +254,11 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
   store.dispatch(resetChat());
   store.dispatch(resetUser());
   // Purge persisted cache so rehydration doesn't restore old user/general data
-  try {
-    persistor.purge();
-  } catch (err) {
-    Logger.error("Logout: persistor.purge failed", err);
-  }
+  // try {
+  //   persistor.purge();
+  // } catch (err) {
+  //   Logger.error("Logout: persistor.purge failed", err);
+  // }
   router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
 };
 
