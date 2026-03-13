@@ -135,6 +135,8 @@ interface BookingItem {
   notes?: string | null;
   appointmentDate?: string;
   appointmentTime?: string;
+  userId?: number | null;
+  userProfilePic?: string | null;
   staffId?: number | null;
   subscription_id?: number | null;
   service_ids: number[] | null;
@@ -163,6 +165,7 @@ interface ApiBookingResponse {
   businessAverageRating: number;
   userId: number;
   user: string;
+  userProfilePic: string | null;
   userEmail: string;
   appointmentType: "service" | "subscription";
   paymentMethod: string;
@@ -913,7 +916,8 @@ export default function bookingDetailsById() {
       notes: apiData.notes ?? null,
       appointmentDate: apiData.appointmentDate,
       appointmentTime: apiData.appointmentTime,
-      staffId: apiData.staffId,
+      userId: apiData.userId ?? null,
+      staffId: apiData.staffId ?? null,
       subscription_id: apiData.subscriptionId,
       service_ids: service_ids,
       images:
@@ -1096,20 +1100,28 @@ export default function bookingDetailsById() {
 
   const handleContactPress = () => {
     console.log("booking", booking);
-    // const owner =  booking?.owner;
-    // if (!owner?.id) return;
+    const ownerId =
+      userRole === "customer" ? booking?.owner?.id : (booking?.userId ?? null);
 
-    // router.push({
-    //   pathname: "/(main)/chatBox",
-    //   params: {
-    //     id: String(owner.id),
-    //     chatItem: JSON.stringify({
-    //       id: String(owner.id),
-    //       name: owner.name ?? "",
-    //       image: owner.profile_pic ?? "",
-    //     }),
-    //   },
-    // });
+    const ownerName =
+      userRole === "customer" ? booking?.owner?.name : (booking?.user ?? "");
+
+    const pic =
+      userRole === "customer"
+        ? booking?.owner?.profile_pic
+        : (booking?.userProfilePic ?? "");
+
+    router.push({
+      pathname: "/(main)/chatBox",
+      params: {
+        id: String(ownerId),
+        chatItem: JSON.stringify({
+          id: String(ownerId),
+          name: ownerName,
+          image: pic,
+        }),
+      },
+    });
   };
 
   const handleShareImage = useCallback(async (url: string) => {
