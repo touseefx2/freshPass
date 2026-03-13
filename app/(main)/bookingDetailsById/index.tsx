@@ -1094,22 +1094,23 @@ export default function bookingDetailsById() {
     ? parseFloat(booking.businessLongitude)
     : undefined;
 
-  const handleContactPress = useCallback(() => {
-    const owner = booking?.owner;
-    if (!owner?.id) return;
+  const handleContactPress = () => {
+    console.log("booking", booking);
+    // const owner =  booking?.owner;
+    // if (!owner?.id) return;
 
-    router.push({
-      pathname: "/(main)/chatBox",
-      params: {
-        id: String(owner.id),
-        chatItem: JSON.stringify({
-          id: String(owner.id),
-          name: owner.name ?? "",
-          image: owner.profile_pic ?? "",
-        }),
-      },
-    });
-  }, [booking?.owner, router]);
+    // router.push({
+    //   pathname: "/(main)/chatBox",
+    //   params: {
+    //     id: String(owner.id),
+    //     chatItem: JSON.stringify({
+    //       id: String(owner.id),
+    //       name: owner.name ?? "",
+    //       image: owner.profile_pic ?? "",
+    //     }),
+    //   },
+    // });
+  };
 
   const handleShareImage = useCallback(async (url: string) => {
     setShareImageUrl(url);
@@ -1678,7 +1679,9 @@ export default function bookingDetailsById() {
                   color={theme.darkGreen}
                 />
               </View>
-              <Text style={styles.actionButtonText}>{t("contact")}</Text>
+              <Text style={styles.actionButtonText}>
+                {userRole === "customer" ? t("contact") : t("contactC")}
+              </Text>
             </TouchableOpacity>
             {/* {isCancelled && (
             <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
@@ -1692,7 +1695,7 @@ export default function bookingDetailsById() {
               <Text style={styles.actionButtonText}>{t("bookAgain")}</Text>
             </TouchableOpacity>
           )} */}
-            {canShowReschedule && (
+            {canShowReschedule && userRole === "customer" && (
               <TouchableOpacity
                 onPress={() => {
                   const baseParams: Record<string, string> = {

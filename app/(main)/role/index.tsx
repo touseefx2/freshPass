@@ -1,5 +1,5 @@
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { View, Text, Alert } from "react-native";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import { Theme } from "@/src/theme/colors";
 import RadioOption from "@/src/components/radioOption";
 import Button from "@/src/components/button";
 import { setRole, UserRole } from "@/src/state/slices/generalSlice";
+import { handleNotificationPermission } from "@/src/services/notificationPermissionService";
 
 export default function Role() {
   const { colors } = useTheme();
@@ -41,6 +42,14 @@ export default function Role() {
       }
       router.push(`/${MAIN_ROUTES.SOCIAL_LOGIN}`);
     }
+  };
+
+  useEffect(() => {
+    getNotificationPermission();
+  }, []);
+
+  const getNotificationPermission = async () => {
+    const granted = await handleNotificationPermission();
   };
 
   return (
