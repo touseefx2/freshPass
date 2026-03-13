@@ -705,6 +705,34 @@ export default function bookingDetailsById() {
     staffClientname = booking?.user ?? "User";
   }
 
+  const handlePersonPress = useCallback(() => {
+    if (!booking) {
+      return;
+    }
+
+    if (userRole === "customer") {
+      const staffId = booking.staffId;
+      if (!staffId || staffClientname.toLowerCase() === "anyone") {
+        return;
+      }
+
+      router.push({
+        pathname: "/(main)/staffDetail",
+        params: { id: String(staffId) },
+      });
+    } else {
+      const customerId = booking.userId;
+      if (!customerId) {
+        return;
+      }
+
+      router.push({
+        pathname: "/(main)/customerDetail",
+        params: { id: String(customerId) },
+      });
+    }
+  }, [booking, router, staffClientname, userRole]);
+
   const mapApiStatusToBookingStatus = (apiStatus: string): BookingStatus => {
     switch (apiStatus.toLowerCase()) {
       case "scheduled":
@@ -1544,7 +1572,11 @@ export default function bookingDetailsById() {
                       color={theme.darkGreen}
                     />
                   </View>
-                  <View style={styles.detailTextContainer}>
+                  <TouchableOpacity
+                    style={styles.detailTextContainer}
+                    activeOpacity={0.7}
+                    onPress={handlePersonPress}
+                  >
                     <Text style={styles.detailLabel}>
                       {userRole === "customer"
                         ? t("myBarber")
@@ -1553,7 +1585,7 @@ export default function bookingDetailsById() {
                     <Text style={styles.detailValue} numberOfLines={2}>
                       {staffClientname}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </View>
               <View style={styles.detailsRowBottomLine} />

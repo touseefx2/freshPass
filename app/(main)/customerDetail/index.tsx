@@ -259,36 +259,7 @@ export default function CustomerDetail() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <StackHeader
-        title={t("cusDetail")}
-        rightIcon={
-          isBusinessRole ? (
-            <View style={styles.headerRightIcons}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={confirmDeleteStaff}
-              >
-                <MaterialIcons
-                  name="delete-outline"
-                  size={moderateWidthScale(20)}
-                  color={theme.white}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleEditPress}
-                style={styles.headerEditIcon}
-              >
-                <MaterialIcons
-                  name="edit"
-                  size={moderateWidthScale(20)}
-                  color={theme.white}
-                />
-              </TouchableOpacity>
-            </View>
-          ) : undefined
-        }
-      />
+      <StackHeader title={t("cusDetail")} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
