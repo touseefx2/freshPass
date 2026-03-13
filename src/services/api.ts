@@ -224,14 +224,16 @@ const removeAbortController = (controller: AbortController) => {
 };
 
 /**
- * Handle logout - call API to revoke token and clear Expo push token, then clear Redux state and persisted cache.
+ * Handle logout - optionally call API to revoke token and clear Expo push token, then clear Redux state and persisted cache.
  * For guest users, skips the API and only clears state and navigates to role/sign-in screen.
  * Shows general action loader until API completes; only clears state and navigates on API success.
+ *
+ * @param options.skipApi - when true, skips calling the backend logout endpoint even for non-guest users
  */
-const handleLogout = async () => {
+const handleLogout = async (options?: { skipApi?: boolean }) => {
   const isGuest = store.getState().user.isGuest;
 
-  if (!isGuest) {
+  if (!isGuest && !options?.skipApi) {
     try {
       store.dispatch(setActionLoader(true));
       const response = await apiClient.post(businessEndpoints.logout);
@@ -687,6 +689,15 @@ export class ApiService {
    */
   static async logout(): Promise<void> {
     await handleLogout();
+  }
+
+  /**
+   * Logout user locally without calling the backend logout API.
+   * Useful after irreversible actions like account deletion where the server
+   * has already invalidated the session.
+   */
+  static async logoutWithoutApi(): Promise<void> {
+    await handleLogout({ skipApi: true });
   }
 }
 

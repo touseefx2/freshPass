@@ -212,8 +212,8 @@ export default function AccountScreen() {
                   "success",
                   2500,
                 );
-                // Logout after successful deletion
-                await ApiService.logout();
+                // Clear local session after successful deletion without calling logout API
+                await ApiService.logoutWithoutApi();
               }
             } catch (error: any) {
               showBanner(
