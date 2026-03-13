@@ -429,24 +429,41 @@ export function useSocialLogin() {
 
   const handleFacebookLogin = useCallback(async () => {
     try {
+      Logger.log("[Facebook] Login started, requesting permissions...");
       const result = await LoginManager.logInWithPermissions([
         "public_profile",
         "email",
       ]);
 
+      Logger.log(
+        "[Facebook] logInWithPermissions result:",
+        JSON.stringify(result),
+      );
+
       if (result.isCancelled) {
-        Logger.log("User cancelled Facebook login");
+        Logger.log(
+          "[Facebook] User cancelled or dialog closed – result:",
+          result,
+        );
+        Alert.alert(
+          t("facebookSignInFailed"),
+          t("facebookLoginCancelledOrFailed"),
+        );
         return;
       }
 
+      Logger.log("[Facebook] Fetching access token...");
       const data = await AccessToken.getCurrentAccessToken();
 
       if (!data || !data.accessToken) {
+        Logger.error("[Facebook] No access token after login – data:", data);
         Alert.alert(t("error"), t("failedToGetUserFromFacebook"));
         return;
       }
 
       const fbAccessToken = data.accessToken.toString();
+      Logger.log("---->token : ", fbAccessToken);
+      Logger.log("[Facebook] Token received, calling backend...");
 
       dispatch(setActionLoader(true));
       dispatch(setActionLoaderTitle(t("pleaseWait")));
@@ -461,15 +478,30 @@ export function useSocialLogin() {
             ...(expo_push_token ? { expo_push_token } : {}),
           },
         );
+        Logger.log("[Facebook] Backend response success:", response?.success);
         handleSocialLoginResponse(response);
+      } catch (apiError: any) {
+        Logger.error(
+          "[Facebook] Backend API error:",
+          apiError?.message,
+          apiError?.response?.data,
+          apiError,
+        );
+        throw apiError;
       } finally {
         dispatch(setActionLoader(false));
       }
     } catch (error: any) {
-      Logger.error("Facebook Login Error:", error);
+      Logger.error(
+        "[Facebook] Login Error:",
+        error?.message,
+        error?.code,
+        error?.name,
+        error,
+      );
       Alert.alert(
         t("facebookSignInFailed"),
-        error.message || t("errorDuringFacebookSignIn"),
+        error?.message || t("errorDuringFacebookSignIn"),
       );
     }
   }, [t, selectedRole, handleSocialLoginResponse]);
@@ -485,8 +517,8 @@ export function useSocialLogin() {
           await handleAppleLoginAndroid();
         }
       } else if (provider === "facebook") {
-        Alert.alert(t("error"), "coming soon");
-        // await handleFacebookLogin();
+        // Alert.alert(t("error"), "coming soon");
+        await handleFacebookLogin();
       }
     },
     [
