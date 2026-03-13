@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -26,7 +26,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
-import { staffEndpoints } from "@/src/services/endpoints";
+import { userEndpoints } from "@/src/services/endpoints";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ChatIcon } from "@/assets/icons";
@@ -136,6 +136,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.text,
       width: widthScale(120),
+      textTransform: "capitalize",
     },
     value: {
       flex: 1,
@@ -248,6 +249,40 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+interface CustomerRole {
+  id: number;
+  name: string;
+}
+
+interface CustomerDetailData {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  country_code: string | null;
+  country_name: string | null;
+  zip_code: string | null;
+  date_of_birth: string | null;
+  email_notifications: boolean;
+  profile_image_url: string | null;
+  email_verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+  ai_quota: number;
+  roles: CustomerRole[];
+  subscriptions: unknown[];
+  appointments: unknown[];
+  reviews: unknown[];
+  documents: unknown[];
+}
+
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "--";
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return dateString;
+  return d.toLocaleDateString();
+}
+
 export default function CustomerDetail() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -255,6 +290,102 @@ export default function CustomerDetail() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { t } = useTranslation();
+  const params = useLocalSearchParams<{ id?: string }>();
+  const customerId = params.id;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<CustomerDetailData | null>(null);
+
+  const fetchCustomerDetails = useCallback(async () => {
+    if (!customerId) {
+      setError("Customer profile not found");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setData(null);
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data?: CustomerDetailData;
+      }>(userEndpoints.detailsById(customerId));
+
+      if (!response?.success || !response.data) {
+        setError(response?.message || "Customer profile not found");
+        setData(null);
+      } else {
+        setData(response.data);
+        setError(null);
+      }
+    } catch (err: any) {
+      const apiMessage = err?.data?.message || err?.data?.error;
+      setError(apiMessage || err?.message || "Customer profile not found");
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [customerId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchCustomerDetails();
+    }, [fetchCustomerDetails]),
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <StackHeader title={t("cusDetail")} />
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <StackHeader title={t("cusDetail")} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <RetryButton onPress={fetchCustomerDetails} loading={loading} />
+        </View>
+      </View>
+    );
+  }
+
+  if (!data) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" />
+        <StackHeader title={t("cusDetail")} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Customer profile not found</Text>
+          <RetryButton onPress={fetchCustomerDetails} loading={loading} />
+        </View>
+      </View>
+    );
+  }
+
+  const profileImageUrl = data.profile_image_url
+    ? data.profile_image_url.startsWith("http://") ||
+      data.profile_image_url.startsWith("https://")
+      ? data.profile_image_url
+      : (process.env.EXPO_PUBLIC_API_BASE_URL || "") + data.profile_image_url
+    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+
+  const primaryRole =
+    data.roles && data.roles.length > 0 ? data.roles[0].name : null;
+  const subscriptionsCount = data.subscriptions?.length ?? 0;
+  const appointmentsCount = data.appointments?.length ?? 0;
+  const reviewsCount = data.reviews?.length ?? 0;
+  const documentsCount = data.documents?.length ?? 0;
 
   return (
     <View style={styles.container}>
@@ -264,7 +395,80 @@ export default function CustomerDetail() {
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-      ></ScrollView>
+      >
+        <View style={styles.profileSection}>
+          <View style={styles.avatar}>
+            <Image
+              source={{ uri: profileImageUrl }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          </View>
+          <Text style={styles.staffName}>{data.name}</Text>
+          {primaryRole ? (
+            <Text style={styles.description}>{primaryRole}</Text>
+          ) : null}
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("email")}</Text>
+            <Text style={styles.value}>{data.email}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("phone")}</Text>
+            <Text style={styles.value}>{data.phone ?? "--"}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("country")}</Text>
+            <Text style={styles.value}>
+              {data.country_name
+                ? data.country_code
+                  ? `${data.country_name} (${data.country_code})`
+                  : data.country_name
+                : "--"}
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("zipCode")}</Text>
+            <Text style={styles.value}>{data.zip_code ?? "--"}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("dateOfBirth")}</Text>
+            <Text style={styles.value}>{formatDate(data.date_of_birth)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("emailNotifications")}</Text>
+            <Text style={styles.value}>
+              {data.email_notifications ? t("on") || "On" : t("off") || "Off"}
+            </Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("memberSince")}</Text>
+            <Text style={styles.value}>{formatDate(data.created_at)}</Text>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{t("activity") || "Activity"}</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("subscriptions")}</Text>
+            <Text style={styles.value}>{String(subscriptionsCount)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("appointments")}</Text>
+            <Text style={styles.value}>{String(appointmentsCount)}</Text>
+          </View>
+          {/* <View style={styles.row}>
+            <Text style={styles.label}>{t("reviews")}</Text>
+            <Text style={styles.value}>{String(reviewsCount)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("documents")}</Text>
+            <Text style={styles.value}>{String(documentsCount)}</Text>
+          </View> */}
+        </View>
+      </ScrollView>
     </View>
   );
 }

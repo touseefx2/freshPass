@@ -103,6 +103,7 @@ export const businessEndpoints = {
  */
 export const userEndpoints = {
   details: `/api/user/details`,
+  detailsById: (id: string | number) => `/api/user/details/${id}`,
   update: `/api/user`,
   changePassword: `/api/user/change-password`,
   deleteAccount: `/api/user/account`,
