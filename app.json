@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.freshpass",
       "config": {
-        "googleMapsApiKey": "AIzaSyAN80D-POyBiP1myIaPPPHB5Cvnd7B2gOQ"
+        "googleMapsApiKey": "AIzaSyB7LtqIwza7DsCRvXvh43CTH1yzQoWvVRg"
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -39,7 +39,7 @@
       "package": "com.freshpass",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyAN80D-POyBiP1myIaPPPHB5Cvnd7B2gOQ"
+          "apiKey": "AIzaSyB7LtqIwza7DsCRvXvh43CTH1yzQoWvVRg"
         }
       },
       "permissions": ["android.permission.RECORD_AUDIO"],
@@ -97,7 +97,7 @@
       [
         "@react-native-google-signin/google-signin",
         {
-          "iosUrlScheme": "com.googleusercontent.apps.179177634578-ijt76lludml81dfh62m250cggbd74k4f"
+          "iosUrlScheme": "com.googleusercontent.apps.414197082710-52nnfclv444bbkiddqmb71f65ao7id3d"
         }
       ]
     ],

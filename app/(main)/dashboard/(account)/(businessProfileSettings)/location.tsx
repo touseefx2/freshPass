@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -736,12 +737,13 @@ export default function LocationScreen() {
       >
         <StatusBar barStyle="dark-content" />
 
-        <SafeAreaView
-          style={[styles.modalContainer, { paddingVertical: 15 }]}
-          edges={["top", "bottom"]}
+        <View
+          style={[
+            styles.modalContainer,
+            { paddingVertical: Platform.OS === "android" ? 30 : 45 },
+          ]}
         >
           <View style={styles.modalHeader}>
-            <View style={{ flex: 1 }} />
             <TouchableOpacity
               onPress={() => {
                 setSearchModalVisible(false);
@@ -794,7 +796,7 @@ export default function LocationScreen() {
               setModalBanner((prev) => ({ ...prev, visible: false }))
             }
           />
-        </SafeAreaView>
+        </View>
       </Modal>
 
       {/* Map Modal */}
