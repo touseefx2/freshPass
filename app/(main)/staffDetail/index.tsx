@@ -599,6 +599,22 @@ export default function StaffDetail() {
     }
   }, [staffPhone, t]);
 
+  const handleEmailNow = useCallback(async () => {
+    const email = data?.email?.trim();
+    if (!email) return;
+    const emailUrl = `mailto:${email}`;
+    try {
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        await Linking.openURL(emailUrl);
+      } else {
+        Alert.alert(t("error"), t("somethingWentWrong"));
+      }
+    } catch {
+      Alert.alert(t("error"), t("somethingWentWrong"));
+    }
+  }, [data?.email, t]);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -748,9 +764,18 @@ export default function StaffDetail() {
         </View>
 
         <View style={styles.card}>
-          <View style={styles.row}>
+          <View style={styles.phoneRow}>
             <Text style={styles.label}>{t("email")}</Text>
-            <Text style={styles.value}>{data.email}</Text>
+            <View style={styles.phoneValueWrap}>
+              <Text style={styles.value}>{data.email}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.callNowButton}
+              onPress={handleEmailNow}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="mail" size={widthScale(12)} color={theme.white} />
+            </TouchableOpacity>
           </View>
           {data.business ? (
             <View style={styles.row}>
