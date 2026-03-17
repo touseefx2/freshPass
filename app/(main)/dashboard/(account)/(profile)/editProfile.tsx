@@ -511,6 +511,10 @@ export default function EditProfileScreen() {
   const initialCountryCode = user.country_code || "+1";
   const initialCountryIso = getCountryIsoFromDialCode(initialCountryCode);
   const initialPhoneNumber = user.phone || "";
+
+  console.log("initialPhoneNumber", initialPhoneNumber);
+  console.log("initialCountryCode", initialCountryCode);
+
   const originalProfileImageUri = user?.profile_image_url
     ? user.profile_image_url.startsWith("http://") ||
       user.profile_image_url.startsWith("https://")
