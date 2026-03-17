@@ -1299,9 +1299,8 @@ export default function BusinessDetailScreen() {
     useState(false);
   const [selectedMembershipFilter, setSelectedMembershipFilter] =
     useState("All");
-  const [selectedServiceFilter, setSelectedServiceFilter] = useState<string>(
-    "All",
-  );
+  const [selectedServiceFilter, setSelectedServiceFilter] =
+    useState<string>("All");
   const [inclusionsModalVisible, setInclusionsModalVisible] = useState(false);
   const [selectedInclusions, setSelectedInclusions] = useState<string[]>([]);
   const [breaksModalVisible, setBreaksModalVisible] = useState(false);
@@ -1783,6 +1782,19 @@ export default function BusinessDetailScreen() {
       Alert.alert(t("error"), t("unableToOpenMaps"));
     }
   };
+
+  const handlePrivacyPolicyPress = useCallback(async () => {
+    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+    if (!url) return;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    } catch (_error) {
+      // Silently ignore if URL cannot be opened
+    }
+  }, []);
 
   // Get business logo URL
   const getBusinessLogoUrl = () => {
@@ -2352,7 +2364,7 @@ export default function BusinessDetailScreen() {
                   { marginTop: moderateHeightScale(24) },
                 ]}
               >
-                {t("contact")}a
+                {t("contact")}
               </Text>
               <View style={styles.contactRow}>
                 <View style={styles.phoneIconContainer}>
@@ -2625,27 +2637,27 @@ export default function BusinessDetailScreen() {
                     contentContainerStyle={styles.filterContainer}
                   >
                     {membershipFilters.map((filter) => (
-                    <TouchableOpacity
-                      key={filter}
-                      style={[
-                        styles.filterButton,
-                        selectedMembershipFilter === filter &&
-                          styles.filterButtonActive,
-                      ]}
-                      onPress={() => setSelectedMembershipFilter(filter)}
-                    >
-                      <Text
+                      <TouchableOpacity
+                        key={filter}
                         style={[
-                          styles.filterButtonText,
+                          styles.filterButton,
                           selectedMembershipFilter === filter &&
-                            styles.filterButtonTextActive,
+                            styles.filterButtonActive,
                         ]}
+                        onPress={() => setSelectedMembershipFilter(filter)}
                       >
-                        {filter}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                        <Text
+                          style={[
+                            styles.filterButtonText,
+                            selectedMembershipFilter === filter &&
+                              styles.filterButtonTextActive,
+                          ]}
+                        >
+                          {filter}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
 
                 {displayedMembershipSubscriptions.map(
@@ -2837,27 +2849,27 @@ export default function BusinessDetailScreen() {
                     contentContainerStyle={styles.filterContainer}
                   >
                     {serviceFilters.map((filter) => (
-                    <TouchableOpacity
-                      key={filter}
-                      style={[
-                        styles.filterButton,
-                        selectedServiceFilter === filter &&
-                          styles.filterButtonActive,
-                      ]}
-                      onPress={() => setSelectedServiceFilter(filter)}
-                    >
-                      <Text
+                      <TouchableOpacity
+                        key={filter}
                         style={[
-                          styles.filterButtonText,
+                          styles.filterButton,
                           selectedServiceFilter === filter &&
-                            styles.filterButtonTextActive,
+                            styles.filterButtonActive,
                         ]}
+                        onPress={() => setSelectedServiceFilter(filter)}
                       >
-                        {filter}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                        <Text
+                          style={[
+                            styles.filterButtonText,
+                            selectedServiceFilter === filter &&
+                              styles.filterButtonTextActive,
+                          ]}
+                        >
+                          {filter}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
 
                 {hasFilteredIndividualServices ? (
@@ -3469,6 +3481,7 @@ export default function BusinessDetailScreen() {
                 marginTop: moderateHeightScale(24),
               },
             ]}
+            onPress={handlePrivacyPolicyPress}
           >
             <Text style={styles.policyItemText}>
               {t("paymentCancelationPolicy")}
@@ -3481,7 +3494,10 @@ export default function BusinessDetailScreen() {
           </TouchableOpacity>
 
           {/* Report */}
-          <TouchableOpacity style={styles.policyItem}>
+          <TouchableOpacity
+            onPress={handlePrivacyPolicyPress}
+            style={styles.policyItem}
+          >
             <Text style={styles.policyItemText}>{t("report")}</Text>
             <ChevronRightIconBusinessDetail
               width={widthScale(6)}

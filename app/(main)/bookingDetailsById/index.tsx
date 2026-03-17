@@ -55,7 +55,6 @@ import {
   CalendarIcon,
   ContactIcon,
   SupportIcon,
-  BookAgainIcon,
   WalletIcon,
 } from "@/assets/icons";
 import StackHeader from "@/src/components/StackHeader";
