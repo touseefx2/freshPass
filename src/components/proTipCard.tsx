@@ -62,6 +62,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export interface ProTipCardItem {
+  slug?: string;
   image: string;
   title: string;
   action: string;

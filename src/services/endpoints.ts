@@ -345,6 +345,7 @@ export const favoritesEndpoints = {
  */
 export const generalEndpoints = {
   proTipCards: `/api/pro-tip-cards`,
+  proTipCardDetail: (slug: string) => `/api/pro-tip-cards/${slug}`,
   checkEmail: `/api/check-email`,
 };
 

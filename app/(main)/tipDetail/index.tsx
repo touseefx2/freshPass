@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
   Text,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
@@ -20,6 +21,9 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
+import { ApiService } from "@/src/services/api";
+import { generalEndpoints } from "@/src/services/endpoints";
+import RetryButton from "@/src/components/retryButton";
 import StackHeader from "@/src/components/StackHeader";
 
 const createStyles = (theme: Theme) =>
@@ -74,22 +78,65 @@ export default function TipDetail() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useDispatch();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<boolean>(false);
+  const [image, setImage] = useState<string>("");
+  const [action, setAction] = useState<string>("");
+  const [benefit, setBenefit] = useState<string>("");
+  const [standard, setStandard] = useState<string>("");
+  const [content, setContent] = useState<string>("");
   const [htmlHeight, setHtmlHeight] = useState<number>(0);
   const params = useLocalSearchParams<{
     title?: string;
-    image?: string;
-    action?: string;
-    content?: string;
-    benefit?: string;
-    standard?: string;
+    slug?: string;
   }>();
 
   const title = params.title ?? "Pro Tip";
-  const image = params.image ?? "";
-  const action = params.action ?? "";
-  const content = params.content ?? "";
-  const benefit = params.benefit ?? "";
-  const standard = params.standard ?? "";
+  const slug = params.slug;
+
+  const fetchTipDetail = async () => {
+    if (!slug) {
+      setLoading(false);
+      setError(true);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(false);
+      const response = await ApiService.get<{
+        success: boolean;
+        data: {
+          slug: string;
+          image: string;
+          title: string;
+          action: string;
+          benefit: string;
+          content: string;
+          standard: string;
+        };
+      }>(generalEndpoints.proTipCardDetail(slug as string));
+
+      if (response?.success && response?.data) {
+        const tip = response.data;
+        setImage(tip.image || "");
+        setAction(tip.action || "");
+        setBenefit(tip.benefit || "");
+        setStandard(tip.standard || "");
+        setContent(tip.content || "");
+      } else {
+        setError(true);
+      }
+    } catch (_error) {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTipDetail();
+  }, [slug]);
 
   const html = useMemo(() => {
     if (!content) return "";
@@ -130,58 +177,84 @@ export default function TipDetail() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={title} showLine={false} />
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {image && (
-          <TouchableOpacity
-            style={styles.imageContainer}
-            onPress={() => dispatch(openFullImageModal({ images: [image] }))}
-            activeOpacity={0.95}
-          >
-            <Image source={{ uri: image }} style={styles.image} />
-          </TouchableOpacity>
-        )}
-        <View style={styles.content}>
-          {action ? (
-            <View style={styles.section}>
-              <Text style={styles.label}>Action</Text>
-              <Text style={styles.value}>{action}</Text>
-            </View>
-          ) : null}
-          {benefit ? (
-            <View style={styles.section}>
-              <Text style={styles.label}>Benefit</Text>
-              <Text style={styles.value}>{benefit}</Text>
-            </View>
-          ) : null}
-          {standard ? (
-            <View style={styles.section}>
-              <Text style={styles.label}>Standard</Text>
-              <Text style={styles.value}>{standard}</Text>
-            </View>
-          ) : null}
-
-          {html ? (
-            <View style={styles.htmlContainer}>
-              <WebView
-                originWhitelist={["*"]}
-                source={{ html }}
-                style={[styles.webView, { height: htmlHeight || 1 }]}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                showsHorizontalScrollIndicator={false}
-                onMessage={(e) => {
-                  const next = Number(e.nativeEvent.data);
-                  if (Number.isFinite(next) && next > 0) setHtmlHeight(next);
-                }}
-              />
-            </View>
-          ) : null}
+      {loading ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      </ScrollView>
+      ) : error ? (
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+            paddingHorizontal: moderateWidthScale(20),
+          }}
+        >
+          <Text style={styles.label}>
+            Failed to load pro tip. Please try again.
+          </Text>
+          <RetryButton onPress={fetchTipDetail} loading={loading} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.container}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {image ? (
+            <TouchableOpacity
+              style={styles.imageContainer}
+              onPress={() => dispatch(openFullImageModal({ images: [image] }))}
+              activeOpacity={0.95}
+            >
+              <Image source={{ uri: image }} style={styles.image} />
+            </TouchableOpacity>
+          ) : null}
+          <View style={styles.content}>
+            {action ? (
+              <View style={styles.section}>
+                <Text style={styles.label}>Action</Text>
+                <Text style={styles.value}>{action}</Text>
+              </View>
+            ) : null}
+            {benefit ? (
+              <View style={styles.section}>
+                <Text style={styles.label}>Benefit</Text>
+                <Text style={styles.value}>{benefit}</Text>
+              </View>
+            ) : null}
+            {standard ? (
+              <View style={styles.section}>
+                <Text style={styles.label}>Standard</Text>
+                <Text style={styles.value}>{standard}</Text>
+              </View>
+            ) : null}
+
+            {html ? (
+              <View style={styles.htmlContainer}>
+                <WebView
+                  originWhitelist={["*"]}
+                  source={{ html }}
+                  style={[styles.webView, { height: htmlHeight || 1 }]}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                  showsHorizontalScrollIndicator={false}
+                  onMessage={(e) => {
+                    const next = Number(e.nativeEvent.data);
+                    if (Number.isFinite(next) && next > 0) setHtmlHeight(next);
+                  }}
+                />
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

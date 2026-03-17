@@ -1014,10 +1014,7 @@ export default function DashboardContent() {
                 pathname: "/(main)/tipDetail",
                 params: {
                   title: item.title,
-                  image: item.image,
-                  action: item.action,
-                  benefit: item.benefit,
-                  standard: item.standard,
+                  slug: item.slug,
                 },
               } as any);
             }}
