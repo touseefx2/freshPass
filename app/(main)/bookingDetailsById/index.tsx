@@ -426,6 +426,11 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       paddingHorizontal: moderateWidthScale(20),
     },
+    businessCardTouchable: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+    },
     businessImageContainer: {
       marginRight: moderateWidthScale(12),
       alignItems: "center",
@@ -1614,34 +1619,48 @@ export default function bookingDetailsById() {
 
           {/* Business Information Card */}
           <View style={styles.businessCard}>
-            <View style={styles.businessImageContainer}>
-              <Image
-                source={{
-                  uri: booking.businessLogoUrl,
-                }}
-                style={styles.businessImage}
-              />
-              {booking.businessAverageRating !== undefined &&
-                booking.businessAverageRating > 0 && (
-                  <View style={[styles.ratingBadge, styles.sahdow]}>
-                    <Ionicons
-                      name="star"
-                      size={moderateWidthScale(10)}
-                      color={theme.selectCard}
-                      style={styles.ratingStar}
-                    />
-                    <Text style={styles.ratingText}>
-                      {booking.businessAverageRating.toFixed(1)}
-                    </Text>
-                  </View>
-                )}
-            </View>
-            <View style={styles.businessInfo}>
-              <Text style={styles.businessName}>{booking.businessName}</Text>
-              <Text style={styles.businessAddress}>
-                {booking.businessAddress}
-              </Text>
-            </View>
+            <TouchableOpacity
+              style={styles.businessCardTouchable}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (booking.businessId != null) {
+                  router.push({
+                    pathname: "/(main)/businessDetail",
+                    params: { business_id: booking.businessId.toString() },
+                  });
+                }
+              }}
+              disabled={booking.businessId == null}
+            >
+              <View style={styles.businessImageContainer}>
+                <Image
+                  source={{
+                    uri: booking.businessLogoUrl,
+                  }}
+                  style={styles.businessImage}
+                />
+                {booking.businessAverageRating !== undefined &&
+                  booking.businessAverageRating > 0 && (
+                    <View style={[styles.ratingBadge, styles.sahdow]}>
+                      <Ionicons
+                        name="star"
+                        size={moderateWidthScale(10)}
+                        color={theme.selectCard}
+                        style={styles.ratingStar}
+                      />
+                      <Text style={styles.ratingText}>
+                        {booking.businessAverageRating.toFixed(1)}
+                      </Text>
+                    </View>
+                  )}
+              </View>
+              <View style={styles.businessInfo}>
+                <Text style={styles.businessName}>{booking.businessName}</Text>
+                <Text style={styles.businessAddress}>
+                  {booking.businessAddress}
+                </Text>
+              </View>
+            </TouchableOpacity>
             {businessLatitude && businessLongitude && (
               <TouchableOpacity
                 style={styles.mapPinContainer}
