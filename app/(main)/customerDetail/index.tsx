@@ -9,6 +9,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Alert,
+  Linking,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -22,7 +23,7 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
@@ -247,6 +248,30 @@ const createStyles = (theme: Theme) =>
       textDecorationLine: "underline",
       textDecorationColor: theme.lightGreen,
     },
+    callNowButton: {
+      backgroundColor: theme.darkGreenLight,
+      width: widthScale(22),
+      height: widthScale(22),
+      borderRadius: widthScale(22 / 2),
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: moderateWidthScale(12),
+    },
+    phoneRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    phoneLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      width: widthScale(120),
+      textTransform: "capitalize",
+    },
+    phoneValueWrap: {
+      flex: 1,
+      justifyContent: "center",
+    },
   });
 
 interface CustomerRole {
@@ -383,9 +408,85 @@ export default function CustomerDetail() {
   const primaryRole =
     data.roles && data.roles.length > 0 ? data.roles[0].name : null;
   const subscriptionsCount = data.subscriptions?.length ?? 0;
-  const appointmentsCount = data.appointments?.length ?? 0;
+  const appointmentsArray = Array.isArray(data.appointments)
+    ? (data.appointments as any[])
+    : [];
+  const completedAppointmentsCount = appointmentsArray.filter(
+    (appt) => appt?.status === "completed",
+  ).length;
+  const appointmentsCount = appointmentsArray.length;
   const reviewsCount = data.reviews?.length ?? 0;
   const documentsCount = data.documents?.length ?? 0;
+
+  const latestBusinessTitle =
+    appointmentsArray.length > 0
+      ? [...appointmentsArray]
+          .sort((a, b) => {
+            const aDate = a?.created_at ? new Date(a.created_at).getTime() : 0;
+            const bDate = b?.created_at ? new Date(b.created_at).getTime() : 0;
+            return bDate - aDate;
+          })[0]?.business?.title ?? null
+      : null;
+
+  const isActive = appointmentsCount > 0;
+
+  const customerPhone = (() => {
+    const phone = data.phone;
+    const countryCode = data.country_code;
+    if (phone && countryCode) {
+      return `${countryCode}${phone}`;
+    }
+    if (phone) return phone;
+    return "";
+  })();
+
+  const handleCallNow = async () => {
+    if (!customerPhone) return;
+    const phoneNumber = customerPhone.replace(/[^\d+]/g, "");
+    const phoneUrl = `tel:${phoneNumber}`;
+    try {
+      const canOpen = await Linking.canOpenURL(phoneUrl);
+      if (canOpen) {
+        await Linking.openURL(phoneUrl);
+      } else {
+        Alert.alert(t("error"), t("unableToMakePhoneCall"));
+      }
+    } catch {
+      Alert.alert(t("error"), t("unableToMakePhoneCall"));
+    }
+  };
+
+  const handleEmailNow = async () => {
+    const email = data.email?.trim();
+    if (!email) return;
+    const emailUrl = `mailto:${email}`;
+    try {
+      const canOpen = await Linking.canOpenURL(emailUrl);
+      if (canOpen) {
+        await Linking.openURL(emailUrl);
+      } else {
+        Alert.alert(t("error"), t("somethingWentWrong"));
+      }
+    } catch {
+      Alert.alert(t("error"), t("somethingWentWrong"));
+    }
+  };
+
+  const handleChatPress = () => {
+    if (!data?.id) return;
+
+    router.push({
+      pathname: "/(main)/chatBox",
+      params: {
+        id: String(data.id),
+        chatItem: JSON.stringify({
+          id: String(data.id),
+          name: data.name ?? "",
+          image: profileImageUrl,
+        }),
+      },
+    });
+  };
 
   return (
     <View style={styles.container}>
@@ -411,13 +512,77 @@ export default function CustomerDetail() {
         </View>
 
         <View style={styles.card}>
-          <View style={styles.row}>
+          <View style={styles.phoneRow}>
             <Text style={styles.label}>{t("email")}</Text>
-            <Text style={styles.value}>{data.email}</Text>
+            <View style={styles.phoneValueWrap}>
+              <Text style={styles.value}>{data.email}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.callNowButton}
+              onPress={handleEmailNow}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="mail" size={widthScale(12)} color={theme.white} />
+            </TouchableOpacity>
+          </View>
+          {latestBusinessTitle ? (
+            <View style={styles.row}>
+              <Text style={styles.label}>{t("business")}</Text>
+              <Text style={styles.value}>{latestBusinessTitle}</Text>
+            </View>
+          ) : null}
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("completedAppointmentsCount")}</Text>
+            <Text style={styles.value}>{String(completedAppointmentsCount)}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>{t("phone")}</Text>
-            <Text style={styles.value}>{data.phone ?? "--"}</Text>
+            <Text style={styles.label}>{t("status")}</Text>
+            <Text style={styles.value}>{isActive ? "Active" : "Inactive"}</Text>
+          </View>
+          {customerPhone ? (
+            <View style={styles.phoneRow}>
+              <Text style={styles.phoneLabel}>{t("phone")}</Text>
+              <View style={styles.phoneValueWrap}>
+                <Text style={styles.value}>{customerPhone}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.callNowButton}
+                onPress={handleCallNow}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="call"
+                  size={widthScale(10)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          <TouchableOpacity
+            style={styles.messageRow}
+            onPress={handleChatPress}
+            activeOpacity={0.7}
+          >
+            <ChatIcon
+              width={widthScale(18)}
+              height={heightScale(18)}
+              color={theme.darkGreen}
+            />
+            <Text style={styles.messageRowText}>
+              {t("message") || "Message"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>{t("activity") || "Activity"}</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("subscriptions")}</Text>
+            <Text style={styles.value}>{String(subscriptionsCount)}</Text>
+          </View>
+          <View style={styles.row}>
+            <Text style={styles.label}>{t("appointments")}</Text>
+            <Text style={styles.value}>{String(appointmentsCount)}</Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>{t("country")}</Text>
@@ -446,18 +611,6 @@ export default function CustomerDetail() {
           <View style={styles.row}>
             <Text style={styles.label}>{t("memberSince")}</Text>
             <Text style={styles.value}>{formatDate(data.created_at)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t("activity") || "Activity"}</Text>
-          <View style={styles.row}>
-            <Text style={styles.label}>{t("subscriptions")}</Text>
-            <Text style={styles.value}>{String(subscriptionsCount)}</Text>
-          </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>{t("appointments")}</Text>
-            <Text style={styles.value}>{String(appointmentsCount)}</Text>
           </View>
           {/* <View style={styles.row}>
             <Text style={styles.label}>{t("reviews")}</Text>
