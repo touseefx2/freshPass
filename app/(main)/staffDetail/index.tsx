@@ -563,16 +563,6 @@ export default function StaffDetail() {
     });
   }, [data?.user?.id, data?.user?.profile_image_url, data?.name, router]);
 
-  // const staffPhone = useMemo(() => {
-  //   const phone = data?.user?.phone;
-  //   const countryCode = data?.user?.country_code;
-  //   if (phone && countryCode) {
-  //     return `${countryCode}${phone}`;
-  //   }
-  //   if (phone) return phone;
-  //   return "";
-  // }, [data?.user?.phone, data?.user?.country_code]);
-
   const staffPhone = useMemo(() => {
     const phone = data?.user?.phone;
     const countryCode = data?.user?.country_code;
@@ -580,7 +570,7 @@ export default function StaffDetail() {
       return `${countryCode}${phone}`;
     }
     if (phone) return phone;
-    return "+923075839836";
+    return "";
   }, [data?.user?.phone, data?.user?.country_code]);
 
   const handleCallNow = useCallback(async () => {
