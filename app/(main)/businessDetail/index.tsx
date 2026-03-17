@@ -1313,10 +1313,11 @@ export default function BusinessDetailScreen() {
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
   const isBusinessOwnerView =
-    user.userRole === "business" &&
-    user.business_id &&
-    params.business_id &&
-    user.business_id?.toString() === params.business_id?.toString();
+    (user.userRole === "business" &&
+      user.business_id &&
+      params.business_id &&
+      user.business_id?.toString() === params.business_id?.toString()) ||
+    user.userRole === "staff";
 
   // Refs for scroll positions
   const scrollViewRef = useRef<ScrollView>(null);

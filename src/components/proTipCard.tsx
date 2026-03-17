@@ -65,6 +65,7 @@ export interface ProTipCardItem {
   image: string;
   title: string;
   action: string;
+  content?: string | null;
   benefit: string;
   standard: string;
 }
