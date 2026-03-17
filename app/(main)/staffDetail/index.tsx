@@ -264,7 +264,6 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       justifyContent: "center",
     },
-
     reinviteLink: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
