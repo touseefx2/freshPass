@@ -9,6 +9,7 @@ import {
   StatusBar,
   TouchableOpacity,
   Alert,
+  Linking,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -22,7 +23,7 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
@@ -239,6 +240,31 @@ const createStyles = (theme: Theme) =>
       color: theme.orangeBrown,
     },
 
+    callNowButton: {
+      backgroundColor: theme.darkGreenLight,
+      width: widthScale(22),
+      height: widthScale(22),
+      borderRadius: widthScale(22 / 2),
+      alignItems: "center",
+      justifyContent: "center",
+      // marginLeft: moderateWidthScale(8),
+    },
+    phoneRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      // marginBottom: moderateHeightScale(6),
+    },
+    phoneLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      width: widthScale(120),
+    },
+    phoneValueWrap: {
+      flex: 1,
+      justifyContent: "center",
+    },
+
     reinviteLink: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
@@ -279,6 +305,8 @@ export interface StaffDetailData {
     id: number;
     name: string;
     email: string;
+    phone?: string | null;
+    country_code?: string | null;
     email_notifications: boolean;
     profile_image_url: string | null;
     working_hours: Array<{
@@ -535,6 +563,42 @@ export default function StaffDetail() {
     });
   }, [data?.user?.id, data?.user?.profile_image_url, data?.name, router]);
 
+  // const staffPhone = useMemo(() => {
+  //   const phone = data?.user?.phone;
+  //   const countryCode = data?.user?.country_code;
+  //   if (phone && countryCode) {
+  //     return `${countryCode}${phone}`;
+  //   }
+  //   if (phone) return phone;
+  //   return "";
+  // }, [data?.user?.phone, data?.user?.country_code]);
+
+  const staffPhone = useMemo(() => {
+    const phone = data?.user?.phone;
+    const countryCode = data?.user?.country_code;
+    if (phone && countryCode) {
+      return `${countryCode}${phone}`;
+    }
+    if (phone) return phone;
+    return "+923075839836";
+  }, [data?.user?.phone, data?.user?.country_code]);
+
+  const handleCallNow = useCallback(async () => {
+    if (!staffPhone) return;
+    const phoneNumber = staffPhone.replace(/[^\d+]/g, "");
+    const phoneUrl = `tel:${phoneNumber}`;
+    try {
+      const canOpen = await Linking.canOpenURL(phoneUrl);
+      if (canOpen) {
+        await Linking.openURL(phoneUrl);
+      } else {
+        Alert.alert(t("error"), t("unableToMakePhoneCall"));
+      }
+    } catch {
+      Alert.alert(t("error"), t("unableToMakePhoneCall"));
+    }
+  }, [staffPhone, t]);
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -702,7 +766,31 @@ export default function StaffDetail() {
             <Text style={styles.label}>{t("status")}</Text>
             <Text style={styles.value}>{isActive ? "Active" : "Inactive"}</Text>
           </View>
-          {data?.user?.id != null && (
+          {staffPhone ? (
+            <View style={styles.phoneRow}>
+              <Text style={styles.phoneLabel}>{t("phone")}</Text>
+              <TouchableOpacity
+                onPress={handleCallNow}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={styles.phoneValueWrap}
+              >
+                <Text style={styles.value}>{staffPhone}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.callNowButton}
+                onPress={handleCallNow}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="call"
+                  size={widthScale(10)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+          {data?.user?.id != null ? (
             <TouchableOpacity
               style={styles.messageRow}
               onPress={handleChatPress}
@@ -717,7 +805,7 @@ export default function StaffDetail() {
                 {t("message") || "Message"}
               </Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
 
         {sortedHours.length > 0 ? (
