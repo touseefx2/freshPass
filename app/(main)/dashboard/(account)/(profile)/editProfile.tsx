@@ -434,6 +434,61 @@ const getCountryIsoFromDialCode = (dialCode: string): string => {
   return dialCodeMap[dialCode] || "US";
 };
 
+// Reverse map: ISO (e.g. US, PK) -> dial code (e.g. +1, +92). Used when backend sends country_code as ISO.
+const getDialCodeFromCountryIso = (iso: string): string => {
+  const isoToDial: Record<string, string> = {
+    US: "+1",
+    GB: "+44",
+    NG: "+234",
+    IN: "+91",
+    AU: "+61",
+    ZA: "+27",
+    PK: "+92",
+    FR: "+33",
+    DE: "+49",
+    CN: "+86",
+    JP: "+81",
+    RU: "+7",
+    BR: "+55",
+    MX: "+52",
+    IT: "+39",
+    ES: "+34",
+    NL: "+31",
+    BE: "+32",
+    CH: "+41",
+    SE: "+46",
+    NO: "+47",
+    DK: "+45",
+    FI: "+358",
+    IE: "+353",
+    PT: "+351",
+    GR: "+30",
+    PL: "+48",
+    CZ: "+420",
+    HU: "+36",
+    RO: "+40",
+    BG: "+359",
+    HR: "+385",
+    SI: "+386",
+    SK: "+421",
+    LT: "+370",
+    LV: "+371",
+    EE: "+372",
+  };
+  return isoToDial[iso?.toUpperCase?.() ?? ""] || "+1";
+};
+
+// Normalize backend country_code to dial code: backend may send "US" (ISO) or "+1" (dial). Always use dial code (+1, +92) in UI.
+const normalizeCountryCodeToDialCode = (raw: string | null | undefined): string => {
+  const value = (raw || "+1").trim();
+  if (!value) return "+1";
+  // Already a dial code: starts with + or is only digits
+  if (value.startsWith("+")) return value;
+  if (/^\d+$/.test(value)) return `+${value}`;
+  // Treat as ISO (e.g. US, PK) and map to dial code
+  return getDialCodeFromCountryIso(value);
+};
+
 // Date, Month, Year options
 const DAYS = Array.from({ length: 31 }, (_, i) => (i + 1).toString());
 const MONTHS = [
@@ -508,12 +563,21 @@ export default function EditProfileScreen() {
   const { showBanner } = useNotificationContext();
 
   // Initialize state with user data from Redux
-  const initialCountryCode = user.country_code || "+1";
+  // Backend may send country_code as ISO ("US", "PK") or dial ("+1", "+92"). Normalize to dial code.
+  const initialCountryCode = normalizeCountryCodeToDialCode(user.country_code);
   const initialCountryIso = getCountryIsoFromDialCode(initialCountryCode);
-  const initialPhoneNumber = user.phone || "";
-
-  console.log("initialPhoneNumber", initialPhoneNumber);
-  console.log("initialCountryCode", initialCountryCode);
+  // If backend sent phone with leading dial code (e.g. +11234567890), strip it so we show only national number.
+  const initialPhoneNumber = (() => {
+    const raw = (user.phone || "").trim();
+    if (!raw || !raw.startsWith("+")) return raw;
+    const dialDigits = initialCountryCode.replace(/\D/g, "");
+    const digitsOnly = raw.replace(/\D/g, "");
+    if (dialDigits && digitsOnly.startsWith(dialDigits)) {
+      const national = digitsOnly.slice(dialDigits.length).replace(/^0+/, "") || digitsOnly.slice(dialDigits.length);
+      return national;
+    }
+    return raw;
+  })();
 
   const originalProfileImageUri = user?.profile_image_url
     ? user.profile_image_url.startsWith("http://") ||
