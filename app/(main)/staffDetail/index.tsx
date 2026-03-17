@@ -769,14 +769,9 @@ export default function StaffDetail() {
           {staffPhone ? (
             <View style={styles.phoneRow}>
               <Text style={styles.phoneLabel}>{t("phone")}</Text>
-              <TouchableOpacity
-                onPress={handleCallNow}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={styles.phoneValueWrap}
-              >
+              <View style={styles.phoneValueWrap}>
                 <Text style={styles.value}>{staffPhone}</Text>
-              </TouchableOpacity>
+              </View>
               <TouchableOpacity
                 style={styles.callNowButton}
                 onPress={handleCallNow}
