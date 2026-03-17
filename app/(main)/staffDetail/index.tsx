@@ -136,7 +136,8 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.text,
-      width: widthScale(120),
+      width: widthScale(100),
+      // backgroundColor: "blue",
     },
     value: {
       flex: 1,
@@ -247,18 +248,17 @@ const createStyles = (theme: Theme) =>
       borderRadius: widthScale(22 / 2),
       alignItems: "center",
       justifyContent: "center",
-      // marginLeft: moderateWidthScale(8),
+      marginLeft: moderateWidthScale(12),
     },
     phoneRow: {
       flexDirection: "row",
       alignItems: "center",
-      // marginBottom: moderateHeightScale(6),
     },
     phoneLabel: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      width: widthScale(120),
+      width: widthScale(100),
     },
     phoneValueWrap: {
       flex: 1,
