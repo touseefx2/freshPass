@@ -1311,6 +1311,19 @@ export default function bookingDetailsById() {
     }
   };
 
+  const handleSupportPress = useCallback(async () => {
+    const url = process.env.EXPO_PUBLIC_PRIVACY_URL;
+    if (!url) return;
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        await Linking.openURL(url);
+      }
+    } catch (_error) {
+      // Silently ignore if URL cannot be opened
+    }
+  }, []);
+
   // Handle cancel booking modal
   const handleOpenCancelModal = () => {
     setCancelModalVisible(true);
@@ -1793,7 +1806,11 @@ export default function bookingDetailsById() {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={styles.actionButton}
+              onPress={handleSupportPress}
+            >
               <View style={styles.actionButtonCircle}>
                 <SupportIcon
                   width={moderateWidthScale(22)}
@@ -1876,7 +1893,11 @@ export default function bookingDetailsById() {
 
           {/* Policy Link (only for ongoing bookings) */}
           {!isCancelled && !isComplete && userRole === "customer" && (
-            <TouchableOpacity style={styles.policyLink}>
+            <TouchableOpacity
+              onPress={handleSupportPress}
+              activeOpacity={0.7}
+              style={styles.policyLink}
+            >
               <Text style={styles.policyText}>{t("bookingCancelPolicy")}</Text>
               <Entypo
                 name="chevron-small-right"
