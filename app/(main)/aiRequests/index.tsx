@@ -77,7 +77,7 @@ export default function AiRequests() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ returnTo?: string }>();
-
+  const theme = colors as Theme;
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
 
   const [jobs, setJobs] = useState<AiRequestJob[]>([]);
@@ -244,7 +244,6 @@ export default function AiRequests() {
 
   const keyExtractor = useCallback((item: AiRequestJob) => item.job_id, []);
 
-  const theme = colors as Theme;
   const renderFooter = useCallback(() => {
     if (!loadingMore) return null;
     return (
