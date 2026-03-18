@@ -48,6 +48,7 @@ export const businessEndpoints = {
   register: `/api/register`,
   login: `/api/login`,
   logout: `/api/logout`,
+  forgotPassword: `/api/forgot-password`,
   socialLogin: `/api/social-login`,
   categories: `/api/categories`,
   onboarding: `/api/business/onboarding`,

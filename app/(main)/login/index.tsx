@@ -370,9 +370,11 @@ export default function Login() {
   const { handleSocialLogin } = useSocialLogin();
 
   const handleForgetPassword = useCallback(() => {
-    // TODO: Navigate to forget password screen
-    Logger.log("Forget password");
-  }, []);
+    router.push({
+      pathname: "/(main)/forgotPassword",
+      params: email.trim() ? { email: email.trim() } : {},
+    });
+  }, [email, router]);
 
   const handleSignup = useCallback(() => {
     router.push(`/${MAIN_ROUTES.REGISTER}`);
