@@ -95,6 +95,8 @@ export default function DashboardLayout() {
   const isCustomer = userRole === "customer" && !isGuest;
   const dispatch = useAppDispatch();
 
+  // console.log("------>user Id", user.id);
+
   useEffect(() => {
     if (!isCustomer) return;
     fetchUserDetails();
