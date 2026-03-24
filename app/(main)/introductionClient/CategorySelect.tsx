@@ -19,6 +19,7 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
+  responsiveMetrics,
 } from "@/src/theme/dimensions";
 import FloatingInput from "@/src/components/floatingInput";
 import { ApiService } from "@/src/services/api";
@@ -38,6 +39,8 @@ import { setIsVisitFirst } from "@/src/state/slices/generalSlice";
 interface CategorySelectProps {
   onNext: () => void;
 }
+
+const { isTablet } = responsiveMetrics;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -94,6 +97,8 @@ const createStyles = (theme: Theme) =>
     },
     categoriesGrid: {
       width: "100%",
+      // maxWidth: isTablet ? moderateWidthScale(620) : undefined,
+      alignSelf: "center",
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(20),
     },
@@ -108,17 +113,22 @@ const createStyles = (theme: Theme) =>
     },
     categoryCard: {
       width: "30%",
-      height: heightScale(118),
+      height: isTablet ? heightScale(238) : heightScale(118),
       position: "relative",
     },
     categoryImage: {
       width: "100%",
-      height: heightScale(90),
+      height: isTablet ? heightScale(210) : heightScale(90),
       overflow: "hidden",
       borderWidth: 1,
       borderColor: theme.lightGreen2,
       borderRadius: moderateWidthScale(12),
       backgroundColor: theme.lightGreen2,
+    },
+    categoryImageSkeleton: {
+      width: "100%",
+      height: isTablet ? heightScale(210) : heightScale(90),
+      borderRadius: moderateWidthScale(12),
     },
     categoryCardSelected: {
       borderColor: theme.selectCard,
@@ -139,7 +149,7 @@ const createStyles = (theme: Theme) =>
     },
     selectedBadge: {
       position: "absolute",
-      bottom: moderateHeightScale(45),
+      bottom: isTablet ? moderateHeightScale(62) : moderateHeightScale(45),
       left: moderateWidthScale(8),
       width: moderateWidthScale(24),
       height: moderateWidthScale(24),
@@ -367,6 +377,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
   };
 
   const hasNoData = !categoriesLoading && !apiError && categories.length === 0;
+  const columnGap = isTablet ? "2.75%" : "5%";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -439,7 +450,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
                   keyExtractor={(item) => item.id.toString()}
                   numColumns={3}
                   columnWrapperStyle={{
-                    gap: "5%",
+                    gap: columnGap,
                     marginBottom: moderateHeightScale(12),
                   }}
                   contentContainerStyle={styles.categoriesGrid}

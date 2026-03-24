@@ -361,27 +361,14 @@ export const Skeleton = ({
       <View style={styles.categoriesContainer}>
         <View style={[styles.lineSeparator, { top: 0 }]} />
         <View style={styles.categoriesGrid}>
-          {[...Array(6)].map((_, index) => (
+          {[...Array(9)].map((_, index) => (
             <View key={index} style={styles.categoryCard}>
-              <View style={skeletonStyles.categoryImageSkeleton} />
+              <View style={styles.categoryImageSkeleton} />
               <View style={skeletonStyles.categoryLabelSkeleton} />
             </View>
           ))}
         </View>
         <View style={[styles.lineSeparator, { bottom: 0 }]} />
-      </View>
-
-      <View style={styles.otherCategoriesContainer}>
-        <View style={skeletonStyles.otherCategoriesTitleSkeleton} />
-        {[...Array(8)].map((_, index) => (
-          <View key={index} style={skeletonStyles.otherCategoryItem}>
-            <View style={styles.otherCategoryRow}>
-              <View style={skeletonStyles.otherCategoryLabelSkeleton} />
-              <View style={skeletonStyles.otherCategoryIconSkeleton} />
-            </View>
-            {index < 7 && <View style={styles.catSeparator} />}
-          </View>
-        ))}
       </View>
     </>
   ) : null;
@@ -722,7 +709,7 @@ export const Skeleton = ({
           <View style={styles.categoriesGridSkeleton}>
             {[...Array(9)].map((_, index) => (
               <View key={index} style={styles.categoryCard}>
-                <View style={skeletonStyles.categoryImageSkeleton} />
+                <View style={styles.categoryImageSkeleton} />
                 <View style={skeletonStyles.categoryLabelSkeleton} />
               </View>
             ))}

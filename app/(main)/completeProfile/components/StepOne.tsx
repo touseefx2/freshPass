@@ -26,6 +26,7 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
+  responsiveMetrics,
 } from "@/src/theme/dimensions";
 import {
   setBusinessCategory,
@@ -54,6 +55,8 @@ type StepOneProps = {
   /** When false, dropdown is closed by parent (e.g. on parent scroll) */
   parentDropdownOpen?: boolean;
 };
+
+const { isTablet } = responsiveMetrics;
 
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -150,14 +153,22 @@ export const createStyles = (theme: Theme) =>
     },
     categoryCard: {
       width: "30%",
-      height: heightScale(118),
+      height: isTablet ? heightScale(238) : heightScale(118),
+      position: "relative",
     },
+
     categoryImage: {
       width: "100%",
-      height: heightScale(90),
+      height: isTablet ? heightScale(210) : heightScale(90),
       overflow: "hidden",
       borderWidth: 1,
       borderColor: theme.lightGreen2,
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen2,
+    },
+    categoryImageSkeleton: {
+      width: "100%",
+      height: isTablet ? heightScale(210) : heightScale(90),
       borderRadius: moderateWidthScale(12),
     },
     categoryCardSelected: {
@@ -199,7 +210,11 @@ export const createStyles = (theme: Theme) =>
     },
   });
 
-export default function StepOne({ onContinueFromSearch, onSearchDropdownOpenChange, parentDropdownOpen = true }: StepOneProps = {}) {
+export default function StepOne({
+  onContinueFromSearch,
+  onSearchDropdownOpenChange,
+  parentDropdownOpen = true,
+}: StepOneProps = {}) {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -218,7 +233,10 @@ export default function StepOne({ onContinueFromSearch, onSearchDropdownOpenChan
   const [searchResultsLoading, setSearchResultsLoading] = useState(false);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchInputRef = useRef<TextInput>(null);
-  const [searchContainerLayout, setSearchContainerLayout] = useState({ y: 0, height: 0 });
+  const [searchContainerLayout, setSearchContainerLayout] = useState({
+    y: 0,
+    height: 0,
+  });
 
   useEffect(() => {
     fetchCategories();
@@ -369,7 +387,10 @@ export default function StepOne({ onContinueFromSearch, onSearchDropdownOpenChan
         style={[
           styles.searchDropdown,
           {
-            top: searchContainerLayout.y + searchContainerLayout.height + moderateHeightScale(4),
+            top:
+              searchContainerLayout.y +
+              searchContainerLayout.height +
+              moderateHeightScale(4),
           },
         ]}
       >
@@ -399,10 +420,7 @@ export default function StepOne({ onContinueFromSearch, onSearchDropdownOpenChan
                 ]}
                 onPress={() => handleSelectSearchResult(item)}
               >
-                <Text
-                  numberOfLines={1}
-                  style={styles.searchDropdownItemText}
-                >
+                <Text numberOfLines={1} style={styles.searchDropdownItemText}>
                   {item.name}
                 </Text>
               </Pressable>
