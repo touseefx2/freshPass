@@ -25,7 +25,7 @@ export const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
-      width: widthScale(310),
+      width: "90%",
       alignSelf: "center",
     },
     verifiedSalonImage: {
