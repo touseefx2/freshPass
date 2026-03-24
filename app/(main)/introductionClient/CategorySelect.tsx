@@ -20,7 +20,6 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
-import { IMAGES } from "@/src/constant/images";
 import FloatingInput from "@/src/components/floatingInput";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
