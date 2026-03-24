@@ -90,6 +90,8 @@ export const createStyles = (theme: Theme) =>
       // gap: moderateHeightScale(18),
       position: "absolute",
       bottom: 0,
+      width: "100%",
+      alignSelf: "center",
     },
     legalText: {
       fontSize: fontSize.size12,

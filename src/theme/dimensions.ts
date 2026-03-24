@@ -1,123 +1,104 @@
 import { Dimensions, PixelRatio, Platform } from "react-native";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+
 const BASE_WIDTH = 393;
 const BASE_HEIGHT = 852;
 const TABLET_MIN_DIMENSION = 768;
-const isTabletDevice = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT) >= TABLET_MIN_DIMENSION;
+
+const SHORT_SIDE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT);
+const LONG_SIDE = Math.max(SCREEN_WIDTH, SCREEN_HEIGHT);
+const IS_TABLET = SHORT_SIDE >= TABLET_MIN_DIMENSION;
+
+type ScaleKey =
+  | "width"
+  | "height"
+  | "moderateWidth"
+  | "moderateHeight"
+  | "font";
+type ScaleProfile = "phone" | "tablet";
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(Math.max(value, min), max);
 
-/**
- * ============================================================================
- * RESPONSIVE DIMENSIONS - USAGE GUIDE
- * ============================================================================
- * 
- * Ye functions use karo taake aapka UI har device par responsive ho:
- * - Phone (iOS & Android)
- * - Tablet (iOS & Android)  
- * - iPad
- * - Web (responsive breakpoints ke saath)
- * 
- * ----------------------------------------------------------------------------
- * KAB KIS FUNCTION KO USE KARNA HAI:
- * ----------------------------------------------------------------------------
- * 
- * 1. widthScale(size) - Use karo jab:
- *    ✅ width property ke liye
- *    ✅ minWidth, maxWidth ke liye
- *    ✅ Horizontal spacing jo proportionally scale hona chahiye
- * 
- *    Example:
- *    width: widthScale(100),
- *    minWidth: widthScale(200),
- * 
- * 2. heightScale(size) - Use karo jab:
- *    ✅ height property ke liye
- *    ✅ minHeight, maxHeight ke liye
- *    ✅ Vertical spacing jo proportionally scale hona chahiye
- * 
- *    Example:
- *    height: heightScale(100),
- *    minHeight: heightScale(200),
- * 
- * 3. moderateWidthScale(size, factor?) - Use karo jab:
- *    ✅ padding, paddingLeft, paddingRight, paddingHorizontal ke liye
- *    ✅ margin, marginLeft, marginRight, marginHorizontal ke liye
- *    ✅ borderRadius ke liye (horizontal values)
- *    ✅ gap (horizontal) ke liye
- *    ✅ left, right positioning ke liye
- * 
- *    Factor parameter (optional):
- *    - Default: 0.5 (balanced scaling)
- *    - 0.3: Less aggressive scaling (smaller devices par zyada scale nahi hoga)
- *    - 0.7: More aggressive scaling (larger devices par zyada scale hoga)
- * 
- *    Example:
- *    padding: moderateWidthScale(16),
- *    borderRadius: moderateWidthScale(8),
- *    paddingHorizontal: moderateWidthScale(16, 0.3), // Less scaling
- * 
- * 4. moderateHeightScale(size, factor?) - Use karo jab:
- *    ✅ paddingTop, paddingBottom, paddingVertical ke liye
- *    ✅ marginTop, marginBottom, marginVertical ke liye
- *    ✅ top, bottom positioning ke liye
- *    ✅ gap (vertical) ke liye
- * 
- *    Factor parameter (optional):
- *    - Default: 0.5 (balanced scaling)
- *    - 0.3: Less aggressive scaling
- *    - 0.7: More aggressive scaling
- * 
- *    Example:
- *    paddingVertical: moderateHeightScale(12),
- *    marginTop: moderateHeightScale(20),
- *    marginBottom: moderateHeightScale(16, 0.3), // Less scaling
- * 
- * ----------------------------------------------------------------------------
- * COMPLETE EXAMPLE:
- * ----------------------------------------------------------------------------
- * 
- * import { widthScale, heightScale, moderateWidthScale, moderateHeightScale } from "@/src/theme/dimensions";
- * 
- * const createStyles = (theme: Theme) =>
- *   StyleSheet.create({
- *     container: {
- *       width: widthScale(300),              // ✅ Width ke liye
- *       height: heightScale(200),            // ✅ Height ke liye
- *       padding: moderateWidthScale(16),     // ✅ Padding ke liye
- *       marginTop: moderateHeightScale(20),  // ✅ Vertical margin ke liye
- *       borderRadius: moderateWidthScale(8), // ✅ Border radius ke liye
- *       gap: moderateWidthScale(12),         // ✅ Gap ke liye
- *     },
- *     button: {
- *       paddingHorizontal: moderateWidthScale(24),
- *       paddingVertical: moderateHeightScale(12),
- *       borderRadius: moderateWidthScale(8),
- *       minWidth: widthScale(100),
- *     },
- *   });
- * 
- * ----------------------------------------------------------------------------
- * SPECIAL CASES (Direct use kar sakte ho):
- * ----------------------------------------------------------------------------
- * ✅ flex: 1, flex: 0 - Direct use karo (flexbox values hain)
- * ✅ Percentage: width: "100%" - Direct use karo
- * ✅ aspectRatio: aspectRatio: 16/9 - Direct use karo
- * ✅ borderWidth: 1 - Small fixed values OK (but larger ke liye moderateWidthScale use karo)
- * 
- * ----------------------------------------------------------------------------
- * ❌ NEVER DO THIS:
- * ----------------------------------------------------------------------------
- * ❌ width: 100              // WRONG - use widthScale(100)
- * ❌ height: 200             // WRONG - use heightScale(200)
- * ❌ padding: 16             // WRONG - use moderateWidthScale(16)
- * ❌ marginTop: 20           // WRONG - use moderateHeightScale(20)
- * ❌ borderRadius: 8         // WRONG - use moderateWidthScale(8)
- * 
- * ============================================================================
- */
+const getProfile = (): ScaleProfile => (IS_TABLET ? "tablet" : "phone");
+
+const INTENSITY: Record<ScaleProfile, Record<ScaleKey, number>> = {
+  phone: {
+    width: 0.4,
+    height: 0.35,
+    moderateWidth: 0.3,
+    moderateHeight: 0.28,
+    font: 0.24,
+  },
+  tablet: {
+    width: 0.2,
+    height: 0.18,
+    moderateWidth: 0.16,
+    moderateHeight: 0.14,
+    font: 0.12,
+  },
+};
+
+const LIMITS: Record<ScaleProfile, Record<ScaleKey, [number, number]>> = {
+  phone: {
+    width: [0.94, 1.08],
+    height: [0.94, 1.06],
+    moderateWidth: [0.96, 1.05],
+    moderateHeight: [0.96, 1.04],
+    font: [0.96, 1.05],
+  },
+  tablet: {
+    width: [0.98, 1.14],
+    height: [0.98, 1.1],
+    moderateWidth: [0.98, 1.08],
+    moderateHeight: [0.98, 1.07],
+    font: [0.98, 1.07],
+  },
+};
+
+const WEB_MULTIPLIERS: Record<ScaleKey, [number, number, number]> = {
+  width: [1, 1.08, 1.12],
+  height: [1, 1.06, 1.1],
+  moderateWidth: [1, 1.04, 1.06],
+  moderateHeight: [1, 1.03, 1.05],
+  font: [1, 1.05, 1.08],
+};
+
+const getWebBucket = (): 0 | 1 | 2 => {
+  if (SCREEN_WIDTH <= 640) return 0;
+  if (SCREEN_WIDTH <= 1024) return 1;
+  return 2;
+};
+
+const getBaseRatio = (key: ScaleKey): number => {
+  switch (key) {
+    case "height":
+    case "moderateHeight":
+      return SCREEN_HEIGHT / BASE_HEIGHT;
+    case "font":
+      return SHORT_SIDE / BASE_WIDTH;
+    case "width":
+    case "moderateWidth":
+    default:
+      return SCREEN_WIDTH / BASE_WIDTH;
+  }
+};
+
+const getMultiplier = (key: ScaleKey): number => {
+  if (Platform.OS === "web") {
+    const bucket = getWebBucket();
+    return WEB_MULTIPLIERS[key][bucket];
+  }
+
+  const profile = getProfile();
+  const rawRatio = getBaseRatio(key);
+  const intensity = INTENSITY[profile][key];
+  const [minLimit, maxLimit] = LIMITS[profile][key];
+
+  const dampedRatio = 1 + (rawRatio - 1) * intensity;
+  return clamp(dampedRatio, minLimit, maxLimit);
+};
 
 /**
  * Responsive width calculator
@@ -127,29 +108,7 @@ const clamp = (value: number, min: number, max: number): number =>
  * @returns Responsive width value
  */
 export const widthScale = (size: number): number => {
-  // For web, use different scaling based on window width
-  if (Platform.OS === "web") {
-    // Small screens (mobile-like on web)
-    if (SCREEN_WIDTH <= 640) {
-      return Math.round((SCREEN_WIDTH / BASE_WIDTH) * size);
-    }
-    // Medium screens (tablets)
-    else if (SCREEN_WIDTH <= 1024) {
-      return Math.round(size * 1.1);
-    }
-    // Large screens (desktop)
-    else {
-      return Math.round(size * 1.2);
-    }
-  }
-
-  // For native platforms, clamp scaling so tablet widths do not over-inflate UI.
-  const widthRatio = SCREEN_WIDTH / BASE_WIDTH;
-  const safeWidthRatio = isTabletDevice
-    ? clamp(widthRatio, 0.95, 1.12)
-    : clamp(widthRatio, 0.9, 1.08);
-
-  return Math.round(size * safeWidthRatio);
+  return Math.round(size * getMultiplier("width"));
 };
 
 /**
@@ -160,29 +119,7 @@ export const widthScale = (size: number): number => {
  * @returns Responsive height value
  */
 export const heightScale = (size: number): number => {
-  // For web, use different scaling based on window height
-  if (Platform.OS === "web") {
-    // Small screens (mobile-like on web)
-    if (SCREEN_HEIGHT <= 800) {
-      return Math.round((SCREEN_HEIGHT / BASE_HEIGHT) * size);
-    }
-    // Medium screens (tablets)
-    else if (SCREEN_HEIGHT <= 1200) {
-      return Math.round(size * 1.1);
-    }
-    // Large screens (desktop)
-    else {
-      return Math.round(size * 1.2);
-    }
-  }
-
-  // For native platforms, clamp scaling so tablet heights stay predictable.
-  const heightRatio = SCREEN_HEIGHT / BASE_HEIGHT;
-  const safeHeightRatio = isTabletDevice
-    ? clamp(heightRatio, 0.95, 1.1)
-    : clamp(heightRatio, 0.9, 1.06);
-
-  return Math.round(size * safeHeightRatio);
+  return Math.round(size * getMultiplier("height"));
 };
 
 /**
@@ -197,23 +134,10 @@ export const moderateWidthScale = (
   size: number,
   factor: number = 0.5
 ): number => {
-  if (Platform.OS === "web") {
-    if (SCREEN_WIDTH <= 640) {
-      return Math.round((SCREEN_WIDTH / BASE_WIDTH) * size);
-    } else if (SCREEN_WIDTH <= 1024) {
-      return Math.round(size * 1.05);
-    } else {
-      return Math.round(size * 1.1);
-    }
-  }
-
-  const widthRatio = SCREEN_WIDTH / BASE_WIDTH;
-  const safeWidthRatio = isTabletDevice
-    ? clamp(widthRatio, 0.95, 1.1)
-    : clamp(widthRatio, 0.9, 1.06);
-  const adjustedScale = 1 + (safeWidthRatio - 1) * factor;
-
-  return Math.round(size * adjustedScale);
+  const safeFactor = clamp(factor, 0, 1);
+  const multiplier = getMultiplier("moderateWidth");
+  const adjusted = 1 + (multiplier - 1) * safeFactor;
+  return Math.round(size * adjusted);
 };
 
 /**
@@ -228,23 +152,10 @@ export const moderateHeightScale = (
   size: number,
   factor: number = 0.5
 ): number => {
-  if (Platform.OS === "web") {
-    if (SCREEN_HEIGHT <= 800) {
-      return Math.round((SCREEN_HEIGHT / BASE_HEIGHT) * size);
-    } else if (SCREEN_HEIGHT <= 1200) {
-      return Math.round(size * 1.05);
-    } else {
-      return Math.round(size * 1.1);
-    }
-  }
-
-  const heightRatio = SCREEN_HEIGHT / BASE_HEIGHT;
-  const safeHeightRatio = isTabletDevice
-    ? clamp(heightRatio, 0.95, 1.08)
-    : clamp(heightRatio, 0.9, 1.05);
-  const adjustedScale = 1 + (safeHeightRatio - 1) * factor;
-
-  return Math.round(size * adjustedScale);
+  const safeFactor = clamp(factor, 0, 1);
+  const multiplier = getMultiplier("moderateHeight");
+  const adjusted = 1 + (multiplier - 1) * safeFactor;
+  return Math.round(size * adjusted);
 };
 
 /**
@@ -255,28 +166,15 @@ export const moderateHeightScale = (
  * @returns Responsive font size value
  */
 export const fontScale = (size: number): number => {
-  // For web, use different scaling based on window width
-  if (Platform.OS === "web") {
-    // Small screens (mobile-like on web)
-    if (SCREEN_WIDTH <= 640) {
-      return Math.round((SCREEN_WIDTH / BASE_WIDTH) * size);
-    }
-    // Medium screens (tablets)
-    else if (SCREEN_WIDTH <= 1024) {
-      return Math.round(size * 1.1); // Slightly larger
-    }
-    // Large screens (desktop)
-    else {
-      return Math.round(size * 1.15); // Even larger for desktop
-    }
-  }
-
-  // For native platforms, use a capped ratio so iPad typography remains balanced.
-  const widthRatio = SCREEN_WIDTH / BASE_WIDTH;
-  const safeFontRatio = isTabletDevice
-    ? clamp(widthRatio, 0.95, 1.08)
-    : clamp(widthRatio, 0.92, 1.05);
-  const scaledSize = size * safeFontRatio;
+  const scaledSize = size * getMultiplier("font");
   return Math.round(PixelRatio.roundToNearestPixel(scaledSize));
 };
+
+export const responsiveMetrics = {
+  width: SCREEN_WIDTH,
+  height: SCREEN_HEIGHT,
+  shortSide: SHORT_SIDE,
+  longSide: LONG_SIDE,
+  isTablet: IS_TABLET,
+} as const;
 
