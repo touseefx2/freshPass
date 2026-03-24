@@ -1,14 +1,13 @@
 import { Dimensions, PixelRatio, Platform } from "react-native";
-import {
-  scale,
-  verticalScale,
-  moderateScale,
-  moderateVerticalScale,
-} from "react-native-size-matters";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const BASE_WIDTH = 393;
 const BASE_HEIGHT = 852;
+const TABLET_MIN_DIMENSION = 768;
+const isTabletDevice = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT) >= TABLET_MIN_DIMENSION;
+
+const clamp = (value: number, min: number, max: number): number =>
+  Math.min(Math.max(value, min), max);
 
 /**
  * ============================================================================
@@ -144,8 +143,13 @@ export const widthScale = (size: number): number => {
     }
   }
 
-  // For native platforms, use react-native-size-matters for better scaling
-  return Math.round(scale(size));
+  // For native platforms, clamp scaling so tablet widths do not over-inflate UI.
+  const widthRatio = SCREEN_WIDTH / BASE_WIDTH;
+  const safeWidthRatio = isTabletDevice
+    ? clamp(widthRatio, 0.95, 1.12)
+    : clamp(widthRatio, 0.9, 1.08);
+
+  return Math.round(size * safeWidthRatio);
 };
 
 /**
@@ -172,8 +176,13 @@ export const heightScale = (size: number): number => {
     }
   }
 
-  // For native platforms, use react-native-size-matters for better scaling
-  return Math.round(verticalScale(size));
+  // For native platforms, clamp scaling so tablet heights stay predictable.
+  const heightRatio = SCREEN_HEIGHT / BASE_HEIGHT;
+  const safeHeightRatio = isTabletDevice
+    ? clamp(heightRatio, 0.95, 1.1)
+    : clamp(heightRatio, 0.9, 1.06);
+
+  return Math.round(size * safeHeightRatio);
 };
 
 /**
@@ -198,7 +207,13 @@ export const moderateWidthScale = (
     }
   }
 
-  return Math.round(moderateScale(size, factor));
+  const widthRatio = SCREEN_WIDTH / BASE_WIDTH;
+  const safeWidthRatio = isTabletDevice
+    ? clamp(widthRatio, 0.95, 1.1)
+    : clamp(widthRatio, 0.9, 1.06);
+  const adjustedScale = 1 + (safeWidthRatio - 1) * factor;
+
+  return Math.round(size * adjustedScale);
 };
 
 /**
@@ -223,7 +238,13 @@ export const moderateHeightScale = (
     }
   }
 
-  return Math.round(moderateVerticalScale(size, factor));
+  const heightRatio = SCREEN_HEIGHT / BASE_HEIGHT;
+  const safeHeightRatio = isTabletDevice
+    ? clamp(heightRatio, 0.95, 1.08)
+    : clamp(heightRatio, 0.9, 1.05);
+  const adjustedScale = 1 + (safeHeightRatio - 1) * factor;
+
+  return Math.round(size * adjustedScale);
 };
 
 /**
@@ -250,8 +271,12 @@ export const fontScale = (size: number): number => {
     }
   }
 
-  // For native platforms, use react-native-size-matters for better scaling
-  const scaledSize = scale(size);
+  // For native platforms, use a capped ratio so iPad typography remains balanced.
+  const widthRatio = SCREEN_WIDTH / BASE_WIDTH;
+  const safeFontRatio = isTabletDevice
+    ? clamp(widthRatio, 0.95, 1.08)
+    : clamp(widthRatio, 0.92, 1.05);
+  const scaledSize = size * safeFontRatio;
   return Math.round(PixelRatio.roundToNearestPixel(scaledSize));
 };
 
