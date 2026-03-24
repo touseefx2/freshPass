@@ -6,7 +6,7 @@ import { Theme } from "@/src/theme/colors";
 import LottieView from "lottie-react-native";
 import { IMAGES } from "@/src/constant/images";
 import { moderateWidthScale } from "@/src/theme/dimensions";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 export default function Index() {
   const { colors } = useTheme();
