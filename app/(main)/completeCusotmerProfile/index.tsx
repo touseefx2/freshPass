@@ -96,7 +96,7 @@ export default function completeCusotmerProfile() {
 
     // country_code - send empty string if not provided (use countryIso or countryCode)
     // API accepts ISO 3166-1 alpha-2/3 country code or phone country code
-    const countryCodeValue = countryIso || countryCode || "";
+    const countryCodeValue = countryCode || countryIso || "";
     formData.append("country_code", countryCodeValue);
 
     // date_of_birth - format as YYYY-MM-DD, send empty string if not provided
@@ -161,7 +161,7 @@ export default function completeCusotmerProfile() {
               phone: phoneNumber || null,
               country_code: countryCode || countryIso || null,
               dateOfBirth: dateOfBirth || null,
-            })
+            }),
           );
           // Move to next step on success
           dispatch(goToNextStep());
@@ -171,7 +171,7 @@ export default function completeCusotmerProfile() {
             setUserDetails({
               countryZipCode: countryZipCode || "",
               countryName: countryName || "",
-            })
+            }),
           );
           // Open terms modal after Step 2 API call
           setShowTermsModal(true);
@@ -181,7 +181,7 @@ export default function completeCusotmerProfile() {
           "Error",
           response.message || "Failed to update profile",
           "error",
-          3000
+          3000,
         );
       }
     } catch (error: any) {
@@ -190,13 +190,12 @@ export default function completeCusotmerProfile() {
         "Error",
         error.message || "Failed to update profile. Please try again.",
         "error",
-        3000
+        3000,
       );
     } finally {
       setIsSubmitting(false);
     }
   };
-
 
   useFocusEffect(
     useCallback(() => {
@@ -210,11 +209,11 @@ export default function completeCusotmerProfile() {
 
       const subscription = BackHandler.addEventListener(
         "hardwareBackPress",
-        onHardwareBackPress
+        onHardwareBackPress,
       );
 
       return () => subscription.remove();
-    }, [currentStep, dispatch])
+    }, [currentStep, dispatch]),
   );
 
   const isContinueDisabled = useMemo(() => {
@@ -229,9 +228,10 @@ export default function completeCusotmerProfile() {
 
       // Date of birth validation: optional, but if any field is selected, all must be selected
       const hasDate = dateOfBirth?.date && dateOfBirth.date.trim().length > 0;
-      const hasMonth = dateOfBirth?.month && dateOfBirth.month.trim().length > 0;
+      const hasMonth =
+        dateOfBirth?.month && dateOfBirth.month.trim().length > 0;
       const hasYear = dateOfBirth?.year && dateOfBirth.year.trim().length > 0;
-      
+
       // If at least one field is selected, all three must be selected
       const dateOfBirthValid =
         (!hasDate && !hasMonth && !hasYear) || // All empty (optional)
@@ -251,13 +251,7 @@ export default function completeCusotmerProfile() {
     }
 
     return false;
-  }, [
-    fullName,
-    phoneNumber,
-    phoneIsValid,
-    dateOfBirth,
-    countryName,
-  ]);
+  }, [fullName, phoneNumber, phoneIsValid, dateOfBirth, countryName]);
 
   const renderStep = useMemo(() => {
     switch (currentStep) {
@@ -272,7 +266,7 @@ export default function completeCusotmerProfile() {
 
   const continueLabel = useMemo(() => {
     return "Continue";
-  }, [ currentStep, totalSteps]);
+  }, [currentStep, totalSteps]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -309,7 +303,9 @@ export default function completeCusotmerProfile() {
           // Empty function - modal is non-closable
         }}
         onContinue={() => {
-          router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/${MAIN_ROUTES.HOME}` as any);
+          router.replace(
+            `/(main)/${MAIN_ROUTES.DASHBOARD}/${MAIN_ROUTES.HOME}` as any,
+          );
         }}
         nonClosable={true}
       />

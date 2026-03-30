@@ -453,6 +453,8 @@ export default function StaffDetail() {
         name: data.name || "",
         email: data.email || "",
         description: data.description || "",
+        country_code: data.user?.country_code || "",
+        phone: data.user?.phone || "",
         profile_image_url: editProfileImageUrl,
         active: data.active ? "1" : "0",
         working_hours: JSON.stringify(data.user?.working_hours ?? []),

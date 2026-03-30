@@ -635,6 +635,8 @@ type AddStaffParams = {
   name?: string;
   email?: string;
   description?: string;
+  country_code?: string;
+  phone?: string;
   profile_image_url?: string;
   active?: string;
   working_hours?: string;
@@ -647,7 +649,7 @@ export default function AddStaffScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<AddStaffParams>();
+  const params = useLocalSearchParams() as AddStaffParams;
   const { showBanner } = useNotificationContext();
   const businessName =
     useAppSelector((state) => state.user.business_name) || "";
@@ -668,6 +670,20 @@ export default function AddStaffScreen() {
     invitationToken !== "" &&
     invitationToken !== "null"
   );
+  const rawCountryCode = params.country_code;
+  const editCountryCode =
+    rawCountryCode == null
+      ? undefined
+      : Array.isArray(rawCountryCode)
+        ? rawCountryCode[0]
+        : rawCountryCode;
+  const rawPhone = params.phone;
+  const editPhone =
+    rawPhone == null
+      ? undefined
+      : Array.isArray(rawPhone)
+        ? rawPhone[0]
+        : rawPhone;
 
   const handleActiveToggle = useCallback(
     (value: boolean) => {
@@ -759,6 +775,41 @@ export default function AddStaffScreen() {
     if (params.profile_image_url != null && params.profile_image_url !== "")
       setProfileImageUri(params.profile_image_url);
     if (params.active != null) setIsActive(params.active === "1");
+    const normalizedCountryCode = editCountryCode
+      ? editCountryCode.startsWith("+")
+        ? editCountryCode
+        : `+${editCountryCode.replace(/\D/g, "")}`
+      : "";
+    if (normalizedCountryCode) {
+      const detectedCountryIso = getCountryIsoFromDialCode(normalizedCountryCode);
+      setCountryCode(normalizedCountryCode);
+      setCountryIso(detectedCountryIso);
+      setPhonePlaceholder(
+        getPlaceholderForCountry(detectedCountryIso, normalizedCountryCode),
+      );
+    }
+    if (editPhone != null) {
+      const phoneDigits = editPhone.replace(/\D/g, "");
+      const countryCodeForValidation = normalizedCountryCode || countryCode;
+      const dialDigits = countryCodeForValidation.replace(/\D/g, "");
+      let isValid = false;
+      if (phoneDigits.length > 0 && dialDigits.length > 0) {
+        try {
+          const parsed = parsePhoneNumberFromString(
+            `+${dialDigits}${phoneDigits}`,
+            (getCountryIsoFromDialCode(
+              countryCodeForValidation,
+            ) as PhoneCountryCode) || "US",
+          );
+          isValid = parsed?.isValid() ?? false;
+        } catch {
+          isValid = false;
+        }
+      }
+      previousDigitCountRef.current = phoneDigits.length;
+      setPhoneNumber(phoneDigits);
+      setPhoneIsValid(isValid);
+    }
     if (params.working_hours != null && params.working_hours !== "") {
       try {
         const hoursArray = JSON.parse(params.working_hours) as Array<{
@@ -777,7 +828,7 @@ export default function AddStaffScreen() {
         // ignore invalid JSON
       }
     }
-  }, [params.id]);
+  }, [params.id, editCountryCode, editPhone]);
 
   useEffect(() => {
     setPhonePlaceholder(getPlaceholderForCountry(countryIso, countryCode));
@@ -1186,6 +1237,8 @@ export default function AddStaffScreen() {
         }
         formData.append("name", name.trim());
         formData.append("description", description.trim());
+        formData.append("country_code", countryCode || "");
+        formData.append("phone", phoneNumber.replace(/\D/g, ""));
 
         formData.append("active", isActive ? "true" : "false");
         formData.append(
