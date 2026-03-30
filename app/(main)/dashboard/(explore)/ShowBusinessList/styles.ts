@@ -21,7 +21,7 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.darkGreen,
       borderRadius: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(10),
-      height: heightScale(124),
+      height: heightScale(132),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
