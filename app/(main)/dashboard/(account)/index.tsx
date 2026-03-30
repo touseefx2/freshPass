@@ -29,7 +29,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 
-const CARD_GAP = 10;
+const CARD_GAP = 0;
 const CARD_WIDTH_PERCENT = "48%";
 
 const createStyles = (theme: Theme) =>
@@ -55,11 +55,11 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(18),
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(CARD_GAP),
+      justifyContent: "space-between",
     },
     gridItem: {
       width: CARD_WIDTH_PERCENT as any,
-      maxWidth: widthScale(168),
+      marginTop: moderateHeightScale(12),
     },
     shadow: {
       shadowColor: theme.shadow,
