@@ -80,6 +80,7 @@ export interface CompleteProfileState {
     price: number;
     currency: string;
     serviceIds: string[];
+    serviceCounts?: Record<string, number>;
   }>;
   tiktokUrl: string;
   instagramUrl: string;
@@ -653,6 +654,7 @@ const completeProfileSlice = createSlice({
         price: number;
         currency: string;
         serviceIds: string[];
+        serviceCounts?: Record<string, number>;
       }>,
     ) => {
       // Check if subscription with same id already exists
@@ -676,6 +678,7 @@ const completeProfileSlice = createSlice({
         price: number;
         currency: string;
         serviceIds: string[];
+        serviceCounts?: Record<string, number>;
       }>,
     ) => {
       const index = state.subscriptions.findIndex(
@@ -775,6 +778,7 @@ const completeProfileSlice = createSlice({
           price: number;
           currency: string;
           serviceIds: string[];
+          serviceCounts?: Record<string, number>;
         }>
       >,
     ) => {

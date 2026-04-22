@@ -244,7 +244,10 @@ export default function CompleteProfile() {
         description: subscription.description ?? subscription.packageName,
         price: subscription.price,
         visits: subscription.servicesPerMonth,
-        plan_services: subscription.serviceIds.map((id) => parseInt(id)), // Convert string IDs to numbers (template_id)
+        plan_services: subscription.serviceIds.map((id) => ({
+          service_id: parseInt(id, 10),
+          count: subscription.serviceCounts?.[id] ?? 1,
+        })),
       }));
 
       body = { ...body, subscription_plans: subscriptionPlansArray };

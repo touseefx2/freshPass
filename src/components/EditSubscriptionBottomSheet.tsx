@@ -16,8 +16,12 @@ import {
   moderateWidthScale,
   widthScale,
   iconScale,
+  fontScale,
 } from "@/src/theme/dimensions";
-import { updateSubscription, addSubscription } from "@/src/state/slices/completeProfileSlice";
+import {
+  updateSubscription,
+  addSubscription,
+} from "@/src/state/slices/completeProfileSlice";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import ServicePickerBottomSheet from "@/src/components/ServicePickerBottomSheet";
 
@@ -33,8 +37,23 @@ interface EditSubscriptionBottomSheetProps {
     price: number;
     currency: string;
     serviceIds: string[];
+    serviceCounts?: Record<string, number>;
   }) => void;
 }
+
+const buildDefaultServiceCounts = (
+  serviceIds: string[],
+  existingCounts?: Record<string, number>,
+) => {
+  return serviceIds.reduce<Record<string, number>>((acc, serviceId) => {
+    const existingValue = existingCounts?.[serviceId];
+    acc[serviceId] =
+      typeof existingValue === "number" && existingValue >= 1
+        ? existingValue
+        : 1;
+    return acc;
+  }, {});
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -192,28 +211,66 @@ const createStyles = (theme: Theme) =>
     selectedServicesContainer: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(10),
+      gap: moderateWidthScale(15),
     },
     serviceTag: {
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       backgroundColor: theme.orangeBrown,
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(6),
+      // paddingHorizontal: moderateWidthScale(8),
+      // paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(10),
       borderWidth: 1,
       borderColor: theme.lightGreen2,
+      minWidth: widthScale(150),
+      gap: moderateWidthScale(8),
+    },
+    serviceTagLeft: {
+      flex: 1,
+      paddingLeft: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(12),
+      // paddingVertical: moderateHeightScale(6),
     },
     serviceTagText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
+      flexShrink: 1,
     },
-    removeServiceButton: {
-      width: moderateWidthScale(16),
-      height: moderateWidthScale(16),
+    serviceCountArrowColumn: {
+      width: moderateWidthScale(30),
+      height: "100%",
+      backgroundColor: theme.grey30,
+      borderLeftWidth: 1,
+      borderLeftColor: theme.lightGreen2,
+    },
+    serviceCountArrowButton: {
+      flex: 1,
       alignItems: "center",
       justifyContent: "center",
+      width: "100%",
+    },
+    serviceCountArrowSeparator: {
+      width: "100%",
+      height: 1,
+      backgroundColor: theme.lightGreen2,
+    },
+    disabledArrowButton: {
+      backgroundColor: theme.grey15,
+    },
+    removeServiceButton: {
+      width: fontScale(18),
+      height: fontScale(18),
+      alignItems: "center",
+      justifyContent: "center",
+      position: "absolute",
+      left: -12,
+      top: -9,
+      backgroundColor: theme.darkGreenLight,
+      borderRadius: fontScale(8),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
     },
   });
 
@@ -228,7 +285,7 @@ export default function EditSubscriptionBottomSheet({
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { subscriptions, businessServices } = useAppSelector(
-    (state) => state.completeProfile
+    (state) => state.completeProfile,
   );
 
   // Convert business services to service format
@@ -249,16 +306,24 @@ export default function EditSubscriptionBottomSheet({
     : null;
 
   const [packageName, setPackageName] = useState(
-    subscription?.packageName || ""
+    subscription?.packageName || "",
   );
   const [description, setDescription] = useState(
-    subscription?.description ?? ""
+    subscription?.description ?? "",
   );
   const [servicesPerMonthStr, setServicesPerMonthStr] = useState("");
   const [price, setPrice] = useState("");
   const [currency] = useState(subscription?.currency || "USD");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
-    subscription?.serviceIds || []
+    subscription?.serviceIds || [],
+  );
+  const [selectedServiceCounts, setSelectedServiceCounts] = useState<
+    Record<string, number>
+  >(
+    buildDefaultServiceCounts(
+      subscription?.serviceIds || [],
+      subscription?.serviceCounts,
+    ),
   );
   const [servicePickerVisible, setServicePickerVisible] = useState(false);
   const [errors, setErrors] = useState<{
@@ -275,12 +340,19 @@ export default function EditSubscriptionBottomSheet({
         setServicesPerMonthStr(subscription.servicesPerMonth.toString());
         setPrice(subscription.price.toString());
         setSelectedServiceIds(subscription.serviceIds);
+        setSelectedServiceCounts(
+          buildDefaultServiceCounts(
+            subscription.serviceIds,
+            subscription.serviceCounts,
+          ),
+        );
       } else {
         setPackageName("");
         setDescription("");
         setServicesPerMonthStr("1");
         setPrice("10.00");
         setSelectedServiceIds([]);
+        setSelectedServiceCounts({});
       }
       setErrors({});
     }
@@ -317,10 +389,40 @@ export default function EditSubscriptionBottomSheet({
 
   const handleSelectServices = (serviceIds: string[]) => {
     setSelectedServiceIds(serviceIds);
+    setSelectedServiceCounts((prev) => {
+      const nextCounts: Record<string, number> = {};
+      serviceIds.forEach((serviceId) => {
+        const prevCount = prev[serviceId];
+        nextCounts[serviceId] = typeof prevCount === "number" ? prevCount : 1;
+      });
+      return nextCounts;
+    });
   };
 
   const handleRemoveService = (serviceId: string) => {
     setSelectedServiceIds(selectedServiceIds.filter((id) => id !== serviceId));
+    setSelectedServiceCounts((prev) => {
+      const nextCounts = { ...prev };
+      delete nextCounts[serviceId];
+      return nextCounts;
+    });
+  };
+
+  const handleIncrementServiceCount = (serviceId: string) => {
+    setSelectedServiceCounts((prev) => ({
+      ...prev,
+      [serviceId]: (prev[serviceId] ?? 1) + 1,
+    }));
+  };
+
+  const handleDecrementServiceCount = (serviceId: string) => {
+    setSelectedServiceCounts((prev) => {
+      const currentCount = prev[serviceId] ?? 1;
+      return {
+        ...prev,
+        [serviceId]: Math.max(1, currentCount - 1),
+      };
+    });
   };
 
   const handleSave = () => {
@@ -333,7 +435,7 @@ export default function EditSubscriptionBottomSheet({
       const existingSubscription = subscriptions.find(
         (sub) =>
           sub.packageName.toLowerCase().trim() ===
-            packageName.toLowerCase().trim() && sub.id !== subscriptionId
+            packageName.toLowerCase().trim() && sub.id !== subscriptionId,
       );
       if (existingSubscription) {
         newErrors.packageName = "A subscription with this name already exists";
@@ -350,7 +452,10 @@ export default function EditSubscriptionBottomSheet({
       return;
     }
 
-    const servicesPerMonth = Math.max(0, parseInt(servicesPerMonthStr, 10) || 0);
+    const servicesPerMonth = Math.max(
+      0,
+      parseInt(servicesPerMonthStr, 10) || 0,
+    );
     const descriptionValue = description.trim() || packageName.trim();
 
     if (subscriptionId && subscription) {
@@ -363,7 +468,8 @@ export default function EditSubscriptionBottomSheet({
           price: priceValue,
           currency,
           serviceIds: selectedServiceIds,
-        })
+          serviceCounts: selectedServiceCounts,
+        }),
       );
     } else {
       const newId = `subscription-${Date.now()}`;
@@ -375,6 +481,7 @@ export default function EditSubscriptionBottomSheet({
         price: priceValue,
         currency,
         serviceIds: selectedServiceIds,
+        serviceCounts: selectedServiceCounts,
       };
 
       if (onAddCustomSuggestion) {
@@ -541,9 +648,47 @@ export default function EditSubscriptionBottomSheet({
             // Only use services selected in Step 8
 
             if (!service) return null;
+            const serviceCount = selectedServiceCounts[serviceId] ?? 1;
+            const isDecrementDisabled = serviceCount <= 1;
             return (
               <View key={serviceId} style={styles.serviceTag}>
-                <Text style={styles.serviceTagText}>{service.name}</Text>
+                <View style={styles.serviceTagLeft}>
+                  <Text style={styles.serviceTagText}>
+                    {service.name} ( {serviceCount} )
+                  </Text>
+                </View>
+                <View style={styles.serviceCountArrowColumn}>
+                  <TouchableOpacity
+                    onPress={() => handleIncrementServiceCount(serviceId)}
+                    style={styles.serviceCountArrowButton}
+                  >
+                    <AntDesign
+                      name="caret-up"
+                      size={iconScale(10)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                  <View style={styles.serviceCountArrowSeparator} />
+                  <TouchableOpacity
+                    onPress={() => handleDecrementServiceCount(serviceId)}
+                    style={[
+                      styles.serviceCountArrowButton,
+                      isDecrementDisabled && styles.disabledArrowButton,
+                    ]}
+                    disabled={isDecrementDisabled}
+                  >
+                    <AntDesign
+                      name="caret-down"
+                      size={iconScale(10)}
+                      color={
+                        isDecrementDisabled
+                          ? theme.lightGreen2
+                          : theme.darkGreen
+                      }
+                    />
+                  </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity
                   onPress={() => handleRemoveService(serviceId)}
                   style={styles.removeServiceButton}
@@ -551,8 +696,8 @@ export default function EditSubscriptionBottomSheet({
                   <Feather
                     name="x"
                     size={iconScale(13)}
-                    style={{ marginLeft: moderateWidthScale(4) }}
-                    color={theme.darkGreen}
+                    // style={{ marginLeft: moderateWidthScale(4) }}
+                    color={theme.white}
                   />
                 </TouchableOpacity>
               </View>

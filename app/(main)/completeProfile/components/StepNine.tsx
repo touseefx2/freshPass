@@ -46,6 +46,13 @@ const getPopularSuggestions = (
   services: Array<{ id: string; name: string }>,
 ) => {
   const firstTwoServiceIds = services.slice(0, 2).map((s) => s.id);
+  const serviceCounts = firstTwoServiceIds.reduce<Record<string, number>>(
+    (acc, serviceId) => {
+      acc[serviceId] = 1;
+      return acc;
+    },
+    {},
+  );
 
   return [
     {
@@ -56,6 +63,7 @@ const getPopularSuggestions = (
       price: 145.99,
       currency: "USD",
       serviceIds: firstTwoServiceIds,
+      serviceCounts,
     },
   ];
 };
@@ -517,6 +525,7 @@ export default function StepNine() {
       price: number;
       currency: string;
       serviceIds: string[];
+      serviceCounts?: Record<string, number>;
     }>
   >([]);
 
@@ -730,18 +739,24 @@ export default function StepNine() {
     price: number;
     currency: string;
     serviceIds: string[];
+    serviceCounts?: Record<string, number>;
   }) => {
     setCustomSuggestions((prev) => [...prev, subscription]);
   };
 
-  const getServiceNames = (serviceIds: string[]): string[] => {
+  const getServiceLabels = (
+    serviceIds: string[],
+    serviceCounts?: Record<string, number>,
+  ): string[] => {
     return serviceIds
       .map((id) => {
         // Find service in businessServices by id (business service id)
         const service = businessServices.find((s) => s.id.toString() === id);
-        return service?.name;
+        if (!service) return null;
+        const count = serviceCounts?.[id] ?? 1;
+        return `${service.name} x${count}`;
       })
-      .filter(Boolean) as string[];
+      .filter((value): value is string => Boolean(value));
   };
 
   // Filter out selected subscriptions from popular suggestions
@@ -818,7 +833,10 @@ export default function StepNine() {
       ) : (
         <View style={styles.subscriptionsContainer}>
           {subscriptions.map((subscription) => {
-            const serviceNames = getServiceNames(subscription.serviceIds);
+            const serviceLabels = getServiceLabels(
+              subscription.serviceIds,
+              subscription.serviceCounts,
+            );
             return (
               <View key={subscription.id} style={styles.subscriptionCard}>
                 <View style={styles.subscriptionCardHeader}>
@@ -879,7 +897,7 @@ export default function StepNine() {
                     </View>
                   </View>
                   <View style={styles.subscriptionServicesList}>
-                    {serviceNames.map((serviceName, serviceIndex) => (
+                    {serviceLabels.map((serviceName, serviceIndex) => (
                       <Text
                         key={serviceIndex}
                         style={styles.subscriptionServiceItem}
@@ -1118,6 +1136,13 @@ export default function StepNine() {
             const serviceIds = plan.services_included
               .filter((service) => service.id != null)
               .map((service) => service.id.toString());
+            const serviceCounts = serviceIds.reduce<Record<string, number>>(
+              (acc, serviceId) => {
+                acc[serviceId] = 1;
+                return acc;
+              },
+              {},
+            );
 
             // Create subscription object in the required format
             // Description defaults to empty when adding from AI-generated plans
@@ -1129,6 +1154,7 @@ export default function StepNine() {
               price: plan.monthly_price,
               currency: plan.currency,
               serviceIds: serviceIds,
+              serviceCounts,
             };
 
             // Add subscription to the list
