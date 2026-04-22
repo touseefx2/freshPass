@@ -5,16 +5,18 @@ const fs = (size: number): number => fontScale(size);
 export const fonts = {
   fontRegular: "fontRegular", //400
   fontMedium: "fontMedium", //500
+  fontSemiBold: "fontSemiBold", //600 (alias to medium asset)
   fontBold: "fontBold", //700
   fontExtraBold: "fontExtraBold", //800
-};
+} as const;
 
 export const Font = {
   fontRegular: require("@/assets/fonts/FormaDJRDeck-Regular-Testing.ttf"),
   fontMedium: require("@/assets/fonts/FormaDJRDisplay-Medium-Testing.ttf"),
+  fontSemiBold: require("@/assets/fonts/FormaDJRDisplay-Medium-Testing.ttf"),
   fontBold: require("@/assets/fonts/FormaDJRText-Bold-Testing.ttf"),
   fontExtraBold: require("@/assets/fonts/FormaDJRText-ExtraBold-Testing.ttf"),
-};
+} as const;
 
 export const fontSize = Object.freeze({
   size1: fs(1),
@@ -47,10 +49,15 @@ export const fontSize = Object.freeze({
   size28: fs(28),
   size29: fs(29),
   size30: fs(30),
+  size31: fs(31),
   size32: fs(32),
+  size33: fs(33),
   size34: fs(34),
+  size35: fs(35),
   size36: fs(36),
+  size37: fs(37),
   size38: fs(38),
+  size39: fs(39),
   size40: fs(40),
   size42: fs(42),
   size44: fs(44),

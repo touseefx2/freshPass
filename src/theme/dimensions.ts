@@ -2,13 +2,15 @@ import { Dimensions, PixelRatio, Platform } from "react-native";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const BASE_WIDTH = 393;
-const BASE_HEIGHT = 852;
+const BASE_WIDTH = 375;
+const BASE_HEIGHT = 812;
 const TABLET_MIN_DIMENSION = 768;
 
 const SHORT_SIDE = Math.min(SCREEN_WIDTH, SCREEN_HEIGHT);
 const LONG_SIDE = Math.max(SCREEN_WIDTH, SCREEN_HEIGHT);
 const IS_TABLET = SHORT_SIDE >= TABLET_MIN_DIMENSION;
+const IS_LARGE_TABLET = IS_TABLET && LONG_SIDE >= 1200;
+const IS_TV = LONG_SIDE >= 1400;
 
 type ScaleKey =
   | "width"
@@ -29,14 +31,14 @@ const INTENSITY: Record<ScaleProfile, Record<ScaleKey, number>> = {
     height: 0.35,
     moderateWidth: 0.3,
     moderateHeight: 0.28,
-    font: 0.24,
+    font: 0.22,
   },
   tablet: {
-    width: 0.2,
-    height: 0.18,
-    moderateWidth: 0.16,
-    moderateHeight: 0.14,
-    font: 0.12,
+    width: 0.32,
+    height: 0.3,
+    moderateWidth: 0.28,
+    moderateHeight: 0.26,
+    font: 0.22,
   },
 };
 
@@ -46,14 +48,14 @@ const LIMITS: Record<ScaleProfile, Record<ScaleKey, [number, number]>> = {
     height: [0.94, 1.06],
     moderateWidth: [0.96, 1.05],
     moderateHeight: [0.96, 1.04],
-    font: [0.96, 1.05],
+    font: [0.95, 1.04],
   },
   tablet: {
-    width: [0.98, 1.14],
-    height: [0.98, 1.1],
-    moderateWidth: [0.98, 1.08],
-    moderateHeight: [0.98, 1.07],
-    font: [0.98, 1.07],
+    width: [1.04, 1.22],
+    height: [1.04, 1.18],
+    moderateWidth: [1.04, 1.14],
+    moderateHeight: [1.04, 1.12],
+    font: [1.05, 1.14],
   },
 };
 
@@ -85,6 +87,16 @@ const getBaseRatio = (key: ScaleKey): number => {
   }
 };
 
+const getFontAdjustment = (): number => {
+  if (!IS_TABLET) return Platform.OS === "ios" ? 1 : 0.98;
+  return IS_LARGE_TABLET ? 1.12 : 1.06;
+};
+
+const getIconAdjustment = (): number => {
+  if (!IS_TABLET) return 1;
+  return IS_LARGE_TABLET ? 1.2 : 1.12;
+};
+
 const getMultiplier = (key: ScaleKey): number => {
   if (Platform.OS === "web") {
     const bucket = getWebBucket();
@@ -97,7 +109,13 @@ const getMultiplier = (key: ScaleKey): number => {
   const [minLimit, maxLimit] = LIMITS[profile][key];
 
   const dampedRatio = 1 + (rawRatio - 1) * intensity;
-  return clamp(dampedRatio, minLimit, maxLimit);
+  let result = clamp(dampedRatio, minLimit, maxLimit);
+
+  if (IS_TV) {
+    result *= 1.15;
+  }
+
+  return result;
 };
 
 /**
@@ -166,7 +184,12 @@ export const moderateHeightScale = (
  * @returns Responsive font size value
  */
 export const fontScale = (size: number): number => {
-  const scaledSize = size * getMultiplier("font");
+  const scaledSize = size * getMultiplier("font") * getFontAdjustment();
+  return Math.max(12, Math.round(PixelRatio.roundToNearestPixel(scaledSize)));
+};
+
+export const iconScale = (size: number): number => {
+  const scaledSize = size * getMultiplier("moderateWidth") * getIconAdjustment();
   return Math.round(PixelRatio.roundToNearestPixel(scaledSize));
 };
 
@@ -176,5 +199,7 @@ export const responsiveMetrics = {
   shortSide: SHORT_SIDE,
   longSide: LONG_SIDE,
   isTablet: IS_TABLET,
+  isLargeTablet: IS_LARGE_TABLET,
+  isTV: IS_TV,
 } as const;
 
