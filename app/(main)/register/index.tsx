@@ -174,7 +174,7 @@ export default function Register() {
 
   const handleContinue = useCallback(async () => {
     Keyboard.dismiss();
-    const trimmedEmail = email.trim();
+    const trimmedEmail = email.trim()?.toLowerCase();
     if (!trimmedEmail || !validateEmail(trimmedEmail).isValid) return;
 
     setIsCheckingEmail(true);
