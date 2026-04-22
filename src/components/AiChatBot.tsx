@@ -31,6 +31,7 @@ import {
   heightScale,
   moderateWidthScale,
   moderateHeightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSegments } from "expo-router";
@@ -953,13 +954,13 @@ const AiChatBot: React.FC = () => {
                   {chatMode === "ai_chat_bot" ? (
                     <Ionicons
                       name="chatbubble-ellipses-outline"
-                      size={20}
+                      size={iconScale(20)}
                       color={theme.white}
                     />
                   ) : (
                     <Ionicons
                       name="mic-outline"
-                      size={20}
+                      size={iconScale(20)}
                       color={theme.white}
                     />
                   )}
@@ -1100,7 +1101,7 @@ const AiChatBot: React.FC = () => {
         >
           <Ionicons
             name="chevron-back"
-            size={widthScale(16)}
+            size={iconScale(16)}
             color={theme.white}
           />
         </TouchableOpacity>
@@ -1121,7 +1122,7 @@ const AiChatBot: React.FC = () => {
               <View style={styles.menuOptionIcon}>
                 <Ionicons
                   name="chatbubble-ellipses-outline"
-                  size={22}
+                  size={iconScale(22)}
                   color={theme.white}
                 />
               </View>
@@ -1135,7 +1136,7 @@ const AiChatBot: React.FC = () => {
               activeOpacity={0.9}
             >
               <View style={styles.menuOptionIcon}>
-                <Ionicons name="mic-outline" size={22} color={theme.white} />
+                <Ionicons name="mic-outline" size={iconScale(22)} color={theme.white} />
               </View>
               <Text style={styles.menuOptionLabel}>
                 {t("talkWithFreshy") || "Talk with Freshy"}
@@ -1154,7 +1155,7 @@ const AiChatBot: React.FC = () => {
         >
           <Ionicons
             name="chevron-forward"
-            size={widthScale(12)}
+            size={iconScale(12)}
             color={theme.white}
           />
         </TouchableOpacity>

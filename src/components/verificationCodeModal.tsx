@@ -27,6 +27,7 @@ import {
   moderateWidthScale,
   widthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -460,7 +461,7 @@ export default function VerificationCodeModal({
               <TouchableOpacity onPress={onClose} style={styles.backButton}>
                 <Feather
                   name="arrow-left"
-                  size={moderateWidthScale(22)}
+                  size={iconScale(22)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>

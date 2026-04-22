@@ -14,6 +14,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -103,7 +104,7 @@ export default function WebViewModal({
             >
               <Feather
                 name="x"
-                size={moderateWidthScale(24)}
+                size={iconScale(24)}
                 color={theme.darkGreen}
               />
             </TouchableOpacity>

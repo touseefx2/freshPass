@@ -17,6 +17,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Theme } from "@/src/theme/colors";
+import { iconScale } from "@/src/theme/dimensions";
 import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import AudioRecord from "react-native-audio-record";
@@ -1116,7 +1117,7 @@ export const VoiceReceptionistContent = forwardRef<
                   { transform: [{ scale: centerIconScale }] },
                 ]}
               >
-                <Ionicons name={centerIconName} size={36} color={theme.white} />
+                <Ionicons name={centerIconName} size={iconScale(36)} color={theme.white} />
               </Animated.View>
             </TouchableOpacity>
           ) : (
@@ -1127,7 +1128,7 @@ export const VoiceReceptionistContent = forwardRef<
                   { transform: [{ scale: centerIconScale }] },
                 ]}
               >
-                <Ionicons name={centerIconName} size={36} color={theme.white} />
+                <Ionicons name={centerIconName} size={iconScale(36)} color={theme.white} />
               </Animated.View>
             </View>
           )}
@@ -1185,7 +1186,7 @@ export const VoiceReceptionistContent = forwardRef<
         >
           <Ionicons
             name={isMicMuted ? "mic-off" : "mic"}
-            size={22}
+            size={iconScale(22)}
             color={isMicMuted ? theme.white : theme.darkGreen}
           />
         </TouchableOpacity>
@@ -1201,7 +1202,7 @@ export const VoiceReceptionistContent = forwardRef<
             disabled={isStarting}
             activeOpacity={0.9}
           >
-            <Ionicons name="call" size={24} color={theme.white} />
+            <Ionicons name="call" size={iconScale(24)} color={theme.white} />
           </TouchableOpacity>
         ) : (
           <View style={[styles.receptionistControlButton, { opacity: 0 }]} />
@@ -1217,7 +1218,7 @@ export const VoiceReceptionistContent = forwardRef<
         >
           <Ionicons
             name={isSpeakerMuted ? "volume-mute" : "volume-high"}
-            size={22}
+            size={iconScale(22)}
             color={isSpeakerMuted ? theme.white : theme.darkGreen}
           />
         </TouchableOpacity>

@@ -16,6 +16,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
 import {
@@ -746,7 +747,7 @@ export default function BookingScreen() {
         <View style={styles.dateTimeRow}>
           <Ionicons
             name="time-outline"
-            size={moderateWidthScale(15)}
+            size={iconScale(15)}
             color={theme.lightGreen}
           />
           <Text style={styles.dateTimeText}>
@@ -771,7 +772,7 @@ export default function BookingScreen() {
           </View>
           <Entypo
             name="chevron-small-right"
-            size={moderateWidthScale(22)}
+            size={iconScale(22)}
             color={theme.darkGreen}
           />
         </View>

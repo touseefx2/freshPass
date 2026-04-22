@@ -16,6 +16,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import {
   addService,
@@ -457,7 +458,7 @@ export default function EditServiceBottomSheet({
               >
                 <AntDesign
                   name="caret-up"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -468,7 +469,7 @@ export default function EditServiceBottomSheet({
               >
                 <AntDesign
                   name="caret-down"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -501,7 +502,7 @@ export default function EditServiceBottomSheet({
               >
                 <AntDesign
                   name="caret-up"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -512,7 +513,7 @@ export default function EditServiceBottomSheet({
               >
                 <AntDesign
                   name="caret-down"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -555,7 +556,7 @@ export default function EditServiceBottomSheet({
             >
               <AntDesign
                 name="caret-up"
-                size={moderateWidthScale(15)}
+                size={iconScale(15)}
                 color={theme.darkGreen}
               />
             </TouchableOpacity>
@@ -566,7 +567,7 @@ export default function EditServiceBottomSheet({
             >
               <AntDesign
                 name="caret-down"
-                size={moderateWidthScale(15)}
+                size={iconScale(15)}
                 color={theme.darkGreen}
               />
             </TouchableOpacity>

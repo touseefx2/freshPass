@@ -13,6 +13,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import * as ImagePicker from "expo-image-picker";
@@ -147,7 +148,7 @@ export default function ImagePickerModal({
       >
         <MaterialIcons
           name="photo-library"
-          size={moderateWidthScale(24)}
+          size={iconScale(24)}
           color={theme.darkGreen}
           style={styles.optionIcon}
         />
@@ -161,7 +162,7 @@ export default function ImagePickerModal({
       >
         <MaterialIcons
           name="camera-alt"
-          size={moderateWidthScale(24)}
+          size={iconScale(24)}
           color={theme.darkGreen}
           style={styles.optionIcon}
         />
@@ -181,7 +182,7 @@ export default function ImagePickerModal({
             {attachmentOptionMode === "social" ? (
               <MaterialCommunityIcons
                 name="multimedia"
-                size={moderateWidthScale(24)}
+                size={iconScale(24)}
                 color={theme.darkGreen}
               />
             ) : (

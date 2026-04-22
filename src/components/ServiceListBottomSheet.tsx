@@ -8,6 +8,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import {
   addService,
@@ -177,7 +178,7 @@ export default function ServiceListBottomSheet({
           {isSelected && (
             <Feather
               name="check"
-              size={moderateWidthScale(14)}
+              size={iconScale(14)}
               color={theme.darkGreen}
             />
           )}
@@ -218,7 +219,7 @@ export default function ServiceListBottomSheet({
               {areAllServicesSelected && (
                 <Feather
                   name="check"
-                  size={moderateWidthScale(14)}
+                  size={iconScale(14)}
                   color={theme.darkGreen}
                 />
               )}

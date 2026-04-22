@@ -16,6 +16,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -153,7 +154,7 @@ export default function UnlockAIFeaturesModal({
           >
             <Ionicons
               name="close"
-              size={moderateWidthScale(24)}
+              size={iconScale(24)}
               color={theme.darkGreen}
             />
           </TouchableOpacity>
@@ -162,7 +163,7 @@ export default function UnlockAIFeaturesModal({
           <View style={styles.iconCircle}>
             <Ionicons
               name={isSuccess ? "checkmark-circle" : "lock-closed"}
-              size={moderateWidthScale(36)}
+              size={iconScale(36)}
               color={theme.darkGreen}
             />
           </View>

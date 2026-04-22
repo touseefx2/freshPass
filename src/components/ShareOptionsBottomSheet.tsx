@@ -8,6 +8,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 
@@ -72,7 +73,7 @@ export default function ShareOptionsBottomSheet({
       >
         <MaterialIcons
           name="people"
-          size={moderateWidthScale(24)}
+          size={iconScale(24)}
           color={theme.darkGreen}
           style={styles.optionIcon}
         />
@@ -86,7 +87,7 @@ export default function ShareOptionsBottomSheet({
       >
         <MaterialIcons
           name="share"
-          size={moderateWidthScale(24)}
+          size={iconScale(24)}
           color={theme.darkGreen}
           style={styles.optionIcon}
         />

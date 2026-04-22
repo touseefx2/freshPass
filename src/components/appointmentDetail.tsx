@@ -7,6 +7,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import { Ionicons } from "@expo/vector-icons";
@@ -468,7 +469,7 @@ export default function AppointmentDetail({
               <View style={styles.statusIcon}>
                 <Ionicons
                   name="calendar-outline"
-                  size={moderateWidthScale(16)}
+                  size={iconScale(16)}
                   color={theme.selectCard}
                 />
               </View>
@@ -495,7 +496,7 @@ export default function AppointmentDetail({
             <View style={styles.sectionIcon}>
               <Ionicons
                 name="information-circle-outline"
-                size={moderateWidthScale(14)}
+                size={iconScale(14)}
                 color={theme.darkGreen}
               />
             </View>
@@ -506,7 +507,7 @@ export default function AppointmentDetail({
             <View style={styles.infoIcon}>
               <Ionicons
                 name="time-outline"
-                size={moderateWidthScale(16)}
+                size={iconScale(16)}
                 color={theme.darkGreen}
               />
             </View>
@@ -546,7 +547,7 @@ export default function AppointmentDetail({
             <View style={styles.sectionIcon}>
               <Ionicons
                 name="people-outline"
-                size={moderateWidthScale(14)}
+                size={iconScale(14)}
                 color={theme.darkGreen}
               />
             </View>
@@ -575,7 +576,7 @@ export default function AppointmentDetail({
             <View style={styles.infoIcon}>
               <Ionicons
                 name="person-outline"
-                size={moderateWidthScale(16)}
+                size={iconScale(16)}
                 color={theme.darkGreen}
               />
             </View>
@@ -598,7 +599,7 @@ export default function AppointmentDetail({
               <View style={styles.sectionIcon}>
                 <Ionicons
                   name="list-outline"
-                  size={moderateWidthScale(14)}
+                  size={iconScale(14)}
                   color={theme.darkGreen}
                 />
               </View>
@@ -637,7 +638,7 @@ export default function AppointmentDetail({
                       <View style={styles.serviceMetaItem}>
                         <Ionicons
                           name="time-outline"
-                          size={moderateWidthScale(12)}
+                          size={iconScale(12)}
                           color={theme.lightGreen}
                         />
                         <Text style={styles.serviceMetaText}>
@@ -663,7 +664,7 @@ export default function AppointmentDetail({
                 <View style={styles.sectionIcon}>
                   <Ionicons
                     name="checkmark-circle-outline"
-                    size={moderateWidthScale(14)}
+                    size={iconScale(14)}
                     color={theme.darkGreen}
                   />
                 </View>
@@ -697,7 +698,7 @@ export default function AppointmentDetail({
             <View style={styles.sectionIcon}>
               <Ionicons
                 name="business-outline"
-                size={moderateWidthScale(14)}
+                size={iconScale(14)}
                 color={theme.darkGreen}
               />
             </View>
@@ -708,7 +709,7 @@ export default function AppointmentDetail({
             <View style={styles.infoIcon}>
               <Ionicons
                 name="storefront-outline"
-                size={moderateWidthScale(16)}
+                size={iconScale(16)}
                 color={theme.darkGreen}
               />
             </View>
@@ -724,7 +725,7 @@ export default function AppointmentDetail({
             <View style={styles.infoIcon}>
               <Ionicons
                 name="location-outline"
-                size={moderateWidthScale(16)}
+                size={iconScale(16)}
                 color={theme.darkGreen}
               />
             </View>
@@ -743,7 +744,7 @@ export default function AppointmentDetail({
             <View style={styles.sectionIcon}>
               <Ionicons
                 name="document-text-outline"
-                size={moderateWidthScale(14)}
+                size={iconScale(14)}
                 color={theme.darkGreen}
               />
             </View>

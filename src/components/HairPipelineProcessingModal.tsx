@@ -16,6 +16,7 @@ import {
   moderateWidthScale,
   moderateHeightScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { router } from "expo-router";
@@ -213,7 +214,7 @@ export default function HairPipelineProcessingModal({
           >
             <MaterialIcons
               name="close"
-              size={moderateWidthScale(24)}
+              size={iconScale(24)}
               color={theme.text}
             />
           </TouchableOpacity> */}
@@ -221,7 +222,7 @@ export default function HairPipelineProcessingModal({
           <View style={styles.iconWrap}>
             <MaterialIcons
               name="schedule"
-              size={moderateWidthScale(36)}
+              size={iconScale(36)}
               color={theme.primary}
             />
           </View>

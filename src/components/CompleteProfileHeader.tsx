@@ -8,6 +8,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 
 interface CompleteProfileHeaderProps {
@@ -89,7 +90,7 @@ export default function CompleteProfileHeader({
           >
             <Feather
               name="arrow-left"
-              size={moderateWidthScale(22)}
+              size={iconScale(22)}
               color={(colors as Theme).darkGreen}
             />
           </TouchableOpacity>

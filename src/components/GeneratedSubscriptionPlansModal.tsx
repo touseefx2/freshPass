@@ -16,6 +16,7 @@ import {
   moderateWidthScale,
   widthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -330,7 +331,7 @@ export default function GeneratedSubscriptionPlansModal({
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Feather
                 name="x"
-                size={moderateWidthScale(16)}
+                size={iconScale(16)}
                 color={theme.darkGreen}
               />
             </TouchableOpacity>
@@ -369,7 +370,7 @@ export default function GeneratedSubscriptionPlansModal({
                         {isSelected && (
                           <Feather
                             name="check"
-                            size={moderateWidthScale(16)}
+                            size={iconScale(16)}
                             color={theme.white}
                           />
                         )}
@@ -387,7 +388,7 @@ export default function GeneratedSubscriptionPlansModal({
                       <View style={styles.visitsContainer}>
                         <Feather
                           name="users"
-                          size={moderateWidthScale(20)}
+                          size={iconScale(20)}
                           color={theme.darkGreen}
                         />
                         <Text style={styles.visitsText}>
@@ -400,7 +401,7 @@ export default function GeneratedSubscriptionPlansModal({
                         <View style={styles.servicesHeader}>
                           <Feather
                             name="award"
-                            size={moderateWidthScale(14)}
+                            size={iconScale(14)}
                             color={theme.darkGreen}
                           />
                           <Text style={styles.servicesTitle}>
@@ -412,7 +413,7 @@ export default function GeneratedSubscriptionPlansModal({
                             <View key={service.id} style={styles.serviceItem}>
                               <Feather
                                 name="check"
-                                size={moderateWidthScale(16)}
+                                size={iconScale(16)}
                                 color={theme.primary}
                               />
                               <Text style={styles.serviceName}>

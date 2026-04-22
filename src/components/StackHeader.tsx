@@ -7,6 +7,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -90,7 +91,7 @@ export default function StackHeader({
           >
             <MaterialIcons
               name="keyboard-backspace"
-              size={moderateWidthScale(24)}
+              size={iconScale(24)}
               color={theme.white}
             />
           </TouchableOpacity>

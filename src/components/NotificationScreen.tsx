@@ -14,6 +14,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { LeafLogo } from "@/assets/icons";
 import { Ionicons } from "@expo/vector-icons";
@@ -207,7 +208,7 @@ export default function NotificationScreen({
               <Text style={styles.skipButtonText}>Not now</Text>
               <Ionicons
                 name="chevron-forward"
-                size={moderateWidthScale(16)}
+                size={iconScale(16)}
                 color={theme.white}
                 style={{ top: 1.5 }}
               />

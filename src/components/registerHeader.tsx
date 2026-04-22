@@ -6,6 +6,7 @@ import { Theme } from "@/src/theme/colors";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 
 interface RegisterHeaderProps {
@@ -42,7 +43,7 @@ export default function RegisterHeader({ onBack }: RegisterHeaderProps) {
       >
         <Feather
           name="arrow-left"
-          size={moderateWidthScale(22)}
+          size={iconScale(22)}
           color={(colors as Theme).darkGreen}
         />
       </Pressable>

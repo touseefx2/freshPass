@@ -16,6 +16,7 @@ import {
   moderateWidthScale,
   moderateHeightScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
@@ -186,7 +187,7 @@ export default function StripeConnectModal({
             >
               <MaterialIcons
                 name="close"
-                size={moderateWidthScale(24)}
+                size={iconScale(24)}
                 color={theme.text}
               />
             </TouchableOpacity>
@@ -195,7 +196,7 @@ export default function StripeConnectModal({
           <View style={styles.iconContainer}>
             <MaterialCommunityIcons
               name="credit-card-check-outline"
-              size={moderateWidthScale(36)}
+              size={iconScale(36)}
               color={theme.darkGreen}
             />
           </View>

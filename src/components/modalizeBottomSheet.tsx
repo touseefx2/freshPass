@@ -18,6 +18,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -150,7 +151,7 @@ export default function ModalizeBottomSheet({
               <Pressable onPress={onClose} style={styles.closeButton}>
                 <Feather
                   name="x"
-                  size={moderateWidthScale(12)}
+                  size={iconScale(12)}
                   color={theme.darkGreen}
                 />
               </Pressable>

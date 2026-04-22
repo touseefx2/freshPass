@@ -8,6 +8,7 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import {
   setDayHours,
@@ -695,7 +696,7 @@ export default function BusinessHoursBottomSheet({
                 )}
                 <Feather
                   name="chevron-down"
-                  size={moderateWidthScale(16)}
+                  size={iconScale(16)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -716,7 +717,7 @@ export default function BusinessHoursBottomSheet({
                 )}
                 <Feather
                   name="chevron-down"
-                  size={moderateWidthScale(16)}
+                  size={iconScale(16)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -766,7 +767,7 @@ export default function BusinessHoursBottomSheet({
                   )}
                   <Feather
                     name="chevron-down"
-                    size={moderateWidthScale(16)}
+                    size={iconScale(16)}
                     color={theme.darkGreen}
                   />
                 </TouchableOpacity>
@@ -792,7 +793,7 @@ export default function BusinessHoursBottomSheet({
                   )}
                   <Feather
                     name="chevron-down"
-                    size={moderateWidthScale(16)}
+                    size={iconScale(16)}
                     color={theme.darkGreen}
                   />
                 </TouchableOpacity>
@@ -804,7 +805,7 @@ export default function BusinessHoursBottomSheet({
             >
               <Feather
                 name="trash-2"
-                size={moderateWidthScale(20)}
+                size={iconScale(20)}
                 color={theme.link}
               />
             </TouchableOpacity>
@@ -825,7 +826,7 @@ export default function BusinessHoursBottomSheet({
                 {copyHoursEnabled && (
                   <Feather
                     name="check"
-                    size={moderateWidthScale(14)}
+                    size={iconScale(14)}
                     color={theme.white}
                   />
                 )}
@@ -859,7 +860,7 @@ export default function BusinessHoursBottomSheet({
                 {selectedDays.length === DAYS.length - 1 && (
                   <Feather
                     name="check"
-                    size={moderateWidthScale(14)}
+                    size={iconScale(14)}
                     color={theme.darkGreen}
                     style={{ marginRight: moderateWidthScale(4) }}
                   />
@@ -880,7 +881,7 @@ export default function BusinessHoursBottomSheet({
                     {isSelected && (
                       <Feather
                         name="check"
-                        size={moderateWidthScale(14)}
+                        size={iconScale(14)}
                         color={theme.darkGreen}
                         style={{ marginRight: moderateWidthScale(4) }}
                       />

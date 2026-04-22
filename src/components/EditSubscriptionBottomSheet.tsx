@@ -15,6 +15,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { updateSubscription, addSubscription } from "@/src/state/slices/completeProfileSlice";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
@@ -444,7 +445,7 @@ export default function EditSubscriptionBottomSheet({
               >
                 <AntDesign
                   name="caret-up"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -455,7 +456,7 @@ export default function EditSubscriptionBottomSheet({
               >
                 <AntDesign
                   name="caret-down"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -494,7 +495,7 @@ export default function EditSubscriptionBottomSheet({
               >
                 <AntDesign
                   name="caret-up"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -505,7 +506,7 @@ export default function EditSubscriptionBottomSheet({
               >
                 <AntDesign
                   name="caret-down"
-                  size={moderateWidthScale(15)}
+                  size={iconScale(15)}
                   color={theme.darkGreen}
                 />
               </TouchableOpacity>
@@ -525,7 +526,7 @@ export default function EditSubscriptionBottomSheet({
           <Text style={styles.serviceDropdownText}>Select to add service</Text>
           <Feather
             name="chevron-down"
-            size={moderateWidthScale(19)}
+            size={iconScale(19)}
             color={theme.darkGreen}
           />
         </TouchableOpacity>
@@ -549,7 +550,7 @@ export default function EditSubscriptionBottomSheet({
                 >
                   <Feather
                     name="x"
-                    size={moderateWidthScale(13)}
+                    size={iconScale(13)}
                     style={{ marginLeft: moderateWidthScale(4) }}
                     color={theme.darkGreen}
                   />

@@ -13,6 +13,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 
 interface NotificationBannerProps {
@@ -132,13 +133,13 @@ export default function NotificationBanner({
     switch (type) {
       case "success":
         return (
-          <Feather name="check-circle" size={moderateWidthScale(24)} color={color} />
+          <Feather name="check-circle" size={iconScale(24)} color={color} />
         );
       case "error":
         return (
           <Feather
             name="alert-circle"
-            size={moderateWidthScale(24)}
+            size={iconScale(24)}
             color={color}
           />
         );
@@ -146,14 +147,14 @@ export default function NotificationBanner({
         return (
           <Feather
             name="alert-triangle"
-            size={moderateWidthScale(24)}
+            size={iconScale(24)}
             color={color}
           />
         );
       case "info":
       default:
         return (
-          <Feather name="info" size={moderateWidthScale(24)} color={color} />
+          <Feather name="info" size={iconScale(24)} color={color} />
         );
     }
   };
@@ -247,7 +248,7 @@ export default function NotificationBanner({
           >
             <Feather
               name="x"
-              size={moderateWidthScale(20)}
+              size={iconScale(20)}
               color={(colors as Theme).lightGreen}
             />
           </TouchableOpacity>

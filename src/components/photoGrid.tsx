@@ -9,7 +9,11 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import { moderateWidthScale, moderateHeightScale } from "@/src/theme/dimensions";
+import {
+  moderateWidthScale,
+  moderateHeightScale,
+  iconScale,
+} from "@/src/theme/dimensions";
 
 interface Photo {
   id: string;
@@ -94,7 +98,7 @@ export default function PhotoGrid({
           >
             <MaterialIcons
               name="delete"
-              size={moderateWidthScale(16)}
+              size={iconScale(16)}
               color={theme.white}
             />
           </TouchableOpacity>

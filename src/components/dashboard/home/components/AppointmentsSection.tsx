@@ -6,6 +6,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { Entypo, Ionicons } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
@@ -271,7 +272,7 @@ export default function AppointmentsSection({
                 <Text style={styles.sectionLink}>View calendar</Text>
                 <Entypo
                   name="chevron-small-right"
-                  size={moderateWidthScale(18)}
+                  size={iconScale(18)}
                   color={theme.selectCard}
                 />
               </View>
@@ -328,7 +329,7 @@ export default function AppointmentsSection({
                 >
                   <Ionicons
                     name="time-outline"
-                    size={moderateWidthScale(15)}
+                    size={iconScale(15)}
                     color={theme.darkGreen}
                   />
                   <Text style={styles.appointmentInfoText}>
@@ -365,7 +366,7 @@ export default function AppointmentsSection({
                   </View>
                   <Entypo
                     name="chevron-small-right"
-                    size={moderateWidthScale(22)}
+                    size={iconScale(22)}
                     color={theme.darkGreen}
                   />
                 </View>

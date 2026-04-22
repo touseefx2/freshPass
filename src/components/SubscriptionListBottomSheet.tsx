@@ -8,6 +8,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import {
   addSubscription,
@@ -156,7 +157,7 @@ export default function SubscriptionListBottomSheet({
           {isSelected && (
             <Feather
               name="check"
-              size={moderateWidthScale(14)}
+              size={iconScale(14)}
               color={theme.darkGreen}
             />
           )}

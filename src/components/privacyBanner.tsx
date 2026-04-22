@@ -8,6 +8,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateWidthScale,
   moderateHeightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 
 interface PrivacyBannerProps {
@@ -80,7 +81,7 @@ export default function PrivacyBanner({
       >
         <MaterialIcons
           name="close"
-          size={moderateWidthScale(18)}
+          size={iconScale(18)}
           color={(colors as Theme).darkGreen}
         />
       </Pressable>

@@ -19,6 +19,7 @@ import {
   moderateWidthScale,
   widthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
@@ -620,7 +621,7 @@ function BusinessPlansModalContent({
           >
             <Feather
               name="x"
-              size={moderateWidthScale(24)}
+              size={iconScale(24)}
               color={theme.darkGreen}
             />
           </TouchableOpacity>
@@ -650,7 +651,7 @@ function BusinessPlansModalContent({
                 <View style={styles.introIconWrap}>
                   <Feather
                     name="globe"
-                    size={moderateWidthScale(20)}
+                    size={iconScale(20)}
                     color={theme.buttonBack}
                   />
                 </View>
@@ -665,7 +666,7 @@ function BusinessPlansModalContent({
                 <View style={styles.introIconWrap}>
                   <Feather
                     name="star"
-                    size={moderateWidthScale(20)}
+                    size={iconScale(20)}
                     color={theme.buttonBack}
                   />
                 </View>
@@ -702,7 +703,7 @@ function BusinessPlansModalContent({
                     <View style={styles.detailRow}>
                       <Feather
                         name="calendar"
-                        size={moderateWidthScale(16)}
+                        size={iconScale(16)}
                         color={theme.darkGreen}
                         style={styles.detailIcon}
                       />
@@ -715,7 +716,7 @@ function BusinessPlansModalContent({
                     <View style={styles.detailRow}>
                       <Feather
                         name="check-circle"
-                        size={moderateWidthScale(16)}
+                        size={iconScale(16)}
                         color={theme.darkGreen}
                         style={styles.detailIcon}
                       />
@@ -727,7 +728,7 @@ function BusinessPlansModalContent({
                   <View style={styles.detailRow}>
                     <Feather
                       name="check-circle"
-                      size={moderateWidthScale(16)}
+                      size={iconScale(16)}
                       color={theme.darkGreen}
                       style={styles.detailIcon}
                     />
@@ -766,7 +767,7 @@ function BusinessPlansModalContent({
                                 {isSelected && (
                                   <Feather
                                     name="check"
-                                    size={moderateWidthScale(14)}
+                                    size={iconScale(14)}
                                     color={theme.white}
                                   />
                                 )}

@@ -2,6 +2,7 @@ import { langData, themeData } from "@/src/constant/data";
 import Logger from "@/src/services/logger";
 import { setupRTL } from "@/src/constant/functions";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
+import { iconScale } from "@/src/theme/dimensions";
 import {
   setLanguage,
   setTheme,
@@ -108,7 +109,7 @@ export default function Header() {
           renderLeftIcon={() => (
             <MaterialCommunityIcons
               name="theme-light-dark"
-              size={20}
+              size={iconScale(20)}
               color={(colors as Theme).icon}
             />
           )}
@@ -131,7 +132,7 @@ export default function Header() {
           value={i18n.language}
           onChange={(item) => changeLang(item.value)}
           renderLeftIcon={() => (
-            <Ionicons name="language" size={20} color={(colors as Theme).icon} />
+            <Ionicons name="language" size={iconScale(20)} color={(colors as Theme).icon} />
           )}
           renderRightIcon={() => null}
           renderItem={renderItem}

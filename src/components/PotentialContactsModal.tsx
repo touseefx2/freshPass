@@ -17,6 +17,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 
@@ -215,7 +216,7 @@ export default function PotentialContactsModal({
             >
               <Feather
                 name="x"
-                size={moderateWidthScale(24)}
+                size={iconScale(24)}
                 color={theme.darkGreen}
               />
             </TouchableOpacity>

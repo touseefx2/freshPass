@@ -15,6 +15,7 @@ import {
   moderateHeightScale,
   widthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
@@ -131,7 +132,7 @@ export default function GuestModeModal() {
           <View style={styles.iconContainer}>
             <Feather
               name="user"
-              size={moderateWidthScale(36)}
+              size={iconScale(36)}
               color={theme.darkGreen}
             />
           </View>

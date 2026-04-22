@@ -19,6 +19,7 @@ import {
   moderateWidthScale,
   widthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "expo-router";
@@ -205,7 +206,7 @@ export default function AcceptTermsModal({
             >
               <Feather
                 name="arrow-left"
-                size={moderateWidthScale(22)}
+                size={iconScale(22)}
                 color={theme.white}
               />
             </Pressable>
@@ -252,7 +253,7 @@ export default function AcceptTermsModal({
                   {isAgreed && (
                     <Feather
                       name="check"
-                      size={moderateWidthScale(15)}
+                      size={iconScale(15)}
                       color={theme.white}
                     />
                   )}

@@ -24,6 +24,7 @@ import {
   moderateWidthScale,
   widthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -235,7 +236,7 @@ function VideoModalContent({ onClose }: { onClose: () => void }) {
             <View style={styles.playButtonCircle}>
               <MaterialIcons
                 name={isPlaying ? "pause" : "play-arrow"}
-                size={widthScale(32)}
+                size={iconScale(32)}
                 color={theme.white}
               />
             </View>
@@ -261,7 +262,7 @@ function VideoModalContent({ onClose }: { onClose: () => void }) {
             >
               <MaterialIcons
                 name="replay-10"
-                size={moderateWidthScale(22)}
+                size={iconScale(22)}
                 color={theme.white}
               />
               <Text style={styles.controlButtonText}>10s</Text>
@@ -274,7 +275,7 @@ function VideoModalContent({ onClose }: { onClose: () => void }) {
             >
               <MaterialIcons
                 name={isPlaying ? "pause" : "play-arrow"}
-                size={moderateWidthScale(24)}
+                size={iconScale(24)}
                 color={theme.white}
               />
               <Text style={styles.controlButtonText}>
@@ -289,7 +290,7 @@ function VideoModalContent({ onClose }: { onClose: () => void }) {
             >
               <MaterialIcons
                 name="forward-10"
-                size={moderateWidthScale(22)}
+                size={iconScale(22)}
                 color={theme.white}
               />
               <Text style={styles.controlButtonText}>10s</Text>

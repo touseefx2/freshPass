@@ -23,6 +23,7 @@ import {
   moderateWidthScale,
   widthScale,
   heightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
@@ -1113,7 +1114,7 @@ export default function CalendarScreen() {
             >
               <MaterialIcons
                 name="keyboard-arrow-left"
-                size={moderateWidthScale(24)}
+                size={iconScale(24)}
                 color={theme.text}
               />
             </TouchableOpacity>
@@ -1130,7 +1131,7 @@ export default function CalendarScreen() {
             >
               <MaterialIcons
                 name="keyboard-arrow-right"
-                size={moderateWidthScale(24)}
+                size={iconScale(24)}
                 color={theme.text}
               />
             </TouchableOpacity>
@@ -1216,7 +1217,7 @@ export default function CalendarScreen() {
                     >
                       <MaterialIcons
                         name="event"
-                        size={moderateWidthScale(16)}
+                        size={iconScale(16)}
                         color={theme.primary}
                       />
                       <Text style={styles.leaveBoxText}>
@@ -1271,7 +1272,7 @@ export default function CalendarScreen() {
                     >
                       <MaterialIcons
                         name="close"
-                        size={moderateWidthScale(16)}
+                        size={iconScale(16)}
                         color={theme.text}
                       />
                     </TouchableOpacity>
@@ -1351,7 +1352,7 @@ export default function CalendarScreen() {
                           </Text>
                           <Feather
                             name="clock"
-                            size={moderateWidthScale(12)}
+                            size={iconScale(12)}
                             color={theme.lightGreen}
                           />
                         </TouchableOpacity>
@@ -1371,7 +1372,7 @@ export default function CalendarScreen() {
                           </Text>
                           <Feather
                             name="clock"
-                            size={moderateWidthScale(12)}
+                            size={iconScale(12)}
                             color={theme.lightGreen}
                           />
                         </TouchableOpacity>
@@ -1417,7 +1418,7 @@ export default function CalendarScreen() {
                     >
                       <MaterialIcons
                         name="close"
-                        size={moderateWidthScale(16)}
+                        size={iconScale(16)}
                         color={theme.text}
                       />
                     </TouchableOpacity>
@@ -1538,7 +1539,7 @@ export default function CalendarScreen() {
                             <View style={styles.breakSlotBox}>
                               <MaterialIcons
                                 name="free-breakfast"
-                                size={moderateWidthScale(12)}
+                                size={iconScale(12)}
                                 color={theme.selectCard}
                               />
                               <Text style={styles.breakSlotText}>BREAK</Text>
@@ -1557,7 +1558,7 @@ export default function CalendarScreen() {
                           >
                             <MaterialIcons
                               name="free-breakfast"
-                              size={moderateWidthScale(12)}
+                              size={iconScale(12)}
                               color={theme.selectCard}
                             />
                             <Text style={styles.breakSlotText}>BREAK</Text>

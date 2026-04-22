@@ -18,6 +18,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -306,7 +307,7 @@ export default function DatePickerModal({
                 >
                   <Feather
                     name="x"
-                    size={moderateWidthScale(18)}
+                    size={iconScale(18)}
                     color={theme.darkGreen}
                   />
                 </TouchableOpacity>
@@ -322,7 +323,7 @@ export default function DatePickerModal({
                   >
                     <Feather
                       name="chevron-left"
-                      size={moderateWidthScale(16)}
+                      size={iconScale(16)}
                       color={theme.darkGreen}
                     />
                   </TouchableOpacity>
@@ -336,7 +337,7 @@ export default function DatePickerModal({
                   >
                     <Feather
                       name="chevron-right"
-                      size={moderateWidthScale(16)}
+                      size={iconScale(16)}
                       color={theme.darkGreen}
                     />
                   </TouchableOpacity>

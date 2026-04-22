@@ -16,6 +16,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
@@ -167,7 +168,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         >
           <Feather
             name="plus"
-            size={moderateWidthScale(15)}
+            size={iconScale(15)}
             color={theme.white85}
           />
         </TouchableOpacity>

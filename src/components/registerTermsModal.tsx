@@ -17,6 +17,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -297,7 +298,7 @@ export default function RegisterTermsModal({
                   {isAgreed && (
                     <Feather
                       name="check"
-                      size={moderateWidthScale(15)}
+                      size={iconScale(15)}
                       color={theme.white}
                     />
                   )}

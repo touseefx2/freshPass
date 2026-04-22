@@ -6,6 +6,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import { Entypo } from "@expo/vector-icons";
 import {
@@ -225,7 +226,7 @@ export default function SummaryStats({ data, callApi }: SummaryStatsProps) {
             {isBusiness && (
               <Entypo
                 name="chevron-small-right"
-                size={18}
+                size={iconScale(18)}
                 color={theme.darkGreen}
               />
             )}

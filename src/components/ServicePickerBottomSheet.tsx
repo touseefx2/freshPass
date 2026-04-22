@@ -8,6 +8,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 
@@ -160,7 +161,7 @@ export default function ServicePickerBottomSheet({
           {isSelected && (
             <Feather
               name="check"
-              size={moderateWidthScale(14)}
+              size={iconScale(14)}
               color={theme.darkGreen}
             />
           )}
@@ -201,7 +202,7 @@ export default function ServicePickerBottomSheet({
               {areAllServicesSelected && (
                 <Feather
                   name="check"
-                  size={moderateWidthScale(14)}
+                  size={iconScale(14)}
                   color={theme.darkGreen}
                 />
               )}
