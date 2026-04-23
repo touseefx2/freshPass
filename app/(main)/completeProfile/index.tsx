@@ -239,16 +239,24 @@ export default function CompleteProfile() {
 
     if (currentStep === 9) {
       // Transform subscriptions to API format
-      const subscriptionPlansArray = subscriptions.map((subscription) => ({
-        name: subscription.packageName,
-        description: subscription.description ?? subscription.packageName,
-        price: subscription.price,
-        visits: subscription.servicesPerMonth,
-        plan_services: subscription.serviceIds.map((id) => ({
-          service_id: parseInt(id, 10),
-          count: subscription.serviceCounts?.[id] ?? 1,
-        })),
-      }));
+      const subscriptionPlansArray = subscriptions.map((subscription) => {
+        const planServices = subscription.serviceIds.map((id) => parseInt(id, 10));
+        const serviceQuantities = subscription.serviceIds.reduce<
+          Record<string, number>
+        >((acc, id) => {
+          acc[id] = subscription.serviceCounts?.[id] ?? 1;
+          return acc;
+        }, {});
+
+        return {
+          name: subscription.packageName,
+          description: subscription.description ?? subscription.packageName,
+          price: subscription.price,
+          visits: subscription.servicesPerMonth,
+          plan_services: planServices,
+          service_quantities: serviceQuantities,
+        };
+      });
 
       body = { ...body, subscription_plans: subscriptionPlansArray };
     }

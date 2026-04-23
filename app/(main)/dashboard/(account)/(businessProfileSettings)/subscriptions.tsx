@@ -53,6 +53,7 @@ import { Portal } from "@gorhom/portal";
 interface ModuleSubscriptionService {
   id: number;
   name: string;
+  quantity?: number;
 }
 
 interface ModuleSubscriptionPlan {
@@ -95,6 +96,13 @@ const getPopularSuggestions = (
   services: Array<{ id: string; name: string }>,
 ) => {
   const firstTwoServiceIds = services.slice(0, 2).map((s) => s.id);
+  const serviceCounts = firstTwoServiceIds.reduce<Record<string, number>>(
+    (acc, serviceId) => {
+      acc[serviceId] = 1;
+      return acc;
+    },
+    {},
+  );
 
   return [
     {
@@ -104,6 +112,7 @@ const getPopularSuggestions = (
       price: 145.99,
       currency: "USD",
       serviceIds: firstTwoServiceIds,
+      serviceCounts,
     },
   ];
 };
@@ -568,6 +577,7 @@ export default function ManageSubscriptionsScreen() {
       price: number;
       currency: string;
       serviceIds: string[];
+      serviceCounts?: Record<string, number>;
     }>
   >([]);
 
@@ -738,6 +748,13 @@ export default function ManageSubscriptionsScreen() {
             price: parseFloat(plan.price),
             currency: "USD",
             serviceIds: plan.services.map((service) => service.id.toString()),
+            serviceCounts: plan.services.reduce<Record<string, number>>(
+              (acc, service) => {
+                acc[service.id.toString()] = service.quantity ?? 1;
+                return acc;
+              },
+              {},
+            ),
           };
         });
 
@@ -798,13 +815,18 @@ export default function ManageSubscriptionsScreen() {
     [predefinedSuggestions, customSuggestions],
   );
 
-  const getServiceNames = (serviceIds: string[]): string[] => {
+  const getServiceNames = (
+    serviceIds: string[],
+    serviceCounts?: Record<string, number>,
+  ): string[] => {
     return serviceIds
       .map((id) => {
         const service = businessServices.find((s) => s.id.toString() === id);
-        return service?.name;
+        if (!service) return null;
+        const count = serviceCounts?.[id];
+        return count ? `${service.name} x${count}` : service.name;
       })
-      .filter(Boolean) as string[];
+      .filter((value): value is string => Boolean(value));
   };
 
   const confirmDeleteSubscription = (
@@ -909,6 +931,7 @@ export default function ManageSubscriptionsScreen() {
     price: number;
     currency: string;
     serviceIds: string[];
+    serviceCounts?: Record<string, number>;
   }) => {
     setCustomSuggestions((prev) => [...prev, subscription]);
   };
@@ -931,13 +954,24 @@ export default function ManageSubscriptionsScreen() {
   const handleUpdate = async () => {
     setIsUpdating(true);
     try {
-      const payload = subscriptions.map((subscription) => ({
-        name: subscription.packageName,
-        description: subscription.description ?? subscription.packageName,
-        price: subscription.price,
-        visits: subscription.servicesPerMonth,
-        plan_services: subscription.serviceIds.map((id) => Number(id)),
-      }));
+      const payload = subscriptions.map((subscription) => {
+        const planServices = subscription.serviceIds.map((id) => Number(id));
+        const serviceQuantities = subscription.serviceIds.reduce<
+          Record<string, number>
+        >((acc, id) => {
+          acc[id] = subscription.serviceCounts?.[id] ?? 1;
+          return acc;
+        }, {});
+
+        return {
+          name: subscription.packageName,
+          description: subscription.description ?? subscription.packageName,
+          price: subscription.price,
+          visits: subscription.servicesPerMonth,
+          plan_services: planServices,
+          service_quantities: serviceQuantities,
+        };
+      });
 
       const formData = new FormData();
       formData.append("subscription_plans", JSON.stringify(payload));
@@ -1069,7 +1103,10 @@ export default function ManageSubscriptionsScreen() {
             ) : (
               <View style={styles.subscriptionsContainer}>
                 {subscriptions.map((subscription) => {
-                  const serviceNames = getServiceNames(subscription.serviceIds);
+                  const serviceNames = getServiceNames(
+                    subscription.serviceIds,
+                    subscription.serviceCounts,
+                  );
                   return (
                     <View key={subscription.id} style={styles.subscriptionCard}>
                       <View style={styles.subscriptionCardHeader}>
@@ -1409,6 +1446,13 @@ export default function ManageSubscriptionsScreen() {
             const serviceIds = plan.services_included
               .filter((service) => service.id != null)
               .map((service) => service.id.toString());
+            const serviceCounts = serviceIds.reduce<Record<string, number>>(
+              (acc, serviceId) => {
+                acc[serviceId] = 1;
+                return acc;
+              },
+              {},
+            );
 
             // Create subscription object in the required format
             const subscription = {
@@ -1418,6 +1462,7 @@ export default function ManageSubscriptionsScreen() {
               price: plan.monthly_price,
               currency: plan.currency,
               serviceIds: serviceIds,
+              serviceCounts,
             };
 
             // Add subscription to the list
