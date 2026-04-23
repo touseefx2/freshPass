@@ -167,6 +167,7 @@ interface SubscriptionPlanService {
   description: string | null;
   durationHours: number;
   durationMinutes: number;
+  quantity?: number;
 }
 
 interface SubscriptionData {
@@ -2787,7 +2788,7 @@ export default function BookingNow() {
                               <View key={svc.id} style={styles.subServiceRow}>
                                 <View style={styles.subServiceNameContainer}>
                                   <Text style={styles.subServiceNameText}>
-                                    {svc.name}
+                                    {svc.name} x {svc.quantity ?? 1}
                                   </Text>
                                   {(svc.durationHours > 0 ||
                                     svc.durationMinutes > 0) && (

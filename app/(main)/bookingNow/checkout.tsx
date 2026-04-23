@@ -1281,7 +1281,8 @@ function CheckoutContent() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (_) {}
     }
-    return Array.isArray(bookingTryOnImageUrls) && bookingTryOnImageUrls.length > 0
+    return Array.isArray(bookingTryOnImageUrls) &&
+      bookingTryOnImageUrls.length > 0
       ? bookingTryOnImageUrls
       : [];
   }, [params.try_on_image_urls, bookingTryOnImageUrls]);
@@ -1441,10 +1442,7 @@ function CheckoutContent() {
       if (subscriptionId != null) {
         requestBody.subscription_id = subscriptionId;
       }
-      if (
-        Array.isArray(tryOnImageUrls) &&
-        tryOnImageUrls.length > 0
-      ) {
+      if (Array.isArray(tryOnImageUrls) && tryOnImageUrls.length > 0) {
         requestBody.image_urls = tryOnImageUrls;
       }
       Logger.log("requestBody (subscription)", requestBody);
@@ -1589,10 +1587,7 @@ function CheckoutContent() {
       requestBody.subscription_id = subscriptionId;
     }
 
-    if (
-      Array.isArray(tryOnImageUrls) &&
-      tryOnImageUrls.length > 0
-    ) {
+    if (Array.isArray(tryOnImageUrls) && tryOnImageUrls.length > 0) {
       requestBody.image_urls = tryOnImageUrls;
     }
 
@@ -1980,12 +1975,13 @@ function CheckoutContent() {
 
               {tryOnImageUrls.length > 0 && (
                 <>
-                  <Text style={styles.tryOnSectionLabel}>
-                    Try-on images
-                  </Text>
+                  <Text style={styles.tryOnSectionLabel}>Try-on images</Text>
                   <View style={styles.tryOnImagesRow}>
                     {tryOnImageUrls.map((uri, index) => (
-                      <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
+                      <View
+                        key={`${uri}-${index}`}
+                        style={styles.tryOnImageBox}
+                      >
                         <Image
                           source={{ uri }}
                           style={styles.tryOnImageThumb}
