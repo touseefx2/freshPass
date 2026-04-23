@@ -547,7 +547,7 @@ const createStyles = (theme: Theme) =>
     },
     membershipVisits: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(8),
     },
@@ -622,6 +622,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(8),
+      textTransform: "capitalize",
     },
     servicePriceContainer: {
       flexDirection: "row",
@@ -2007,7 +2008,8 @@ export default function BusinessDetailScreen() {
       title: plan.name,
       visits: `${plan.visits} visit${plan.visits !== 1 ? "s" : ""} per month`,
       price: parseFloat(plan.price),
-      originalPrice: parseFloat(plan.price) * 0.8, // Estimate original price
+      // Original/striked price should be higher than current price.
+      originalPrice: parseFloat(plan.price) * 1.1,
       inclusions:
         plan.services?.map(
           (service: any, index: number) => `${index + 1}. ${service.name}`,
