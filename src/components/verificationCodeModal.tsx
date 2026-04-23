@@ -204,7 +204,7 @@ export default function VerificationCodeModal({
   email,
   onCodeComplete,
   accessToken,
-  screen
+  screen,
 }: VerificationCodeModalProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -231,7 +231,7 @@ export default function VerificationCodeModal({
     title: string,
     message: string,
     type: "success" | "error" | "warning" | "info",
-    duration: number = 3000
+    duration: number = 3000,
   ) => {
     setLocalBannerTitle(title);
     setLocalBannerMessage(message);
@@ -251,10 +251,10 @@ export default function VerificationCodeModal({
     try {
       const config = accessToken
         ? {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
         : undefined;
 
       const response = await ApiService.post<{
@@ -275,7 +275,7 @@ export default function VerificationCodeModal({
             "Success",
             response.message || "Verification email sent successfully.",
             "success",
-            3000
+            3000,
           );
         }
       } else {
@@ -287,7 +287,7 @@ export default function VerificationCodeModal({
             "Error",
             response.message || "Failed to send verification email.",
             "error",
-            3000
+            3000,
           );
         }
       }
@@ -300,9 +300,9 @@ export default function VerificationCodeModal({
         showLocalBanner(
           "Error",
           error.message ||
-          "Failed to send verification email. Please try again.",
+            "Failed to send verification email. Please try again.",
           "error",
-          3000
+          3000,
         );
       }
     } finally {
@@ -327,11 +327,11 @@ export default function VerificationCodeModal({
       // The interceptor will automatically add token from Redux if Authorization header is not set
       const config = accessToken
         ? {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        }
-        : undefined
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        : undefined;
 
       const response = await ApiService.post<{
         success: boolean;
@@ -341,7 +341,7 @@ export default function VerificationCodeModal({
         {
           code: verificationCode,
         },
-        config
+        config,
       );
 
       if (response.success) {
@@ -349,7 +349,7 @@ export default function VerificationCodeModal({
           "Success",
           response.message || "Email verified successfully.",
           "success",
-          3000
+          3000,
         );
         // Call onCodeComplete callback on success
         onCodeComplete?.();
@@ -358,7 +358,7 @@ export default function VerificationCodeModal({
           "Error",
           response.message || "Invalid verification code.",
           "error",
-          3000
+          3000,
         );
         // Reset code on error
         setCode(["", "", "", "", ""]);
@@ -427,7 +427,7 @@ export default function VerificationCodeModal({
         return newCode;
       });
     },
-    [isVerifying, handleVerifyCode]
+    [isVerifying, handleVerifyCode],
   );
 
   const handleKeyPress = (e: any, index: number) => {
