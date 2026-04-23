@@ -2012,7 +2012,8 @@ export default function BusinessDetailScreen() {
       originalPrice: parseFloat(plan.price) * 1.1,
       inclusions:
         plan.services?.map(
-          (service: any, index: number) => `${index + 1}. ${service.name}`,
+          (service: any, index: number) =>
+            `${index + 1}. ${service.name} x ${service.quantity ?? 1}`,
         ) || [],
     }));
   }, [businessData]);

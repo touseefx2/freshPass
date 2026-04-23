@@ -460,7 +460,7 @@ function CheckoutSubscriptionContent() {
             inclusions:
               subscriptionPlan.services?.map(
                 (service: any, index: number) =>
-                  `${index + 1}. ${service.name}`,
+                  `${index + 1}. ${service.name} x ${service.quantity ?? 1}`,
               ) || [],
           };
           setSubscriptionData(mappedSubscription);
@@ -712,7 +712,8 @@ function CheckoutSubscriptionContent() {
         : parseFloat(subscription.price) * 1.25,
       inclusions:
         subscription.services?.map(
-          (service: any, index: number) => `${index + 1}. ${service.name}`,
+          (service: any, index: number) =>
+            `${index + 1}. ${service.name} x ${service.quantity ?? 1}`,
         ) || [],
     };
     setSubscriptionData(mappedSubscription);
