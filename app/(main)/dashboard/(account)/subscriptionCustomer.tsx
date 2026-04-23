@@ -36,6 +36,7 @@ interface SubscriptionPlanService {
   description: string | null;
   durationHours: number;
   durationMinutes: number;
+  quantity?: number;
 }
 
 interface AdditionalService {
@@ -1040,7 +1041,9 @@ export default function subscriptionCustomer() {
                     {item.subscriptionPlanServices.map((svc) => (
                       <View key={svc.id} style={styles.serviceItem}>
                         <View style={styles.serviceNameContainer}>
-                          <Text style={styles.serviceName}>{svc.name}</Text>
+                          <Text style={styles.serviceName}>
+                            {svc.name} x {svc.quantity ?? 1}
+                          </Text>
                           {(svc.durationHours > 0 ||
                             svc.durationMinutes > 0) && (
                             <Text style={styles.serviceDuration}>
