@@ -252,7 +252,6 @@ export default function CompleteProfile() {
           name: subscription.packageName,
           description: subscription.description ?? subscription.packageName,
           price: subscription.price,
-          visits: subscription.servicesPerMonth,
           plan_services: planServices,
           service_quantities: serviceQuantities,
         };

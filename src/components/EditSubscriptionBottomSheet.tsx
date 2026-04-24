@@ -33,7 +33,6 @@ interface EditSubscriptionBottomSheetProps {
     id: string;
     packageName: string;
     description?: string;
-    servicesPerMonth: number;
     price: number;
     currency: string;
     serviceIds: string[];
@@ -114,7 +113,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.lightGreen2,
       flexDirection: "row",
       justifyContent: "space-between",
-      flex: 1,
+      width: "48%",
     },
     rowContainer: {
       flexDirection: "row",
@@ -196,6 +195,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.lightGreen2,
       paddingHorizontal: moderateWidthScale(15),
       paddingVertical: moderateHeightScale(15),
+      width: "48%",
     },
     serviceDropdownButton: {
       flexDirection: "row",
@@ -311,7 +311,6 @@ export default function EditSubscriptionBottomSheet({
   const [description, setDescription] = useState(
     subscription?.description ?? "",
   );
-  const [servicesPerMonthStr, setServicesPerMonthStr] = useState("");
   const [price, setPrice] = useState("");
   const [currency] = useState(subscription?.currency || "USD");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
@@ -337,7 +336,6 @@ export default function EditSubscriptionBottomSheet({
       if (subscription) {
         setPackageName(subscription.packageName);
         setDescription(subscription.description ?? "");
-        setServicesPerMonthStr(subscription.servicesPerMonth.toString());
         setPrice(subscription.price.toString());
         setSelectedServiceIds(subscription.serviceIds);
         setSelectedServiceCounts(
@@ -349,7 +347,6 @@ export default function EditSubscriptionBottomSheet({
       } else {
         setPackageName("");
         setDescription("");
-        setServicesPerMonthStr("1");
         setPrice("10.00");
         setSelectedServiceIds([]);
         setSelectedServiceCounts({});
@@ -357,23 +354,6 @@ export default function EditSubscriptionBottomSheet({
       setErrors({});
     }
   }, [visible, subscription, services]);
-
-  const handleServicesPerMonthChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9]/g, "");
-    setServicesPerMonthStr(cleaned);
-  };
-
-  const handleIncrementServicesPerMonth = () => {
-    const current = parseInt(servicesPerMonthStr, 10) || 0;
-    setServicesPerMonthStr((current + 1).toString());
-  };
-
-  const handleDecrementServicesPerMonth = () => {
-    const current = parseInt(servicesPerMonthStr, 10) || 0;
-    if (current > 0) {
-      setServicesPerMonthStr((current - 1).toString());
-    }
-  };
 
   const handleIncrementPrice = () => {
     const currentPrice = parseFloat(price) || 0;
@@ -452,10 +432,6 @@ export default function EditSubscriptionBottomSheet({
       return;
     }
 
-    const servicesPerMonth = Math.max(
-      0,
-      parseInt(servicesPerMonthStr, 10) || 0,
-    );
     const descriptionValue = description.trim() || packageName.trim();
 
     if (subscriptionId && subscription) {
@@ -464,7 +440,7 @@ export default function EditSubscriptionBottomSheet({
           id: subscriptionId,
           packageName: packageName.trim(),
           description: descriptionValue,
-          servicesPerMonth,
+          servicesPerMonth: subscription.servicesPerMonth ?? 0,
           price: priceValue,
           currency,
           serviceIds: selectedServiceIds,
@@ -477,7 +453,7 @@ export default function EditSubscriptionBottomSheet({
         id: newId,
         packageName: packageName.trim(),
         description: descriptionValue,
-        servicesPerMonth,
+        servicesPerMonth: 0,
         price: priceValue,
         currency,
         serviceIds: selectedServiceIds,
@@ -529,114 +505,78 @@ export default function EditSubscriptionBottomSheet({
         />
       </View>
 
-      <View style={{ gap: moderateHeightScale(15) }}>
-        <View style={styles.rowContainer}>
-          <View style={styles.timeInputWrapper}>
-            <View style={styles.mainTimeCon}>
-              <Text style={styles.inputLabel}>Services/month</Text>
-              <View style={styles.timeInputContainer}>
-                <TextInput
-                  style={styles.timeInput}
-                  value={servicesPerMonthStr}
-                  onChangeText={handleServicesPerMonthChange}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor={theme.lightGreen2}
-                />
-              </View>
-            </View>
-            <View style={styles.arrowButtonsContainer}>
-              <TouchableOpacity
-                onPress={handleIncrementServicesPerMonth}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-up"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <View style={styles.arrowButtonSeparator} />
-              <TouchableOpacity
-                onPress={handleDecrementServicesPerMonth}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-down"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+        }}
+      >
+        <View style={styles.serviceDropdown}>
+          <TouchableOpacity
+            style={styles.serviceDropdownButton}
+            onPress={() => {
+              setServicePickerVisible(true);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.serviceDropdownText}>Add service</Text>
+            <Feather
+              name="chevron-down"
+              size={iconScale(19)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.timeInputWrapper}>
+          <View style={styles.mainTimeCon}>
+            <Text style={styles.inputLabel}>Price</Text>
+            <View style={styles.timeInputContainer}>
+              <Text style={[styles.timeInput, styles.pricePrefix]}>$ </Text>
+              <TextInput
+                style={[styles.timeInput, styles.priceInputInner]}
+                value={price}
+                onChangeText={(text) => {
+                  const cleaned = text.replace(/[^0-9.]/g, "");
+                  const oneDot =
+                    cleaned.indexOf(".") >= 0
+                      ? cleaned.slice(0, cleaned.indexOf(".") + 1) +
+                        cleaned
+                          .slice(cleaned.indexOf(".") + 1)
+                          .replace(/\./g, "")
+                      : cleaned;
+                  setPrice(oneDot);
+                }}
+                keyboardType="decimal-pad"
+                placeholder="0.00"
+                placeholderTextColor={theme.lightGreen2}
+              />
             </View>
           </View>
-
-          <View style={styles.timeInputWrapper}>
-            <View style={styles.mainTimeCon}>
-              <Text style={styles.inputLabel}>Price</Text>
-              <View style={styles.timeInputContainer}>
-                <Text style={[styles.timeInput, styles.pricePrefix]}>$ </Text>
-                <TextInput
-                  style={[styles.timeInput, styles.priceInputInner]}
-                  value={price}
-                  onChangeText={(text) => {
-                    const cleaned = text.replace(/[^0-9.]/g, "");
-                    const oneDot =
-                      cleaned.indexOf(".") >= 0
-                        ? cleaned.slice(0, cleaned.indexOf(".") + 1) +
-                          cleaned
-                            .slice(cleaned.indexOf(".") + 1)
-                            .replace(/\./g, "")
-                        : cleaned;
-                    setPrice(oneDot);
-                  }}
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                  placeholderTextColor={theme.lightGreen2}
-                />
-              </View>
-            </View>
-            <View style={styles.arrowButtonsContainer}>
-              <TouchableOpacity
-                onPress={handleIncrementPrice}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-up"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <View style={styles.arrowButtonSeparator} />
-              <TouchableOpacity
-                onPress={handleDecrementPrice}
-                style={styles.timeButton}
-              >
-                <AntDesign
-                  name="caret-down"
-                  size={iconScale(15)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            </View>
+          <View style={styles.arrowButtonsContainer}>
+            <TouchableOpacity
+              onPress={handleIncrementPrice}
+              style={styles.timeButton}
+            >
+              <AntDesign
+                name="caret-up"
+                size={iconScale(15)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+            <View style={styles.arrowButtonSeparator} />
+            <TouchableOpacity
+              onPress={handleDecrementPrice}
+              style={styles.timeButton}
+            >
+              <AntDesign
+                name="caret-down"
+                size={iconScale(15)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
           </View>
         </View>
-      </View>
-
-      <View style={styles.serviceDropdown}>
-        <TouchableOpacity
-          style={styles.serviceDropdownButton}
-          onPress={() => {
-            setServicePickerVisible(true);
-          }}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.serviceDropdownText}>Select to add service</Text>
-          <Feather
-            name="chevron-down"
-            size={iconScale(19)}
-            color={theme.darkGreen}
-          />
-        </TouchableOpacity>
       </View>
 
       {selectedServiceIds.length > 0 && (

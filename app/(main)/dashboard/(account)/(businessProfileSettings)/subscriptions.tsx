@@ -200,12 +200,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen4,
     },
-    subscriptionVisits: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
     subscriptionCardContent: {
       marginTop: moderateHeightScale(12),
     },
@@ -927,13 +921,16 @@ export default function ManageSubscriptionsScreen() {
   const handleAddCustomSuggestion = (subscription: {
     id: string;
     packageName: string;
-    servicesPerMonth: number;
+    description?: string;
     price: number;
     currency: string;
     serviceIds: string[];
     serviceCounts?: Record<string, number>;
   }) => {
-    setCustomSuggestions((prev) => [...prev, subscription]);
+    setCustomSuggestions((prev) => [
+      ...prev,
+      { ...subscription, servicesPerMonth: 0 },
+    ]);
   };
 
   const handleSelectSuggestion = (
@@ -967,7 +964,6 @@ export default function ManageSubscriptionsScreen() {
           name: subscription.packageName,
           description: subscription.description ?? subscription.packageName,
           price: subscription.price,
-          visits: subscription.servicesPerMonth,
           plan_services: planServices,
           service_quantities: serviceQuantities,
         };
@@ -1146,13 +1142,6 @@ export default function ManageSubscriptionsScreen() {
                           <View>
                             <Text style={styles.subscriptionDetailTitle}>
                               Subscription detail
-                            </Text>
-                            <Text style={styles.subscriptionVisits}>
-                              {subscription.servicesPerMonth}{" "}
-                              {subscription.servicesPerMonth === 1
-                                ? "visit"
-                                : "visits"}
-                              /month
                             </Text>
                           </View>
                           <View style={styles.subscriptionDetailPrice}>

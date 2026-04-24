@@ -254,11 +254,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-    subscriptionVisitsText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
     subscriptionDetailPrice: {
       flexDirection: "row",
       alignItems: "center",
@@ -735,13 +730,15 @@ export default function StepNine() {
     id: string;
     packageName: string;
     description?: string;
-    servicesPerMonth: number;
     price: number;
     currency: string;
     serviceIds: string[];
     serviceCounts?: Record<string, number>;
   }) => {
-    setCustomSuggestions((prev) => [...prev, subscription]);
+    setCustomSuggestions((prev) => [
+      ...prev,
+      { ...subscription, servicesPerMonth: 0 },
+    ]);
   };
 
   const getServiceLabels = (
@@ -874,9 +871,6 @@ export default function StepNine() {
                     <View style={styles.subscriptionDetailLeft}>
                       <Text style={styles.subscriptionDetailTitle}>
                         Subscription detail
-                      </Text>
-                      <Text style={styles.subscriptionVisitsText}>
-                        {subscription.servicesPerMonth} visits/month
                       </Text>
                     </View>
                     <View style={styles.subscriptionDetailPrice}>
