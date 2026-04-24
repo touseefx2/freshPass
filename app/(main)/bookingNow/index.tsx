@@ -1075,6 +1075,51 @@ const createStyles = (theme: Theme) => {
       marginTop: moderateHeightScale(2),
       lineHeight: fontSize.size14,
     },
+    subServiceRowSelectable: {
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    subServiceRowDisabled: {
+      opacity: 0.5,
+      backgroundColor: theme.borderLight,
+    },
+    subServiceSelectableContent: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      width: "100%",
+      gap: moderateWidthScale(10),
+    },
+    subServiceLeftSection: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    subServiceCheckWrap: {
+      marginTop: moderateHeightScale(1),
+      marginRight: moderateWidthScale(10),
+    },
+    subServiceCheckOuter: {
+      width: moderateWidthScale(18),
+      height: moderateWidthScale(18),
+      borderRadius: moderateWidthScale(9),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.background,
+    },
+    subServiceCheckOuterSelected: {
+      borderColor: theme.darkGreen,
+      backgroundColor: theme.lightGreen015,
+    },
+    subServiceCheckInner: {
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.lightGreen,
+    },
     rescheduleHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -1125,7 +1170,7 @@ export default function BookingNow() {
   const isReschedule = params.is_reschedule === "1";
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
   const [isSubscriptionDetailExpanded, setIsSubscriptionDetailExpanded] =
-    useState(false);
+    useState(true);
 
   const subscriptionData: SubscriptionData | null = useMemo(() => {
     if (params.item) {
@@ -1137,13 +1182,32 @@ export default function BookingNow() {
     }
     return null;
   }, [params.item]);
+  const [selectedSubscriptionServiceIds, setSelectedSubscriptionServiceIds] =
+    useState<number[]>([]);
 
   useEffect(() => {
-    setIsSubscriptionDetailExpanded(false);
+    setIsSubscriptionDetailExpanded(true);
   }, [params.item]);
 
   const toggleSubscriptionDetail = useCallback(() => {
     setIsSubscriptionDetailExpanded((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    if (!isSubscriptionBooking || !subscriptionData?.subscriptionPlanServices) {
+      setSelectedSubscriptionServiceIds([]);
+      return;
+    }
+
+    setSelectedSubscriptionServiceIds([]);
+  }, [isSubscriptionBooking, subscriptionData]);
+
+  const toggleSubscriptionServiceSelection = useCallback((serviceId: number) => {
+    setSelectedSubscriptionServiceIds((prev) =>
+      prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId],
+    );
   }, []);
 
   const formatServiceDuration = useCallback(
@@ -2784,34 +2848,81 @@ export default function BookingNow() {
                             Plan services
                           </Text>
                           {subscriptionData.subscriptionPlanServices.map(
-                            (svc) => (
-                              <View key={svc.id} style={styles.subServiceRow}>
-                                <View style={styles.subServiceNameContainer}>
-                                  <Text style={styles.subServiceNameText}>
-                                    {svc.name} x {svc.quantity ?? 1}
-                                  </Text>
-                                  {(svc.durationHours > 0 ||
-                                    svc.durationMinutes > 0) && (
-                                    <Text style={styles.subServiceDurationText}>
-                                      {formatServiceDuration(
-                                        svc.durationHours,
-                                        svc.durationMinutes,
-                                      )}
-                                    </Text>
-                                  )}
-                                  {!!svc.description && (
-                                    <Text
-                                      style={styles.subServiceDescriptionText}
+                            (svc) => {
+                              const serviceQuantity = svc.quantity ?? 1;
+                              const isServiceDisabled = serviceQuantity <= 0;
+
+                              return (
+                              <TouchableOpacity
+                                key={svc.id}
+                                style={[
+                                  styles.subServiceRow,
+                                  styles.subServiceRowSelectable,
+                                  isServiceDisabled && styles.subServiceRowDisabled,
+                                ]}
+                                activeOpacity={isServiceDisabled ? 1 : 0.7}
+                                onPress={() => {
+                                  if (isServiceDisabled) return;
+                                  toggleSubscriptionServiceSelection(svc.id);
+                                }}
+                              >
+                                <View style={styles.subServiceSelectableContent}>
+                                  <View style={styles.subServiceLeftSection}>
+                                    <View
+                                      style={styles.subServiceCheckWrap}
                                     >
-                                      {svc.description}
-                                    </Text>
-                                  )}
+                                      <View
+                                        style={[
+                                          styles.subServiceCheckOuter,
+                                          isServiceDisabled && {
+                                            borderColor: theme.borderLine,
+                                            backgroundColor: theme.borderLight,
+                                          },
+                                          selectedSubscriptionServiceIds.includes(
+                                            svc.id,
+                                          ) &&
+                                            styles.subServiceCheckOuterSelected,
+                                        ]}
+                                      >
+                                        {selectedSubscriptionServiceIds.includes(
+                                          svc.id,
+                                        ) && (
+                                          <View style={styles.subServiceCheckInner} />
+                                        )}
+                                      </View>
+                                    </View>
+
+                                    <View style={styles.subServiceNameContainer}>
+                                      <Text style={styles.subServiceNameText}>
+                                        {svc.name} x {serviceQuantity}
+                                      </Text>
+                                      {(svc.durationHours > 0 ||
+                                        svc.durationMinutes > 0) && (
+                                        <Text
+                                          style={styles.subServiceDurationText}
+                                        >
+                                          {formatServiceDuration(
+                                            svc.durationHours,
+                                            svc.durationMinutes,
+                                          )}
+                                        </Text>
+                                      )}
+                                      {!!svc.description && (
+                                        <Text
+                                          style={styles.subServiceDescriptionText}
+                                        >
+                                          {svc.description}
+                                        </Text>
+                                      )}
+                                    </View>
+                                  </View>
+                                  <Text style={styles.subServicePriceText}>
+                                    ${svc.price}
+                                  </Text>
                                 </View>
-                                <Text style={styles.subServicePriceText}>
-                                  ${svc.price}
-                                </Text>
-                              </View>
-                            ),
+                              </TouchableOpacity>
+                              );
+                            },
                           )}
                         </>
                       )}
@@ -2989,6 +3100,15 @@ export default function BookingNow() {
             title={t("continue")}
             onPress={() => {
               if (isSubscriptionBooking) {
+                if (selectedSubscriptionServiceIds.length === 0) {
+                  showBanner(
+                    "No Service Selected",
+                    "Please select at least one plan service before checkout.",
+                    "warning",
+                    4000,
+                  );
+                  return;
+                }
                 if (!selectedTimeSlot) {
                   showBanner(
                     "Select time",
@@ -3012,6 +3132,9 @@ export default function BookingNow() {
                       tryOnImageUrls.length > 0
                         ? JSON.stringify(tryOnImageUrls)
                         : "",
+                    selected_subscription_service_ids: JSON.stringify(
+                      selectedSubscriptionServiceIds,
+                    ),
                   },
                 });
                 return;

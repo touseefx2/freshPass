@@ -93,6 +93,7 @@ interface SubscriptionPlanService {
   description: string | null;
   durationHours: number;
   durationMinutes: number;
+  quantity?: number;
 }
 
 interface SubscriptionData {
@@ -1270,6 +1271,7 @@ function CheckoutContent() {
     business_id?: string;
     item?: string;
     try_on_image_urls?: string;
+    selected_subscription_service_ids?: string;
   }>();
 
   // Prefer try-on URLs from route params (passed from bookingNow) so they're always in sync
@@ -1356,7 +1358,7 @@ function CheckoutContent() {
   }, [selectedStaffId, staffMembers]);
 
   const [isSubscriptionDetailExpanded, setIsSubscriptionDetailExpanded] =
-    useState(false);
+    useState(true);
 
   const subscriptionId = params.subscription_id
     ? parseInt(params.subscription_id, 10)
@@ -1374,9 +1376,40 @@ function CheckoutContent() {
   const isSubscriptionMode = Boolean(
     subscriptionId != null && subscriptionData,
   );
+  const selectedSubscriptionServiceIds = useMemo(() => {
+    const raw = params.selected_subscription_service_ids;
+    if (!raw || typeof raw !== "string") {
+      return [] as number[];
+    }
+    try {
+      const parsed = JSON.parse(raw) as number[];
+      if (Array.isArray(parsed)) {
+        return parsed.filter(
+          (id) => typeof id === "number" && !Number.isNaN(id),
+        );
+      }
+    } catch (_) {
+      return raw
+        .split(",")
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((id) => !Number.isNaN(id));
+    }
+    return [];
+  }, [params.selected_subscription_service_ids]);
+  const selectedSubscriptionPlanServices = useMemo(() => {
+    if (!subscriptionData?.subscriptionPlanServices) {
+      return [] as SubscriptionPlanService[];
+    }
+    if (selectedSubscriptionServiceIds.length === 0) {
+      return [] as SubscriptionPlanService[];
+    }
+    return subscriptionData.subscriptionPlanServices.filter((service) =>
+      selectedSubscriptionServiceIds.includes(service.id),
+    );
+  }, [subscriptionData, selectedSubscriptionServiceIds]);
 
   useEffect(() => {
-    setIsSubscriptionDetailExpanded(false);
+    setIsSubscriptionDetailExpanded(true);
   }, [params.item]);
 
   const toggleSubscriptionDetail = useCallback(() => {
@@ -1413,6 +1446,15 @@ function CheckoutContent() {
         );
         return;
       }
+      if (selectedSubscriptionServiceIds.length === 0) {
+        showBanner(
+          "No Service Selected",
+          "Please select at least one plan service before confirming booking.",
+          "warning",
+          4000,
+        );
+        return;
+      }
       if (isGuest) {
         dispatch(setGuestModeModalVisible(true));
         return;
@@ -1426,12 +1468,14 @@ function CheckoutContent() {
         notes?: string;
         staff_id?: number;
         subscription_id?: number;
+        service_ids: number[];
         image_urls?: string[];
       } = {
         business_id: parseInt(params.business_id || businessId || "0", 10),
         appointment_type: "subscription",
         appointment_date: reduxSelectedDate || "",
         appointment_time: reduxSelectedTimeSlot || "",
+        service_ids: selectedSubscriptionServiceIds,
       };
       if (note && note.trim()) {
         requestBody.notes = note.trim();
@@ -2170,19 +2214,19 @@ function CheckoutContent() {
                         </View>
                       )}
 
-                      {subscriptionData.subscriptionPlanServices &&
-                        subscriptionData.subscriptionPlanServices.length >
+                      {selectedSubscriptionPlanServices &&
+                        selectedSubscriptionPlanServices.length >
                           0 && (
                           <>
                             <Text style={styles.subServicesSectionTitle}>
                               Plan services
                             </Text>
-                            {subscriptionData.subscriptionPlanServices.map(
+                            {selectedSubscriptionPlanServices.map(
                               (svc) => (
                                 <View key={svc.id} style={styles.subServiceRow}>
                                   <View style={styles.subServiceNameContainer}>
                                     <Text style={styles.subServiceNameText}>
-                                      {svc.name}
+                                      {svc.name} x {svc.quantity ?? 1}
                                     </Text>
                                     {(svc.durationHours > 0 ||
                                       svc.durationMinutes > 0) && (
