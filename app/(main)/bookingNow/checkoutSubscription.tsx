@@ -391,7 +391,6 @@ function CheckoutSubscriptionContent() {
     subscriptionName?: string;
     subscriptionPrice?: string;
     subscriptionOriginalPrice?: string;
-    subscriptionVisits?: string;
     subscriptionInclusions?: string;
     businessName?: string;
     businessLogo?: string;
@@ -450,9 +449,6 @@ function CheckoutSubscriptionContent() {
           const mappedSubscription = {
             id: subscriptionPlan.id,
             title: subscriptionPlan.name,
-            visits: `${subscriptionPlan.visits} visit${
-              subscriptionPlan.visits !== 1 ? "s" : ""
-            } per month`,
             price: parseFloat(subscriptionPlan.price),
             originalPrice: subscriptionPlan.original_price
               ? parseFloat(subscriptionPlan.original_price)
@@ -496,7 +492,6 @@ function CheckoutSubscriptionContent() {
         originalPrice: parseFloat(
           params.subscriptionOriginalPrice || params.subscriptionPrice || "0",
         ),
-        visits: params.subscriptionVisits,
         inclusions: params.subscriptionInclusions
           ? (() => {
               try {
@@ -703,9 +698,6 @@ function CheckoutSubscriptionContent() {
     const mappedSubscription = {
       id: subscription.id,
       title: subscription.name,
-      visits: `${subscription.visits} visit${
-        subscription.visits !== 1 ? "s" : ""
-      } per month`,
       price: parseFloat(subscription.price),
       originalPrice: subscription.original_price
         ? parseFloat(subscription.original_price)
@@ -871,27 +863,6 @@ function CheckoutSubscriptionContent() {
 
               {/* Features */}
               <View style={styles.featuresContainer}>
-                {/* Visits Feature */}
-                {subscriptionData.visits && (
-                  <View style={styles.featureBlock}>
-                    <Feather
-                      name="calendar"
-                      size={moderateWidthScale(16)}
-                      color={theme.darkGreen}
-                      style={styles.featureIcon}
-                    />
-                    <Text style={styles.featureText}>
-                      {subscriptionData.visits}
-                    </Text>
-                    <Feather
-                      name="check-circle"
-                      size={moderateWidthScale(16)}
-                      color={theme.darkGreen}
-                      style={styles.featureCheck}
-                    />
-                  </View>
-                )}
-
                 {/* Included Services */}
                 {subscriptionData.inclusions &&
                   subscriptionData.inclusions.length > 0 && (

@@ -183,12 +183,6 @@ interface SubscriptionData {
   businessId: number;
   business: string;
   subscriber: string;
-  visits: {
-    used: number;
-    upcoming: number;
-    total: number;
-    remaining: number;
-  };
   status: string;
   paymentDate: string | null;
   nextPaymentDate: string;
@@ -1169,9 +1163,6 @@ export default function BookingNow() {
 
   const isReschedule = params.is_reschedule === "1";
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
-  const [isSubscriptionDetailExpanded, setIsSubscriptionDetailExpanded] =
-    useState(true);
-
   const subscriptionData: SubscriptionData | null = useMemo(() => {
     if (params.item) {
       try {
@@ -1184,14 +1175,6 @@ export default function BookingNow() {
   }, [params.item]);
   const [selectedSubscriptionServiceIds, setSelectedSubscriptionServiceIds] =
     useState<number[]>([]);
-
-  useEffect(() => {
-    setIsSubscriptionDetailExpanded(true);
-  }, [params.item]);
-
-  const toggleSubscriptionDetail = useCallback(() => {
-    setIsSubscriptionDetailExpanded((prev) => !prev);
-  }, []);
 
   useEffect(() => {
     if (!isSubscriptionBooking || !subscriptionData?.subscriptionPlanServices) {
@@ -2730,66 +2713,7 @@ export default function BookingNow() {
                     <Text style={styles.planPriceLabel}>/month</Text>
                   </View>
                 </View>
-                <View style={styles.usageSection}>
-                  <View style={styles.usageHeader}>
-                    <Feather
-                      name="zap"
-                      size={moderateWidthScale(14)}
-                      color={theme.orangeBrown}
-                    />
-                    <Text style={styles.usageTitle}>
-                      {subscriptionData.visits.total} Visits Per Month
-                    </Text>
-                  </View>
-                  <View style={styles.usageStats}>
-                    <View style={styles.usageItem}>
-                      <Text style={styles.usageLabel}>Used</Text>
-                      <Text style={styles.usageValue}>
-                        {subscriptionData.visits.used}
-                      </Text>
-                    </View>
-                    <View style={styles.usageItem}>
-                      <Text style={styles.usageLabel}>Upcoming</Text>
-                      <Text style={styles.usageValue}>
-                        {subscriptionData.visits.upcoming}
-                      </Text>
-                    </View>
-                    <View style={styles.usageItem}>
-                      <Text style={styles.usageLabel}>Remaining</Text>
-                      <Text style={styles.usageValue}>
-                        {subscriptionData.visits.remaining}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                {((subscriptionData.subscriptionPlanDescription &&
-                  subscriptionData.subscriptionPlanDescription.length > 0) ||
-                  subscriptionData.paymentDate ||
-                  subscriptionData.status?.trim()?.toLowerCase() === "active" ||
-                  (subscriptionData.subscriptionPlanServices &&
-                    subscriptionData.subscriptionPlanServices.length > 0)) && (
-                  <TouchableOpacity
-                    style={styles.subSeeDetailRow}
-                    onPress={toggleSubscriptionDetail}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.subSeeDetailText}>
-                      {isSubscriptionDetailExpanded ? "See less" : "See detail"}
-                    </Text>
-                    <Feather
-                      name={
-                        isSubscriptionDetailExpanded
-                          ? "chevron-up"
-                          : "chevron-down"
-                      }
-                      size={moderateWidthScale(18)}
-                      color={theme.orangeBrown}
-                    />
-                  </TouchableOpacity>
-                )}
-
-                {isSubscriptionDetailExpanded && (
-                  <View style={styles.subExpandedDetailSection}>
+                <View style={styles.subExpandedDetailSection}>
                     {subscriptionData.subscriptionPlanDescription && (
                       <Text style={styles.subscriptionDescriptionText}>
                         {subscriptionData.subscriptionPlanDescription}
@@ -2926,8 +2850,7 @@ export default function BookingNow() {
                           )}
                         </>
                       )}
-                  </View>
-                )}
+                </View>
               </View>
             )}
 

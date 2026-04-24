@@ -109,12 +109,6 @@ interface SubscriptionData {
   businessId: number;
   business: string;
   subscriber: string;
-  visits: {
-    used: number;
-    upcoming: number;
-    total: number;
-    remaining: number;
-  };
   status: string;
   paymentDate: string | null;
   nextPaymentDate: string;
@@ -1059,51 +1053,6 @@ const createStyles = (theme: Theme) =>
       opacity: 0.65,
       lineHeight: fontSize.size18,
     },
-    usageSection: {
-      marginTop: moderateHeightScale(8),
-      marginBottom: moderateHeightScale(8),
-      paddingTop: moderateHeightScale(10),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    usageHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    usageTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginLeft: moderateWidthScale(6),
-      flex: 1,
-    },
-    usageStats: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      gap: moderateWidthScale(6),
-    },
-    usageItem: {
-      alignItems: "center",
-      flex: 1,
-      paddingVertical: moderateHeightScale(8),
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    usageLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(3),
-      opacity: 0.65,
-    },
-    usageValue: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
     paymentRenewalRow: {
       flexDirection: "row",
       marginTop: moderateHeightScale(6),
@@ -1137,22 +1086,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-    },
-    subSeeDetailRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(8),
-      marginTop: moderateHeightScale(4),
-      marginBottom: moderateHeightScale(4),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    subSeeDetailText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-      marginRight: moderateWidthScale(6),
     },
     subExpandedDetailSection: {
       marginTop: moderateHeightScale(4),
@@ -1357,9 +1290,6 @@ function CheckoutContent() {
     }
   }, [selectedStaffId, staffMembers]);
 
-  const [isSubscriptionDetailExpanded, setIsSubscriptionDetailExpanded] =
-    useState(true);
-
   const subscriptionId = params.subscription_id
     ? parseInt(params.subscription_id, 10)
     : undefined;
@@ -1407,14 +1337,6 @@ function CheckoutContent() {
       selectedSubscriptionServiceIds.includes(service.id),
     );
   }, [subscriptionData, selectedSubscriptionServiceIds]);
-
-  useEffect(() => {
-    setIsSubscriptionDetailExpanded(true);
-  }, [params.item]);
-
-  const toggleSubscriptionDetail = useCallback(() => {
-    setIsSubscriptionDetailExpanded((prev) => !prev);
-  }, []);
 
   const formatServiceDuration = useCallback(
     (hours: number, minutes: number): string => {
@@ -2099,70 +2021,7 @@ function CheckoutContent() {
                       <Text style={styles.planPriceLabel}>/month</Text>
                     </View>
                   </View>
-                  <View style={styles.usageSection}>
-                    <View style={styles.usageHeader}>
-                      <Feather
-                        name="zap"
-                        size={moderateWidthScale(14)}
-                        color={theme.orangeBrown}
-                      />
-                      <Text style={styles.usageTitle}>
-                        {subscriptionData.visits.total} Visits Per Month
-                      </Text>
-                    </View>
-                    <View style={styles.usageStats}>
-                      <View style={styles.usageItem}>
-                        <Text style={styles.usageLabel}>Used</Text>
-                        <Text style={styles.usageValue}>
-                          {subscriptionData.visits.used}
-                        </Text>
-                      </View>
-                      <View style={styles.usageItem}>
-                        <Text style={styles.usageLabel}>Upcoming</Text>
-                        <Text style={styles.usageValue}>
-                          {subscriptionData.visits.upcoming}
-                        </Text>
-                      </View>
-                      <View style={styles.usageItem}>
-                        <Text style={styles.usageLabel}>Remaining</Text>
-                        <Text style={styles.usageValue}>
-                          {subscriptionData.visits.remaining}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  {((subscriptionData.subscriptionPlanDescription &&
-                    subscriptionData.subscriptionPlanDescription.length > 0) ||
-                    subscriptionData.paymentDate ||
-                    subscriptionData.status?.trim()?.toLowerCase() ===
-                      "active" ||
-                    (subscriptionData.subscriptionPlanServices &&
-                      subscriptionData.subscriptionPlanServices.length >
-                        0)) && (
-                    <TouchableOpacity
-                      style={styles.subSeeDetailRow}
-                      onPress={toggleSubscriptionDetail}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.subSeeDetailText}>
-                        {isSubscriptionDetailExpanded
-                          ? "See less"
-                          : "See detail"}
-                      </Text>
-                      <Feather
-                        name={
-                          isSubscriptionDetailExpanded
-                            ? "chevron-up"
-                            : "chevron-down"
-                        }
-                        size={moderateWidthScale(18)}
-                        color={theme.orangeBrown}
-                      />
-                    </TouchableOpacity>
-                  )}
-
-                  {isSubscriptionDetailExpanded && (
-                    <View style={styles.subExpandedDetailSection}>
+                  <View style={styles.subExpandedDetailSection}>
                       {subscriptionData.subscriptionPlanDescription && (
                         <Text style={styles.descriptionText}>
                           {subscriptionData.subscriptionPlanDescription}
@@ -2255,8 +2114,7 @@ function CheckoutContent() {
                             )}
                           </>
                         )}
-                    </View>
-                  )}
+                  </View>
                 </View>
               )}
             </View>

@@ -26,7 +26,6 @@ import { businessEndpoints } from "@/src/services/endpoints";
 import { Feather } from "@expo/vector-icons";
 import RetryButton from "@/src/components/retryButton";
 import { Dropdown } from "react-native-element-dropdown";
-import subscription from "./subscription";
 import { useTranslation } from "react-i18next";
 
 interface SubscriptionPlanService {
@@ -64,12 +63,6 @@ interface SubscriptionData {
   businessId: number;
   business: string;
   subscriber: string;
-  visits: {
-    used: number;
-    upcoming: number;
-    total: number;
-    remaining: number;
-  };
   status: string;
   stripeStatus: string;
   endsAt: string | null;
@@ -218,54 +211,6 @@ const createStyles = (theme: Theme) =>
       opacity: 0.65,
       lineHeight: fontSize.size18,
     },
-    usageSection: {
-      marginTop: moderateHeightScale(8),
-      marginBottom: moderateHeightScale(8),
-      paddingTop: moderateHeightScale(10),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    usageHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    usageTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginLeft: moderateWidthScale(6),
-      flex: 1,
-    },
-    checkIcon: {
-      marginLeft: moderateWidthScale(4),
-    },
-    usageStats: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      gap: moderateWidthScale(6),
-    },
-    usageItem: {
-      alignItems: "center",
-      flex: 1,
-      paddingVertical: moderateHeightScale(8),
-      backgroundColor: theme.lightGreen015,
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    usageLabel: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(3),
-      opacity: 0.65,
-    },
-    usageValue: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
     paymentDateSection: {
       flexDirection: "row",
       alignItems: "center",
@@ -356,6 +301,9 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       alignItems: "center",
       marginBottom: moderateHeightScale(6),
+    },
+    bookAppointmentButtonDisabled: {
+      opacity: 0.45,
     },
     bookAppointmentButtonText: {
       fontSize: fontSize.size14,
@@ -616,23 +564,7 @@ const createStyles = (theme: Theme) =>
       opacity: 0.8,
       lineHeight: fontSize.size18,
     },
-    seeDetailRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(8),
-      marginTop: moderateHeightScale(4),
-      marginBottom: moderateHeightScale(4),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    seeDetailText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-      marginRight: moderateWidthScale(6),
-    },
-    expandedDetailSection: {
+    detailSection: {
       marginTop: moderateHeightScale(4),
       paddingTop: moderateHeightScale(10),
       borderTopWidth: 1,
@@ -710,18 +642,6 @@ export default function subscriptionCustomer() {
     useState<SubscriptionData | null>(null);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [expandedCardIds, setExpandedCardIds] = useState<Set<number>>(
-    new Set(),
-  );
-
-  const toggleCardExpand = useCallback((id: number) => {
-    setExpandedCardIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
 
   const fetchSubscriptions = useCallback(
     async (page: number = 1, append: boolean = false, status?: string) => {
@@ -895,14 +815,9 @@ export default function subscriptionCustomer() {
         item.status?.trim()?.toLowerCase() === "active" &&
         item.stripeStatus?.trim()?.toLowerCase() === "cancelled" &&
         item.endsAt;
-      const isExpanded = expandedCardIds.has(item.id);
-      const hasDetail =
-        (item.subscriptionPlanDescription &&
-          item.subscriptionPlanDescription.length > 0) ||
-        item.paymentDate ||
-        item.status?.trim()?.toLowerCase() === "active" ||
-        (item.subscriptionPlanServices &&
-          item.subscriptionPlanServices.length > 0);
+      const hasBookableService =
+        item.subscriptionPlanServices?.some((svc) => (svc.quantity ?? 1) > 0) ??
+        false;
 
       return (
         <View style={styles.subscriptionCard}>
@@ -943,136 +858,89 @@ export default function subscriptionCustomer() {
             </View>
           </View>
 
-          {/* Usage Section */}
-          <View style={styles.usageSection}>
-            <View style={styles.usageHeader}>
-              <Feather
-                name="zap"
-                size={moderateWidthScale(14)}
-                color={theme.orangeBrown}
-              />
-              <Text style={styles.usageTitle}>
-                {item.visits.total} Visits Per Month
+          {/* Always visible detail section */}
+          <View style={styles.detailSection}>
+            {item.subscriptionPlanDescription && (
+              <Text style={styles.descriptionText}>
+                {item.subscriptionPlanDescription}
               </Text>
-            </View>
-            <View style={styles.usageStats}>
-              <View style={styles.usageItem}>
-                <Text style={styles.usageLabel}>Used</Text>
-                <Text style={styles.usageValue}>{item.visits.used}</Text>
+            )}
+            {(item.paymentDate || item.status?.trim()?.toLowerCase() === "active") && (
+              <View style={styles.paymentRenewalRow}>
+                {item.paymentDate && (
+                  <View style={styles.paymentDateContainer}>
+                    <Feather
+                      name="credit-card"
+                      size={moderateWidthScale(12)}
+                      color={theme.darkGreen}
+                    />
+                    <View style={styles.dateInfoContainer}>
+                      <Text style={styles.dateLabel}>Payment</Text>
+                      <Text style={styles.dateValue}>{item.paymentDate}</Text>
+                    </View>
+                  </View>
+                )}
+                {item.status?.trim()?.toLowerCase() === "active" && (
+                  <View
+                    style={[
+                      styles.renewalContainer,
+                      !item.paymentDate && { marginLeft: 0 },
+                    ]}
+                  >
+                    <Feather
+                      name="calendar"
+                      size={moderateWidthScale(12)}
+                      color={theme.darkGreen}
+                    />
+                    <View style={styles.dateInfoContainer}>
+                      <Text style={styles.dateLabel}>Renewal</Text>
+                      <Text style={styles.dateValue}>{item.nextPaymentDate}</Text>
+                    </View>
+                  </View>
+                )}
               </View>
-              <View style={styles.usageItem}>
-                <Text style={styles.usageLabel}>Upcoming</Text>
-                <Text style={styles.usageValue}>{item.visits.upcoming}</Text>
-              </View>
-              <View style={styles.usageItem}>
-                <Text style={styles.usageLabel}>Remaining</Text>
-                <Text style={styles.usageValue}>{item.visits.remaining}</Text>
-              </View>
-            </View>
+            )}
+            {item.subscriptionPlanServices && item.subscriptionPlanServices.length > 0 && (
+              <>
+                {item.subscriptionPlanServices.map((svc) => (
+                  <View key={svc.id} style={styles.serviceItem}>
+                    <View style={styles.serviceNameContainer}>
+                      <Text style={styles.serviceName}>
+                        {svc.name} x {svc.quantity ?? 1}
+                      </Text>
+                      {(svc.durationHours > 0 || svc.durationMinutes > 0) && (
+                        <Text style={styles.serviceDuration}>
+                          {formatServiceDuration(
+                            svc.durationHours,
+                            svc.durationMinutes,
+                          )}
+                        </Text>
+                      )}
+                      {!!svc.description && (
+                        <Text style={styles.serviceDescription}>
+                          {svc.description}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.servicePrice}>${svc.price}</Text>
+                  </View>
+                ))}
+              </>
+            )}
           </View>
 
-          {/* See detail / See less row */}
-          {hasDetail && (
-            <TouchableOpacity
-              style={styles.seeDetailRow}
-              onPress={() => toggleCardExpand(item.id)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.seeDetailText}>
-                {isExpanded ? "See less" : "See detail"}
-              </Text>
-              <Feather
-                name={isExpanded ? "chevron-up" : "chevron-down"}
-                size={moderateWidthScale(18)}
-                color={theme.orangeBrown}
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Expanded: Description, Payment/Renewal, Plan Services */}
-          {isExpanded && (
-            <View style={styles.expandedDetailSection}>
-              {item.subscriptionPlanDescription && (
-                <Text style={styles.descriptionText}>
-                  {item.subscriptionPlanDescription}
-                </Text>
-              )}
-              {(item.paymentDate ||
-                item.status?.trim()?.toLowerCase() === "active") && (
-                <View style={styles.paymentRenewalRow}>
-                  {item.paymentDate && (
-                    <View style={styles.paymentDateContainer}>
-                      <Feather
-                        name="credit-card"
-                        size={moderateWidthScale(12)}
-                        color={theme.darkGreen}
-                      />
-                      <View style={styles.dateInfoContainer}>
-                        <Text style={styles.dateLabel}>Payment</Text>
-                        <Text style={styles.dateValue}>{item.paymentDate}</Text>
-                      </View>
-                    </View>
-                  )}
-                  {item.status?.trim()?.toLowerCase() === "active" && (
-                    <View
-                      style={[
-                        styles.renewalContainer,
-                        !item.paymentDate && { marginLeft: 0 },
-                      ]}
-                    >
-                      <Feather
-                        name="calendar"
-                        size={moderateWidthScale(12)}
-                        color={theme.darkGreen}
-                      />
-                      <View style={styles.dateInfoContainer}>
-                        <Text style={styles.dateLabel}>Renewal</Text>
-                        <Text style={styles.dateValue}>
-                          {item.nextPaymentDate}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              )}
-              {item.subscriptionPlanServices &&
-                item.subscriptionPlanServices.length > 0 && (
-                  <>
-                    {item.subscriptionPlanServices.map((svc) => (
-                      <View key={svc.id} style={styles.serviceItem}>
-                        <View style={styles.serviceNameContainer}>
-                          <Text style={styles.serviceName}>
-                            {svc.name} x {svc.quantity ?? 1}
-                          </Text>
-                          {(svc.durationHours > 0 ||
-                            svc.durationMinutes > 0) && (
-                            <Text style={styles.serviceDuration}>
-                              {formatServiceDuration(
-                                svc.durationHours,
-                                svc.durationMinutes,
-                              )}
-                            </Text>
-                          )}
-                          {!!svc.description && (
-                            <Text style={styles.serviceDescription}>
-                              {svc.description}
-                            </Text>
-                          )}
-                        </View>
-                        <Text style={styles.servicePrice}>${svc.price}</Text>
-                      </View>
-                    ))}
-                  </>
-                )}
-            </View>
-          )}
-
           {/* Book Appointment Button */}
-          {item.status?.trim()?.toLowerCase() === "active" &&
-            item.visits.remaining > 0 && (
+          {item.status?.trim()?.toLowerCase() === "active" && (
               <TouchableOpacity
-                style={styles.bookAppointmentButton}
-                onPress={() => handleBookAppointment(item)}
+                style={[
+                  styles.bookAppointmentButton,
+                  !hasBookableService && styles.bookAppointmentButtonDisabled,
+                ]}
+                onPress={() => {
+                  if (!hasBookableService) return;
+                  handleBookAppointment(item);
+                }}
+                disabled={!hasBookableService}
                 activeOpacity={0.8}
               >
                 <Text style={styles.bookAppointmentButtonText}>
@@ -1120,8 +988,6 @@ export default function subscriptionCustomer() {
     [
       styles,
       theme,
-      expandedCardIds,
-      toggleCardExpand,
       handleCancelSubscription,
       handleBookAppointment,
       formatEndsAtDate,

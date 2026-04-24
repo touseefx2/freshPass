@@ -2681,9 +2681,7 @@ export default function BusinessDetailScreen() {
                           <Text style={styles.membershipTitle}>
                             {subscription.title}
                           </Text>
-                          <Text style={styles.membershipVisits}>
-                            {subscription.visits}
-                          </Text>
+                          <Text style={styles.membershipVisits}></Text>
                           <View style={styles.membershipInclusions}>
                             {subscription.inclusions.length > 2 ? (
                               <>
@@ -2757,7 +2755,6 @@ export default function BusinessDetailScreen() {
                                     subscription.price.toString(),
                                   subscriptionOriginalPrice:
                                     subscription.originalPrice.toString(),
-                                  subscriptionVisits: subscription.visits,
                                   subscriptionInclusions: JSON.stringify(
                                     subscription.inclusions,
                                   ),
