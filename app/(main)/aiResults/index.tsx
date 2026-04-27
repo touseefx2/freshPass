@@ -2087,20 +2087,22 @@ export default function AiResults() {
               gap: moderateWidthScale(12),
             }}
           >
-            <TouchableOpacity
-              onPress={() => {
-                router.back();
-                router.back();
-              }}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name="smart-toy"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
+            {!fromBooking ? (
+              <TouchableOpacity
+                onPress={() => {
+                  router.back();
+                  router.back();
+                }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="smart-toy"
+                  size={moderateWidthScale(22)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            ) : null}
             {canShare ? (
               <TouchableOpacity
                 onPress={openShareSheet}

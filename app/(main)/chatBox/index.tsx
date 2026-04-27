@@ -131,7 +131,8 @@ function getMimeAndName(uri: string): { mimeType: string; name: string } {
                   : ext === "m4v"
                     ? "video/x-m4v"
                     : "image/jpeg";
-  const name = raw.split("/").pop() || (ext === "mp4" ? "video.mp4" : `image.${ext}`);
+  const name =
+    raw.split("/").pop() || (ext === "mp4" ? "video.mp4" : `image.${ext}`);
   return { mimeType, name };
 }
 
@@ -521,11 +522,7 @@ function ChatVideoModalContent({
         onPress={onClose}
         activeOpacity={0.8}
       >
-        <Feather
-          name="x"
-          size={moderateWidthScale(24)}
-          color={theme.white}
-        />
+        <Feather name="x" size={moderateWidthScale(24)} color={theme.white} />
       </TouchableOpacity>
       <View
         style={{
@@ -1703,12 +1700,12 @@ const ChatContent = ({
                   {item.attachments && item.attachments.length > 0 ? (
                     <View style={{ alignSelf: "flex-start" }}>
                       {(() => {
-                        const imageAttachments = (item.attachments ?? []).filter(
-                          (u) => isImageUrl(u),
-                        );
-                        const videoAttachments = (item.attachments ?? []).filter(
-                          (u) => isVideoUrl(u),
-                        );
+                        const imageAttachments = (
+                          item.attachments ?? []
+                        ).filter((u) => isImageUrl(u));
+                        const videoAttachments = (
+                          item.attachments ?? []
+                        ).filter((u) => isVideoUrl(u));
                         return (
                           <>
                             {imageAttachments.length > 0 ? (
@@ -1746,9 +1743,7 @@ const ChatContent = ({
                                     />
                                     {onDownloadPress ? (
                                       <TouchableOpacity
-                                        style={
-                                          styles.bubbleImageDownloadButton
-                                        }
+                                        style={styles.bubbleImageDownloadButton}
                                         onPress={(e) => {
                                           e.stopPropagation?.();
                                           onDownloadPress(uri);
@@ -2247,11 +2242,7 @@ export default function ChatBoxScreen() {
     const linkUris = selectedAttachments.filter((uri) => isOnlineLink(uri));
     const hasAttachments = localUris.length > 0;
     const hasLinks = linkUris.length > 0;
-    if (
-      !userId ||
-      sending ||
-      (!trimmed && !hasAttachments && !hasLinks)
-    )
+    if (!userId || sending || (!trimmed && !hasAttachments && !hasLinks))
       return;
 
     setSending(true);
@@ -2260,7 +2251,11 @@ export default function ChatBoxScreen() {
       formData.append("receiver_id", String(Number(userId)));
       formData.append("message", trimmed || "");
 
-      for (let i = 0; i < Math.min(localUris.length, MAX_ATTACHMENT_FILES); i++) {
+      for (
+        let i = 0;
+        i < Math.min(localUris.length, MAX_ATTACHMENT_FILES);
+        i++
+      ) {
         const uri = localUris[i];
         const { mimeType, name } = getMimeAndName(uri);
         formData.append("attachments[]", {

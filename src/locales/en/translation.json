@@ -673,6 +673,7 @@
   "closeAiProcessAlertMessage": "Your AI process is still running. You can go to the AI requests screen to view results.",
   "goToAiRequestsList": "Go to AI requests list",
   "aiRequests": "Requests",
+  "tryOnList": "Try-On List",
   "jobId": "Job ID",
   "prompt": "Prompt",
   "aiResults": "AI Result",

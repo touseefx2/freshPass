@@ -79,6 +79,8 @@ export default function AiRequests() {
   const params = useLocalSearchParams<{ returnTo?: string }>();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+  const isTryOnFlow = params.returnTo === "booking";
+  const headerTitle = isTryOnFlow ? t("tryOnList") : t("aiRequests");
 
   const [jobs, setJobs] = useState<AiRequestJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,13 +269,15 @@ export default function AiRequests() {
     return (
       <View style={styles.safeArea}>
         <StackHeader
-          title={t("aiRequests")}
+          title={headerTitle}
           rightIcon={
-            <MaterialIcons
-              name="smart-toy"
-              size={moderateWidthScale(22)}
-              color={theme.white}
-            />
+            isTryOnFlow ? undefined : (
+              <MaterialIcons
+                name="smart-toy"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            )
           }
           onRightPress={() => {
             router.back();
@@ -294,13 +298,15 @@ export default function AiRequests() {
         translucent
       />
       <StackHeader
-        title={t("aiRequests")}
+        title={headerTitle}
         rightIcon={
-          <MaterialIcons
-            name="smart-toy"
-            size={moderateWidthScale(22)}
-            color={theme.white}
-          />
+          isTryOnFlow ? undefined : (
+            <MaterialIcons
+              name="smart-toy"
+              size={moderateWidthScale(22)}
+              color={theme.white}
+            />
+          )
         }
         onRightPress={() => {
           router.back();

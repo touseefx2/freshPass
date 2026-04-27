@@ -607,6 +607,7 @@
   "closeAiProcessAlertMessage": "Votre processus IA est toujours en cours. Vous pouvez aller sur l'écran des demandes IA pour voir les résultats.",
   "goToAiRequestsList": "Aller à la liste des demandes IA",
   "aiRequests": "Demandes IA",
+  "tryOnList": "Liste Try-On",
   "jobId": "ID de tâche",
   "aiResults": "Résultat IA",
   "selectImagesForTryOn": "Sélectionner les images pour l'essayage",

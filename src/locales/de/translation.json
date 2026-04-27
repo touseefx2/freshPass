@@ -607,6 +607,7 @@
   "closeAiProcessAlertMessage": "Ihr KI-Prozess läuft noch. Sie können zum KI-Anfragen-Bereich gehen, um die Ergebnisse zu sehen.",
   "goToAiRequestsList": "Zur KI-Anfragenliste",
   "aiRequests": "KI-Anfragen",
+  "tryOnList": "Try-On-Liste",
   "jobId": "Auftrags-ID",
   "aiResults": "KI-Ergebnis",
   "selectImagesForTryOn": "Bilder für Try-on auswählen",
