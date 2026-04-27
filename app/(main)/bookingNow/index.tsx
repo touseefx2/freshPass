@@ -1185,13 +1185,16 @@ export default function BookingNow() {
     setSelectedSubscriptionServiceIds([]);
   }, [isSubscriptionBooking, subscriptionData]);
 
-  const toggleSubscriptionServiceSelection = useCallback((serviceId: number) => {
-    setSelectedSubscriptionServiceIds((prev) =>
-      prev.includes(serviceId)
-        ? prev.filter((id) => id !== serviceId)
-        : [...prev, serviceId],
-    );
-  }, []);
+  const toggleSubscriptionServiceSelection = useCallback(
+    (serviceId: number) => {
+      setSelectedSubscriptionServiceIds((prev) =>
+        prev.includes(serviceId)
+          ? prev.filter((id) => id !== serviceId)
+          : [...prev, serviceId],
+      );
+    },
+    [],
+  );
 
   const formatServiceDuration = useCallback(
     (hours: number, minutes: number): string => {
@@ -2714,75 +2717,76 @@ export default function BookingNow() {
                   </View>
                 </View>
                 <View style={styles.subExpandedDetailSection}>
-                    {subscriptionData.subscriptionPlanDescription && (
-                      <Text style={styles.subscriptionDescriptionText}>
-                        {subscriptionData.subscriptionPlanDescription}
-                      </Text>
-                    )}
+                  {subscriptionData.subscriptionPlanDescription && (
+                    <Text style={styles.subscriptionDescriptionText}>
+                      {subscriptionData.subscriptionPlanDescription}
+                    </Text>
+                  )}
 
-                    {(subscriptionData.paymentDate ||
-                      subscriptionData.status?.trim()?.toLowerCase() ===
-                        "active") && (
-                      <View style={styles.paymentRenewalRow}>
-                        {subscriptionData.paymentDate && (
-                          <View style={styles.paymentDateContainer}>
-                            <Feather
-                              name="credit-card"
-                              size={moderateWidthScale(12)}
-                              color={theme.darkGreen}
-                            />
-                            <View style={styles.dateInfoContainer}>
-                              <Text style={styles.dateLabel}>Payment</Text>
-                              <Text style={styles.dateValue}>
-                                {subscriptionData.paymentDate}
-                              </Text>
-                            </View>
+                  {(subscriptionData.paymentDate ||
+                    subscriptionData.status?.trim()?.toLowerCase() ===
+                      "active") && (
+                    <View style={styles.paymentRenewalRow}>
+                      {subscriptionData.paymentDate && (
+                        <View style={styles.paymentDateContainer}>
+                          <Feather
+                            name="credit-card"
+                            size={moderateWidthScale(12)}
+                            color={theme.darkGreen}
+                          />
+                          <View style={styles.dateInfoContainer}>
+                            <Text style={styles.dateLabel}>Payment</Text>
+                            <Text style={styles.dateValue}>
+                              {subscriptionData.paymentDate}
+                            </Text>
                           </View>
-                        )}
-                        {subscriptionData.status?.trim()?.toLowerCase() ===
-                          "active" && (
-                          <View
-                            style={[
-                              styles.renewalContainer,
-                              !subscriptionData.paymentDate && {
-                                marginLeft: 0,
-                              },
-                            ]}
-                          >
-                            <Feather
-                              name="calendar"
-                              size={moderateWidthScale(12)}
-                              color={theme.darkGreen}
-                            />
-                            <View style={styles.dateInfoContainer}>
-                              <Text style={styles.dateLabel}>Renewal</Text>
-                              <Text style={styles.dateValue}>
-                                {subscriptionData.nextPaymentDate}
-                              </Text>
-                            </View>
+                        </View>
+                      )}
+                      {subscriptionData.status?.trim()?.toLowerCase() ===
+                        "active" && (
+                        <View
+                          style={[
+                            styles.renewalContainer,
+                            !subscriptionData.paymentDate && {
+                              marginLeft: 0,
+                            },
+                          ]}
+                        >
+                          <Feather
+                            name="calendar"
+                            size={moderateWidthScale(12)}
+                            color={theme.darkGreen}
+                          />
+                          <View style={styles.dateInfoContainer}>
+                            <Text style={styles.dateLabel}>Renewal</Text>
+                            <Text style={styles.dateValue}>
+                              {subscriptionData.nextPaymentDate}
+                            </Text>
                           </View>
-                        )}
-                      </View>
-                    )}
+                        </View>
+                      )}
+                    </View>
+                  )}
 
-                    {subscriptionData.subscriptionPlanServices &&
-                      subscriptionData.subscriptionPlanServices.length > 0 && (
-                        <>
-                          <Text style={styles.subServicesSectionTitle}>
-                            Plan services
-                          </Text>
-                          {subscriptionData.subscriptionPlanServices.map(
-                            (svc) => {
-                              const serviceQuantity = svc.quantity ?? 1;
-                              const isServiceDisabled = serviceQuantity <= 0;
+                  {subscriptionData.subscriptionPlanServices &&
+                    subscriptionData.subscriptionPlanServices.length > 0 && (
+                      <>
+                        <Text style={styles.subServicesSectionTitle}>
+                          Plan services
+                        </Text>
+                        {subscriptionData.subscriptionPlanServices.map(
+                          (svc) => {
+                            const serviceQuantity = svc.quantity ?? 1;
+                            const isServiceDisabled = serviceQuantity <= 0;
 
-                              return (
+                            return (
                               <TouchableOpacity
                                 key={svc.id}
                                 style={[
                                   styles.subServiceRow,
                                   styles.subServiceRowSelectable,
-                                  isServiceDisabled && styles.subServiceRowDisabled,
+                                  isServiceDisabled &&
+                                    styles.subServiceRowDisabled,
                                 ]}
                                 activeOpacity={isServiceDisabled ? 1 : 0.7}
                                 onPress={() => {
@@ -2790,11 +2794,11 @@ export default function BookingNow() {
                                   toggleSubscriptionServiceSelection(svc.id);
                                 }}
                               >
-                                <View style={styles.subServiceSelectableContent}>
+                                <View
+                                  style={styles.subServiceSelectableContent}
+                                >
                                   <View style={styles.subServiceLeftSection}>
-                                    <View
-                                      style={styles.subServiceCheckWrap}
-                                    >
+                                    <View style={styles.subServiceCheckWrap}>
                                       <View
                                         style={[
                                           styles.subServiceCheckOuter,
@@ -2811,12 +2815,16 @@ export default function BookingNow() {
                                         {selectedSubscriptionServiceIds.includes(
                                           svc.id,
                                         ) && (
-                                          <View style={styles.subServiceCheckInner} />
+                                          <View
+                                            style={styles.subServiceCheckInner}
+                                          />
                                         )}
                                       </View>
                                     </View>
 
-                                    <View style={styles.subServiceNameContainer}>
+                                    <View
+                                      style={styles.subServiceNameContainer}
+                                    >
                                       <Text style={styles.subServiceNameText}>
                                         {svc.name} x {serviceQuantity}
                                       </Text>
@@ -2833,7 +2841,9 @@ export default function BookingNow() {
                                       )}
                                       {!!svc.description && (
                                         <Text
-                                          style={styles.subServiceDescriptionText}
+                                          style={
+                                            styles.subServiceDescriptionText
+                                          }
                                         >
                                           {svc.description}
                                         </Text>
@@ -2845,11 +2855,11 @@ export default function BookingNow() {
                                   </Text>
                                 </View>
                               </TouchableOpacity>
-                              );
-                            },
-                          )}
-                        </>
-                      )}
+                            );
+                          },
+                        )}
+                      </>
+                    )}
                 </View>
               </View>
             )}
