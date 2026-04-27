@@ -2087,7 +2087,7 @@ export default function AiResults() {
               gap: moderateWidthScale(12),
             }}
           >
-            {!fromBooking ? (
+            {!isSelectionMode ? (
               <TouchableOpacity
                 onPress={() => {
                   router.back();

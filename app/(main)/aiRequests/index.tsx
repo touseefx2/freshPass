@@ -79,7 +79,8 @@ export default function AiRequests() {
   const params = useLocalSearchParams<{ returnTo?: string }>();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
-  const isTryOnFlow = params.returnTo === "booking";
+  const isTryOnFlow =
+    params.returnTo === "booking" || params.returnTo === "chat";
   const headerTitle = isTryOnFlow ? t("tryOnList") : t("aiRequests");
 
   const [jobs, setJobs] = useState<AiRequestJob[]>([]);
