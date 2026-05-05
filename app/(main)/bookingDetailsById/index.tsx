@@ -298,18 +298,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    membershipBadge: {
-      alignSelf: "flex-start",
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(6),
-      backgroundColor: theme.darkGreenLight,
-    },
-    membershipBadgeText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-    },
     statusOngoing: {
       backgroundColor: theme.orangeBrown015,
     },
@@ -1527,18 +1515,6 @@ export default function bookingDetailsById() {
                     {getStatusLabel(booking.status)}
                   </Text>
                 </View>
-                {booking.subscriptionVisits &&
-                  booking.subscriptionVisits.remaining !== undefined && (
-                    <View style={styles.membershipBadge}>
-                      <Text style={styles.membershipBadgeText}>
-                        {booking.subscriptionVisits.remaining} visit
-                        {booking.subscriptionVisits.remaining !== 1
-                          ? "s"
-                          : ""}{" "}
-                        left
-                      </Text>
-                    </View>
-                  )}
               </View>
             </View>
 

@@ -19,11 +19,7 @@ import {
   iconScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
-import {
-  SubscriptionTicketIcon,
-  PersonIcon,
-  LocationPinIcon,
-} from "@/assets/icons";
+import { PersonIcon, LocationPinIcon } from "@/assets/icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Entypo, Ionicons } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
@@ -710,27 +706,18 @@ export default function BookingScreen() {
           {item.serviceName}
         </Text>
         <View style={styles.appointmentInfoContainer}>
-          <View style={styles.infoRow}>
-            {item.appointmentType === "subscription" ? (
-              <SubscriptionTicketIcon
-                width={moderateWidthScale(15)}
-                height={moderateWidthScale(15)}
-                color={theme.lightGreen}
-              />
-            ) : (
+          {item.appointmentType !== "subscription" && (
+            <View style={styles.infoRow}>
               <LocationPinIcon
                 width={moderateWidthScale(15)}
                 height={moderateWidthScale(15)}
                 color={theme.lightGreen}
               />
-            )}
-
-            <Text numberOfLines={1} style={styles.infoText}>
-              {item.appointmentType === "subscription"
-                ? item.membershipType
-                : item.location}
-            </Text>
-          </View>
+              <Text numberOfLines={1} style={styles.infoText}>
+                {item.location}
+              </Text>
+            </View>
+          )}
 
           <View style={styles.infoRow}>
             <PersonIcon
