@@ -212,6 +212,81 @@ const getErrorMessage = (error: any): string => {
   }
 };
 
+/** Service line item inside a generated subscription plan (api/subscription/generate). */
+export interface GeneratedSubscriptionPlanService {
+  id: number;
+  name: string;
+  description: string;
+  count: number;
+}
+
+/** Single plan from api/subscription/generate after normalization. */
+export interface GeneratedSubscriptionPlanNormalized {
+  tier: string;
+  name: string;
+  monthly_price: number;
+  currency: string;
+  visits_included: number;
+  services_included: GeneratedSubscriptionPlanService[];
+  recommended_for: string;
+}
+
+export interface GenerateSubscriptionResponse {
+  status: string;
+  business_id?: number;
+  generated_plans: GeneratedSubscriptionPlanNormalized[];
+}
+
+const normalizeGeneratedPlanService = (
+  raw: any,
+): GeneratedSubscriptionPlanService => {
+  const id = Number(raw?.id);
+  const countRaw =
+    typeof raw?.count === "number"
+      ? raw.count
+      : typeof raw?.quantity === "number"
+        ? raw.quantity
+        : 1;
+  const count = Number.isFinite(countRaw) && countRaw > 0 ? countRaw : 1;
+  return {
+    id: Number.isFinite(id) ? id : 0,
+    name: String(raw?.name ?? ""),
+    description: String(raw?.description ?? ""),
+    count,
+  };
+};
+
+const normalizeGeneratedPlan = (
+  raw: any,
+): GeneratedSubscriptionPlanNormalized => {
+  const visitsRaw =
+    raw?.visits_included ?? raw?.visits_per_month ?? raw?.visits;
+  const visitsNum = Number(visitsRaw);
+  const servicesRaw = raw?.services_included ?? raw?.services ?? [];
+  return {
+    tier: String(raw?.tier ?? ""),
+    name: String(raw?.name ?? ""),
+    monthly_price: Number(raw?.monthly_price ?? raw?.price ?? 0),
+    currency: String(raw?.currency ?? "USD"),
+    visits_included: Number.isFinite(visitsNum) ? visitsNum : 0,
+    services_included: (Array.isArray(servicesRaw) ? servicesRaw : []).map(
+      normalizeGeneratedPlanService,
+    ),
+    recommended_for: String(raw?.recommended_for ?? ""),
+  };
+};
+
+export const normalizeGenerateSubscriptionResponse = (
+  raw: any,
+): GenerateSubscriptionResponse => ({
+  status: String(raw?.status ?? ""),
+  business_id:
+    raw?.business_id != null ? Number(raw.business_id) : undefined,
+  generated_plans: Array.isArray(raw?.generated_plans)
+    ? raw.generated_plans.map(normalizeGeneratedPlan)
+    : [],
+});
+
 /**
  * AI Tools Service
  * Handles API calls for AI tools (Hair Tryon, Generate Post, Collage, Reel)
@@ -661,7 +736,9 @@ export class AiToolsService {
    * @param businessId - Business ID
    * @returns Promise with response data
    */
-  static async generateSubscription(businessId: number): Promise<any> {
+  static async generateSubscription(
+    businessId: number,
+  ): Promise<GenerateSubscriptionResponse> {
     // Check internet connection
     const hasInternet = await checkInternetConnection();
     if (!hasInternet) {
@@ -685,7 +762,7 @@ export class AiToolsService {
         formData,
       );
       logAiToolResponse("POST", endpoint, response.status, response.data);
-      return response.data;
+      return normalizeGenerateSubscriptionResponse(response.data);
     } catch (error: any) {
       logAiToolError("POST", endpoint, error);
       const errorMessage = getErrorMessage(error);

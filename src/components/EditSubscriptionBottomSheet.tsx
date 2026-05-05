@@ -377,15 +377,22 @@ export default function EditSubscriptionBottomSheet({
       });
       return nextCounts;
     });
+    if (serviceIds.length > 0) {
+      setErrors((prev) => ({ ...prev, services: undefined }));
+    }
   };
 
   const handleRemoveService = (serviceId: string) => {
-    setSelectedServiceIds(selectedServiceIds.filter((id) => id !== serviceId));
+    const nextIds = selectedServiceIds.filter((id) => id !== serviceId);
+    setSelectedServiceIds(nextIds);
     setSelectedServiceCounts((prev) => {
       const nextCounts = { ...prev };
       delete nextCounts[serviceId];
       return nextCounts;
     });
+    if (nextIds.length > 0) {
+      setErrors((prev) => ({ ...prev, services: undefined }));
+    }
   };
 
   const handleIncrementServiceCount = (serviceId: string) => {
@@ -425,6 +432,10 @@ export default function EditSubscriptionBottomSheet({
     const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue <= 0) {
       newErrors.price = "Price must be greater than 0";
+    }
+
+    if (selectedServiceIds.length === 0) {
+      newErrors.services = "Add at least one service";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -470,6 +481,8 @@ export default function EditSubscriptionBottomSheet({
     onClose();
   };
 
+  const hasAtLeastOneService = selectedServiceIds.length > 0;
+
   return (
     <ModalizeBottomSheet
       visible={visible}
@@ -477,6 +490,7 @@ export default function EditSubscriptionBottomSheet({
       title={subscriptionId ? "Edit Subscription" : "Add Subscription"}
       footerButtonTitle={subscriptionId ? "Save" : "Add"}
       onFooterButtonPress={handleSave}
+      footerButtonDisabled={!hasAtLeastOneService}
       contentStyle={styles.scrollContent}
     >
       <View style={styles.packageNameWrapper}>
@@ -578,6 +592,10 @@ export default function EditSubscriptionBottomSheet({
           </View>
         </View>
       </View>
+
+      {errors.services ? (
+        <Text style={styles.errorText}>{errors.services}</Text>
+      ) : null}
 
       {selectedServiceIds.length > 0 && (
         <View style={styles.selectedServicesContainer}>

@@ -1042,7 +1042,10 @@ export default function ManageSubscriptionsScreen() {
           Number(businessId),
         );
 
-        if (response.status === "success" && response.generated_plans) {
+        if (
+          response.status === "success" &&
+          response.generated_plans.length > 0
+        ) {
           setGeneratedResult(response);
           setModalVisible(true);
         } else {
@@ -1430,18 +1433,19 @@ export default function ManageSubscriptionsScreen() {
             //   service.id.toString()
             // );
 
-            // Convert services_included array to serviceIds array
-            // Filter out services with null/undefined IDs before mapping
             const serviceIds = plan.services_included
-              .filter((service) => service.id != null)
+              .filter(
+                (service) => Number.isFinite(service.id) && service.id > 0,
+              )
               .map((service) => service.id.toString());
-            const serviceCounts = serviceIds.reduce<Record<string, number>>(
-              (acc, serviceId) => {
-                acc[serviceId] = 1;
-                return acc;
-              },
-              {},
-            );
+            const serviceCounts = plan.services_included.reduce<
+              Record<string, number>
+            >((acc, service) => {
+              if (Number.isFinite(service.id) && service.id > 0) {
+                acc[service.id.toString()] = service.count;
+              }
+              return acc;
+            }, {});
 
             // Create subscription object in the required format
             const subscription = {

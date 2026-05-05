@@ -15,33 +15,31 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
-  heightScale,
   iconScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
+import type { GeneratedSubscriptionPlanNormalized } from "@/src/services/aiToolsService";
 
-interface Service {
-  id: number;
-  name: string;
-  description: string;
-}
-
-interface GeneratedPlan {
-  tier: string;
-  name: string;
-  monthly_price: number;
-  currency: string;
-  visits_included: number;
-  services_included: Service[];
-  recommended_for: string;
-}
+const formatMonthlyPrice = (price: number, currency: string): string => {
+  const code = (currency || "USD").toUpperCase();
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(price);
+  } catch {
+    return `${code} ${price}`;
+  }
+};
 
 interface GeneratedSubscriptionPlansModalProps {
   visible: boolean;
   onClose: () => void;
-  plans: GeneratedPlan[];
-  onSelectedPlans?: (plans: GeneratedPlan[]) => void;
+  plans: GeneratedSubscriptionPlanNormalized[];
+  onSelectedPlans?: (plans: GeneratedSubscriptionPlanNormalized[]) => void;
 }
 
 const createStyles = (theme: Theme) =>
@@ -191,21 +189,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    visitsContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(16),
-    },
-    visitsIcon: {
-      width: moderateWidthScale(20),
-      height: moderateWidthScale(20),
-    },
-    visitsText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
     servicesSection: {
       marginBottom: moderateHeightScale(16),
     },
@@ -275,7 +258,6 @@ export default function GeneratedSubscriptionPlansModal({
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const insets = useSafeAreaInsets();
   const [selectedPlanIndices, setSelectedPlanIndices] = useState<number[]>([]);
 
   // Reset selection when modal closes
@@ -380,20 +362,11 @@ export default function GeneratedSubscriptionPlansModal({
                     <View style={styles.planContent}>
                       <View style={styles.priceContainer}>
                         <Text style={styles.price}>
-                          ${plan.monthly_price}
+                          {formatMonthlyPrice(
+                            plan.monthly_price,
+                            plan.currency,
+                          )}
                           <Text style={styles.priceUnit}>/month</Text>
-                        </Text>
-                      </View>
-
-                      <View style={styles.visitsContainer}>
-                        <Feather
-                          name="users"
-                          size={iconScale(20)}
-                          color={theme.darkGreen}
-                        />
-                        <Text style={styles.visitsText}>
-                          {plan.visits_included} visit
-                          {plan.visits_included !== 1 ? "s" : ""}/month
                         </Text>
                       </View>
 
@@ -409,15 +382,22 @@ export default function GeneratedSubscriptionPlansModal({
                           </Text>
                         </View>
                         <View style={styles.servicesList}>
-                          {plan.services_included.map((service) => (
-                            <View key={service.id} style={styles.serviceItem}>
+                          {plan.services_included.map((service, sIdx) => (
+                            <View
+                              key={
+                                service.id > 0
+                                  ? `${service.id}-${sIdx}`
+                                  : `svc-${sIdx}`
+                              }
+                              style={styles.serviceItem}
+                            >
                               <Feather
                                 name="check"
                                 size={iconScale(16)}
                                 color={theme.primary}
                               />
                               <Text style={styles.serviceName}>
-                                {service.name}
+                                {service.name} x{service.count}
                               </Text>
                             </View>
                           ))}

@@ -129,13 +129,10 @@ export const parseAddressComponents = (
     ) {
       administrativeArea = component.long_name ?? administrativeArea;
     }
-    // Check for postal_code - some countries use different types
-    if (
-      types.includes("postal_code") ||
-      types.includes("postal_code_prefix") ||
-      types.includes("postal_code_suffix")
-    ) {
-      // Try short_name first (often used for postal codes), fallback to long_name
+    // Prefer the primary postal_code and avoid overriding it with suffixes
+    if (types.includes("postal_code")) {
+      postalCode = component.short_name ?? component.long_name ?? postalCode;
+    } else if (!postalCode && types.includes("postal_code_prefix")) {
       postalCode = component.short_name ?? component.long_name ?? postalCode;
     }
   });

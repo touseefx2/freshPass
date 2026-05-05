@@ -31,7 +31,10 @@ import EditSubscriptionBottomSheet from "@/src/components/EditSubscriptionBottom
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
-import { AiToolsService } from "@/src/services/aiToolsService";
+import {
+  AiToolsService,
+  type GenerateSubscriptionResponse,
+} from "@/src/services/aiToolsService";
 import GeneratedSubscriptionPlansModal from "@/src/components/GeneratedSubscriptionPlansModal";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
@@ -377,7 +380,8 @@ export default function StepNine() {
   const [editingSubscriptionId, setEditingSubscriptionId] = useState<
     string | null
   >(null);
-  const [generatedResult, setGeneratedResult] = useState<any>(null);
+  const [generatedResult, setGeneratedResult] =
+    useState<GenerateSubscriptionResponse | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [showAiTooltipOverlay, setShowAiTooltipOverlay] = useState(true);
   const AI_BUTTON_SIZE = moderateWidthScale(56);
@@ -784,7 +788,10 @@ export default function StepNine() {
           Number(businessId),
         );
 
-        if (response.status === "success" && response.generated_plans) {
+        if (
+          response.status === "success" &&
+          response.generated_plans.length > 0
+        ) {
           setGeneratedResult(response);
           setModalVisible(true);
         } else {
@@ -1125,18 +1132,19 @@ export default function StepNine() {
               .toLowerCase()
               .replace(/\s+/g, "-")}-${Date.now()}`;
 
-            // Convert services_included array to serviceIds array
-            // Filter out services with null/undefined IDs before mapping
             const serviceIds = plan.services_included
-              .filter((service) => service.id != null)
+              .filter(
+                (service) => Number.isFinite(service.id) && service.id > 0,
+              )
               .map((service) => service.id.toString());
-            const serviceCounts = serviceIds.reduce<Record<string, number>>(
-              (acc, serviceId) => {
-                acc[serviceId] = 1;
-                return acc;
-              },
-              {},
-            );
+            const serviceCounts = plan.services_included.reduce<
+              Record<string, number>
+            >((acc, service) => {
+              if (Number.isFinite(service.id) && service.id > 0) {
+                acc[service.id.toString()] = service.count;
+              }
+              return acc;
+            }, {});
 
             // Create subscription object in the required format
             // Description defaults to empty when adding from AI-generated plans
