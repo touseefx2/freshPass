@@ -776,6 +776,26 @@ const createStyles = (theme: Theme) => {
       color: theme.lightGreen,
       textAlign: "center",
     },
+    slotsErrorTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.red,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(8),
+      maxWidth: widthScale(260),
+    },
+    slotsErrorReason: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      textAlign: "center",
+      maxWidth: widthScale(300),
+    },
+    slotsErrorButton: {
+      marginTop: moderateHeightScale(14),
+      width: widthScale(116),
+      height: heightScale(42),
+    },
     priceBreakdown: {
       padding: moderateWidthScale(20),
     },
@@ -1253,6 +1273,7 @@ export default function BookingNow() {
   const scrollViewRef = useRef<ScrollView>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [apiSlots, setApiSlots] = useState<string[]>([]);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [tryOnImageUrls, setTryOnImageUrls] = useState<string[]>([]);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
@@ -1691,11 +1712,11 @@ export default function BookingNow() {
     dispatch(setSelectedTimeSlot(null));
   }, [selectedDate, dispatch]);
 
-  // Fetch available slots from API when date or staff changes
-  useEffect(() => {
+  const fetchAvailableSlots = useCallback(() => {
     const businessId = reduxBusinessId || params.business_id;
     if (!businessId || !selectedDate) {
       setApiSlots([]);
+      setSlotsError(null);
       return;
     }
     const dateStr = selectedDate.format("YYYY-MM-DD");
@@ -1707,11 +1728,14 @@ export default function BookingNow() {
         : undefined;
     if (excludeAppointmentId && isNaN(excludeAppointmentId)) {
       setApiSlots([]);
+      setSlotsError(null);
       return;
     }
     setSlotsLoading(true);
+    setSlotsError(null);
     ApiService.get<{
       success?: boolean;
+      message?: string;
       data?: Array<{ start: string; end: string }>;
     }>(
       appointmentsEndpoints.availableSlots({
@@ -1725,11 +1749,23 @@ export default function BookingNow() {
       }),
     )
       .then((res) => {
+        console.log("-------->res", res);
+
+        if (res?.success === false) {
+          setApiSlots([]);
+          setSlotsError(res.message || "Failed to load available slots.");
+          return;
+        }
         const list = res?.data && Array.isArray(res.data) ? res.data : [];
         setApiSlots(list.map((s) => s.start));
       })
-      .catch(() => {
+      .catch((err: any) => {
         setApiSlots([]);
+        setSlotsError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Failed to load available slots. Please try again.",
+        );
       })
       .finally(() => {
         setSlotsLoading(false);
@@ -1742,6 +1778,11 @@ export default function BookingNow() {
     selectedStaff,
     isReschedule,
   ]);
+
+  // Fetch available slots from API when date or staff changes
+  useEffect(() => {
+    fetchAvailableSlots();
+  }, [fetchAvailableSlots]);
 
   const availableTimeSlots = apiSlots;
 
@@ -2351,6 +2392,18 @@ export default function BookingNow() {
                     </View>
                   ))}
                 </>
+              ) : slotsError ? (
+                <View style={styles.noSlotsContainer}>
+                  <Text style={styles.slotsErrorTitle}>
+                    Available slot API failed
+                  </Text>
+                  <Text style={styles.slotsErrorReason}>{slotsError}</Text>
+                  <Button
+                    title="Retry"
+                    onPress={fetchAvailableSlots}
+                    containerStyle={styles.slotsErrorButton}
+                  />
+                </View>
               ) : availableTimeSlots.length > 0 ? (
                 getAllSlots().map((slot) => {
                   const isDisabled = isSlotDisabled(slot);
