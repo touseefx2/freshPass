@@ -35,7 +35,10 @@ import type {
   SocialProvider,
   SocialLoginApiResponse,
 } from "@/src/types/socialLogin";
-import { getExpoPushToken } from "../services/notificationPermissionService";
+import {
+  ensureNotificationPermissionForAuth,
+  getExpoPushToken,
+} from "../services/notificationPermissionService";
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
@@ -508,6 +511,12 @@ export function useSocialLogin() {
 
   const handleSocialLogin = useCallback(
     async (provider: SocialProvider) => {
+      const hasNotificationPermission =
+        await ensureNotificationPermissionForAuth();
+      if (!hasNotificationPermission) {
+        return;
+      }
+
       if (provider === "google") {
         await handleGoogleLogin();
       } else if (provider === "apple") {

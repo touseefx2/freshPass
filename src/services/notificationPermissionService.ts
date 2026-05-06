@@ -247,3 +247,25 @@ export const handleNotificationPermission = async (): Promise<boolean> => {
 
   return false;
 };
+
+/**
+ * Require notification permission before auth actions (login/signup/social).
+ * Blocks auth flow until notifications are enabled.
+ */
+export const ensureNotificationPermissionForAuth =
+  async (): Promise<boolean> => {
+    const result = await requestNotificationPermission();
+
+    if (result.granted) {
+      return true;
+    }
+
+    const authRequiredMessage =
+      "Notifications must be enabled to continue with login or signup. You can turn them off later from app settings.";
+
+    showNotificationPermissionAlert(authRequiredMessage, async () => {
+      await openNotificationSettings();
+    });
+
+    return false;
+  };
