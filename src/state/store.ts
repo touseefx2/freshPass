@@ -54,6 +54,7 @@ const generalPersistConfig = {
     "registerEmail",
     "isVisitFirst",
     "isFirstShowTryOn",
+    "aiHairTryOnConsentAccepted",
     "recentLocations",
     "recentSearches",
   ], // Only persist these fields

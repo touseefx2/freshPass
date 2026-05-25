@@ -40,7 +40,9 @@ import HairPipelineProcessingModal, {
 import {
   setActionLoader,
   openFullImageModal,
+  setAiHairTryOnConsentAccepted,
 } from "@/src/state/slices/generalSlice";
+import AiHairTryOnConsentModal from "@/src/components/aiHairTryOnConsentModal";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import Logger from "@/src/services/logger";
@@ -72,6 +74,9 @@ export default function Tools() {
   const user = useAppSelector((state) => state.user);
   const aiQuota = useAppSelector((state) => state.user.ai_quota);
   const aiService = useAppSelector((state) => state.general.aiService);
+  const aiHairTryOnConsentAccepted = useAppSelector(
+    (state) => state.general.aiHairTryOnConsentAccepted,
+  );
   const params = useLocalSearchParams<{ toolType?: string }>();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -152,6 +157,7 @@ export default function Tools() {
 
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiConsentModalVisible, setAiConsentModalVisible] = useState(false);
 
   const showCreditBanner =
     // !!hairTryOnService &&
@@ -453,6 +459,87 @@ export default function Tools() {
     }
   }, [t]);
 
+  const executeHairTryonGeneration = useCallback(async () => {
+    setIsGenerating(true);
+    dispatch(setActionLoader(true));
+
+    try {
+      if (hairTryonSelectedType === "processing") {
+        const pipelineResponse = await AiToolsService.startHairPipeline(
+          hairTryonSourceImage!,
+          userId,
+        );
+        hairPipelineStartTimeRef.current = Date.now();
+        setHairPipelineState({
+          visible: true,
+          jobId: pipelineResponse.job_id,
+          jobType: "Hair Tryon",
+          estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
+          progress: 0,
+          imageUri: hairTryonSourceImage,
+          complete: false,
+        });
+        return;
+      }
+
+      const prompt = hairTryonPrompt.trim();
+      const pipelineResponse = await AiToolsService.generateHairTryon(
+        hairTryonSourceImage!,
+        prompt,
+        true,
+        userId,
+      );
+      if (pipelineResponse?.job_id) {
+        hairPipelineStartTimeRef.current = Date.now();
+        setHairPipelineState({
+          visible: true,
+          jobId: pipelineResponse.job_id,
+          jobType: "Hair Tryon",
+          estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
+          progress: 0,
+          imageUri: hairTryonSourceImage,
+          complete: false,
+        });
+      }
+    } catch (error: any) {
+      Logger.error("Error generating hair try-on:", error);
+
+      if (error.isNoInternet) {
+        showBanner(
+          t("noInternetConnection"),
+          t("pleaseCheckInternetConnection"),
+          "error",
+          2000,
+        );
+        return;
+      }
+
+      const errorMessage = error.message || t("failedToGenerate");
+      showBanner(t("error"), errorMessage, "error", 4000);
+    } finally {
+      setIsGenerating(false);
+      dispatch(setActionLoader(false));
+    }
+  }, [
+    dispatch,
+    hairTryonPrompt,
+    hairTryonSelectedType,
+    hairTryonSourceImage,
+    showBanner,
+    t,
+    userId,
+  ]);
+
+  const handleAiConsentAgree = useCallback(() => {
+    dispatch(setAiHairTryOnConsentAccepted(true));
+    setAiConsentModalVisible(false);
+    executeHairTryonGeneration();
+  }, [dispatch, executeHairTryonGeneration]);
+
+  const handleAiConsentDecline = useCallback(() => {
+    setAiConsentModalVisible(false);
+  }, []);
+
   const handleGenerate = async () => {
     // Validation
     if (toolType === "Generate Post") {
@@ -503,6 +590,14 @@ export default function Tools() {
         });
         return;
       }
+
+      if (!aiHairTryOnConsentAccepted) {
+        setAiConsentModalVisible(true);
+        return;
+      }
+
+      await executeHairTryonGeneration();
+      return;
     } else if (toolType === "Generate Collage") {
       if (collageImages.length < 2) {
         showBanner(
@@ -550,49 +645,7 @@ export default function Tools() {
     dispatch(setActionLoader(true));
 
     try {
-      // let response;
-      if (toolType === "Hair Tryon") {
-        if (hairTryonSelectedType === "processing") {
-          console.log("--------> userId: ", userId);
-          // Hair pipeline: start background job and show processing modal
-          const pipelineResponse = await AiToolsService.startHairPipeline(
-            hairTryonSourceImage!,
-            userId,
-          );
-          hairPipelineStartTimeRef.current = Date.now();
-          setHairPipelineState({
-            visible: true,
-            jobId: pipelineResponse.job_id,
-            jobType: "Hair Tryon",
-            estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
-            progress: 0,
-            imageUri: hairTryonSourceImage,
-            complete: false,
-          });
-          return;
-        }
-        // With prompt and image: start Replicate job, same modal as processing
-        const prompt = hairTryonPrompt.trim();
-        const pipelineResponse = await AiToolsService.generateHairTryon(
-          hairTryonSourceImage!,
-          prompt,
-          true,
-          userId,
-        );
-        if (pipelineResponse?.job_id) {
-          hairPipelineStartTimeRef.current = Date.now();
-          setHairPipelineState({
-            visible: true,
-            jobId: pipelineResponse.job_id,
-            jobType: "Hair Tryon",
-            estimatedMinutes: pipelineResponse.estimated_time_minutes ?? 5,
-            progress: 0,
-            imageUri: hairTryonSourceImage,
-            complete: false,
-          });
-          return;
-        }
-      } else if (toolType === "Generate Post") {
+      if (toolType === "Generate Post") {
         const postResponse = await AiToolsService.generatePost(
           businessId.toString(),
           postImage!,
@@ -1272,6 +1325,12 @@ export default function Tools() {
         state={hairPipelineState}
         onClose={closeHairPipelineModal}
         onSeeStatus={handleHairPipelineSeeStatus}
+      />
+
+      <AiHairTryOnConsentModal
+        visible={aiConsentModalVisible}
+        onAgree={handleAiConsentAgree}
+        onDecline={handleAiConsentDecline}
       />
     </SafeAreaView>
   );
