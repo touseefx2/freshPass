@@ -29,10 +29,7 @@ import { useSocialLogin } from "@/src/hooks/useSocialLogin";
 import SectionSeparator from "@/src/components/sectionSeparator";
 import VerificationCodeModal from "@/src/components/verificationCodeModal";
 import { validateEmail } from "@/src/services/validationService";
-import {
-  ensureNotificationPermissionForAuth,
-  getExpoPushToken,
-} from "@/src/services/notificationPermissionService";
+import { getExpoPushToken } from "@/src/services/notificationPermissionService";
 import Logger from "@/src/services/logger";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
@@ -235,10 +232,6 @@ export default function Login() {
 
   const handleLogin = useCallback(async () => {
     Keyboard.dismiss();
-    const hasNotificationPermission = await ensureNotificationPermissionForAuth();
-    if (!hasNotificationPermission) {
-      return;
-    }
 
     setIsLoading(true);
     try {

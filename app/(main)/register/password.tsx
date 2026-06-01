@@ -37,10 +37,7 @@ import {
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { setUser } from "@/src/state/slices/userSlice";
-import {
-  ensureNotificationPermissionForAuth,
-  getExpoPushToken,
-} from "@/src/services/notificationPermissionService";
+import { getExpoPushToken } from "@/src/services/notificationPermissionService";
 import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
@@ -213,10 +210,6 @@ export default function RegisterPassword() {
 
   const handleContinue = async () => {
     Keyboard.dismiss();
-    const hasNotificationPermission = await ensureNotificationPermissionForAuth();
-    if (!hasNotificationPermission) {
-      return;
-    }
 
     setIsLoading(true);
     try {
