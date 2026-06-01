@@ -43,6 +43,7 @@
         }
       },
       "permissions": ["android.permission.RECORD_AUDIO"],
+      "blockedPermissions": ["com.google.android.gms.permission.AD_ID"],
       "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": "./google-services.json"
     },
