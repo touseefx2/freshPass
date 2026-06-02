@@ -67,6 +67,8 @@ export interface GeneralState {
   guestModeModalVisible: boolean; // Guest mode modal visibility state
   isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
   aiHairTryOnConsentAccepted: boolean; // User accepted AI Hair Try-On data sharing consent
+  aiChatDataConsentAccepted: boolean; // User accepted AI chat data sharing with third-party AI
+  aiVoiceDataConsentAccepted: boolean; // User accepted AI voice receptionist data sharing
   currentLocation: Location; // Current location (lat, long, locationName)
   recentLocations: Location[]; // Recent locations (persisted)
   recentSearches: SearchState[]; // Recent searches as objects (persisted, max 4)
@@ -124,6 +126,8 @@ const initialState: GeneralState = {
   guestModeModalVisible: false,
   isFirstShowTryOn: false,
   aiHairTryOnConsentAccepted: false,
+  aiChatDataConsentAccepted: false,
+  aiVoiceDataConsentAccepted: false,
   currentLocation: {
     lat: null,
     long: null,
@@ -315,6 +319,12 @@ const generalSlice = createSlice({
     setAiHairTryOnConsentAccepted(state, action: PayloadAction<boolean>) {
       state.aiHairTryOnConsentAccepted = action.payload;
     },
+    setAiChatDataConsentAccepted(state, action: PayloadAction<boolean>) {
+      state.aiChatDataConsentAccepted = action.payload;
+    },
+    setAiVoiceDataConsentAccepted(state, action: PayloadAction<boolean>) {
+      state.aiVoiceDataConsentAccepted = action.payload;
+    },
     setCurrentLocation(state, action: PayloadAction<Location>) {
       state.currentLocation = action.payload;
     },
@@ -453,6 +463,8 @@ export const {
   setBookingTryOnSelectionForJob,
   setIsFirstShowTryOn,
   setAiHairTryOnConsentAccepted,
+  setAiChatDataConsentAccepted,
+  setAiVoiceDataConsentAccepted,
   setCurrentLocation,
   addToRecentLocations,
   addToRecentSearches,

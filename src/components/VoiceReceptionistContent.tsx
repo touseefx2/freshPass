@@ -64,6 +64,9 @@ export type VoiceReceptionistContentProps = {
   theme: Theme;
   styles: ChatBoxStyles;
   websocketUrl: string;
+  /** Must be true before mic audio is sent to the AI voice service */
+  dataSharingConsentGranted?: boolean;
+  onRequestDataSharingConsent?: () => void;
 };
 
 export type VoiceReceptionistHandle = {
@@ -78,7 +81,17 @@ export type VoiceReceptionistHandle = {
 export const VoiceReceptionistContent = forwardRef<
   VoiceReceptionistHandle,
   VoiceReceptionistContentProps
->(({ theme, styles, websocketUrl }, ref) => {
+>(
+  (
+    {
+      theme,
+      styles,
+      websocketUrl,
+      dataSharingConsentGranted = false,
+      onRequestDataSharingConsent,
+    },
+    ref,
+  ) => {
   const [isConnected, setIsConnected] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -1023,6 +1036,10 @@ export const VoiceReceptionistContent = forwardRef<
 
   const handleStart = useCallback(async () => {
     if (isStarting || isListening) return;
+    if (!dataSharingConsentGranted) {
+      onRequestDataSharingConsent?.();
+      return;
+    }
     setIsStarting(true);
     try {
       await connectWebSocket();
@@ -1032,7 +1049,14 @@ export const VoiceReceptionistContent = forwardRef<
     } finally {
       setIsStarting(false);
     }
-  }, [connectWebSocket, isListening, isStarting, startRecorder]);
+  }, [
+    connectWebSocket,
+    dataSharingConsentGranted,
+    isListening,
+    isStarting,
+    onRequestDataSharingConsent,
+    startRecorder,
+  ]);
 
   const handleStop = useCallback(() => {
     cleanup();
@@ -1040,6 +1064,10 @@ export const VoiceReceptionistContent = forwardRef<
 
   const handleRetry = useCallback(async () => {
     if (isStarting) return;
+    if (!dataSharingConsentGranted) {
+      onRequestDataSharingConsent?.();
+      return;
+    }
     // End current call first (disconnect, stop recorder, reset state)
     cleanup();
     setError(null);
@@ -1054,7 +1082,14 @@ export const VoiceReceptionistContent = forwardRef<
     } finally {
       setIsStarting(false);
     }
-  }, [cleanup, connectWebSocket, isStarting, startRecorder]);
+  }, [
+    cleanup,
+    connectWebSocket,
+    dataSharingConsentGranted,
+    isStarting,
+    onRequestDataSharingConsent,
+    startRecorder,
+  ]);
 
   const statusText = (() => {
     if (isStarting) return "Connecting...";

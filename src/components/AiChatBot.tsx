@@ -58,6 +58,13 @@ import {
 } from "@/src/state/slices/chatSlice";
 import { checkInternetConnection } from "../services/api";
 import { AiToolsService } from "../services/aiToolsService";
+import AiThirdPartyConsentModal, {
+  type AiThirdPartyConsentVariant,
+} from "@/src/components/aiThirdPartyConsentModal";
+import {
+  setAiChatDataConsentAccepted,
+  setAiVoiceDataConsentAccepted,
+} from "@/src/state/slices/generalSlice";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const CHAT_BOX_WIDTH = SCREEN_WIDTH * 0.85;
@@ -665,6 +672,16 @@ const AiChatBot: React.FC = () => {
 
   const hairTryOnService =
     aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
+  const aiChatDataConsentAccepted = useAppSelector(
+    (state) => state.general.aiChatDataConsentAccepted,
+  );
+  const aiVoiceDataConsentAccepted = useAppSelector(
+    (state) => state.general.aiVoiceDataConsentAccepted,
+  );
+  const [consentModalVariant, setConsentModalVariant] =
+    useState<AiThirdPartyConsentVariant | null>(null);
+  const pendingChatMessageRef = useRef<string | null>(null);
+  const pendingVoiceModeRef = useRef(false);
   const isCustomerAndGuest = isGuest || userRole === "customer";
   const showTryOnBanner =
     (aiQuota === 0 || aiQuota == null) &&
@@ -774,13 +791,26 @@ const AiChatBot: React.FC = () => {
     setIsMinimized(false);
   }, []);
 
-  const handleSelectOption = useCallback(
+  const openAssistantChat = useCallback(
     (mode: "ai_chat_bot" | "ai_receptionist") => {
       setChatMode(mode);
       dispatch(openChat());
       setMenuExpanded(false);
     },
     [dispatch],
+  );
+
+  const handleSelectOption = useCallback(
+    (mode: "ai_chat_bot" | "ai_receptionist") => {
+      if (mode === "ai_receptionist" && !aiVoiceDataConsentAccepted) {
+        pendingVoiceModeRef.current = true;
+        setConsentModalVariant("voice");
+        setMenuExpanded(false);
+        return;
+      }
+      openAssistantChat(mode);
+    },
+    [aiVoiceDataConsentAccepted, openAssistantChat],
   );
 
   const handleCloseChat = useCallback(() => {
@@ -845,6 +875,32 @@ const AiChatBot: React.FC = () => {
     ]);
   }, [dispatch]);
 
+  const sendChatMessageToAi = useCallback(
+    async (messageText: string) => {
+      dispatch(sendUserMessage(messageText));
+      dispatch(startAiStreamResponse());
+
+      await AiToolsService.streamChat(
+        sessionId,
+        messageText,
+        null,
+        (token: string) => {
+          dispatch(appendTokenToLastMessage(token));
+        },
+        (fullResponse: string, newSessionId: string) => {
+          dispatch(
+            completeAiStreamResponse({ fullResponse, sessionId: newSessionId }),
+          );
+        },
+        (error: Error) => {
+          dispatch(streamError());
+          Alert.alert(t("error"), error.message || t("failedToGetAiResponse"));
+        },
+      );
+    },
+    [dispatch, sessionId, t],
+  );
+
   const handleSendMessage = async () => {
     if (inputText.trim().length === 0 || isInputDisabled) return;
 
@@ -858,36 +914,57 @@ const AiChatBot: React.FC = () => {
     }
 
     const messageText = inputText.trim();
+
+    if (!aiChatDataConsentAccepted) {
+      pendingChatMessageRef.current = messageText;
+      setConsentModalVariant("chat");
+      return;
+    }
+
     setInputText("");
-
-    // Add user message
-    dispatch(sendUserMessage(messageText));
-
-    // Start streaming response
-    dispatch(startAiStreamResponse());
-
-    // Call API with streaming
-    await AiToolsService.streamChat(
-      sessionId,
-      messageText,
-      null, // business_id is optional
-      // onToken callback - append each token to the message
-      (token: string) => {
-        dispatch(appendTokenToLastMessage(token));
-      },
-      // onComplete callback - finalize the message
-      (fullResponse: string, newSessionId: string) => {
-        dispatch(
-          completeAiStreamResponse({ fullResponse, sessionId: newSessionId }),
-        );
-      },
-      // onError callback - handle errors
-      (error: Error) => {
-        dispatch(streamError());
-        Alert.alert(t("error"), error.message || t("failedToGetAiResponse"));
-      },
-    );
+    await sendChatMessageToAi(messageText);
   };
+
+  const handleConsentAgree = useCallback(() => {
+    const variant = consentModalVariant;
+    setConsentModalVariant(null);
+
+    if (variant === "chat") {
+      dispatch(setAiChatDataConsentAccepted(true));
+      const messageText = pendingChatMessageRef.current;
+      pendingChatMessageRef.current = null;
+      if (messageText) {
+        setInputText("");
+        void sendChatMessageToAi(messageText);
+      }
+      return;
+    }
+
+    if (variant === "voice") {
+      dispatch(setAiVoiceDataConsentAccepted(true));
+      if (pendingVoiceModeRef.current) {
+        pendingVoiceModeRef.current = false;
+        openAssistantChat("ai_receptionist");
+      }
+    }
+  }, [
+    consentModalVariant,
+    dispatch,
+    openAssistantChat,
+    sendChatMessageToAi,
+  ]);
+
+  const handleConsentDecline = useCallback(() => {
+    setConsentModalVariant(null);
+    pendingChatMessageRef.current = null;
+    pendingVoiceModeRef.current = false;
+  }, []);
+
+  const handleRequestVoiceConsent = useCallback(() => {
+    if (!aiVoiceDataConsentAccepted) {
+      setConsentModalVariant("voice");
+    }
+  }, [aiVoiceDataConsentAccepted]);
 
   // Scroll to bottom when new messages arrive or during streaming
   useEffect(() => {
@@ -927,6 +1004,14 @@ const AiChatBot: React.FC = () => {
 
   return (
     <>
+      {consentModalVariant && (
+        <AiThirdPartyConsentModal
+          variant={consentModalVariant}
+          visible
+          onAgree={handleConsentAgree}
+          onDecline={handleConsentDecline}
+        />
+      )}
       {/* Overlay when chat is open - clicking anywhere closes the chat */}
       {isOpen && (
         <TouchableWithoutFeedback onPress={handleCloseChat}>
@@ -1086,6 +1171,8 @@ const AiChatBot: React.FC = () => {
                 theme={theme}
                 styles={styles}
                 websocketUrl={VOICE_AGENT_WS_URL}
+                dataSharingConsentGranted={aiVoiceDataConsentAccepted}
+                onRequestDataSharingConsent={handleRequestVoiceConsent}
               />
             )}
           </KeyboardAvoidingView>

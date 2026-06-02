@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fresh Pass",
     "slug": "fresh-pass",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "com.freshpass",
@@ -16,7 +16,8 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMicrophoneUsageDescription": "Fresh Pass uses your microphone so the AI Receptionist can talk with you.",
+        "NSMicrophoneUsageDescription": "Fresh Pass uses your microphone for the AI Receptionist so you can speak with our assistant. Your voice is sent securely to FreshPass's AI voice service to generate responses—for example, when you ask about bookings or salon services.",
+        "NSLocationWhenInUseUsageDescription": "Fresh Pass uses your location to show nearby salons and businesses on the map when you search in Explore or set your area for bookings—for example, to list businesses closest to you.",
         "NSAppTransportSecurity": {
           "NSExceptionDomains": {
             "159.89.190.185": {
@@ -54,6 +55,12 @@
     },
     "plugins": [
       "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Fresh Pass uses your location to show nearby salons and businesses on the map when you search in Explore or set your area for bookings—for example, to list businesses closest to you."
+        }
+      ],
       "expo-router",
       "expo-video",
       [
