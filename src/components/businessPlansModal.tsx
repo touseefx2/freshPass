@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   StatusBar,
+  Platform,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
@@ -28,6 +29,10 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Button from "@/src/components/button";
 import { useStripe } from "@stripe/stripe-react-native";
 import { fetchPaymentSheetParams } from "@/src/services/stripeService";
+import {
+  purchaseAndVerifyIosIap,
+  resolveBusinessPlanProductId,
+} from "@/src/services/iapService";
 import { useAppSelector } from "@/src/hooks/hooks";
 import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
@@ -45,6 +50,7 @@ interface SubscriptionPlan {
   visits: number | null;
   createdAt: string;
   services: any[];
+  app_store_product_id?: string | null;
 }
 
 interface AdditionalService {
@@ -468,6 +474,35 @@ function BusinessPlansModalContent({
       const selectedAddOns = selectedServicesByPlanId[planId] ?? [];
       console.log("selectedServicesByPlanId", selectedServicesByPlanId);
       console.log("selectedAddOns", selectedAddOns);
+
+      // iOS: Use Apple In-App Purchase for digital subscriptions to comply with App Store policy.
+      if (Platform.OS === "ios") {
+        const selectedPlan = plans.find((p) => p.id === planId);
+        const productId = resolveBusinessPlanProductId(
+          planId,
+          selectedPlan?.app_store_product_id,
+        );
+
+        await purchaseAndVerifyIosIap({
+          productId,
+          kind: "business_subscription",
+          referenceId: planId,
+        });
+
+        showBanner(
+          "Success",
+          "Subscription activated successfully.",
+          "success",
+          4000,
+        );
+        onClose();
+        await dispatch(fetchUserStatus({ showError: true })).unwrap();
+
+        if (onSuccess) {
+          onSuccess();
+        }
+        return;
+      }
 
       // Step 1: Fetch payment sheet parameters from backend
       const {

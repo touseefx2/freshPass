@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   ImageBackground,
   Modal,
+  Platform,
   StatusBar,
   Text,
   TouchableOpacity,
@@ -26,6 +27,10 @@ import {
 } from "react-native-safe-area-context";
 import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
 import { useStripe } from "@stripe/stripe-react-native";
+import {
+  purchaseAndVerifyIosIap,
+  resolveAiServiceProductId,
+} from "@/src/services/iapService";
 import NotificationBanner from "@/src/components/notificationBanner";
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
@@ -93,7 +98,57 @@ export default function TryOnPurchase() {
     dispatch(setActionLoader(true));
     dispatch(setActionLoaderTitle(t("paymentprocessing")));
 
+    console.log("serviceid", service.id);
+
     try {
+      if (Platform.OS === "ios") {
+        const productId = resolveAiServiceProductId(
+          service.id,
+          service.app_store_product_id,
+        );
+
+        console.log("-----> productId", productId);
+
+        const verifyResponse = await purchaseAndVerifyIosIap({
+          productId,
+          kind: "ai_service",
+          referenceId: service.id,
+        });
+
+        console.log("-----> verifyResponse", verifyResponse);
+
+        setLocalBanner({
+          visible: true,
+          title: t("success"),
+          message: t("paymentSuccessful") ?? "Payment successful!",
+          type: "success",
+        });
+
+        // const quotaFromVerify = verifyResponse.data?.ai_quota;
+        // if (typeof quotaFromVerify === "number") {
+        //   dispatch(setUserDetails({ ai_quota: quotaFromVerify }));
+        // } else {
+        //   try {
+        //     const response = await ApiService.get<{
+        //       success: boolean;
+        //       data?: { ai_quota?: number };
+        //     }>(userEndpoints.details);
+        //     if (response.success && response.data?.ai_quota !== undefined) {
+        //       dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
+        //     }
+        //   } catch {
+        //     // ignore
+        //   }
+        // }
+
+        // if (screen === "explore") {
+        //   router.replace("/(main)/aiTools/toolList" as any);
+        // } else {
+        //   router.back();
+        // }
+        return;
+      }
+
       const { customer, paymentIntent, customerSessionClientSecret } =
         await fetchAiToolsPaymentSheetParams(service.id);
       dispatch(setActionLoader(false));

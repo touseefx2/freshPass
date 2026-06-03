@@ -24,6 +24,7 @@ export interface AdditionalServiceItem {
   name: string;
   price: string;
   ai_requests: number | null;
+  app_store_product_id?: string | null;
   type: string;
   active: boolean;
   createdAt: string;
