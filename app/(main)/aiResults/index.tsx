@@ -195,6 +195,7 @@ export type OriginalMediaItem = {
 /** Normalized result: status + sections for completed (or socialMedia for post/collage/reel) */
 interface NormalizedResult {
   status: string;
+  message?: string;
   sections: NormalizedSection[];
   socialMedia?: SocialMediaNormalized;
   /** For hair try-on / replicate: original source image and prompt from request */
@@ -258,6 +259,10 @@ function normalizeAiRequestResponse(
   // Support both { data: payload } and { data: { data: payload } } (double-wrapped), or payload at top level
   const d = (raw as any)?.data?.data ?? (raw as any)?.data ?? raw;
   const status = d?.status ?? "failed";
+  const message =
+    typeof d?.message === "string" && d.message.trim()
+      ? d.message.trim()
+      : undefined;
   const sections: NormalizedSection[] = [];
   const rp = d?.request_payload;
   const requestPayload: NormalizedResult["requestPayload"] =
@@ -273,7 +278,7 @@ function normalizeAiRequestResponse(
 
   const res = d?.response;
   if (Array.isArray(res) || !res || status !== "completed") {
-    return { status, sections, requestPayload };
+    return { status, message, sections, requestPayload };
   }
 
   if (isSocialMediaResponse(res)) {
@@ -284,6 +289,7 @@ function normalizeAiRequestResponse(
     const imgs = res.images;
     return {
       status,
+      message,
       sections: [],
       socialMedia: {
         jobType,
@@ -310,7 +316,7 @@ function normalizeAiRequestResponse(
   }
 
   const imgs = res.images;
-  if (!imgs) return { status, sections };
+  if (!imgs) return { status, message, sections };
 
   if (isReplicateImages(imgs)) {
     const views = VIEW_KEYS.map(({ key, labelKey }) => ({
@@ -321,7 +327,7 @@ function normalizeAiRequestResponse(
     if (views.length > 0) {
       sections.push({ name: "Results", views });
     }
-    return { status, sections, requestPayload };
+    return { status, message, sections, requestPayload };
   }
 
   for (const key of HAIR_PIPELINE_SECTION_KEYS) {
@@ -341,7 +347,7 @@ function normalizeAiRequestResponse(
     }
   }
 
-  return { status, sections, requestPayload };
+  return { status, message, sections, requestPayload };
 }
 
 const POLL_INTERVAL_MS = 3000;
@@ -849,9 +855,19 @@ export default function AiResults() {
         const result = await ApiService.get<AiRequestByJobIdResponse>(
           aiRequestsEndpoints.getByJobId(jobId),
         );
-        setNormalized(normalizeAiRequestResponse(result));
+        const next = normalizeAiRequestResponse(result);
+        setNormalized(next);
+        setError(null);
       } catch (e: any) {
-        setError(e?.message || t("somethingWentWrong"));
+        const errMessage =
+          e?.response?.data?.message ??
+          e?.data?.message ??
+          e?.message ??
+          t("somethingWentWrong");
+        if (!isPolling) {
+          setError(errMessage);
+          setNormalized(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -1270,7 +1286,6 @@ export default function AiResults() {
     content = (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={styles.loadingText}>{t("aiStillProcessing")}</Text>
       </View>
     );
   } else if (error) {
@@ -1296,7 +1311,9 @@ export default function AiResults() {
   } else if (normalized?.status === "failed") {
     content = (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>{t("somethingWentWrong")}</Text>
+        <Text style={styles.errorText}>
+          {normalized.message || t("somethingWentWrong")}
+        </Text>
         <TouchableOpacity
           style={styles.retryButton}
           onPress={() => fetchStatus()}

@@ -19,20 +19,22 @@ import { iapEndpoints } from "@/src/services/endpoints";
 
 export type IapPurchaseKind = "business_subscription" | "ai_service";
 
-interface VerifyIapPurchasePayload {
-  productId: string;
-  transactionId: string;
-  transactionReceipt: string;
-  originalTransactionId?: string;
-  purchaseToken?: string;
-  kind: IapPurchaseKind;
-  referenceId: number;
-}
+// interface VerifyIapPurchasePayload {
+//   productId: string;
+//   transactionId: string;
+//   transactionReceipt: string;
+//   originalTransactionId?: string;
+//   purchaseToken?: string;
+//   kind: IapPurchaseKind;
+//   referenceId: number;
+// }
 
 interface VerifyIapPurchaseResponse {
   success: boolean;
   message: string;
   data?: {
+    granted?: boolean;
+    credits?: number;
     ai_quota?: number;
     has_subscription?: boolean;
     subscription_status?: string;
@@ -161,7 +163,7 @@ const getReceiptFromPurchase = async (
   throw new Error("Purchase receipt missing. Please try again.");
 };
 
-const verifyIapPurchase = async (payload: VerifyIapPurchasePayload) => {
+const verifyIapPurchase = async (payload: { transaction_id: string }) => {
   return ApiService.post<VerifyIapPurchaseResponse>(iapEndpoints.verify, payload);
 };
 
@@ -250,23 +252,26 @@ export const purchaseAndVerifyIosIap = async (params: {
 
   const purchase = await requestIosPurchase(productId, kind);
 
-  const transactionReceipt = await getReceiptFromPurchase(purchase, productId);
+  // const transactionReceipt = await getReceiptFromPurchase(purchase, productId);
   const transactionId =
     purchase.transactionId ?? purchase.id ?? purchase.productId;
 
-  const iosPurchase =
-    purchase.platform === "ios" ? (purchase as PurchaseIOS) : null;
+  // const iosPurchase =
+  //   purchase.platform === "ios" ? (purchase as PurchaseIOS) : null;
 
-  const verifyResponse = await verifyIapPurchase({
-    productId: purchase.productId,
-    transactionId,
-    transactionReceipt,
-    originalTransactionId:
-      iosPurchase?.originalTransactionIdentifierIOS ?? undefined,
-    purchaseToken: purchase.purchaseToken ?? undefined,
-    kind,
-    referenceId,
-  });
+  const verifyPayload = {
+    transaction_id: transactionId,
+    // productId: purchase.productId,
+    // transactionId,
+    // transactionReceipt,
+    // originalTransactionId:
+    //   iosPurchase?.originalTransactionIdentifierIOS ?? undefined,
+    // purchaseToken: purchase.purchaseToken ?? undefined,
+    // kind,
+    // referenceId,
+  };
+
+  const verifyResponse = await verifyIapPurchase(verifyPayload);
 
   if (!verifyResponse.success) {
     throw new Error(verifyResponse.message || "IAP verification failed.");
@@ -278,4 +283,6 @@ export const purchaseAndVerifyIosIap = async (params: {
   });
 
   return verifyResponse;
+
+ 
 };

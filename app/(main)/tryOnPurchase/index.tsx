@@ -1,8 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   ImageBackground,
-  Modal,
   Platform,
   StatusBar,
   Text,
@@ -18,13 +16,9 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
@@ -42,6 +36,8 @@ import {
   setActionLoaderTitle,
 } from "@/src/state/slices/generalSlice";
 
+type PaymentMethod = "iap" | "stripe";
+
 export default function TryOnPurchase() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -58,13 +54,9 @@ export default function TryOnPurchase() {
   }>();
   const serviceId = params.serviceId ? Number(params.serviceId) : null;
   const screen = params.screen ?? "";
+  const isIos = Platform.OS === "ios";
 
-  const service = useMemo(() => {
-    if (serviceId == null || !aiService) return null;
-    const found = aiService.find((s) => s.id === serviceId);
-    return found ?? aiService.find((s) => s.name === "AI Hair Try-On") ?? null;
-  }, [serviceId, aiService]);
-
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("iap");
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
     title: string;
@@ -76,6 +68,12 @@ export default function TryOnPurchase() {
     message: "",
     type: "info",
   });
+
+  const service = useMemo(() => {
+    if (serviceId == null || !aiService) return null;
+    const found = aiService.find((s) => s.id === serviceId);
+    return found ?? aiService.find((s) => s.name === "AI Hair Try-On") ?? null;
+  }, [serviceId, aiService]);
 
   const pricingText =
     service && service.price && service.ai_requests
@@ -91,132 +89,14 @@ export default function TryOnPurchase() {
     router.back();
   };
 
-  const handleUpgradePress = async () => {
-    if (!service?.id) {
-      return;
-    }
+  const refreshQuotaAndNavigate = async (quotaFromVerify?: number) => {
     dispatch(setActionLoader(true));
-    dispatch(setActionLoaderTitle(t("paymentprocessing")));
-
-    console.log("serviceid", service.id);
+    dispatch(setActionLoaderTitle(t("pleaseWait")));
 
     try {
-      if (Platform.OS === "ios") {
-        const productId = resolveAiServiceProductId(
-          service.id,
-          service.app_store_product_id,
-        );
-
-        console.log("-----> productId", productId);
-
-        const verifyResponse = await purchaseAndVerifyIosIap({
-          productId,
-          kind: "ai_service",
-          referenceId: service.id,
-        });
-
-        console.log("-----> verifyResponse", verifyResponse);
-
-        setLocalBanner({
-          visible: true,
-          title: t("success"),
-          message: t("paymentSuccessful") ?? "Payment successful!",
-          type: "success",
-        });
-
-        // const quotaFromVerify = verifyResponse.data?.ai_quota;
-        // if (typeof quotaFromVerify === "number") {
-        //   dispatch(setUserDetails({ ai_quota: quotaFromVerify }));
-        // } else {
-        //   try {
-        //     const response = await ApiService.get<{
-        //       success: boolean;
-        //       data?: { ai_quota?: number };
-        //     }>(userEndpoints.details);
-        //     if (response.success && response.data?.ai_quota !== undefined) {
-        //       dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
-        //     }
-        //   } catch {
-        //     // ignore
-        //   }
-        // }
-
-        // if (screen === "explore") {
-        //   router.replace("/(main)/aiTools/toolList" as any);
-        // } else {
-        //   router.back();
-        // }
-        return;
-      }
-
-      const { customer, paymentIntent, customerSessionClientSecret } =
-        await fetchAiToolsPaymentSheetParams(service.id);
-      dispatch(setActionLoader(false));
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      const paymentConfig: any = {
-        merchantDisplayName: "Fresh Pass",
-        customerId: customer,
-        allowsDelayedPaymentMethods: true,
-        defaultBillingDetails: {
-          name: user.name || undefined,
-          email: user.email || undefined,
-        },
-        customFlow: false,
-      };
-
-      if (customerSessionClientSecret) {
-        paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
-      }
-      if (paymentIntent && paymentIntent.trim() !== "") {
-        paymentConfig.paymentIntentClientSecret = paymentIntent;
+      if (typeof quotaFromVerify === "number") {
+        dispatch(setUserDetails({ ai_quota: quotaFromVerify }));
       } else {
-        setLocalBanner({
-          visible: true,
-          title: t("error"),
-          message: "Failed to start payment.",
-          type: "error",
-        });
-
-        return;
-      }
-
-      const { error: initError } = await initPaymentSheet(paymentConfig);
-
-      if (initError) {
-        setLocalBanner({
-          visible: true,
-          title: t("error"),
-          message: initError.message ?? "Failed to initialize payment",
-          type: "error",
-        });
-        return;
-      }
-
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        if (!presentError.code?.includes("Canceled")) {
-          setLocalBanner({
-            visible: true,
-            title: t("error"),
-            message: presentError.message ?? "Payment could not be completed",
-            type: "error",
-          });
-        }
-
-        return;
-      }
-
-      setLocalBanner({
-        visible: true,
-        title: t("success"),
-        message: t("paymentSuccessful") ?? "Payment successful!",
-        type: "success",
-      });
-
-      dispatch(setActionLoader(true));
-      dispatch(setActionLoaderTitle(t("pleaseWait")));
-      try {
         const response = await ApiService.get<{
           success: boolean;
           data?: { ai_quota?: number };
@@ -224,20 +104,132 @@ export default function TryOnPurchase() {
         if (response.success && response.data?.ai_quota !== undefined) {
           dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
         }
-      } catch {
-        // ignore
-      } finally {
-        dispatch(setActionLoader(false));
-        if (screen === "explore") {
-          router.replace("/(main)/aiTools/toolList" as any);
-        } else {
-          router.back();
-        }
       }
+    } catch {
+      // ignore
+    } finally {
+      dispatch(setActionLoader(false));
+      if (screen === "explore") {
+        router.replace("/(main)/aiTools/toolList" as any);
+      } else {
+        router.back();
+      }
+    }
+  };
+
+  const handleIapPayment = async (serviceIdForPurchase: number) => {
+    const productId = resolveAiServiceProductId(
+      serviceIdForPurchase,
+      service?.app_store_product_id,
+    );
+
+    const verifyResponse = await purchaseAndVerifyIosIap({
+      productId,
+      kind: "ai_service",
+      referenceId: serviceIdForPurchase,
+    });
+
+    setLocalBanner({
+      visible: true,
+      title: t("success"),
+      message: t("paymentSuccessful") ?? "Payment successful!",
+      type: "success",
+    });
+
+    await refreshQuotaAndNavigate(verifyResponse.data?.ai_quota);
+  };
+
+  const handleStripePayment = async (serviceIdForPurchase: number) => {
+    const { customer, paymentIntent, customerSessionClientSecret } =
+      await fetchAiToolsPaymentSheetParams(serviceIdForPurchase);
+    dispatch(setActionLoader(false));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const paymentConfig: Record<string, unknown> = {
+      merchantDisplayName: "Fresh Pass",
+      customerId: customer,
+      allowsDelayedPaymentMethods: true,
+      defaultBillingDetails: {
+        name: user.name || undefined,
+        email: user.email || undefined,
+      },
+      customFlow: false,
+    };
+
+    if (customerSessionClientSecret) {
+      paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
+    }
+
+    if (!paymentIntent || paymentIntent.trim() === "") {
+      setLocalBanner({
+        visible: true,
+        title: t("error"),
+        message: "Failed to start payment.",
+        type: "error",
+      });
+      return;
+    }
+
+    paymentConfig.paymentIntentClientSecret = paymentIntent;
+
+    const { error: initError } = await initPaymentSheet(paymentConfig as any);
+
+    if (initError) {
+      setLocalBanner({
+        visible: true,
+        title: t("error"),
+        message: initError.message ?? "Failed to initialize payment",
+        type: "error",
+      });
+      return;
+    }
+
+    const { error: presentError } = await presentPaymentSheet();
+
+    if (presentError) {
+      if (!presentError.code?.includes("Canceled")) {
+        setLocalBanner({
+          visible: true,
+          title: t("error"),
+          message: presentError.message ?? "Payment could not be completed",
+          type: "error",
+        });
+      }
+      return;
+    }
+
+    setLocalBanner({
+      visible: true,
+      title: t("success"),
+      message: t("paymentSuccessful") ?? "Payment successful!",
+      type: "success",
+    });
+
+    await refreshQuotaAndNavigate();
+  };
+
+  const handleUpgradePress = async () => {
+    if (!service?.id) {
+      return;
+    }
+
+    dispatch(setActionLoader(true));
+    dispatch(setActionLoaderTitle(t("paymentprocessing")));
+
+    try {
+      if (isIos && paymentMethod === "iap") {
+        await handleIapPayment(service.id);
+        return;
+      }
+
+      await handleStripePayment(service.id);
     } catch (err: unknown) {
       const ax = err as { message?: string; data?: { message?: string } };
       const message =
         ax.data?.message ?? ax.message ?? "Failed to start payment.";
+      if (message.toLowerCase().includes("cancel")) {
+        return;
+      }
       setLocalBanner({
         visible: true,
         title: t("error"),
@@ -247,6 +239,35 @@ export default function TryOnPurchase() {
     } finally {
       dispatch(setActionLoader(false));
     }
+  };
+
+  const renderPaymentMethodOption = (
+    method: PaymentMethod,
+    label: string,
+  ) => {
+    const isSelected = paymentMethod === method;
+
+    return (
+      <TouchableOpacity
+        key={method}
+        style={[
+          styles.paymentMethodOption,
+          isSelected && styles.paymentMethodOptionSelected,
+        ]}
+        onPress={() => setPaymentMethod(method)}
+        activeOpacity={0.7}
+      >
+        <View
+          style={[
+            styles.paymentMethodRadio,
+            isSelected && styles.paymentMethodRadioSelected,
+          ]}
+        >
+          {isSelected ? <View style={styles.paymentMethodRadioInner} /> : null}
+        </View>
+        <Text style={styles.paymentMethodLabel}>{label}</Text>
+      </TouchableOpacity>
+    );
   };
 
   return (
@@ -297,6 +318,19 @@ export default function TryOnPurchase() {
           </View>
 
           <View style={styles.bottomSection}>
+            {isIos ? (
+              <View style={styles.paymentMethodContainer}>
+                {renderPaymentMethodOption(
+                  "iap",
+                  t("payWithApple") ?? "Pay with Apple",
+                )}
+                {renderPaymentMethodOption(
+                  "stripe",
+                  t("payWithCard") ?? "Pay with Card",
+                )}
+              </View>
+            ) : null}
+
             <Button
               title={t("unlockAiTryOn")}
               onPress={handleUpgradePress}

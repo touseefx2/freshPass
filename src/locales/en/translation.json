@@ -198,6 +198,8 @@
   "getCurrentLocation": "Get Current Location...",
   "confirmLocation": "Confirm Location",
   "unlockAiTryOn": "Unlock AI Try-On",
+  "payWithApple": "Pay with Apple",
+  "payWithCard": "Pay with Card",
   "unlockAIFeatures": "Unlock AI Features",
   "unlockAIFeaturesDescription": "You need credits to use AI hair try-on. Upgrade your plan to access these premium features.",
   "upgradePlan": "Upgrade Plan",
