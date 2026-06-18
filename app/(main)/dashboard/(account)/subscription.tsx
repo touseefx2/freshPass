@@ -45,6 +45,7 @@ interface SubscriptionData {
   stripePaymentIntentId: string;
   stripePaymentUrl: string;
   cardLastFour: string | null;
+  paymentProvider: string | null;
   createdAt: string;
   deleted_at: string | null;
   appointments: any[];
@@ -384,6 +385,67 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    paymentProviderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(16),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    paymentProviderContent: {
+      flex: 1,
+      marginLeft: moderateWidthScale(12),
+    },
+    paymentProviderLabel: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(4),
+    },
+    paymentProviderValue: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    applePaymentBanner: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(20),
+      borderRadius: moderateWidthScale(12),
+      overflow: "hidden",
+    },
+    applePaymentBannerGradient: {
+      padding: moderateWidthScale(20),
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    applePaymentBannerContent: {
+      flex: 1,
+      marginLeft: moderateWidthScale(14),
+    },
+    applePaymentBannerLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+      opacity: 0.85,
+      marginBottom: moderateHeightScale(4),
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    applePaymentBannerValue: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    applePaymentBannerIcon: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.white,
+      opacity: 0.2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
 
 export default function SubscriptionScreen() {
@@ -411,6 +473,8 @@ export default function SubscriptionScreen() {
   const isActive =
     subscription?.status === "active" &&
     subscription?.stripeStatus === "active";
+  const isApplePayment =
+    subscription?.paymentProvider?.toLowerCase() === "apple";
 
   const fetchSubscription = async () => {
     setLoading(true);
@@ -492,6 +556,14 @@ export default function SubscriptionScreen() {
   const capitalizeFirstLetter = (text: string | null) => {
     if (!text) return "";
     return text.charAt(0).toUpperCase() + text.slice(1);
+  };
+
+  const getPaymentProviderLabel = (provider: string | null | undefined) => {
+    if (!provider) return t("notAvailable");
+    const normalized = provider.toLowerCase();
+    if (normalized === "apple") return t("appleInAppPurchase");
+    if (normalized === "stripe") return t("cardPayment");
+    return capitalizeFirstLetter(provider);
   };
 
   const formatTrialEndDate = (dateString: string | null) => {
@@ -613,24 +685,54 @@ export default function SubscriptionScreen() {
             </LinearGradient>
           </View>
 
-          {/* Card Last 4 Digits Card */}
-          <View style={styles.daysRemainingCard}>
-            <LinearGradient
-              colors={[theme.darkGreenLight, theme.darkGreen]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.cardGradient}
-            >
-              <View style={styles.cardMiddle}>
-                <Text style={styles.cardLabel}>{t("cardLast4Digits")}</Text>
-                <View style={styles.cardNumberContainer}>
-                  <Text style={styles.cardNumberText}>
-                    {formatCardNumber(subscription.cardLastFour)}
+          {/* Apple Payment Provider Banner */}
+          {isApplePayment && (
+            <View style={styles.applePaymentBanner}>
+              <LinearGradient
+                colors={[theme.darkGreenLight, theme.darkGreen]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.applePaymentBannerGradient}
+              >
+                <View style={styles.applePaymentBannerIcon}>
+                  <Feather
+                    name="smartphone"
+                    size={moderateWidthScale(22)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={styles.applePaymentBannerContent}>
+                  <Text style={styles.applePaymentBannerLabel}>
+                    {t("paymentProvider")}
+                  </Text>
+                  <Text style={styles.applePaymentBannerValue}>
+                    {getPaymentProviderLabel(subscription.paymentProvider)}
                   </Text>
                 </View>
-              </View>
-            </LinearGradient>
-          </View>
+              </LinearGradient>
+            </View>
+          )}
+
+          {/* Card Last 4 Digits — hidden for Apple In-App Purchase */}
+          {!isApplePayment && (
+            <View style={styles.daysRemainingCard}>
+              <LinearGradient
+                colors={[theme.darkGreenLight, theme.darkGreen]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardGradient}
+              >
+                <View style={styles.cardMiddle}>
+                  <Text style={styles.cardLabel}>{t("cardLast4Digits")}</Text>
+                  <View style={styles.cardNumberContainer}>
+                    <Text style={styles.cardNumberText}>
+                      {formatCardNumber(subscription.cardLastFour)}
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+          )}
 
           {/* Subscription Details */}
           <View style={styles.infoSection}>
@@ -686,10 +788,47 @@ export default function SubscriptionScreen() {
                 </View>
               </View>
             </View>
+            <View style={styles.paymentProviderRow}>
+              <View style={styles.infoIconContainer}>
+                <Feather
+                  name="check-circle"
+                  size={moderateWidthScale(20)}
+                  color={theme.darkGreenLight}
+                />
+              </View>
+              <View style={styles.paymentProviderContent}>
+                <Text style={styles.paymentProviderLabel}>
+                  {t("subscriptionStatus")}
+                </Text>
+                <Text style={styles.paymentProviderValue}>
+                  {capitalizeFirstLetter(subscription.stripeStatus) ||
+                    t("notAvailable")}
+                </Text>
+              </View>
+            </View>
+            {!isApplePayment && (
+              <View style={styles.paymentProviderRow}>
+                <View style={styles.infoIconContainer}>
+                  <Feather
+                    name="credit-card"
+                    size={moderateWidthScale(20)}
+                    color={theme.darkGreenLight}
+                  />
+                </View>
+                <View style={styles.paymentProviderContent}>
+                  <Text style={styles.paymentProviderLabel}>
+                    {t("paymentProvider")}
+                  </Text>
+                  <Text style={styles.paymentProviderValue}>
+                    {getPaymentProviderLabel(subscription.paymentProvider)}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Cancel Trial Button */}
-          {(isTrialing || isActive) && (
+          {(isTrialing || isActive) && !isApplePayment && (
             <View style={styles.buttonContainer}>
               <Button
                 title={isTrialing ? t("cancelTrial") : t("cancelSubscription")}

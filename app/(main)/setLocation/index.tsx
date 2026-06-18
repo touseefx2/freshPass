@@ -51,6 +51,10 @@ import { PlacePrediction } from "@/src/types/location";
 import {
   fetchSuggestions as fetchSuggestionsApi,
   fetchPlaceDetails as fetchPlaceDetailsApi,
+  getSuggestionErrorMessage,
+  logPlacesApiFailure,
+  resolvePlaceDetailsError,
+  resolveSuggestionError,
 } from "@/src/services/googlePlacesApi";
 import { useRouter } from "expo-router";
 import { StatusBar } from "react-native";
@@ -591,7 +595,12 @@ export default function SetLocationScreen() {
 
       if (!apiKey) {
         setPredictions([]);
-        showBanner(t("searchError"), t("unableToLoadSuggestions"), "error");
+        logPlacesApiFailure("Autocomplete", "MISSING_API_KEY");
+        showBanner(
+          t("searchError"),
+          "Google Maps API key is not configured.",
+          "error",
+        );
         return;
       }
 
@@ -607,12 +616,25 @@ export default function SetLocationScreen() {
         if (response.status === "OK" || response.status === "ZERO_RESULTS") {
           setPredictions(response.predictions);
         } else {
-          showBanner(t("searchError"), t("unableToLoadSuggestions"), "error");
+          logPlacesApiFailure(
+            "Autocomplete",
+            response.status,
+            response.errorMessage,
+          );
+          showBanner(
+            t("searchError"),
+            getSuggestionErrorMessage(response.status, response.errorMessage),
+            "error",
+          );
           setPredictions([]);
         }
-      } catch (error: any) {
-        Logger.error("Error fetching suggestions:", error);
-        showBanner(t("searchError"), t("unableToLoadSuggestions"), "error");
+      } catch (error: unknown) {
+        logPlacesApiFailure(
+          "Autocomplete",
+          "EXCEPTION",
+          error instanceof Error ? error.message : String(error),
+        );
+        showBanner(t("searchError"), resolveSuggestionError(error), "error");
         setPredictions([]);
       } finally {
         setIsLoadingSuggestions(false);
@@ -675,13 +697,13 @@ export default function SetLocationScreen() {
           setAddressSearch("");
           setPredictions([]);
         }
-      } catch (error) {
-        Logger.error("Error fetching place details:", error);
-        showBanner(
-          t("locationError"),
-          t("unableToFetchPlaceDetailsTryAgain"),
-          "error",
+      } catch (error: unknown) {
+        logPlacesApiFailure(
+          "Place details",
+          "EXCEPTION",
+          error instanceof Error ? error.message : String(error),
         );
+        showBanner(t("locationError"), resolvePlaceDetailsError(error), "error");
       } finally {
         setIsFetchingPlaceDetails(false);
         sessionTokenRef.current = generateSessionToken();

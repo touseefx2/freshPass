@@ -124,8 +124,8 @@ export const stripeEndpoints = {
  * Apple In-App Purchase endpoints
  */
 export const iapEndpoints = {
-  verify: `/api/iap/apple/verify`,
-  
+  verifyAi: `/api/iap/apple/verify`,
+  verifyBusinessSubscription: `/api/iap/apple/verify/business-subscription`,
 };
 
 /**

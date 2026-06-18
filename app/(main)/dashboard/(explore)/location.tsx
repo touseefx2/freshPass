@@ -46,6 +46,10 @@ import { PlacePrediction } from "@/src/types/location";
 import {
   fetchSuggestions as fetchSuggestionsApi,
   fetchPlaceDetails as fetchPlaceDetailsApi,
+  getSuggestionErrorMessage,
+  logPlacesApiFailure,
+  resolvePlaceDetailsError,
+  resolveSuggestionError,
 } from "@/src/services/googlePlacesApi";
 
 const generateSessionToken = () =>
@@ -238,7 +242,8 @@ export default function LocationScreen() {
     }
     if (!apiKey) {
       setPredictions([]);
-      setSuggestionError("Unable to load suggestions. Please try again.");
+      logPlacesApiFailure("Autocomplete", "MISSING_API_KEY");
+      setSuggestionError("Google Maps API key is not configured.");
       return;
     }
     try {
@@ -255,12 +260,23 @@ export default function LocationScreen() {
           setSuggestionError(null);
         }
       } else {
-        setSuggestionError("Unable to load suggestions. Please try again.");
+        logPlacesApiFailure(
+          "Autocomplete",
+          response.status,
+          response.errorMessage,
+        );
+        setSuggestionError(
+          getSuggestionErrorMessage(response.status, response.errorMessage),
+        );
         setPredictions([]);
       }
     } catch (error: unknown) {
-      Logger.error("Error fetching suggestions:", error);
-      setSuggestionError("Unable to load suggestions. Please try again.");
+      logPlacesApiFailure(
+        "Autocomplete",
+        "EXCEPTION",
+        error instanceof Error ? error.message : String(error),
+      );
+      setSuggestionError(resolveSuggestionError(error));
       setPredictions([]);
     } finally {
       setIsLoadingSuggestions(false);
@@ -344,12 +360,12 @@ export default function LocationScreen() {
       setPredictions([]);
       goBack();
     } catch (error: unknown) {
-      Logger.error("Error fetching place details:", error);
-      showBanner(
-        "Error",
-        "Unable to fetch place details. Please try again.",
-        "error",
+      logPlacesApiFailure(
+        "Place details",
+        "EXCEPTION",
+        error instanceof Error ? error.message : String(error),
       );
+      showBanner("Error", resolvePlaceDetailsError(error), "error");
     } finally {
       setIsFetchingDetails(false);
       sessionTokenRef.current = generateSessionToken();

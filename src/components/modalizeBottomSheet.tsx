@@ -36,6 +36,8 @@ interface ModalizeBottomSheetProps {
   scrollViewStyle?: ViewStyle;
   /** Fixed height as fraction of screen (e.g. 0.85 = 85%). When set, sheet uses this height instead of adjusting to content. */
   modalHeightPercent?: number;
+  /** When false, renders inline instead of Portal (use inside React Native Modal). */
+  usePortal?: boolean;
 }
 
 const createStyles = (theme: Theme) =>
@@ -103,6 +105,7 @@ export default function ModalizeBottomSheet({
   contentStyle,
   scrollViewStyle,
   modalHeightPercent,
+  usePortal = true,
 }: ModalizeBottomSheetProps) {
   const modalizeRef = useRef<Modalize>(null);
   const { colors } = useTheme();
@@ -124,72 +127,76 @@ export default function ModalizeBottomSheet({
     }
   }, [visible]);
 
-  return (
-    <Portal>
-      <Modalize
-        ref={modalizeRef}
-        onClosed={onClose}
-        adjustToContentHeight={!modalHeightPercent}
-        handlePosition="inside"
-        withOverlay
-        closeOnOverlayTap
-        panGestureEnabled
-        avoidKeyboardLikeIOS
-        overlayStyle={styles.modalOverlay}
-        modalStyle={[
-          styles.bottomSheet,
-          sheetContainerStyle,
-          { maxHeight: screenHeight * 0.9 },
-          modalHeightPercent != null && {
-            height: screenHeight * modalHeightPercent,
-          },
-        ]}
-        HeaderComponent={
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>{title}</Text>
-            <View style={styles.headerRight}>
-              <Pressable onPress={onClose} style={styles.closeButton}>
-                <Feather
-                  name="x"
-                  size={iconScale(12)}
-                  color={theme.darkGreen}
-                />
-              </Pressable>
-            </View>
-          </View>
-        }
-        FooterComponent={
-          footerButtonTitle ? (
-            <View
-              style={[
-                styles.buttonContainer,
-                { paddingBottom: insets.bottom + 15 },
-              ]}
-            >
-              <Button
-                title={footerButtonTitle}
-                onPress={onFooterButtonPress || (() => {})}
-                disabled={footerButtonDisabled}
+  const sheet = (
+    <Modalize
+      ref={modalizeRef}
+      onClosed={onClose}
+      adjustToContentHeight={!modalHeightPercent}
+      handlePosition="inside"
+      withOverlay
+      closeOnOverlayTap
+      panGestureEnabled
+      avoidKeyboardLikeIOS
+      overlayStyle={styles.modalOverlay}
+      modalStyle={[
+        styles.bottomSheet,
+        sheetContainerStyle,
+        { maxHeight: screenHeight * 0.9 },
+        modalHeightPercent != null && {
+          height: screenHeight * modalHeightPercent,
+        },
+      ]}
+      HeaderComponent={
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>{title}</Text>
+          <View style={styles.headerRight}>
+            <Pressable onPress={onClose} style={styles.closeButton}>
+              <Feather
+                name="x"
+                size={iconScale(12)}
+                color={theme.darkGreen}
               />
-            </View>
-          ) : (
-            <View style={{ paddingBottom: insets.bottom + 15 }} />
-          )
-        }
+            </Pressable>
+          </View>
+        </View>
+      }
+      FooterComponent={
+        footerButtonTitle ? (
+          <View
+            style={[
+              styles.buttonContainer,
+              { paddingBottom: insets.bottom + 15 },
+            ]}
+          >
+            <Button
+              title={footerButtonTitle}
+              onPress={onFooterButtonPress || (() => {})}
+              disabled={footerButtonDisabled}
+            />
+          </View>
+        ) : (
+          <View style={{ paddingBottom: insets.bottom + 15 }} />
+        )
+      }
+    >
+      <ScrollView
+        nestedScrollEnabled
+        style={[
+          styles.scrollView,
+          { maxHeight: maxContentHeight },
+          scrollViewStyle,
+        ]}
+        contentContainerStyle={[styles.scrollContent, contentStyle]}
+        showsVerticalScrollIndicator={false}
       >
-        <ScrollView
-          nestedScrollEnabled
-          style={[
-            styles.scrollView,
-            { maxHeight: maxContentHeight },
-            scrollViewStyle,
-          ]}
-          contentContainerStyle={[styles.scrollContent, contentStyle]}
-          showsVerticalScrollIndicator={false}
-        >
-          {children}
-        </ScrollView>
-      </Modalize>
-    </Portal>
+        {children}
+      </ScrollView>
+    </Modalize>
   );
+
+  if (!usePortal) {
+    return sheet;
+  }
+
+  return <Portal>{sheet}</Portal>;
 }

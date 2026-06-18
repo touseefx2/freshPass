@@ -30,15 +30,28 @@ import Button from "@/src/components/button";
 import { useStripe } from "@stripe/stripe-react-native";
 import { fetchPaymentSheetParams } from "@/src/services/stripeService";
 import {
-  purchaseAndVerifyIosIap,
-  resolveBusinessPlanProductId,
+  purchaseAndVerifyBusinessPlanIosIap,
+  resolveBusinessPlanProductIdWithFeatured,
 } from "@/src/services/iapService";
 import { useAppSelector } from "@/src/hooks/hooks";
 import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { fetchUserStatus } from "../state/thunks/businessThunks";
-import { Status } from "@stripe/stripe-react-native/lib/typescript/src/types/PaymentIntent";
+import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
+import { AppleIcon } from "@/assets/icons";
+
+type PaymentMethod = "iap" | "stripe";
+
+const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
+  const planType = plan.planType?.toLowerCase() ?? "";
+  const name = plan.name?.toLowerCase() ?? "";
+  return planType.includes("unlimited") || name.includes("unlimited");
+};
+
+const isFeaturedAddOn = (service: AdditionalService): boolean =>
+  service.type?.toLowerCase() === "featured" ||
+  service.name?.toLowerCase().includes("feature");
 
 interface SubscriptionPlan {
   id: number;
@@ -319,6 +332,65 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(16),
       textAlign: "center",
     },
+    paymentMethodContainer: {
+      gap: moderateHeightScale(10),
+    },
+    paymentMethodOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+    },
+    paymentMethodOptionSelected: {
+      borderColor: theme.buttonBack,
+      backgroundColor: theme.lightGreen1,
+    },
+    paymentMethodIconWrap: {
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    paymentMethodRadio: {
+      width: moderateWidthScale(20),
+      height: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 2,
+      borderColor: theme.borderNormal,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    paymentMethodRadioSelected: {
+      borderColor: theme.buttonBack,
+    },
+    paymentMethodRadioInner: {
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.buttonBack,
+    },
+    paymentMethodLabel: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    paymentSheetContainer: {
+      backgroundColor: theme.background,
+    },
+    paymentSheetContent: {
+      paddingTop: moderateHeightScale(15),
+    },
+    paymentSheetHost: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 2000,
+      elevation: 2000,
+    },
   });
 
 function BusinessPlansModalContent({
@@ -351,7 +423,18 @@ function BusinessPlansModalContent({
   const [selectedServicesByPlanId, setSelectedServicesByPlanId] = useState<
     Record<number, number[]>
   >({});
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("iap");
+  const [paymentSheetVisible, setPaymentSheetVisible] = useState(false);
+  const [selectedPlanIdForPayment, setSelectedPlanIdForPayment] = useState<
+    number | null
+  >(null);
+  const isIos = Platform.OS === "ios";
   const dispatch = useAppDispatch();
+
+  const standardPlans = useMemo(
+    () => plans.filter((plan) => !isUnlimitedPlan(plan)),
+    [plans],
+  );
 
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
@@ -432,18 +515,11 @@ function BusinessPlansModalContent({
     (selectedServicesByPlanId[planId] ?? []).includes(serviceId);
 
   const getAddOnDisplayName = (service: AdditionalService): string => {
-    const isFeatured =
-      service.type?.toLowerCase() === "featured" ||
-      service.name?.toLowerCase().includes("feature");
-    return isFeatured ? "Featured listing" : service.name;
+    return isFeaturedAddOn(service) ? "Featured listing" : service.name;
   };
 
   const featuredAddOnPrice = (() => {
-    const featured = additionalServices.find(
-      (s) =>
-        s.type?.toLowerCase() === "featured" ||
-        s.name?.toLowerCase().includes("feature"),
-    );
+    const featured = additionalServices.find((s) => isFeaturedAddOn(s));
     if (!featured) return null;
     const p = parseFloat(featured.price);
     return Number.isNaN(p) ? null : p.toFixed(2);
@@ -466,172 +542,226 @@ function BusinessPlansModalContent({
     }
   }, [visible]);
 
+
+  const hasFeaturedAddOnSelected = (selectedAddOnIds: number[]): boolean =>
+    additionalServices
+      .filter((s) => selectedAddOnIds.includes(s.id))
+      .some((s) => isFeaturedAddOn(s));
+
+  const completeSubscriptionSuccess = async (isTrial: boolean) => {
+    setProcessingPayment(true);
+    setTimeout(async () => {
+      setProcessingPayment(false);
+      const successMessage = isTrial
+        ? t("trialStartedSuccess") ??
+          "Trial started successfully! Your free trial will be activated."
+        : t("paymentSuccessful") ??
+          "Payment successful! Your subscription will be activated.";
+      showBanner(t("success"), successMessage, "success", 4000);
+      onClose();
+      await dispatch(fetchUserStatus({ showError: true })).unwrap();
+      onSuccess?.();
+    }, 2500);
+  };
+
+  const handleIapSubscribe = async (
+    planId: number,
+    selectedAddOns: number[],
+  ) => {
+    const selectedPlan = standardPlans.find((p) => p.id === planId);
+    const hasFeatured = hasFeaturedAddOnSelected(selectedAddOns);
+    const productId = resolveBusinessPlanProductIdWithFeatured(
+      planId,
+      hasFeatured,
+      selectedPlan?.app_store_product_id,
+    );
+
+ 
+
+    await purchaseAndVerifyBusinessPlanIosIap({
+      productId,
+      planId,
+      additionalServiceIds: selectedAddOns,
+    });
+
+    showBanner(
+      t("success"),
+      t("subscriptionActivated") ?? "Subscription activated successfully.",
+      "success",
+      4000,
+    );
+    onClose();
+    await dispatch(fetchUserStatus({ showError: true })).unwrap();
+    onSuccess?.();
+  };
+
+  const handleStripeSubscribe = async (
+    planId: number,
+    selectedAddOns: number[],
+  ) => {
+    setIsSetupIntent(false);
+
+    const {
+      paymentIntent,
+      customerSessionClientSecret,
+      ephemeralKey,
+      customer,
+      setupIntent,
+    } = await fetchPaymentSheetParams(planId, selectedAddOns);
+
+    const paymentConfig: any = {
+      merchantDisplayName: "Fresh Pass",
+      customerId: customer,
+      allowsDelayedPaymentMethods: true,
+      defaultBillingDetails: {
+        name: user.name || undefined,
+        email: user.email || undefined,
+      },
+      customFlow: false,
+    };
+
+    if (customerSessionClientSecret) {
+      paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
+    } else if (ephemeralKey) {
+      paymentConfig.customerEphemeralKeySecret = ephemeralKey;
+    } else {
+      throw new Error(
+        "Either customerSessionClientSecret or ephemeralKey must be provided",
+      );
+    }
+
+    if (setupIntent && setupIntent.includes("_secret_")) {
+      paymentConfig.setupIntentClientSecret = setupIntent;
+      const trialDays = process.env.EXPO_PUBLIC_TRAILDAY || "0";
+      paymentConfig.primaryButtonLabel = `Start ${trialDays} Days Free Trial`;
+      setIsSetupIntent(true);
+    } else if (paymentIntent && paymentIntent.trim() !== "") {
+      setIsSetupIntent(false);
+      paymentConfig.paymentIntentClientSecret = paymentIntent;
+    } else if (setupIntent) {
+      throw new Error(
+        "SetupIntent must be in client secret format (seti_xxxxx_secret_xxxxx).",
+      );
+    } else {
+      throw new Error("Either setupIntent or paymentIntent must be provided");
+    }
+
+    const { error: initError } = await initPaymentSheet(paymentConfig);
+    if (initError) {
+      throw new Error(initError.message || "Failed to initialize payment");
+    }
+
+    const { error: presentError } = await presentPaymentSheet();
+    if (presentError) {
+      if (!presentError.code?.includes("Canceled")) {
+        setLocalBanner({
+          visible: true,
+          title: t("paymentFailed") ?? "Payment Failed",
+          message: presentError.message || "Payment could not be completed",
+          type: "error",
+        });
+        setTimeout(() => {
+          setLocalBanner((prev) => ({ ...prev, visible: false }));
+        }, 2500);
+      }
+      return;
+    }
+
+    await completeSubscriptionSuccess(!!setupIntent?.includes("_secret_"));
+  };
+
+  const handleTrialPress = (planId: number) => {
+    if (isIos) {
+      setPaymentMethod("iap");
+      setSelectedPlanIdForPayment(planId);
+      setPaymentSheetVisible(true);
+      return;
+    }
+    handleSubscribe(planId);
+  };
+
+  const handlePaymentSheetClose = () => {
+    setPaymentSheetVisible(false);
+    setSelectedPlanIdForPayment(null);
+  };
+
+  const handlePaymentSheetConfirm = () => {
+    if (selectedPlanIdForPayment == null) return;
+    const planId = selectedPlanIdForPayment;
+    setPaymentSheetVisible(false);
+    handleSubscribe(planId);
+  };
+
   const handleSubscribe = async (planId: number) => {
     setSubscribingPlanId(planId);
-    setIsSetupIntent(false);
 
     try {
       const selectedAddOns = selectedServicesByPlanId[planId] ?? [];
-      console.log("selectedServicesByPlanId", selectedServicesByPlanId);
-      console.log("selectedAddOns", selectedAddOns);
 
-      // iOS: Use Apple In-App Purchase for digital subscriptions to comply with App Store policy.
-      if (Platform.OS === "ios") {
-        const selectedPlan = plans.find((p) => p.id === planId);
-        const productId = resolveBusinessPlanProductId(
-          planId,
-          selectedPlan?.app_store_product_id,
-        );
-
-        await purchaseAndVerifyIosIap({
-          productId,
-          kind: "business_subscription",
-          referenceId: planId,
-        });
-
-        showBanner(
-          "Success",
-          "Subscription activated successfully.",
-          "success",
-          4000,
-        );
-        onClose();
-        await dispatch(fetchUserStatus({ showError: true })).unwrap();
-
-        if (onSuccess) {
-          onSuccess();
-        }
+      if (isIos && paymentMethod === "iap") {
+        await handleIapSubscribe(planId, selectedAddOns);
         return;
       }
 
-      // Step 1: Fetch payment sheet parameters from backend
-      const {
-        paymentIntent,
-        customerSessionClientSecret,
-        ephemeralKey,
-        customer,
-        setupIntent,
-      } = await fetchPaymentSheetParams(planId, selectedAddOns);
-
-      // Step 2: Initialize payment sheet directly
-      const paymentConfig: any = {
-        merchantDisplayName: "Fresh Pass",
-        customerId: customer,
-        allowsDelayedPaymentMethods: true,
-        defaultBillingDetails: {
-          name: user.name || undefined,
-          email: user.email || undefined,
-        },
-        // Explicitly set customFlow to false to prevent native SDK crash
-        customFlow: false,
+      await handleStripeSubscribe(planId, selectedAddOns);
+    } catch (err: unknown) {
+      const error = err as {
+        data?: { message?: string; error?: string };
+        message?: string;
       };
+      let errorMessage =
+        error.data?.message ??
+        error.data?.error ??
+        error.message ??
+        "Failed to process payment";
 
-      // Use CustomerSession (newer approach) if available, otherwise fall back to EphemeralKey
-      if (customerSessionClientSecret) {
-        paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
-      } else if (ephemeralKey) {
-        paymentConfig.customerEphemeralKeySecret = ephemeralKey;
-      } else {
-        throw new Error(
-          "Either customerSessionClientSecret or ephemeralKey must be provided",
-        );
-      }
-
-      // Use setupIntent for subscriptions if available, otherwise use paymentIntent
-      if (setupIntent && setupIntent.includes("_secret_")) {
-        // SetupIntent is in correct client secret format
-        paymentConfig.setupIntentClientSecret = setupIntent;
-        const trialDays = process.env.EXPO_PUBLIC_TRAILDAY || "0";
-        paymentConfig.primaryButtonLabel = `Start ${trialDays} Days Free Trial`;
-        setIsSetupIntent(true);
-      } else if (paymentIntent && paymentIntent.trim() !== "") {
-        setIsSetupIntent(false);
-        // Use paymentIntent if setupIntent is not available or not in correct format
-        paymentConfig.paymentIntentClientSecret = paymentIntent;
-      } else if (setupIntent) {
-        // SetupIntent exists but is not in client secret format
-        throw new Error(
-          "SetupIntent must be in client secret format (seti_xxxxx_secret_xxxxx). " +
-            "The backend returned just the setup intent ID. Please update the backend to return the full client secret.",
-        );
-      } else {
-        throw new Error("Either setupIntent or paymentIntent must be provided");
-      }
-
-      const { error: initError } = await initPaymentSheet(paymentConfig);
-
-      if (initError) {
-        throw new Error(initError.message || "Failed to initialize payment");
-      }
-
-      // Step 3: Present payment sheet to user
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        // Payment was cancelled or failed
-        if (!presentError.code?.includes("Canceled")) {
-          setLocalBanner({
-            visible: true,
-            title: "Payment Failed",
-            message: presentError.message || "Payment could not be completed",
-            type: "error",
-          });
-
-          setTimeout(() => {
-            setLocalBanner((prev) => ({ ...prev, visible: false }));
-          }, 2500);
-        }
-        // If user canceled, don't show error (silent cancel)
+      if (errorMessage.toLowerCase().includes("cancel")) {
         return;
       }
 
-      // Show processing loader
-      setProcessingPayment(true);
-
-      // Wait 2-3 seconds before showing success and closing
-      setTimeout(() => {
-        setProcessingPayment(false);
-        const successMessage = isSetupIntent
-          ? "Trial started successfully! Your free trial will be activated."
-          : "Payment successful! Your subscription will be activated.";
-        showBanner("Success", successMessage, "success", 4000);
-        onClose();
-
-        dispatch(fetchUserStatus({ showError: true })).unwrap();
-
-        // Call onSuccess callback if provided
-        if (onSuccess) {
-          onSuccess();
-        }
-      }, 2500);
-    } catch (err: any) {
-      // Extract clean error message
-      let errorMessage = "Failed to process payment";
-
-      // Check error response data first (from API)
-      if (err.data?.message) {
-        errorMessage = err.data.message;
-      } else if (err.data?.error) {
-        errorMessage = err.data.error;
-      } else if (err.message) {
-        // Use error message directly (API service already extracts clean message)
-        errorMessage = err.message;
-      }
-
-      // Show banner inside modal (Modal covers external banners)
       setLocalBanner({
         visible: true,
-        title: "Error",
+        title: t("error"),
         message: errorMessage,
         type: "error",
       });
-      // Auto-hide banner after 3 seconds
       setTimeout(() => {
         setLocalBanner((prev) => ({ ...prev, visible: false }));
       }, 2500);
     } finally {
       setSubscribingPlanId(null);
     }
+  };
+
+  const renderPaymentMethodOption = (
+    method: PaymentMethod,
+    label: string,
+    icon: React.ReactNode,
+  ) => {
+    const isSelected = paymentMethod === method;
+
+    return (
+      <TouchableOpacity
+        key={method}
+        style={[
+          styles.paymentMethodOption,
+          isSelected && styles.paymentMethodOptionSelected,
+        ]}
+        onPress={() => setPaymentMethod(method)}
+        activeOpacity={0.7}
+      >
+        <View
+          style={[
+            styles.paymentMethodRadio,
+            isSelected && styles.paymentMethodRadioSelected,
+          ]}
+        >
+          {isSelected ? <View style={styles.paymentMethodRadioInner} /> : null}
+        </View>
+        <View style={styles.paymentMethodIconWrap}>{icon}</View>
+        <Text style={styles.paymentMethodLabel}>{label}</Text>
+      </TouchableOpacity>
+    );
   };
 
   if (!visible) return null;
@@ -669,7 +799,7 @@ function BusinessPlansModalContent({
             <Text style={styles.errorText}>{error}</Text>
             <RetryButton onPress={fetchPlans} loading={loading} />
           </View>
-        ) : plans.length === 0 ? (
+        ) : standardPlans.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
               {t("noSubscriptionPlansAvailable")}
@@ -722,7 +852,7 @@ function BusinessPlansModalContent({
               </View>
             </View>
 
-            {plans.map((plan) => (
+            {standardPlans.map((plan) => (
               <View key={plan.id} style={[styles.planCard, styles.shadow]}>
                 <View style={styles.planHeader}>
                   <Text style={styles.planName}>{plan.name}</Text>
@@ -825,7 +955,7 @@ function BusinessPlansModalContent({
                   )}
                 <Button
                   title={`Start my ${process.env.EXPO_PUBLIC_TRAILDAY || "0"} day trial`}
-                  onPress={() => handleSubscribe(plan.id)}
+                  onPress={() => handleTrialPress(plan.id)}
                   loading={subscribingPlanId === plan.id}
                   disabled={subscribingPlanId !== null}
                   containerStyle={styles.subscribeButton}
@@ -857,6 +987,42 @@ function BusinessPlansModalContent({
           </View>
         </View>
       )}
+
+      {isIos ? (
+        <View style={styles.paymentSheetHost} pointerEvents="box-none">
+          <ModalizeBottomSheet
+            visible={paymentSheetVisible}
+            onClose={handlePaymentSheetClose}
+            title={t("choosePaymentMethod") ?? "Choose payment method"}
+            footerButtonTitle={t("continue") ?? "Continue"}
+            onFooterButtonPress={handlePaymentSheetConfirm}
+            footerButtonDisabled={subscribingPlanId !== null}
+            sheetContainerStyle={styles.paymentSheetContainer}
+            contentStyle={styles.paymentSheetContent}
+            usePortal={false}
+          >
+          <View style={styles.paymentMethodContainer}>
+            {renderPaymentMethodOption(
+              "iap",
+              t("payWithApple") ?? "Pay with Apple",
+              <AppleIcon
+                width={moderateWidthScale(22)}
+                height={moderateWidthScale(22)}
+              />,
+            )}
+            {renderPaymentMethodOption(
+              "stripe",
+              t("payWithCard") ?? "Pay with Card",
+              <Feather
+                name="credit-card"
+                size={iconScale(22)}
+                color={theme.darkGreen}
+              />,
+            )}
+          </View>
+          </ModalizeBottomSheet>
+        </View>
+      ) : null}
     </View>
   );
 }

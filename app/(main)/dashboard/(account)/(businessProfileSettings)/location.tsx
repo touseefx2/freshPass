@@ -42,6 +42,10 @@ import { PlacePrediction } from "@/src/types/location";
 import {
   fetchSuggestions as fetchSuggestionsApi,
   fetchPlaceDetails as fetchPlaceDetailsApi,
+  getSuggestionErrorMessage,
+  logPlacesApiFailure,
+  resolvePlaceDetailsError,
+  resolveSuggestionError,
 } from "@/src/services/googlePlacesApi";
 import {
   handleLocationPermission,
@@ -328,7 +332,8 @@ export default function LocationScreen() {
 
       if (!apiKey) {
         setPredictions([]);
-        setSuggestionError("Unable to load suggestions. Please try again.");
+        logPlacesApiFailure("Autocomplete", "MISSING_API_KEY");
+        setSuggestionError("Google Maps API key is not configured.");
         return;
       }
 
@@ -342,20 +347,29 @@ export default function LocationScreen() {
           sessionTokenRef.current,
         );
 
-        console.log("response", response);
-
         if (response.status === "OK" || response.status === "ZERO_RESULTS") {
           setPredictions(response.predictions);
           if (response.status === "ZERO_RESULTS") {
             setSuggestionError(null);
           }
         } else {
-          setSuggestionError("Unable to load suggestions. Please try again.");
+          logPlacesApiFailure(
+            "Autocomplete",
+            response.status,
+            response.errorMessage,
+          );
+          setSuggestionError(
+            getSuggestionErrorMessage(response.status, response.errorMessage),
+          );
           setPredictions([]);
         }
-      } catch (error: any) {
-        Logger.error("Error fetching suggestions:", error);
-        setSuggestionError("Unable to load suggestions. Please try again.");
+      } catch (error: unknown) {
+        logPlacesApiFailure(
+          "Autocomplete",
+          "EXCEPTION",
+          error instanceof Error ? error.message : String(error),
+        );
+        setSuggestionError(resolveSuggestionError(error));
         setPredictions([]);
       } finally {
         setIsLoadingSuggestions(false);
@@ -423,8 +437,13 @@ export default function LocationScreen() {
           message: "",
           type: "info",
         });
-      } catch (error) {
-        setSuggestionError("Unable to fetch place details. Try again.");
+      } catch (error: unknown) {
+        logPlacesApiFailure(
+          "Place details",
+          "EXCEPTION",
+          error instanceof Error ? error.message : String(error),
+        );
+        setSuggestionError(resolvePlaceDetailsError(error));
       } finally {
         setIsFetchingDetails(false);
         sessionTokenRef.current = generateSessionToken();

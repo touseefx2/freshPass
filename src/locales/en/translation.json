@@ -750,5 +750,9 @@
   "trialStarted": "Trial started",
   "subscriptionStarted": "Subscription started",
   "nextPaymentDate": "Next payment date",
-  "notAvailable": "N/A"
+  "notAvailable": "N/A",
+  "paymentProvider": "Payment provider",
+  "appleInAppPurchase": "Apple In-App Purchase",
+  "cardPayment": "Card payment",
+  "subscriptionStatus": "Subscription status"
 }

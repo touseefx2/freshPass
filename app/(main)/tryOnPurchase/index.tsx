@@ -125,7 +125,6 @@ export default function TryOnPurchase() {
 
     const verifyResponse = await purchaseAndVerifyIosIap({
       productId,
-      kind: "ai_service",
       referenceId: serviceIdForPurchase,
     });
 

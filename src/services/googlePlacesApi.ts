@@ -1,8 +1,113 @@
 import { PlacePrediction, ParsedAddress } from "@/src/types/location";
 import { parseAddressComponents } from "../constant/functions";
- 
+import Logger from "@/src/services/logger";
+
 const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const TIMEOUT_MS = 12000; // 12 seconds
+
+const DEFAULT_SUGGESTION_ERROR =
+  "Unable to load suggestions. Please try again.";
+const DEFAULT_PLACE_DETAILS_ERROR =
+  "Unable to fetch place details. Please try again.";
+
+export const logPlacesApiFailure = (
+  context: string,
+  status: string,
+  errorMessage?: string,
+): void => {
+  Logger.error(`[Google Places] ${context}`, {
+    status,
+    errorMessage: errorMessage ?? "No details from Google",
+  });
+};
+
+export const getSuggestionErrorMessage = (
+  status: string,
+  errorMessage?: string,
+): string => {
+  if (status === "OVER_QUERY_LIMIT") {
+    return "Address search limit reached. Please try again later.";
+  }
+
+  if (status === "REQUEST_DENIED") {
+    if (errorMessage?.toLowerCase().includes("billing")) {
+      return "Address search is unavailable. Google Maps billing may need to be enabled.";
+    }
+    return "Address search access was denied. Please contact support.";
+  }
+
+  if (status === "INVALID_REQUEST") {
+    return "Invalid search request. Please try again.";
+  }
+
+  if (errorMessage) {
+    return errorMessage;
+  }
+
+  return DEFAULT_SUGGESTION_ERROR;
+};
+
+export const resolveSuggestionError = (
+  error: unknown,
+  fallback = DEFAULT_SUGGESTION_ERROR,
+): string => {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  if (error.message === "Google Places API key is missing") {
+    return "Google Maps API key is not configured.";
+  }
+
+  if (error.message === "Google Search URL is not configured") {
+    return "Address search URL is not configured.";
+  }
+
+  if (error.message.includes("timeout") || error.message.includes("timed out")) {
+    return "Request timed out. Please try again.";
+  }
+
+  if (error.message.includes("HTTP error")) {
+    return "Network error while loading suggestions. Please try again.";
+  }
+
+  return error.message || fallback;
+};
+
+export const resolvePlaceDetailsError = (
+  error: unknown,
+  fallback = DEFAULT_PLACE_DETAILS_ERROR,
+): string => {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+
+  if (error.message === "Google Places API key is missing") {
+    return "Google Maps API key is not configured.";
+  }
+
+  if (error.message === "Google Fetch Place URL is not configured") {
+    return "Place details URL is not configured.";
+  }
+
+  if (error.message.includes("timeout") || error.message.includes("timed out")) {
+    return "Request timed out. Please try again.";
+  }
+
+  if (error.message.includes("HTTP error")) {
+    return "Network error while loading place details. Please try again.";
+  }
+
+  if (error.message === "REQUEST_DENIED") {
+    return "Place details access was denied. Please contact support.";
+  }
+
+  if (error.message === "OVER_QUERY_LIMIT") {
+    return "Place details limit reached. Please try again later.";
+  }
+
+  return error.message || fallback;
+};
 
 export interface PlaceDetails {
   formattedAddress: string;
@@ -18,6 +123,7 @@ export interface PlaceDetails {
 export interface FetchSuggestionsResponse {
   predictions: PlacePrediction[];
   status: "OK" | "ZERO_RESULTS" | "REQUEST_DENIED" | "OVER_QUERY_LIMIT" | string;
+  errorMessage?: string;
 }
 
 /**
@@ -67,6 +173,7 @@ export const fetchSuggestions = async (
     return {
       predictions: payload.predictions ?? [],
       status: payload.status,
+      errorMessage: payload.error_message,
     };
   } catch (error: any) {
     clearTimeout(timeoutId);
@@ -116,7 +223,7 @@ export const fetchPlaceDetails = async (
     const payload = await response.json();
     
     if (payload.status !== "OK") {
-      throw new Error(payload.status);
+      throw new Error(payload.error_message ?? payload.status);
     }
 
     const result = payload.result;
