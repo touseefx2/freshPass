@@ -26,6 +26,7 @@ module.exports = {
     ...appJson.expo,
     plugins: [
       ...appJson.expo.plugins,
+      "./plugins/withIosModularHeaders",
       ...(facebookPlugin ? [facebookPlugin] : []),
     ],
   },
