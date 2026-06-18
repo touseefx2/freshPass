@@ -95,6 +95,7 @@
         {
           "android": { "usesCleartextTraffic": true },
           "ios": {
+            "useFrameworks": "static",
             "infoPlist": {
               "LSApplicationQueriesSchemes": ["app-settings"]
             }
