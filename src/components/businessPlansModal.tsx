@@ -38,10 +38,6 @@ import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { fetchUserStatus } from "../state/thunks/businessThunks";
-import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
-import { AppleIcon } from "@/assets/icons";
-
-type PaymentMethod = "iap" | "stripe";
 
 const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   const planType = plan.planType?.toLowerCase() ?? "";
@@ -332,65 +328,6 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(16),
       textAlign: "center",
     },
-    paymentMethodContainer: {
-      gap: moderateHeightScale(10),
-    },
-    paymentMethodOption: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-    },
-    paymentMethodOptionSelected: {
-      borderColor: theme.buttonBack,
-      backgroundColor: theme.lightGreen1,
-    },
-    paymentMethodIconWrap: {
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(32),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    paymentMethodRadio: {
-      width: moderateWidthScale(20),
-      height: moderateWidthScale(20),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 2,
-      borderColor: theme.borderNormal,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    paymentMethodRadioSelected: {
-      borderColor: theme.buttonBack,
-    },
-    paymentMethodRadioInner: {
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(5),
-      backgroundColor: theme.buttonBack,
-    },
-    paymentMethodLabel: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    paymentSheetContainer: {
-      backgroundColor: theme.background,
-    },
-    paymentSheetContent: {
-      paddingTop: moderateHeightScale(15),
-    },
-    paymentSheetHost: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 2000,
-      elevation: 2000,
-    },
   });
 
 function BusinessPlansModalContent({
@@ -423,11 +360,6 @@ function BusinessPlansModalContent({
   const [selectedServicesByPlanId, setSelectedServicesByPlanId] = useState<
     Record<number, number[]>
   >({});
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("iap");
-  const [paymentSheetVisible, setPaymentSheetVisible] = useState(false);
-  const [selectedPlanIdForPayment, setSelectedPlanIdForPayment] = useState<
-    number | null
-  >(null);
   const isIos = Platform.OS === "ios";
   const dispatch = useAppDispatch();
 
@@ -671,24 +603,6 @@ function BusinessPlansModalContent({
   };
 
   const handleTrialPress = (planId: number) => {
-    if (isIos) {
-      setPaymentMethod("iap");
-      setSelectedPlanIdForPayment(planId);
-      setPaymentSheetVisible(true);
-      return;
-    }
-    handleSubscribe(planId);
-  };
-
-  const handlePaymentSheetClose = () => {
-    setPaymentSheetVisible(false);
-    setSelectedPlanIdForPayment(null);
-  };
-
-  const handlePaymentSheetConfirm = () => {
-    if (selectedPlanIdForPayment == null) return;
-    const planId = selectedPlanIdForPayment;
-    setPaymentSheetVisible(false);
     handleSubscribe(planId);
   };
 
@@ -698,7 +612,7 @@ function BusinessPlansModalContent({
     try {
       const selectedAddOns = selectedServicesByPlanId[planId] ?? [];
 
-      if (isIos && paymentMethod === "iap") {
+      if (isIos) {
         await handleIapSubscribe(planId, selectedAddOns);
         return;
       }
@@ -731,37 +645,6 @@ function BusinessPlansModalContent({
     } finally {
       setSubscribingPlanId(null);
     }
-  };
-
-  const renderPaymentMethodOption = (
-    method: PaymentMethod,
-    label: string,
-    icon: React.ReactNode,
-  ) => {
-    const isSelected = paymentMethod === method;
-
-    return (
-      <TouchableOpacity
-        key={method}
-        style={[
-          styles.paymentMethodOption,
-          isSelected && styles.paymentMethodOptionSelected,
-        ]}
-        onPress={() => setPaymentMethod(method)}
-        activeOpacity={0.7}
-      >
-        <View
-          style={[
-            styles.paymentMethodRadio,
-            isSelected && styles.paymentMethodRadioSelected,
-          ]}
-        >
-          {isSelected ? <View style={styles.paymentMethodRadioInner} /> : null}
-        </View>
-        <View style={styles.paymentMethodIconWrap}>{icon}</View>
-        <Text style={styles.paymentMethodLabel}>{label}</Text>
-      </TouchableOpacity>
-    );
   };
 
   if (!visible) return null;
@@ -988,41 +871,6 @@ function BusinessPlansModalContent({
         </View>
       )}
 
-      {isIos ? (
-        <View style={styles.paymentSheetHost} pointerEvents="box-none">
-          <ModalizeBottomSheet
-            visible={paymentSheetVisible}
-            onClose={handlePaymentSheetClose}
-            title={t("choosePaymentMethod") ?? "Choose payment method"}
-            footerButtonTitle={t("continue") ?? "Continue"}
-            onFooterButtonPress={handlePaymentSheetConfirm}
-            footerButtonDisabled={subscribingPlanId !== null}
-            sheetContainerStyle={styles.paymentSheetContainer}
-            contentStyle={styles.paymentSheetContent}
-            usePortal={false}
-          >
-          <View style={styles.paymentMethodContainer}>
-            {renderPaymentMethodOption(
-              "iap",
-              t("payWithApple") ?? "Pay with Apple",
-              <AppleIcon
-                width={moderateWidthScale(22)}
-                height={moderateWidthScale(22)}
-              />,
-            )}
-            {renderPaymentMethodOption(
-              "stripe",
-              t("payWithCard") ?? "Pay with Card",
-              <Feather
-                name="credit-card"
-                size={iconScale(22)}
-                color={theme.darkGreen}
-              />,
-            )}
-          </View>
-          </ModalizeBottomSheet>
-        </View>
-      ) : null}
     </View>
   );
 }

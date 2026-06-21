@@ -12,7 +12,6 @@ import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { IMAGES } from "@/src/constant/images";
 import { LeafLogo } from "@/assets/icons";
-import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
@@ -36,8 +35,6 @@ import {
   setActionLoaderTitle,
 } from "@/src/state/slices/generalSlice";
 
-type PaymentMethod = "iap" | "stripe";
-
 export default function TryOnPurchase() {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -56,7 +53,6 @@ export default function TryOnPurchase() {
   const screen = params.screen ?? "";
   const isIos = Platform.OS === "ios";
 
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("iap");
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
     title: string;
@@ -216,7 +212,7 @@ export default function TryOnPurchase() {
     dispatch(setActionLoaderTitle(t("paymentprocessing")));
 
     try {
-      if (isIos && paymentMethod === "iap") {
+      if (isIos) {
         await handleIapPayment(service.id);
         return;
       }
@@ -238,35 +234,6 @@ export default function TryOnPurchase() {
     } finally {
       dispatch(setActionLoader(false));
     }
-  };
-
-  const renderPaymentMethodOption = (
-    method: PaymentMethod,
-    label: string,
-  ) => {
-    const isSelected = paymentMethod === method;
-
-    return (
-      <TouchableOpacity
-        key={method}
-        style={[
-          styles.paymentMethodOption,
-          isSelected && styles.paymentMethodOptionSelected,
-        ]}
-        onPress={() => setPaymentMethod(method)}
-        activeOpacity={0.7}
-      >
-        <View
-          style={[
-            styles.paymentMethodRadio,
-            isSelected && styles.paymentMethodRadioSelected,
-          ]}
-        >
-          {isSelected ? <View style={styles.paymentMethodRadioInner} /> : null}
-        </View>
-        <Text style={styles.paymentMethodLabel}>{label}</Text>
-      </TouchableOpacity>
-    );
   };
 
   return (
@@ -317,19 +284,6 @@ export default function TryOnPurchase() {
           </View>
 
           <View style={styles.bottomSection}>
-            {isIos ? (
-              <View style={styles.paymentMethodContainer}>
-                {renderPaymentMethodOption(
-                  "iap",
-                  t("payWithApple") ?? "Pay with Apple",
-                )}
-                {renderPaymentMethodOption(
-                  "stripe",
-                  t("payWithCard") ?? "Pay with Card",
-                )}
-              </View>
-            ) : null}
-
             <Button
               title={t("unlockAiTryOn")}
               onPress={handleUpgradePress}
