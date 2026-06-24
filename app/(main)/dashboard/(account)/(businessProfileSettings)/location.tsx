@@ -6,6 +6,7 @@ import React, {
   useEffect,
 } from "react";
 import {
+  Keyboard,
   Modal,
   Platform,
   Pressable,
@@ -13,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -461,16 +463,18 @@ export default function LocationScreen() {
   );
 
   const handleUseCurrentLocation = async () => {
+    Keyboard.dismiss();
     setLocationMessage(null);
 
     const permissionResult = await handleLocationPermission();
 
     if (!permissionResult.granted) {
-      if (permissionResult.errorMessage) {
-        setLocationMessage(permissionResult.errorMessage);
-        if (permissionResult.shouldOpenSettings) {
-          await openLocationSettings();
-        }
+      setLocationMessage(
+        permissionResult.errorMessage ??
+          "Location permission is required to use your current location.",
+      );
+      if (permissionResult.shouldOpenSettings) {
+        await openLocationSettings();
       }
       return;
     }
@@ -756,66 +760,73 @@ export default function LocationScreen() {
       >
         <StatusBar barStyle="dark-content" />
 
-        <View
-          style={[
-            styles.modalContainer,
-            { paddingVertical: Platform.OS === "android" ? 30 : 45 },
-          ]}
-        >
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              onPress={() => {
-                setSearchModalVisible(false);
-                setAddressSearch("");
-                setPredictions([]);
-                setLocationMessage(null);
-                setModalBanner({
-                  visible: false,
-                  title: "",
-                  message: "",
-                  type: "info",
-                });
-              }}
-              style={styles.modalCloseButton}
-              activeOpacity={0.7}
-            >
-              <Feather
-                name="x"
-                size={moderateWidthScale(24)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.modalContent}>
-            <View style={styles.modalTitleSec}>
-              <Text style={styles.modalTitle}>Enter your business address</Text>
-              <Text style={styles.modalSubtitle}>
-                This helps clients find and visit you.
-              </Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View
+            style={[
+              styles.modalContainer,
+              { paddingVertical: Platform.OS === "android" ? 30 : 45 },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setSearchModalVisible(false);
+                  setAddressSearch("");
+                  setPredictions([]);
+                  setLocationMessage(null);
+                  setModalBanner({
+                    visible: false,
+                    title: "",
+                    message: "",
+                    type: "info",
+                  });
+                }}
+                style={styles.modalCloseButton}
+                activeOpacity={0.7}
+              >
+                <Feather
+                  name="x"
+                  size={moderateWidthScale(24)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
             </View>
-            <StepFourSearchSection
-              addressSearch={addressSearch}
-              onChangeSearch={handleSearchChange}
-              predictions={predictions}
-              isLoadingSuggestions={isLoadingSuggestions}
-              suggestionError={suggestionError}
-              onSelectSuggestion={handleSuggestionPress}
-              onUseCurrentLocation={handleUseCurrentLocation}
-              isResolvingLocation={isResolvingLocation}
-              locationMessage={locationMessage}
+            <View style={styles.modalContent}>
+              <Pressable onPress={Keyboard.dismiss}>
+                <View style={styles.modalTitleSec}>
+                  <Text style={styles.modalTitle}>
+                    Enter your business address
+                  </Text>
+                  <Text style={styles.modalSubtitle}>
+                    This helps clients find and visit you.
+                  </Text>
+                </View>
+              </Pressable>
+              <StepFourSearchSection
+                addressSearch={addressSearch}
+                onChangeSearch={handleSearchChange}
+                predictions={predictions}
+                isLoadingSuggestions={isLoadingSuggestions}
+                suggestionError={suggestionError}
+                onSelectSuggestion={handleSuggestionPress}
+                onUseCurrentLocation={handleUseCurrentLocation}
+                isResolvingLocation={isResolvingLocation}
+                locationMessage={locationMessage}
+              />
+            </View>
+            <NotificationBanner
+              visible={modalBanner.visible}
+              title={modalBanner.title}
+              message={modalBanner.message}
+              type={modalBanner.type}
+              duration={3000}
+              onDismiss={() =>
+                setModalBanner((prev) => ({ ...prev, visible: false }))
+              }
             />
           </View>
-          <NotificationBanner
-            visible={modalBanner.visible}
-            title={modalBanner.title}
-            message={modalBanner.message}
-            type={modalBanner.type}
-            duration={3000}
-            onDismiss={() =>
-              setModalBanner((prev) => ({ ...prev, visible: false }))
-            }
-          />
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Map Modal */}

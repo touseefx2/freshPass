@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   BackHandler,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -660,6 +661,7 @@ export default function CompleteProfile() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           onScrollBeginDrag={() => {
+            Keyboard.dismiss();
             if (isStepOneDropdownOpen) setIsStepOneDropdownOpen(false);
           }}
         >

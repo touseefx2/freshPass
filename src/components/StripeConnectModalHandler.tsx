@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { useAppSelector } from "@/src/hooks/hooks";
+import { useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import StripeConnectModal from "@/src/components/StripeConnectModal";
+import { setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
 import { useSegments } from "expo-router";
 
 export default function StripeConnectModalHandler() {
+  const dispatch = useAppDispatch();
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const stripeConnectModalVisible = useAppSelector(
+    (state) => state.general.stripeConnectModalVisible,
+  );
   const [dismissed, setDismissed] = useState(false);
   const segments = useSegments() as string[];
 
@@ -23,9 +28,15 @@ export default function StripeConnectModalHandler() {
     }
   }, [showStripeBanner]);
 
-  const visible = showStripeBanner && !dismissed;
+  const visible =
+    stripeConnectModalVisible || (showStripeBanner && !dismissed);
+
+  const handleClose = () => {
+    setDismissed(true);
+    dispatch(setStripeConnectModalVisible(false));
+  };
 
   return (
-    <StripeConnectModal visible={visible} onClose={() => setDismissed(true)} />
+    <StripeConnectModal visible={visible} onClose={handleClose} />
   );
 }

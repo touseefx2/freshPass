@@ -5,7 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { Region } from "react-native-maps";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -347,21 +347,19 @@ export default function StepFour() {
   );
 
   const handleUseCurrentLocation = useCallback(async () => {
+    Keyboard.dismiss();
     setLocationMessage(null);
     setLocationNotice(null);
 
-    // Step 1: Check and request location permission first
     const permissionResult = await handleLocationPermission();
 
     if (!permissionResult.granted) {
-      // Permission denied or location services OFF
-      // Display error message as red text (no alert)
-      if (permissionResult.errorMessage) {
-        setLocationMessage(permissionResult.errorMessage);
-        // If settings should be opened, open them automatically
-        if (permissionResult.shouldOpenSettings) {
-          await openLocationSettings();
-        }
+      setLocationMessage(
+        permissionResult.errorMessage ??
+          "Location permission is required to use your current location.",
+      );
+      if (permissionResult.shouldOpenSettings) {
+        await openLocationSettings();
       }
       return;
     }
@@ -480,25 +478,27 @@ export default function StepFour() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.titleSec}>
-        {isMapStage ? (
-          <Text style={styles.title}>
-            Is the pin placed correctly,{" "}
-            <Text style={styles.firstName}>{firstName}?</Text>
+      <Pressable onPress={Keyboard.dismiss}>
+        <View style={styles.titleSec}>
+          {isMapStage ? (
+            <Text style={styles.title}>
+              Is the pin placed correctly,{" "}
+              <Text style={styles.firstName}>{firstName}?</Text>
+            </Text>
+          ) : (
+            <Text style={styles.title}>
+              {isConfirmStage
+                ? "Confirm your business address"
+                : "Enter your business address"}
+            </Text>
+          )}
+          <Text style={styles.subtitle}>
+            {isConfirmStage || isMapStage
+              ? "Let us know the location you'll be operating from so the customers can find and book you easily."
+              : "This helps clients find and visit you."}
           </Text>
-        ) : (
-          <Text style={styles.title}>
-            {isConfirmStage
-              ? "Confirm your business address"
-              : "Enter your business address"}
-          </Text>
-        )}
-        <Text style={styles.subtitle}>
-          {isConfirmStage || isMapStage
-            ? "Let us know the location you'll be operating from so the customers can find and book you easily."
-            : "This helps clients find and visit you."}
-        </Text>
-      </View>
+        </View>
+      </Pressable>
 
       {isSearchStage && (
         <StepFourSearchSection

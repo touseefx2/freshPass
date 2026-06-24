@@ -88,6 +88,7 @@ export interface GeneralState {
   chatContactsRefreshing: boolean;
   chatContactsLoadingMore: boolean;
   businessPlansModalVisible: boolean;
+  stripeConnectModalVisible: boolean;
   /** When user selects images from AI Results to attach to booking (not persisted) */
   bookingTryOnImageUrls: string[];
   /** When opening AI Results from booking, pre-select these URLs (intersection with result) */
@@ -153,6 +154,7 @@ const initialState: GeneralState = {
   chatContactsRefreshing: false,
   chatContactsLoadingMore: false,
   businessPlansModalVisible: false,
+  stripeConnectModalVisible: false,
   bookingTryOnImageUrls: [],
   bookingTryOnPreselectedUrls: [],
   bookingTryOnSelectionByJobId: {},
@@ -279,6 +281,9 @@ const generalSlice = createSlice({
     },
     setBusinessPlansModalVisible(state, action: PayloadAction<boolean>) {
       state.businessPlansModalVisible = action.payload;
+    },
+    setStripeConnectModalVisible(state, action: PayloadAction<boolean>) {
+      state.stripeConnectModalVisible = action.payload;
     },
     setBookingTryOnImageUrls(state, action: PayloadAction<string[]>) {
       state.bookingTryOnImageUrls = action.payload;
@@ -421,6 +426,7 @@ const generalSlice = createSlice({
       state.chatContactsRefreshing = false;
       state.chatContactsLoadingMore = false;
       state.businessPlansModalVisible = false;
+      state.stripeConnectModalVisible = false;
       state.bookingTryOnImageUrls = [];
       state.bookingTryOnPreselectedUrls = [];
       state.bookingTryOnSelectionByJobId = {};
@@ -453,6 +459,7 @@ export const {
   closeFullImageModal,
   setGuestModeModalVisible,
   setBusinessPlansModalVisible,
+  setStripeConnectModalVisible,
   setBookingTryOnImageUrls,
   clearBookingTryOnImageUrls,
   setBookingTryOnPreselectedUrls,

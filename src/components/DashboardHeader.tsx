@@ -1,17 +1,18 @@
-import React, { useMemo, useCallback, useState, useRef, memo } from "react";
+import React, { useMemo, useCallback, memo } from "react";
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  ActivityIndicator,
-  Animated,
-  Linking,
   Image,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
-import { setToggleLoading, setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  setToggleLoading,
+  setBusinessPlansModalVisible,
+  setStripeConnectModalVisible,
+} from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -20,14 +21,9 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { LeafLogo } from "@/assets/icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CustomToggleInside from "@/src/components/customToggleInside";
-import {
-  fetchUserStatus,
-  updateBusinessActiveStatus,
-} from "@/src/state/thunks/businessThunks";
-import { checkInternetConnection } from "@/src/services/api";
+import { updateBusinessActiveStatus } from "@/src/state/thunks/businessThunks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
 
@@ -104,67 +100,10 @@ function DashboardHeader({
   const isOnline = businessStatus?.active ?? false;
   const insets = useSafeAreaInsets();
 
-  const [isFetchingStripeLink, setIsFetchingStripeLink] = useState(false);
   const toggleLoading = useAppSelector((state) => state.general.toggleLoading);
-  const bannerAnimation = useRef(new Animated.Value(0)).current;
 
-  const handleStripeOnboardingPress = async () => {
-    // First check internet connection
-    const hasInternet = await checkInternetConnection();
-    if (!hasInternet) {
-      showBanner(
-        t("noInternetConnection"),
-        t("pleaseCheckInternetConnection"),
-        "error",
-        2500,
-      );
-      return;
-    }
-
-    // Fetch latest Stripe onboarding link
-    setIsFetchingStripeLink(true);
-    try {
-      const businessData = await dispatch(
-        fetchUserStatus({ showError: false }),
-      ).unwrap();
-
-      // Open the link in browser after successful fetch
-      if (businessData?.stripe_onboarding_link) {
-        try {
-          const canOpen = await Linking.canOpenURL(
-            businessData.stripe_onboarding_link,
-          );
-          if (canOpen) {
-            await Linking.openURL(businessData.stripe_onboarding_link);
-          } else {
-            showBanner(t("error"), t("cannotOpenLink"), "error", 2500);
-          }
-        } catch (error: any) {
-          showBanner(
-            t("error"),
-            error.message || t("failedToOpenLink"),
-            "error",
-            2500,
-          );
-        }
-      } else {
-        showBanner(
-          t("stripeConnect"),
-          t("stripeOnboardingNotAvailable"),
-          "error",
-          2500,
-        );
-      }
-    } catch (error: any) {
-      showBanner(
-        t("error"),
-        error.message || t("failedToFetchStripeLink"),
-        "error",
-        2500,
-      );
-    } finally {
-      setIsFetchingStripeLink(false);
-    }
+  const handleStripeOnboardingPress = () => {
+    dispatch(setStripeConnectModalVisible(true));
   };
 
   const handleBusinessSubscriptionPress = () => {
@@ -189,51 +128,25 @@ function DashboardHeader({
   const actualCanGoOnline =
     userRole !== "business" || (!showStripeBanner && !showBusinessSubscriptipn);
 
-  const animateBanner = useCallback(() => {
-    Animated.sequence([
-      Animated.timing(bannerAnimation, {
-        toValue: 10,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(bannerAnimation, {
-        toValue: -10,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(bannerAnimation, {
-        toValue: 10,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-      Animated.timing(bannerAnimation, {
-        toValue: 0,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [bannerAnimation]);
-
-  const handleToggleAttempt = useCallback(() => {
-    if (!actualCanGoOnline && (showStripeBanner || showBusinessSubscriptipn)) {
-      animateBanner();
+  const handleBlockedActiveToggle = useCallback(() => {
+    if (showStripeBanner) {
+      dispatch(setStripeConnectModalVisible(true));
+      return;
     }
-  }, [
-    actualCanGoOnline,
-    showStripeBanner,
-    showBusinessSubscriptipn,
-    animateBanner,
-  ]);
+
+    if (showBusinessSubscriptipn) {
+      dispatch(setBusinessPlansModalVisible(true));
+    }
+  }, [dispatch, showStripeBanner, showBusinessSubscriptipn]);
 
   const handleToggleChange = useCallback(
     async (value: boolean) => {
       // Only dispatch if the value is actually different from current state
       // This prevents accidental toggles when component re-renders
       if (value !== isOnline) {
-        // If trying to go online and canGoOnline is false, trigger animation
         if (value === true && !actualCanGoOnline) {
-          handleToggleAttempt();
-          return; // Don't allow toggle
+          handleBlockedActiveToggle();
+          return;
         }
 
         // Show loader in toggle
@@ -262,7 +175,7 @@ function DashboardHeader({
         }
       }
     },
-    [dispatch, isOnline, actualCanGoOnline, handleToggleAttempt, showBanner],
+    [dispatch, isOnline, actualCanGoOnline, handleBlockedActiveToggle, showBanner, t],
   );
 
   return (
@@ -301,36 +214,14 @@ function DashboardHeader({
                 : handleBusinessSubscriptionPress
             }
             activeOpacity={0.8}
-            disabled={isFetchingStripeLink}
           >
-            <Animated.View
-              style={[
-                styles.stripeBanner,
-                {
-                  transform: [{ translateX: bannerAnimation }],
-                },
-              ]}
-            >
-              {isFetchingStripeLink ? (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: moderateWidthScale(8),
-                  }}
-                >
-                  <ActivityIndicator size="small" color={theme.white} />
-                  <Text style={styles.stripeBannerText}>{t("loading")}</Text>
-                </View>
-              ) : (
-                <Text style={styles.stripeBannerText}>
-                  {showStripeBanner
-                    ? t("pleaseCompleteStripe")
-                    : t("pleaseBuyBusinessPlan")}
-                </Text>
-              )}
-            </Animated.View>
+            <View style={styles.stripeBanner}>
+              <Text style={styles.stripeBannerText}>
+                {showStripeBanner
+                  ? t("pleaseCompleteStripe")
+                  : t("pleaseBuyBusinessPlan")}
+              </Text>
+            </View>
           </TouchableOpacity>
         )}
 

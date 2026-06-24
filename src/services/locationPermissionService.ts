@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import Constants from "expo-constants";
 import { Platform, Alert, Linking } from "react-native";
 import Logger from "./logger";
 
@@ -14,6 +15,13 @@ export interface HandleLocationPermissionResult {
   errorMessage?: string; // Error message to display as red text (if any)
   shouldOpenSettings?: boolean; // Whether to open settings
 }
+
+const PERMISSION_DENIED_MESSAGE =
+  "Location permission is required to use your current location.";
+const PERMISSION_SETTINGS_MESSAGE =
+  "Location permission was denied. Please enable location access in your device settings.";
+const SERVICES_DISABLED_MESSAGE =
+  "Please enable location services on your phone first";
 
 /**
  * Request location permission with proper handling for iOS and Android
@@ -67,12 +75,8 @@ export const requestLocationPermission =
             ? (permissionResponse as any).canAskAgain
             : true;
       } else {
-        // iOS: If status is DENIED, user can still request again
-        // Permanently blocked only if user disabled in settings (UNDETERMINED after blocking)
-        // For now, treat DENIED as can request again on iOS
-        canAskAgain =
-          requestedStatus === Location.PermissionStatus.DENIED ||
-          requestedStatus === Location.PermissionStatus.UNDETERMINED;
+        // iOS: after the user taps Don't Allow, the system will not show the dialog again
+        canAskAgain = requestedStatus !== Location.PermissionStatus.DENIED;
       }
 
       // Step 5: Return appropriate response
@@ -135,33 +139,47 @@ export const showLocationPermissionAlert = (
 /**
  * Open location settings directly (iOS or Android)
  * Android: Opens native location settings page directly using Intent
- * iOS: Opens app settings where user can enable location permissions
- * NOTE: Location services still need to be manually enabled by user (platform restriction)
+ * iOS: Opens Fresh Pass app settings (Location permission row)
  */
 export const openLocationSettings = async (): Promise<void> => {
   try {
     if (Platform.OS === "ios") {
-      // iOS: Open app settings where user can enable location permissions
-      await Linking.openURL("app-settings:");
-    } else {
-      // Android: Open location settings page DIRECTLY using Intent
-      // This opens the native Android location ON/OFF settings screen
-      await Linking.openURL("android.settings.LOCATION_SOURCE_SETTINGS");
+      const bundleId =
+        Constants.expoConfig?.ios?.bundleIdentifier ?? "com.freshpass";
+
+      const iosDeepLinks = [
+        `app-settings:root=LOCATION&path=${bundleId}`,
+        `app-settings:root=${bundleId}`,
+      ];
+
+      for (const url of iosDeepLinks) {
+        try {
+          await Linking.openURL(url);
+          return;
+        } catch {
+          // Try next deep link
+        }
+      }
+
+      await Linking.openSettings();
+      return;
     }
+
+    // Android: Open location settings page directly
+    await Linking.openURL("android.settings.LOCATION_SOURCE_SETTINGS");
   } catch (error) {
     Logger.error("Error opening location settings:", error);
-    // Fallback: Try opening general settings if location settings intent fails
     try {
       if (Platform.OS === "android") {
         await Linking.openSettings();
       } else {
-        await Linking.openURL("app-settings:");
+        await Linking.openSettings();
       }
     } catch (fallbackError) {
       Logger.error("Error opening fallback settings:", fallbackError);
       Alert.alert(
         "Unable to open settings",
-        "Please manually enable location services in your device settings:\n\n• Android: Settings > Location\n• iOS: Settings > Privacy & Security > Location Services"
+        "Please manually enable location for Fresh Pass:\n\nSettings → Fresh Pass → Location → While Using the App",
       );
     }
   }
@@ -170,52 +188,81 @@ export const openLocationSettings = async (): Promise<void> => {
 /**
  * Complete location permission flow
  * Flow:
- * 1. First check if location services are ON (if OFF, return error message - NO ALERT)
- * 2. Then request location permission (if denied, handle accordingly)
+ * 1. First check if location services are ON (if OFF, return error message)
+ * 2. Check existing permission — iOS won't re-prompt after Don't Allow
+ * 3. Request permission when the system may still show a dialog
  * Returns result object with granted status and optional error message
- * Error message will be displayed as red text in the UI (not as alert popup)
  */
 export const handleLocationPermission = async (): Promise<HandleLocationPermissionResult> => {
-  // Step 1: First check if location services are enabled
-  // This is the FIRST step - user must enable location services before permission can work
   const servicesEnabled = await Location.hasServicesEnabledAsync();
-  
+
   if (!servicesEnabled) {
-    // Location services are OFF - return error message (no alert, display as red text)
-    // User needs to enable location services manually in device settings
-    // This will be shown as red text in the UI (no alert popup)
     return {
       granted: false,
-      errorMessage: "Please enable location services on your phone first",
-      shouldOpenSettings: false,
+      errorMessage: SERVICES_DISABLED_MESSAGE,
+      shouldOpenSettings: true,
     };
   }
 
-  // Step 2: Location services are ON - now request permission
+  const existing = await Location.getForegroundPermissionsAsync();
+
+  if (existing.status === Location.PermissionStatus.GRANTED) {
+    return { granted: true };
+  }
+
+  const isIosDenied =
+    Platform.OS === "ios" &&
+    existing.status === Location.PermissionStatus.DENIED;
+
+  const isAndroidPermanentlyDenied =
+    Platform.OS === "android" &&
+    existing.status === Location.PermissionStatus.DENIED &&
+    existing.canAskAgain === false;
+
+  if (isIosDenied || isAndroidPermanentlyDenied) {
+    const alertMessage = isIosDenied
+      ? "Location access is turned off. Enable it in Settings to use your current location."
+      : PERMISSION_SETTINGS_MESSAGE;
+
+    showLocationPermissionAlert(alertMessage, () => {
+      void openLocationSettings();
+    });
+
+    return {
+      granted: false,
+      errorMessage: isIosDenied
+        ? "Location permission is required. Please enable it in Settings."
+        : PERMISSION_SETTINGS_MESSAGE,
+    };
+  }
+
   const result = await requestLocationPermission();
 
-
-  // Permission granted - location services are already ON (checked above)
   if (result.granted) {
-    return { granted: true }; // Everything is good - permission granted and services ON
+    return { granted: true };
   }
 
-  // Permission denied - handle different scenarios:
-  
-  // Scenario 1: Permission is permanently blocked (can't request again)
-  // Show alert dialog with "Open Settings" option (not red text)
+  if (!result.servicesEnabled) {
+    return {
+      granted: false,
+      errorMessage: result.message,
+      shouldOpenSettings: true,
+    };
+  }
+
   if (!result.canRequestAgain) {
-    showLocationPermissionAlert(
-      "Your location permission has been denied. Please enable location access in your device settings.",
-      async () => {
-        await openLocationSettings();
-      }
-    );
-    return { granted: false }; // No errorMessage - alert already shown
+    showLocationPermissionAlert(PERMISSION_SETTINGS_MESSAGE, () => {
+      void openLocationSettings();
+    });
+
+    return {
+      granted: false,
+      errorMessage: PERMISSION_SETTINGS_MESSAGE,
+    };
   }
 
-  // Scenario 2: First-time deny (can request again, location services are on)
-  // Return silently - no error message, no alert (user can try again later)
-  // This is normal behavior - user might deny first time but allow later
-  return { granted: false };
+  return {
+    granted: false,
+    errorMessage: result.message || PERMISSION_DENIED_MESSAGE,
+  };
 };

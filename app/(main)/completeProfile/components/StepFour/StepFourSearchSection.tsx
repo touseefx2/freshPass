@@ -1,9 +1,11 @@
 import React, { useMemo } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
@@ -111,99 +113,104 @@ export default function StepFourSearchSection({
   const { t } = useTranslation();
 
   return (
-    <View style={styles.container}>
-      <View className="flex-1">
-        <FloatingInput
-          label={t("search")}
-          value={addressSearch}
-          onChangeText={onChangeSearch}
-          placeholder={t("searchYourAddress")}
-          placeholderTextColor={(colors as Theme).lightGreen2}
-          returnKeyType="search"
-          onClear={() => onChangeSearch("")}
-          renderLeftAccessory={() => (
-            <Feather
-              name="search"
-              size={moderateWidthScale(18)}
-              color={(colors as Theme).darkGreen}
-            />
-          )}
-        />
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
+          <FloatingInput
+            label={t("search")}
+            value={addressSearch}
+            onChangeText={onChangeSearch}
+            placeholder={t("searchYourAddress")}
+            placeholderTextColor={(colors as Theme).lightGreen2}
+            returnKeyType="search"
+            onClear={() => onChangeSearch("")}
+            renderLeftAccessory={() => (
+              <Feather
+                name="search"
+                size={moderateWidthScale(18)}
+                color={(colors as Theme).darkGreen}
+              />
+            )}
+          />
 
-        {addressSearch.trim().length > 0 && (
-          <View style={styles.suggestionsContainer}>
-            {isLoadingSuggestions && (
-              <View style={{ paddingVertical: moderateHeightScale(12) }}>
-                <ActivityIndicator
-                  size="small"
-                  color={(colors as Theme).darkGreen}
-                />
-              </View>
-            )}
-            {!isLoadingSuggestions &&
-              !suggestionError &&
-              predictions.map((prediction, index) => {
-                const isLast = index === predictions.length - 1;
-                return (
-                  <Pressable
-                    key={prediction.place_id ?? index.toString()}
-                    style={[
-                      styles.suggestionItem,
-                      isLast && { borderBottomWidth: 0 },
-                    ]}
-                    onPress={() => onSelectSuggestion(prediction)}
-                  >
-                    <Feather
-                      name="map-pin"
-                      size={moderateWidthScale(16)}
-                      color={(colors as Theme).lightGreen}
-                    />
-                    <Text style={styles.suggestionText}>
-                      {prediction.structured_formatting?.main_text ??
-                        prediction.description}
-                      {prediction.structured_formatting?.secondary_text
-                        ? `, ${prediction.structured_formatting.secondary_text}`
-                        : ""}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            {!isLoadingSuggestions && suggestionError && (
-              <View style={{ paddingVertical: moderateHeightScale(12) }}>
-                <Text style={styles.errorText}>{suggestionError}</Text>
-              </View>
-            )}
-            {!isLoadingSuggestions &&
-              !suggestionError &&
-              predictions.length === 0 && (
+          {addressSearch.trim().length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              {isLoadingSuggestions && (
                 <View style={{ paddingVertical: moderateHeightScale(12) }}>
-                  <Text style={styles.infoText}>
-                    No results yet. Try refining your search.
-                  </Text>
+                  <ActivityIndicator
+                    size="small"
+                    color={(colors as Theme).darkGreen}
+                  />
                 </View>
               )}
-          </View>
+              {!isLoadingSuggestions &&
+                !suggestionError &&
+                predictions.map((prediction, index) => {
+                  const isLast = index === predictions.length - 1;
+                  return (
+                    <Pressable
+                      key={prediction.place_id ?? index.toString()}
+                      style={[
+                        styles.suggestionItem,
+                        isLast && { borderBottomWidth: 0 },
+                      ]}
+                      onPress={() => onSelectSuggestion(prediction)}
+                    >
+                      <Feather
+                        name="map-pin"
+                        size={moderateWidthScale(16)}
+                        color={(colors as Theme).lightGreen}
+                      />
+                      <Text style={styles.suggestionText}>
+                        {prediction.structured_formatting?.main_text ??
+                          prediction.description}
+                        {prediction.structured_formatting?.secondary_text
+                          ? `, ${prediction.structured_formatting.secondary_text}`
+                          : ""}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              {!isLoadingSuggestions && suggestionError && (
+                <View style={{ paddingVertical: moderateHeightScale(12) }}>
+                  <Text style={styles.errorText}>{suggestionError}</Text>
+                </View>
+              )}
+              {!isLoadingSuggestions &&
+                !suggestionError &&
+                predictions.length === 0 && (
+                  <View style={{ paddingVertical: moderateHeightScale(12) }}>
+                    <Text style={styles.infoText}>
+                      No results yet. Try refining your search.
+                    </Text>
+                  </View>
+                )}
+            </View>
+          )}
+        </Pressable>
+
+        <Pressable
+          style={styles.locationButton}
+          onPress={() => {
+            Keyboard.dismiss();
+            onUseCurrentLocation();
+          }}
+          disabled={isResolvingLocation}
+        >
+          <Feather
+            name="target"
+            size={moderateWidthScale(16)}
+            color={(colors as Theme).darkGreen}
+          />
+          <Text style={styles.locationButtonText}>
+            {isResolvingLocation ? "Locating..." : "Use current location"}
+          </Text>
+        </Pressable>
+
+        {locationMessage && (
+          <Text style={styles.errorText}>{locationMessage}</Text>
         )}
       </View>
-
-      <Pressable
-        style={styles.locationButton}
-        onPress={onUseCurrentLocation}
-        disabled={isResolvingLocation}
-      >
-        <Feather
-          name="target"
-          size={moderateWidthScale(16)}
-          color={(colors as Theme).darkGreen}
-        />
-        <Text style={styles.locationButtonText}>
-          {isResolvingLocation ? "Locating..." : "Use current location"}
-        </Text>
-      </Pressable>
-
-      {locationMessage && (
-        <Text style={styles.errorText}>{locationMessage}</Text>
-      )}
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
