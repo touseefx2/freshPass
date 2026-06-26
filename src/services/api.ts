@@ -29,7 +29,7 @@ const getGuestToken = (): string | null => {
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 60000, // 1 minute (60 seconds)
+  timeout: 120000, // 2 minutes (120 seconds)
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
