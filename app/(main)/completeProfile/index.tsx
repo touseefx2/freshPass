@@ -41,7 +41,7 @@ import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
-import { setBusinessId } from "@/src/state/slices/userSlice";
+import { setBusinessId, setBusinessStatus } from "@/src/state/slices/userSlice";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 export default function CompleteProfile() {
@@ -358,6 +358,16 @@ export default function CompleteProfile() {
         if (currentStep < totalSteps) {
           dispatch(goToNextStep());
         } else if (currentStep === totalSteps) {
+          if (businessStatus) {
+            dispatch(
+              setBusinessStatus({
+                ...businessStatus,
+                onboarding_completed: true,
+                current_step: null,
+                next_step: null,
+              }),
+            );
+          }
           // Navigate to acceptTerms screen when step 11 is completed
           router.replace(`/(main)/${MAIN_ROUTES.ACCEPT_TERMS}`);
         }
@@ -423,6 +433,16 @@ export default function CompleteProfile() {
         if (currentStep === 10) {
           dispatch(goToNextStep());
         } else {
+          if (businessStatus) {
+            dispatch(
+              setBusinessStatus({
+                ...businessStatus,
+                onboarding_completed: true,
+                current_step: null,
+                next_step: null,
+              }),
+            );
+          }
           router.replace(`/(main)/${MAIN_ROUTES.ACCEPT_TERMS}`);
         }
       } else {

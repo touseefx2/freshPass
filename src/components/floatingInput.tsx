@@ -12,6 +12,7 @@ import {
   Pressable,
   StyleProp,
   StyleSheet,
+  Text,
   TextInput,
   TextInputProps,
   TextStyle,
@@ -43,6 +44,7 @@ interface FloatingInputProps extends TextInputProps {
   floatOnFocus?: boolean;
   showClearButton?: boolean;
   onClear?: () => void;
+  required?: boolean;
 }
 
 const createStyles = (theme: Theme) =>
@@ -61,6 +63,11 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       left: moderateWidthScale(13),
       color: theme.lightGreen,
+      fontFamily: fonts.fontRegular,
+      fontSize: fontSize.size11,
+    },
+    requiredAsterisk: {
+      color: theme.red,
       fontFamily: fonts.fontRegular,
       fontSize: fontSize.size11,
     },
@@ -106,6 +113,8 @@ const FloatingInput = forwardRef<TextInput, FloatingInputProps>(
       placeholderTextColor,
       showClearButton = true,
       onClear,
+      required = false,
+      placeholder,
       onFocus,
       onBlur,
       onChangeText,
@@ -182,6 +191,14 @@ const FloatingInput = forwardRef<TextInput, FloatingInputProps>(
 
     const showClear = showClearButton && hasValue;
 
+    const resolvedPlaceholder = useMemo(() => {
+      const basePlaceholder = placeholder ?? label;
+      if (required && !shouldShowLabel) {
+        return `${basePlaceholder} *`;
+      }
+      return basePlaceholder;
+    }, [label, placeholder, required, shouldShowLabel]);
+
     // Calculate label left position: if there's a left accessory, position label above text input
     // Label should align exactly where the TextInput text starts
     const labelLeftPosition = useMemo(() => {
@@ -229,6 +246,7 @@ const FloatingInput = forwardRef<TextInput, FloatingInputProps>(
           ]}
         >
           {label}
+          {required ? <Text style={styles.requiredAsterisk}> *</Text> : null}
         </Animated.Text>
         <View style={styles.inputRow}>
           {leftAccessoryContent ? (
@@ -240,6 +258,7 @@ const FloatingInput = forwardRef<TextInput, FloatingInputProps>(
             ref={ref}
             style={[styles.input, inputStyle]}
             value={value}
+            placeholder={resolvedPlaceholder}
             placeholderTextColor={placeholderTextColor ?? theme.lightGreen2}
             onFocus={handleFocus}
             onBlur={handleBlur}

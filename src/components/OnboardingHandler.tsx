@@ -5,6 +5,12 @@ import { MAIN_ROUTES } from "@/src/constant/routes";
 import OnboardingModal from "@/src/components/onboardingModal";
 import { setCurrentStep } from "@/src/state/slices/completeProfileSlice";
 
+const ONBOARDING_FLOW_ROUTES = [
+  MAIN_ROUTES.COMPLETE_PROFILE,
+  MAIN_ROUTES.ACCEPT_TERMS,
+  MAIN_ROUTES.INTRODUCTION,
+] as const;
+
 export default function OnboardingHandler() {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -13,7 +19,9 @@ export default function OnboardingHandler() {
   const userRole = useAppSelector((state) => state.user.userRole);
   const accessToken = useAppSelector((state) => state.user.accessToken);
 
-  const isOnOnboardingScreen = segments.includes(MAIN_ROUTES.COMPLETE_PROFILE);
+  const isInOnboardingFlow = ONBOARDING_FLOW_ROUTES.some((route) =>
+    segments.includes(route),
+  );
 
   // Show modal only for business users if onboarding is not completed
   // Staff and client don't need onboarding
@@ -23,7 +31,7 @@ export default function OnboardingHandler() {
     businessStatus &&
     !businessStatus.onboarding_completed;
 
-  const modalVisible = shouldShowModal && !isOnOnboardingScreen;
+  const modalVisible = shouldShowModal && !isInOnboardingFlow;
 
   const handleContinue = useCallback(() => {
     if (businessStatus?.next_step) {

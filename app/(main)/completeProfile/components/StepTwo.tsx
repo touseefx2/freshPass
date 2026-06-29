@@ -536,6 +536,7 @@ export default function StepTwo() {
             value={businessName}
             onChangeText={(value) => dispatch(setBusinessName(value))}
             placeholder={t("businessName")}
+            required
             onClear={() => {
               dispatch(setBusinessName(""));
               setBusinessNameError(null);
@@ -552,6 +553,7 @@ export default function StepTwo() {
             value={fullName}
             onChangeText={(value) => dispatch(setFullName(value))}
             placeholder={t("yourFullName")}
+            required
             onClear={() => {
               dispatch(setFullName(""));
               setFullNameError(null);
