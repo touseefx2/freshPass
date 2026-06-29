@@ -4,6 +4,9 @@ import Logger from "@/src/services/logger";
 
 const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const TIMEOUT_MS = 12000; // 12 seconds
+const PLACES_COUNTRY_RESTRICTION = "us";
+const NON_US_ADDRESS_ERROR =
+  "Only United States addresses are supported.";
 
 const DEFAULT_SUGGESTION_ERROR =
   "Unable to load suggestions. Please try again.";
@@ -106,6 +109,10 @@ export const resolvePlaceDetailsError = (
     return "Place details limit reached. Please try again later.";
   }
 
+  if (error.message === NON_US_ADDRESS_ERROR) {
+    return NON_US_ADDRESS_ERROR;
+  }
+
   return error.message || fallback;
 };
 
@@ -150,7 +157,7 @@ export const fetchSuggestions = async (
   }
 
   const encodedQuery = encodeURIComponent(query);
-  const fullUrl = `${searchUrl}${encodedQuery}&key=${apiKey}&sessiontoken=${sessionToken}`;
+  const fullUrl = `${searchUrl}${encodedQuery}&components=country:${PLACES_COUNTRY_RESTRICTION}&key=${apiKey}&sessiontoken=${sessionToken}`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -240,6 +247,10 @@ export const fetchPlaceDetails = async (
         countryCode = component.short_name ?? component.long_name;
         break;
       }
+    }
+
+    if (countryCode && countryCode.toUpperCase() !== "US") {
+      throw new Error(NON_US_ADDRESS_ERROR);
     }
 
     return {
