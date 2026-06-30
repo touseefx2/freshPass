@@ -1710,6 +1710,11 @@ export default function BusinessDetailScreen() {
 
   // Handle phone call
   const handleChatPress = useCallback(() => {
+    if (isGuest) {
+      dispatch(setGuestModeModalVisible(true));
+      return;
+    }
+
     const ownerId = businessData?.owner?.id;
     if (!ownerId) return;
     router.push({
@@ -1727,6 +1732,8 @@ export default function BusinessDetailScreen() {
     businessData?.owner?.id,
     businessData?.owner?.name,
     businessData?.owner?.avatar,
+    dispatch,
+    isGuest,
     router,
   ]);
 
