@@ -17,6 +17,10 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { MAIN_ROUTES } from "@/src/constant/routes";
 import {
+  resetToDashboardHome,
+  resetToRoute,
+} from "@/src/utils/navigation";
+import {
   setActionLoader,
   setActionLoaderTitle,
 } from "@/src/state/slices/generalSlice";
@@ -97,9 +101,9 @@ export function useSocialLogin() {
 
             if (isNewCreated) {
               dispatch(setFullName(user.name || ""));
-              router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+              resetToRoute(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
             } else {
-              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+              resetToDashboardHome();
             }
           }
 
@@ -120,9 +124,9 @@ export function useSocialLogin() {
 
             if (isNewCreated) {
               dispatch(setFullName(user.name || ""));
-              router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
+              resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
             } else {
-              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+              resetToDashboardHome();
             }
           }
 
@@ -203,9 +207,9 @@ export function useSocialLogin() {
             dispatch(setBusinessName(user?.business_name || ""));
 
             if (user?.is_onboarded) {
-              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+              resetToDashboardHome();
             } else {
-              router.replace(
+              resetToRoute(
                 `/(main)/${MAIN_ROUTES.COMPLETE_STAFF_PROFILE}` as any,
               );
             }

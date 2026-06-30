@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { StatusBar, StyleSheet, View } from "react-native";
 import { Theme } from "@/src/theme/colors";
@@ -20,16 +21,11 @@ export default function Index() {
     console.log("----> accessToken", accessToken);
 
     if (accessToken || isGuest) {
-      router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
-      // router.replace(`/(main)/aiTools/toolList` as any);
+      resetToDashboardHome();
     } else {
       router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
     }
   };
-
-  // useEffect(() => {
-  //   handleNavigation();
-  // }, []);
 
   return (
     <View style={styles.container}>
@@ -41,7 +37,6 @@ export default function Index() {
       <LottieView
         source={IMAGES.welcomeLogo}
         autoPlay
-        // loop={true}
         loop={false}
         onAnimationFinish={handleNavigation}
         onAnimationFailure={(error) => {

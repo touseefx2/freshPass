@@ -665,6 +665,17 @@ const createStyles = (theme: Theme) =>
     disabledAction: {
       opacity: 0.4,
     },
+    loadingContent: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    errorContent: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(20),
+    },
     inclusionsModalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -3511,14 +3522,77 @@ export default function BusinessDetailScreen() {
     );
   };
 
+  const renderTopHeader = (actionsEnabled: boolean) => (
+    <View style={styles.header}>
+      <View style={styles.headerLeft}>
+        <TouchableOpacity
+          style={styles.iconButton}
+          onPress={() => router.back()}
+        >
+          <BackArrowIcon
+            width={widthScale(16)}
+            height={heightScale(16)}
+            color={theme.darkGreen}
+          />
+        </TouchableOpacity>
+        <View style={styles.logoContainer}>
+          <LeafLogo
+            width={widthScale(22)}
+            height={heightScale(22)}
+            color1={theme.darkGreen}
+            color2={theme.darkGreen}
+          />
+          <Text style={styles.logoText}>{t("freshPass")}</Text>
+        </View>
+      </View>
+      <View style={styles.headerRight}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[
+            styles.iconButton,
+            !actionsEnabled && styles.disabledAction,
+          ]}
+          onPress={actionsEnabled ? handleShareBusiness : undefined}
+          disabled={!actionsEnabled}
+        >
+          <ShareIcon
+            width={widthScale(16)}
+            height={heightScale(16)}
+            color={theme.darkGreen}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={[
+            styles.iconButton,
+            (!actionsEnabled || isBusinessOwnerView) && styles.disabledAction,
+          ]}
+          onPress={
+            !actionsEnabled || isBusinessOwnerView
+              ? undefined
+              : isGuest
+                ? () => dispatch(setGuestModeModalVisible(true))
+                : handleToggleFavorite
+          }
+          disabled={!actionsEnabled || isBusinessOwnerView}
+        >
+          <MaterialIcons
+            name={isFavorited ? "favorite" : "favorite-border"}
+            size={widthScale(16)}
+            color={theme.lightGreen}
+          />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   // Loading state
   if (loading && businessData == null) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
+        {renderTopHeader(false)}
+        <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color={theme.buttonBack} />
         </View>
       </View>
@@ -3530,14 +3604,8 @@ export default function BusinessDetailScreen() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center",
-            paddingHorizontal: moderateWidthScale(20),
-          }}
-        >
+        {renderTopHeader(false)}
+        <View style={styles.errorContent}>
           <Text
             style={{
               fontSize: fontSize.size16,
@@ -3569,64 +3637,7 @@ export default function BusinessDetailScreen() {
         contentContainerStyle={{ paddingBottom: moderateHeightScale(40) }}
       >
         <View ref={scrollContentRef}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity
-                style={styles.iconButton}
-                onPress={() => router.back()}
-              >
-                <BackArrowIcon
-                  width={widthScale(16)}
-                  height={heightScale(16)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <View style={styles.logoContainer}>
-                <LeafLogo
-                  width={widthScale(22)}
-                  height={heightScale(22)}
-                  color1={theme.darkGreen}
-                  color2={theme.darkGreen}
-                />
-                <Text style={styles.logoText}>{t("freshPass")}</Text>
-              </View>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.iconButton}
-                onPress={handleShareBusiness}
-              >
-                <ShareIcon
-                  width={widthScale(16)}
-                  height={heightScale(16)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[
-                  styles.iconButton,
-                  isBusinessOwnerView && styles.disabledAction,
-                ]}
-                onPress={
-                  isBusinessOwnerView
-                    ? undefined
-                    : isGuest
-                      ? () => dispatch(setGuestModeModalVisible(true))
-                      : handleToggleFavorite
-                }
-                disabled={isBusinessOwnerView}
-              >
-                <MaterialIcons
-                  name={isFavorited ? "favorite" : "favorite-border"}
-                  size={widthScale(16)}
-                  color={theme.lightGreen}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
+          {renderTopHeader(true)}
 
           {/* Hero Image - horizontally scrollable with wrap-around */}
           <ScrollView

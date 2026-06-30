@@ -20,6 +20,7 @@ import {
 } from "@/src/theme/dimensions";
 import { IMAGES } from "@/src/constant/images";
 import { MAIN_ROUTES } from "@/src/constant/routes";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { LeafLogo } from "@/assets/icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -114,7 +115,7 @@ export default function AcceptTerms() {
 
   const handleGetStarted = useCallback(() => {
     userRole === "staff"
-      ? router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/${MAIN_ROUTES.HOME}`)
+      ? resetToDashboardHome()
       : router.replace(`/(main)/${MAIN_ROUTES.INTRODUCTION}`);
   }, [router]);
 

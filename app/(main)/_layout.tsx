@@ -21,6 +21,13 @@ export default function MainLayout() {
         contentStyle: styles.contentStyle,
         animation: Platform.OS === "ios" ? "default" : "fade_from_bottom",
       }}
-    />
+    >
+      <Stack.Screen
+        name="dashboard"
+        options={{
+          gestureEnabled: false,
+        }}
+      />
+    </Stack>
   );
 }

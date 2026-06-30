@@ -33,6 +33,10 @@ import { getExpoPushToken } from "@/src/services/notificationPermissionService";
 import Logger from "@/src/services/logger";
 import { useRouter } from "expo-router";
 import { MAIN_ROUTES } from "@/src/constant/routes";
+import {
+  resetToDashboardHome,
+  resetToRoute,
+} from "@/src/utils/navigation";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { setBusinessStatus, setUser } from "@/src/state/slices/userSlice";
@@ -261,14 +265,14 @@ export default function Login() {
 
           if (user?.role?.toLowerCase() === "business") {
             setUserData(response.data);
-            router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+            resetToDashboardHome();
           } else if (user?.role?.toLowerCase() === "customer") {
             if (email_verification_required) {
               setData(response.data);
               setIsVerificationModalVisible(true);
             } else {
               setUserData(response.data);
-              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+              resetToDashboardHome();
             }
           } else if (user?.role?.toLowerCase() === "staff") {
             setUserData(response.data);
@@ -339,9 +343,9 @@ export default function Login() {
             dispatch(setBusinessName(user?.business_name || ""));
 
             if (user?.is_onboarded) {
-              router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+              resetToDashboardHome();
             } else {
-              router.replace(
+              resetToRoute(
                 `/(main)/${MAIN_ROUTES.COMPLETE_STAFF_PROFILE}` as any,
               );
             }
@@ -388,7 +392,7 @@ export default function Login() {
   const handleVerificationCodeComplete = useCallback(() => {
     if (data) {
       setUserData(data);
-      router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+              resetToDashboardHome();
     }
     handleCloseVerificationModal();
   }, [data, router, handleCloseVerificationModal]);

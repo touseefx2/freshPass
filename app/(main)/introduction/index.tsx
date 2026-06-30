@@ -2,6 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
 import { BackHandler } from "react-native";
 import { MAIN_ROUTES } from "@/src/constant/routes";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { handleNotificationPermission } from "@/src/services/notificationPermissionService";
 import Screen1 from "./Screen1";
 import Screen2 from "./Screen2";
@@ -40,7 +41,7 @@ export default function Introduction() {
       setCurrentScreen(3);
     } else {
       // Navigate to dashboard home
-      router.replace(`/(main)/${MAIN_ROUTES.DASHBOARD}/(home)` as any);
+      resetToDashboardHome();
     }
   };
 

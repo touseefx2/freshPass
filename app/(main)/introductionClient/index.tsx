@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { useRouter, useFocusEffect } from "expo-router";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { BackHandler } from "react-native";
 import { handleNotificationPermission } from "@/src/services/notificationPermissionService";
 import LocationScreen from "./LocationScreen";
@@ -86,7 +87,7 @@ export default function IntroductionClient() {
   const handleCategoryNext = () => {
     dispatch(setIsVisitFirst(false));
     // Navigate to dashboard or complete profile
-    router.replace("/(main)/dashboard/(home)" as any);
+    resetToDashboardHome();
   };
 
   switch (currentScreen) {
