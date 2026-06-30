@@ -38,6 +38,8 @@ const apiClient: AxiosInstance = axios.create({
 
 // Flag to prevent multiple simultaneous refresh token requests
 let isRefreshing = false;
+// Flag to prevent concurrent/re-entrant logout (e.g. parallel 401s)
+let isLoggingOut = false;
 let failedQueue: Array<{
   resolve: (value?: any) => void;
   reject: (error?: any) => void;
@@ -188,7 +190,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
     throw new Error("Invalid refresh token response");
   } catch (error) {
     Logger.error("❌ Failed to refresh token:", error);
-    handleLogout();
+    await handleLogout({ skipApi: true });
     throw error;
   }
 };
@@ -226,40 +228,51 @@ const removeAbortController = (controller: AbortController) => {
 /**
  * Handle logout - optionally call API to revoke token and clear Expo push token, then clear Redux state and persisted cache.
  * For guest users, skips the API and only clears state and navigates to role/sign-in screen.
- * Shows general action loader until API completes; only clears state and navigates on API success.
+ * Shows general action loader until API completes for explicit (non-401) logout only.
  *
  * @param options.skipApi - when true, skips calling the backend logout endpoint even for non-guest users
+ * @returns true if logout ran, false if already in progress (concurrent call ignored)
  */
-const handleLogout = async (options?: { skipApi?: boolean }) => {
-  const isGuest = store.getState().user.isGuest;
-
-  if (!isGuest && !options?.skipApi) {
-    try {
-      store.dispatch(setActionLoader(true));
-      const response = await apiClient.post(businessEndpoints.logout);
-      if (response.status !== 200) {
-      }
-    } catch (err) {
-      Logger.error("Logout API failed", err);
-    } finally {
-      store.dispatch(setActionLoader(false));
-    }
+const handleLogout = async (options?: {
+  skipApi?: boolean;
+}): Promise<boolean> => {
+  if (isLoggingOut) {
+    return false;
   }
 
-  // API succeeded (or guest): clear Redux state (in-memory)
-  store.dispatch(resetCompleteProfile());
-  store.dispatch(clearGeneral());
-  store.dispatch(resetCategories());
-  store.dispatch(resetBusiness());
-  store.dispatch(resetChat());
-  store.dispatch(resetUser());
-  // Purge persisted cache so rehydration doesn't restore old user/general data
-  // try {
-  //   persistor.purge();
-  // } catch (err) {
-  //   Logger.error("Logout: persistor.purge failed", err);
-  // }
-  router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
+  isLoggingOut = true;
+  cancelAllPendingRequests();
+
+  try {
+    const isGuest = store.getState().user.isGuest;
+
+    if (!isGuest && !options?.skipApi) {
+      try {
+        store.dispatch(setActionLoader(true));
+        await apiClient.post(businessEndpoints.logout);
+      } catch (err) {
+        Logger.error("Logout API failed", err);
+      } finally {
+        store.dispatch(setActionLoader(false));
+      }
+    }
+
+    store.dispatch(resetCompleteProfile());
+    store.dispatch(clearGeneral());
+    store.dispatch(resetCategories());
+    store.dispatch(resetBusiness());
+    store.dispatch(resetChat());
+    store.dispatch(resetUser());
+    router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
+
+    return true;
+  } catch (err) {
+    Logger.error("Logout failed", err);
+    return false;
+  } finally {
+    store.dispatch(setActionLoader(false));
+    isLoggingOut = false;
+  }
 };
 
 /**
@@ -356,15 +369,18 @@ apiClient.interceptors.response.use(
 
     // Handle 401 Unauthorized - Session expired
     if (error.response?.status === 401) {
-      // Clear user data and tokens
-      await handleLogout();
+      const requestUrl = originalRequest?.url ?? "";
+      const isLogoutRequest = requestUrl.includes(businessEndpoints.logout);
 
-      // Call session expired handler (for toast and navigation)
-      if (onSessionExpired) {
-        onSessionExpired();
+      // Skip recursive logout when the logout endpoint itself returns 401
+      if (!isLogoutRequest) {
+        const didLogout = await handleLogout({ skipApi: true });
+
+        if (didLogout && onSessionExpired) {
+          onSessionExpired();
+        }
       }
 
-      // Return error with session expired message
       const sessionError = new Error("Session expired. Please login again.");
       (sessionError as any).status = 401;
       (sessionError as any).isSessionExpired = true;
