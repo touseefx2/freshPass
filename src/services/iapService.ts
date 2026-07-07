@@ -117,11 +117,9 @@ export const resolveBusinessPlanProductIdWithFeatured = (
 
 export const resolveAiServiceProductId = (
   serviceId: number,
-  explicitProductId?: string | null,
+
 ) => {
-  if (explicitProductId && explicitProductId.trim().length > 0) {
-    return explicitProductId.trim();
-  }
+
 
   const prefix = process.env.EXPO_PUBLIC_IAP_AI_SERVICE_PREFIX;
   if (!prefix || !prefix.trim()) {
@@ -351,7 +349,7 @@ export const purchaseAndVerifyBusinessPlanIosIap = async (params: {
   };
 
   console.log("verifyPayload", verifyPayload);
-   
+
   // alert(JSON.stringify(verifyPayload));
 
   const verifyResponse = await verifyBusinessPlanIapPurchase(verifyPayload);

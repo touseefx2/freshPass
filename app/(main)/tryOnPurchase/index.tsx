@@ -71,14 +71,16 @@ export default function TryOnPurchase() {
     return found ?? aiService.find((s) => s.name === "AI Hair Try-On") ?? null;
   }, [serviceId, aiService]);
 
+  console.log("service", service);
+
   const pricingText =
     service && service.price && service.ai_requests
       ? t("tryOnModalDynamicPricing", {
-          credits: service.ai_requests,
-          price: service.price.startsWith("$")
-            ? service.price.slice(1)
-            : service.price,
-        })
+        credits: service.ai_requests,
+        price: service.price.startsWith("$")
+          ? service.price.slice(1)
+          : service.price,
+      })
       : t("tryOnModalPricing");
 
   const handleSkip = () => {
@@ -115,13 +117,15 @@ export default function TryOnPurchase() {
 
   const handleIapPayment = async (serviceIdForPurchase: number) => {
     const productId = resolveAiServiceProductId(
-      serviceIdForPurchase,
-      service?.app_store_product_id,
+      // serviceIdForPurchase,
+      2
     );
 
+  
     const verifyResponse = await purchaseAndVerifyIosIap({
       productId,
-      referenceId: serviceIdForPurchase,
+      // referenceId: serviceIdForPurchase,
+      referenceId: 2,
     });
 
     setLocalBanner({
