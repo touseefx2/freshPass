@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   Modal,
   StyleSheet,
@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   StatusBar,
   Platform,
+  Linking,
+  Alert,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
@@ -38,6 +40,10 @@ import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { fetchUserStatus } from "../state/thunks/businessThunks";
+
+const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
+const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
+const TRIAL_DAYS = process.env.EXPO_PUBLIC_TRAILDAY || "14";
 
 const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   const planType = plan.planType?.toLowerCase() ?? "";
@@ -199,10 +205,56 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       flex: 1,
     },
+    planPriceContainer: {
+      alignItems: "flex-end",
+    },
     planPrice: {
       fontSize: fontSize.size24,
       fontFamily: fonts.fontExtraBold,
       color: theme.buttonBack,
+    },
+    planPricePeriod: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginTop: moderateHeightScale(2),
+    },
+    subscriptionPeriodRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(8),
+    },
+    subscriptionPeriodText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      flex: 1,
+    },
+    disclosureText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      lineHeight: fontSize.size18,
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(4),
+    },
+    legalText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      lineHeight: fontSize.size18,
+      textAlign: "center",
+      marginTop: moderateHeightScale(12),
+    },
+    legalLink: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+      textDecorationLine: "underline",
     },
     planDescription: {
       fontSize: fontSize.size14,
@@ -213,6 +265,12 @@ const createStyles = (theme: Theme) =>
     },
     planDetails: {
       marginBottom: moderateHeightScale(20),
+    },
+    billingPeriodLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      marginBottom: moderateHeightScale(8),
     },
     detailRow: {
       flexDirection: "row",
@@ -362,6 +420,49 @@ function BusinessPlansModalContent({
   >({});
   const isIos = Platform.OS === "ios";
   const dispatch = useAppDispatch();
+
+  const handleOpenLink = useCallback(
+    async (url: string, title: string) => {
+      if (!url) {
+        Alert.alert(t("error"), `${title} ${t("urlNotConfigured")}`);
+        return;
+      }
+
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+        } else {
+          Alert.alert(t("error"), `${t("cannotOpen")} ${title}`);
+        }
+      } catch {
+        Alert.alert(t("error"), `${t("failedToOpenLink")} ${title}`);
+      }
+    },
+    [t],
+  );
+
+  const handleTermsPress = useCallback(() => {
+    handleOpenLink(TERMS_AND_CONDITIONS_URL, t("termsOfUse"));
+  }, [handleOpenLink, t]);
+
+  const handlePrivacyPress = useCallback(() => {
+    handleOpenLink(PRIVACY_POLICY_URL, t("privacyPolicy"));
+  }, [handleOpenLink, t]);
+
+  const getTrialDisclosure = useCallback(
+    (totalPrice: string) => {
+      const trialDays = parseInt(TRIAL_DAYS, 10);
+      if (trialDays > 0) {
+        return t("businessPlanTrialDisclosure", {
+          trialDays: TRIAL_DAYS,
+          price: totalPrice,
+        });
+      }
+      return t("businessPlanRenewalDisclosure", { price: totalPrice });
+    },
+    [t],
+  );
 
   const standardPlans = useMemo(
     () => plans.filter((plan) => !isUnlimitedPlan(plan)),
@@ -735,17 +836,38 @@ function BusinessPlansModalContent({
               </View>
             </View>
 
-            {standardPlans.map((plan) => (
+            {standardPlans.map((plan) => {
+              const totalPrice = getTotalPriceForPlan(plan);
+              return (
               <View key={plan.id} style={[styles.planCard, styles.shadow]}>
                 <View style={styles.planHeader}>
                   <Text style={styles.planName}>{plan.name}</Text>
-                  <Text style={styles.planPrice}>
-                    ${getTotalPriceForPlan(plan)}
+                  <View style={styles.planPriceContainer}>
+                    <Text style={styles.planPrice}>${totalPrice}</Text>
+                    <Text style={styles.planPricePeriod}>
+                      {t("businessPlanPerMonth")}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.subscriptionPeriodRow}>
+                  <Feather
+                    name="refresh-cw"
+                    size={iconScale(14)}
+                    color={theme.darkGreen}
+                    style={styles.detailIcon}
+                  />
+                  <Text style={styles.subscriptionPeriodText}>
+                    {t("businessPlanMonthlySubscription")}
                   </Text>
                 </View>
+
                 {plan.description && (
                   <Text style={styles.planDescription}>{plan.description}</Text>
                 )}
+                <Text style={styles.billingPeriodLabel}>
+                  {t("businessPlanBillingPeriodIncludes")}
+                </Text>
                 <View style={styles.planDetails}>
                   {plan.visits !== null && (
                     <View style={styles.detailRow}>
@@ -828,7 +950,9 @@ function BusinessPlansModalContent({
                                   {getAddOnDisplayName(service)}
                                 </Text>
                                 <Text style={styles.servicePrice}>
-                                  +${service.price}
+                                  {t("featuredAddOnPerMonth", {
+                                    price: service.price,
+                                  })}
                                 </Text>
                               </View>
                             </TouchableOpacity>
@@ -836,15 +960,35 @@ function BusinessPlansModalContent({
                         })}
                     </View>
                   )}
+                <Text style={styles.disclosureText}>
+                  {getTrialDisclosure(totalPrice)}
+                </Text>
+                {isIos && (
+                  <Text style={styles.disclosureText}>
+                    {t("businessPlanCancelInSettings")}
+                  </Text>
+                )}
                 <Button
-                  title={`Start my ${process.env.EXPO_PUBLIC_TRAILDAY || "0"} day trial`}
+                  title={`Start my ${TRIAL_DAYS} day trial`}
                   onPress={() => handleTrialPress(plan.id)}
                   loading={subscribingPlanId === plan.id}
                   disabled={subscribingPlanId !== null}
                   containerStyle={styles.subscribeButton}
                 />
+                <Text style={styles.legalText}>
+                  {t("businessPlanLegalPrefix")}{" "}
+                  <Text style={styles.legalLink} onPress={handleTermsPress}>
+                    {t("termsOfUse")}
+                  </Text>{" "}
+                  &{" "}
+                  <Text style={styles.legalLink} onPress={handlePrivacyPress}>
+                    {t("privacyPolicy")}
+                  </Text>
+                  .
+                </Text>
               </View>
-            ))}
+            );
+            })}
           </ScrollView>
         )}
       </View>
