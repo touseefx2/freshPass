@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints } from "@/src/services/endpoints";
 import dayjs from "dayjs";
@@ -24,6 +24,7 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 //   process.env.EXPO_PUBLIC_DEFAULT_AI_REQUESTS_IMAGE || "";
 
 const PER_PAGE = 20;
+const POLL_INTERVAL_MS = 10000;
 
 export type AiRequestJob = {
   job_id: string;
@@ -89,13 +90,20 @@ export default function AiRequests() {
   const [refreshing, setRefreshing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const isPollingRef = useRef(false);
 
   const fetchJobs = useCallback(
-    async (page: number = 1, append: boolean = false) => {
-      if (append) {
-        setLoadingMore(true);
-      } else {
-        setLoading(true);
+    async (
+      page: number = 1,
+      append: boolean = false,
+      silent: boolean = false,
+    ) => {
+      if (!silent) {
+        if (append) {
+          setLoadingMore(true);
+        } else {
+          setLoading(true);
+        }
       }
 
       try {
@@ -117,21 +125,39 @@ export default function AiRequests() {
           setJobs([]);
         }
       } catch (_error) {
-        if (!append) {
+        if (!append && !silent) {
           setJobs([]);
         }
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
+        if (!silent) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
       }
     },
     [],
   );
 
-  useEffect(() => {
-    fetchJobs(1, false);
-  }, [fetchJobs]);
+  // Poll while this screen is focused; stop when navigating away (back or forward)
+  useFocusEffect(
+    useCallback(() => {
+      fetchJobs(1, false);
+
+      const intervalId = setInterval(() => {
+        if (isPollingRef.current) return;
+        isPollingRef.current = true;
+        fetchJobs(1, false, true).finally(() => {
+          isPollingRef.current = false;
+        });
+      }, POLL_INTERVAL_MS);
+
+      return () => {
+        clearInterval(intervalId);
+        isPollingRef.current = false;
+      };
+    }, [fetchJobs]),
+  );
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;

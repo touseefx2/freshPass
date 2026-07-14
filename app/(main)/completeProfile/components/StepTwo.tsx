@@ -29,6 +29,7 @@ import {
   CountryItem,
   Style as CountryPickerStyle,
 } from "react-native-country-codes-picker";
+import CountryPickerItem from "@/src/components/countryPickerItem";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -630,6 +631,7 @@ export default function StepTwo() {
             // initialState={countryCode}
             enableModalAvoiding
             lang="en"
+            itemTemplate={CountryPickerItem}
           />
         </View>
       </View>

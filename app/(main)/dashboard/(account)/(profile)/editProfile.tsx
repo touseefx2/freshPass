@@ -56,6 +56,7 @@ import {
   CountryItem,
   Style as CountryPickerStyle,
 } from "react-native-country-codes-picker";
+import CountryPickerItem from "@/src/components/countryPickerItem";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -1353,6 +1354,7 @@ export default function EditProfileScreen() {
                 popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
                 enableModalAvoiding
                 lang="en"
+                itemTemplate={CountryPickerItem}
               />
             </View>
           </>

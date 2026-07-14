@@ -55,6 +55,7 @@ import {
   CountryItem,
   Style as CountryPickerStyle,
 } from "react-native-country-codes-picker";
+import CountryPickerItem from "@/src/components/countryPickerItem";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
 const createStyles = (theme: Theme) =>
@@ -907,6 +908,7 @@ export default function EditBusinessProfileScreen() {
             popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
             enableModalAvoiding
             lang="en"
+            itemTemplate={CountryPickerItem}
           />
         </View>
 

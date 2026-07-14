@@ -43,6 +43,9 @@ let failedQueue: Array<{
   reject: (error?: any) => void;
 }> = [];
 
+// Prevent concurrent/recursive logout (e.g. multiple 401s, or logout API itself returning 401)
+let isLoggingOut = false;
+
 // Track all pending API requests for cancellation
 const pendingRequests = new Set<AbortController>();
 
@@ -228,38 +231,55 @@ const removeAbortController = (controller: AbortController) => {
  * For guest users, skips the API and only clears state and navigates to role/sign-in screen.
  * Shows general action loader until API completes; only clears state and navigates on API success.
  *
- * @param options.skipApi - when true, skips calling the backend logout endpoint even for non-guest users
+ * @param options.skipApi - when true, skips calling the backend logout endpoint even for non-guest users.
+ *   Use this for session expiry / deleted user (401) — the token is already invalid, so calling
+ *   logout would itself 401 and re-enter this handler, leaving ActionLoader stuck forever.
  */
 const handleLogout = async (options?: { skipApi?: boolean }) => {
-  const isGuest = store.getState().user.isGuest;
+  if (isLoggingOut) {
+    return;
+  }
+  isLoggingOut = true;
 
-  if (!isGuest && !options?.skipApi) {
-    try {
-      store.dispatch(setActionLoader(true));
-      const response = await apiClient.post(businessEndpoints.logout);
-      if (response.status !== 200) {
+  try {
+    // Stop in-flight home/dashboard requests so their section loaders don't keep spinning
+    cancelAllPendingRequests();
+
+    const isGuest = store.getState().user.isGuest;
+
+    if (!isGuest && !options?.skipApi) {
+      try {
+        store.dispatch(setActionLoader(true));
+        const response = await apiClient.post(businessEndpoints.logout);
+        if (response.status !== 200) {
+        }
+      } catch (err) {
+        Logger.error("Logout API failed", err);
+      } finally {
+        store.dispatch(setActionLoader(false));
       }
-    } catch (err) {
-      Logger.error("Logout API failed", err);
-    } finally {
+    } else {
+      // Session-expiry / skipApi path: ensure any leftover ActionLoader is dismissed
       store.dispatch(setActionLoader(false));
     }
-  }
 
-  // API succeeded (or guest): clear Redux state (in-memory)
-  store.dispatch(resetCompleteProfile());
-  store.dispatch(clearGeneral());
-  store.dispatch(resetCategories());
-  store.dispatch(resetBusiness());
-  store.dispatch(resetChat());
-  store.dispatch(resetUser());
-  // Purge persisted cache so rehydration doesn't restore old user/general data
-  // try {
-  //   persistor.purge();
-  // } catch (err) {
-  //   Logger.error("Logout: persistor.purge failed", err);
-  // }
-  router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
+    // Clear Redux state (in-memory)
+    store.dispatch(resetCompleteProfile());
+    store.dispatch(clearGeneral());
+    store.dispatch(resetCategories());
+    store.dispatch(resetBusiness());
+    store.dispatch(resetChat());
+    store.dispatch(resetUser());
+    // Purge persisted cache so rehydration doesn't restore old user/general data
+    try {
+      await persistor.purge();
+    } catch (err) {
+      Logger.error("Logout: persistor.purge failed", err);
+    }
+    router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
+  } finally {
+    isLoggingOut = false;
+  }
 };
 
 /**
@@ -354,17 +374,21 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    // Handle 401 Unauthorized - Session expired
+    // Handle 401 Unauthorized - Session expired / user deleted / invalid token
     if (error.response?.status === 401) {
-      // Clear user data and tokens
-      await handleLogout();
+      const requestUrl = originalRequest?.url || "";
+      const isLogoutRequest = requestUrl.includes(businessEndpoints.logout);
 
-      // Call session expired handler (for toast and navigation)
-      if (onSessionExpired) {
-        onSessionExpired();
+      // Already logging out, or logout endpoint itself returned 401 — don't recurse
+      if (!isLoggingOut && !isLogoutRequest) {
+        // skipApi: token is dead; calling /api/logout would 401 again and hang ActionLoader
+        await handleLogout({ skipApi: true });
+
+        if (onSessionExpired) {
+          onSessionExpired();
+        }
       }
 
-      // Return error with session expired message
       const sessionError = new Error("Session expired. Please login again.");
       (sessionError as any).status = 401;
       (sessionError as any).isSessionExpired = true;

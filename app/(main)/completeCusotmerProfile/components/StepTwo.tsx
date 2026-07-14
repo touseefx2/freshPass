@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -13,8 +13,8 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
-import { CountryPicker, CountryItem } from "react-native-country-codes-picker";
 import FloatingInput from "@/src/components/floatingInput";
+import CountryFlag from "@/src/components/countryFlag";
 import {
   setCountryName,
   setCountryZipCode,
@@ -437,7 +437,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.orangeBrown,
     },
     countryFlag: {
-      fontSize: fontSize.size24,
+      width: moderateWidthScale(28),
+      height: moderateHeightScale(20),
     },
     countryName: {
       flex: 1,
@@ -526,7 +527,7 @@ export default function StepTwo() {
                 >
                   {isSelected && <View style={styles.radioButtonInner} />}
                 </View>
-                <Text style={styles.countryFlag}>{country.flag}</Text>
+                <CountryFlag code={country.code} style={styles.countryFlag} />
                 <Text style={styles.countryName}>{country.name}</Text>
               </TouchableOpacity>
               {isSelected && (

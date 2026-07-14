@@ -48,6 +48,11 @@ const APPLE_ANDROID_CLIENT_ID =
 const APPLE_ANDROID_REDIRECT_URI =
   process.env.EXPO_PUBLIC_APPLE_ANDROID_REDIRECT_URI || "";
 
+// Social login should fail fast instead of leaving the global ActionLoader
+// spinning for the full 2-minute default API timeout on a slow/blocked network
+// (this is what caused the "stuck loader" reports from App Store reviewers).
+const SOCIAL_LOGIN_TIMEOUT_MS = 20000;
+
 function generateRandomString() {
   return Math.random().toString(36).substring(2) + Date.now().toString(36);
 }
@@ -272,6 +277,7 @@ export function useSocialLogin() {
             role: selectedRole?.toLowerCase() ?? "",
             ...(expo_push_token ? { expo_push_token } : {}),
           },
+          { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
         );
         handleSocialLoginResponse(response);
       } finally {
@@ -341,6 +347,7 @@ export function useSocialLogin() {
               role: selectedRole?.toLowerCase() ?? "",
               ...(expo_push_token ? { expo_push_token } : {}),
             },
+            { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
           );
           handleSocialLoginResponse(response);
         } finally {
@@ -417,6 +424,7 @@ export function useSocialLogin() {
             role: selectedRole?.toLowerCase() ?? "",
             ...(expo_push_token ? { expo_push_token } : {}),
           },
+          { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
         );
         handleSocialLoginResponse(apiResponse);
       } finally {
@@ -481,6 +489,7 @@ export function useSocialLogin() {
             role: selectedRole?.toLowerCase() ?? "",
             ...(expo_push_token ? { expo_push_token } : {}),
           },
+          { timeout: SOCIAL_LOGIN_TIMEOUT_MS },
         );
         Logger.log("[Facebook] Backend response success:", response?.success);
         handleSocialLoginResponse(response);

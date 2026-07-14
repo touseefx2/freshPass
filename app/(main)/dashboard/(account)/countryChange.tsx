@@ -24,6 +24,7 @@ import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import CountryFlag from "@/src/components/countryFlag";
 
 // Popular countries list with their flag emojis and zip code formats
 const POPULAR_COUNTRIES = [
@@ -450,7 +451,8 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.orangeBrown,
     },
     countryFlag: {
-      fontSize: fontSize.size24,
+      width: moderateWidthScale(28),
+      height: moderateHeightScale(20),
     },
     countryName: {
       flex: 1,
@@ -637,7 +639,7 @@ export default function CountryChangeScreen() {
                   >
                     {isSelected && <View style={styles.radioButtonInner} />}
                   </View>
-                  <Text style={styles.countryFlag}>{country.flag}</Text>
+                  <CountryFlag code={country.code} style={styles.countryFlag} />
                   <Text style={styles.countryName}>{country.name}</Text>
                 </TouchableOpacity>
                 {isSelected && (

@@ -65,8 +65,9 @@ export default function completeCusotmerProfile() {
       dispatch(goToPreviousStep());
       return;
     }
-    router.back();
-  }, [currentStep, dispatch, router]);
+    // Step 1 is the first post-auth screen — do not navigate back into
+    // signup / OTP / login (those screens should already be cleared via resetToRoute).
+  }, [currentStep, dispatch]);
 
   // Build FormData for Step 1 API call
   const buildFormDataStep1 = () => {
@@ -204,7 +205,8 @@ export default function completeCusotmerProfile() {
           dispatch(goToPreviousStep());
           return true;
         }
-        return false;
+        // Block leaving the post-signup profile flow on step 1.
+        return true;
       };
 
       const subscription = BackHandler.addEventListener(

@@ -38,6 +38,7 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { setUser } from "@/src/state/slices/userSlice";
 import { getExpoPushToken } from "@/src/services/notificationPermissionService";
+import { resetToRoute } from "@/src/utils/navigation";
 import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
@@ -200,7 +201,8 @@ export default function RegisterPassword() {
         userRole: user?.role?.toLowerCase() || null, // Set userRole from response or use current role
       }),
     );
-    router.replace(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
+    // Clear role/login/register stack so swipe-back cannot return to signup/OTP.
+    resetToRoute(`/${MAIN_ROUTES.COMPLETE_CUSTOMER_PROFILE}`);
     handleCloseVerificationModal();
   };
 
@@ -255,7 +257,8 @@ export default function RegisterPassword() {
                 userRole: user?.role?.toLowerCase() || null, // Set userRole from response or use current role
               }),
             );
-            router.replace(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
+            // Clear auth stack so swipe-back cannot return to signup screens.
+            resetToRoute(`/${MAIN_ROUTES.REGISTER_NEXT_STEPS}`);
           } else {
             if (email_verification_required) {
               setIsVerificationModalVisible(true);

@@ -55,6 +55,7 @@ import {
   CountryItem,
   Style as CountryPickerStyle,
 } from "react-native-country-codes-picker";
+import CountryPickerItem from "@/src/components/countryPickerItem";
 import { CloseIcon } from "@/assets/icons";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -1554,6 +1555,7 @@ export default function AddStaffScreen() {
             popularCountries={["US", "NG", "GB", "CA", "PK", "IN"]}
             enableModalAvoiding
             lang="en"
+            itemTemplate={CountryPickerItem}
           />
         </View>
 

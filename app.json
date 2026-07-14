@@ -38,6 +38,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.freshpass",
+      "allowBackup": false,
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB7LtqIwza7DsCRvXvh43CTH1yzQoWvVRg"

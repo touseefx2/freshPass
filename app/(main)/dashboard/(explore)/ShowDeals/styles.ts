@@ -21,11 +21,13 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.darkGreen,
       borderRadius: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
       height: heightScale(132),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
       width: widthScale(310),
+      overflow: "hidden",
     },
     verifiedSalonImage: {
       width: widthScale(110),
@@ -39,7 +41,7 @@ export const createStyles = (theme: Theme) =>
     platformVerifiedBadge: {
       backgroundColor: theme.darkGreenLight,
       paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(6),
+      paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(999),
       flexDirection: "row",
       alignItems: "center",
@@ -50,21 +52,26 @@ export const createStyles = (theme: Theme) =>
       fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
       color: theme.white,
+      includeFontPadding: false,
+      textAlignVertical: "center",
     },
     verifiedSalonContent: {
-      gap: moderateHeightScale(14),
-      width: "60%",
+      flex: 1,
+      height: heightScale(110),
+      justifyContent: "space-between",
     },
     verifiedSalonBusinessName: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.white,
       textTransform: "capitalize",
+      includeFontPadding: false,
     },
     verifiedSalonAddress: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white80,
+      includeFontPadding: false,
     },
     verifiedSalonBottomRow: {
       flexDirection: "row",
@@ -75,7 +82,7 @@ export const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(6),
+      paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(999),
       borderWidth: moderateWidthScale(1),
       borderColor: theme.white70,
@@ -85,6 +92,8 @@ export const createStyles = (theme: Theme) =>
       fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.white,
+      includeFontPadding: false,
+      textAlignVertical: "center",
     },
     verifiedSalonViewDetail: {},
     verifiedSalonViewDetailText: {
@@ -123,6 +132,7 @@ export const createStyles = (theme: Theme) =>
       textAlign: "center",
     },
     businessInfoContainer: {
-      gap: moderateHeightScale(6),
+      gap: moderateHeightScale(2),
+      flexShrink: 1,
     },
   });
