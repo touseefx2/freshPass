@@ -124,6 +124,8 @@
   "platformVerified": "Verificado por la plataforma",
   "viewDetail": "Ver detalle",
   "viewBusiness": "Ver",
+  "viewingAsViewer": "Estás viendo como visitante",
+  "exitViewAs": "Salir",
   "noServicesFound": "No se encontraron servicios",
   "noSubscriptionListFound": "No hay planes de suscripción",
   "noDataAvailable": "No hay datos disponibles",

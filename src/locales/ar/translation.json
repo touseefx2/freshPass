@@ -124,6 +124,8 @@
   "platformVerified": "موثّق من المنصة",
   "viewDetail": "عرض التفاصيل",
   "viewBusiness": "عرض",
+  "viewingAsViewer": "أنت تعرض كزائر",
+  "exitViewAs": "خروج",
   "noServicesFound": "لم يتم العثور على خدمات",
   "noSubscriptionListFound": "لم يتم العثور على قائمة اشتراك",
   "noDataAvailable": "لا توجد بيانات متاحة",

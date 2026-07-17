@@ -1,0 +1,57 @@
+{
+  "conditions": [],
+  "parameters": {
+    "force_update_android": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "When true on Android, force update screen is shown if app version is below min_version_android",
+      "valueType": "BOOLEAN"
+    },
+    "force_update_ios": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "When true on iOS, force update screen is shown if app version is below min_version_ios",
+      "valueType": "BOOLEAN"
+    },
+    "min_version_android": {
+      "defaultValue": {
+        "value": "1.0.1"
+      },
+      "description": "Minimum required Android app version (semver)",
+      "valueType": "STRING"
+    },
+    "min_version_ios": {
+      "defaultValue": {
+        "value": "1.0.1"
+      },
+      "description": "Minimum required iOS app version (semver)",
+      "valueType": "STRING"
+    },
+    "force_update_message": {
+      "defaultValue": {
+        "value": "A new version of FreshPass is required to continue. Please update from the store."
+      },
+      "description": "Message shown on the force update screen",
+      "valueType": "STRING"
+    },
+    "android_store_url": {
+      "defaultValue": {
+        "value": "https://play.google.com/store/apps/details?id=com.freshpass"
+      },
+      "description": "Google Play Store listing URL for Android",
+      "valueType": "STRING"
+    },
+    "ios_store_url": {
+      "defaultValue": {
+        "value": "https://apps.apple.com/app/idYOUR_APPLE_APP_ID"
+      },
+      "description": "App Store listing URL for iOS — replace YOUR_APPLE_APP_ID with real App Store ID",
+      "valueType": "STRING"
+    }
+  },
+  "version": {
+    "description": "FreshPass force update Remote Config template"
+  }
+}

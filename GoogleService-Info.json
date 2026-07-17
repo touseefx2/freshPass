@@ -1,0 +1,14 @@
+{
+  "API_KEY": "AIzaSyDlQGu4I_i70sZFsUAE0rwl3YYwyQAmtwI",
+  "GCM_SENDER_ID": "286312226658",
+  "PLIST_VERSION": "1",
+  "BUNDLE_ID": "com.freshpass",
+  "PROJECT_ID": "freshpass-871cb",
+  "STORAGE_BUCKET": "freshpass-871cb.firebasestorage.app",
+  "IS_ADS_ENABLED": false,
+  "IS_ANALYTICS_ENABLED": false,
+  "IS_APPINVITE_ENABLED": true,
+  "IS_GCM_ENABLED": true,
+  "IS_SIGNIN_ENABLED": true,
+  "GOOGLE_APP_ID": "1:286312226658:ios:2d3f12fd685212199ed63b"
+}

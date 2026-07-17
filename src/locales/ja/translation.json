@@ -124,6 +124,8 @@
   "platformVerified": "プラットフォーム認証済み",
   "viewDetail": "詳細を見る",
   "viewBusiness": "表示",
+  "viewingAsViewer": "閲覧者として表示しています",
+  "exitViewAs": "終了",
   "noServicesFound": "サービスが見つかりません",
   "noSubscriptionListFound": "サブスクリプションが見つかりません",
   "noDataAvailable": "データがありません",

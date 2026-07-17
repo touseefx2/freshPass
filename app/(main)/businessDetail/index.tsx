@@ -67,15 +67,55 @@ import RetryButton from "@/src/components/retryButton";
 import ExploreSegmentToggle, {
   type ExploreSegmentValue,
 } from "../dashboard/(explore)/ExploreSegmentToggle";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: theme.background,
+    },
+    viewerModeBanner: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      overflow: "hidden",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingBottom: moderateHeightScale(6),
+    },
+    viewerModeBannerBlur: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    viewerModeBannerOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.lightGreen5,
+    },
+    viewerModeBannerContent: {
+      minHeight: VIEWER_BANNER_CONTENT_HEIGHT,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+    },
+    viewerModeBannerText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    viewerModeExitText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.green,
     },
     header: {
       flexDirection: "row",
@@ -1295,6 +1335,7 @@ export default function BusinessDetailScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ business_id?: string }>();
   const [activeTab, setActiveTab] = useState<
     "Details" | "Service" | "Ratings" | "Staff"
@@ -1324,12 +1365,16 @@ export default function BusinessDetailScreen() {
   const [selectedReview, setSelectedReview] = useState<any | null>(null);
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
+  const isOwnerPreviewMode =
+    user.userRole === "business" &&
+    !!user.business_id &&
+    !!params.business_id &&
+    user.business_id.toString() === params.business_id.toString();
   const isBusinessOwnerView =
-    (user.userRole === "business" &&
-      user.business_id &&
-      params.business_id &&
-      user.business_id?.toString() === params.business_id?.toString()) ||
-    user.userRole === "staff";
+    isOwnerPreviewMode || user.userRole === "staff";
+  const viewerBannerOffset = isOwnerPreviewMode
+    ? insets.top + VIEWER_BANNER_CONTENT_HEIGHT + moderateHeightScale(6)
+    : 0;
 
   // Refs for scroll positions
   const scrollViewRef = useRef<ScrollView>(null);
@@ -2401,8 +2446,14 @@ export default function BusinessDetailScreen() {
                   <View style={styles.contactActionsRow}>
                     {businessData?.owner?.id != null && (
                       <TouchableOpacity
-                        style={styles.chatIconButton}
-                        onPress={handleChatPress}
+                        style={[
+                          styles.chatIconButton,
+                          isOwnerPreviewMode && styles.disabledAction,
+                        ]}
+                        onPress={
+                          isOwnerPreviewMode ? undefined : handleChatPress
+                        }
+                        disabled={isOwnerPreviewMode}
                       >
                         <ChatIcon
                           width={widthScale(17)}
@@ -2412,8 +2463,14 @@ export default function BusinessDetailScreen() {
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
-                      style={styles.callNowButton}
-                      onPress={handleCallNow}
+                      style={[
+                        styles.callNowButton,
+                        isOwnerPreviewMode && styles.disabledAction,
+                      ]}
+                      onPress={
+                        isOwnerPreviewMode ? undefined : handleCallNow
+                      }
+                      disabled={isOwnerPreviewMode}
                     >
                       <Ionicons
                         name="call"
@@ -2472,8 +2529,14 @@ export default function BusinessDetailScreen() {
                   <View style={styles.contactPhoneRow}>
                     <Text style={styles.phoneText}>{ownerPhone}</Text>
                     <TouchableOpacity
-                      style={styles.callNowButton}
-                      onPress={handleCallNow}
+                      style={[
+                        styles.callNowButton,
+                        isOwnerPreviewMode && styles.disabledAction,
+                      ]}
+                      onPress={
+                        isOwnerPreviewMode ? undefined : handleCallNow
+                      }
+                      disabled={isOwnerPreviewMode}
                     >
                       <Ionicons
                         name="call"
@@ -3499,8 +3562,12 @@ export default function BusinessDetailScreen() {
                 borderTopWidth: moderateWidthScale(1),
                 marginTop: moderateHeightScale(24),
               },
+              isOwnerPreviewMode && styles.disabledAction,
             ]}
-            onPress={handlePrivacyPolicyPress}
+            onPress={
+              isOwnerPreviewMode ? undefined : handlePrivacyPolicyPress
+            }
+            disabled={isOwnerPreviewMode}
           >
             <Text style={styles.policyItemText}>
               {t("paymentCancelationPolicy")}
@@ -3514,8 +3581,14 @@ export default function BusinessDetailScreen() {
 
           {/* Report */}
           <TouchableOpacity
-            onPress={handlePrivacyPolicyPress}
-            style={styles.policyItem}
+            onPress={
+              isOwnerPreviewMode ? undefined : handlePrivacyPolicyPress
+            }
+            disabled={isOwnerPreviewMode}
+            style={[
+              styles.policyItem,
+              isOwnerPreviewMode && styles.disabledAction,
+            ]}
           >
             <Text style={styles.policyItemText}>{t("report")}</Text>
             <ChevronRightIconBusinessDetail
@@ -3529,8 +3602,52 @@ export default function BusinessDetailScreen() {
     );
   };
 
+  const renderViewerModeBanner = () => {
+    if (!isOwnerPreviewMode) {
+      return null;
+    }
+
+    return (
+      <View
+        style={[
+          styles.viewerModeBanner,
+          { paddingTop: insets.top + moderateHeightScale(2) },
+        ]}
+        pointerEvents="box-none"
+      >
+        {Platform.OS === "ios" ? (
+          <BlurView
+            intensity={18}
+            tint="dark"
+            style={styles.viewerModeBannerBlur}
+          />
+        ) : null}
+        <View style={styles.viewerModeBannerOverlay} />
+        <View style={styles.viewerModeBannerContent}>
+          <Text style={styles.viewerModeBannerText} numberOfLines={1}>
+            {t("viewingAsViewer")}
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.viewerModeExitText}>{t("exitViewAs")}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderTopHeader = (actionsEnabled: boolean) => (
-    <View style={styles.header}>
+    <View
+      style={[
+        styles.header,
+        isOwnerPreviewMode && {
+          top: viewerBannerOffset,
+          paddingTop: moderateHeightScale(10),
+        },
+      ]}
+    >
       <View style={styles.headerLeft}>
         <TouchableOpacity
           style={styles.iconButton}
@@ -3598,6 +3715,7 @@ export default function BusinessDetailScreen() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
+        {renderViewerModeBanner()}
         {renderTopHeader(false)}
         <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color={theme.buttonBack} />
@@ -3611,6 +3729,7 @@ export default function BusinessDetailScreen() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
+        {renderViewerModeBanner()}
         {renderTopHeader(false)}
         <View style={styles.errorContent}>
           <Text
@@ -3637,6 +3756,7 @@ export default function BusinessDetailScreen() {
         barStyle={"light-content"}
         translucent={true}
       />
+      {renderViewerModeBanner()}
       <ScrollView
         ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
