@@ -10,6 +10,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": true,
       "bundleIdentifier": "com.freshpass",
       "buildNumber": "54",
       "googleServicesFile": "./GoogleService-Info.plist",
@@ -18,6 +19,12 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationPortrait"
+        ],
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait"
+        ],
         "NSMicrophoneUsageDescription": "Fresh Pass uses your microphone for the AI Receptionist so you can speak with our assistant. Your voice is sent securely to FreshPass's AI voice service to generate responses—for example, when you ask about bookings or salon services.",
         "NSLocationWhenInUseUsageDescription": "Fresh Pass uses your location to show nearby salons and businesses on the map when you search in Explore or set your area for bookings—for example, to list businesses closest to you.",
         "NSAppTransportSecurity": {
@@ -94,11 +101,29 @@
         }
       ],
       "expo-font",
+      "@react-native-firebase/app",
+      [
+        "@react-native-firebase/analytics",
+        {
+          "ios": {
+            "withoutAdIdSupport": true
+          }
+        }
+      ],
+      "@react-native-firebase/crashlytics",
       [
         "expo-build-properties",
         {
           "android": { "usesCleartextTraffic": true },
           "ios": {
+            "useFrameworks": "static",
+            "forceStaticLinking": [
+              "RNFBApp",
+              "RNFBAnalytics",
+              "RNFBCrashlytics",
+              "react-native-maps",
+              "react-native-google-maps"
+            ],
             "infoPlist": {
               "LSApplicationQueriesSchemes": ["app-settings"]
             }

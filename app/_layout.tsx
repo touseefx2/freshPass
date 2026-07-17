@@ -21,6 +21,7 @@ import ExpoNotificationHandler from "@/src/components/ExpoNotificationHandler";
 import ActionLoader from "@/src/components/actionLoader";
 import OnboardingHandler from "@/src/components/OnboardingHandler";
 import ForceUpdateHandler from "@/src/components/ForceUpdateHandler";
+import FirebaseMonitoringHandler from "@/src/components/FirebaseMonitoringHandler";
 import GuestModeModal from "@/src/components/guestModeModal";
 import FullImageModal from "@/src/components/fullImageModal";
 import StripeConnectModalHandler from "@/src/components/StripeConnectModalHandler";
@@ -99,6 +100,7 @@ export default function RootLayout() {
                     <StripeConnectModalHandler />
                     <BusinessPlansModalHandler />
                     <ForceUpdateHandler />
+                    <FirebaseMonitoringHandler />
                     <OnboardingHandler />
                     <SessionExpiredHandler />
                     <ExpoNotificationHandler />
