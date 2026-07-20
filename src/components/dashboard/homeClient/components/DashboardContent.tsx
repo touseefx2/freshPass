@@ -12,7 +12,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { ApiService } from "@/src/services/api";
+import { ApiService, isRequestCanceled } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import {
   businessEndpoints,
@@ -577,6 +577,7 @@ export default function DashboardContent() {
         dispatch(setCategories(mappedCategories));
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch categories:", error);
       if (categories.length <= 0) {
         dispatch(setCategoriesError(true));
@@ -644,6 +645,7 @@ export default function DashboardContent() {
         setVerifiedSalonsDeals(mappedSalons);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch businesses deals:", error);
       verifiedSalonsDeals.length <= 0 && setDealsError(true);
     } finally {
@@ -710,6 +712,7 @@ export default function DashboardContent() {
         setVerifiedSalons(mappedSalons);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch businesses:", error);
       verifiedSalons.length <= 0 && setBusinessesError(true);
     } finally {
@@ -743,6 +746,7 @@ export default function DashboardContent() {
         setProTipData(response.data);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch pro tip cards:", error);
       proTipData == null && setProTipError(true);
     } finally {
@@ -914,6 +918,7 @@ export default function DashboardContent() {
 
       setAppointments(mappedAppointments);
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch appointments:", error);
     }
   };

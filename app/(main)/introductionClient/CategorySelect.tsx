@@ -22,7 +22,7 @@ import {
   responsiveMetrics,
 } from "@/src/theme/dimensions";
 import FloatingInput from "@/src/components/floatingInput";
-import { ApiService } from "@/src/services/api";
+import { ApiService, isRequestCanceled } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
@@ -253,6 +253,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
         setCategories(response.data);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch categories:", error);
       setApiError(true);
       showBanner(t("apiFailed"), t("apiFailedFetchCategories"), "error", 2500);

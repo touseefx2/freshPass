@@ -15,7 +15,7 @@ import SortByBottomSheet, {
   SORT_OPTIONS,
   type SortByOption,
 } from "./SortByBottomSheet";
-import { ApiService } from "@/src/services/api";
+import { ApiService, isRequestCanceled } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import {
@@ -270,6 +270,7 @@ export default function ExploreScreen() {
         setServiceTemplates(response.data);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch service templates:", error);
     }
   };
@@ -343,6 +344,7 @@ export default function ExploreScreen() {
         setVerifiedSalonsDeals(mappedSalons);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch businesses:", error);
       verifiedSalonsDeals.length <= 0 && setDealsError(true);
     } finally {
@@ -502,6 +504,7 @@ export default function ExploreScreen() {
         setVerifiedSalons(mappedSalons);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch businesses:", error);
       verifiedSalons.length <= 0 && setBusinessesError(true);
     } finally {

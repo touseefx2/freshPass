@@ -211,6 +211,23 @@ const cancelAllPendingRequests = () => {
 };
 
 /**
+ * True when a request was aborted/canceled (logout, navigation, etc.).
+ * Callers should skip banners and error UI for these.
+ */
+export const isRequestCanceled = (error: any): boolean => {
+  if (!error) return false;
+  const message = String(error.message ?? "").toLowerCase();
+  return (
+    axios.isCancel(error) ||
+    error.code === "ERR_CANCELED" ||
+    error.name === "CanceledError" ||
+    error.name === "AbortError" ||
+    message === "canceled" ||
+    message === "cancelled"
+  );
+};
+
+/**
  * Create and track an AbortController for a request
  */
 const createAbortController = (): AbortController => {
@@ -434,20 +451,23 @@ apiClient.interceptors.response.use(
     //   }
     // }
 
-    // Handle timeout errors
-    if (
-      error.code === "ECONNABORTED" ||
-      error.message?.toLowerCase().includes("timeout") ||
-      (error.config && error.config.timeout && !error.response)
-    ) {
-      // Show timeout toast
-      if (onShowToast) {
-        onShowToast(
-          "Request Timeout",
-          "The request took too long to complete. Please try again.",
-          "error",
-        );
-      }
+    // Aborted/canceled on logout or navigation — silent, never show timeout banner
+    if (isRequestCanceled(error)) {
+      return Promise.reject(error);
+    }
+
+    // Real request timeouts only (do not treat every no-response error as timeout —
+    // that falsely flagged aborted home/explore calls after guest Sign In)
+    const errorMessageLower = error.message?.toLowerCase() ?? "";
+    const isTimeout =
+      error.code === "ECONNABORTED" || errorMessageLower.includes("timeout");
+
+    if (isTimeout && onShowToast) {
+      onShowToast(
+        "Request Timeout",
+        "The request took too long to complete. Please try again.",
+        "error",
+      );
     }
 
     // For other errors, return readable error message

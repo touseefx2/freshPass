@@ -33,7 +33,7 @@ import {
   setCategories,
 } from "@/src/state/slices/completeProfileSlice";
 import FloatingInput from "@/src/components/floatingInput";
-import { ApiService } from "@/src/services/api";
+import { ApiService, isRequestCanceled } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
@@ -267,6 +267,7 @@ export default function StepOne({
         dispatch(setCategories(response.data));
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch categories:", error);
       setApiError(true);
       showBanner(t("apiFailed"), t("apiFailedFetchCategories"), "error", 2500);
@@ -292,6 +293,7 @@ export default function StepOne({
         setSearchResults([]);
       }
     } catch (error) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Failed to fetch search categories:", error);
       setSearchResults([]);
     } finally {
