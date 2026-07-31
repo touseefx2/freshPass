@@ -498,10 +498,20 @@ const logApiRequest = (
 ) => {
   if (__DEV__) {
     const fullUrl = getFullUrl(route);
+    const accessToken = getAccessToken();
+    const authHeader = config?.headers?.Authorization;
     const logData: any = {
       url: fullUrl,
       route: route,
       baseURL: BASE_URL,
+      accessToken: accessToken ?? null,
+      authorization:
+        authHeader ??
+        (accessToken
+          ? `Bearer ${accessToken}`
+          : getGuestToken()
+            ? `Bearer ${getGuestToken()}`
+            : null),
     };
 
     if (body !== undefined) {
