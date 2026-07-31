@@ -7,7 +7,9 @@ import { MAIN_ROUTES } from "@/src/constant/routes";
  * to role selection, social login, or login screens.
  */
 export function resetToRoute(href: Href) {
-  router.dismissAll();
+  if (router.canDismiss()) {
+    router.dismissAll();
+  }
   router.replace(href);
 }
 
