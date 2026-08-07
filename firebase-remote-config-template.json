@@ -49,9 +49,16 @@
       },
       "description": "App Store listing URL for iOS — replace YOUR_APPLE_APP_ID with real App Store ID",
       "valueType": "STRING"
+    },
+    "stripe_publishable_key": {
+      "defaultValue": {
+        "value": "pk_test_51Q9o6W00fIQIPXMCf80JsZudfzbBK1EmgjDhHD8mpVozk5U4aecFYgU2UaOiYgobVADMqBSP7hJBPUIiT2wNeBJV00X6xMeciZ"
+      },
+      "description": "Stripe publishable key (pk_test_... or pk_live_...). Switch test/live here without rebuilding the app. Backend Stripe secret must use the same mode.",
+      "valueType": "STRING"
     }
   },
   "version": {
-    "description": "FreshPass force update Remote Config template"
+    "description": "FreshPass Remote Config template (force update + Stripe)"
   }
 }

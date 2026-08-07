@@ -26,6 +26,7 @@ import GuestModeModal from "@/src/components/guestModeModal";
 import FullImageModal from "@/src/components/fullImageModal";
 import StripeConnectModalHandler from "@/src/components/StripeConnectModalHandler";
 import BusinessPlansModalHandler from "@/src/components/BusinessPlansModalHandler";
+import { resolveStripePublishableKey } from "@/src/services/remoteConfigService";
 import "../global.css";
 import * as SystemUI from "expo-system-ui";
 import { LogBox } from "react-native";
@@ -34,6 +35,7 @@ LogBox.ignoreAllLogs(true);
 
 export default function RootLayout() {
   const [ready, setReady] = useState(false);
+  const [stripePublishableKey, setStripePublishableKey] = useState("");
   const [fontsLoaded] = useFonts({
     fontRegular: Font.fontRegular,
     fontMedium: Font.fontMedium,
@@ -46,6 +48,30 @@ export default function RootLayout() {
       await initI18n();
       setReady(true);
     })();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const key = await resolveStripePublishableKey();
+      if (cancelled) return;
+      if (key) {
+        Logger.log("[Stripe] StripeProvider key set:", {
+          mode: key.startsWith("pk_live_")
+            ? "live"
+            : key.startsWith("pk_test_")
+              ? "test"
+              : "unknown",
+          key,
+        });
+        setStripePublishableKey(key);
+      } else {
+        Logger.warn("[Stripe] StripeProvider key empty — payments will fail");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!ready || !fontsLoaded) {
@@ -85,9 +111,8 @@ export default function RootLayout() {
             }}
           >
             <StripeProvider
-              publishableKey={
-                process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || ""
-              }
+              key={stripePublishableKey || "stripe-pending"}
+              publishableKey={stripePublishableKey}
             >
               <PortalProvider>
                 <I18nextProvider i18n={i18n}>

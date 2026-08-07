@@ -85,7 +85,6 @@ At minimum, these are required for the app to work:
 ```env
 EXPO_PUBLIC_API_BASE_URL=https://your-api-url.com
 EXPO_PUBLIC_AUTH_TOKEN=your-guest-auth-token
-EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
 EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-key
 ```
 
@@ -129,9 +128,7 @@ Copy `.env.example` to `.env` and configure each variable:
 
 ### Stripe Payments
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ | Stripe publishable key (`pk_test_...` or `pk_live_...`) |
+Stripe publishable key is loaded from Firebase Remote Config (`stripe_publishable_key`), not from `.env`. Switch `pk_test_...` / `pk_live_...` in the Firebase Console without rebuilding. Backend Stripe secret must use the same mode.
 
 ### Google Services
 

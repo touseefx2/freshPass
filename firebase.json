@@ -1,4 +1,7 @@
 {
+  "remoteconfig": {
+    "template": "firebase-remote-config-template.json"
+  },
   "react-native": {
     "crashlytics_debug_enabled": true,
     "crashlytics_auto_collection_enabled": true,

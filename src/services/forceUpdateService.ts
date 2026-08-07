@@ -1,8 +1,10 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Application from "expo-application";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getFirebaseProjectConfig } from "@/src/config/firebaseNative";
+import {
+  fetchRemoteConfigEntries,
+  readRemoteConfigEntry,
+} from "@/src/services/remoteConfigService";
 import Logger from "@/src/services/logger";
 
 /** Firebase Remote Config parameter keys — set these in Firebase Console */
@@ -16,8 +18,6 @@ export const FORCE_UPDATE_RC_KEYS = {
   iosStoreUrl: "ios_store_url",
 } as const;
 
-const INSTANCE_ID_KEY = "@freshpass/firebase_rc_instance_id";
-
 export type ForceUpdateConfig = {
   forceUpdate: boolean;
   minVersion: string;
@@ -25,8 +25,6 @@ export type ForceUpdateConfig = {
   storeUrl: string;
   currentVersion: string;
 };
-
-type RemoteConfigEntries = Record<string, { value?: string } | string>;
 
 const DEFAULTS = {
   forceUpdateAndroid: false,
@@ -93,107 +91,45 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   return fallback;
 }
 
-function readEntry(
-  entries: RemoteConfigEntries | undefined,
-  key: string,
-): string | undefined {
-  if (!entries) return undefined;
-  const raw = entries[key];
-  if (raw == null) return undefined;
-  if (typeof raw === "string") return raw;
-  return raw.value;
-}
-
-async function getAppInstanceId(): Promise<string> {
-  const existing = await AsyncStorage.getItem(INSTANCE_ID_KEY);
-  if (existing) return existing;
-
-  const id = `fp_${Date.now().toString(36)}_${Math.random()
-    .toString(36)
-    .slice(2, 12)}`;
-  await AsyncStorage.setItem(INSTANCE_ID_KEY, id);
-  return id;
-}
-
-async function fetchRemoteConfigEntries(): Promise<RemoteConfigEntries> {
-  const { projectId, apiKey, appId } = getFirebaseProjectConfig();
-  const appInstanceId = await getAppInstanceId();
-  const currentVersion = getCurrentAppVersion();
-
-  const url = `https://firebaseremoteconfig.googleapis.com/v1/projects/${projectId}/namespaces/firebase:fetch?key=${apiKey}`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify({
-      appId,
-      appInstanceId,
-      appInstanceIdToken: "",
-      languageCode: "en-US",
-      platformVersion: String(Platform.Version),
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-      appVersion: currentVersion,
-      packageName: "com.freshpass",
-      sdkVersion: "22.1.0",
-    }),
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(
-      `Remote Config fetch failed (${response.status}): ${body}`,
-    );
-  }
-
-  const data = (await response.json()) as {
-    entries?: RemoteConfigEntries;
-    state?: string;
-  };
-
-  if (data.state === "NO_TEMPLATE") {
-    Logger.warn(
-      "[ForceUpdate] Remote Config template not published yet — using defaults",
-    );
-    return {};
-  }
-
-  return data.entries || {};
-}
-
 export async function fetchForceUpdateConfig(): Promise<ForceUpdateConfig> {
   const currentVersion = getCurrentAppVersion();
   const entries = await fetchRemoteConfigEntries();
 
   const forceUpdateAndroid = parseBoolean(
-    readEntry(entries, FORCE_UPDATE_RC_KEYS.forceUpdateAndroid),
+    readRemoteConfigEntry(entries, FORCE_UPDATE_RC_KEYS.forceUpdateAndroid),
     DEFAULTS.forceUpdateAndroid,
   );
   const forceUpdateIos = parseBoolean(
-    readEntry(entries, FORCE_UPDATE_RC_KEYS.forceUpdateIos),
+    readRemoteConfigEntry(entries, FORCE_UPDATE_RC_KEYS.forceUpdateIos),
     DEFAULTS.forceUpdateIos,
   );
   const forceUpdate =
     Platform.OS === "ios" ? forceUpdateIos : forceUpdateAndroid;
   const minVersionAndroid =
-    readEntry(entries, FORCE_UPDATE_RC_KEYS.minVersionAndroid)?.trim() ||
-    DEFAULTS.minVersionAndroid;
+    readRemoteConfigEntry(
+      entries,
+      FORCE_UPDATE_RC_KEYS.minVersionAndroid,
+    )?.trim() || DEFAULTS.minVersionAndroid;
   const minVersionIos =
-    readEntry(entries, FORCE_UPDATE_RC_KEYS.minVersionIos)?.trim() ||
-    DEFAULTS.minVersionIos;
+    readRemoteConfigEntry(
+      entries,
+      FORCE_UPDATE_RC_KEYS.minVersionIos,
+    )?.trim() || DEFAULTS.minVersionIos;
   const minVersion =
     Platform.OS === "ios" ? minVersionIos : minVersionAndroid;
   const message =
-    readEntry(entries, FORCE_UPDATE_RC_KEYS.message)?.trim() ||
+    readRemoteConfigEntry(entries, FORCE_UPDATE_RC_KEYS.message)?.trim() ||
     DEFAULTS.message;
   const androidStoreUrl =
-    readEntry(entries, FORCE_UPDATE_RC_KEYS.androidStoreUrl)?.trim() ||
-    DEFAULTS.androidStoreUrl;
+    readRemoteConfigEntry(
+      entries,
+      FORCE_UPDATE_RC_KEYS.androidStoreUrl,
+    )?.trim() || DEFAULTS.androidStoreUrl;
   const iosStoreUrl =
-    readEntry(entries, FORCE_UPDATE_RC_KEYS.iosStoreUrl)?.trim() ||
-    DEFAULTS.iosStoreUrl;
+    readRemoteConfigEntry(
+      entries,
+      FORCE_UPDATE_RC_KEYS.iosStoreUrl,
+    )?.trim() || DEFAULTS.iosStoreUrl;
   const storeUrl = Platform.OS === "ios" ? iosStoreUrl : androidStoreUrl;
   const willForceUpdate =
     forceUpdate && isVersionBelowMinimum(currentVersion, minVersion);
