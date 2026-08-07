@@ -11,12 +11,17 @@ export default function StripeConnectModalHandler() {
   const stripeConnectModalVisible = useAppSelector(
     (state) => state.general.stripeConnectModalVisible,
   );
+  const appGateBlocked = useAppSelector(
+    (state) =>
+      state.general.maintenanceModeActive || state.general.forceUpdateActive,
+  );
   const [dismissed, setDismissed] = useState(false);
   const segments = useSegments() as string[];
 
   const isOnHomeTab = Array.isArray(segments) && segments.includes("(home)");
 
   const showStripeBanner =
+    !appGateBlocked &&
     isOnHomeTab &&
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
@@ -29,7 +34,8 @@ export default function StripeConnectModalHandler() {
   }, [showStripeBanner]);
 
   const visible =
-    stripeConnectModalVisible || (showStripeBanner && !dismissed);
+    !appGateBlocked &&
+    (stripeConnectModalVisible || (showStripeBanner && !dismissed));
 
   const handleClose = () => {
     setDismissed(true);

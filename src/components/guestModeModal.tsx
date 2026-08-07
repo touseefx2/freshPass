@@ -102,6 +102,10 @@ export default function GuestModeModal() {
   const guestModeModalVisible = useAppSelector(
     (state) => state.general.guestModeModalVisible
   );
+  const appGateBlocked = useAppSelector(
+    (state) =>
+      state.general.maintenanceModeActive || state.general.forceUpdateActive,
+  );
 
   const handleClose = () => {
     dispatch(setGuestModeModalVisible(false));
@@ -119,7 +123,7 @@ export default function GuestModeModal() {
   return (
     <Modal
       transparent
-      visible={guestModeModalVisible}
+      visible={!appGateBlocked && guestModeModalVisible}
       animationType="slide"
       statusBarTranslucent
       onRequestClose={handleClose}

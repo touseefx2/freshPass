@@ -89,6 +89,9 @@ export interface GeneralState {
   chatContactsLoadingMore: boolean;
   businessPlansModalVisible: boolean;
   stripeConnectModalVisible: boolean;
+  /** Full-screen Remote Config gates (not persisted) — hide other modals while true */
+  maintenanceModeActive: boolean;
+  forceUpdateActive: boolean;
   /** When user selects images from AI Results to attach to booking (not persisted) */
   bookingTryOnImageUrls: string[];
   /** When opening AI Results from booking, pre-select these URLs (intersection with result) */
@@ -155,6 +158,8 @@ const initialState: GeneralState = {
   chatContactsLoadingMore: false,
   businessPlansModalVisible: false,
   stripeConnectModalVisible: false,
+  maintenanceModeActive: false,
+  forceUpdateActive: false,
   bookingTryOnImageUrls: [],
   bookingTryOnPreselectedUrls: [],
   bookingTryOnSelectionByJobId: {},
@@ -284,6 +289,26 @@ const generalSlice = createSlice({
     },
     setStripeConnectModalVisible(state, action: PayloadAction<boolean>) {
       state.stripeConnectModalVisible = action.payload;
+    },
+    setMaintenanceModeActive(state, action: PayloadAction<boolean>) {
+      state.maintenanceModeActive = action.payload;
+      if (action.payload) {
+        state.stripeConnectModalVisible = false;
+        state.businessPlansModalVisible = false;
+        state.guestModeModalVisible = false;
+        state.fullImageModalVisible = false;
+        state.actionLoader = false;
+      }
+    },
+    setForceUpdateActive(state, action: PayloadAction<boolean>) {
+      state.forceUpdateActive = action.payload;
+      if (action.payload) {
+        state.stripeConnectModalVisible = false;
+        state.businessPlansModalVisible = false;
+        state.guestModeModalVisible = false;
+        state.fullImageModalVisible = false;
+        state.actionLoader = false;
+      }
     },
     setBookingTryOnImageUrls(state, action: PayloadAction<string[]>) {
       state.bookingTryOnImageUrls = action.payload;
@@ -427,6 +452,8 @@ const generalSlice = createSlice({
       state.chatContactsLoadingMore = false;
       state.businessPlansModalVisible = false;
       state.stripeConnectModalVisible = false;
+      state.maintenanceModeActive = false;
+      state.forceUpdateActive = false;
       state.bookingTryOnImageUrls = [];
       state.bookingTryOnPreselectedUrls = [];
       state.bookingTryOnSelectionByJobId = {};
@@ -460,6 +487,8 @@ export const {
   setGuestModeModalVisible,
   setBusinessPlansModalVisible,
   setStripeConnectModalVisible,
+  setMaintenanceModeActive,
+  setForceUpdateActive,
   setBookingTryOnImageUrls,
   clearBookingTryOnImageUrls,
   setBookingTryOnPreselectedUrls,

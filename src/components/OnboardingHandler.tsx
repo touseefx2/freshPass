@@ -18,6 +18,10 @@ export default function OnboardingHandler() {
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const userRole = useAppSelector((state) => state.user.userRole);
   const accessToken = useAppSelector((state) => state.user.accessToken);
+  const appGateBlocked = useAppSelector(
+    (state) =>
+      state.general.maintenanceModeActive || state.general.forceUpdateActive,
+  );
 
   const isInOnboardingFlow = ONBOARDING_FLOW_ROUTES.some((route) =>
     segments.includes(route),
@@ -26,6 +30,7 @@ export default function OnboardingHandler() {
   // Show modal only for business users if onboarding is not completed
   // Staff and client don't need onboarding
   const shouldShowModal =
+    !appGateBlocked &&
     userRole === "business" &&
     accessToken &&
     businessStatus &&

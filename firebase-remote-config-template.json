@@ -1,32 +1,17 @@
 {
-  "conditions": [],
   "parameters": {
-    "force_update_android": {
+    "stripe_publishable_key": {
       "defaultValue": {
-        "value": "false"
+        "value": "pk_test_51Swo2PC6ErvusFvDH74XoX282BDm1YNoKQC6GV1vA8HhLNZxEJR0aw0u33M87AiBkc96KIiwKeNWQSaNR9vPa4wa006yqvwI3r"
       },
-      "description": "When true on Android, force update screen is shown if app version is below min_version_android",
-      "valueType": "BOOLEAN"
-    },
-    "force_update_ios": {
-      "defaultValue": {
-        "value": "false"
-      },
-      "description": "When true on iOS, force update screen is shown if app version is below min_version_ios",
-      "valueType": "BOOLEAN"
-    },
-    "min_version_android": {
-      "defaultValue": {
-        "value": "1.0.1"
-      },
-      "description": "Minimum required Android app version (semver)",
+      "description": "Stripe publishable key (pk_test_... or pk_live_...). Switch test/live here without rebuilding the app. Backend Stripe secret must use the same mode.",
       "valueType": "STRING"
     },
-    "min_version_ios": {
+    "ios_store_url": {
       "defaultValue": {
-        "value": "1.0.1"
+        "value": "https://apps.apple.com/us/app/fresh-pass/id6758720531"
       },
-      "description": "Minimum required iOS app version (semver)",
+      "description": "App Store listing URL for iOS \u2014 replace YOUR_APPLE_APP_ID with real App Store ID",
       "valueType": "STRING"
     },
     "force_update_message": {
@@ -43,22 +28,51 @@
       "description": "Google Play Store listing URL for Android",
       "valueType": "STRING"
     },
-    "ios_store_url": {
+    "force_update_ios": {
       "defaultValue": {
-        "value": "https://apps.apple.com/app/idYOUR_APPLE_APP_ID"
+        "value": "false"
       },
-      "description": "App Store listing URL for iOS — replace YOUR_APPLE_APP_ID with real App Store ID",
+      "description": "When true on iOS, force update screen is shown if app version is below min_version_ios",
+      "valueType": "BOOLEAN"
+    },
+    "min_version_ios": {
+      "defaultValue": {
+        "value": "1.0.1"
+      },
+      "description": "Minimum required iOS app version (semver)",
       "valueType": "STRING"
     },
-    "stripe_publishable_key": {
+    "min_version_android": {
       "defaultValue": {
-        "value": "pk_test_51Q9o6W00fIQIPXMCf80JsZudfzbBK1EmgjDhHD8mpVozk5U4aecFYgU2UaOiYgobVADMqBSP7hJBPUIiT2wNeBJV00X6xMeciZ"
+        "value": "1.0.1"
       },
-      "description": "Stripe publishable key (pk_test_... or pk_live_...). Switch test/live here without rebuilding the app. Backend Stripe secret must use the same mode.",
+      "description": "Minimum required Android app version (semver)",
+      "valueType": "STRING"
+    },
+    "force_update_android": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "When true on Android, force update screen is shown if app version is below min_version_android",
+      "valueType": "BOOLEAN"
+    },
+    "maintenance_mode": {
+      "defaultValue": {
+        "value": "false"
+      },
+      "description": "When true, app shows a full-screen maintenance screen and blocks usage until turned off",
+      "valueType": "BOOLEAN"
+    },
+    "maintenance_message": {
+      "defaultValue": {
+        "value": "FreshPass is temporarily under maintenance. Please try again in a little while."
+      },
+      "description": "Message shown on the maintenance mode screen",
       "valueType": "STRING"
     }
   },
   "version": {
-    "description": "FreshPass Remote Config template (force update + Stripe)"
-  }
+    "description": "FreshPass Remote Config template (force update + maintenance + Stripe)"
+  },
+  "conditions": []
 }

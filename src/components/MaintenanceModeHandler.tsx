@@ -1,39 +1,39 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { BackHandler, Modal, Platform } from "react-native";
-import ForceUpdateScreen from "@/src/components/forceUpdateScreen";
+import MaintenanceModeScreen from "@/src/components/maintenanceModeScreen";
 import {
-  fetchForceUpdateConfig,
-  ForceUpdateConfig,
-  shouldForceUpdate,
-} from "@/src/services/forceUpdateService";
+  fetchMaintenanceConfig,
+  MaintenanceConfig,
+  shouldShowMaintenance,
+} from "@/src/services/maintenanceService";
 import { useAppDispatch } from "@/src/hooks/hooks";
-import { setForceUpdateActive } from "@/src/state/slices/generalSlice";
+import { setMaintenanceModeActive } from "@/src/state/slices/generalSlice";
 import Logger from "@/src/services/logger";
 
-export default function ForceUpdateHandler() {
+export default function MaintenanceModeHandler() {
   const dispatch = useAppDispatch();
-  const [config, setConfig] = useState<ForceUpdateConfig | null>(null);
+  const [config, setConfig] = useState<MaintenanceConfig | null>(null);
   const [visible, setVisible] = useState(false);
   const [rechecking, setRechecking] = useState(false);
 
-  const checkForceUpdate = useCallback(async () => {
+  const checkMaintenance = useCallback(async () => {
     try {
-      const nextConfig = await fetchForceUpdateConfig();
-      const nextVisible = shouldForceUpdate(nextConfig);
+      const nextConfig = await fetchMaintenanceConfig();
+      const nextVisible = shouldShowMaintenance(nextConfig);
       setConfig(nextConfig);
       setVisible(nextVisible);
-      dispatch(setForceUpdateActive(nextVisible));
+      dispatch(setMaintenanceModeActive(nextVisible));
     } catch (error) {
       // Fail open — never block the app if Remote Config is unreachable
-      Logger.warn("[ForceUpdateHandler] Check failed:", error);
+      Logger.warn("[MaintenanceModeHandler] Check failed:", error);
       setVisible(false);
-      dispatch(setForceUpdateActive(false));
+      dispatch(setMaintenanceModeActive(false));
     }
   }, [dispatch]);
 
   useEffect(() => {
-    checkForceUpdate();
-  }, [checkForceUpdate]);
+    checkMaintenance();
+  }, [checkMaintenance]);
 
   useEffect(() => {
     if (!visible || Platform.OS !== "android") return;
@@ -48,18 +48,18 @@ export default function ForceUpdateHandler() {
 
   useEffect(() => {
     return () => {
-      dispatch(setForceUpdateActive(false));
+      dispatch(setMaintenanceModeActive(false));
     };
   }, [dispatch]);
 
   const handleRecheck = useCallback(async () => {
     setRechecking(true);
     try {
-      await checkForceUpdate();
+      await checkMaintenance();
     } finally {
       setRechecking(false);
     }
-  }, [checkForceUpdate]);
+  }, [checkMaintenance]);
 
   if (!visible || !config) {
     return null;
@@ -71,14 +71,11 @@ export default function ForceUpdateHandler() {
       animationType="fade"
       presentationStyle="fullScreen"
       onRequestClose={() => {
-        // Non-dismissible while force update is required
+        // Non-dismissible while maintenance mode is on
       }}
     >
-      <ForceUpdateScreen
+      <MaintenanceModeScreen
         message={config.message}
-        currentVersion={config.currentVersion}
-        minVersion={config.minVersion}
-        storeUrl={config.storeUrl}
         onRecheck={handleRecheck}
         rechecking={rechecking}
       />

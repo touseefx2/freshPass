@@ -89,7 +89,10 @@ export default function FullImageModal() {
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const visible = useSelector(
-    (s: RootState) => s.general.fullImageModalVisible,
+    (s: RootState) =>
+      s.general.fullImageModalVisible &&
+      !s.general.maintenanceModeActive &&
+      !s.general.forceUpdateActive,
   );
   const images = useSelector((s: RootState) => s.general.fullImageModalImages);
   const initialIndex = useSelector(

@@ -41,11 +41,15 @@ export default function ActionLoader() {
   const actionLoaderTitle = useAppSelector(
     (state) => state.general.actionLoaderTitle
   );
+  const appGateBlocked = useAppSelector(
+    (state) =>
+      state.general.maintenanceModeActive || state.general.forceUpdateActive,
+  );
 
   return (
     <Modal
       transparent
-      visible={actionLoader}
+      visible={!appGateBlocked && actionLoader}
       animationType="fade"
       statusBarTranslucent
     >

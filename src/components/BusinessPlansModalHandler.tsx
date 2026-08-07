@@ -23,11 +23,16 @@ export default function BusinessPlansModalHandler() {
   const businessPlansModalVisible = useAppSelector(
     (state) => state.general.businessPlansModalVisible,
   );
+  const appGateBlocked = useAppSelector(
+    (state) =>
+      state.general.maintenanceModeActive || state.general.forceUpdateActive,
+  );
   const hasAutoOpenedOnce = useRef(false);
 
   const isOnHomeTab = Array.isArray(segments) && segments.includes("(home)");
 
   const showBusinessSubscription =
+    !appGateBlocked &&
     isOnHomeTab &&
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
@@ -50,7 +55,7 @@ export default function BusinessPlansModalHandler() {
 
   return (
     <BusinessPlansModal
-      visible={businessPlansModalVisible}
+      visible={!appGateBlocked && businessPlansModalVisible}
       onClose={handleClose}
     />
   );
