@@ -764,5 +764,12 @@
   "appleInAppPurchase": "شراء داخل التطبيق عبر Apple",
   "cardPayment": "الدفع بالبطاقة",
   "subscriptionStatus": "حالة الاشتراك",
-  "trialStatus": "حالة الفترة التجريبية"
+  "trialStatus": "حالة الفترة التجريبية",
+  "trialEnds": "تنتهي الفترة التجريبية",
+  "accessUntil": "الوصول حتى",
+  "endedOn": "انتهى في",
+  "trialing": "تجريبي",
+  "cancelled": "ملغى",
+  "subscriptionCancelled": "تم إلغاء الاشتراك",
+  "cancelledKeepsAccess": "يمكنك الاستمرار في استخدام هذه الخطة حتى {{date}}."
 }

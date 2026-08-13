@@ -764,5 +764,12 @@
   "appleInAppPurchase": "Appleアプリ内購入",
   "cardPayment": "カード決済",
   "subscriptionStatus": "サブスクリプションステータス",
-  "trialStatus": "トライアルステータス"
+  "trialStatus": "トライアルステータス",
+  "trialEnds": "トライアル終了",
+  "accessUntil": "利用期限",
+  "endedOn": "終了日",
+  "trialing": "トライアル中",
+  "cancelled": "キャンセル済み",
+  "subscriptionCancelled": "サブスクリプションをキャンセルしました",
+  "cancelledKeepsAccess": "このプランは{{date}}まで引き続きご利用いただけます。"
 }

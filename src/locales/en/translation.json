@@ -773,5 +773,12 @@
   "appleInAppPurchase": "Apple In-App Purchase",
   "cardPayment": "Card payment",
   "subscriptionStatus": "Subscription status",
-  "trialStatus": "Trial status"
+  "trialStatus": "Trial status",
+  "trialEnds": "Trial ends",
+  "accessUntil": "Access until",
+  "endedOn": "Ended on",
+  "trialing": "Trialing",
+  "cancelled": "Cancelled",
+  "subscriptionCancelled": "Subscription cancelled",
+  "cancelledKeepsAccess": "You can keep using this plan until {{date}}."
 }

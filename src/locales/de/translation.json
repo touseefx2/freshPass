@@ -764,5 +764,12 @@
   "appleInAppPurchase": "Apple In-App-Kauf",
   "cardPayment": "Kartenzahlung",
   "subscriptionStatus": "Abonnementstatus",
-  "trialStatus": "Teststatus"
+  "trialStatus": "Teststatus",
+  "trialEnds": "Test endet",
+  "accessUntil": "Zugang bis",
+  "endedOn": "Beendet am",
+  "trialing": "Testphase",
+  "cancelled": "Gekündigt",
+  "subscriptionCancelled": "Abonnement gekündigt",
+  "cancelledKeepsAccess": "Sie können diesen Tarif bis zum {{date}} weiter nutzen."
 }

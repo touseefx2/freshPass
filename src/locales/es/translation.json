@@ -764,5 +764,12 @@
   "appleInAppPurchase": "Compra dentro de la app de Apple",
   "cardPayment": "Pago con tarjeta",
   "subscriptionStatus": "Estado de la suscripción",
-  "trialStatus": "Estado de la prueba"
+  "trialStatus": "Estado de la prueba",
+  "trialEnds": "La prueba termina",
+  "accessUntil": "Acceso hasta",
+  "endedOn": "Finalizó el",
+  "trialing": "Prueba",
+  "cancelled": "Cancelada",
+  "subscriptionCancelled": "Suscripción cancelada",
+  "cancelledKeepsAccess": "Puedes seguir usando este plan hasta el {{date}}."
 }

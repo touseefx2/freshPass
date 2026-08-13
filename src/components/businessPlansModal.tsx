@@ -581,9 +581,15 @@ function BusinessPlansModalContent({
       .filter((s) => selectedAddOnIds.includes(s.id))
       .some((s) => isFeaturedAddOn(s));
 
+  const finishSubscriptionSuccess = () => {
+    onSuccess?.();
+    onClose();
+    dispatch(fetchUserStatus({ showError: false }));
+  };
+
   const completeSubscriptionSuccess = async (isTrial: boolean) => {
     setProcessingPayment(true);
-    setTimeout(async () => {
+    setTimeout(() => {
       setProcessingPayment(false);
       const successMessage = isTrial
         ? t("trialStartedSuccess") ??
@@ -591,9 +597,7 @@ function BusinessPlansModalContent({
         : t("paymentSuccessful") ??
           "Payment successful! Your subscription will be activated.";
       showBanner(t("success"), successMessage, "success", 4000);
-      onClose();
-      await dispatch(fetchUserStatus({ showError: true })).unwrap();
-      onSuccess?.();
+      finishSubscriptionSuccess();
     }, 2500);
   };
 
@@ -623,9 +627,7 @@ function BusinessPlansModalContent({
       "success",
       4000,
     );
-    onClose();
-    await dispatch(fetchUserStatus({ showError: true })).unwrap();
-    onSuccess?.();
+    finishSubscriptionSuccess();
   };
 
   const handleStripeSubscribe = async (

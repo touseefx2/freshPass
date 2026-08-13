@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import { StyleSheet, ScrollView, View, Text, Alert } from "react-native";
 import { useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -23,6 +23,12 @@ import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import {
+  getSubscriptionDateDisplay,
+  isStripeCancelled,
+  isSubscriptionTrialing,
+  pickAccessibleSubscription,
+} from "@/src/utils/subscriptionLifecycle";
 
 dayjs.extend(customParseFormat);
 
@@ -41,6 +47,9 @@ interface SubscriptionData {
   visits: any;
   status: string;
   stripeStatus: string;
+  hasAccess?: boolean;
+  hasEnded?: boolean;
+  trialStartsAt: string | null;
   trialEndsAt: string | null;
   endsAt: string | null;
   paymentDate: string | null;
@@ -53,7 +62,7 @@ interface SubscriptionData {
   createdAt: string;
   deleted_at: string | null;
   appointments: any[];
-  hasTrialAvailable: boolean;
+  hasTrialAvailable?: boolean;
 }
 
 interface SubscriptionResponse {
@@ -480,62 +489,90 @@ export default function SubscriptionScreen() {
   const [businessPlansModalVisible, setBusinessPlansModalVisible] =
     useState(false);
 
-  const isTrialing =
-    (subscription?.status === "active" &&
-      subscription?.stripeStatus === "trialing") ||
-    !!subscription?.hasTrialAvailable;
-  const isActive =
-    subscription?.status === "active" &&
-    subscription?.stripeStatus === "active";
-  const isCancelled =
-    subscription?.stripeStatus === "cancelled" ||
-    subscription?.stripeStatus === "canceled";
+  const isCancelled = isStripeCancelled(subscription?.stripeStatus);
+  const isTrialing = subscription
+    ? isSubscriptionTrialing(subscription)
+    : false;
   const isApplePayment =
     subscription?.paymentProvider?.toLowerCase() === "apple";
+  const canCancel =
+    !!subscription && !isApplePayment && !isCancelled && !subscription.hasEnded;
+  const dateDisplay = subscription
+    ? getSubscriptionDateDisplay(subscription)
+    : null;
 
-  const fetchSubscription = async () => {
-    setLoading(true);
-    setError(null);
-    setApiError(false);
-    try {
-      const response = await ApiService.get<SubscriptionResponse>(
-        businessEndpoints.subscriptions("active", "business"),
-      );
+  const fetchSeqRef = useRef(0);
+  const refetchingAfterPurchaseRef = useRef(false);
 
-      if (
-        response.success &&
-        response.data?.data &&
-        Array.isArray(response.data.data) &&
-        response.data.data.length > 0
-      ) {
-        const firstSubscription = response.data.data[0];
-        setSubscription(firstSubscription);
-        setError(null);
-        setApiError(false);
-      } else {
-        // Empty response - not an error, just no subscription
+  const fetchSubscription = useCallback(
+    async (options?: { retries?: number }) => {
+      const retries = options?.retries ?? 0;
+      const seq = ++fetchSeqRef.current;
+      setLoading(true);
+      setError(null);
+      setApiError(false);
+      try {
+        // `status=active` can still include ended rows until the daily close job
+        // runs. Entitlement is decided by hasAccess, not the stored status.
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          const response = await ApiService.get<SubscriptionResponse>(
+            businessEndpoints.subscriptions("active", "business"),
+          );
+
+          if (seq !== fetchSeqRef.current) return;
+
+          const rows = Array.isArray(response.data?.data)
+            ? response.data.data
+            : [];
+          const accessible = pickAccessibleSubscription(rows);
+
+          if (response.success && accessible) {
+            setSubscription(accessible);
+            setError(null);
+            setApiError(false);
+            return;
+          }
+
+          if (attempt < retries) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            if (seq !== fetchSeqRef.current) return;
+          }
+        }
+
         setSubscription(null);
         setError(null);
         setApiError(false);
+      } catch (err: any) {
+        if (seq !== fetchSeqRef.current) return;
+        setError(err.message || t("failedToLoadSubscription"));
+        setApiError(true);
+        showBanner(
+          t("error"),
+          err.message || t("failedToLoadSubscription"),
+          "error",
+          2500,
+        );
+      } finally {
+        if (seq === fetchSeqRef.current) {
+          setLoading(false);
+        }
       }
-    } catch (err: any) {
-      setError(err.message || t("failedToLoadSubscription"));
-      setApiError(true);
-      showBanner(
-        t("error"),
-        err.message || t("failedToLoadSubscription"),
-        "error",
-        2500,
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [showBanner, t],
+  );
+
+  const handlePlanPurchaseSuccess = useCallback(() => {
+    refetchingAfterPurchaseRef.current = true;
+    void fetchSubscription({ retries: 3 }).finally(() => {
+      refetchingAfterPurchaseRef.current = false;
+    });
+  }, [fetchSubscription]);
 
   useFocusEffect(
     useCallback(() => {
+      if (refetchingAfterPurchaseRef.current) return;
       fetchSubscription();
-    }, []),
+    }, [fetchSubscription]),
   );
 
   const cancelCurrentSubscription = async () => {
@@ -661,13 +698,34 @@ export default function SubscriptionScreen() {
   };
 
   const remainingDays = useMemo(() => {
-    if (!subscription) return null;
-    // Trial: prefer trial end; otherwise next payment date
-    const targetDate = isTrialing
-      ? subscription.trialEndsAt || subscription.nextPaymentDate
-      : subscription.nextPaymentDate;
-    return calculateRemainingDays(targetDate);
-  }, [subscription, isTrialing]);
+    if (!subscription || !dateDisplay) return null;
+    return calculateRemainingDays(dateDisplay.date);
+  }, [subscription, dateDisplay]);
+
+  const dateLabel = useMemo(() => {
+    if (!dateDisplay) return t("nextPaymentDate");
+    switch (dateDisplay.kind) {
+      case "trialEnds":
+        return t("trialEnds");
+      case "accessUntil":
+        return t("accessUntil");
+      case "endedOn":
+        return t("endedOn");
+      default:
+        return t("nextPaymentDate");
+    }
+  }, [dateDisplay, t]);
+
+  const statusBadgeLabel = useMemo(() => {
+    if (!subscription) return "";
+    if (isTrialing) return t("trialing").toUpperCase();
+    if (isCancelled) return t("cancelled").toUpperCase();
+    return (subscription.status || "").toUpperCase();
+  }, [subscription, isTrialing, isCancelled, t]);
+
+  const formattedScheduleDate = dateDisplay?.date
+    ? formatTrialEndDate(dateDisplay.date)
+    : t("notAvailable");
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -707,7 +765,6 @@ export default function SubscriptionScreen() {
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Trial Status Banner */}
           {isTrialing && (
             <View style={styles.trialBanner}>
               <LinearGradient
@@ -728,6 +785,35 @@ export default function SubscriptionScreen() {
                 <View style={styles.trialBannerIcon}>
                   <Feather
                     name="gift"
+                    size={moderateWidthScale(24)}
+                    color={theme.white}
+                  />
+                </View>
+              </LinearGradient>
+            </View>
+          )}
+
+          {isCancelled && (
+            <View style={styles.trialBanner}>
+              <LinearGradient
+                colors={[theme.darkGreenLight, theme.darkGreen]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.trialBannerGradient}
+              >
+                <View style={styles.trialBannerLeft}>
+                  <Text style={styles.trialBannerTitle}>
+                    {t("subscriptionCancelled")}
+                  </Text>
+                  <Text style={styles.trialBannerSubtitle}>
+                    {t("cancelledKeepsAccess", {
+                      date: formatTrialEndDate(subscription.endsAt),
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.trialBannerIcon}>
+                  <Feather
+                    name="clock"
                     size={moderateWidthScale(24)}
                     color={theme.white}
                   />
@@ -758,9 +844,7 @@ export default function SubscriptionScreen() {
                   </View>
                 </View>
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>
-                    {subscription.status.toUpperCase()}
-                  </Text>
+                  <Text style={styles.statusText}>{statusBadgeLabel}</Text>
                 </View>
               </View>
               {subscription.subscriptionPlanDescription && (
@@ -855,7 +939,11 @@ export default function SubscriptionScreen() {
                     {isTrialing ? t("trialStarted") : t("subscriptionStarted")}
                   </Text>
                   <Text style={styles.infoValue}>
-                    {subscription.createdAt || t("notAvailable")}
+                    {formatTrialEndDate(
+                      (isTrialing
+                        ? subscription.trialStartsAt
+                        : subscription.createdAt) || subscription.createdAt,
+                    ) || t("notAvailable")}
                   </Text>
                 </View>
               </View>
@@ -869,10 +957,8 @@ export default function SubscriptionScreen() {
                   />
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>{t("nextPaymentDate")}</Text>
-                  <Text style={styles.infoValue}>
-                    {subscription.nextPaymentDate || t("notAvailable")}
-                  </Text>
+                  <Text style={styles.infoLabel}>{dateLabel}</Text>
+                  <Text style={styles.infoValue}>{formattedScheduleDate}</Text>
                 </View>
               </View>
             </View>
@@ -915,8 +1001,7 @@ export default function SubscriptionScreen() {
             )}
           </View>
 
-          {/* Cancel   Button */}
-          {(isTrialing || isActive) && !isApplePayment && !isCancelled && (
+          {canCancel && (
             <View style={styles.buttonContainer}>
               <Text style={styles.cancelHintText}>
                 {isTrialing
@@ -940,13 +1025,11 @@ export default function SubscriptionScreen() {
           )}
         </ScrollView>
       )}
-      {!subscription && (
-        <BusinessPlansModal
-          visible={businessPlansModalVisible}
-          onClose={() => setBusinessPlansModalVisible(false)}
-          onSuccess={fetchSubscription}
-        />
-      )}
+      <BusinessPlansModal
+        visible={businessPlansModalVisible}
+        onClose={() => setBusinessPlansModalVisible(false)}
+        onSuccess={handlePlanPurchaseSuccess}
+      />
     </SafeAreaView>
   );
 }
