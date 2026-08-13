@@ -743,6 +743,13 @@
   "cancelSubscriptionConfirm": "Möchten Sie Ihr Abonnement wirklich kündigen?",
   "no": "Nein",
   "yesCancelTrial": "Ja, Testversion kündigen",
+  "yesCancelSubscription": "Ja, Abonnement kündigen",
+  "cancelTrialHint": "Wenn Sie kündigen, werden Ihnen keine Kosten berechnet. Sie können Ihre Testversion bis zum {{date}} weiter nutzen.",
+  "cancelSubscriptionHint": "Wenn Sie kündigen, bleibt Ihr Abonnement bis zum {{date}} aktiv. Es werden keine weiteren Kosten berechnet.",
+  "trialCancelledSuccessfully": "Testversion erfolgreich gekündigt",
+  "subscriptionCancelledSuccessfully": "Abonnement erfolgreich gekündigt",
+  "failedToCancelTrial": "Testversion konnte nicht gekündigt werden",
+  "failedToCancelSubscription": "Abonnement konnte nicht gekündigt werden",
   "noActiveSubscriptionFound": "Kein aktives Abonnement gefunden",
   "freeTrialActive": "Kostenlose Testversion aktiv",
   "yourTrialEndsOn": "Ihre Testversion endet am",
@@ -756,5 +763,6 @@
   "paymentProvider": "Zahlungsanbieter",
   "appleInAppPurchase": "Apple In-App-Kauf",
   "cardPayment": "Kartenzahlung",
-  "subscriptionStatus": "Abonnementstatus"
+  "subscriptionStatus": "Abonnementstatus",
+  "trialStatus": "Teststatus"
 }

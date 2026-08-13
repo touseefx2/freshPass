@@ -743,6 +743,13 @@
   "cancelSubscriptionConfirm": "¿Estás seguro de que quieres cancelar tu suscripción?",
   "no": "No",
   "yesCancelTrial": "Sí, cancelar prueba",
+  "yesCancelSubscription": "Sí, cancelar suscripción",
+  "cancelTrialHint": "Si cancelas, no se te cobrará. Puedes seguir usando tu prueba hasta el {{date}}.",
+  "cancelSubscriptionHint": "Si cancelas, tu suscripción seguirá activa hasta el {{date}}. No se te volverá a cobrar.",
+  "trialCancelledSuccessfully": "Prueba cancelada correctamente",
+  "subscriptionCancelledSuccessfully": "Suscripción cancelada correctamente",
+  "failedToCancelTrial": "No se pudo cancelar la prueba",
+  "failedToCancelSubscription": "No se pudo cancelar la suscripción",
   "noActiveSubscriptionFound": "No se encontró suscripción activa",
   "freeTrialActive": "Prueba gratuita activa",
   "yourTrialEndsOn": "Tu prueba termina el",
@@ -756,5 +763,6 @@
   "paymentProvider": "Proveedor de pago",
   "appleInAppPurchase": "Compra dentro de la app de Apple",
   "cardPayment": "Pago con tarjeta",
-  "subscriptionStatus": "Estado de la suscripción"
+  "subscriptionStatus": "Estado de la suscripción",
+  "trialStatus": "Estado de la prueba"
 }

@@ -743,6 +743,13 @@
   "cancelSubscriptionConfirm": "هل أنت متأكد أنك تريد إلغاء اشتراكك؟",
   "no": "لا",
   "yesCancelTrial": "نعم، إلغاء الفترة التجريبية",
+  "yesCancelSubscription": "نعم، إلغاء الاشتراك",
+  "cancelTrialHint": "إذا ألغيت، لن يتم تحصيل رسوم منك. يمكنك متابعة استخدام الفترة التجريبية حتى {{date}}.",
+  "cancelSubscriptionHint": "إذا ألغيت، سيبقى اشتراكك نشطًا حتى {{date}}. لن يتم تحصيل رسوم مرة أخرى.",
+  "trialCancelledSuccessfully": "تم إلغاء الفترة التجريبية بنجاح",
+  "subscriptionCancelledSuccessfully": "تم إلغاء الاشتراك بنجاح",
+  "failedToCancelTrial": "فشل إلغاء الفترة التجريبية",
+  "failedToCancelSubscription": "فشل إلغاء الاشتراك",
   "noActiveSubscriptionFound": "لم يتم العثور على اشتراك نشط",
   "freeTrialActive": "الفترة التجريبية المجانية نشطة",
   "yourTrialEndsOn": "تنتهي فترتك التجريبية في",
@@ -756,5 +763,6 @@
   "paymentProvider": "مزود الدفع",
   "appleInAppPurchase": "شراء داخل التطبيق عبر Apple",
   "cardPayment": "الدفع بالبطاقة",
-  "subscriptionStatus": "حالة الاشتراك"
+  "subscriptionStatus": "حالة الاشتراك",
+  "trialStatus": "حالة الفترة التجريبية"
 }

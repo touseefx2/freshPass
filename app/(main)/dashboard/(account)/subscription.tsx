@@ -21,6 +21,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useTranslation } from "react-i18next";
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+
+dayjs.extend(customParseFormat);
 
 interface SubscriptionData {
   id: number;
@@ -40,8 +44,8 @@ interface SubscriptionData {
   trialEndsAt: string | null;
   endsAt: string | null;
   paymentDate: string | null;
-  nextPaymentDate: string;
-  remainingDays: number;
+  nextPaymentDate: string | null;
+  remainingDays: number | null;
   stripePaymentIntentId: string;
   stripePaymentUrl: string;
   cardLastFour: string | null;
@@ -49,6 +53,7 @@ interface SubscriptionData {
   createdAt: string;
   deleted_at: string | null;
   appointments: any[];
+  hasTrialAvailable: boolean;
 }
 
 interface SubscriptionResponse {
@@ -310,6 +315,14 @@ const createStyles = (theme: Theme) =>
       marginHorizontal: moderateWidthScale(20),
       marginVertical: moderateHeightScale(32),
     },
+    cancelHintText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size18,
+      marginBottom: moderateHeightScale(12),
+    },
     emptyContainer: {
       flex: 1,
       justifyContent: "center",
@@ -468,11 +481,15 @@ export default function SubscriptionScreen() {
     useState(false);
 
   const isTrialing =
-    subscription?.status === "active" &&
-    subscription?.stripeStatus === "trialing";
+    (subscription?.status === "active" &&
+      subscription?.stripeStatus === "trialing") ||
+    !!subscription?.hasTrialAvailable;
   const isActive =
     subscription?.status === "active" &&
     subscription?.stripeStatus === "active";
+  const isCancelled =
+    subscription?.stripeStatus === "cancelled" ||
+    subscription?.stripeStatus === "canceled";
   const isApplePayment =
     subscription?.paymentProvider?.toLowerCase() === "apple";
 
@@ -521,12 +538,57 @@ export default function SubscriptionScreen() {
     }, []),
   );
 
-  const cancelTrialSubscription = async () => {
+  const cancelCurrentSubscription = async () => {
+    if (!subscription) return;
+
+    setCancelling(true);
     dispatch(setActionLoader(true));
+    try {
+      const response = await ApiService.patch<{
+        success: boolean;
+        message: string;
+      }>(businessEndpoints.cancelSubscription(subscription.id), {});
+
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message ||
+            (isTrialing
+              ? t("trialCancelledSuccessfully")
+              : t("subscriptionCancelledSuccessfully")),
+          "success",
+          2500,
+        );
+        await fetchSubscription();
+      } else {
+        showBanner(
+          t("error"),
+          response.message ||
+            (isTrialing
+              ? t("failedToCancelTrial")
+              : t("failedToCancelSubscription")),
+          "error",
+          2500,
+        );
+      }
+    } catch (err: any) {
+      showBanner(
+        t("error"),
+        err.message ||
+          (isTrialing
+            ? t("failedToCancelTrial")
+            : t("failedToCancelSubscription")),
+        "error",
+        2500,
+      );
+    } finally {
+      setCancelling(false);
+      dispatch(setActionLoader(false));
+    }
   };
 
   const handleCancel = () => {
-    if (!subscription) return;
+    if (!subscription || cancelling) return;
 
     Alert.alert(
       isTrialing ? t("cancelTrial") : t("cancelSubscription"),
@@ -537,9 +599,11 @@ export default function SubscriptionScreen() {
           style: "cancel",
         },
         {
-          text: t("yesCancelTrial"),
+          text: isTrialing ? t("yesCancelTrial") : t("yesCancelSubscription"),
           style: "destructive",
-          onPress: async () => {},
+          onPress: () => {
+            cancelCurrentSubscription();
+          },
         },
       ],
       { cancelable: true },
@@ -566,20 +630,44 @@ export default function SubscriptionScreen() {
     return capitalizeFirstLetter(provider);
   };
 
+  /** Parse API dates: "MM/DD/YYYY" or ISO. Hermes rejects bare MM/DD/YYYY via `new Date()`. */
+  const parseSubscriptionDate = (dateString: string) => {
+    const slashFormat = dayjs(dateString, "MM/DD/YYYY", true);
+    if (slashFormat.isValid()) return slashFormat.startOf("day");
+
+    const iso = dayjs(dateString);
+    if (iso.isValid()) return iso.startOf("day");
+
+    return null;
+  };
+
   const formatTrialEndDate = (dateString: string | null) => {
     if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      const options: Intl.DateTimeFormatOptions = {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      };
-      return date.toLocaleDateString("en-US", options);
-    } catch (error) {
-      return dateString;
-    }
+    const parsed = parseSubscriptionDate(dateString);
+    if (!parsed) return dateString;
+    return parsed.format("MMMM D, YYYY");
   };
+
+  /** Days left until next payment / trial end — calculated on device, not from API. */
+  const calculateRemainingDays = (
+    targetDate: string | null | undefined,
+  ): number | null => {
+    if (!targetDate) return null;
+    const next = parseSubscriptionDate(targetDate);
+    if (!next) return null;
+
+    const days = next.diff(dayjs().startOf("day"), "day");
+    return Math.max(0, days);
+  };
+
+  const remainingDays = useMemo(() => {
+    if (!subscription) return null;
+    // Trial: prefer trial end; otherwise next payment date
+    const targetDate = isTrialing
+      ? subscription.trialEndsAt || subscription.nextPaymentDate
+      : subscription.nextPaymentDate;
+    return calculateRemainingDays(targetDate);
+  }, [subscription, isTrialing]);
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -749,7 +837,7 @@ export default function SubscriptionScreen() {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>{t("daysRemaining")}</Text>
                   <Text style={styles.infoValue}>
-                    {subscription.remainingDays}
+                    {remainingDays ?? t("notAvailable")}
                   </Text>
                 </View>
               </View>
@@ -798,7 +886,7 @@ export default function SubscriptionScreen() {
               </View>
               <View style={styles.paymentProviderContent}>
                 <Text style={styles.paymentProviderLabel}>
-                  {t("subscriptionStatus")}
+                  {isTrialing ? t("trialStatus") : t("subscriptionStatus")}
                 </Text>
                 <Text style={styles.paymentProviderValue}>
                   {capitalizeFirstLetter(subscription.stripeStatus) ||
@@ -827,9 +915,20 @@ export default function SubscriptionScreen() {
             )}
           </View>
 
-          {/* Cancel Trial Button */}
-          {(isTrialing || isActive) && !isApplePayment && (
+          {/* Cancel   Button */}
+          {(isTrialing || isActive) && !isApplePayment && !isCancelled && (
             <View style={styles.buttonContainer}>
+              <Text style={styles.cancelHintText}>
+                {isTrialing
+                  ? t("cancelTrialHint", {
+                      date: formatTrialEndDate(subscription.trialEndsAt),
+                    })
+                  : t("cancelSubscriptionHint", {
+                      date: formatTrialEndDate(
+                        subscription.nextPaymentDate || subscription.endsAt,
+                      ),
+                    })}
+              </Text>
               <Button
                 title={isTrialing ? t("cancelTrial") : t("cancelSubscription")}
                 onPress={handleCancel}

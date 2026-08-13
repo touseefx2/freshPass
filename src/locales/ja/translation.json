@@ -743,6 +743,13 @@
   "cancelSubscriptionConfirm": "サブスクリプションをキャンセルしてもよろしいですか？",
   "no": "いいえ",
   "yesCancelTrial": "はい、トライアルをキャンセル",
+  "yesCancelSubscription": "はい、サブスクリプションをキャンセル",
+  "cancelTrialHint": "キャンセルしても料金は発生しません。トライアルは{{date}}までご利用いただけます。",
+  "cancelSubscriptionHint": "キャンセルしても、サブスクリプションは{{date}}まで有効です。以降の請求はありません。",
+  "trialCancelledSuccessfully": "トライアルをキャンセルしました",
+  "subscriptionCancelledSuccessfully": "サブスクリプションをキャンセルしました",
+  "failedToCancelTrial": "トライアルのキャンセルに失敗しました",
+  "failedToCancelSubscription": "サブスクリプションのキャンセルに失敗しました",
   "noActiveSubscriptionFound": "アクティブなサブスクリプションが見つかりません",
   "freeTrialActive": "無料トライアル有効",
   "yourTrialEndsOn": "トライアル終了日",
@@ -756,5 +763,6 @@
   "paymentProvider": "決済プロバイダー",
   "appleInAppPurchase": "Appleアプリ内購入",
   "cardPayment": "カード決済",
-  "subscriptionStatus": "サブスクリプションステータス"
+  "subscriptionStatus": "サブスクリプションステータス",
+  "trialStatus": "トライアルステータス"
 }

@@ -743,6 +743,13 @@
   "cancelSubscriptionConfirm": "Êtes-vous sûr de vouloir annuler votre abonnement ?",
   "no": "Non",
   "yesCancelTrial": "Oui, annuler l'essai",
+  "yesCancelSubscription": "Oui, annuler l'abonnement",
+  "cancelTrialHint": "Si vous annulez, vous ne serez pas facturé. Vous pouvez continuer à utiliser votre essai jusqu'au {{date}}.",
+  "cancelSubscriptionHint": "Si vous annulez, votre abonnement restera actif jusqu'au {{date}}. Vous ne serez plus facturé.",
+  "trialCancelledSuccessfully": "Essai annulé avec succès",
+  "subscriptionCancelledSuccessfully": "Abonnement annulé avec succès",
+  "failedToCancelTrial": "Échec de l'annulation de l'essai",
+  "failedToCancelSubscription": "Échec de l'annulation de l'abonnement",
   "noActiveSubscriptionFound": "Aucun abonnement actif trouvé",
   "freeTrialActive": "Essai gratuit actif",
   "yourTrialEndsOn": "Votre essai se termine le",
@@ -756,5 +763,6 @@
   "paymentProvider": "Fournisseur de paiement",
   "appleInAppPurchase": "Achat intégré Apple",
   "cardPayment": "Paiement par carte",
-  "subscriptionStatus": "Statut de l'abonnement"
+  "subscriptionStatus": "Statut de l'abonnement",
+  "trialStatus": "Statut de l'essai"
 }

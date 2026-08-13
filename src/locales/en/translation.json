@@ -752,6 +752,13 @@
   "cancelSubscriptionConfirm": "Are you sure you want to cancel your subscription?",
   "no": "No",
   "yesCancelTrial": "Yes, cancel trial",
+  "yesCancelSubscription": "Yes, cancel subscription",
+  "cancelTrialHint": "If you cancel, you won't be charged. You can keep using your trial until {{date}}.",
+  "cancelSubscriptionHint": "If you cancel, your subscription will remain active until {{date}}. You won't be charged again.",
+  "trialCancelledSuccessfully": "Trial cancelled successfully",
+  "subscriptionCancelledSuccessfully": "Subscription cancelled successfully",
+  "failedToCancelTrial": "Failed to cancel trial",
+  "failedToCancelSubscription": "Failed to cancel subscription",
   "noActiveSubscriptionFound": "No active subscription found",
   "freeTrialActive": "Free trial active",
   "yourTrialEndsOn": "Your trial ends on",
@@ -765,5 +772,6 @@
   "paymentProvider": "Payment provider",
   "appleInAppPurchase": "Apple In-App Purchase",
   "cardPayment": "Card payment",
-  "subscriptionStatus": "Subscription status"
+  "subscriptionStatus": "Subscription status",
+  "trialStatus": "Trial status"
 }
