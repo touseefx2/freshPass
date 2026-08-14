@@ -146,14 +146,14 @@ export const createStyles = (theme: Theme) =>
       width: "100%",
       flexDirection: "row",
       flexWrap: "wrap",
-      alignItems: "center",
-      rowGap: moderateHeightScale(12),
+      alignItems: "flex-start",
+      rowGap: moderateHeightScale(16),
       paddingHorizontal: moderateWidthScale(20),
       gap: "5%",
+      paddingBottom: moderateHeightScale(8),
     },
     categoryCard: {
       width: "30%",
-      height: isTablet ? heightScale(238) : heightScale(118),
       position: "relative",
     },
 
@@ -176,17 +176,19 @@ export const createStyles = (theme: Theme) =>
       borderWidth: 3,
     },
     categoryLabelContainer: {
-      flex: 1,
+      minHeight: isTablet ? heightScale(48) : heightScale(40),
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(2),
       backgroundColor: theme.background,
     },
     categoryLabel: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
       textAlign: "center",
+      lineHeight: fontSize.size16,
+      width: "100%",
     },
     emptyStateContainer: {
       flex: 1,
@@ -516,9 +518,7 @@ export default function StepOne({
                         resizeMode="cover"
                       />
                       <View style={styles.categoryLabelContainer}>
-                        <Text numberOfLines={2} style={styles.categoryLabel}>
-                          {item.name}
-                        </Text>
+                        <Text style={styles.categoryLabel}>{item.name}</Text>
                       </View>
                     </Pressable>
                   );

@@ -100,7 +100,8 @@ const createStyles = (theme: Theme) =>
       // maxWidth: isTablet ? moderateWidthScale(620) : undefined,
       alignSelf: "center",
       paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(20),
+      paddingTop: moderateHeightScale(20),
+      paddingBottom: moderateHeightScale(28),
     },
     categoriesGridSkeleton: {
       width: "100%",
@@ -108,12 +109,16 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(20),
       flexDirection: "row",
       flexWrap: "wrap",
+      alignItems: "flex-start",
       gap: "5%",
-      rowGap: moderateHeightScale(12),
+      rowGap: moderateHeightScale(16),
     },
     categoryCard: {
       width: "30%",
-      height: isTablet ? heightScale(238) : heightScale(118),
+      position: "relative",
+    },
+    categoryImageWrap: {
+      width: "100%",
       position: "relative",
     },
     categoryImage: {
@@ -135,21 +140,23 @@ const createStyles = (theme: Theme) =>
       borderWidth: 3,
     },
     categoryLabelContainer: {
-      flex: 1,
+      minHeight: isTablet ? heightScale(48) : heightScale(40),
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(2),
       backgroundColor: theme.background,
     },
     categoryLabel: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
       textAlign: "center",
+      lineHeight: fontSize.size16,
+      width: "100%",
     },
     selectedBadge: {
       position: "absolute",
-      bottom: isTablet ? moderateHeightScale(62) : moderateHeightScale(45),
+      bottom: moderateHeightScale(8),
       left: moderateWidthScale(8),
       width: moderateWidthScale(24),
       height: moderateWidthScale(24),
@@ -316,35 +323,35 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
           onPress={() => handleSelectCategory(item.id)}
           style={styles.categoryCard}
         >
-          {isSelected && selectedIndex && (
-            <View style={styles.selectedBadge}>
-              <Text style={styles.selectedBadgeText}>{selectedIndex}</Text>
-            </View>
-          )}
-          <Image
-            source={{
-              uri: item?.imageUrl
-                ? item.imageUrl.startsWith("http://") ||
-                  item.imageUrl.startsWith("https://")
-                  ? item.imageUrl
-                  : process.env.EXPO_PUBLIC_API_BASE_URL + item.imageUrl
-                : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
-            }}
-            style={[
-              styles.categoryImage,
-              isSelected && styles.categoryCardSelected,
-            ]}
-            resizeMode="cover"
-          />
+          <View style={styles.categoryImageWrap}>
+            {isSelected && selectedIndex && (
+              <View style={styles.selectedBadge}>
+                <Text style={styles.selectedBadgeText}>{selectedIndex}</Text>
+              </View>
+            )}
+            <Image
+              source={{
+                uri: item?.imageUrl
+                  ? item.imageUrl.startsWith("http://") ||
+                    item.imageUrl.startsWith("https://")
+                    ? item.imageUrl
+                    : process.env.EXPO_PUBLIC_API_BASE_URL + item.imageUrl
+                  : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
+              }}
+              style={[
+                styles.categoryImage,
+                isSelected && styles.categoryCardSelected,
+              ]}
+              resizeMode="cover"
+            />
+          </View>
           <View style={styles.categoryLabelContainer}>
-            <Text numberOfLines={2} style={styles.categoryLabel}>
-              {item.name}
-            </Text>
+            <Text style={styles.categoryLabel}>{item.name}</Text>
           </View>
         </Pressable>
       );
     },
-    [selectedCategories, handleSelectCategory],
+    [selectedCategories, handleSelectCategory, styles],
   );
 
   const handleSkip = () => {
@@ -452,7 +459,8 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
                   numColumns={3}
                   columnWrapperStyle={{
                     gap: columnGap,
-                    marginBottom: moderateHeightScale(12),
+                    marginBottom: moderateHeightScale(16),
+                    alignItems: "flex-start",
                   }}
                   contentContainerStyle={styles.categoriesGrid}
                   showsVerticalScrollIndicator={false}
