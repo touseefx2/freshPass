@@ -47,6 +47,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
   setActionLoader,
   setActionLoaderTitle,
+  setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import { Portal } from "@gorhom/portal";
 
@@ -141,6 +142,39 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     subtitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    infoCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
+      gap: moderateHeightScale(12),
+    },
+    infoHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+    },
+    infoIconWrap: {
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.orangeBrown30,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    infoHeaderText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    infoBodyText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
@@ -411,6 +445,14 @@ export default function ManageSubscriptionsScreen() {
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((state) => state.user);
   const businessId = user?.business_id ?? "";
+  const canCreatePlans =
+    user?.businessStatus?.stripe_onboarding_status === "completed";
+
+  const requireStripeToCreate = () => {
+    if (canCreatePlans) return true;
+    dispatch(setStripeConnectModalVisible(true));
+    return false;
+  };
 
   const { subscriptions, businessServices } = useAppSelector(
     (state) => state.completeProfile,
@@ -911,6 +953,7 @@ export default function ManageSubscriptionsScreen() {
   };
 
   const handleOpenAddSubscription = () => {
+    if (!requireStripeToCreate()) return;
     setAddSubscriptionVisible(true);
   };
 
@@ -927,6 +970,7 @@ export default function ManageSubscriptionsScreen() {
     serviceIds: string[];
     serviceCounts?: Record<string, number>;
   }) => {
+    if (!requireStripeToCreate()) return;
     setCustomSuggestions((prev) => [
       ...prev,
       { ...subscription, servicesPerMonth: 0 },
@@ -936,6 +980,7 @@ export default function ManageSubscriptionsScreen() {
   const handleSelectSuggestion = (
     suggestion: (typeof popularSuggestions)[0],
   ) => {
+    if (!requireStripeToCreate()) return;
     const isSelected = subscriptions.some((s) => s.id === suggestion.id);
     if (isSelected) {
       dispatch(removeSubscription(suggestion.id));
@@ -949,6 +994,7 @@ export default function ManageSubscriptionsScreen() {
   };
 
   const handleUpdate = async () => {
+    if (!requireStripeToCreate()) return;
     setIsUpdating(true);
     try {
       const payload = subscriptions.map((subscription) => {
@@ -1020,6 +1066,7 @@ export default function ManageSubscriptionsScreen() {
   );
 
   const onClickAi = async () => {
+    if (!requireStripeToCreate()) return;
     if (showAiTooltipOverlay) dismissAiTooltipOverlay();
     if (generatedResult) {
       setModalVisible(true);
@@ -1085,20 +1132,42 @@ export default function ManageSubscriptionsScreen() {
         ) : (
           <>
             <View style={styles.titleSec}>
-              <Text style={styles.title}>Create subscription plans</Text>
-
+              <Text style={styles.title}>{t("createSubscriptionPlans")}</Text>
               <Text style={styles.subtitle}>
-                Offer monthly memberships to attract loyal customers and secure
-                recurring revenue.
+                {canCreatePlans
+                  ? "Offer monthly memberships to attract loyal customers and secure recurring revenue."
+                  : t("subscriptionPlansConnectStripeHint")}
               </Text>
             </View>
 
-            {subscriptions.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  You haven't added any subscription yet
+            {!canCreatePlans && (
+              <View style={styles.infoCard}>
+                <View style={styles.infoHeader}>
+                  <View style={styles.infoIconWrap}>
+                    <Feather
+                      name="info"
+                      size={moderateWidthScale(18)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <Text style={styles.infoHeaderText}>
+                    {t("subscriptionPlansConnectStripeRequired")}
+                  </Text>
+                </View>
+                <Text style={styles.infoBodyText}>
+                  {t("pleaseCompleteStripe")}
                 </Text>
               </View>
+            )}
+
+            {subscriptions.length === 0 ? (
+              canCreatePlans ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    You haven't added any subscription yet
+                  </Text>
+                </View>
+              ) : null
             ) : (
               <View style={styles.subscriptionsContainer}>
                 {subscriptions.map((subscription) => {
@@ -1194,7 +1263,8 @@ export default function ManageSubscriptionsScreen() {
               </View>
             )}
 
-            <View style={styles.popularSection}>
+            {canCreatePlans && (
+              <View style={styles.popularSection}>
               <View
                 style={{
                   flexDirection: "row",
@@ -1266,13 +1336,13 @@ export default function ManageSubscriptionsScreen() {
                     </View>
                   );
                 })}
-            </View>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
 
-      {/* AI Tool Button - Portal + Overlay (same as Step Nine) */}
-      {!loading && (
+      {!loading && canCreatePlans && (
         <Portal>
           <GestureDetector gesture={panGesture}>
             <AnimatedReanimated.View
@@ -1383,11 +1453,18 @@ export default function ManageSubscriptionsScreen() {
 
       {!loading && (
         <View style={styles.continueButtonContainer}>
-          <Button
-            title={t("update")}
-            onPress={handleUpdate}
-            disabled={isUpdating}
-          />
+          {canCreatePlans ? (
+            <Button
+              title={t("update")}
+              onPress={handleUpdate}
+              disabled={isUpdating}
+            />
+          ) : (
+            <Button
+              title={t("connectNow")}
+              onPress={() => dispatch(setStripeConnectModalVisible(true))}
+            />
+          )}
         </View>
       )}
 
@@ -1409,7 +1486,7 @@ export default function ManageSubscriptionsScreen() {
         onClose={() => setModalVisible(false)}
         plans={generatedResult?.generated_plans || []}
         onSelectedPlans={(selectedPlans) => {
-          // Convert selected plans from modal format to subscription format
+          if (!requireStripeToCreate()) return;
           let addedCount = 0;
           selectedPlans.forEach((plan) => {
             // Check if a subscription with the same name already exists
