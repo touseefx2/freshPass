@@ -105,6 +105,21 @@ export function getCustomerSubscriptionDateDisplay(
   return getSubscriptionDateDisplay(sub);
 }
 
+export function getCustomerScheduleDateLabel(
+  kind: SubscriptionDateKind,
+): string {
+  switch (kind) {
+    case "accessUntil":
+      return "Access until";
+    case "endedOn":
+      return "Ended on";
+    case "trialEnds":
+      return "Trial ends";
+    default:
+      return "Renewal";
+  }
+}
+
 /**
  * Days of access left. `remainingDays` counts down to next charge and is null
  * after cancel — compute from endsAt when present (guide §7).
@@ -152,4 +167,14 @@ export function formatCustomerSubscriptionDate(
   if (!parsed) return dateString;
   const month = parsed.toLocaleString("en-US", { month: "short" });
   return `${month} ${parsed.getDate()}, ${parsed.getFullYear()}`;
+}
+
+/** Format schedule date for UI; keep MM/DD/YYYY renewal dates as returned by API. */
+export function formatCustomerScheduleDate(
+  kind: SubscriptionDateKind,
+  date: string | null,
+): string | null {
+  if (!date) return null;
+  if (kind === "nextPayment") return date;
+  return formatCustomerSubscriptionDate(date) || date;
 }

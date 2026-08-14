@@ -23,6 +23,13 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import {
+  formatCustomerScheduleDate,
+  getCustomerScheduleDateLabel,
+  getCustomerSubscriptionDateDisplay,
+  getCustomerSubscriptionDisplayPrice,
+  getCustomerSubscriptionPill,
+} from "@/src/utils/customerSubscriptionLifecycle";
+import {
   setSelectedServices,
   setSelectedStaff,
   setSelectedDate,
@@ -175,6 +182,7 @@ interface SubscriptionData {
   subscriptionPlanId: number;
   subscriptionPlan: string;
   subscriptionPlanPrice: string;
+  totalPrice?: number;
   subscriptionPlanServices?: SubscriptionPlanService[];
   subscriptionPlanType: string;
   subscriptionPlanDescription: string;
@@ -184,9 +192,13 @@ interface SubscriptionData {
   business: string;
   subscriber: string;
   status: string;
+  stripeStatus?: string | null;
+  hasAccess?: boolean;
+  hasEnded?: boolean;
+  endsAt?: string | null;
   paymentDate: string | null;
-  nextPaymentDate: string;
-  remainingDays: number;
+  nextPaymentDate: string | null;
+  remainingDays: number | null;
   stripePaymentIntentId: string | null;
   stripePaymentUrl: string;
   cardLastFour: string | null;
@@ -2730,8 +2742,20 @@ export default function BookingNow() {
             </View>
 
             {/* Subscription Card - below Leave a note when isSubscriptionBooking */}
-            {isSubscriptionBooking && subscriptionData && (
-              <View style={styles.subscriptionCard}>
+              {isSubscriptionBooking && subscriptionData && (
+                <View style={styles.subscriptionCard}>
+                  {(() => {
+                    const pill = getCustomerSubscriptionPill(subscriptionData);
+                    const dateDisplay =
+                      getCustomerSubscriptionDateDisplay(subscriptionData);
+                    const scheduleDate = formatCustomerScheduleDate(
+                      dateDisplay.kind,
+                      dateDisplay.date,
+                    );
+                    const displayPrice =
+                      getCustomerSubscriptionDisplayPrice(subscriptionData);
+                    return (
+                      <>
                 <View style={styles.cardHeader}>
                   <View style={styles.planTitleRow}>
                     <Feather
@@ -2746,7 +2770,7 @@ export default function BookingNow() {
                   </View>
                   <View style={styles.statusBadge}>
                     <Text style={styles.statusText}>
-                      {subscriptionData.status.toUpperCase()}
+                      {pill.label.toUpperCase()}
                     </Text>
                   </View>
                 </View>
@@ -2764,7 +2788,7 @@ export default function BookingNow() {
                   </View>
                   <View style={styles.priceBadge}>
                     <Text style={styles.priceText}>
-                      ${subscriptionData.subscriptionPlanPrice}
+                      ${displayPrice}
                     </Text>
                     <Text style={styles.planPriceLabel}>/month</Text>
                   </View>
@@ -2776,9 +2800,7 @@ export default function BookingNow() {
                     </Text>
                   )}
 
-                  {(subscriptionData.paymentDate ||
-                    subscriptionData.status?.trim()?.toLowerCase() ===
-                      "active") && (
+                  {(subscriptionData.paymentDate || scheduleDate) && (
                     <View style={styles.paymentRenewalRow}>
                       {subscriptionData.paymentDate && (
                         <View style={styles.paymentDateContainer}>
@@ -2795,8 +2817,7 @@ export default function BookingNow() {
                           </View>
                         </View>
                       )}
-                      {subscriptionData.status?.trim()?.toLowerCase() ===
-                        "active" && (
+                      {scheduleDate && (
                         <View
                           style={[
                             styles.renewalContainer,
@@ -2811,10 +2832,10 @@ export default function BookingNow() {
                             color={theme.darkGreen}
                           />
                           <View style={styles.dateInfoContainer}>
-                            <Text style={styles.dateLabel}>Renewal</Text>
-                            <Text style={styles.dateValue}>
-                              {subscriptionData.nextPaymentDate}
+                            <Text style={styles.dateLabel}>
+                              {getCustomerScheduleDateLabel(dateDisplay.kind)}
                             </Text>
+                            <Text style={styles.dateValue}>{scheduleDate}</Text>
                           </View>
                         </View>
                       )}
@@ -2914,6 +2935,9 @@ export default function BookingNow() {
                       </>
                     )}
                 </View>
+                      </>
+                    );
+                  })()}
               </View>
             )}
 

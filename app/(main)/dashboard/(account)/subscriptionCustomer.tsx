@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   FlatList,
@@ -6,11 +6,13 @@ import {
   Text,
   ActivityIndicator,
   TouchableOpacity,
-  Alert,
   Modal,
   Pressable,
+  RefreshControl,
+  AppState,
+  type AppStateStatus,
 } from "react-native";
-import { useTheme, useAppDispatch } from "@/src/hooks/hooks";
+import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -20,13 +22,24 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { Feather } from "@expo/vector-icons";
 import RetryButton from "@/src/components/retryButton";
 import { Dropdown } from "react-native-element-dropdown";
 import { useTranslation } from "react-i18next";
+import {
+  canBookCustomerSubscription,
+  canCancelCustomerSubscription,
+  formatCustomerServiceDuration,
+  formatCustomerSubscriptionDate,
+  getCustomerSubscriptionDateDisplay,
+  getCustomerSubscriptionDisplayPrice,
+  getCustomerSubscriptionPill,
+  matchesCustomerCancelledFilter,
+  type CustomerSubscriptionPillTone,
+} from "@/src/utils/customerSubscriptionLifecycle";
 
 interface SubscriptionPlanService {
   id: number;
@@ -47,6 +60,11 @@ interface AdditionalService {
   active: boolean;
 }
 
+interface SubscriptionVisits {
+  remaining: number;
+  total: number;
+}
+
 interface SubscriptionData {
   id: number;
   subscriptionPlanId: number;
@@ -65,16 +83,19 @@ interface SubscriptionData {
   subscriber: string;
   status: string;
   stripeStatus: string;
+  hasAccess?: boolean;
+  hasEnded?: boolean;
   endsAt: string | null;
   paymentDate: string | null;
-  nextPaymentDate: string;
-  remainingDays: number;
+  nextPaymentDate: string | null;
+  remainingDays: number | null;
   stripePaymentIntentId: string | null;
   stripePaymentUrl: string;
   cardLastFour: string | null;
   createdAt: string;
   deleted_at: string | null;
   appointments: any[];
+  visits?: SubscriptionVisits | SubscriptionVisits[] | null;
 }
 
 interface SubscriptionResponse {
@@ -157,11 +178,58 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.orangeBrown,
     },
+    statusBadgeSuccess: {
+      backgroundColor: theme.lightGreen015,
+      borderColor: theme.buttonBack,
+    },
+    statusBadgeWarning: {
+      backgroundColor: theme.orangeBrown015,
+      borderColor: theme.orangeBrown,
+    },
+    statusBadgeDanger: {
+      backgroundColor: theme.orangeBrown01,
+      borderColor: theme.red,
+    },
+    statusBadgeNeutral: {
+      backgroundColor: theme.lightGreen07,
+      borderColor: theme.borderLight,
+    },
+    statusBadgeInfo: {
+      backgroundColor: theme.lightGreen015,
+      borderColor: theme.lightGreen,
+    },
     statusText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.orangeBrown,
       letterSpacing: 0.5,
+    },
+    statusTextSuccess: {
+      color: theme.buttonBack,
+    },
+    statusTextWarning: {
+      color: theme.orangeBrown,
+    },
+    statusTextDanger: {
+      color: theme.red,
+    },
+    statusTextNeutral: {
+      color: theme.darkGreen,
+    },
+    statusTextInfo: {
+      color: theme.darkGreen,
+    },
+    visitsBanner: {
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(8),
+    },
+    visitsBannerText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     topSection: {
       flexDirection: "row",
@@ -300,7 +368,7 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(6),
       width: "100%",
       alignItems: "center",
-      marginBottom: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(4),
     },
     bookAppointmentButtonDisabled: {
       opacity: 0.45,
@@ -310,6 +378,20 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
       letterSpacing: 0.3,
+    },
+    bookHelperText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      opacity: 0.7,
+      textAlign: "center",
+      lineHeight: fontSize.size18,
+      marginBottom: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(4),
+    },
+    bookHelperTextWarning: {
+      color: theme.orangeBrown,
+      opacity: 0.95,
     },
     cancelButton: {
       backgroundColor: "transparent",
@@ -624,13 +706,13 @@ export default function subscriptionCustomer() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const dispatch = useAppDispatch();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const { t } = useTranslation();
 
   const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiError, setApiError] = useState(false);
@@ -642,32 +724,101 @@ export default function subscriptionCustomer() {
     useState<SubscriptionData | null>(null);
   const [confirmChecked, setConfirmChecked] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+  const isFirstFocusRef = useRef(true);
+
+  const getStatusBadgeStyles = useCallback(
+    (tone: CustomerSubscriptionPillTone) => {
+      switch (tone) {
+        case "success":
+          return {
+            badge: styles.statusBadgeSuccess,
+            text: styles.statusTextSuccess,
+          };
+        case "warning":
+          return {
+            badge: styles.statusBadgeWarning,
+            text: styles.statusTextWarning,
+          };
+        case "danger":
+          return {
+            badge: styles.statusBadgeDanger,
+            text: styles.statusTextDanger,
+          };
+        case "info":
+          return {
+            badge: styles.statusBadgeInfo,
+            text: styles.statusTextInfo,
+          };
+        default:
+          return {
+            badge: styles.statusBadgeNeutral,
+            text: styles.statusTextNeutral,
+          };
+      }
+    },
+    [styles],
+  );
+
+  const resolveVisits = useCallback(
+    (item: SubscriptionData): SubscriptionVisits | null => {
+      if (!item.visits) return null;
+      if (Array.isArray(item.visits)) {
+        return item.visits.length > 0 ? item.visits[0] : null;
+      }
+      if (
+        typeof item.visits.remaining === "number" &&
+        typeof item.visits.total === "number"
+      ) {
+        return item.visits;
+      }
+      return null;
+    },
+    [],
+  );
 
   const fetchSubscriptions = useCallback(
-    async (page: number = 1, append: boolean = false, status?: string) => {
+    async (
+      page: number = 1,
+      append: boolean = false,
+      status?: string,
+      options?: { silent?: boolean },
+    ) => {
       const filterStatus = status !== undefined ? status : statusFilter;
+      const silent = options?.silent === true;
       if (append) {
         setLoadingMore(true);
-      } else {
+      } else if (!silent) {
         setLoading(true);
       }
       setError(null);
       setApiError(false);
 
       try {
-        const statusParam = filterStatus === "all" ? undefined : filterStatus;
+        // Cancelled rows often still have local status=active until period end.
+        // Fetch unscoped by status, then client-filter (guide §4).
+        const statusParam =
+          filterStatus === "all" || filterStatus === "cancelled"
+            ? undefined
+            : filterStatus;
         const baseUrl = businessEndpoints.subscriptions(statusParam, "user");
-        // Use ? if no query params exist, otherwise use &
         const separator = baseUrl.includes("?") ? "&" : "?";
+        // Cancelled is client-filtered; pull a larger page so results aren't empty.
+        const perPage = filterStatus === "cancelled" ? 100 : 10;
         const response = await ApiService.get<SubscriptionResponse>(
-          `${baseUrl}${separator}page=${page}&per_page=10`,
+          `${baseUrl}${separator}page=${page}&per_page=${perPage}`,
         );
 
         if (response.success && response.data?.data) {
+          let rows = response.data.data;
+          if (filterStatus === "cancelled") {
+            rows = rows.filter(matchesCustomerCancelledFilter);
+          }
+
           if (append) {
-            setSubscriptions((prev) => [...prev, ...response.data.data]);
+            setSubscriptions((prev) => [...prev, ...rows]);
           } else {
-            setSubscriptions(response.data.data);
+            setSubscriptions(rows);
           }
           setCurrentPage(response.data.meta.current_page);
           setTotalPages(response.data.meta.last_page);
@@ -691,22 +842,55 @@ export default function subscriptionCustomer() {
       } finally {
         setLoading(false);
         setLoadingMore(false);
+        setRefreshing(false);
       }
     },
-    [showBanner, statusFilter],
+    [showBanner, statusFilter, t],
   );
 
   useEffect(() => {
     fetchSubscriptions(1, false);
   }, [statusFilter]);
 
+  useFocusEffect(
+    useCallback(() => {
+      // Skip the first focus — statusFilter effect already loads the list.
+      if (isFirstFocusRef.current) {
+        isFirstFocusRef.current = false;
+        return;
+      }
+      fetchSubscriptions(1, false, undefined, { silent: true });
+    }, [fetchSubscriptions]),
+  );
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextState: AppStateStatus) => {
+        if (
+          appStateRef.current.match(/inactive|background/) &&
+          nextState === "active"
+        ) {
+          fetchSubscriptions(1, false, undefined, { silent: true });
+        }
+        appStateRef.current = nextState;
+      },
+    );
+    return () => subscription.remove();
+  }, [fetchSubscriptions]);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setCurrentPage(1);
+    setTotalPages(1);
+    fetchSubscriptions(1, false, undefined, { silent: true });
+  }, [fetchSubscriptions]);
+
   const handleStatusFilterChange = useCallback((status: string) => {
-    // Reset data when filter changes
     setSubscriptions([]);
     setCurrentPage(1);
     setTotalPages(1);
     setStatusFilter(status);
-    // useEffect will handle the API call when statusFilter changes
   }, []);
 
   const handleLoadMore = useCallback(() => {
@@ -755,7 +939,6 @@ export default function subscriptionCustomer() {
         setCancelModalVisible(false);
         setSelectedSubscription(null);
         setConfirmChecked(false);
-        // Clear data and fetch page 1
         setSubscriptions([]);
         setCurrentPage(1);
         setTotalPages(1);
@@ -784,44 +967,49 @@ export default function subscriptionCustomer() {
     isCancelling,
     showBanner,
     fetchSubscriptions,
+    t,
   ]);
 
-  const formatEndsAtDate = useCallback((endsAt: string | null): string => {
-    if (!endsAt) return "";
-    try {
-      const date = new Date(endsAt);
-      const month = date.toLocaleString("en-US", { month: "short" });
-      const day = date.getDate();
-      const year = date.getFullYear();
-      return `${month} ${day}, ${year}`;
-    } catch (error) {
-      return endsAt;
-    }
-  }, []);
-
-  const formatServiceDuration = useCallback(
-    (hours: number, minutes: number): string => {
-      if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-      if (hours > 0) return `${hours}h`;
-      if (minutes > 0) return `${minutes}m`;
-      return "";
+  const getScheduleDateLabel = useCallback(
+    (kind: ReturnType<typeof getCustomerSubscriptionDateDisplay>["kind"]) => {
+      switch (kind) {
+        case "accessUntil":
+          return "Access until";
+        case "endedOn":
+          return "Ended on";
+        case "trialEnds":
+          return "Trial ends";
+        default:
+          return "Renewal";
+      }
     },
     [],
   );
 
   const renderItem = useCallback(
     ({ item }: { item: SubscriptionData }) => {
-      const isCancelledButActive =
-        item.status?.trim()?.toLowerCase() === "active" &&
-        item.stripeStatus?.trim()?.toLowerCase() === "cancelled" &&
-        item.endsAt;
-      const hasBookableService =
-        item.subscriptionPlanServices?.some((svc) => (svc.quantity ?? 1) > 0) ??
-        false;
+      const pill = getCustomerSubscriptionPill(item);
+      const toneStyles = getStatusBadgeStyles(pill.tone);
+      const displayPrice = getCustomerSubscriptionDisplayPrice(item);
+      const dateDisplay = getCustomerSubscriptionDateDisplay(item);
+      const canBook = canBookCustomerSubscription(item);
+      const canCancel = canCancelCustomerSubscription(item);
+      const showCancelledBanner = pill.label === "Cancelled" && canBook;
+      const visits = resolveVisits(item);
+      const hasBookableService = visits
+        ? visits.remaining > 0
+        : (item.subscriptionPlanServices?.some(
+            (svc) => (svc.quantity ?? 1) > 0,
+          ) ?? false);
+      const scheduleDate =
+        dateDisplay.date != null
+          ? dateDisplay.kind === "nextPayment"
+            ? dateDisplay.date
+            : formatCustomerSubscriptionDate(dateDisplay.date)
+          : null;
 
       return (
         <View style={styles.subscriptionCard}>
-          {/* Header: Plan Name and Status */}
           <View style={styles.cardHeader}>
             <View style={styles.planTitleRow}>
               <Feather
@@ -832,12 +1020,13 @@ export default function subscriptionCustomer() {
               />
               <Text style={styles.planTitle}>{item.subscriptionPlan}</Text>
             </View>
-            <View style={styles.statusBadge}>
-              <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+            <View style={[styles.statusBadge, toneStyles.badge]}>
+              <Text style={[styles.statusText, toneStyles.text]}>
+                {pill.label.toUpperCase()}
+              </Text>
             </View>
           </View>
 
-          {/* User Info and Price Badge */}
           <View style={styles.topSection}>
             <View style={styles.userInfoRow}>
               <Feather
@@ -851,21 +1040,18 @@ export default function subscriptionCustomer() {
               </Text>
             </View>
             <View style={styles.priceBadge}>
-              <Text style={styles.priceText}>
-                ${item.subscriptionPlanPrice}
-              </Text>
+              <Text style={styles.priceText}>${displayPrice}</Text>
               <Text style={styles.planPriceLabel}>/month</Text>
             </View>
           </View>
 
-          {/* Always visible detail section */}
           <View style={styles.detailSection}>
             {item.subscriptionPlanDescription && (
               <Text style={styles.descriptionText}>
                 {item.subscriptionPlanDescription}
               </Text>
             )}
-            {(item.paymentDate || item.status?.trim()?.toLowerCase() === "active") && (
+            {(item.paymentDate || scheduleDate) && (
               <View style={styles.paymentRenewalRow}>
                 {item.paymentDate && (
                   <View style={styles.paymentDateContainer}>
@@ -880,7 +1066,7 @@ export default function subscriptionCustomer() {
                     </View>
                   </View>
                 )}
-                {item.status?.trim()?.toLowerCase() === "active" && (
+                {scheduleDate && (
                   <View
                     style={[
                       styles.renewalContainer,
@@ -893,44 +1079,56 @@ export default function subscriptionCustomer() {
                       color={theme.darkGreen}
                     />
                     <View style={styles.dateInfoContainer}>
-                      <Text style={styles.dateLabel}>Renewal</Text>
-                      <Text style={styles.dateValue}>{item.nextPaymentDate}</Text>
+                      <Text style={styles.dateLabel}>
+                        {getScheduleDateLabel(dateDisplay.kind)}
+                      </Text>
+                      <Text style={styles.dateValue}>{scheduleDate}</Text>
                     </View>
                   </View>
                 )}
               </View>
             )}
-            {item.subscriptionPlanServices && item.subscriptionPlanServices.length > 0 && (
-              <>
-                {item.subscriptionPlanServices.map((svc) => (
-                  <View key={svc.id} style={styles.serviceItem}>
-                    <View style={styles.serviceNameContainer}>
-                      <Text style={styles.serviceName}>
-                        {svc.name} x {svc.quantity ?? 1}
-                      </Text>
-                      {(svc.durationHours > 0 || svc.durationMinutes > 0) && (
-                        <Text style={styles.serviceDuration}>
-                          {formatServiceDuration(
-                            svc.durationHours,
-                            svc.durationMinutes,
-                          )}
-                        </Text>
-                      )}
-                      {!!svc.description && (
-                        <Text style={styles.serviceDescription}>
-                          {svc.description}
-                        </Text>
-                      )}
-                    </View>
-                    <Text style={styles.servicePrice}>${svc.price}</Text>
-                  </View>
-                ))}
-              </>
+            {visits && (
+              <View style={styles.visitsBanner}>
+                <Text style={styles.visitsBannerText}>
+                  Visits remaining: {visits.remaining} of {visits.total}
+                </Text>
+              </View>
             )}
+            {item.subscriptionPlanServices &&
+              item.subscriptionPlanServices.length > 0 && (
+                <>
+                  {item.subscriptionPlanServices.map((svc) => (
+                    <View key={svc.id} style={styles.serviceItem}>
+                      <View style={styles.serviceNameContainer}>
+                        <Text style={styles.serviceName}>
+                          {svc.name}
+                          {!visits ? ` x ${svc.quantity ?? 1}` : ""}
+                        </Text>
+                        {(svc.durationHours > 0 ||
+                          svc.durationMinutes > 0) && (
+                          <Text style={styles.serviceDuration}>
+                            {formatCustomerServiceDuration(
+                              svc.durationHours,
+                              svc.durationMinutes,
+                            )}
+                          </Text>
+                        )}
+                        {!!svc.description && (
+                          <Text style={styles.serviceDescription}>
+                            {svc.description}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={styles.servicePrice}>${svc.price}</Text>
+                    </View>
+                  ))}
+                </>
+              )}
           </View>
 
-          {/* Book Appointment Button */}
-          {item.status?.trim()?.toLowerCase() === "active" && (
+          {canBook && (
+            <>
               <TouchableOpacity
                 style={[
                   styles.bookAppointmentButton,
@@ -947,10 +1145,26 @@ export default function subscriptionCustomer() {
                   Book Appointment
                 </Text>
               </TouchableOpacity>
-            )}
+              {!hasBookableService ? (
+                <Text
+                  style={[styles.bookHelperText, styles.bookHelperTextWarning]}
+                >
+                  {canCancel
+                    ? "All services for this billing period have been used. Booking will unlock again after your next auto-charge when counts reset."
+                    : "All services for this billing period have been used. No more bookings are available on this subscription."}
+                </Text>
+              ) : (
+                canCancel && (
+                  <Text style={styles.bookHelperText}>
+                    After your next auto-charge, your service counts will reset
+                    and become available again for the new billing period.
+                  </Text>
+                )
+              )}
+            </>
+          )}
 
-          {/* Cancelled Status or Cancel Button */}
-          {isCancelledButActive ? (
+          {showCancelledBanner ? (
             <View style={styles.cancelledStatusContainer}>
               <View style={styles.cancelledIconContainer}>
                 <Feather
@@ -966,13 +1180,13 @@ export default function subscriptionCustomer() {
                 <Text style={styles.cancelledStatusSubtext}>
                   You can still use this subscription until{" "}
                   <Text style={{ fontFamily: fonts.fontBold }}>
-                    {formatEndsAtDate(item.endsAt)}
+                    {formatCustomerSubscriptionDate(item.endsAt)}
                   </Text>
                 </Text>
               </View>
             </View>
           ) : (
-            item.status?.trim()?.toLowerCase() === "active" && (
+            canCancel && (
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => handleCancelSubscription(item)}
@@ -990,8 +1204,9 @@ export default function subscriptionCustomer() {
       theme,
       handleCancelSubscription,
       handleBookAppointment,
-      formatEndsAtDate,
-      formatServiceDuration,
+      getStatusBadgeStyles,
+      getScheduleDateLabel,
+      resolveVisits,
     ],
   );
 
@@ -1140,6 +1355,14 @@ export default function subscriptionCustomer() {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.buttonBack}
+            colors={[theme.buttonBack]}
+          />
+        }
       />
 
       {/* Cancel Subscription Modal */}
