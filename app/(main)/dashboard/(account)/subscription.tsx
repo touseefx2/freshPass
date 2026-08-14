@@ -32,11 +32,23 @@ import {
 
 dayjs.extend(customParseFormat);
 
+interface AdditionalService {
+  id: number;
+  name: string;
+  price: string;
+  ai_requests?: number | null;
+  type: string | null;
+  active: boolean;
+}
+
 interface SubscriptionData {
   id: number;
   subscriptionPlanId: number;
   subscriptionPlan: string;
   subscriptionPlanPrice: string;
+  additionalServicesTotal?: number;
+  totalPrice?: number;
+  additionalServices?: AdditionalService[];
   subscriptionPlanType: string;
   subscriptionPlanDescription: string;
   userId: number;
@@ -468,6 +480,38 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    addOnDivider: {
+      height: 1,
+      backgroundColor: theme.white15,
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(16),
+    },
+    addOnSectionTitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white80,
+      marginBottom: moderateHeightScale(12),
+      letterSpacing: 0.5,
+      textTransform: "uppercase",
+    },
+    addOnRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    addOnName: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+      flex: 1,
+      marginRight: moderateWidthScale(12),
+    },
+    addOnPrice: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
   });
 
 export default function SubscriptionScreen() {
@@ -727,6 +771,14 @@ export default function SubscriptionScreen() {
     ? formatTrialEndDate(dateDisplay.date)
     : t("notAvailable");
 
+  const activeAddOns = useMemo(
+    () =>
+      (subscription?.additionalServices ?? []).filter(
+        (service) => service.active !== false,
+      ),
+    [subscription?.additionalServices],
+  );
+
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("subscription")} />
@@ -853,6 +905,22 @@ export default function SubscriptionScreen() {
                     subscription.subscriptionPlanDescription,
                   )}
                 </Text>
+              )}
+              {activeAddOns.length > 0 && (
+                <>
+                  <View style={styles.addOnDivider} />
+                  <Text style={styles.addOnSectionTitle}>
+                    {t("addOnServices")}
+                  </Text>
+                  {activeAddOns.map((service) => (
+                    <View key={service.id} style={styles.addOnRow}>
+                      <Text style={styles.addOnName}>{service.name}</Text>
+                      <Text style={styles.addOnPrice}>
+                        $ {service.price} {t("perMonth")}
+                      </Text>
+                    </View>
+                  ))}
+                </>
               )}
             </LinearGradient>
           </View>
