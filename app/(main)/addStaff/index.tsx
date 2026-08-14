@@ -60,6 +60,7 @@ import { CloseIcon } from "@/assets/icons";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
+import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 
 const DAYS = [
   "Monday",
@@ -1252,22 +1253,11 @@ export default function AddStaffScreen() {
             profileImageUri.startsWith("content://") ||
             !profileImageUri.startsWith("http");
           if (isLocalUri) {
-            const fileExtension =
-              profileImageUri.split(".").pop()?.toLowerCase() || "jpg";
-            const fileName = `profile_image.${fileExtension}`;
-            const mimeType =
-              fileExtension === "jpg" || fileExtension === "jpeg"
-                ? "image/jpeg"
-                : fileExtension === "png"
-                  ? "image/png"
-                  : fileExtension === "webp"
-                    ? "image/webp"
-                    : "image/jpeg";
-            formData.append("profile_image", {
-              uri: profileImageUri,
-              type: mimeType,
-              name: fileName,
-            } as any);
+            const prepared = await prepareImageForUpload(
+              profileImageUri,
+              "profile_image",
+            );
+            formData.append("profile_image", prepared as any);
           }
         } else if (params.profile_image_url) {
           formData.append("remove_image", "true");
@@ -1309,22 +1299,11 @@ export default function AddStaffScreen() {
           JSON.stringify(buildWorkingHoursArray()),
         );
         if (profileImageUri) {
-          const fileExtension =
-            profileImageUri.split(".").pop()?.toLowerCase() || "jpg";
-          const fileName = `profile_image.${fileExtension}`;
-          const mimeType =
-            fileExtension === "jpg" || fileExtension === "jpeg"
-              ? "image/jpeg"
-              : fileExtension === "png"
-                ? "image/png"
-                : fileExtension === "webp"
-                  ? "image/webp"
-                  : "image/jpeg";
-          formData.append("profile_image", {
-            uri: profileImageUri,
-            type: mimeType,
-            name: fileName,
-          } as any);
+          const prepared = await prepareImageForUpload(
+            profileImageUri,
+            "profile_image",
+          );
+          formData.append("profile_image", prepared as any);
         }
         const response = await ApiService.post<{
           success: boolean;

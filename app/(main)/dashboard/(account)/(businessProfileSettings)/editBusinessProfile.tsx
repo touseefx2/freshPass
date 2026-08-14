@@ -38,6 +38,7 @@ import {
 } from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
+import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -720,24 +721,11 @@ export default function EditBusinessProfileScreen() {
           logoImageUri.startsWith("content://") ||
           logoImageUri.startsWith("ph://")
         ) {
-          // It's a local file, append it
-          const fileExtension =
-            logoImageUri.split(".").pop()?.toLowerCase() || "jpg";
-          const fileName = `business_logo.${fileExtension}`;
-          const mimeType =
-            fileExtension === "jpg" || fileExtension === "jpeg"
-              ? "image/jpeg"
-              : fileExtension === "png"
-              ? "image/png"
-              : fileExtension === "webp"
-              ? "image/webp"
-              : "image/jpeg";
-
-          formData.append("image", {
-            uri: logoImageUri,
-            type: mimeType,
-            name: fileName,
-          } as any);
+          const prepared = await prepareImageForUpload(
+            logoImageUri,
+            "business_logo",
+          );
+          formData.append("image", prepared as any);
         }
         // If it's a remote URL and hasn't changed, we don't need to send it
       }

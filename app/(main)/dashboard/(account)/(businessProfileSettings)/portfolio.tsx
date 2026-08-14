@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -36,6 +37,7 @@ import {
 import { GalleryIcon, CameraIcon } from "@/assets/icons";
 import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PADDING = moderateWidthScale(20);
@@ -241,6 +243,11 @@ export default function ManagePortfolioPhotosScreen() {
         allowsMultipleSelection: true,
         quality: 0.8,
         allowsEditing: false,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
       });
 
       if (!result.canceled && result.assets) {
@@ -277,6 +284,11 @@ export default function ManagePortfolioPhotosScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
         allowsEditing: false,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {
@@ -414,18 +426,26 @@ export default function ManagePortfolioPhotosScreen() {
       let response;
 
       if (newPhotos.length > 0) {
-        // When adding new photos, use multipart/form-data
+        // When adding new photos, use multipart/form-data (JPEG-converted for iPhone HEIC)
         const formData = new FormData();
 
-        newPhotos.forEach((photo, index) => {
-          const fileExtension = photo.uri.split(".").pop() || "jpg";
-          const fileName = `portfolio_photo_${index}.${fileExtension}`;
+        const preparedPhotos = await prepareImagesForUpload(
+          newPhotos.map((photo) => photo.uri),
+          "portfolio_photo",
+        );
 
-          formData.append(`portfolio_photos[${index}]`, {
-            uri: photo.uri,
-            type: `image/${fileExtension === "jpg" ? "jpeg" : fileExtension}`,
-            name: fileName,
-          } as any);
+        if (preparedPhotos.length === 0) {
+          showBanner(
+            "Error",
+            "Could not prepare photos for upload. Please try again.",
+            "error",
+            3000,
+          );
+          return;
+        }
+
+        preparedPhotos.forEach((file, index) => {
+          formData.append(`portfolio_photos[${index}]`, file as any);
         });
 
         if (removedPhotoIds.length > 0) {

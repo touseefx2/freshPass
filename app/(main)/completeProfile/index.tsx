@@ -38,6 +38,7 @@ import {
 import PrivacyBanner from "@/src/components/privacyBanner";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
+import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
@@ -313,22 +314,29 @@ export default function CompleteProfile() {
       let config: any = undefined;
 
       if (currentStep === 11) {
-        // For step 11, use FormData to send files
+        // For step 11, use FormData to send files (JPEG-converted for iPhone HEIC)
         const formData = new FormData();
 
         // Add step
         formData.append("step", currentStep.toString());
 
-        // Add each photo as a file
-        photos.forEach((photo, index) => {
-          const fileExtension = photo.uri.split(".").pop() || "jpg";
-          const fileName = `portfolio_photo_${index}.${fileExtension}`;
+        const preparedPhotos = await prepareImagesForUpload(
+          photos.map((photo) => photo.uri),
+          "portfolio_photo",
+        );
 
-          formData.append(`portfolio_photos[${index}]`, {
-            uri: photo.uri,
-            type: `image/${fileExtension === "jpg" ? "jpeg" : fileExtension}`,
-            name: fileName,
-          } as any);
+        if (preparedPhotos.length === 0 && photos.length > 0) {
+          showBanner(
+            "Error",
+            "Could not prepare photos for upload. Please try again.",
+            "error",
+            3000,
+          );
+          return;
+        }
+
+        preparedPhotos.forEach((file, index) => {
+          formData.append(`portfolio_photos[${index}]`, file as any);
         });
 
         requestBody = formData;

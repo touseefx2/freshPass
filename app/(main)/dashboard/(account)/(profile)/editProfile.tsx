@@ -37,6 +37,7 @@ import FloatingInput from "@/src/components/floatingInput";
 import Button from "@/src/components/button";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import DatePickerDropdown from "@/src/components/DatePickerDropdown";
+import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import {
   validateDescription,
   validateEmail,
@@ -1082,28 +1083,16 @@ export default function EditProfileScreen() {
           profileImageUri.startsWith("content://") ||
           profileImageUri.startsWith("ph://")
         ) {
-          // It's a local file, append it
-          const fileExtension =
-            profileImageUri.split(".").pop()?.toLowerCase() || "jpg";
-          const fileName = `profile_image.${fileExtension}`;
-          const mimeType =
-            fileExtension === "jpg" || fileExtension === "jpeg"
-              ? "image/jpeg"
-              : fileExtension === "png"
-                ? "image/png"
-                : fileExtension === "webp"
-                  ? "image/webp"
-                  : "image/jpeg";
+          const prepared = await prepareImageForUpload(
+            profileImageUri,
+            "profile_image",
+          );
 
           // Use staff-specific field name when updating staff profile
           const imageFieldName =
             user.userRole === "staff" ? "profile_image" : "avatar";
 
-          formData.append(imageFieldName, {
-            uri: profileImageUri,
-            type: mimeType,
-            name: fileName,
-          } as any);
+          formData.append(imageFieldName, prepared as any);
         } else if (profileImageUri === "") {
           // User wants to remove avatar
           if (user.userRole !== "staff") {

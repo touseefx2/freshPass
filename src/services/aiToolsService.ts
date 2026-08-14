@@ -10,6 +10,10 @@ import {
 } from "./endpoints";
 import { ApiService } from "./api";
 import Logger from "./logger";
+import {
+  prepareImageForUpload,
+  prepareImagesForUpload,
+} from "@/src/utils/prepareImageForUpload";
 
 // Get AI Tool base URL and token from environment
 const AI_TOOL_BASE_URL = process.env.EXPO_PUBLIC_AITOOL_API_BASE_URL || "";
@@ -318,21 +322,11 @@ export class AiToolsService {
     const endpoint = hairTryonEndpoints.hairPipeline;
     const formData = new FormData();
 
-    const fileExtension =
-      sourceImageUri.split(".").pop()?.toLowerCase() || "jpg";
-    const fileName = `source_image.${fileExtension}`;
-    const mimeType =
-      fileExtension === "jpg" || fileExtension === "jpeg"
-        ? "image/jpeg"
-        : fileExtension === "png"
-        ? "image/png"
-        : "image/jpeg";
-
-    formData.append("source_image", {
-      uri: sourceImageUri,
-      type: mimeType,
-      name: fileName,
-    } as any);
+    const prepared = await prepareImageForUpload(
+      sourceImageUri,
+      "source_image",
+    );
+    formData.append("source_image", prepared as any);
 
     formData.append("user_id", userId.toString());
 
@@ -448,22 +442,12 @@ export class AiToolsService {
     const endpoint = hairTryonEndpoints.generateWithReplicate;
     const formData = new FormData();
 
-    // Add source_image
-    const fileExtension =
-      sourceImageUri.split(".").pop()?.toLowerCase() || "jpg";
-    const fileName = `source_image.${fileExtension}`;
-    const mimeType =
-      fileExtension === "jpg" || fileExtension === "jpeg"
-        ? "image/jpeg"
-        : fileExtension === "png"
-        ? "image/png"
-        : "image/jpeg";
-
-    formData.append("source_image", {
-      uri: sourceImageUri,
-      type: mimeType,
-      name: fileName,
-    } as any);
+    // Add source_image (JPEG-converted for iPhone HEIC)
+    const prepared = await prepareImageForUpload(
+      sourceImageUri,
+      "source_image",
+    );
+    formData.append("source_image", prepared as any);
 
     // Add prompt
     formData.append("prompt", prompt.trim());
@@ -522,21 +506,9 @@ export class AiToolsService {
 
     formData.append("user_id", userId.toString());
 
-    // Add image
-    const fileExtension = imageUri.split(".").pop()?.toLowerCase() || "jpg";
-    const fileName = `post_image.${fileExtension}`;
-    const mimeType =
-      fileExtension === "jpg" || fileExtension === "jpeg"
-        ? "image/jpeg"
-        : fileExtension === "png"
-        ? "image/png"
-        : "image/jpeg";
-
-    formData.append("image", {
-      uri: imageUri,
-      type: mimeType,
-      name: fileName,
-    } as any);
+    // Add image (JPEG-converted for iPhone HEIC)
+    const prepared = await prepareImageForUpload(imageUri, "post_image");
+    formData.append("image", prepared as any);
 
     logAiToolRequest("POST", endpoint, formData);
 
@@ -587,22 +559,13 @@ export class AiToolsService {
 
     formData.append("user_id", userId.toString());
 
-    // Add images
-    imageUris.forEach((imageUri, index) => {
-      const fileExtension = imageUri.split(".").pop()?.toLowerCase() || "jpg";
-      const fileName = `collage_image_${index}.${fileExtension}`;
-      const mimeType =
-        fileExtension === "jpg" || fileExtension === "jpeg"
-          ? "image/jpeg"
-          : fileExtension === "png"
-          ? "image/png"
-          : "image/jpeg";
-
-      formData.append("images", {
-        uri: imageUri,
-        type: mimeType,
-        name: fileName,
-      } as any);
+    // Add images (JPEG-converted for iPhone HEIC)
+    const preparedImages = await prepareImagesForUpload(
+      imageUris,
+      "collage_image",
+    );
+    preparedImages.forEach((file) => {
+      formData.append("images", file as any);
     });
 
     logAiToolRequest("POST", endpoint, formData);
@@ -658,36 +621,32 @@ export class AiToolsService {
 
     formData.append("user_id", userId.toString());
 
-    // Add media_files
-    mediaFiles.forEach((media, index) => {
-      const fileExtension = media.uri.split(".").pop()?.toLowerCase() || "jpg";
-      let fileName = "";
-      let mimeType = "";
-
+    // Add media_files (images JPEG-converted for iPhone HEIC; videos unchanged)
+    for (let index = 0; index < mediaFiles.length; index++) {
+      const media = mediaFiles[index];
       if (media.type === "video") {
-        fileName = `reel_video_${index}.${fileExtension}`;
-        mimeType =
+        const fileExtension = media.uri.split(".").pop()?.toLowerCase() || "mp4";
+        const fileName = `reel_video_${index}.${fileExtension}`;
+        const mimeType =
           fileExtension === "mp4"
             ? "video/mp4"
             : fileExtension === "mov"
-            ? "video/quicktime"
-            : "video/mp4";
-      } else {
-        fileName = `reel_image_${index}.${fileExtension}`;
-        mimeType =
-          fileExtension === "jpg" || fileExtension === "jpeg"
-            ? "image/jpeg"
-            : fileExtension === "png"
-            ? "image/png"
-            : "image/jpeg";
-      }
+              ? "video/quicktime"
+              : "video/mp4";
 
-      formData.append("media_files", {
-        uri: media.uri,
-        type: mimeType,
-        name: fileName,
-      } as any);
-    });
+        formData.append("media_files", {
+          uri: media.uri,
+          type: mimeType,
+          name: fileName,
+        } as any);
+      } else {
+        const prepared = await prepareImageForUpload(
+          media.uri,
+          `reel_image_${index}`,
+        );
+        formData.append("media_files", prepared as any);
+      }
+    }
 
     // Add background_music if provided
     if (backgroundMusicUri) {

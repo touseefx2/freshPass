@@ -608,21 +608,7 @@ export default function Tools() {
         );
         return;
       }
-      // Validate file types for collage images
-      const allowedExtensions = ["jpg", "jpeg", "png"];
-      const invalidImages = collageImages.filter((img) => {
-        const fileExtension = img.uri.split(".").pop()?.toLowerCase() || "";
-        return !allowedExtensions.includes(fileExtension);
-      });
-      if (invalidImages.length > 0) {
-        showBanner(
-          t("invalidFileType"),
-          t("allImagesMustBeJpeg"),
-          "warning",
-          3000,
-        );
-        return;
-      }
+      // File types are normalized to JPEG at upload time (prepareImageForUpload)
     } else if (toolType === "Generate Reel") {
       if (reelMedia.length < 3 || reelMedia.length > 15) {
         showBanner(

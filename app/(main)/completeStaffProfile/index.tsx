@@ -31,6 +31,7 @@ import {
 } from "@/src/services/validationService";
 import AcceptTermsModal from "@/src/components/acceptTermsModal";
 import { setUserDetails } from "@/src/state/slices/userSlice";
+import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 
 export default function CompleteStaffProfile() {
   const router = useRouter();
@@ -95,22 +96,11 @@ export default function CompleteStaffProfile() {
 
         // Profile image is optional; only append if user selected one
         if (profileImageUri) {
-          const fileExtension = profileImageUri.split(".").pop() || "jpg";
-          const fileName = `profile_image.${fileExtension}`;
-          const mimeType =
-            fileExtension === "jpg" || fileExtension === "jpeg"
-              ? "image/jpeg"
-              : fileExtension === "png"
-              ? "image/png"
-              : fileExtension === "webp"
-              ? "image/webp"
-              : "image/jpeg";
-
-          formData.append("profile_image", {
-            uri: profileImageUri,
-            type: mimeType,
-            name: fileName,
-          } as any);
+          const prepared = await prepareImageForUpload(
+            profileImageUri,
+            "profile_image",
+          );
+          formData.append("profile_image", prepared as any);
         } else {
           formData.append("remove_image", "true");
         }

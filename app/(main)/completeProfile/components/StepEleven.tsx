@@ -9,6 +9,7 @@ import {
   Image,
   Dimensions,
   FlatList,
+  Platform,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -161,6 +162,11 @@ export default function StepEleven() {
         allowsMultipleSelection: true,
         quality: 0.8,
         allowsEditing: false,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
       });
 
       if (!result.canceled && result.assets) {
@@ -195,6 +201,11 @@ export default function StepEleven() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality: 0.8,
         allowsEditing: false,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {

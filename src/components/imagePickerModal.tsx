@@ -1,6 +1,13 @@
 import React, { useMemo, useCallback } from "react";
 import Logger from "@/src/services/logger";
-import { StyleSheet, Text, View, TouchableOpacity, Alert } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  Alert,
+  Platform,
+} from "react-native";
 import {
   MaterialIcons,
   Ionicons,
@@ -22,6 +29,14 @@ import {
   handleCameraPermission,
 } from "@/src/services/mediaPermissionService";
 import { PersonScissorsIcon } from "@/assets/icons";
+
+const iosCompatiblePickerOptions =
+  Platform.OS === "ios"
+    ? {
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+      }
+    : {};
 
 interface ImagePickerModalProps {
   visible: boolean;
@@ -87,6 +102,7 @@ export default function ImagePickerModal({
         allowsMultipleSelection,
         quality,
         allowsEditing: false,
+        ...iosCompatiblePickerOptions,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -124,6 +140,7 @@ export default function ImagePickerModal({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         quality,
         allowsEditing: false,
+        ...iosCompatiblePickerOptions,
       });
 
       if (!result.canceled && result.assets && result.assets[0]) {

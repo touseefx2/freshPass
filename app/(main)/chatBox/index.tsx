@@ -49,6 +49,10 @@ import { MaterialIcons, Feather } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { ApiService } from "@/src/services/api";
 import {
+  prepareImageForUpload,
+  isLikelyVideoUri,
+} from "@/src/utils/prepareImageForUpload";
+import {
   openFullImageModal,
   clearChatAttachmentUrls,
   setChatTryOnPreselectedUrls,
@@ -2257,12 +2261,17 @@ export default function ChatBoxScreen() {
         i++
       ) {
         const uri = localUris[i];
-        const { mimeType, name } = getMimeAndName(uri);
-        formData.append("attachments[]", {
-          uri,
-          type: mimeType,
-          name,
-        } as any);
+        if (isLikelyVideoUri(uri)) {
+          const { mimeType, name } = getMimeAndName(uri);
+          formData.append("attachments[]", {
+            uri,
+            type: mimeType,
+            name,
+          } as any);
+        } else {
+          const prepared = await prepareImageForUpload(uri, `chat_image_${i}`);
+          formData.append("attachments[]", prepared as any);
+        }
       }
 
       for (let i = 0; i < Math.min(linkUris.length, MAX_LINKS); i++) {
