@@ -14,10 +14,11 @@ This guide documents what is now implemented in the app, what you need to config
   - AI service unlock purchase (`tryOnPurchase`)
 - Android and non-iOS flows still use existing Stripe implementation.
 - Product ID resolution supports:
-  1. `app_store_product_id` coming from backend payloads
-  2. Environment fallback prefixes:
-     - `EXPO_PUBLIC_IAP_BUSINESS_PLAN_PREFIX`
-     - `EXPO_PUBLIC_IAP_AI_SERVICE_PREFIX`
+  1. `app_store_product_id` coming from backend payloads (business plans)
+  2. Full product IDs from env:
+     - `EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID`
+     - `EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID`
+     - `EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID`
 - New shared service added: `src/services/iapService.ts`
 - New backend endpoint reference added: `iapEndpoints.verify` (`/api/iap/verify`)
 
@@ -37,9 +38,7 @@ This guide documents what is now implemented in the app, what you need to config
    - AI feature products
 3. Use product IDs that match one of the following:
    - Exact ID returned by backend (`app_store_product_id`)
-   - Prefix-based fallback:
-     - `${EXPO_PUBLIC_IAP_BUSINESS_PLAN_PREFIX}.${planId}`
-     - `${EXPO_PUBLIC_IAP_AI_SERVICE_PREFIX}.${serviceId}`
+   - Exact IDs set in env (`EXPO_PUBLIC_IAP_BUSINESS_PLAN_*_PRODUCT_ID`, `EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID`)
 4. Complete required metadata for each IAP:
    - Display name
    - Description
@@ -53,11 +52,12 @@ This guide documents what is now implemented in the app, what you need to config
 Add these to `.env` if you are not returning product IDs from API:
 
 ```bash
-EXPO_PUBLIC_IAP_BUSINESS_PLAN_PREFIX=com.freshpass.business.plan
-EXPO_PUBLIC_IAP_AI_SERVICE_PREFIX=com.freshpass.ai.service
+EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID=com.freshpass.business.plan.21
+EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID=com.freshpass.business.plan.21.featured
+EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID=com.freshpass.ai.service.2
 ```
 
-If backend returns `app_store_product_id` for each item, these are optional.
+If backend returns `app_store_product_id` for business plans, the standard env ID is optional.
 
 ## Backend tasks (must be done)
 

@@ -653,7 +653,6 @@ function BusinessPlansModalContent({
     const selectedPlan = standardPlans.find((p) => p.id === planId);
     const hasFeatured = hasFeaturedAddOnSelected(selectedAddOns);
     const productId = resolveBusinessPlanProductIdWithFeatured(
-      planId,
       hasFeatured,
       selectedPlan?.app_store_product_id,
     );

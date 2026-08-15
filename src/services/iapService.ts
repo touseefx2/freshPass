@@ -72,7 +72,6 @@ export const ensureIapConnection = async () => {
 };
 
 export const resolveBusinessPlanProductId = (
-  planId: number,
   explicitProductId?: string | null,
 ) => {
   if (explicitProductId && explicitProductId.trim().length > 0) {
@@ -85,24 +84,18 @@ export const resolveBusinessPlanProductId = (
     return standardProductId.trim();
   }
 
-  const prefix = process.env.EXPO_PUBLIC_IAP_BUSINESS_PLAN_PREFIX;
-  if (!prefix || !prefix.trim()) {
-    throw new Error(
-      "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID, EXPO_PUBLIC_IAP_BUSINESS_PLAN_PREFIX, or return app_store_product_id from API.",
-    );
-  }
-
-  return `${prefix.trim()}.${planId}`;
+  throw new Error(
+    "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID or return app_store_product_id from API.",
+  );
 };
 
 /** Standard base vs Standard + Featured (separate App Store subscription SKUs). */
 export const resolveBusinessPlanProductIdWithFeatured = (
-  planId: number,
   hasFeaturedAddOn: boolean,
   explicitBaseProductId?: string | null,
 ) => {
   if (!hasFeaturedAddOn) {
-    return resolveBusinessPlanProductId(planId, explicitBaseProductId);
+    return resolveBusinessPlanProductId(explicitBaseProductId);
   }
 
   const featuredProductId =
@@ -111,8 +104,9 @@ export const resolveBusinessPlanProductIdWithFeatured = (
     return featuredProductId.trim();
   }
 
-  const baseId = resolveBusinessPlanProductId(planId, explicitBaseProductId);
-  return `${baseId}.featured`;
+  throw new Error(
+    "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID.",
+  );
 };
 
 export const resolveAiServiceProductId = () => {
