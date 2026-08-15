@@ -128,7 +128,7 @@ Copy `.env.example` to `.env` and configure each variable:
 
 ### Stripe Payments
 
-Stripe publishable key is loaded from Firebase Remote Config (`stripe_publishable_key`), not from `.env`. Switch `pk_test_...` / `pk_live_...` in the Firebase Console without rebuilding. Backend Stripe secret must use the same mode.
+Stripe publishable key, IAP product IDs, and trial days are loaded from Firebase Remote Config (`firebase-remote-config-template.json`), not from `.env`. Update values in Firebase Console (or redeploy the template) without rebuilding.
 
 ### Google Services
 
@@ -167,14 +167,6 @@ Stripe publishable key is loaded from Firebase Remote Config (`stripe_publishabl
 | `EXPO_PUBLIC_WEBHOOK_URL` | Optional | AI voice agent WebSocket URL |
 | `EXPO_PUBLIC_TUTORIAL_VIDEO_TRYON_URI` | Optional | Tutorial video URL for AI try-on feature |
 
-### Apple In-App Purchase (iOS)
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID` | iOS only | Standard business plan product ID |
-| `EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID` | iOS only | Featured business plan product ID |
-| `EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID` | iOS only | Full App Store product ID for AI try-on credits |
-
 ### Default Images & URLs
 
 | Variable | Required | Description |
@@ -186,7 +178,6 @@ Stripe publishable key is loaded from Firebase Remote Config (`stripe_publishabl
 | `EXPO_PUBLIC_DEFAULT_AI_REQUESTS_IMAGE` | Optional | Default AI requests image URL |
 | `EXPO_PUBLIC_TERMS_URL` | Optional | Terms & conditions page URL |
 | `EXPO_PUBLIC_PRIVACY_URL` | Optional | Privacy policy page URL |
-| `EXPO_PUBLIC_TRAILDAY` | Optional | Free trial days (default: `14`) |
 
 > **Important:** After changing `.env`, restart the Metro bundler (`yarn start`) and rebuild native apps if running on iOS/Android.
 

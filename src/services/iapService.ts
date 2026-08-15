@@ -16,6 +16,7 @@ import {
 } from "react-native-iap";
 import { ApiService } from "@/src/services/api";
 import { iapEndpoints } from "@/src/services/endpoints";
+import { resolvePurchaseRemoteConfig } from "@/src/services/remoteConfigService";
 
 export type IapPurchaseKind = "business_subscription" | "ai_service";
 
@@ -71,26 +72,25 @@ export const ensureIapConnection = async () => {
   connectionInitialized = true;
 };
 
-export const resolveBusinessPlanProductId = (
+export const resolveBusinessPlanProductId = async (
   explicitProductId?: string | null,
 ) => {
   if (explicitProductId && explicitProductId.trim().length > 0) {
     return explicitProductId.trim();
   }
 
-  const standardProductId =
-    process.env.EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID;
-  if (standardProductId?.trim()) {
-    return standardProductId.trim();
+  const { businessPlanStandardProductId } = await resolvePurchaseRemoteConfig();
+  if (!businessPlanStandardProductId) {
+    throw new Error(
+      "Failed to start payment. Purchase configuration is missing. Please try again later.",
+    );
   }
 
-  throw new Error(
-    "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID or return app_store_product_id from API.",
-  );
+  return businessPlanStandardProductId;
 };
 
 /** Standard base vs Standard + Featured (separate App Store subscription SKUs). */
-export const resolveBusinessPlanProductIdWithFeatured = (
+export const resolveBusinessPlanProductIdWithFeatured = async (
   hasFeaturedAddOn: boolean,
   explicitBaseProductId?: string | null,
 ) => {
@@ -98,26 +98,25 @@ export const resolveBusinessPlanProductIdWithFeatured = (
     return resolveBusinessPlanProductId(explicitBaseProductId);
   }
 
-  const featuredProductId =
-    process.env.EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID;
-  if (featuredProductId?.trim()) {
-    return featuredProductId.trim();
-  }
-
-  throw new Error(
-    "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID.",
-  );
-};
-
-export const resolveAiServiceProductId = () => {
-  const productId = process.env.EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID;
-  if (!productId?.trim()) {
+  const { businessPlanFeaturedProductId } = await resolvePurchaseRemoteConfig();
+  if (!businessPlanFeaturedProductId) {
     throw new Error(
-      "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID.",
+      "Failed to start payment. Purchase configuration is missing. Please try again later.",
     );
   }
 
-  return productId.trim();
+  return businessPlanFeaturedProductId;
+};
+
+export const resolveAiServiceProductId = async () => {
+  const { aiServiceProductId } = await resolvePurchaseRemoteConfig();
+  if (!aiServiceProductId) {
+    throw new Error(
+      "Failed to start payment. Purchase configuration is missing. Please try again later.",
+    );
+  }
+
+  return aiServiceProductId;
 };
 
 const getProductOrThrow = async (

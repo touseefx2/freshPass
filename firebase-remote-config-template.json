@@ -11,7 +11,7 @@
       "defaultValue": {
         "value": "https://apps.apple.com/us/app/fresh-pass/id6758720531"
       },
-      "description": "App Store listing URL for iOS \u2014 replace YOUR_APPLE_APP_ID with real App Store ID",
+      "description": "App Store listing URL for iOS — replace YOUR_APPLE_APP_ID with real App Store ID",
       "valueType": "STRING"
     },
     "force_update_message": {
@@ -69,10 +69,38 @@
       },
       "description": "Message shown on the maintenance mode screen",
       "valueType": "STRING"
+    },
+    "iap_business_plan_standard_product_id": {
+      "defaultValue": {
+        "value": "com.freshpass.business.plan.21"
+      },
+      "description": "iOS App Store product ID for the standard business plan subscription",
+      "valueType": "STRING"
+    },
+    "iap_business_plan_featured_product_id": {
+      "defaultValue": {
+        "value": "com.freshpass.business.plan.21.featured"
+      },
+      "description": "iOS App Store product ID for the standard + featured business plan subscription",
+      "valueType": "STRING"
+    },
+    "iap_ai_service_product_id": {
+      "defaultValue": {
+        "value": "com.freshpass.ai.service.2"
+      },
+      "description": "iOS App Store consumable product ID for AI Hair Try-On credits",
+      "valueType": "STRING"
+    },
+    "trial_days": {
+      "defaultValue": {
+        "value": "14"
+      },
+      "description": "Business plan free trial length in days (UI copy + Stripe payment sheet label)",
+      "valueType": "STRING"
     }
   },
   "version": {
-    "description": "FreshPass Remote Config template (force update + maintenance + Stripe)"
+    "description": "FreshPass Remote Config template (force update + maintenance + Stripe + IAP + trial)"
   },
   "conditions": []
 }

@@ -35,6 +35,9 @@ import {
   purchaseAndVerifyBusinessPlanIosIap,
   resolveBusinessPlanProductIdWithFeatured,
 } from "@/src/services/iapService";
+import {
+  resolveTrialDays,
+} from "@/src/services/remoteConfigService";
 import { useAppSelector } from "@/src/hooks/hooks";
 import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
@@ -43,7 +46,6 @@ import { fetchUserStatus } from "../state/thunks/businessThunks";
 
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
-const TRIAL_DAYS = process.env.EXPO_PUBLIC_TRAILDAY || "14";
 
 const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   const planType = plan.planType?.toLowerCase() ?? "";
@@ -419,6 +421,7 @@ function BusinessPlansModalContent({
     Record<number, number[]>
   >({});
   const [hasUsedTrial, setHasUsedTrial] = useState(false);
+  const [trialDays, setTrialDays] = useState("");
   const isIos = Platform.OS === "ios";
   const isAndroid = Platform.OS === "android";
   /** Android-only: trial already used → show Subscribe instead of Start trial */
@@ -456,16 +459,16 @@ function BusinessPlansModalContent({
 
   const getTrialDisclosure = useCallback(
     (totalPrice: string) => {
-      const trialDays = parseInt(TRIAL_DAYS, 10);
-      if (!showSubscribeInsteadOfTrial && trialDays > 0) {
+      const days = parseInt(trialDays, 10);
+      if (!showSubscribeInsteadOfTrial && days > 0) {
         return t("businessPlanTrialDisclosure", {
-          trialDays: TRIAL_DAYS,
+          trialDays,
           price: totalPrice,
         });
       }
       return t("businessPlanRenewalDisclosure", { price: totalPrice });
     },
-    [showSubscribeInsteadOfTrial, t],
+    [showSubscribeInsteadOfTrial, t, trialDays],
   );
 
   const standardPlans = useMemo(
@@ -611,6 +614,21 @@ function BusinessPlansModalContent({
     if (visible) {
       fetchPlans();
       fetchAdditionalServices();
+      void resolveTrialDays()
+        .then(setTrialDays)
+        .catch((err: unknown) => {
+          setTrialDays("");
+          const message =
+            err instanceof Error
+              ? err.message
+              : "Failed to start payment. Purchase configuration is missing. Please try again later.";
+          setLocalBanner({
+            visible: true,
+            title: t("error"),
+            message,
+            type: "error",
+          });
+        });
       // Trial status is Android-only; iOS uses IAP and does not use this API yet
       if (isAndroid) {
         fetchTrialStatus();
@@ -618,7 +636,7 @@ function BusinessPlansModalContent({
         setHasUsedTrial(false);
       }
     }
-  }, [visible, isAndroid]);
+  }, [visible, isAndroid, t]);
 
 
   const hasFeaturedAddOnSelected = (selectedAddOnIds: number[]): boolean =>
@@ -652,12 +670,10 @@ function BusinessPlansModalContent({
   ) => {
     const selectedPlan = standardPlans.find((p) => p.id === planId);
     const hasFeatured = hasFeaturedAddOnSelected(selectedAddOns);
-    const productId = resolveBusinessPlanProductIdWithFeatured(
+    const productId = await resolveBusinessPlanProductIdWithFeatured(
       hasFeatured,
       selectedPlan?.app_store_product_id,
     );
-
- 
 
     await purchaseAndVerifyBusinessPlanIosIap({
       productId,
@@ -712,7 +728,6 @@ function BusinessPlansModalContent({
     if (setupIntent && setupIntent.includes("_secret_")) {
       paymentConfig.setupIntentClientSecret = setupIntent;
       if (!showSubscribeInsteadOfTrial) {
-        const trialDays = process.env.EXPO_PUBLIC_TRAILDAY || "0";
         paymentConfig.primaryButtonLabel = `Start ${trialDays} Days Free Trial`;
       }
       setIsSetupIntent(true);
@@ -759,6 +774,12 @@ function BusinessPlansModalContent({
     setSubscribingPlanId(planId);
 
     try {
+      if (!trialDays.trim()) {
+        throw new Error(
+          "Failed to start payment. Purchase configuration is missing. Please try again later.",
+        );
+      }
+
       const selectedAddOns = selectedServicesByPlanId[planId] ?? [];
 
       if (isIos) {
@@ -1021,12 +1042,12 @@ function BusinessPlansModalContent({
                     showSubscribeInsteadOfTrial
                       ? t("businessPlanSubscribe")
                       : t("businessPlanStartTrial", {
-                          trialDays: TRIAL_DAYS,
+                          trialDays,
                         })
                   }
                   onPress={() => handleTrialPress(plan.id)}
                   loading={subscribingPlanId === plan.id}
-                  disabled={subscribingPlanId !== null}
+                  disabled={subscribingPlanId !== null || !trialDays.trim()}
                   containerStyle={styles.subscribeButton}
                 />
                 <Text style={styles.legalText}>

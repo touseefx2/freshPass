@@ -27,7 +27,7 @@ import GuestModeModal from "@/src/components/guestModeModal";
 import FullImageModal from "@/src/components/fullImageModal";
 import StripeConnectModalHandler from "@/src/components/StripeConnectModalHandler";
 import BusinessPlansModalHandler from "@/src/components/BusinessPlansModalHandler";
-import { resolveStripePublishableKey } from "@/src/services/remoteConfigService";
+import { resolveStripePublishableKey, prefetchPurchaseRemoteConfig } from "@/src/services/remoteConfigService";
 import "../global.css";
 import * as SystemUI from "expo-system-ui";
 import { LogBox } from "react-native";
@@ -54,6 +54,7 @@ export default function RootLayout() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      void prefetchPurchaseRemoteConfig();
       const key = await resolveStripePublishableKey();
       if (cancelled) return;
       if (key) {

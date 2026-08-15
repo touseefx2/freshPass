@@ -116,7 +116,7 @@ export default function TryOnPurchase() {
   };
 
   const handleIapPayment = async () => {
-    const productId = resolveAiServiceProductId();
+    const productId = await resolveAiServiceProductId();
 
     const verifyResponse = await purchaseAndVerifyIosIap({
       productId,

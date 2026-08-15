@@ -15,10 +15,11 @@ This guide documents what is now implemented in the app, what you need to config
 - Android and non-iOS flows still use existing Stripe implementation.
 - Product ID resolution supports:
   1. `app_store_product_id` coming from backend payloads (business plans)
-  2. Full product IDs from env:
-     - `EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID`
-     - `EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID`
-     - `EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID`
+  2. Firebase Remote Config keys:
+     - `iap_business_plan_standard_product_id`
+     - `iap_business_plan_featured_product_id`
+     - `iap_ai_service_product_id`
+  3. Trial days from Remote Config key `trial_days`
 - New shared service added: `src/services/iapService.ts`
 - New backend endpoint reference added: `iapEndpoints.verify` (`/api/iap/verify`)
 
@@ -38,7 +39,7 @@ This guide documents what is now implemented in the app, what you need to config
    - AI feature products
 3. Use product IDs that match one of the following:
    - Exact ID returned by backend (`app_store_product_id`)
-   - Exact IDs set in env (`EXPO_PUBLIC_IAP_BUSINESS_PLAN_*_PRODUCT_ID`, `EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID`)
+   - Exact IDs set in Firebase Remote Config (`iap_*_product_id`)
 4. Complete required metadata for each IAP:
    - Display name
    - Description
@@ -47,17 +48,20 @@ This guide documents what is now implemented in the app, what you need to config
 5. Submit each IAP for review (if required by your release flow).
 6. Test with Sandbox test account on a real iOS device.
 
-## Environment variables (frontend)
+## Firebase Remote Config (frontend)
 
-Add these to `.env` if you are not returning product IDs from API:
+IAP product IDs and trial days live in `firebase-remote-config-template.json` (not `.env`):
 
 ```bash
-EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID=com.freshpass.business.plan.21
-EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID=com.freshpass.business.plan.21.featured
-EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID=com.freshpass.ai.service.2
+iap_business_plan_standard_product_id=com.freshpass.business.plan.21
+iap_business_plan_featured_product_id=com.freshpass.business.plan.21.featured
+iap_ai_service_product_id=com.freshpass.ai.service.2
+trial_days=14
 ```
 
-If backend returns `app_store_product_id` for business plans, the standard env ID is optional.
+Deploy with: `firebase deploy --only remoteconfig`
+
+If backend returns `app_store_product_id` for business plans, the standard Remote Config ID is optional for that plan.
 
 ## Backend tasks (must be done)
 
