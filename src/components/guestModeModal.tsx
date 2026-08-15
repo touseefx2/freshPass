@@ -14,15 +14,13 @@ import {
   moderateWidthScale,
   moderateHeightScale,
   widthScale,
-  heightScale,
   iconScale,
 } from "@/src/theme/dimensions";
-import { useRouter } from "expo-router";
-import { MAIN_ROUTES } from "@/src/constant/routes";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import Button from "@/src/components/button";
 import { Feather } from "@expo/vector-icons";
 import { ApiService } from "../services/api";
+import { useTranslation } from "react-i18next";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -97,7 +95,7 @@ export default function GuestModeModal() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
-  const router = useRouter();
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const guestModeModalVisible = useAppSelector(
     (state) => state.general.guestModeModalVisible
@@ -111,7 +109,7 @@ export default function GuestModeModal() {
     dispatch(setGuestModeModalVisible(false));
   };
 
-  const handleSignIn = async() => {
+  const handleSignIn = async () => {
     dispatch(setGuestModeModalVisible(false));
     await ApiService.logout();
   };
@@ -141,15 +139,12 @@ export default function GuestModeModal() {
             />
           </View>
 
-          <Text style={styles.title}>Guest Mode</Text>
+          <Text style={styles.title}>{t("guestMode")}</Text>
 
-          <Text style={styles.message}>
-            You are currently browsing as a guest. To access all features and
-            make bookings, please sign in to your account.
-          </Text>
+          <Text style={styles.message}>{t("guestModeMessage")}</Text>
 
           <View style={styles.buttonContainer}>
-            <Button title="Sign In" onPress={handleSignIn} />
+            <Button title={t("signInOrRegister")} onPress={handleSignIn} />
           </View>
 
           <TouchableOpacity
@@ -157,7 +152,7 @@ export default function GuestModeModal() {
             onPress={handleSkip}
             activeOpacity={0.7}
           >
-            <Text style={styles.skipText}>Skip now</Text>
+            <Text style={styles.skipText}>{t("skipForNow")}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
