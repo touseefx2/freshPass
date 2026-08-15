@@ -780,5 +780,7 @@
   "trialing": "Prueba",
   "cancelled": "Cancelada",
   "subscriptionCancelled": "Suscripción cancelada",
-  "cancelledKeepsAccess": "Puedes seguir usando este plan hasta el {{date}}."
+  "cancelledKeepsAccess": "Puedes seguir usando este plan hasta el {{date}}.",
+  "planPurchasedSuccessfully": "Plan comprado correctamente",
+  "paymentSuccessful": "¡Pago realizado correctamente!"
 }

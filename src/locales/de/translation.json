@@ -780,5 +780,7 @@
   "trialing": "Testphase",
   "cancelled": "Gekündigt",
   "subscriptionCancelled": "Abonnement gekündigt",
-  "cancelledKeepsAccess": "Sie können diesen Tarif bis zum {{date}} weiter nutzen."
+  "cancelledKeepsAccess": "Sie können diesen Tarif bis zum {{date}} weiter nutzen.",
+  "planPurchasedSuccessfully": "Plan erfolgreich gekauft",
+  "paymentSuccessful": "Zahlung erfolgreich!"
 }

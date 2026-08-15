@@ -115,20 +115,15 @@ export const resolveBusinessPlanProductIdWithFeatured = (
   return `${baseId}.featured`;
 };
 
-export const resolveAiServiceProductId = (
-  serviceId: number,
-
-) => {
-
-
-  const prefix = process.env.EXPO_PUBLIC_IAP_AI_SERVICE_PREFIX;
-  if (!prefix || !prefix.trim()) {
+export const resolveAiServiceProductId = () => {
+  const productId = process.env.EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID;
+  if (!productId?.trim()) {
     throw new Error(
-      "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_AI_SERVICE_PREFIX or return app_store_product_id from API.",
+      "IAP product mapping is missing. Set EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID.",
     );
   }
 
-  return `${prefix.trim()}.${serviceId}`;
+  return productId.trim();
 };
 
 const getProductOrThrow = async (
@@ -286,7 +281,6 @@ const requestIosPurchase = (
 /** AI try-on IAP — verify API receives transaction_id only. */
 export const purchaseAndVerifyIosIap = async (params: {
   productId: string;
-  referenceId: number;
 }) => {
   const { productId } = params;
   const kind: IapPurchaseKind = "ai_service";

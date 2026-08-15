@@ -789,5 +789,7 @@
   "trialing": "Trialing",
   "cancelled": "Cancelled",
   "subscriptionCancelled": "Subscription cancelled",
-  "cancelledKeepsAccess": "You can keep using this plan until {{date}}."
+  "cancelledKeepsAccess": "You can keep using this plan until {{date}}.",
+  "planPurchasedSuccessfully": "Plan purchased successfully",
+  "paymentSuccessful": "Payment successful!"
 }

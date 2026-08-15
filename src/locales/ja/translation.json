@@ -780,5 +780,7 @@
   "trialing": "トライアル中",
   "cancelled": "キャンセル済み",
   "subscriptionCancelled": "サブスクリプションをキャンセルしました",
-  "cancelledKeepsAccess": "このプランは{{date}}まで引き続きご利用いただけます。"
+  "cancelledKeepsAccess": "このプランは{{date}}まで引き続きご利用いただけます。",
+  "planPurchasedSuccessfully": "プランの購入が完了しました",
+  "paymentSuccessful": "支払いが完了しました！"
 }

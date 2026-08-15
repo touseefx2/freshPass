@@ -780,5 +780,7 @@
   "trialing": "تجريبي",
   "cancelled": "ملغى",
   "subscriptionCancelled": "تم إلغاء الاشتراك",
-  "cancelledKeepsAccess": "يمكنك الاستمرار في استخدام هذه الخطة حتى {{date}}."
+  "cancelledKeepsAccess": "يمكنك الاستمرار في استخدام هذه الخطة حتى {{date}}.",
+  "planPurchasedSuccessfully": "تم شراء الخطة بنجاح",
+  "paymentSuccessful": "تم الدفع بنجاح!"
 }

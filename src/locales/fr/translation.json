@@ -780,5 +780,7 @@
   "trialing": "Essai",
   "cancelled": "Annulé",
   "subscriptionCancelled": "Abonnement annulé",
-  "cancelledKeepsAccess": "Vous pouvez continuer à utiliser cet abonnement jusqu'au {{date}}."
+  "cancelledKeepsAccess": "Vous pouvez continuer à utiliser cet abonnement jusqu'au {{date}}.",
+  "planPurchasedSuccessfully": "Plan acheté avec succès",
+  "paymentSuccessful": "Paiement réussi !"
 }

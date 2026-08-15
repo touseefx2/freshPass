@@ -174,7 +174,7 @@ Stripe publishable key is loaded from Firebase Remote Config (`stripe_publishabl
 | `EXPO_PUBLIC_IAP_BUSINESS_PLAN_STANDARD_PRODUCT_ID` | iOS only | Standard business plan product ID |
 | `EXPO_PUBLIC_IAP_BUSINESS_PLAN_FEATURED_PRODUCT_ID` | iOS only | Featured business plan product ID |
 | `EXPO_PUBLIC_IAP_BUSINESS_PLAN_PREFIX` | iOS only | Fallback prefix for business plan products |
-| `EXPO_PUBLIC_IAP_AI_SERVICE_PREFIX` | iOS only | Fallback prefix for AI service products |
+| `EXPO_PUBLIC_IAP_AI_SERVICE_PRODUCT_ID` | iOS only | Full App Store product ID for AI try-on credits |
 
 ### Default Images & URLs
 

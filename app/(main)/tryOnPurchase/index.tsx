@@ -71,7 +71,7 @@ export default function TryOnPurchase() {
     return found ?? aiService.find((s) => s.name === "AI Hair Try-On") ?? null;
   }, [serviceId, aiService]);
 
-  console.log("service", service);
+  console.log("=====>service", service);
 
   const pricingText =
     service && service.price && service.ai_requests
@@ -115,17 +115,11 @@ export default function TryOnPurchase() {
     }
   };
 
-  const handleIapPayment = async (serviceIdForPurchase: number) => {
-    const productId = resolveAiServiceProductId(
-      // serviceIdForPurchase,
-      2
-    );
+  const handleIapPayment = async () => {
+    const productId = resolveAiServiceProductId();
 
-  
     const verifyResponse = await purchaseAndVerifyIosIap({
       productId,
-      // referenceId: serviceIdForPurchase,
-      referenceId: 2,
     });
 
     setLocalBanner({
@@ -217,7 +211,7 @@ export default function TryOnPurchase() {
 
     try {
       if (isIos) {
-        await handleIapPayment(service.id);
+        await handleIapPayment();
         return;
       }
 

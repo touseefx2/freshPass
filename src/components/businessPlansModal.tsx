@@ -632,16 +632,16 @@ function BusinessPlansModalContent({
     dispatch(fetchUserStatus({ showError: false }));
   };
 
-  const completeSubscriptionSuccess = async (isTrial: boolean) => {
+  const completeSubscriptionSuccess = async (_isTrial: boolean) => {
     setProcessingPayment(true);
     setTimeout(() => {
       setProcessingPayment(false);
-      const successMessage = isTrial
-        ? t("trialStartedSuccess") ??
-          "Trial started successfully! Your free trial will be activated."
-        : t("paymentSuccessful") ??
-          "Payment successful! Your subscription will be activated.";
-      showBanner(t("success"), successMessage, "success", 4000);
+      showBanner(
+        t("success"),
+        t("planPurchasedSuccessfully"),
+        "success",
+        4000,
+      );
       finishSubscriptionSuccess();
     }, 2500);
   };
@@ -668,7 +668,7 @@ function BusinessPlansModalContent({
 
     showBanner(
       t("success"),
-      t("subscriptionActivated") ?? "Subscription activated successfully.",
+      t("planPurchasedSuccessfully"),
       "success",
       4000,
     );
