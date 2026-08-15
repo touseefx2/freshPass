@@ -69,6 +69,8 @@
   "alwaysReadyAlwaysYou": "جاهز دائمًا، أنت دائمًا",
   "loading": "جارٍ التحميل...",
   "businessPlans": "خطط الأعمال",
+  "businessPlanStartTrial": "ابدأ تجربتي لمدة {{trialDays}} يومًا",
+  "businessPlanSubscribe": "اشترك في الخطة",
   "accountSettings": "إعدادات الحساب",
   "guestMode": "وضع الضيف",
   "chatBox": "صندوق الدردشة",

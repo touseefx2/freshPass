@@ -69,6 +69,8 @@
   "alwaysReadyAlwaysYou": "Toujours prêt Toujours vous",
   "loading": "Chargement...",
   "businessPlans": "Plans d'affaires",
+  "businessPlanStartTrial": "Commencer mon essai de {{trialDays}} jours",
+  "businessPlanSubscribe": "S'abonner au forfait",
   "accountSettings": "Paramètres du compte",
   "guestMode": "Mode invité",
   "chatBox": "Boîte de discussion",

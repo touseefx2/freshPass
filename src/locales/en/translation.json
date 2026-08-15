@@ -414,6 +414,8 @@
   "businessPlanBillingPeriodIncludes": "Included each billing period:",
   "businessPlanTrialDisclosure": "{{trialDays}}-day free trial, then {{price}}/month. Subscription auto-renews monthly until cancelled.",
   "businessPlanRenewalDisclosure": "{{price}}/month. Subscription auto-renews monthly until cancelled.",
+  "businessPlanStartTrial": "Start my {{trialDays}} day trial",
+  "businessPlanSubscribe": "Subscribe plan",
   "businessPlanCancelInSettings": "Manage or cancel in Settings → Apple ID → Subscriptions.",
   "businessPlanLegalPrefix": "By subscribing you agree to our",
   "termsOfUse": "Terms of Use",

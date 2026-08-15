@@ -418,7 +418,11 @@ function BusinessPlansModalContent({
   const [selectedServicesByPlanId, setSelectedServicesByPlanId] = useState<
     Record<number, number[]>
   >({});
+  const [hasUsedTrial, setHasUsedTrial] = useState(false);
   const isIos = Platform.OS === "ios";
+  const isAndroid = Platform.OS === "android";
+  /** Android-only: trial already used → show Subscribe instead of Start trial */
+  const showSubscribeInsteadOfTrial = isAndroid && hasUsedTrial;
   const dispatch = useAppDispatch();
 
   const handleOpenLink = useCallback(
@@ -453,7 +457,7 @@ function BusinessPlansModalContent({
   const getTrialDisclosure = useCallback(
     (totalPrice: string) => {
       const trialDays = parseInt(TRIAL_DAYS, 10);
-      if (trialDays > 0) {
+      if (!showSubscribeInsteadOfTrial && trialDays > 0) {
         return t("businessPlanTrialDisclosure", {
           trialDays: TRIAL_DAYS,
           price: totalPrice,
@@ -461,7 +465,7 @@ function BusinessPlansModalContent({
       }
       return t("businessPlanRenewalDisclosure", { price: totalPrice });
     },
-    [t],
+    [showSubscribeInsteadOfTrial, t],
   );
 
   const standardPlans = useMemo(
@@ -511,6 +515,41 @@ function BusinessPlansModalContent({
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTrialStatus = async () => {
+    try {
+      const response = await ApiService.get<{
+        success?: boolean;
+        message?: string;
+        data?: {
+          businessId: number;
+          hasUsedTrial: boolean;
+          trialAvailable: boolean;
+          trialPeriodDays: number;
+          trialStartedAt: string | null;
+          trialEndedAt: string | null;
+        };
+        businessId?: number;
+        hasUsedTrial?: boolean;
+        trialAvailable?: boolean;
+        trialPeriodDays?: number;
+        trialStartedAt?: string | null;
+        trialEndedAt?: string | null;
+      }>(businessEndpoints.trialStatus);
+
+      const trialData =
+        response?.data && typeof response.data.hasUsedTrial === "boolean"
+          ? response.data
+          : response;
+
+      if (typeof trialData?.hasUsedTrial === "boolean") {
+        setHasUsedTrial(trialData.hasUsedTrial);
+      }
+    } catch {
+      // Keep default (trial available) if status fetch fails
+      setHasUsedTrial(false);
     }
   };
 
@@ -572,8 +611,14 @@ function BusinessPlansModalContent({
     if (visible) {
       fetchPlans();
       fetchAdditionalServices();
+      // Trial status is Android-only; iOS uses IAP and does not use this API yet
+      if (isAndroid) {
+        fetchTrialStatus();
+      } else {
+        setHasUsedTrial(false);
+      }
     }
-  }, [visible]);
+  }, [visible, isAndroid]);
 
 
   const hasFeaturedAddOnSelected = (selectedAddOnIds: number[]): boolean =>
@@ -667,8 +712,10 @@ function BusinessPlansModalContent({
 
     if (setupIntent && setupIntent.includes("_secret_")) {
       paymentConfig.setupIntentClientSecret = setupIntent;
-      const trialDays = process.env.EXPO_PUBLIC_TRAILDAY || "0";
-      paymentConfig.primaryButtonLabel = `Start ${trialDays} Days Free Trial`;
+      if (!showSubscribeInsteadOfTrial) {
+        const trialDays = process.env.EXPO_PUBLIC_TRAILDAY || "0";
+        paymentConfig.primaryButtonLabel = `Start ${trialDays} Days Free Trial`;
+      }
       setIsSetupIntent(true);
     } else if (paymentIntent && paymentIntent.trim() !== "") {
       setIsSetupIntent(false);
@@ -971,7 +1018,13 @@ function BusinessPlansModalContent({
                   </Text>
                 )}
                 <Button
-                  title={`Start my ${TRIAL_DAYS} day trial`}
+                  title={
+                    showSubscribeInsteadOfTrial
+                      ? t("businessPlanSubscribe")
+                      : t("businessPlanStartTrial", {
+                          trialDays: TRIAL_DAYS,
+                        })
+                  }
                   onPress={() => handleTrialPress(plan.id)}
                   loading={subscribingPlanId === plan.id}
                   disabled={subscribingPlanId !== null}
