@@ -22,6 +22,7 @@ import { Audio } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 import AudioRecord from "react-native-audio-record";
 import { Buffer } from "buffer";
+import Logger from "@/src/services/logger";
 
 export type ChatBoxStyles = Record<string, any>;
 
@@ -293,7 +294,7 @@ export const VoiceReceptionistContent = forwardRef<
         (ws.readyState === WebSocket.OPEN ||
           ws.readyState === WebSocket.CONNECTING)
       ) {
-        console.log("[VoiceReceptionist] User ended call – disconnecting.");
+        Logger.log("[VoiceReceptionist] User ended call – disconnecting.");
         ws.close(1000, "User ended call");
       }
     } catch {}
@@ -473,7 +474,7 @@ export const VoiceReceptionistContent = forwardRef<
         );
         sound = result.sound;
       } catch (err) {
-        console.error(
+        Logger.error(
           "[VoiceReceptionist] Failed to create Audio.Sound from URI",
           err,
         );
@@ -528,7 +529,7 @@ export const VoiceReceptionistContent = forwardRef<
         }
       });
     } catch (err) {
-      console.error(
+      Logger.error(
         "[VoiceReceptionist] Unexpected error during playback",
         err,
       );
@@ -567,7 +568,7 @@ export const VoiceReceptionistContent = forwardRef<
         setIsAgentSpeaking(true);
         playNextInQueue().catch(() => {});
       } catch (err) {
-        console.error("Failed to flush voice agent audio buffer", err);
+        Logger.error("Failed to flush voice agent audio buffer", err);
       }
     },
     [pcmToWav, playNextInQueue],
@@ -612,7 +613,7 @@ export const VoiceReceptionistContent = forwardRef<
         pendingSamplesRef.current += pcm.length;
         scheduleFlushAndPlayWhenQuiet();
       } catch (err) {
-        console.error("Failed to buffer voice agent audio chunk", err);
+        Logger.error("Failed to buffer voice agent audio chunk", err);
       }
     },
     [scheduleFlushAndPlayWhenQuiet],
@@ -673,7 +674,7 @@ export const VoiceReceptionistContent = forwardRef<
                   ...prev,
                   { role, content, timestamp: Date.now() },
                 ]);
-                console.log("[VoiceReceptionist] Agent text message:", content);
+                Logger.log("[VoiceReceptionist] Agent text message:", content);
                 currentTurnTextShownRef.current = true;
                 if (noAudioFallbackTimeoutRef.current) {
                   clearTimeout(noAudioFallbackTimeoutRef.current);
@@ -762,7 +763,7 @@ export const VoiceReceptionistContent = forwardRef<
                       timestamp: Date.now(),
                     },
                   ]);
-                  console.log(
+                  Logger.log(
                     "[VoiceReceptionist] User transcript from agent:",
                     content,
                   );
@@ -807,7 +808,7 @@ export const VoiceReceptionistContent = forwardRef<
                 flushPendingAgentTextRef.current();
                 flushPendingAudio().catch(() => {});
               } else {
-                console.error("[VoiceReceptionist] Agent Error:", errorMsg);
+                Logger.error("[VoiceReceptionist] Agent Error:", errorMsg);
                 setError(errorMsg);
               }
               break;
@@ -836,7 +837,7 @@ export const VoiceReceptionistContent = forwardRef<
             }
           }
         } catch (err) {
-          console.error("Failed to decode voice agent audio string", err);
+          Logger.error("Failed to decode voice agent audio string", err);
         }
       } else if (data instanceof ArrayBuffer) {
         setHasReceivedFirstAgentResponse(true);
@@ -868,7 +869,7 @@ export const VoiceReceptionistContent = forwardRef<
         const ws = new WebSocket(websocketUrl);
         wsRef.current = ws;
         ws.onopen = () => {
-          console.log(
+          Logger.log(
             "[VoiceReceptionist] WebSocket connected to voice agent",
             websocketUrl,
           );
@@ -894,7 +895,7 @@ export const VoiceReceptionistContent = forwardRef<
           resolve();
         };
         ws.onerror = (event: any) => {
-          console.error(
+          Logger.error(
             "[VoiceReceptionist] WebSocket ERROR",
             event?.message ?? event,
           );
@@ -903,7 +904,7 @@ export const VoiceReceptionistContent = forwardRef<
         };
         ws.onclose = (event: any) => {
           if (event.target !== wsRef.current) return;
-          console.log(
+          Logger.log(
             "[VoiceReceptionist] WebSocket closed",
             "code=",
             event?.code,
@@ -930,7 +931,7 @@ export const VoiceReceptionistContent = forwardRef<
         };
         ws.onmessage = handleServerMessage;
       } catch (err) {
-        console.error("[VoiceReceptionist] WebSocket connect failed", err);
+        Logger.error("[VoiceReceptionist] WebSocket connect failed", err);
         setError("Failed to open voice agent connection.");
         reject(err);
       }
@@ -1003,7 +1004,7 @@ export const VoiceReceptionistContent = forwardRef<
             try {
               ws.send(arrayBuffer);
             } catch (err) {
-              console.error(
+              Logger.error(
                 "[VoiceReceptionist] Failed to send audio chunk directly",
                 err,
               );
@@ -1011,7 +1012,7 @@ export const VoiceReceptionistContent = forwardRef<
               drainSendQueue();
             }
           } catch (err) {
-            console.error(
+            Logger.error(
               "[VoiceReceptionist] Failed to process audio chunk",
               err,
             );

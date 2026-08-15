@@ -732,8 +732,8 @@ export default function StaffAvailabilityScreen() {
         },
       };
 
-      console.log("route : ", staffEndpoints.profile);
-      console.log("requestBody : ", requestBody);
+      Logger.log("route : ", staffEndpoints.profile);
+      Logger.log("requestBody : ", requestBody);
 
       const response = await ApiService.post<{
         success: boolean;

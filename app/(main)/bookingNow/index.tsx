@@ -47,6 +47,7 @@ import {
   setBookingTryOnPreselectedUrls,
 } from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import {
   businessEndpoints,
   appointmentsEndpoints,
@@ -1761,7 +1762,7 @@ export default function BookingNow() {
       }),
     )
       .then((res) => {
-        console.log("-------->res", res);
+        Logger.log("-------->res", res);
 
         if (res?.success === false) {
           setApiSlots([]);

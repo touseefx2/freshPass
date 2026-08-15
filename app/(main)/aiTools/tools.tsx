@@ -153,8 +153,6 @@ export default function Tools() {
     null,
   );
 
-  // console.log("hairPipelineState: ", hairPipelineState);
-
   // API state
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiConsentModalVisible, setAiConsentModalVisible] = useState(false);
@@ -163,9 +161,9 @@ export default function Tools() {
     // !!hairTryOnService &&
     aiQuota >= 0 && toolType === "Hair Tryon";
 
-  console.log("------>aiQuota", aiQuota);
-  console.log("------>toolType", toolType);
-  console.log("------>hairTryOnService", hairTryOnService);
+  Logger.log("------>aiQuota", aiQuota);
+  Logger.log("------>toolType", toolType);
+  Logger.log("------>hairTryOnService", hairTryOnService);
 
   const creditBannerMessage =
     aiQuota === 0

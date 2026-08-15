@@ -188,7 +188,7 @@ export const openNotificationSettings = async (): Promise<void> => {
         return;
       } catch {
         // Deep link not supported or blocked; fallback to app settings page
-        console.log(
+        Logger.log(
           "Deep link not supported or blocked; fallback to app settings page",
         );
         await Linking.openSettings();

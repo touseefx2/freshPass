@@ -393,7 +393,7 @@ export default function ExploreScreen() {
         url = `${url}?${params.join("&")}`;
       }
 
-      console.log("--------->url : ", url);
+      Logger.log("--------->url : ", url);
 
       const response = await ApiService.get<{
         success: boolean;

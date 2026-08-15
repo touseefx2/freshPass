@@ -727,8 +727,6 @@ const AiChatBot: React.FC = () => {
     VOICE_AGENT_WS_URL = `${VOICE_AGENT_WS_URL}${separator}user_token=${tokenForUrl}`;
   }
 
-  // console.log("VOICE_AGENT_WS_URL : ", VOICE_AGENT_WS_URL);
-
   // Gentle float (up then down) when chat closed and FAB visible (not minimized)
   useEffect(() => {
     if (isOpen) {

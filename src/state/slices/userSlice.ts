@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import Logger from "@/src/services/logger";
 
 export type UserRole = "business" | "customer" | "staff" | null;
 
@@ -205,7 +206,7 @@ const userSlice = createSlice({
       }
       if (action.payload.dateOfBirth !== undefined) {
         state.dateOfBirth = action.payload.dateOfBirth;
-        console.log("=======>date_of_birth", action.payload.dateOfBirth);
+        Logger.log("=======>date_of_birth", action.payload.dateOfBirth);
       }
       if (action.payload.countryZipCode !== undefined) {
         state.countryZipCode = action.payload.countryZipCode;

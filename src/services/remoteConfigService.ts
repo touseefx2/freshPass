@@ -125,7 +125,6 @@ export async function resolveStripePublishableKey(): Promise<string> {
       : key.startsWith("pk_test_")
         ? "test"
         : "unknown",
-    key,
     length: key.length,
   });
 
@@ -137,12 +136,6 @@ export async function resolveStripePublishableKey(): Promise<string> {
       entries,
       REMOTE_CONFIG_KEYS.stripePublishableKey,
     )?.trim();
-
-    Logger.log("[Stripe] Remote Config raw stripe_publishable_key:", {
-      present: Boolean(fromRemote),
-      value: fromRemote || null,
-      cached: cached || null,
-    });
 
     if (fromRemote) {
       if (fromRemote !== cached) {

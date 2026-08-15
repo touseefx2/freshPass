@@ -30,6 +30,7 @@ import {
   resetChatContacts,
 } from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { userEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { getEcho } from "@/src/services/echo";
 import { fetchChatContactsApi } from "@/src/services/chatContacts";
@@ -95,8 +96,6 @@ export default function DashboardLayout() {
   const isCustomer = userRole === "customer" && !isGuest;
   const dispatch = useAppDispatch();
 
-  // console.log("------>user Id", user.id);
-
   useEffect(() => {
     if (!isCustomer) return;
     fetchUserDetails();
@@ -157,7 +156,7 @@ export default function DashboardLayout() {
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
-        console.log("------>response.data ai_quota", response.data.ai_quota);
+        Logger.log("------>response.data ai_quota", response.data.ai_quota);
         dispatch(
           setUserDetails({
             name: response.data.name,

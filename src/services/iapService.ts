@@ -17,6 +17,7 @@ import {
 import { ApiService } from "@/src/services/api";
 import { iapEndpoints } from "@/src/services/endpoints";
 import { resolvePurchaseRemoteConfig } from "@/src/services/remoteConfigService";
+import Logger from "@/src/services/logger";
 
 export type IapPurchaseKind = "business_subscription" | "ai_service";
 
@@ -335,7 +336,7 @@ export const purchaseAndVerifyBusinessPlanIosIap = async (params: {
     //   : {}),
   };
 
-  console.log("verifyPayload", verifyPayload);
+  Logger.log("verifyPayload", verifyPayload);
 
   // alert(JSON.stringify(verifyPayload));
 

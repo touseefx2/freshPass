@@ -1,26 +1,19 @@
-const isDev = __DEV__ || process.env.NODE_ENV === "development";
-
-const formatMessage = (message: string, ...args: any[]): [string, ...any[]] => {
-  return [message, ...args];
-};
+const isDev = __DEV__;
 
 export class Logger {
-  static log(message: string, ...args: any[]): void {
+  static log(...args: unknown[]): void {
     if (!isDev) return;
-    const formatted = formatMessage(message, ...args);
-    console.log(...formatted);
+    console.log(...args);
   }
 
-  static error(message: string, ...args: any[]): void {
+  static error(...args: unknown[]): void {
     if (!isDev) return;
-    const formatted = formatMessage(message, ...args);
-    console.error(...formatted);
+    console.error(...args);
   }
 
-  static warn(message: string, ...args: any[]): void {
+  static warn(...args: unknown[]): void {
     if (!isDev) return;
-    const formatted = formatMessage(message, ...args);
-    console.warn(...formatted);
+    console.warn(...args);
   }
 }
 

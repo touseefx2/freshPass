@@ -62,6 +62,7 @@ import {
 import InclusionsModal from "@/src/components/inclusionsModal";
 import Button from "@/src/components/button";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
 import RetryButton from "@/src/components/retryButton";
 import ExploreSegmentToggle, {
@@ -1564,8 +1565,7 @@ export default function BusinessDetailScreen() {
           setServiceTemplates(response.data);
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error("Failed to fetch service templates:", e);
+        Logger.error("Failed to fetch service templates:", e);
       }
     };
 

@@ -42,6 +42,7 @@ import Button from "@/src/components/button";
 import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
+import Logger from "@/src/services/logger";
 import {
   appointmentsEndpoints,
   reviewsEndpoints,
@@ -1119,7 +1120,7 @@ export default function bookingDetailsById() {
     : undefined;
 
   const handleContactPress = () => {
-    console.log("booking", booking);
+    Logger.log("booking", booking);
     const ownerId =
       userRole === "customer" ? booking?.owner?.id : (booking?.userId ?? null);
 

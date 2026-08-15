@@ -8,6 +8,7 @@ import LottieView from "lottie-react-native";
 import { IMAGES } from "@/src/constant/images";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { useEffect, useMemo, useRef } from "react";
+import Logger from "@/src/services/logger";
 
 // Safety net in case the Lottie splash never fires onAnimationFinish /
 // onAnimationFailure on some devices (seen intermittently on certain
@@ -68,7 +69,7 @@ export default function Index() {
         loop={false}
         onAnimationFinish={handleNavigation}
         onAnimationFailure={(error) => {
-          console.error("Animation failed:", error);
+          Logger.error("Animation failed:", error);
           handleNavigation();
         }}
         style={styles.logo}

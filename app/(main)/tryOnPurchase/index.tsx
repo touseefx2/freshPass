@@ -34,6 +34,7 @@ import {
   setActionLoader,
   setActionLoaderTitle,
 } from "@/src/state/slices/generalSlice";
+import Logger from "@/src/services/logger";
 
 export default function TryOnPurchase() {
   const { t } = useTranslation();
@@ -71,7 +72,7 @@ export default function TryOnPurchase() {
     return found ?? aiService.find((s) => s.name === "AI Hair Try-On") ?? null;
   }, [serviceId, aiService]);
 
-  console.log("=====>service", service);
+  Logger.log("=====>service", service);
 
   const pricingText =
     service && service.price && service.ai_requests
