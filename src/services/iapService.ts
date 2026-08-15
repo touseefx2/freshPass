@@ -73,13 +73,7 @@ export const ensureIapConnection = async () => {
   connectionInitialized = true;
 };
 
-export const resolveBusinessPlanProductId = async (
-  explicitProductId?: string | null,
-) => {
-  if (explicitProductId && explicitProductId.trim().length > 0) {
-    return explicitProductId.trim();
-  }
-
+export const resolveBusinessPlanProductId = async () => {
   const { businessPlanStandardProductId } = await resolvePurchaseRemoteConfig();
   if (!businessPlanStandardProductId) {
     throw new Error(
@@ -90,13 +84,12 @@ export const resolveBusinessPlanProductId = async (
   return businessPlanStandardProductId;
 };
 
-/** Standard base vs Standard + Featured (separate App Store subscription SKUs). */
+/** Standard vs Standard + Featured — both SKUs from Remote Config only. */
 export const resolveBusinessPlanProductIdWithFeatured = async (
   hasFeaturedAddOn: boolean,
-  explicitBaseProductId?: string | null,
 ) => {
   if (!hasFeaturedAddOn) {
-    return resolveBusinessPlanProductId(explicitBaseProductId);
+    return resolveBusinessPlanProductId();
   }
 
   const { businessPlanFeaturedProductId } = await resolvePurchaseRemoteConfig();

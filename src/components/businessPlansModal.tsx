@@ -53,10 +53,6 @@ const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   return planType.includes("unlimited") || name.includes("unlimited");
 };
 
-const isFeaturedAddOn = (service: AdditionalService): boolean =>
-  service.type?.toLowerCase() === "featured" ||
-  service.name?.toLowerCase().includes("feature");
-
 interface SubscriptionPlan {
   id: number;
   name: string;
@@ -589,14 +585,10 @@ function BusinessPlansModalContent({
   const isServiceSelectedForPlan = (planId: number, serviceId: number) =>
     (selectedServicesByPlanId[planId] ?? []).includes(serviceId);
 
-  const getAddOnDisplayName = (service: AdditionalService): string => {
-    return isFeaturedAddOn(service) ? "Featured listing" : service.name;
-  };
-
   const featuredAddOnPrice = (() => {
-    const featured = additionalServices.find((s) => isFeaturedAddOn(s));
-    if (!featured) return null;
-    const p = parseFloat(featured.price);
+    const addOn = additionalServices.find((s) => s.active);
+    if (!addOn) return null;
+    const p = parseFloat(addOn.price);
     return Number.isNaN(p) ? null : p.toFixed(2);
   })();
 
@@ -639,11 +631,6 @@ function BusinessPlansModalContent({
   }, [visible, isAndroid, t]);
 
 
-  const hasFeaturedAddOnSelected = (selectedAddOnIds: number[]): boolean =>
-    additionalServices
-      .filter((s) => selectedAddOnIds.includes(s.id))
-      .some((s) => isFeaturedAddOn(s));
-
   const finishSubscriptionSuccess = () => {
     onSuccess?.();
     onClose();
@@ -668,12 +655,11 @@ function BusinessPlansModalContent({
     planId: number,
     selectedAddOns: number[],
   ) => {
-    const selectedPlan = standardPlans.find((p) => p.id === planId);
-    const hasFeatured = hasFeaturedAddOnSelected(selectedAddOns);
+    // Add-on selected → featured SKU; none → standard. Both from Remote Config.
     const productId = await resolveBusinessPlanProductIdWithFeatured(
-      hasFeatured,
-      selectedPlan?.app_store_product_id,
+      selectedAddOns.length > 0,
     );
+
 
     await purchaseAndVerifyBusinessPlanIosIap({
       productId,
@@ -1016,7 +1002,7 @@ function BusinessPlansModalContent({
                                   style={styles.serviceName}
                                   numberOfLines={2}
                                 >
-                                  {getAddOnDisplayName(service)}
+                                  {service.name}
                                 </Text>
                                 <Text style={styles.servicePrice}>
                                   {t("featuredAddOnPerMonth", {
