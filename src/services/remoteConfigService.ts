@@ -181,43 +181,30 @@ function parseCachedPurchaseConfig(
   if (!raw?.trim()) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<PurchaseRemoteConfig>;
-    return toCompletePurchaseConfig(parsed);
+    return toPurchaseConfig(parsed);
   } catch {
     return null;
   }
 }
 
-function toCompletePurchaseConfig(
+/** Always builds a config object — empty strings are valid "latest" RC values. */
+function toPurchaseConfig(
   partial: Partial<PurchaseRemoteConfig>,
-): PurchaseRemoteConfig | null {
-  const businessPlanStandardProductId =
-    partial.businessPlanStandardProductId?.trim() ?? "";
-  const businessPlanFeaturedProductId =
-    partial.businessPlanFeaturedProductId?.trim() ?? "";
-  const aiServiceProductId = partial.aiServiceProductId?.trim() ?? "";
-  const trialDays = partial.trialDays?.trim() ?? "";
-
-  if (
-    !businessPlanStandardProductId ||
-    !businessPlanFeaturedProductId ||
-    !aiServiceProductId ||
-    !trialDays
-  ) {
-    return null;
-  }
-
+): PurchaseRemoteConfig {
   return {
-    businessPlanStandardProductId,
-    businessPlanFeaturedProductId,
-    aiServiceProductId,
-    trialDays,
+    businessPlanStandardProductId:
+      partial.businessPlanStandardProductId?.trim() ?? "",
+    businessPlanFeaturedProductId:
+      partial.businessPlanFeaturedProductId?.trim() ?? "",
+    aiServiceProductId: partial.aiServiceProductId?.trim() ?? "",
+    trialDays: partial.trialDays?.trim() ?? "",
   };
 }
 
 function purchaseConfigFromEntries(
   entries: RemoteConfigEntries,
-): PurchaseRemoteConfig | null {
-  return toCompletePurchaseConfig({
+): PurchaseRemoteConfig {
+  return toPurchaseConfig({
     businessPlanStandardProductId: readRemoteConfigEntry(
       entries,
       REMOTE_CONFIG_KEYS.iapBusinessPlanStandardProductId,
@@ -236,10 +223,15 @@ function purchaseConfigFromEntries(
 
 /**
  * IAP product IDs + trial days from Firebase Remote Config.
- * Order: memory → Remote Config → AsyncStorage cache → throw.
+ * Order: memory (unless forceRefresh) → Remote Config (always override cache,
+ * including empty strings) → AsyncStorage only if fetch fails → throw.
  */
-export async function resolvePurchaseRemoteConfig(): Promise<PurchaseRemoteConfig> {
-  if (purchaseConfigMemoryCache) {
+export async function resolvePurchaseRemoteConfig(options?: {
+  forceRefresh?: boolean;
+}): Promise<PurchaseRemoteConfig> {
+  const forceRefresh = options?.forceRefresh === true;
+
+  if (!forceRefresh && purchaseConfigMemoryCache) {
     return purchaseConfigMemoryCache;
   }
 
@@ -247,16 +239,11 @@ export async function resolvePurchaseRemoteConfig(): Promise<PurchaseRemoteConfi
     const entries = await fetchRemoteConfigEntries();
     const fromRemote = purchaseConfigFromEntries(entries);
 
-    if (fromRemote) {
-      purchaseConfigMemoryCache = fromRemote;
-      await AsyncStorage.setItem(PURCHASE_RC_CACHE, JSON.stringify(fromRemote));
-      Logger.log("[PurchaseRC] Using Remote Config purchase values", fromRemote);
-      return fromRemote;
-    }
-
-    Logger.warn(
-      "[PurchaseRC] Remote Config returned incomplete purchase values",
-    );
+    // Whatever RC returns (including "") overrides local cache.
+    purchaseConfigMemoryCache = fromRemote;
+    await AsyncStorage.setItem(PURCHASE_RC_CACHE, JSON.stringify(fromRemote));
+    Logger.log("[PurchaseRC] Using Remote Config purchase values", fromRemote);
+    return fromRemote;
   } catch (error) {
     Logger.warn("[PurchaseRC] Remote Config fetch failed:", error);
   }
@@ -278,10 +265,10 @@ export async function resolvePurchaseRemoteConfig(): Promise<PurchaseRemoteConfi
   throw new Error(PURCHASE_CONFIG_MISSING_ERROR);
 }
 
-/** Prefetch on app start so purchase screens open with warm cache. */
+/** App open: always fetch Remote Config and override local cache with latest. */
 export async function prefetchPurchaseRemoteConfig(): Promise<void> {
   try {
-    await resolvePurchaseRemoteConfig();
+    await resolvePurchaseRemoteConfig({ forceRefresh: true });
   } catch {
     // Missing config surfaces as an error on purchase / trial UI
   }
