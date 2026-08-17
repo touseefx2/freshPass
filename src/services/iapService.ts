@@ -315,6 +315,8 @@ export const purchaseAndVerifyBusinessPlanIosIap = async (params: {
   const iosPurchase =
     purchase.platform === "ios" ? (purchase as PurchaseIOS) : null;
 
+    Logger.log("transaction_id", transactionId);
+
   const verifyPayload: VerifyBusinessPlanIapPayload = {
     transaction_id: transactionId,
     // productId: purchase.productId,
