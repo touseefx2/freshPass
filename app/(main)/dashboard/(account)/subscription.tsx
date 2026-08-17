@@ -1,5 +1,12 @@
 import React, { useMemo, useState, useCallback, useRef } from "react";
-import { StyleSheet, ScrollView, View, Text, Alert } from "react-native";
+import {
+  StyleSheet,
+  ScrollView,
+  View,
+  Text,
+  Alert,
+  Linking,
+} from "react-native";
 import { useTheme, useAppDispatch } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -541,6 +548,8 @@ export default function SubscriptionScreen() {
     subscription?.paymentProvider?.toLowerCase() === "apple";
   const canCancel =
     !!subscription && !isApplePayment && !isCancelled && !subscription.hasEnded;
+  const showAppleCancelHelp =
+    !!subscription && isApplePayment && !isCancelled && !subscription.hasEnded;
   const dateDisplay = subscription
     ? getSubscriptionDateDisplay(subscription)
     : null;
@@ -665,6 +674,30 @@ export default function SubscriptionScreen() {
     } finally {
       setCancelling(false);
       dispatch(setActionLoader(false));
+    }
+  };
+
+  const handleOpenAppStoreSubscriptions = async () => {
+    const url = "https://apps.apple.com/account/subscriptions";
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (!supported) {
+        showBanner(
+          t("error"),
+          t("failedToOpenAppStoreSubscriptions"),
+          "error",
+          2500,
+        );
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      showBanner(
+        t("error"),
+        t("failedToOpenAppStoreSubscriptions"),
+        "error",
+        2500,
+      );
     }
   };
 
@@ -1087,6 +1120,27 @@ export default function SubscriptionScreen() {
                 onPress={handleCancel}
                 loading={cancelling}
                 disabled={cancelling}
+                backgroundColor={theme.buttonBack}
+              />
+            </View>
+          )}
+
+          {showAppleCancelHelp && (
+            <View style={styles.buttonContainer}>
+              <Text style={styles.cancelHintText}>
+                {isTrialing
+                  ? t("appleCancelTrialHint", {
+                      date: formatTrialEndDate(subscription.trialEndsAt),
+                    })
+                  : t("appleCancelSubscriptionHint", {
+                      date: formatTrialEndDate(
+                        subscription.nextPaymentDate || subscription.endsAt,
+                      ),
+                    })}
+              </Text>
+              <Button
+                title={t("manageInAppStore")}
+                onPress={handleOpenAppStoreSubscriptions}
                 backgroundColor={theme.buttonBack}
               />
             </View>
