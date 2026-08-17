@@ -44,10 +44,12 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateName } from "@/src/services/validationService";
 import { setBusinessId, setBusinessStatus } from "@/src/state/slices/userSlice";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useTranslation } from "react-i18next";
 
 export default function CompleteProfile() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const { showBanner } = useNotificationContext();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -699,7 +701,7 @@ export default function CompleteProfile() {
           {(currentStep === 10 || currentStep === 11) && (
             <>
               {currentStep == 11 && (
-                <PrivacyBanner message="Our App will only have access to the photos that you select" />
+                <PrivacyBanner message={t("appOnlyAccessesSelectedPhotos")} />
               )}
 
               <TouchableOpacity

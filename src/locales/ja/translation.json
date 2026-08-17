@@ -333,6 +333,7 @@
   "failedToDeleteAccount": "アカウントの削除に失敗しました",
   "privacyNoteStaff": "この写真はプロフィール閲覧時に他のユーザーに表示されます。",
   "privacyNoteBusiness": "この写真はビジネスプロフィール、メッセージ、レビューで表示されます。",
+  "appOnlyAccessesSelectedPhotos": "アプリは選択した写真にのみアクセスします",
   "staffInfoText": "スタッフ詳細は任意です。ビジネス営業時間に従い、サービスはスタッフにリンクされます。",
   "forgetPassword": "パスワードをお忘れですか？",
   "email": "メール",

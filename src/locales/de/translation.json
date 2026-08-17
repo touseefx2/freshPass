@@ -333,6 +333,7 @@
   "failedToDeleteAccount": "Konto konnte nicht gelöscht werden",
   "privacyNoteStaff": "Dieses Foto wird von anderen gesehen, wenn sie Ihr Profil ansehen.",
   "privacyNoteBusiness": "Dieses Foto wird von anderen gesehen bei Geschäftsprofil, Nachrichten und Bewertungen.",
+  "appOnlyAccessesSelectedPhotos": "Unsere App greift nur auf die Fotos zu, die Sie auswählen",
   "staffInfoText": "Mitarbeiterdetails sind optional. Es gibt keinen separaten Kalender pro Mitarbeiter.",
   "forgetPassword": "Passwort vergessen?",
   "email": "E-Mail",

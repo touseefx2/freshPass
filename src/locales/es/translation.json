@@ -333,6 +333,7 @@
   "failedToDeleteAccount": "Error al eliminar la cuenta",
   "privacyNoteStaff": "Esta foto la ven otros al ver tu perfil.",
   "privacyNoteBusiness": "Esta foto la ven otros al ver el perfil de tu negocio, mensajes y reseñas.",
+  "appOnlyAccessesSelectedPhotos": "Nuestra app solo accede a las fotos que selecciones",
   "staffInfoText": "Los datos del personal son opcionales. Los negocios pueden elegir si mostrar personal. No hay calendario de disponibilidad por persona; siguen el horario del negocio y los servicios se vinculan al personal.",
   "forgetPassword": "¿Olvidaste la contraseña?",
   "email": "Correo electrónico",

@@ -333,6 +333,7 @@
   "failedToDeleteAccount": "Échec de la suppression du compte",
   "privacyNoteStaff": "Cette photo est visible par les autres lorsqu'ils consultent votre profil.",
   "privacyNoteBusiness": "Cette photo est visible par les autres lorsqu'ils consultent le profil de votre entreprise, les messages et les avis.",
+  "appOnlyAccessesSelectedPhotos": "Notre application n'accède qu'aux photos que vous sélectionnez",
   "staffInfoText": "Les détails du personnel sont facultatifs. Les entreprises peuvent choisir d'afficher les membres du personnel. Il n'y a pas de calendrier de disponibilité séparé par membre; ils suivent les heures d'ouverture et les services sont liés au personnel pour mettre en valeur leur expertise.",
   "forgetPassword": "Mot de passe oublié?",
   "email": "E-mail",

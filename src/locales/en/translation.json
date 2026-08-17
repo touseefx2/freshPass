@@ -331,6 +331,7 @@
   "failedToDeleteAccount": "Failed to delete account",
   "privacyNoteStaff": "This photo is seen by others when they view your profile.",
   "privacyNoteBusiness": "This photo is seen by others when they view your business profile, messages and reviews.",
+  "appOnlyAccessesSelectedPhotos": "Our app only accesses the photos you select",
   "staffInfoText": "Staff details are optional, businesses can choose whether to list staff members in their profile. There is no separate availability calendar per staff member, they follow the business hours, and services are just linked to specific staff to highlight their expertise.",
   "forgetPassword": "Forget password?",
   "email": "Email",
