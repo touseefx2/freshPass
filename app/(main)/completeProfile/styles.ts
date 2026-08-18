@@ -39,6 +39,18 @@ export const createStyles = (theme: Theme) =>
     skipButtonDisabled: {
       opacity: 0.5,
     },
+    viewPlansLinkWrap: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(8),
+    },
+    viewPlansLink: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+      textDecorationLine: "underline",
+      textAlign: "center",
+    },
   });
 
 

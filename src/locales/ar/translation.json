@@ -69,6 +69,7 @@
   "alwaysReadyAlwaysYou": "جاهز دائمًا، أنت دائمًا",
   "loading": "جارٍ التحميل...",
   "businessPlans": "خطط الأعمال",
+  "viewAvailablePlans": "عرض خطط أعمالنا",
   "businessPlanStartTrial": "ابدأ تجربتي لمدة {{trialDays}} يومًا",
   "businessPlanSubscribe": "اشترك في الخطة",
   "accountSettings": "إعدادات الحساب",

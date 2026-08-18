@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BackHandler,
   Keyboard,
@@ -56,6 +56,7 @@ export default function CompleteProfile() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSkipLoading, setIsSkipLoading] = useState(false);
   const [isStepOneDropdownOpen, setIsStepOneDropdownOpen] = useState(false);
+  const [plansPreviewVisible, setPlansPreviewVisible] = useState(false);
   const {
     currentStep,
     totalSteps,
@@ -84,6 +85,12 @@ export default function CompleteProfile() {
   } = useAppSelector((state) => state.completeProfile);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const userRole = useAppSelector((state) => state.user.userRole);
+
+  useEffect(() => {
+    if (currentStep !== 5) {
+      setPlansPreviewVisible(false);
+    }
+  }, [currentStep]);
 
   // Check if onboarding is not completed - prevent back navigation
   // Only for business users (staff and client have their own profile pages)
@@ -646,7 +653,12 @@ export default function CompleteProfile() {
       case 4:
         return <StepFour />;
       case 5:
-        return <StepFive />;
+        return (
+          <StepFive
+            plansPreviewVisible={plansPreviewVisible}
+            onClosePlansPreview={() => setPlansPreviewVisible(false)}
+          />
+        );
       case 6:
         return <StepSix />;
       case 7:
@@ -662,7 +674,7 @@ export default function CompleteProfile() {
       default:
         return null;
     }
-  }, [currentStep, handleContinue]);
+  }, [currentStep, handleContinue, plansPreviewVisible]);
 
   const continueLabel = useMemo(() => {
     if (currentStep === totalSteps) {
@@ -698,6 +710,15 @@ export default function CompleteProfile() {
           {renderStep}
         </KeyboardAwareScrollView>
         <View style={styles.buttonWrapper}>
+          {currentStep === 5 && (
+            <TouchableOpacity
+              style={styles.viewPlansLinkWrap}
+              onPress={() => setPlansPreviewVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewPlansLink}>{t("viewAvailablePlans")}</Text>
+            </TouchableOpacity>
+          )}
           {(currentStep === 10 || currentStep === 11) && (
             <>
               {currentStep == 11 && (
