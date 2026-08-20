@@ -484,7 +484,7 @@ export default function AppointmentDetail({
             <View style={styles.priceSection}>
               <Text style={styles.priceLabel}>Total Amount</Text>
               <Text style={styles.priceText} numberOfLines={1}>
-                {formatPrice(appointment.paidAmount)}
+                {formatPrice(appointment.paidAmount ?? appointment.totalPrice)}
               </Text>
             </View>
           </View>

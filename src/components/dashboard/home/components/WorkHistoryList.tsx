@@ -250,7 +250,7 @@ export default function WorkHistoryList() {
                 </Text>
               </View>
               <Text style={styles.workHistoryPrice}>
-                {formatPrice(item.paidAmount)}
+                {formatPrice(item.paidAmount ?? item.totalPrice)}
               </Text>
             </View>
           </TouchableOpacity>
