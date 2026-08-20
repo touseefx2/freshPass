@@ -749,8 +749,8 @@ export default function CalendarScreen() {
 
     setLoading(true);
     try {
-      const fromDate = week[0].format("YYYY-MM-DD");
-      const toDate = week[6].format("YYYY-MM-DD");
+      const appointment_from_date = week[0].format("YYYY-MM-DD");
+      const appointment_to_date = week[6].format("YYYY-MM-DD");
 
       const response = await ApiService.get<{
         success: boolean;
@@ -766,8 +766,8 @@ export default function CalendarScreen() {
         };
       }>(
         appointmentsEndpoints.list({
-          from_date: fromDate,
-          to_date: toDate,
+          appointment_from_date,
+          appointment_to_date,
           per_page: 100,
           direction: "desc",
         }),
