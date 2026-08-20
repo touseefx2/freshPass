@@ -1,7 +1,10 @@
 import React, { useEffect, useRef } from "react";
 import { useSegments } from "expo-router";
 import { useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
-import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  setBusinessPlansModalVisible,
+  setSuppressBusinessPlansAutoOpen,
+} from "@/src/state/slices/generalSlice";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
 
 const HOME_TAB_NESTED_ROUTES = [
@@ -27,9 +30,19 @@ export default function BusinessPlansModalHandler() {
     (state) =>
       state.general.maintenanceModeActive || state.general.forceUpdateActive,
   );
+  const hasSeenStripeConnectCongrats = useAppSelector(
+    (state) => state.general.hasSeenStripeConnectCongrats,
+  );
+  const suppressBusinessPlansAutoOpen = useAppSelector(
+    (state) => state.general.suppressBusinessPlansAutoOpen,
+  );
   const hasAutoOpenedOnce = useRef(false);
 
   const isOnHomeTab = Array.isArray(segments) && segments.includes("(home)");
+
+  const waitingForStripeCongrats =
+    businessStatus?.stripe_onboarding_status === "completed" &&
+    hasSeenStripeConnectCongrats === false;
 
   const showBusinessSubscription =
     !appGateBlocked &&
@@ -37,7 +50,16 @@ export default function BusinessPlansModalHandler() {
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "completed" &&
-    businessStatus?.has_subscription === false;
+    businessStatus?.has_subscription === false &&
+    !waitingForStripeCongrats &&
+    !suppressBusinessPlansAutoOpen;
+
+  // Create navigates away from home — clear suppress so plans can auto-open on return
+  useEffect(() => {
+    if (!isOnHomeTab && suppressBusinessPlansAutoOpen) {
+      dispatch(setSuppressBusinessPlansAutoOpen(false));
+    }
+  }, [isOnHomeTab, suppressBusinessPlansAutoOpen, dispatch]);
 
   useEffect(() => {
     if (showBusinessSubscription && !hasAutoOpenedOnce.current) {

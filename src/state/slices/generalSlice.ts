@@ -90,6 +90,10 @@ export interface GeneralState {
   chatContactsLoadingMore: boolean;
   businessPlansModalVisible: boolean;
   stripeConnectModalVisible: boolean;
+  /** Shown after first Stripe connect success; persisted, not cleared on logout */
+  hasSeenStripeConnectCongrats: boolean;
+  /** After Create from Stripe congrats — don't auto-open business plans this session */
+  suppressBusinessPlansAutoOpen: boolean;
   /** Full-screen Remote Config gates (not persisted) — hide other modals while true */
   maintenanceModeActive: boolean;
   forceUpdateActive: boolean;
@@ -159,6 +163,8 @@ const initialState: GeneralState = {
   chatContactsLoadingMore: false,
   businessPlansModalVisible: false,
   stripeConnectModalVisible: false,
+  hasSeenStripeConnectCongrats: false,
+  suppressBusinessPlansAutoOpen: false,
   maintenanceModeActive: false,
   forceUpdateActive: false,
   bookingTryOnImageUrls: [],
@@ -290,6 +296,12 @@ const generalSlice = createSlice({
     },
     setStripeConnectModalVisible(state, action: PayloadAction<boolean>) {
       state.stripeConnectModalVisible = action.payload;
+    },
+    setHasSeenStripeConnectCongrats(state, action: PayloadAction<boolean>) {
+      state.hasSeenStripeConnectCongrats = action.payload;
+    },
+    setSuppressBusinessPlansAutoOpen(state, action: PayloadAction<boolean>) {
+      state.suppressBusinessPlansAutoOpen = action.payload;
     },
     setMaintenanceModeActive(state, action: PayloadAction<boolean>) {
       state.maintenanceModeActive = action.payload;
@@ -453,6 +465,9 @@ const generalSlice = createSlice({
       state.chatContactsLoadingMore = false;
       state.businessPlansModalVisible = false;
       state.stripeConnectModalVisible = false;
+      // Keep hasSeenStripeConnectCongrats — must survive logout
+      state.hasSeenStripeConnectCongrats = false;
+      state.suppressBusinessPlansAutoOpen = false;
       state.maintenanceModeActive = false;
       state.forceUpdateActive = false;
       state.bookingTryOnImageUrls = [];
@@ -488,6 +503,8 @@ export const {
   setGuestModeModalVisible,
   setBusinessPlansModalVisible,
   setStripeConnectModalVisible,
+  setHasSeenStripeConnectCongrats,
+  setSuppressBusinessPlansAutoOpen,
   setMaintenanceModeActive,
   setForceUpdateActive,
   setBookingTryOnImageUrls,

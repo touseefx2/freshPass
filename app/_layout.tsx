@@ -27,6 +27,7 @@ import FirebaseMonitoringHandler from "@/src/components/FirebaseMonitoringHandle
 import GuestModeModal from "@/src/components/guestModeModal";
 import FullImageModal from "@/src/components/fullImageModal";
 import StripeConnectModalHandler from "@/src/components/StripeConnectModalHandler";
+import StripeConnectedCongratsModalHandler from "@/src/components/StripeConnectedCongratsModalHandler";
 import BusinessPlansModalHandler from "@/src/components/BusinessPlansModalHandler";
 import { resolveStripePublishableKey, prefetchPurchaseRemoteConfig } from "@/src/services/remoteConfigService";
 import "../global.css";
@@ -125,6 +126,7 @@ export default function RootLayout() {
                     <GuestModeModal />
                     <FullImageModal />
                     <StripeConnectModalHandler />
+                    <StripeConnectedCongratsModalHandler />
                     <BusinessPlansModalHandler />
                     <ForceUpdateHandler />
                     <MaintenanceModeHandler />
