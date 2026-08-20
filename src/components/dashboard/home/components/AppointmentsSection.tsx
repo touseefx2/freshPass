@@ -187,7 +187,7 @@ export default function AppointmentsSection({
     if (data?.appointmentType === "subscription") {
       res = data?.subscription;
     } else {
-      res = `$${parseFloat(data?.paidAmount ?? 0).toFixed(2)} USD`;
+      res = `$${parseFloat(data?.paidAmount ?? data?.totalPrice ?? 0).toFixed(2)} USD`;
     }
 
     return res;
