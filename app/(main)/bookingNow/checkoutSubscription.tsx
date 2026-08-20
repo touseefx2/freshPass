@@ -24,7 +24,10 @@ import { Feather, Octicons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import StackHeader from "@/src/components/StackHeader";
 import { useStripe } from "@stripe/stripe-react-native";
-import { fetchPaymentSheetParams } from "@/src/services/stripeService";
+import {
+  fetchPaymentSheetParams,
+  useStripeAccount,
+} from "@/src/services/stripeService";
 import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
@@ -585,83 +588,91 @@ function CheckoutSubscriptionContent() {
         customerSessionClientSecret,
         ephemeralKey,
         customer,
+        connectedAccountId,
       } = await fetchPaymentSheetParams(planId);
 
-      // Step 2: Initialize payment sheet
-      const paymentConfig: any = {
-        merchantDisplayName: "Fresh Pass",
-        customerId: customer,
-        allowsDelayedPaymentMethods: true,
-        defaultBillingDetails: {
-          name: user.name || undefined,
-          email: user.email || undefined,
-        },
-        customFlow: false,
-      };
+      try {
+        await useStripeAccount(connectedAccountId);
 
-      // Use CustomerSession (newer approach) if available, otherwise fall back to EphemeralKey
-      if (customerSessionClientSecret) {
-        paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
-      } else if (ephemeralKey) {
-        paymentConfig.customerEphemeralKeySecret = ephemeralKey;
-      } else {
-        throw new Error(
-          "Either customerSessionClientSecret or ephemeralKey must be provided",
-        );
-      }
+        // Step 2: Initialize payment sheet
+        const paymentConfig: any = {
+          merchantDisplayName: "Fresh Pass",
+          customerId: customer,
+          allowsDelayedPaymentMethods: true,
+          defaultBillingDetails: {
+            name: user.name || undefined,
+            email: user.email || undefined,
+          },
+          customFlow: false,
+        };
 
-      // Use paymentIntent for subscription payment, or setupIntent as fallback
-      if (paymentIntent && paymentIntent.trim() !== "") {
-        paymentConfig.paymentIntentClientSecret = paymentIntent;
-      } else if (setupIntent && setupIntent.trim() !== "") {
-        paymentConfig.setupIntentClientSecret = setupIntent;
-      } else {
-        throw new Error(
-          "Either Payment Intent or Setup Intent must be provided",
-        );
-      }
-
-      Logger.log("paymentConfig", paymentConfig);
-
-      const { error: initError } = await initPaymentSheet(paymentConfig);
-
-      if (initError) {
-        throw new Error(initError.message || "Failed to initialize payment");
-      }
-
-      // Step 3: Present payment sheet to user
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        // Payment was cancelled or failed
-        if (!presentError.code?.includes("Canceled")) {
-          showBanner(
-            "Payment Failed",
-            presentError.message || "Payment could not be completed",
-            "error",
-            4000,
+        // Use CustomerSession (newer approach) if available, otherwise fall back to EphemeralKey
+        if (customerSessionClientSecret) {
+          paymentConfig.customerSessionClientSecret =
+            customerSessionClientSecret;
+        } else if (ephemeralKey) {
+          paymentConfig.customerEphemeralKeySecret = ephemeralKey;
+        } else {
+          throw new Error(
+            "Either customerSessionClientSecret or ephemeralKey must be provided",
           );
         }
-        // If user canceled, don't show error (silent cancel)
-        return;
+
+        // Use paymentIntent for subscription payment, or setupIntent as fallback
+        if (paymentIntent && paymentIntent.trim() !== "") {
+          paymentConfig.paymentIntentClientSecret = paymentIntent;
+        } else if (setupIntent && setupIntent.trim() !== "") {
+          paymentConfig.setupIntentClientSecret = setupIntent;
+        } else {
+          throw new Error(
+            "Either Payment Intent or Setup Intent must be provided",
+          );
+        }
+
+        Logger.log("paymentConfig", paymentConfig);
+
+        const { error: initError } = await initPaymentSheet(paymentConfig);
+
+        if (initError) {
+          throw new Error(initError.message || "Failed to initialize payment");
+        }
+
+        // Step 3: Present payment sheet to user
+        const { error: presentError } = await presentPaymentSheet();
+
+        if (presentError) {
+          // Payment was cancelled or failed
+          if (!presentError.code?.includes("Canceled")) {
+            showBanner(
+              "Payment Failed",
+              presentError.message || "Payment could not be completed",
+              "error",
+              4000,
+            );
+          }
+          // If user canceled, don't show error (silent cancel)
+          return;
+        }
+
+        // Show processing loader
+        setProcessingPayment(true);
+
+        // Wait 2-3 seconds before showing success
+        setTimeout(() => {
+          setProcessingPayment(false);
+          setPaymentSuccess(true);
+          showBanner(
+            "Success",
+            "Payment successful! Your subscription will be activated.",
+            "success",
+            4000,
+          );
+
+          dispatch(fetchUserStatus({ showError: true })).unwrap();
+        }, 2500);
+      } finally {
+        await useStripeAccount(null);
       }
-
-      // Show processing loader
-      setProcessingPayment(true);
-
-      // Wait 2-3 seconds before showing success
-      setTimeout(() => {
-        setProcessingPayment(false);
-        setPaymentSuccess(true);
-        showBanner(
-          "Success",
-          "Payment successful! Your subscription will be activated.",
-          "success",
-          4000,
-        );
-
-        dispatch(fetchUserStatus({ showError: true })).unwrap();
-      }, 2500);
     } catch (err: any) {
       // Extract clean error message
       let errorMessage = "Failed to process payment";

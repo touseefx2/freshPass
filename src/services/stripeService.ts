@@ -1,6 +1,7 @@
-import { StripeProvider, useStripe } from "@stripe/stripe-react-native";
+import { initStripe, StripeProvider, useStripe } from "@stripe/stripe-react-native";
 import { ApiService } from "./api";
 import { stripeEndpoints } from "./endpoints";
+import { resolveStripePublishableKey } from "./remoteConfigService";
 
 export interface PaymentSheetParams {
   paymentIntent: string; // Payment Intent client secret
@@ -9,6 +10,8 @@ export interface PaymentSheetParams {
   customer: string; // Customer ID
   setupIntent?: string; // Setup Intent client secret (for subscriptions)
   subscriptionId?: number; // Subscription ID
+  /** Business Stripe account holding this PaymentIntent. Null/absent for platform payments. */
+  connectedAccountId?: string | null;
 }
 
 interface PaymentSheetApiResponse {
@@ -21,8 +24,22 @@ interface PaymentSheetApiResponse {
     setupIntent?: string;
     paymentIntent: string; // Payment Intent client secret
     subscriptionPlanId: number; // Note: API returns subscriptionPlanId (camelCase)
+    connectedAccountId?: string | null;
   };
 }
+
+/**
+ * Direct charges live inside the business's Stripe account, so the SDK has to be pointed
+ * there before the payment sheet can find the PaymentIntent. Pass null to go back to the
+ * platform account.
+ */
+export const useStripeAccount = async (connectedAccountId?: string | null) => {
+  const publishableKey = await resolveStripePublishableKey();
+  await initStripe({
+    publishableKey,
+    ...(connectedAccountId ? { stripeAccountId: connectedAccountId } : {}),
+  });
+};
 
 export const fetchPaymentSheetParams = async (
   planId: number,
@@ -46,6 +63,7 @@ export const fetchPaymentSheetParams = async (
         paymentIntent: response.data.paymentIntent || "",
         setupIntent: response.data.setupIntent,
         subscriptionId: response.data.subscriptionPlanId, // Map subscriptionPlanId to subscriptionId
+        connectedAccountId: response.data.connectedAccountId ?? null,
       };
     }
 
@@ -66,6 +84,7 @@ interface AppointmentPaymentSheetApiResponse {
     ephemeralKey?: string;
     paymentIntent: string;
     setupIntent: string;
+    connectedAccountId?: string | null;
   };
 }
 
@@ -88,6 +107,7 @@ export const fetchAppointmentPaymentSheetParams = async (
         ephemeralKey: response.data.ephemeralKey,
         paymentIntent: response.data.paymentIntent || "",
         setupIntent: response.data.setupIntent,
+        connectedAccountId: response.data.connectedAccountId ?? null,
       };
     }
 

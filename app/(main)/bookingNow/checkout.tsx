@@ -25,7 +25,10 @@ import ApiService from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { useStripe } from "@stripe/stripe-react-native";
-import { fetchAppointmentPaymentSheetParams } from "@/src/services/stripeService";
+import {
+  fetchAppointmentPaymentSheetParams,
+  useStripeAccount,
+} from "@/src/services/stripeService";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -1638,121 +1641,131 @@ function CheckoutContent() {
               customerSessionClientSecret,
               ephemeralKey,
               customer,
+              connectedAccountId,
             } = await fetchAppointmentPaymentSheetParams(appointmentId);
 
-            // Step 2: Initialize payment sheet
-            const paymentConfig: any = {
-              merchantDisplayName: "Fresh Pass",
-              customerId: customer,
-              allowsDelayedPaymentMethods: true,
-              defaultBillingDetails: {
-                name: user.name || undefined,
-                email: user.email || undefined,
-              },
-              customFlow: false,
-            };
+            try {
+              await useStripeAccount(connectedAccountId);
 
-            // Use CustomerSession (newer approach) if available, otherwise fall back to EphemeralKey
-            if (customerSessionClientSecret) {
-              paymentConfig.customerSessionClientSecret =
-                customerSessionClientSecret;
-            } else if (ephemeralKey) {
-              paymentConfig.customerEphemeralKeySecret = ephemeralKey;
-            } else {
-              throw new Error(
-                "Either customerSessionClientSecret or ephemeralKey must be provided",
-              );
-            }
+              // Step 2: Initialize payment sheet
+              const paymentConfig: any = {
+                merchantDisplayName: "Fresh Pass",
+                customerId: customer,
+                allowsDelayedPaymentMethods: true,
+                defaultBillingDetails: {
+                  name: user.name || undefined,
+                  email: user.email || undefined,
+                },
+                customFlow: false,
+              };
 
-            // Use paymentIntent for subscription payment, or setupIntent as fallback
-            if (paymentIntent && paymentIntent.trim() !== "") {
-              paymentConfig.paymentIntentClientSecret = paymentIntent;
-            } else if (setupIntent && setupIntent.trim() !== "") {
-              paymentConfig.setupIntentClientSecret = setupIntent;
-            } else {
-              throw new Error(
-                "Either Payment Intent or Setup Intent must be provided",
-              );
-            }
-            const { error: initError } = await initPaymentSheet(paymentConfig);
-
-            if (initError) {
-              throw new Error(
-                initError.message || "Failed to initialize payment",
-              );
-            }
-
-            // Step 3: Present payment sheet to user
-            const { error: presentError } = await presentPaymentSheet();
-
-            if (presentError) {
-              // Payment was cancelled or failed
-              if (!presentError.code?.includes("Canceled")) {
-                showBanner(
-                  "Payment Failed",
-                  presentError.message || "Payment could not be completed",
-                  "error",
-                  4000,
+              // Use CustomerSession (newer approach) if available, otherwise fall back to EphemeralKey
+              if (customerSessionClientSecret) {
+                paymentConfig.customerSessionClientSecret =
+                  customerSessionClientSecret;
+              } else if (ephemeralKey) {
+                paymentConfig.customerEphemeralKeySecret = ephemeralKey;
+              } else {
+                throw new Error(
+                  "Either customerSessionClientSecret or ephemeralKey must be provided",
                 );
               }
-              // If user canceled, don't show error (silent cancel)
-              return;
-            }
 
-            // Show processing loader
-            setProcessingPayment(true);
-
-            // Wait 2 seconds before showing success and navigating
-            setTimeout(() => {
-              setProcessingPayment(false);
-              showBanner(
-                "Success",
-                "Payment successful! Your booking is confirmed.",
-                "success",
-                3000,
-              );
-
-              // Create bookingId: appointmentDate (YYYYMMDD format) + appointmentId
-              let dateFormatted = "";
-              if (appointmentDate) {
-                // Parse date from "MM/DD/YYYY" format and convert to "YYYYMMDD"
-                const dateParts = appointmentDate.split("/");
-                if (dateParts.length === 3) {
-                  const [month, day, year] = dateParts;
-                  dateFormatted = `${year}${month.padStart(
-                    2,
-                    "0",
-                  )}${day.padStart(2, "0")}`;
-                }
+              // Use paymentIntent for subscription payment, or setupIntent as fallback
+              if (paymentIntent && paymentIntent.trim() !== "") {
+                paymentConfig.paymentIntentClientSecret = paymentIntent;
+              } else if (setupIntent && setupIntent.trim() !== "") {
+                paymentConfig.setupIntentClientSecret = setupIntent;
+              } else {
+                throw new Error(
+                  "Either Payment Intent or Setup Intent must be provided",
+                );
               }
-              const bookingId =
-                appointmentId && dateFormatted
-                  ? `${dateFormatted}${appointmentId}`
-                  : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
+              const { error: initError } =
+                await initPaymentSheet(paymentConfig);
 
-              // Navigate to booking detail page
-              router.push({
-                pathname: "/(main)/bookingDetail",
-                params: {
-                  appointmentId: appointmentId ? appointmentId.toString() : "",
-                  bookingId: bookingId,
-                  selectedServices: JSON.stringify(selectedServices),
-                  selectedStaff: selectedStaffId,
-                  selectedStaffMember: selectedStaffMember
-                    ? JSON.stringify(selectedStaffMember)
-                    : "",
-                  selectedDate: reduxSelectedDate || "",
-                  selectedTimeSlot: reduxSelectedTimeSlot || "",
-                  paymentMethod: paymentMethod,
-                  totalPrice: totalPrice.toFixed(2),
-                  tax: tax.toFixed(2),
-                  estimatedTotal: estimatedTotal.toFixed(2),
-                  businessId: businessId || "",
-                  business_id: businessId || "",
-                  note: note || "",
-                },
-              });
-            }, 2000);
+              if (initError) {
+                throw new Error(
+                  initError.message || "Failed to initialize payment",
+                );
+              }
+
+              // Step 3: Present payment sheet to user
+              const { error: presentError } = await presentPaymentSheet();
+
+              if (presentError) {
+                // Payment was cancelled or failed
+                if (!presentError.code?.includes("Canceled")) {
+                  showBanner(
+                    "Payment Failed",
+                    presentError.message || "Payment could not be completed",
+                    "error",
+                    4000,
+                  );
+                }
+                // If user canceled, don't show error (silent cancel)
+                return;
+              }
+
+              // Show processing loader
+              setProcessingPayment(true);
+
+              // Wait 2 seconds before showing success and navigating
+              setTimeout(() => {
+                setProcessingPayment(false);
+                showBanner(
+                  "Success",
+                  "Payment successful! Your booking is confirmed.",
+                  "success",
+                  3000,
+                );
+
+                // Create bookingId: appointmentDate (YYYYMMDD format) + appointmentId
+                let dateFormatted = "";
+                if (appointmentDate) {
+                  // Parse date from "MM/DD/YYYY" format and convert to "YYYYMMDD"
+                  const dateParts = appointmentDate.split("/");
+                  if (dateParts.length === 3) {
+                    const [month, day, year] = dateParts;
+                    dateFormatted = `${year}${month.padStart(
+                      2,
+                      "0",
+                    )}${day.padStart(2, "0")}`;
+                  }
+                }
+                const bookingId =
+                  appointmentId && dateFormatted
+                    ? `${dateFormatted}${appointmentId}`
+                    : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
+
+                // Navigate to booking detail page
+                router.push({
+                  pathname: "/(main)/bookingDetail",
+                  params: {
+                    appointmentId: appointmentId
+                      ? appointmentId.toString()
+                      : "",
+                    bookingId: bookingId,
+                    selectedServices: JSON.stringify(selectedServices),
+                    selectedStaff: selectedStaffId,
+                    selectedStaffMember: selectedStaffMember
+                      ? JSON.stringify(selectedStaffMember)
+                      : "",
+                    selectedDate: reduxSelectedDate || "",
+                    selectedTimeSlot: reduxSelectedTimeSlot || "",
+                    paymentMethod: paymentMethod,
+                    totalPrice: totalPrice.toFixed(2),
+                    tax: tax.toFixed(2),
+                    estimatedTotal: estimatedTotal.toFixed(2),
+                    businessId: businessId || "",
+                    business_id: businessId || "",
+                    note: note || "",
+                  },
+                });
+              }, 2000);
+            } finally {
+              await useStripeAccount(null);
+            }
           } catch (err: any) {
             // Extract clean error message
             let errorMessage = "Failed to process payment";

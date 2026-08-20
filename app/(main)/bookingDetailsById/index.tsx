@@ -49,7 +49,10 @@ import {
   chatEndpoints,
 } from "@/src/services/endpoints";
 import { useStripe } from "@stripe/stripe-react-native";
-import { fetchAppointmentPaymentSheetParams } from "@/src/services/stripeService";
+import {
+  fetchAppointmentPaymentSheetParams,
+  useStripeAccount,
+} from "@/src/services/stripeService";
 import {
   PersonIcon,
   MapPinIcon,
@@ -1393,65 +1396,74 @@ export default function bookingDetailsById() {
         customerSessionClientSecret,
         ephemeralKey,
         customer,
+        connectedAccountId,
       } = await fetchAppointmentPaymentSheetParams(appointmentId);
       dispatch(setActionLoader(false));
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const paymentConfig: any = {
-        merchantDisplayName: "Fresh Pass",
-        customerId: customer,
-        allowsDelayedPaymentMethods: true,
-        defaultBillingDetails: {
-          name: user.name || undefined,
-          email: user.email || undefined,
-        },
-        customFlow: false,
-      };
 
-      if (customerSessionClientSecret) {
-        paymentConfig.customerSessionClientSecret = customerSessionClientSecret;
-      } else if (ephemeralKey) {
-        paymentConfig.customerEphemeralKeySecret = ephemeralKey;
-      } else {
-        throw new Error(
-          "Either customerSessionClientSecret or ephemeralKey must be provided",
-        );
-      }
+      try {
+        await useStripeAccount(connectedAccountId);
 
-      if (paymentIntent && paymentIntent.trim() !== "") {
-        paymentConfig.paymentIntentClientSecret = paymentIntent;
-      } else if (setupIntent && setupIntent.trim() !== "") {
-        paymentConfig.setupIntentClientSecret = setupIntent;
-      } else {
-        throw new Error(
-          "Either Payment Intent or Setup Intent must be provided",
-        );
-      }
+        const paymentConfig: any = {
+          merchantDisplayName: "Fresh Pass",
+          customerId: customer,
+          allowsDelayedPaymentMethods: true,
+          defaultBillingDetails: {
+            name: user.name || undefined,
+            email: user.email || undefined,
+          },
+          customFlow: false,
+        };
 
-      const { error: initError } = await initPaymentSheet(paymentConfig);
-      if (initError) {
-        throw new Error(initError.message || "Failed to initialize payment");
-      }
-
-      const { error: presentError } = await presentPaymentSheet();
-      if (presentError) {
-        if (!presentError.code?.includes("Canceled")) {
-          showBanner(
-            "Payment Failed",
-            presentError.message || "Payment could not be completed",
-            "error",
-            4000,
+        if (customerSessionClientSecret) {
+          paymentConfig.customerSessionClientSecret =
+            customerSessionClientSecret;
+        } else if (ephemeralKey) {
+          paymentConfig.customerEphemeralKeySecret = ephemeralKey;
+        } else {
+          throw new Error(
+            "Either customerSessionClientSecret or ephemeralKey must be provided",
           );
         }
-        return;
-      }
 
-      showBanner(
-        t("success"),
-        "Payment successful! Your booking is confirmed.",
-        "success",
-        3000,
-      );
-      await fetchBookingDetails();
+        if (paymentIntent && paymentIntent.trim() !== "") {
+          paymentConfig.paymentIntentClientSecret = paymentIntent;
+        } else if (setupIntent && setupIntent.trim() !== "") {
+          paymentConfig.setupIntentClientSecret = setupIntent;
+        } else {
+          throw new Error(
+            "Either Payment Intent or Setup Intent must be provided",
+          );
+        }
+
+        const { error: initError } = await initPaymentSheet(paymentConfig);
+        if (initError) {
+          throw new Error(initError.message || "Failed to initialize payment");
+        }
+
+        const { error: presentError } = await presentPaymentSheet();
+        if (presentError) {
+          if (!presentError.code?.includes("Canceled")) {
+            showBanner(
+              "Payment Failed",
+              presentError.message || "Payment could not be completed",
+              "error",
+              4000,
+            );
+          }
+          return;
+        }
+
+        showBanner(
+          t("success"),
+          "Payment successful! Your booking is confirmed.",
+          "success",
+          3000,
+        );
+        await fetchBookingDetails();
+      } finally {
+        await useStripeAccount(null);
+      }
     } catch (err: any) {
       let errorMessage = "Failed to process payment";
       if (err.data?.message) {
