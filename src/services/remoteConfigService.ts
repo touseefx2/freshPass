@@ -6,12 +6,10 @@ import { getFirebaseProjectConfig } from "@/src/config/firebaseNative";
 import Logger from "@/src/services/logger";
 
 const INSTANCE_ID_KEY = "@freshpass/firebase_rc_instance_id";
-const STRIPE_KEY_CACHE = "@freshpass/stripe_publishable_key";
 const PURCHASE_RC_CACHE = "@freshpass/purchase_remote_config";
 
 /** Firebase Remote Config parameter keys shared across features */
 export const REMOTE_CONFIG_KEYS = {
-  stripePublishableKey: "stripe_publishable_key",
   trialDays: "trial_days",
 } as const;
 
@@ -102,71 +100,6 @@ export async function fetchRemoteConfigEntries(): Promise<RemoteConfigEntries> {
   }
 
   return data.entries || {};
-}
-
-/**
- * Resolves Stripe publishable key from Firebase Remote Config
- * `stripe_publishable_key`, with AsyncStorage cache for offline/startup.
- *
- * Publishable keys are safe in Remote Config — switch test/live in Console
- * without rebuilding. Backend secret key must still match the same mode.
- */
-export async function resolveStripePublishableKey(): Promise<string> {
-  const describeKey = (key: string, source: string) => ({
-    source,
-    mode: key.startsWith("pk_live_")
-      ? "live"
-      : key.startsWith("pk_test_")
-        ? "test"
-        : "unknown",
-    length: key.length,
-  });
-
-  try {
-    const cached = (await AsyncStorage.getItem(STRIPE_KEY_CACHE))?.trim();
-    Logger.log("[Stripe] Fetching publishable key from Remote Config...");
-    const entries = await fetchRemoteConfigEntries();
-    const fromRemote = readRemoteConfigEntry(
-      entries,
-      REMOTE_CONFIG_KEYS.stripePublishableKey,
-    )?.trim();
-
-    if (fromRemote) {
-      if (fromRemote !== cached) {
-        await AsyncStorage.setItem(STRIPE_KEY_CACHE, fromRemote);
-      }
-      Logger.log(
-        "[Stripe] ✅ Using key from Remote Config",
-        describeKey(fromRemote, "remote_config"),
-      );
-      return fromRemote;
-    }
-
-    if (cached) {
-      Logger.log(
-        "[Stripe] ⚠️ RC empty — using cached key",
-        describeKey(cached, "cache"),
-      );
-      return cached;
-    }
-  } catch (error) {
-    Logger.warn("[Stripe] Remote Config key fetch failed:", error);
-    try {
-      const cached = (await AsyncStorage.getItem(STRIPE_KEY_CACHE))?.trim();
-      if (cached) {
-        Logger.log(
-          "[Stripe] ⚠️ Fetch failed — using cached key",
-          describeKey(cached, "cache_after_error"),
-        );
-        return cached;
-      }
-    } catch {
-      // ignore cache read errors
-    }
-  }
-
-  Logger.warn("[Stripe] ❌ No publishable key from Remote Config or cache");
-  return "";
 }
 
 function parseCachedPurchaseConfig(

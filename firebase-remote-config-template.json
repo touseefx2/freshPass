@@ -1,12 +1,5 @@
 {
   "parameters": {
-    "stripe_publishable_key": {
-      "defaultValue": {
-        "value": "pk_test_51Swo2PC6ErvusFvDH74XoX282BDm1YNoKQC6GV1vA8HhLNZxEJR0aw0u33M87AiBkc96KIiwKeNWQSaNR9vPa4wa006yqvwI3r"
-      },
-      "description": "Stripe publishable key (pk_test_... or pk_live_...). Switch test/live here without rebuilding the app. Backend Stripe secret must use the same mode.",
-      "valueType": "STRING"
-    },
     "ios_store_url": {
       "defaultValue": {
         "value": "https://apps.apple.com/us/app/fresh-pass/id6758720531"
@@ -79,7 +72,7 @@
     }
   },
   "version": {
-    "description": "FreshPass Remote Config template (force update + maintenance + Stripe + trial)"
+    "description": "FreshPass Remote Config template (force update + maintenance + trial)"
   },
   "conditions": []
 }

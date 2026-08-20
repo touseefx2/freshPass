@@ -116,6 +116,7 @@ export const userEndpoints = {
  * Stripe payment endpoints
  */
 export const stripeEndpoints = {
+  config: `/api/config/stripe`,
   paymentSheet: `/api/payment-sheet`,
   paymentSheetAiTools: `/api/payment-sheet/ai-tools`,
   profile: `/api/staff/details`,

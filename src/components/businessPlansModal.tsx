@@ -30,7 +30,10 @@ import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Button from "@/src/components/button";
 import { useStripe } from "@stripe/stripe-react-native";
-import { fetchPaymentSheetParams } from "@/src/services/stripeService";
+import {
+  ensureStripeReady,
+  fetchPaymentSheetParams,
+} from "@/src/services/stripeService";
 import {
   purchaseAndVerifyBusinessPlanIosIap,
   resolveIosBusinessPlanProductId,
@@ -720,6 +723,9 @@ function BusinessPlansModalContent({
     selectedAddOns: number[],
   ) => {
     setIsSetupIntent(false);
+
+    // Retry Stripe key from API if startup fetch failed (e.g. no network)
+    await ensureStripeReady();
 
     const {
       paymentIntent,

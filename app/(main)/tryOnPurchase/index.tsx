@@ -18,7 +18,10 @@ import {
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
+import {
+  ensureStripeReady,
+  fetchAiToolsPaymentSheetParams,
+} from "@/src/services/stripeService";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
   purchaseAndVerifyIosIap,
@@ -223,6 +226,9 @@ export default function TryOnPurchase() {
   };
 
   const handleStripePayment = async (serviceIdForPurchase: number) => {
+    // Retry Stripe key from API if startup fetch failed (e.g. no network)
+    await ensureStripeReady();
+
     const { customer, paymentIntent, customerSessionClientSecret } =
       await fetchAiToolsPaymentSheetParams(serviceIdForPurchase);
     dispatch(setActionLoader(false));
