@@ -40,7 +40,9 @@ import {
   setSearchState,
   clearSearchState,
   setCurrentLocation,
+  setAiService,
 } from "@/src/state/slices/generalSlice";
+import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import TryOnBanner from "./TryOnBanner";
 import * as Location from "expo-location";
 import { tryGetPosition } from "@/src/constant/functions";
@@ -114,7 +116,9 @@ export default function ExploreScreen() {
   const isCusotmerandGuest = user.isGuest || user.userRole === "customer";
 
   const hairTryOnService =
-    aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
+    aiService?.find((s) => s.name === "AI Hair Try-On") ??
+    aiService?.find((s) => /hair\s*try/i.test(s.name ?? "")) ??
+    null;
   const showTryOnBanner =
     (aiQuota === 0 || aiQuota == null) &&
     !!hairTryOnService &&
@@ -126,6 +130,34 @@ export default function ExploreScreen() {
     !!hairTryOnService &&
     (aiQuota === 0 || aiQuota == null) &&
     isCusotmerandGuest;
+
+  useEffect(() => {
+    if (!isCusotmerandGuest) return;
+
+    let cancelled = false;
+
+    const fetchCustomerAiServices = async () => {
+      try {
+        const response = await ApiService.get<{
+          success: boolean;
+          message: string;
+          data: AdditionalServiceItem[];
+        }>(businessEndpoints.additionalServices("customer"));
+        if (cancelled) return;
+        if (response.success && response.data) {
+          dispatch(setAiService(response.data));
+        }
+      } catch (error) {
+        Logger.error("Fetch customer additional services error:", error);
+      }
+    };
+
+    void fetchCustomerAiServices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, isCusotmerandGuest]);
 
   useEffect(() => {
     if (showTryOnModal && hairTryOnService) {

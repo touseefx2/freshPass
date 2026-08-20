@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect } from "react";
 import {
   Modal,
   View,
@@ -9,9 +9,10 @@ import {
   ScrollView,
   Alert,
   Linking,
+  Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -22,6 +23,11 @@ import {
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
 import { Feather } from "@expo/vector-icons";
+import { ApiService } from "@/src/services/api";
+import { businessEndpoints } from "@/src/services/endpoints";
+import { setAiService } from "@/src/state/slices/generalSlice";
+import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
+import Logger from "@/src/services/logger";
 
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
 
@@ -29,6 +35,7 @@ interface AiHairTryOnConsentModalProps {
   visible: boolean;
   onAgree: () => void;
   onDecline: () => void;
+  onAppStoreConfigMissing?: () => void;
 }
 
 const createStyles = (theme: Theme) =>
@@ -125,11 +132,56 @@ export default function AiHairTryOnConsentModal({
   visible,
   onAgree,
   onDecline,
+  onAppStoreConfigMissing,
 }: AiHairTryOnConsentModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const dispatch = useAppDispatch();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
+
+  useEffect(() => {
+    if (!visible) return;
+
+    let cancelled = false;
+
+    const fetchCustomerServices = async () => {
+      try {
+        const response = await ApiService.get<{
+          success: boolean;
+          message: string;
+          data: AdditionalServiceItem[];
+        }>(businessEndpoints.additionalServices("customer"));
+
+        if (cancelled) return;
+
+        if (response.success && response.data) {
+          dispatch(setAiService(response.data));
+          if (Platform.OS === "ios") {
+            const hairTryOn =
+              response.data.find((s) => s.name === "AI Hair Try-On") ??
+              response.data.find((s) => s.active);
+            if (!hairTryOn?.appleProductId?.trim()) {
+              onAppStoreConfigMissing?.();
+            }
+          }
+        } else if (Platform.OS === "ios") {
+          onAppStoreConfigMissing?.();
+        }
+      } catch (error) {
+        Logger.error("Fetch customer additional services error:", error);
+        if (!cancelled && Platform.OS === "ios") {
+          onAppStoreConfigMissing?.();
+        }
+      }
+    };
+
+    void fetchCustomerServices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, dispatch, onAppStoreConfigMissing]);
 
   const handlePrivacyPress = useCallback(async () => {
     if (!PRIVACY_POLICY_URL) {

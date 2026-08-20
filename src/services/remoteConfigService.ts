@@ -12,16 +12,10 @@ const PURCHASE_RC_CACHE = "@freshpass/purchase_remote_config";
 /** Firebase Remote Config parameter keys shared across features */
 export const REMOTE_CONFIG_KEYS = {
   stripePublishableKey: "stripe_publishable_key",
-  iapBusinessPlanStandardProductId: "iap_business_plan_standard_product_id",
-  iapBusinessPlanFeaturedProductId: "iap_business_plan_featured_product_id",
-  iapAiServiceProductId: "iap_ai_service_product_id",
   trialDays: "trial_days",
 } as const;
 
 export type PurchaseRemoteConfig = {
-  businessPlanStandardProductId: string;
-  businessPlanFeaturedProductId: string;
-  aiServiceProductId: string;
   trialDays: string;
 };
 
@@ -192,11 +186,6 @@ function toPurchaseConfig(
   partial: Partial<PurchaseRemoteConfig>,
 ): PurchaseRemoteConfig {
   return {
-    businessPlanStandardProductId:
-      partial.businessPlanStandardProductId?.trim() ?? "",
-    businessPlanFeaturedProductId:
-      partial.businessPlanFeaturedProductId?.trim() ?? "",
-    aiServiceProductId: partial.aiServiceProductId?.trim() ?? "",
     trialDays: partial.trialDays?.trim() ?? "",
   };
 }
@@ -205,24 +194,12 @@ function purchaseConfigFromEntries(
   entries: RemoteConfigEntries,
 ): PurchaseRemoteConfig {
   return toPurchaseConfig({
-    businessPlanStandardProductId: readRemoteConfigEntry(
-      entries,
-      REMOTE_CONFIG_KEYS.iapBusinessPlanStandardProductId,
-    ),
-    businessPlanFeaturedProductId: readRemoteConfigEntry(
-      entries,
-      REMOTE_CONFIG_KEYS.iapBusinessPlanFeaturedProductId,
-    ),
-    aiServiceProductId: readRemoteConfigEntry(
-      entries,
-      REMOTE_CONFIG_KEYS.iapAiServiceProductId,
-    ),
     trialDays: readRemoteConfigEntry(entries, REMOTE_CONFIG_KEYS.trialDays),
   });
 }
 
 /**
- * IAP product IDs + trial days from Firebase Remote Config.
+ * Trial days from Firebase Remote Config.
  * Order: memory (unless forceRefresh) → Remote Config (always override cache,
  * including empty strings) → AsyncStorage only if fetch fails → throw.
  */

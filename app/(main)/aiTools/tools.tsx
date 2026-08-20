@@ -41,13 +41,15 @@ import {
   setActionLoader,
   openFullImageModal,
   setAiHairTryOnConsentAccepted,
+  setAiService,
 } from "@/src/state/slices/generalSlice";
+import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import AiHairTryOnConsentModal from "@/src/components/aiHairTryOnConsentModal";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
-import { userEndpoints } from "@/src/services/endpoints";
+import { businessEndpoints, userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 
 interface MediaFile {
@@ -88,7 +90,10 @@ export default function Tools() {
   useFocusEffect(
     useCallback(() => {
       fetchQuota();
-    }, []),
+      if (user.isGuest || user.userRole === "customer") {
+        void fetchCustomerAiServices();
+      }
+    }, [user.isGuest, user.userRole]),
   );
 
   const fetchQuota = async () => {
@@ -103,8 +108,25 @@ export default function Tools() {
     } catch {}
   };
 
+  const fetchCustomerAiServices = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: AdditionalServiceItem[];
+      }>(businessEndpoints.additionalServices("customer"));
+      if (response.success && response.data) {
+        dispatch(setAiService(response.data));
+      }
+    } catch (error) {
+      Logger.error("Fetch customer additional services error:", error);
+    }
+  };
+
   const hairTryOnService =
-    aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
+    aiService?.find((s) => s.name === "AI Hair Try-On") ??
+    aiService?.find((s) => /hair\s*try/i.test(s.name ?? "")) ??
+    null;
   const isCustomerOrGuest = user.isGuest || user.userRole === "customer";
 
   // State for Post (single image)
@@ -134,10 +156,9 @@ export default function Tools() {
       : hairTryonSelectedType === "withPromptAndImage"
         ? 1
         : 3;
-  const showUnlockModal =
+  const needsTryOnPurchase =
     toolType === "Hair Tryon" &&
     isCustomerOrGuest &&
-    !!hairTryOnService &&
     (aiQuota == null || aiQuota < hairTryonCreditsRequired);
 
   // Modal states
@@ -457,7 +478,22 @@ export default function Tools() {
     }
   }, [t]);
 
+  const openTryOnPurchase = useCallback(() => {
+    router.push({
+      pathname: "/(main)/tryOnPurchase",
+      params: {
+        ...(hairTryOnService ? { serviceId: String(hairTryOnService.id) } : {}),
+        screen: "tools",
+      },
+    });
+  }, [hairTryOnService, router]);
+
   const executeHairTryonGeneration = useCallback(async () => {
+    if (needsTryOnPurchase) {
+      openTryOnPurchase();
+      return;
+    }
+
     setIsGenerating(true);
     dispatch(setActionLoader(true));
 
@@ -526,17 +562,32 @@ export default function Tools() {
     showBanner,
     t,
     userId,
+    needsTryOnPurchase,
+    openTryOnPurchase,
   ]);
 
   const handleAiConsentAgree = useCallback(() => {
     dispatch(setAiHairTryOnConsentAccepted(true));
     setAiConsentModalVisible(false);
+    if (needsTryOnPurchase) {
+      openTryOnPurchase();
+      return;
+    }
     executeHairTryonGeneration();
-  }, [dispatch, executeHairTryonGeneration]);
+  }, [
+    dispatch,
+    executeHairTryonGeneration,
+    needsTryOnPurchase,
+    openTryOnPurchase,
+  ]);
 
   const handleAiConsentDecline = useCallback(() => {
     setAiConsentModalVisible(false);
   }, []);
+
+  const handleAiConsentAppStoreConfigMissing = useCallback(() => {
+    showBanner(t("error"), t("appStoreConfigNotSet"), "error", 4000);
+  }, [showBanner, t]);
 
   const handleGenerate = async () => {
     // Validation
@@ -581,16 +632,12 @@ export default function Tools() {
         );
         return;
       }
-      if (showUnlockModal && hairTryOnService) {
-        router.push({
-          pathname: "/(main)/tryOnPurchase",
-          params: { serviceId: String(hairTryOnService.id), screen: "tools" },
-        });
-        return;
-      }
-
       if (!aiHairTryOnConsentAccepted) {
         setAiConsentModalVisible(true);
+        return;
+      }
+      if (needsTryOnPurchase) {
+        openTryOnPurchase();
         return;
       }
 
@@ -1315,6 +1362,7 @@ export default function Tools() {
         visible={aiConsentModalVisible}
         onAgree={handleAiConsentAgree}
         onDecline={handleAiConsentDecline}
+        onAppStoreConfigMissing={handleAiConsentAppStoreConfigMissing}
       />
     </SafeAreaView>
   );

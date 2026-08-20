@@ -255,6 +255,7 @@ export default function HomeScreen() {
           name: string;
           price: string;
           ai_requests: number | null;
+          appleProductId?: string | null;
           type: string;
           active: boolean;
           createdAt: string;

@@ -12,7 +12,7 @@ import {
   staffEndpoints,
   userEndpoints,
 } from "@/src/services/endpoints";
-import { BusinessStatus } from "../slices/userSlice";
+import { BusinessStatus, deriveHasAddStaff } from "../slices/userSlice";
 
 interface fetchUserStatusOptions {
   showError?: boolean;
@@ -57,6 +57,9 @@ export const fetchUserStatus = createAsyncThunk<
           stripe_onboarding_link: null,
           has_subscription: false,
           subscription_status: "",
+          subscription_plan_name: null,
+          subscription_is_single: false,
+          hasAddStaff: false,
           active: response.data.active ?? response?.active ?? false,
           business_id: response.data.business?.id,
           business_name: response.data.business?.title,
@@ -82,7 +85,7 @@ export const fetchUserStatus = createAsyncThunk<
       const response = await ApiService.get<{
         success: boolean;
         message: string;
-        data: BusinessStatus;
+        data: Omit<BusinessStatus, "hasAddStaff">;
       }>(userEndpoints.status);
 
       if (response.success && response.data) {
@@ -105,7 +108,20 @@ export const fetchUserStatus = createAsyncThunk<
           );
         }
 
-        return businessStatusData;
+        const subscription_plan_name =
+          businessStatusData.subscription_plan_name ?? null;
+        const subscription_is_single =
+          businessStatusData.subscription_is_single ?? false;
+
+        return {
+          ...businessStatusData,
+          subscription_plan_name,
+          subscription_is_single,
+          hasAddStaff: deriveHasAddStaff(
+            businessStatusData.subscription_status,
+            subscription_is_single,
+          ),
+        };
       }
       return null;
     }

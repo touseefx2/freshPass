@@ -33,7 +33,8 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { fetchPaymentSheetParams } from "@/src/services/stripeService";
 import {
   purchaseAndVerifyBusinessPlanIosIap,
-  resolveBusinessPlanProductIdWithFeatured,
+  resolveIosBusinessPlanProductId,
+  type AppleAddonProduct,
 } from "@/src/services/iapService";
 import {
   resolveTrialDays,
@@ -63,7 +64,9 @@ interface SubscriptionPlan {
   visits: number | null;
   createdAt: string;
   services: any[];
-  app_store_product_id?: string | null;
+  is_solo?: boolean;
+  appleProductId?: string | null;
+  appleAddonProducts?: AppleAddonProduct[];
 }
 
 interface AdditionalService {
@@ -419,9 +422,8 @@ function BusinessPlansModalContent({
   const [hasUsedTrial, setHasUsedTrial] = useState(false);
   const [trialDays, setTrialDays] = useState("");
   const isIos = Platform.OS === "ios";
-  const isAndroid = Platform.OS === "android";
-  /** Android-only: trial already used → show Subscribe instead of Start trial */
-  const showSubscribeInsteadOfTrial = isAndroid && hasUsedTrial;
+  /** Trial already used → show Subscribe instead of Start trial */
+  const showSubscribeInsteadOfTrial = hasUsedTrial;
   const dispatch = useAppDispatch();
 
   const handleOpenLink = useCallback(
@@ -498,7 +500,21 @@ function BusinessPlansModalContent({
       }>(businessEndpoints.subscriptionPlans());
 
       if (response.success && response.data?.data) {
-        setPlans(response.data.data);
+        const nextPlans = response.data.data;
+        setPlans(nextPlans);
+        if (isIos) {
+          const missingAppStoreConfig = nextPlans.some(
+            (plan) => !plan.appleProductId?.trim(),
+          );
+          if (missingAppStoreConfig) {
+            setLocalBanner({
+              visible: true,
+              title: t("error"),
+              message: t("appStoreConfigNotSet"),
+              type: "error",
+            });
+          }
+        }
       } else {
         setError("Failed to load subscription plans");
         setApiError(true);
@@ -572,12 +588,34 @@ function BusinessPlansModalContent({
   };
 
   const toggleServiceForPlan = (planId: number, serviceId: number) => {
+    const current = selectedServicesByPlanId[planId] ?? [];
+    const isSelected = current.includes(serviceId);
+    if (!isSelected && isIos) {
+      const plan = plans.find((item) => item.id === planId);
+      const hasAddonProductId = Boolean(
+        plan?.appleAddonProducts?.find(
+          (addon) =>
+            addon.active !== false &&
+            addon.additionalServiceId === serviceId &&
+            addon.productId?.trim(),
+        ),
+      );
+      if (!hasAddonProductId) {
+        setLocalBanner({
+          visible: true,
+          title: t("error"),
+          message: t("appStoreConfigNotSet"),
+          type: "error",
+        });
+      }
+    }
+
     setSelectedServicesByPlanId((prev) => {
-      const current = prev[planId] ?? [];
-      const isSelected = current.includes(serviceId);
-      const next = isSelected
-        ? current.filter((id) => id !== serviceId)
-        : [...current, serviceId];
+      const selected = prev[planId] ?? [];
+      const alreadySelected = selected.includes(serviceId);
+      const next = alreadySelected
+        ? selected.filter((id) => id !== serviceId)
+        : [...selected, serviceId];
       return { ...prev, [planId]: next };
     });
   };
@@ -621,14 +659,9 @@ function BusinessPlansModalContent({
             type: "error",
           });
         });
-      // Trial status is Android-only; iOS uses IAP and does not use this API yet
-      if (isAndroid) {
-        fetchTrialStatus();
-      } else {
-        setHasUsedTrial(false);
-      }
+      fetchTrialStatus();
     }
-  }, [visible, isAndroid, t]);
+  }, [visible, t]);
 
 
   const finishSubscriptionSuccess = () => {
@@ -655,11 +688,17 @@ function BusinessPlansModalContent({
     planId: number,
     selectedAddOns: number[],
   ) => {
-    // Add-on selected → featured SKU; none → standard. Both from Remote Config.
-    const productId = await resolveBusinessPlanProductIdWithFeatured(
-      selectedAddOns.length > 0,
-    );
+    const plan = plans.find((item) => item.id === planId);
+    if (!plan) {
+      throw new Error(t("appStoreConfigNotSet"));
+    }
 
+    let productId: string;
+    try {
+      productId = resolveIosBusinessPlanProductId(plan, selectedAddOns);
+    } catch {
+      throw new Error(t("appStoreConfigNotSet"));
+    }
 
     await purchaseAndVerifyBusinessPlanIosIap({
       productId,

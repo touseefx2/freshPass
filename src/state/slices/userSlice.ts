@@ -15,10 +15,54 @@ export interface BusinessStatus {
   stripe_onboarding_link: string | null;
   has_subscription: boolean;
   subscription_status: string;
+  subscription_plan_name: string | null;
+  subscription_is_single: boolean;
+  hasAddStaff: boolean;
   active: boolean;
   business_id?: number;
   business_name?: string;
 }
+
+export const deriveHasAddStaff = (
+  subscriptionStatus?: string | null,
+  subscriptionIsSingle?: boolean | null,
+): boolean =>
+  subscriptionStatus === "active" && subscriptionIsSingle === false;
+
+export const isBusinessSubscriptionActive = (
+  status?: BusinessStatus | null,
+): boolean => status?.subscription_status === "active";
+
+export const canShowStaffManagement = (
+  status?: BusinessStatus | null,
+): boolean => {
+  if (!status) return true;
+  if (status.stripe_onboarding_status !== "completed") return false;
+  if (isBusinessSubscriptionActive(status)) {
+    return status.hasAddStaff === true;
+  }
+  return true;
+};
+
+export const canAddStaffMembers = (
+  status?: BusinessStatus | null,
+): boolean =>
+  isBusinessSubscriptionActive(status) && status?.hasAddStaff === true;
+
+const withDerivedBusinessStatus = (status: BusinessStatus): BusinessStatus => {
+  const subscription_plan_name = status.subscription_plan_name ?? null;
+  const subscription_is_single = status.subscription_is_single ?? false;
+
+  return {
+    ...status,
+    subscription_plan_name,
+    subscription_is_single,
+    hasAddStaff: deriveHasAddStaff(
+      status.subscription_status,
+      subscription_is_single,
+    ),
+  };
+};
 
 export interface Location {
   lat: number | null;
@@ -151,8 +195,14 @@ const userSlice = createSlice({
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken || null;
     },
-    setBusinessStatus(state, action: PayloadAction<BusinessStatus>) {
-      state.businessStatus = action.payload;
+    setBusinessStatus(
+      state,
+      action: PayloadAction<Omit<BusinessStatus, "hasAddStaff">>,
+    ) {
+      state.businessStatus = withDerivedBusinessStatus({
+        ...action.payload,
+        hasAddStaff: false,
+      });
       state.businessStatusError = false;
     },
     setBusinessStatusLoading(state, action: PayloadAction<boolean>) {

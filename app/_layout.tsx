@@ -18,6 +18,7 @@ import { StripeProvider } from "@stripe/stripe-react-native";
 import { NotificationProvider } from "@/src/contexts/NotificationContext";
 import SessionExpiredHandler from "@/src/components/SessionExpiredHandler";
 import ExpoNotificationHandler from "@/src/components/ExpoNotificationHandler";
+import IapRecoveryHandler from "@/src/components/IapRecoveryHandler";
 import ActionLoader from "@/src/components/actionLoader";
 import OnboardingHandler from "@/src/components/OnboardingHandler";
 import ForceUpdateHandler from "@/src/components/ForceUpdateHandler";
@@ -131,6 +132,7 @@ export default function RootLayout() {
                     <OnboardingHandler />
                     <SessionExpiredHandler />
                     <ExpoNotificationHandler />
+                    <IapRecoveryHandler />
                   </NotificationProvider>
                 </I18nextProvider>
               </PortalProvider>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   ImageBackground,
   Platform,
@@ -22,18 +22,20 @@ import { fetchAiToolsPaymentSheetParams } from "@/src/services/stripeService";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
   purchaseAndVerifyIosIap,
-  resolveAiServiceProductId,
+  resolveIosAppleProductId,
 } from "@/src/services/iapService";
 import NotificationBanner from "@/src/components/notificationBanner";
 import { ApiService } from "@/src/services/api";
-import { userEndpoints } from "@/src/services/endpoints";
+import { businessEndpoints, userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import { router, useLocalSearchParams } from "expo-router";
 import { createStyles } from "./styles";
 import {
   setActionLoader,
   setActionLoaderTitle,
+  setAiService,
 } from "@/src/state/slices/generalSlice";
+import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import Logger from "@/src/services/logger";
 
 export default function TryOnPurchase() {
@@ -67,12 +69,80 @@ export default function TryOnPurchase() {
   });
 
   const service = useMemo(() => {
-    if (serviceId == null || !aiService) return null;
-    const found = aiService.find((s) => s.id === serviceId);
-    return found ?? aiService.find((s) => s.name === "AI Hair Try-On") ?? null;
+    if (!aiService?.length) return null;
+    if (serviceId != null) {
+      const found = aiService.find((s) => s.id === serviceId);
+      if (found) return found;
+    }
+    return (
+      aiService.find((s) => s.name === "AI Hair Try-On") ??
+      aiService.find((s) => /hair\s*try/i.test(s.name ?? "")) ??
+      aiService.find((s) => s.active) ??
+      null
+    );
   }, [serviceId, aiService]);
 
   Logger.log("=====>service", service);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCustomerServices = async () => {
+      try {
+        const response = await ApiService.get<{
+          success: boolean;
+          message: string;
+          data: AdditionalServiceItem[];
+        }>(businessEndpoints.additionalServices("customer"));
+
+        if (cancelled) return;
+
+        if (response.success && response.data) {
+          dispatch(setAiService(response.data));
+          const hairTryOn =
+            (serviceId != null
+              ? response.data.find((s) => s.id === serviceId)
+              : undefined) ??
+            response.data.find((s) => s.name === "AI Hair Try-On") ??
+            response.data.find((s) => s.active);
+          if (isIos && !hairTryOn?.appleProductId?.trim()) {
+            setLocalBanner({
+              visible: true,
+              title: t("error"),
+              message: t("appStoreConfigNotSet"),
+              type: "error",
+            });
+          }
+          return;
+        }
+
+        if (isIos) {
+          setLocalBanner({
+            visible: true,
+            title: t("error"),
+            message: t("appStoreConfigNotSet"),
+            type: "error",
+          });
+        }
+      } catch {
+        if (cancelled) return;
+        if (isIos) {
+          setLocalBanner({
+            visible: true,
+            title: t("error"),
+            message: t("appStoreConfigNotSet"),
+            type: "error",
+          });
+        }
+      }
+    };
+
+    void loadCustomerServices();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, isIos, serviceId, t]);
 
   const pricingText =
     service && service.price && service.ai_requests
@@ -117,7 +187,26 @@ export default function TryOnPurchase() {
   };
 
   const handleIapPayment = async () => {
-    const productId = await resolveAiServiceProductId();
+    let appleProductId = service?.appleProductId;
+    if (!appleProductId?.trim()) {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: AdditionalServiceItem[];
+      }>(businessEndpoints.additionalServices("customer"));
+      if (response.success && response.data) {
+        dispatch(setAiService(response.data));
+        const hairTryOn =
+          (serviceId != null
+            ? response.data.find((s) => s.id === serviceId)
+            : undefined) ??
+          response.data.find((s) => s.name === "AI Hair Try-On") ??
+          response.data.find((s) => s.active);
+        appleProductId = hairTryOn?.appleProductId;
+      }
+    }
+
+    const productId = resolveIosAppleProductId(appleProductId);
 
     const verifyResponse = await purchaseAndVerifyIosIap({
       productId,
@@ -224,10 +313,11 @@ export default function TryOnPurchase() {
       if (message.toLowerCase().includes("cancel")) {
         return;
       }
+      const isConfigError = message.toLowerCase().includes("app store configuration");
       setLocalBanner({
         visible: true,
         title: t("error"),
-        message,
+        message: isConfigError ? t("appStoreConfigNotSet") : message,
         type: "error",
       });
     } finally {

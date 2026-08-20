@@ -671,7 +671,9 @@ const AiChatBot: React.FC = () => {
   );
 
   const hairTryOnService =
-    aiService?.find((s) => s.name === "AI Hair Try-On") ?? null;
+    aiService?.find((s) => s.name === "AI Hair Try-On") ??
+    aiService?.find((s) => /hair\s*try/i.test(s.name ?? "")) ??
+    null;
   const aiChatDataConsentAccepted = useAppSelector(
     (state) => state.general.aiChatDataConsentAccepted,
   );

@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -18,6 +18,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { canShowStaffManagement } from "@/src/state/slices/userSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -60,6 +61,8 @@ export default function BusinessProfileSettingsScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const showManageTeam = canShowStaffManagement(businessStatus);
 
   const handleRowPress = (key: string) => {
     if (key === "businessProfile") {
@@ -93,7 +96,7 @@ export default function BusinessProfileSettingsScreen() {
     { key: "availability", title: t("setAvailabilityTitle") },
     { key: "services", title: t("manageServicesList") },
     { key: "subscriptions", title: t("manageSubscriptionList") },
-    { key: "team", title: t("manageTeam") },
+    ...(showManageTeam ? [{ key: "team", title: t("manageTeam") }] : []),
     { key: "socialMedia", title: t("yourSocialMedia") },
     { key: "portfolio", title: t("managePortfolioPhotos") },
     // { key: "verification", title: "Manage salon verification" },

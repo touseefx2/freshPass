@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,7 +27,8 @@ import {
   setStaffInvitationEmail,
   setStaffInvitations,
 } from "@/src/state/slices/completeProfileSlice";
-import { setActionLoader } from "@/src/state/slices/generalSlice";
+import { setActionLoader, setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import { canAddStaffMembers } from "@/src/state/slices/userSlice";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
@@ -184,6 +186,8 @@ export default function ManageTeamScreen() {
   const { staffInvitationEmail } = useAppSelector(
     (state) => state.completeProfile,
   );
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const canAddStaff = canAddStaffMembers(businessStatus);
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -249,6 +253,22 @@ export default function ManageTeamScreen() {
   };
 
   const handleInvite = async () => {
+    if (!canAddStaff) {
+      Alert.alert(
+        t("pleaseBuyBusinessPlan"),
+        t("buyBusinessPlanBeforeAddingStaff"),
+        [
+          { text: t("close"), style: "cancel" },
+          {
+            text: t("ok"),
+            onPress: () => dispatch(setBusinessPlansModalVisible(true)),
+          },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
+
     if (!staffInvitationEmail.trim()) {
       return;
     }

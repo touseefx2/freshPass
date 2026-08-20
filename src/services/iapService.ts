@@ -2,8 +2,8 @@ import { Platform } from "react-native";
 import {
   fetchProducts,
   finishTransaction,
-  getReceiptIOS,
-  getTransactionJwsIOS,
+  getAvailablePurchases,
+  getPendingTransactionsIOS,
   initConnection,
   purchaseErrorListener,
   purchaseUpdatedListener,
@@ -12,12 +12,26 @@ import {
   type ProductSubscription,
   type Purchase,
   type PurchaseError,
-  type PurchaseIOS,
 } from "react-native-iap";
 import { ApiService } from "@/src/services/api";
 import { iapEndpoints } from "@/src/services/endpoints";
-import { resolvePurchaseRemoteConfig } from "@/src/services/remoteConfigService";
 import Logger from "@/src/services/logger";
+
+export const APP_STORE_CONFIG_NOT_SET_ERROR =
+  "App Store configuration is not set for this plan. Please try again later.";
+
+export type AppleAddonProduct = {
+  productId: string;
+  name?: string;
+  additionalServiceId: number;
+  additionalServiceName?: string;
+  active?: boolean;
+};
+
+export type IosBusinessPlanProductSource = {
+  appleProductId?: string | null;
+  appleAddonProducts?: AppleAddonProduct[] | null;
+};
 
 export type IapPurchaseKind = "business_subscription" | "ai_service";
 
@@ -41,8 +55,17 @@ interface VerifyBusinessPlanIapResponse {
 }
 
 const PURCHASE_TIMEOUT_MS = 120_000;
+const VERIFY_RETRY_DELAYS_MS = [2_000, 5_000, 15_000];
 
 let connectionInitialized = false;
+let accountTokenPromise: Promise<string | undefined> | undefined;
+let recoveryListener:
+  | ReturnType<typeof purchaseUpdatedListener>
+  | undefined;
+let recoverInFlight: Promise<number> | null = null;
+
+const inFlightProductIds = new Set<string>();
+const verifyingTransactionIds = new Set<string>();
 
 const isUserCancelled = (error: PurchaseError | Error): boolean => {
   const code = String(
@@ -55,6 +78,52 @@ const isUserCancelled = (error: PurchaseError | Error): boolean => {
     code === "user-cancelled"
   );
 };
+
+const sleep = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+const isRetryableVerifyError = (error: unknown): boolean => {
+  const status = (error as { response?: { status?: number } })?.response
+    ?.status;
+
+  if (typeof status === "number") {
+    return status >= 500;
+  }
+
+  return true;
+};
+
+const verifyWithRetry = async <T>(run: () => Promise<T>): Promise<T> => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt <= VERIFY_RETRY_DELAYS_MS.length; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      lastError = error;
+      const canRetry =
+        isRetryableVerifyError(error) &&
+        attempt < VERIFY_RETRY_DELAYS_MS.length;
+
+      if (!canRetry) {
+        throw error;
+      }
+
+      await sleep(VERIFY_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+
+  throw lastError;
+};
+
+const getPurchaseTransactionId = (purchase: Purchase): string =>
+  String(purchase.transactionId ?? purchase.id ?? purchase.productId ?? "");
+
+/** StoreKit only gives a SKU at recovery time; business SKUs include this fragment. */
+const isBusinessSubscriptionProduct = (productId?: string | null): boolean =>
+  Boolean(productId?.includes("business.plan"));
 
 export const ensureIapConnection = async () => {
   if (Platform.OS !== "ios") {
@@ -73,44 +142,63 @@ export const ensureIapConnection = async () => {
   connectionInitialized = true;
 };
 
-export const resolveBusinessPlanProductId = async () => {
-  const { businessPlanStandardProductId } = await resolvePurchaseRemoteConfig();
-  if (!businessPlanStandardProductId) {
-    throw new Error(
-      "Failed to start payment. Purchase configuration is missing. Please try again later.",
-    );
+export const getAppleAccountToken = async (): Promise<string | undefined> => {
+  if (!accountTokenPromise) {
+    accountTokenPromise = ApiService.get<{
+      success: boolean;
+      data?: { appAccountToken?: string };
+    }>(iapEndpoints.accountToken)
+      .then((response) => response?.data?.appAccountToken)
+      .catch((error) => {
+        Logger.warn("Could not fetch the Apple account token", error);
+        accountTokenPromise = undefined;
+        return undefined;
+      });
   }
 
-  return businessPlanStandardProductId;
+  return accountTokenPromise;
 };
 
-/** Standard vs Standard + Featured — both SKUs from Remote Config only. */
-export const resolveBusinessPlanProductIdWithFeatured = async (
-  hasFeaturedAddOn: boolean,
-) => {
-  if (!hasFeaturedAddOn) {
-    return resolveBusinessPlanProductId();
-  }
-
-  const { businessPlanFeaturedProductId } = await resolvePurchaseRemoteConfig();
-  if (!businessPlanFeaturedProductId) {
-    throw new Error(
-      "Failed to start payment. Purchase configuration is missing. Please try again later.",
-    );
-  }
-
-  return businessPlanFeaturedProductId;
+/** Dropped on logout so the next user never purchases under the previous one's id. */
+export const resetAppleAccountToken = () => {
+  accountTokenPromise = undefined;
 };
 
-export const resolveAiServiceProductId = async () => {
-  const { aiServiceProductId } = await resolvePurchaseRemoteConfig();
-  if (!aiServiceProductId) {
-    throw new Error(
-      "Failed to start payment. Purchase configuration is missing. Please try again later.",
-    );
+/** Base SKU from `appleProductId`; add-on checkbox uses matching `appleAddonProducts.productId`. */
+export const resolveIosBusinessPlanProductId = (
+  plan: IosBusinessPlanProductSource,
+  selectedAddOnIds: number[],
+): string => {
+  if (selectedAddOnIds.length === 0) {
+    const productId = plan.appleProductId?.trim();
+    if (!productId) {
+      throw new Error(APP_STORE_CONFIG_NOT_SET_ERROR);
+    }
+    return productId;
   }
 
-  return aiServiceProductId;
+  const addonProductId = plan.appleAddonProducts?.find(
+    (addon) =>
+      addon.active !== false &&
+      selectedAddOnIds.includes(addon.additionalServiceId) &&
+      Boolean(addon.productId?.trim()),
+  )?.productId?.trim();
+
+  if (!addonProductId) {
+    throw new Error(APP_STORE_CONFIG_NOT_SET_ERROR);
+  }
+
+  return addonProductId;
+};
+
+export const resolveIosAppleProductId = (
+  appleProductId?: string | null,
+): string => {
+  const productId = appleProductId?.trim();
+  if (!productId) {
+    throw new Error(APP_STORE_CONFIG_NOT_SET_ERROR);
+  }
+  return productId;
 };
 
 const getProductOrThrow = async (
@@ -134,47 +222,8 @@ const getProductOrThrow = async (
   return matchedProduct;
 };
 
-const getReceiptFromPurchase = async (
-  purchase: Purchase,
-  productId: string,
-): Promise<string> => {
-  if (purchase.purchaseToken?.trim()) {
-    return purchase.purchaseToken.trim();
-  }
-
-  const legacyReceipt = (
-    purchase as Purchase & { transactionReceipt?: string }
-  ).transactionReceipt;
-  if (legacyReceipt?.trim()) {
-    return legacyReceipt.trim();
-  }
-
-  try {
-    const jws = await getTransactionJwsIOS(productId);
-    if (jws?.trim()) {
-      return jws.trim();
-    }
-  } catch {
-    // Fall through to app receipt
-  }
-
-  const appReceipt = await getReceiptIOS();
-  if (appReceipt?.trim()) {
-    return appReceipt.trim();
-  }
-
-  throw new Error("Purchase receipt missing. Please try again.");
-};
-
 interface VerifyBusinessPlanIapPayload {
   transaction_id: string;
-  // productId: string;
-  // transactionId: string;
-  // transactionReceipt: string;
-  // originalTransactionId?: string;
-  // purchaseToken?: string;
-  // referenceId: number;
-  // additional_service_ids?: number[];
 }
 
 const verifyAiIapPurchase = async (transactionId: string) => {
@@ -198,6 +247,7 @@ const verifyBusinessPlanIapPurchase = async (
 const requestIosPurchase = (
   productId: string,
   kind: IapPurchaseKind,
+  appAccountToken?: string,
 ): Promise<Purchase> =>
   new Promise((resolve, reject) => {
     let settled = false;
@@ -205,7 +255,10 @@ const requestIosPurchase = (
     let errorSub: ReturnType<typeof purchaseErrorListener> | undefined;
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+    inFlightProductIds.add(productId);
+
     const cleanup = () => {
+      inFlightProductIds.delete(productId);
       updateSub?.remove();
       errorSub?.remove();
       if (timeoutId) {
@@ -250,7 +303,7 @@ const requestIosPurchase = (
 
     void requestPurchase({
       request: {
-        apple: { sku: productId },
+        apple: { sku: productId, appAccountToken },
         google: { skus: [productId] },
       },
       type: purchaseType,
@@ -265,6 +318,134 @@ const requestIosPurchase = (
     });
   });
 
+const recoverPurchase = async (purchase: Purchase): Promise<boolean> => {
+  const productId = purchase.productId;
+  if (!productId) {
+    return false;
+  }
+
+  if (inFlightProductIds.has(productId)) {
+    return false;
+  }
+
+  const transactionId = getPurchaseTransactionId(purchase);
+  if (!transactionId) {
+    return false;
+  }
+
+  if (verifyingTransactionIds.has(transactionId)) {
+    return false;
+  }
+
+  verifyingTransactionIds.add(transactionId);
+
+  try {
+    const isSubscription = isBusinessSubscriptionProduct(productId);
+
+    if (isSubscription) {
+      const verifyResponse = await verifyWithRetry(() =>
+        verifyBusinessPlanIapPurchase({ transaction_id: transactionId }),
+      );
+
+      if (!verifyResponse.success) {
+        throw new Error(verifyResponse.message || "IAP verification failed.");
+      }
+
+      await finishTransaction({ purchase, isConsumable: false });
+    } else {
+      const verifyResponse = await verifyWithRetry(() =>
+        verifyAiIapPurchase(transactionId),
+      );
+
+      if (!verifyResponse.success) {
+        throw new Error(verifyResponse.message || "IAP verification failed.");
+      }
+
+      await finishTransaction({ purchase, isConsumable: true });
+    }
+
+    return true;
+  } catch (error) {
+    Logger.warn("Could not recover IAP purchase", {
+      productId,
+      transactionId,
+      error,
+    });
+    return false;
+  } finally {
+    verifyingTransactionIds.delete(transactionId);
+  }
+};
+
+export const recoverPendingIosPurchases = async ({
+  includeEntitlements = false,
+}: { includeEntitlements?: boolean } = {}): Promise<number> => {
+  if (Platform.OS !== "ios") {
+    return 0;
+  }
+
+  if (recoverInFlight) {
+    return recoverInFlight;
+  }
+
+  recoverInFlight = (async () => {
+    try {
+      await ensureIapConnection();
+    } catch (error) {
+      Logger.warn("Could not initialize IAP for recovery", error);
+      return 0;
+    }
+
+    const pending = await getPendingTransactionsIOS().catch(() => []);
+    const entitlements = includeEntitlements
+      ? await getAvailablePurchases({
+          alsoPublishToEventListenerIOS: false,
+        }).catch(() => [])
+      : [];
+
+    const byTransactionId = new Map<string, Purchase>();
+    for (const purchase of [...pending, ...entitlements]) {
+      const transactionId = getPurchaseTransactionId(purchase);
+      if (transactionId && !byTransactionId.has(transactionId)) {
+        byTransactionId.set(transactionId, purchase);
+      }
+    }
+
+    let recovered = 0;
+    for (const purchase of byTransactionId.values()) {
+      const didRecover = await recoverPurchase(purchase);
+      if (didRecover) {
+        recovered += 1;
+      }
+    }
+
+    return recovered;
+  })().finally(() => {
+    recoverInFlight = null;
+  });
+
+  return recoverInFlight;
+};
+
+export const startIapRecoveryListener = () => {
+  if (Platform.OS !== "ios" || recoveryListener) {
+    return;
+  }
+
+  void ensureIapConnection().catch((error) => {
+    Logger.warn("Could not initialize IAP recovery listener", error);
+  });
+
+  recoveryListener = purchaseUpdatedListener((purchase) => {
+    void recoverPurchase(purchase);
+  });
+};
+
+export const stopIapRecoveryListener = () => {
+  recoveryListener?.remove();
+  recoveryListener = undefined;
+};
+
 /** AI try-on IAP — verify API receives transaction_id only. */
 export const purchaseAndVerifyIosIap = async (params: {
   productId: string;
@@ -275,12 +456,14 @@ export const purchaseAndVerifyIosIap = async (params: {
   await ensureIapConnection();
   await getProductOrThrow(productId, kind);
 
-  const purchase = await requestIosPurchase(productId, kind);
+  const appAccountToken = await getAppleAccountToken();
+  const purchase = await requestIosPurchase(productId, kind, appAccountToken);
 
-  const transactionId =
-    purchase.transactionId ?? purchase.id ?? purchase.productId;
+  const transactionId = getPurchaseTransactionId(purchase);
 
-  const verifyResponse = await verifyAiIapPurchase(transactionId);
+  const verifyResponse = await verifyWithRetry(() =>
+    verifyAiIapPurchase(transactionId),
+  );
 
   if (!verifyResponse.success) {
     throw new Error(verifyResponse.message || "IAP verification failed.");
@@ -300,42 +483,20 @@ export const purchaseAndVerifyBusinessPlanIosIap = async (params: {
   planId: number;
   additionalServiceIds?: number[];
 }) => {
-  const { productId, planId, additionalServiceIds } = params;
+  const { productId } = params;
   const kind: IapPurchaseKind = "business_subscription";
 
   await ensureIapConnection();
   await getProductOrThrow(productId, kind);
 
-  const purchase = await requestIosPurchase(productId, kind);
+  const appAccountToken = await getAppleAccountToken();
+  const purchase = await requestIosPurchase(productId, kind, appAccountToken);
 
-  const transactionReceipt = await getReceiptFromPurchase(purchase, productId);
-  const transactionId =
-    purchase.transactionId ?? purchase.id ?? purchase.productId;
+  const transactionId = getPurchaseTransactionId(purchase);
 
-  const iosPurchase =
-    purchase.platform === "ios" ? (purchase as PurchaseIOS) : null;
-
-    Logger.log("transaction_id", transactionId);
-
-  const verifyPayload: VerifyBusinessPlanIapPayload = {
-    transaction_id: transactionId,
-    // productId: purchase.productId,
-    // transactionId,
-    // transactionReceipt,
-    // originalTransactionId:
-    //   iosPurchase?.originalTransactionIdentifierIOS ?? undefined,
-    // purchaseToken: purchase.purchaseToken ?? undefined,
-    // referenceId: planId,
-    // ...(additionalServiceIds?.length
-    //   ? { additional_service_ids: additionalServiceIds }
-    //   : {}),
-  };
-
-  Logger.log("verifyPayload", verifyPayload);
-
-  // alert(JSON.stringify(verifyPayload));
-
-  const verifyResponse = await verifyBusinessPlanIapPurchase(verifyPayload);
+  const verifyResponse = await verifyWithRetry(() =>
+    verifyBusinessPlanIapPurchase({ transaction_id: transactionId }),
+  );
 
   if (!verifyResponse.success) {
     throw new Error(verifyResponse.message || "IAP verification failed.");

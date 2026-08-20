@@ -14,6 +14,7 @@ import {
   Image,
   Pressable,
   Dimensions,
+  Alert,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
@@ -22,7 +23,8 @@ import {
 } from "react-native-safe-area-context";
 import { MaterialIcons, Feather, AntDesign } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -61,6 +63,8 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
+import { canAddStaffMembers } from "@/src/state/slices/userSlice";
+import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
 
 const DAYS = [
   "Monday",
@@ -653,9 +657,13 @@ export default function AddStaffScreen() {
   const router = useRouter();
   const params = useLocalSearchParams() as AddStaffParams;
   const { showBanner } = useNotificationContext();
+  const { t } = useTranslation();
+  const dispatch = useAppDispatch();
   const businessName =
     useAppSelector((state) => state.user.business_name) || "";
   const userRole = useAppSelector((state) => state.user.userRole);
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const canAddStaff = canAddStaffMembers(businessStatus);
 
   const isEditMode = !!params.id;
   const headerTitle = isEditMode ? "Edit Staff" : "New Staff Member";
@@ -1230,6 +1238,21 @@ export default function AddStaffScreen() {
 
   const handleCreate = useCallback(async () => {
     if (!isFormValid || isSubmitting) return;
+    if (!isEditMode && !canAddStaff) {
+      Alert.alert(
+        t("pleaseBuyBusinessPlan"),
+        t("buyBusinessPlanBeforeAddingStaff"),
+        [
+          { text: t("close"), style: "cancel" },
+          {
+            text: t("ok"),
+            onPress: () => dispatch(setBusinessPlansModalVisible(true)),
+          },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (isEditMode) {
@@ -1351,6 +1374,7 @@ export default function AddStaffScreen() {
     isFormValid,
     isSubmitting,
     isEditMode,
+    canAddStaff,
     userRole,
     params.id,
     params.profile_image_url,
@@ -1364,6 +1388,8 @@ export default function AddStaffScreen() {
     isActive,
     buildWorkingHoursArray,
     showBanner,
+    t,
+    dispatch,
   ]);
 
   return (

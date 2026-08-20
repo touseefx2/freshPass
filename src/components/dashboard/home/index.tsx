@@ -29,6 +29,7 @@ import {
   setBusinessStatus,
   UserRole,
   BusinessStatus,
+  canShowStaffManagement,
 } from "@/src/state/slices/userSlice";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -220,9 +221,12 @@ export default function HomeScreen() {
     }
   };
 
+  const showStaffOnDuty =
+    userRole === "business" && canShowStaffManagement(businessStatus);
+
   const handleFetchStaff = async (active?: string) => {
-    // Only fetch staff for business role
-    if (userRole !== "business") return;
+    // Only fetch staff for business role when the section is visible
+    if (!showStaffOnDuty) return;
     try {
       const response = await ApiService.get<{
         success: boolean;
@@ -506,8 +510,8 @@ export default function HomeScreen() {
             />
           </View>
 
-          {/* Staff on Duty - Only for Business role */}
-          {userRole === "business" && (
+          {/* Staff on Duty - Business role when Stripe is connected and plan allows staff */}
+          {showStaffOnDuty && (
             <StaffOnDuty data={staffData} callApi={() => handleFetchStaff()} />
           )}
 

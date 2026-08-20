@@ -127,6 +127,7 @@ export const stripeEndpoints = {
 export const iapEndpoints = {
   verifyAi: `/api/iap/apple/verify`,
   verifyBusinessSubscription: `/api/iap/apple/verify/business-subscription`,
+  accountToken: `/api/iap/apple/account-token`,
 };
 
 /**

@@ -6,9 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useTheme } from "@/src/hooks/hooks";
+import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -20,6 +21,8 @@ import {
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
+import { canAddStaffMembers } from "@/src/state/slices/userSlice";
+import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -150,12 +153,34 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const canAddStaff = canAddStaffMembers(businessStatus);
 
   useEffect(() => {
     callApi();
   }, []);
+
+  const handleAddStaffPress = () => {
+    if (!canAddStaff) {
+      Alert.alert(
+        t("pleaseBuyBusinessPlan"),
+        t("buyBusinessPlanBeforeAddingStaff"),
+        [
+          { text: t("close"), style: "cancel" },
+          {
+            text: t("ok"),
+            onPress: () => dispatch(setBusinessPlansModalVisible(true)),
+          },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
+    router.push("/(main)/addStaff");
+  };
 
   return (
     <View style={styles.staffContainer}>
@@ -163,7 +188,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
         <TouchableOpacity
           activeOpacity={0.7}
-          onPress={() => router.push("/(main)/addStaff")}
+          onPress={handleAddStaffPress}
           style={styles.addStaffCircle}
         >
           <Feather
