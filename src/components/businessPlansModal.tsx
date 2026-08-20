@@ -928,6 +928,25 @@ function BusinessPlansModalContent({
                   </Text>
                 </View>
               </View>
+              {!showSubscribeInsteadOfTrial &&
+              Number.parseInt(trialDays, 10) > 0 ? (
+                <View
+                  style={[styles.introSectionRow, styles.introSectionRowSecond]}
+                >
+                  <View style={styles.introIconWrap}>
+                    <Feather
+                      name="gift"
+                      size={iconScale(20)}
+                      color={theme.buttonBack}
+                    />
+                  </View>
+                  <View style={styles.introRow}>
+                    <Text style={styles.introText}>
+                      {t("firstTimeFreeTrialHint", { trialDays })}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             {standardPlans.map((plan) => {

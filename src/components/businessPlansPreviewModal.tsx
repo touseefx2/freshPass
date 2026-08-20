@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   StyleSheet,
@@ -21,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
+import { resolveTrialDays } from "@/src/services/remoteConfigService";
 
 const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   const planType = plan.planType?.toLowerCase() ?? "";
@@ -307,11 +308,28 @@ function BusinessPlansPreviewModalContent({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
+  const [trialDays, setTrialDays] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void resolveTrialDays()
+      .then((days) => {
+        if (!cancelled) setTrialDays(days);
+      })
+      .catch(() => {
+        if (!cancelled) setTrialDays("");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const standardPlans = useMemo(
     () => plans.filter((plan) => !isUnlimitedPlan(plan)),
     [plans],
   );
+
+  const showTrialBanner = Number.parseInt(trialDays, 10) > 0;
 
   const featuredAddOnPrice = (() => {
     const addOn = additionalServices.find((s) => s.active);
@@ -408,6 +426,24 @@ function BusinessPlansPreviewModalContent({
                   </Text>
                 </View>
               </View>
+              {showTrialBanner ? (
+                <View
+                  style={[styles.introSectionRow, styles.introSectionRowSecond]}
+                >
+                  <View style={styles.introIconWrap}>
+                    <Feather
+                      name="gift"
+                      size={iconScale(20)}
+                      color={theme.buttonBack}
+                    />
+                  </View>
+                  <View style={styles.introRow}>
+                    <Text style={styles.introText}>
+                      {t("firstTimeFreeTrialHint", { trialDays })}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             {standardPlans.map((plan) => {

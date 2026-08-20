@@ -38,6 +38,8 @@ import {
 import PrivacyBanner from "@/src/components/privacyBanner";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
+import { Feather } from "@expo/vector-icons";
+import { iconScale } from "@/src/theme/dimensions";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -712,11 +714,18 @@ export default function CompleteProfile() {
         <View style={styles.buttonWrapper}>
           {currentStep === 5 && (
             <TouchableOpacity
-              style={styles.viewPlansLinkWrap}
+              style={styles.viewPlansButton}
               onPress={() => setPlansPreviewVisible(true)}
               activeOpacity={0.7}
             >
-              <Text style={styles.viewPlansLink}>{t("viewAvailablePlans")}</Text>
+              <Feather
+                name="file-text"
+                size={iconScale(18)}
+                color={(colors as Theme).darkGreen}
+              />
+              <Text style={styles.viewPlansButtonText}>
+                {t("viewAvailablePlans")}
+              </Text>
             </TouchableOpacity>
           )}
           {(currentStep === 10 || currentStep === 11) && (
