@@ -10,6 +10,7 @@ import {
   Animated,
   Easing,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { CloseIcon, SendIcon, AiRobotIcon } from "@/assets/icons";
 import { ChatMessage } from "@/src/state/slices/chatSlice";
@@ -238,6 +239,8 @@ export const AiChatContent: React.FC<AiChatContentProps> = ({
   isLoading,
   isStreaming,
 }) => {
+  const { t } = useTranslation();
+
   const renderMessage = useCallback(
     ({ item }: { item: ChatMessage }) => {
       const isUser = item.sender === "user";
@@ -277,11 +280,8 @@ export const AiChatContent: React.FC<AiChatContentProps> = ({
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <View style={styles.emptyContainer}>
         <AiRobotIcon width={50} height={50} color={theme.darkGreen} />
-        <Text style={styles.emptyTitle}>AI Assistant</Text>
-        <Text style={styles.emptySubtitle}>
-          Ask me anything! I'm here to help you with questions, information, and
-          assistance.
-        </Text>
+        <Text style={styles.emptyTitle}>{t("aiAssistant")}</Text>
+        <Text style={styles.emptySubtitle}>{t("aiAssistantSubtitle")}</Text>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -319,7 +319,7 @@ export const AiChatContent: React.FC<AiChatContentProps> = ({
             isInputDisabled && styles.textInputDisabled,
           ]}
           placeholder={
-            isInputDisabled ? "AI is responding..." : "Ask me anything..."
+            isInputDisabled ? t("aiIsResponding") : t("askMeAnything")
           }
           placeholderTextColor={theme.lightGreen2}
           value={inputText}

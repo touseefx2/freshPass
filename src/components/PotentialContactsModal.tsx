@@ -208,7 +208,7 @@ export default function PotentialContactsModal({
           onPress={(e) => e.stopPropagation()}
         >
           <View style={styles.modalHeaderRow}>
-            <Text style={styles.modalTitle}>Users</Text>
+            <Text style={styles.modalTitle}>{t("users")}</Text>
             <TouchableOpacity
               style={styles.closeIconTouch}
               onPress={onClose}

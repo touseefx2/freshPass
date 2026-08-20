@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -134,6 +135,7 @@ export default function SummaryStats({ data, callApi }: SummaryStatsProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const { t } = useTranslation();
   const router = useRouter();
   const userRole = useAppSelector((state) => state.user.userRole);
   const isStaff = userRole === "staff";
@@ -191,7 +193,7 @@ export default function SummaryStats({ data, callApi }: SummaryStatsProps) {
             )}
           </View>
           <Text numberOfLines={1} style={styles.revenueLabel}>
-            {isStaff ? "Upcoming appointment" : "Total revenue"}
+            {isStaff ? t("upcomingAppointment") : t("totalRevenue")}
           </Text>
         </View>
         <TouchableOpacity
@@ -221,7 +223,7 @@ export default function SummaryStats({ data, callApi }: SummaryStatsProps) {
           </View>
           <View style={styles.titleSec}>
             <Text numberOfLines={1} style={styles.reviewLabel}>
-              {isStaff ? "Completed appointments" : "User reviews rate"}
+              {isStaff ? t("completedAppointmentsCount") : t("userReviewsRate")}
             </Text>
             {isBusiness && (
               <Entypo
@@ -238,15 +240,15 @@ export default function SummaryStats({ data, callApi }: SummaryStatsProps) {
         <View style={styles.appointmentStatsRow}>
           <View style={[styles.appointmentStatCard, styles.shadow]}>
             <Text style={styles.appointmentStatNumber}>{upcomingCount}</Text>
-            <Text style={styles.appointmentStatLabel}>Upcoming</Text>
+            <Text style={styles.appointmentStatLabel}>{t("upcoming")}</Text>
           </View>
           <View style={[styles.appointmentStatCard, styles.shadow]}>
             <Text style={styles.appointmentStatNumber}>{completedCount}</Text>
-            <Text style={styles.appointmentStatLabel}>Complete</Text>
+            <Text style={styles.appointmentStatLabel}>{t("completeTab")}</Text>
           </View>
           <View style={[styles.appointmentStatCard, styles.shadow]}>
             <Text style={styles.appointmentStatNumber}>{cancelledCount}</Text>
-            <Text style={styles.appointmentStatLabel}>Canceled</Text>
+            <Text style={styles.appointmentStatLabel}>{t("canceled")}</Text>
           </View>
         </View>
       )}

@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -70,6 +71,7 @@ export default function CustomToggleInside({
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const { t } = useTranslation();
   const lastValueRef = useRef(value);
 
   // Update ref when value changes from external source
@@ -102,7 +104,7 @@ export default function CustomToggleInside({
           <ActivityIndicator size="small" color={theme.darkGreen} />
         ) : (
           <Text style={[styles.text, value && styles.textInactive]}>
-            Inactive
+            {t("inactive")}
           </Text>
         )}
       </View>
@@ -116,7 +118,7 @@ export default function CustomToggleInside({
           <ActivityIndicator size="small" color={theme.darkGreen} />
         ) : (
           <Text style={[styles.text, !value && styles.textInactive]}>
-            Active
+            {t("active")}
           </Text>
         )}
       </View>

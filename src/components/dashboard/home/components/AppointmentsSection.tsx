@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect } from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -147,6 +148,7 @@ export default function AppointmentsSection({
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
@@ -220,7 +222,7 @@ export default function AppointmentsSection({
     ) {
       return appointment.services.map((s) => s.name).join(" + ");
     }
-    return "Service";
+    return t("service");
   };
 
   const formatMembershipInfo = (appointment: any): string => {
@@ -240,7 +242,7 @@ export default function AppointmentsSection({
           appointment.services.length !== 1 ? "s" : ""
         }`;
       }
-      return "Service";
+      return t("service");
     }
   };
 
@@ -249,7 +251,7 @@ export default function AppointmentsSection({
   return (
     <View style={styles.appointmentsContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Appointments</Text>
+        <Text style={styles.sectionTitle}>{t("appointments")}</Text>
       </View>
 
       {!data ? (
@@ -259,17 +261,17 @@ export default function AppointmentsSection({
           <View style={styles.upcomingCard}>
             <Text style={styles.upcomingText}>
               {totalCount === 0
-                ? "No upcoming appointments"
+                ? t("noUpcomingAppointments")
                 : totalCount === 1
-                ? "1 upcoming appointment"
-                : `${totalCount} upcoming appointments`}
+                ? t("oneUpcomingAppointment")
+                : t("upcomingAppointmentsCount", { count: totalCount })}
             </Text>
             <TouchableOpacity
               activeOpacity={0.6}
               onPress={() => router.push("/(main)/dashboard/(calendar)")}
             >
               <View style={styles.sectionLink}>
-                <Text style={styles.sectionLink}>View calendar</Text>
+                <Text style={styles.sectionLink}>{t("viewCalendar")}</Text>
                 <Entypo
                   name="chevron-small-right"
                   size={iconScale(18)}
@@ -360,7 +362,7 @@ export default function AppointmentsSection({
                   <View style={[styles.appointmentStatus]}>
                     <Text style={styles.appointmentStatusText}>
                       {firstAppointment.status === "scheduled"
-                        ? "On-going apt."
+                        ? t("onGoingApt")
                         : firstAppointment.status}
                     </Text>
                   </View>
@@ -375,7 +377,7 @@ export default function AppointmentsSection({
           ) : (
             <View style={styles.emptyStateContainer}>
               <Text style={styles.emptyStateText}>
-                No appointments to display
+                {t("noAppointmentsToDisplay")}
               </Text>
             </View>
           )}

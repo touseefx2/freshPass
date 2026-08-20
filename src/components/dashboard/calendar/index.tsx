@@ -33,6 +33,11 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
+import "dayjs/locale/ar";
+import "dayjs/locale/fr";
+import "dayjs/locale/es";
+import "dayjs/locale/de";
+import "dayjs/locale/ja";
 
 dayjs.extend(utc);
 import { ApiService } from "@/src/services/api";
@@ -638,13 +643,17 @@ const createStyles = (theme: Theme) =>
 
 export default function CalendarScreen() {
   const { colors } = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
   const { showBanner } = useNotificationContext();
   const router = useRouter();
   const userRole = useAppSelector((state: any) => state.user.userRole);
+
+  useEffect(() => {
+    dayjs.locale(i18n.language || "en");
+  }, [i18n.language]);
 
   const today = dayjs();
   const [selectedDate, setSelectedDate] = useState(today);
@@ -899,11 +908,11 @@ export default function CalendarScreen() {
 
   const formatDate = (date: dayjs.Dayjs) => {
     if (date.isSame(today, "day")) {
-      return "(Today)";
+      return t("todayInParens");
     } else if (date.isSame(today.add(1, "day"), "day")) {
-      return "(Tomorrow)";
+      return t("tomorrowInParens");
     } else if (date.isSame(today.subtract(1, "day"), "day")) {
-      return "(Yesterday)";
+      return t("yesterdayInParens");
     } else {
       return `(${date.format("MMM D, YYYY")})`;
     }
@@ -947,7 +956,7 @@ export default function CalendarScreen() {
       );
       showBanner(
         t("success") || "Success",
-        "Leave cancelled successfully",
+        t("leaveCancelledSuccessfully"),
         "success",
         2500,
       );
@@ -1048,7 +1057,7 @@ export default function CalendarScreen() {
         if (!endDateTime.isAfter(startDateTime)) {
           showBanner(
             t("apiFailed") || "Error",
-            "End time must be greater than start time.",
+            t("endTimeMustBeGreater"),
             "error",
             2500,
           );
@@ -1069,7 +1078,7 @@ export default function CalendarScreen() {
         if (response.success) {
           showBanner(
             t("success") || "Success",
-            response.message || "Break applied.",
+            response.message || t("breakApplied"),
             "success",
             2500,
           );
@@ -1222,8 +1231,8 @@ export default function CalendarScreen() {
                       />
                       <Text style={styles.leaveBoxText}>
                         {leaveForSelectedDate.type === "leave"
-                          ? "CLOSE"
-                          : "BREAK"}
+                          ? t("closeUpper")
+                          : t("breakUpper")}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -1243,7 +1252,7 @@ export default function CalendarScreen() {
                           },
                         ]}
                       >
-                        Manage Availability
+                        {t("manageAvailability")}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -1278,8 +1287,7 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.applyBoxHint}>
-                    You can take a break on this day or mark the entire day as
-                    closed.
+                    {t("takeBreakOrCloseDay")}
                   </Text>
                   <View style={styles.applyBoxRow}>
                     <TouchableOpacity
@@ -1298,7 +1306,7 @@ export default function CalendarScreen() {
                           <View style={styles.applyBoxRadioInner} />
                         )}
                       </View>
-                      <Text style={styles.applyBoxOptionText}>Close</Text>
+                      <Text style={styles.applyBoxOptionText}>{t("close")}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.applyBoxRadioRow}
@@ -1316,7 +1324,7 @@ export default function CalendarScreen() {
                           <View style={styles.applyBoxRadioInner} />
                         )}
                       </View>
-                      <Text style={styles.applyBoxOptionText}>Break</Text>
+                      <Text style={styles.applyBoxOptionText}>{t("break")}</Text>
                     </TouchableOpacity>
                   </View>
                   {applyBoxType === "break" && (
@@ -1329,10 +1337,10 @@ export default function CalendarScreen() {
                         }}
                       >
                         <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
-                          Start
+                          {t("start")}
                         </Text>
                         <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
-                          End
+                          {t("end")}
                         </Text>
                       </View>
                       <View style={styles.applyBoxSlotRow}>
@@ -1387,7 +1395,7 @@ export default function CalendarScreen() {
                       activeOpacity={0.8}
                     >
                       <Text style={styles.applyBoxButtonText}>
-                        {applyBoxLoading ? "..." : "Apply"}
+                        {applyBoxLoading ? "..." : t("apply")}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -1434,7 +1442,7 @@ export default function CalendarScreen() {
                   )}
                   {selectedLeave.reason ? (
                     <View style={styles.leaveDetailBoxRow}>
-                      <Text style={styles.leaveDetailBoxLabel}>Reason</Text>
+                      <Text style={styles.leaveDetailBoxLabel}>{t("reason")}</Text>
                       <Text style={styles.leaveDetailBoxValue}>
                         {selectedLeave.reason}
                       </Text>
@@ -1443,7 +1451,9 @@ export default function CalendarScreen() {
                   <View style={styles.leaveDetailBoxTypeWrap}>
                     <View style={styles.leaveDetailBoxTypeBadge}>
                       <Text style={styles.leaveDetailBoxTypeBadgeText}>
-                        {selectedLeave.type === "break" ? "BREAK" : "CLOSE"}
+                        {selectedLeave.type === "break"
+                          ? t("breakUpper")
+                          : t("closeUpper")}
                       </Text>
                     </View>
                   </View>
@@ -1458,8 +1468,8 @@ export default function CalendarScreen() {
                         {leaveDetailCancelling
                           ? "..."
                           : selectedLeave.type === "break"
-                            ? "Cancel Break"
-                            : "Cancel Closed Day"}
+                            ? t("cancelBreak")
+                            : t("cancelClosedDay")}
                       </Text>
                     </TouchableOpacity>
                   </View>

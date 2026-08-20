@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect } from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
+import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -90,6 +91,7 @@ export default function WorkHistory({
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
@@ -124,7 +126,7 @@ export default function WorkHistory({
     ) {
       return appointment.services.map((s) => s.name).join(", ");
     }
-    return "Service";
+    return t("service");
   };
 
   // Limit to first 5 items for display
@@ -133,14 +135,14 @@ export default function WorkHistory({
   return (
     <View style={styles.workHistoryContainer}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Work history</Text>
+        <Text style={styles.sectionTitle}>{t("workHistory")}</Text>
         {data !== null && data.length > 5 && (
           <TouchableOpacity
             onPress={() => {
               router.push("/(main)/dashboard/(home)/workHistory");
             }}
           >
-            <Text style={styles.sectionLink}>View all</Text>
+            <Text style={styles.sectionLink}>{t("viewAll")}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -179,7 +181,7 @@ export default function WorkHistory({
         ))
       ) : (
         <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>No work history found</Text>
+          <Text style={styles.emptyStateText}>{t("noWorkHistoryFound")}</Text>
         </View>
       )}
     </View>

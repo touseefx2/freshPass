@@ -157,6 +157,9 @@ export default function AccountScreen() {
     if (code === "en") return "English";
     if (code === "fr") return "French";
     if (code === "es") return "Spanish";
+    if (code === "de") return "German";
+    if (code === "ja") return "Japanese";
+    if (code === "ar") return "Arabic";
     return "English";
   };
 
