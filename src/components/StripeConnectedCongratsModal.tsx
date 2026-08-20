@@ -1,5 +1,12 @@
 import React, { useMemo } from "react";
-import { Modal, View, Text, StyleSheet, Pressable } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TouchableOpacity,
+} from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -10,8 +17,7 @@ import {
   widthScale,
   iconScale,
 } from "@/src/theme/dimensions";
-import { Feather } from "@expo/vector-icons";
-import Button from "@/src/components/button";
+import { Feather, Ionicons } from "@expo/vector-icons";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -23,48 +29,77 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(24),
     },
     modalContainer: {
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(28),
       width: "100%",
       maxWidth: widthScale(340),
       paddingHorizontal: moderateWidthScale(24),
-      paddingTop: moderateHeightScale(28),
-      paddingBottom: moderateHeightScale(24),
+      paddingTop: moderateHeightScale(32),
+      paddingBottom: moderateHeightScale(20),
       alignItems: "center",
-      borderWidth: 1,
-      borderColor: theme.borderLight,
       shadowColor: theme.shadow,
       shadowOffset: {
         width: 0,
-        height: moderateHeightScale(4),
+        height: moderateHeightScale(8),
       },
-      shadowOpacity: 0.12,
-      shadowRadius: moderateWidthScale(12),
-      elevation: 6,
+      shadowOpacity: 0.15,
+      shadowRadius: moderateWidthScale(20),
+      elevation: 8,
     },
-    iconOuter: {
-      width: moderateWidthScale(64),
-      height: moderateWidthScale(64),
-      borderRadius: moderateWidthScale(32),
-      backgroundColor: theme.lightGreen05,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      justifyContent: "center",
+    iconWrap: {
+      width: moderateWidthScale(120),
+      height: moderateWidthScale(120),
       alignItems: "center",
+      justifyContent: "center",
       marginBottom: moderateHeightScale(20),
     },
-    iconInner: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(22),
+    iconHalo: {
+      position: "absolute",
+      width: moderateWidthScale(100),
+      height: moderateWidthScale(100),
+      borderRadius: moderateWidthScale(50),
+      backgroundColor: theme.lightGreen05,
+    },
+    iconCircle: {
+      width: moderateWidthScale(72),
+      height: moderateWidthScale(72),
+      borderRadius: moderateWidthScale(36),
       backgroundColor: theme.buttonBack,
       justifyContent: "center",
       alignItems: "center",
+      zIndex: 1,
+    },
+    confettiDot: {
+      position: "absolute",
+      borderRadius: moderateWidthScale(50),
+    },
+    confettiTriangle: {
+      position: "absolute",
+      width: 0,
+      height: 0,
+      backgroundColor: "transparent",
+      borderStyle: "solid",
+      borderLeftWidth: moderateWidthScale(5),
+      borderRightWidth: moderateWidthScale(5),
+      borderBottomWidth: moderateWidthScale(9),
+      borderLeftColor: "transparent",
+      borderRightColor: "transparent",
+    },
+    confettiBar: {
+      position: "absolute",
+      borderRadius: moderateWidthScale(2),
     },
     title: {
-      fontSize: fontSize.size22,
+      fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    subtitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
       textAlign: "center",
       marginBottom: moderateHeightScale(10),
     },
@@ -79,12 +114,27 @@ const createStyles = (theme: Theme) =>
     },
     buttonContainer: {
       width: "100%",
-      gap: moderateHeightScale(10),
+      gap: moderateHeightScale(4),
+    },
+    primaryButton: {
+      backgroundColor: theme.buttonBack,
+      borderRadius: moderateWidthScale(28),
+      height: moderateHeightScale(52),
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    primaryButtonText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
     },
     skipButton: {
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(14),
     },
     skipButtonText: {
       fontSize: fontSize.size15,
@@ -122,24 +172,127 @@ export default function StripeConnectedCongratsModal({
           style={styles.modalContainer}
           onPress={(e) => e.stopPropagation()}
         >
-          <View style={styles.iconOuter}>
-            <View style={styles.iconInner}>
-              <Feather
-                name="check"
-                size={iconScale(24)}
-                color={theme.white}
-              />
+          <View style={styles.iconWrap}>
+            <View style={styles.iconHalo} />
+
+            {/* Confetti accents */}
+            <View
+              style={[
+                styles.confettiDot,
+                {
+                  width: moderateWidthScale(7),
+                  height: moderateWidthScale(7),
+                  backgroundColor: theme.primary,
+                  top: moderateHeightScale(18),
+                  left: moderateWidthScale(18),
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiDot,
+                {
+                  width: moderateWidthScale(5),
+                  height: moderateWidthScale(5),
+                  backgroundColor: theme.link,
+                  top: moderateHeightScale(28),
+                  right: moderateWidthScale(22),
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiDot,
+                {
+                  width: moderateWidthScale(6),
+                  height: moderateWidthScale(6),
+                  backgroundColor: theme.green,
+                  bottom: moderateHeightScale(22),
+                  left: moderateWidthScale(22),
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiTriangle,
+                {
+                  borderBottomColor: theme.primary,
+                  top: moderateHeightScale(22),
+                  right: moderateWidthScale(14),
+                  transform: [{ rotate: "25deg" }],
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiTriangle,
+                {
+                  borderBottomColor: theme.link,
+                  bottom: moderateHeightScale(28),
+                  right: moderateWidthScale(20),
+                  transform: [{ rotate: "-30deg" }],
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiBar,
+                {
+                  width: moderateWidthScale(8),
+                  height: moderateHeightScale(3),
+                  backgroundColor: theme.orangeBrown,
+                  top: moderateHeightScale(40),
+                  left: moderateWidthScale(10),
+                  transform: [{ rotate: "-40deg" }],
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiBar,
+                {
+                  width: moderateWidthScale(7),
+                  height: moderateHeightScale(3),
+                  backgroundColor: theme.green,
+                  bottom: moderateHeightScale(18),
+                  right: moderateWidthScale(12),
+                  transform: [{ rotate: "50deg" }],
+                },
+              ]}
+            />
+
+            <View style={styles.iconCircle}>
+              <Feather name="check" size={iconScale(32)} color={theme.white} />
             </View>
           </View>
 
-          <Text style={styles.title}>{t("stripeConnectedCongratsTitle")}</Text>
+          <Text style={styles.title}>{t("congratulations")}</Text>
+
+          <Text style={styles.subtitle}>
+            {t("stripeConnectedCongratsSubtitle")}
+          </Text>
 
           <Text style={styles.message}>
             {t("stripeConnectedCongratsMessage")}
           </Text>
 
           <View style={styles.buttonContainer}>
-            <Button title={t("create")} onPress={onCreate} />
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={onCreate}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="sparkles"
+                size={iconScale(18)}
+                color={theme.white}
+              />
+              <Text style={styles.primaryButtonText}>
+                {t("buildMySubscription")}
+              </Text>
+            </TouchableOpacity>
+
             <Pressable
               style={styles.skipButton}
               onPress={onSkip}
