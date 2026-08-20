@@ -466,7 +466,7 @@ const generalSlice = createSlice({
       state.businessPlansModalVisible = false;
       state.stripeConnectModalVisible = false;
       // Keep hasSeenStripeConnectCongrats — must survive logout
-      state.hasSeenStripeConnectCongrats = false;
+      // state.hasSeenStripeConnectCongrats = false;
       state.suppressBusinessPlansAutoOpen = false;
       state.maintenanceModeActive = false;
       state.forceUpdateActive = false;
