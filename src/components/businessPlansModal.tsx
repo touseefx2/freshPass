@@ -900,8 +900,7 @@ function BusinessPlansModalContent({
                 </View>
                 <View style={styles.introRow}>
                   <Text style={styles.introText}>
-                    Choose one plan to activate your account and list your
-                    business publicly.
+                    {t("businessPlansChoosePlanIntro")}
                   </Text>
                 </View>
               </View>
@@ -915,16 +914,14 @@ function BusinessPlansModalContent({
                 </View>
                 <View style={styles.introRow}>
                   <Text style={styles.introText}>
-                    For more visibility, add the Featured add-on to appear in
-                    Featured businesses —{" "}
-                    {featuredAddOnPrice != null ? (
-                      <Text style={styles.introTextBold}>
-                        ${featuredAddOnPrice}/month
-                      </Text>
-                    ) : (
-                      "see below"
-                    )}
-                    .
+                    {t("businessPlansFeaturedAddonIntro", {
+                      price:
+                        featuredAddOnPrice != null
+                          ? t("businessPlansFeaturedPricePerMonth", {
+                              price: featuredAddOnPrice,
+                            })
+                          : t("seeBelow"),
+                    })}
                   </Text>
                 </View>
               </View>
@@ -1128,7 +1125,7 @@ function BusinessPlansModalContent({
           <View style={styles.processingContainer}>
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={styles.processingText}>
-              {isSetupIntent ? "Processing trial..." : "Processing payment..."}
+              {isSetupIntent ? t("processingTrial") : t("processingPayment")}
             </Text>
           </View>
         </View>
