@@ -14,7 +14,6 @@ import {
   Image,
   Pressable,
   Dimensions,
-  Alert,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import {
@@ -36,6 +35,7 @@ import StackHeader from "@/src/components/StackHeader";
 import FloatingInput from "@/src/components/floatingInput";
 import Button from "@/src/components/button";
 import ImagePickerModal from "@/src/components/imagePickerModal";
+import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import CustomToggle from "@/src/components/customToggle";
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -748,6 +748,7 @@ export default function AddStaffScreen() {
   > | null>(null);
   const [copySalonHours, setCopySalonHours] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const previousBusinessHoursRef = useRef<Record<string, DayData> | null>(null);
 
   const fetchAvailability = useCallback(async () => {
@@ -1239,18 +1240,7 @@ export default function AddStaffScreen() {
   const handleCreate = useCallback(async () => {
     if (!isFormValid || isSubmitting) return;
     if (!isEditMode && !canAddStaff) {
-      Alert.alert(
-        t("pleaseBuyBusinessPlan"),
-        t("buyBusinessPlanBeforeAddingStaff"),
-        [
-          { text: t("close"), style: "cancel" },
-          {
-            text: t("ok"),
-            onPress: () => dispatch(setBusinessPlansModalVisible(true)),
-          },
-        ],
-        { cancelable: true },
-      );
+      setBuyPlanModalVisible(true);
       return;
     }
     setIsSubmitting(true);
@@ -1711,6 +1701,15 @@ export default function AddStaffScreen() {
         onImageSelected={(uri) => {
           setProfileImageUri(uri);
           setShowImagePickerModal(false);
+        }}
+      />
+
+      <BuyBusinessPlanModal
+        visible={buyPlanModalVisible}
+        onClose={() => setBuyPlanModalVisible(false)}
+        onViewPlans={() => {
+          setBuyPlanModalVisible(false);
+          dispatch(setBusinessPlansModalVisible(true));
         }}
       />
     </SafeAreaView>

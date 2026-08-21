@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import {
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,7 +19,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import FloatingInput from "@/src/components/floatingInput";
-import Button from "@/src/components/button";
+import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import { Skeleton } from "@/src/components/skeletons";
 import {
   addStaffInvitation,
@@ -192,6 +191,7 @@ export default function ManageTeamScreen() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
 
   const canInvite = React.useMemo(() => {
     if (!staffInvitationEmail.trim()) {
@@ -254,18 +254,7 @@ export default function ManageTeamScreen() {
 
   const handleInvite = async () => {
     if (!canAddStaff) {
-      Alert.alert(
-        t("pleaseBuyBusinessPlan"),
-        t("buyBusinessPlanBeforeAddingStaff"),
-        [
-          { text: t("close"), style: "cancel" },
-          {
-            text: t("ok"),
-            onPress: () => dispatch(setBusinessPlansModalVisible(true)),
-          },
-        ],
-        { cancelable: true },
-      );
+      setBuyPlanModalVisible(true);
       return;
     }
 
@@ -412,6 +401,15 @@ export default function ManageTeamScreen() {
           </>
         )}
       </ScrollView>
+
+      <BuyBusinessPlanModal
+        visible={buyPlanModalVisible}
+        onClose={() => setBuyPlanModalVisible(false)}
+        onViewPlans={() => {
+          setBuyPlanModalVisible(false);
+          dispatch(setBusinessPlansModalVisible(true));
+        }}
+      />
     </SafeAreaView>
   );
 }

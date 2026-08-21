@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -23,6 +22,7 @@ import { Feather } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
 import { canAddStaffMembers } from "@/src/state/slices/userSlice";
 import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -158,6 +158,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const canAddStaff = canAddStaffMembers(businessStatus);
+  const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
 
   useEffect(() => {
     callApi();
@@ -165,21 +166,15 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
 
   const handleAddStaffPress = () => {
     if (!canAddStaff) {
-      Alert.alert(
-        t("pleaseBuyBusinessPlan"),
-        t("buyBusinessPlanBeforeAddingStaff"),
-        [
-          { text: t("close"), style: "cancel" },
-          {
-            text: t("ok"),
-            onPress: () => dispatch(setBusinessPlansModalVisible(true)),
-          },
-        ],
-        { cancelable: true },
-      );
+      setBuyPlanModalVisible(true);
       return;
     }
     router.push("/(main)/addStaff");
+  };
+
+  const handleViewPlans = () => {
+    setBuyPlanModalVisible(false);
+    dispatch(setBusinessPlansModalVisible(true));
   };
 
   return (
@@ -255,6 +250,12 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
           ))}
         </ScrollView>
       )}
+
+      <BuyBusinessPlanModal
+        visible={buyPlanModalVisible}
+        onClose={() => setBuyPlanModalVisible(false)}
+        onViewPlans={handleViewPlans}
+      />
     </View>
   );
 }
