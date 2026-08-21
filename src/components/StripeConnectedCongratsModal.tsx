@@ -131,27 +131,15 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
-    skipButton: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(14),
-    },
-    skipButtonText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
   });
 
 interface StripeConnectedCongratsModalProps {
   visible: boolean;
-  onSkip: () => void;
   onCreate: () => void;
 }
 
 export default function StripeConnectedCongratsModal({
   visible,
-  onSkip,
   onCreate,
 }: StripeConnectedCongratsModalProps) {
   const { colors } = useTheme();
@@ -165,7 +153,7 @@ export default function StripeConnectedCongratsModal({
       visible={visible}
       animationType="fade"
       statusBarTranslucent
-      onRequestClose={onSkip}
+      onRequestClose={() => {}}
     >
       <View style={styles.modalOverlay}>
         <Pressable
@@ -292,14 +280,6 @@ export default function StripeConnectedCongratsModal({
                 {t("buildMySubscription")}
               </Text>
             </TouchableOpacity>
-
-            <Pressable
-              style={styles.skipButton}
-              onPress={onSkip}
-              accessibilityRole="button"
-            >
-              <Text style={styles.skipButtonText}>{t("skip")}</Text>
-            </Pressable>
           </View>
         </Pressable>
       </View>

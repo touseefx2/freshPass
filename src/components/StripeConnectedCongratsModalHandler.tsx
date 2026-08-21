@@ -32,18 +32,10 @@ export default function StripeConnectedCongratsModalHandler() {
     businessStatus?.stripe_onboarding_status === "completed" &&
     hasSeenStripeConnectCongrats === false;
 
-  const markSeen = () => {
-    dispatch(setHasSeenStripeConnectCongrats(true));
-  };
-
-  const handleSkip = () => {
-    markSeen();
-  };
-
   const handleCreate = () => {
     dispatch(setSuppressBusinessPlansAutoOpen(true));
     dispatch(setBusinessPlansModalVisible(false));
-    markSeen();
+    dispatch(setHasSeenStripeConnectCongrats(true));
 
     // Profile → Business profile settings → Manage subscription list
     router.push("/(main)/dashboard/(account)");
@@ -60,7 +52,6 @@ export default function StripeConnectedCongratsModalHandler() {
   return (
     <StripeConnectedCongratsModal
       visible={visible}
-      onSkip={handleSkip}
       onCreate={handleCreate}
     />
   );
