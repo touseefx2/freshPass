@@ -239,17 +239,23 @@ const createStyles = (theme: Theme) =>
     },
     userInfoRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       flex: 1,
+      marginRight: moderateWidthScale(8),
+      minWidth: 0,
     },
     userIcon: {
       marginRight: moderateWidthScale(6),
+      marginTop: moderateHeightScale(2),
     },
     userText: {
+      flex: 1,
+      flexShrink: 1,
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       opacity: 0.75,
+      textTransform: "capitalize",
     },
     priceBadge: {
       backgroundColor: theme.buttonBack,
@@ -258,6 +264,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(12),
       alignItems: "center",
       minWidth: moderateWidthScale(90),
+      flexShrink: 0,
     },
     priceText: {
       fontSize: fontSize.size20,
@@ -1035,7 +1042,7 @@ export default function subscriptionCustomer() {
                 color={theme.darkGreen}
                 style={styles.userIcon}
               />
-              <Text style={styles.userText} numberOfLines={1}>
+              <Text style={styles.userText} numberOfLines={2}>
                 {item.business}
               </Text>
             </View>
