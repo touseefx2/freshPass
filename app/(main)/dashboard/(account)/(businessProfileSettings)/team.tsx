@@ -244,7 +244,11 @@ export default function ManageTeamScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchTeam();
-    }, []),
+      return () => {
+        dispatch(setStaffInvitationEmail(""));
+        setEmailError(null);
+      };
+    }, [dispatch]),
   );
 
   const handleClearEmail = () => {
