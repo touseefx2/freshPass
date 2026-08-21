@@ -67,6 +67,7 @@ export default function RootLayout() {
             : key.startsWith("pk_test_")
               ? "test"
               : "unknown",
+          ...(__DEV__ ? { key } : {}),
         });
         setStripePublishableKey(key);
       } else {

@@ -53,6 +53,8 @@ function describeKey(key: string, source: string) {
         ? "test"
         : "unknown",
     length: key.length,
+    // Publishable keys are client-safe; only log full value in dev
+    ...(__DEV__ ? { key } : {}),
   };
 }
 
