@@ -20,9 +20,13 @@ import {
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
-import { canAddStaffMembers } from "@/src/state/slices/userSlice";
+import {
+  canAddStaffMembers,
+  isSoloSubscription,
+} from "@/src/state/slices/userSlice";
 import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
+import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -158,13 +162,19 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const canAddStaff = canAddStaffMembers(businessStatus);
+  const isSoloPlan = isSoloSubscription(businessStatus);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
+  const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
   useEffect(() => {
     callApi();
   }, []);
 
   const handleAddStaffPress = () => {
+    if (isSoloPlan) {
+      setUpgradeModalVisible(true);
+      return;
+    }
     if (!canAddStaff) {
       setBuyPlanModalVisible(true);
       return;
@@ -255,6 +265,11 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         visible={buyPlanModalVisible}
         onClose={() => setBuyPlanModalVisible(false)}
         onViewPlans={handleViewPlans}
+      />
+
+      <UpgradeToBusinessModal
+        visible={upgradeModalVisible}
+        onClose={() => setUpgradeModalVisible(false)}
       />
     </View>
   );

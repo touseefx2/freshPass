@@ -36,6 +36,7 @@ import FloatingInput from "@/src/components/floatingInput";
 import Button from "@/src/components/button";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
+import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 import CustomToggle from "@/src/components/customToggle";
 import BusinessHoursBottomSheet from "@/src/components/businessHoursBottomSheet";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -63,7 +64,7 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
-import { canAddStaffMembers } from "@/src/state/slices/userSlice";
+import { canAddStaffMembers, isSoloSubscription } from "@/src/state/slices/userSlice";
 import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
 
 const DAYS = [
@@ -664,6 +665,7 @@ export default function AddStaffScreen() {
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const canAddStaff = canAddStaffMembers(businessStatus);
+  const isSoloPlan = isSoloSubscription(businessStatus);
 
   const isEditMode = !!params.id;
   const headerTitle = isEditMode ? "Edit Staff" : "New Staff Member";
@@ -749,6 +751,7 @@ export default function AddStaffScreen() {
   const [copySalonHours, setCopySalonHours] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
+  const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const previousBusinessHoursRef = useRef<Record<string, DayData> | null>(null);
 
   const fetchAvailability = useCallback(async () => {
@@ -1239,6 +1242,10 @@ export default function AddStaffScreen() {
 
   const handleCreate = useCallback(async () => {
     if (!isFormValid || isSubmitting) return;
+    if (!isEditMode && isSoloPlan) {
+      setUpgradeModalVisible(true);
+      return;
+    }
     if (!isEditMode && !canAddStaff) {
       setBuyPlanModalVisible(true);
       return;
@@ -1365,6 +1372,7 @@ export default function AddStaffScreen() {
     isSubmitting,
     isEditMode,
     canAddStaff,
+    isSoloPlan,
     userRole,
     params.id,
     params.profile_image_url,
@@ -1711,6 +1719,11 @@ export default function AddStaffScreen() {
           setBuyPlanModalVisible(false);
           dispatch(setBusinessPlansModalVisible(true));
         }}
+      />
+
+      <UpgradeToBusinessModal
+        visible={upgradeModalVisible}
+        onClose={() => setUpgradeModalVisible(false)}
       />
     </SafeAreaView>
   );

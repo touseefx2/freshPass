@@ -38,11 +38,16 @@ export const canShowStaffManagement = (
 ): boolean => {
   if (!status) return true;
   if (status.stripe_onboarding_status !== "completed") return false;
-  if (isBusinessSubscriptionActive(status)) {
-    return status.hasAddStaff === true;
-  }
+  // Show staff UI for all subscribed plans (including Solo).
+  // Solo still cannot add staff — that is gated by canAddStaffMembers.
   return true;
 };
+
+export const isSoloSubscription = (
+  status?: BusinessStatus | null,
+): boolean =>
+  isBusinessSubscriptionActive(status) &&
+  status?.subscription_is_single === true;
 
 export const canAddStaffMembers = (
   status?: BusinessStatus | null,

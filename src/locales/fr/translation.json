@@ -435,6 +435,8 @@
   "pleaseBuyBusinessPlan": "Forfait entreprise requis",
   "buyBusinessPlanModalSubtitle": "Débloquez votre équipe",
   "buyBusinessPlanBeforeAddingStaff": "Choisissez un forfait entreprise pour gérer le personnel. Votre forfait détermine si vous pouvez ajouter des membres.",
+  "upgradeToFreshPassBusiness": "Passez à FreshPass Business",
+  "soloPlanCannotAddStaffMessage": "Votre forfait FreshPass Solo ne permet pas d'ajouter plus de personnel. Passez à FreshPass Business pour ajouter des membres d'équipe.",
   "viewBusinessPlans": "Voir les forfaits",
   "notNow": "Pas maintenant",
   "noSubscriptionPlansAvailable": "Aucun forfait d'abonnement disponible",

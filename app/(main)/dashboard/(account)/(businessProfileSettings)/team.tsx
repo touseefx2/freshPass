@@ -20,6 +20,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import FloatingInput from "@/src/components/floatingInput";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
+import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 import { Skeleton } from "@/src/components/skeletons";
 import {
   addStaffInvitation,
@@ -27,7 +28,10 @@ import {
   setStaffInvitations,
 } from "@/src/state/slices/completeProfileSlice";
 import { setActionLoader, setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
-import { canAddStaffMembers } from "@/src/state/slices/userSlice";
+import {
+  canAddStaffMembers,
+  isSoloSubscription,
+} from "@/src/state/slices/userSlice";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
@@ -187,11 +191,13 @@ export default function ManageTeamScreen() {
   );
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const canAddStaff = canAddStaffMembers(businessStatus);
+  const isSoloPlan = isSoloSubscription(businessStatus);
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
+  const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
 
   const canInvite = React.useMemo(() => {
     if (!staffInvitationEmail.trim()) {
@@ -257,6 +263,11 @@ export default function ManageTeamScreen() {
   };
 
   const handleInvite = async () => {
+    if (isSoloPlan) {
+      setUpgradeModalVisible(true);
+      return;
+    }
+
     if (!canAddStaff) {
       setBuyPlanModalVisible(true);
       return;
@@ -413,6 +424,11 @@ export default function ManageTeamScreen() {
           setBuyPlanModalVisible(false);
           dispatch(setBusinessPlansModalVisible(true));
         }}
+      />
+
+      <UpgradeToBusinessModal
+        visible={upgradeModalVisible}
+        onClose={() => setUpgradeModalVisible(false)}
       />
     </SafeAreaView>
   );

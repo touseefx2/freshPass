@@ -435,6 +435,8 @@
   "pleaseBuyBusinessPlan": "ビジネスプランが必要です",
   "buyBusinessPlanModalSubtitle": "チームをアンロック",
   "buyBusinessPlanBeforeAddingStaff": "スタッフ管理を有効にするにはビジネスプランを選択してください。プランによってチームメンバーを追加できるかが決まります。",
+  "upgradeToFreshPassBusiness": "FreshPass Businessにアップグレード",
+  "soloPlanCannotAddStaffMessage": "FreshPass Soloプランではスタッフを追加できません。追加のチームメンバーを追加するにはFreshPass Businessにアップグレードしてください。",
   "viewBusinessPlans": "プランを見る",
   "notNow": "今はしない",
   "noSubscriptionPlansAvailable": "サブスクリプションプランはありません",

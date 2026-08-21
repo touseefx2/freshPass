@@ -435,6 +435,8 @@
   "pleaseBuyBusinessPlan": "Business-Plan erforderlich",
   "buyBusinessPlanModalSubtitle": "Team freischalten",
   "buyBusinessPlanBeforeAddingStaff": "Wählen Sie einen Business-Plan, um Personal zu verwalten. Ihr Plan bestimmt, ob Sie Teammitglieder hinzufügen können.",
+  "upgradeToFreshPassBusiness": "Auf FreshPass Business upgraden",
+  "soloPlanCannotAddStaffMessage": "Ihr FreshPass Solo-Plan erlaubt es nicht, weiteres Personal hinzuzufügen. Upgraden Sie auf FreshPass Business, um zusätzliche Teammitglieder hinzuzufügen.",
   "viewBusinessPlans": "Pläne ansehen",
   "notNow": "Nicht jetzt",
   "noSubscriptionPlansAvailable": "Keine Abonnementpläne verfügbar",

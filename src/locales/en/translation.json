@@ -433,6 +433,8 @@
   "pleaseBuyBusinessPlan": "Business plan required",
   "buyBusinessPlanModalSubtitle": "Unlock your team",
   "buyBusinessPlanBeforeAddingStaff": "Choose a business plan to enable staff management. Your plan determines whether you can add team members.",
+  "upgradeToFreshPassBusiness": "Upgrade to FreshPass Business",
+  "soloPlanCannotAddStaffMessage": "Your FreshPass Solo plan does not allow you to add more staff. Upgrade to FreshPass Business to add additional team members.",
   "viewBusinessPlans": "View plans",
   "notNow": "Not now",
   "noSubscriptionPlansAvailable": "No subscription plans available",

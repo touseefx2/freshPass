@@ -435,6 +435,8 @@
   "pleaseBuyBusinessPlan": "خطة الأعمال مطلوبة",
   "buyBusinessPlanModalSubtitle": "افتح فريقك",
   "buyBusinessPlanBeforeAddingStaff": "اختر خطة أعمال لتمكين إدارة الموظفين. خطتك تحدد ما إذا كان يمكنك إضافة أعضاء الفريق.",
+  "upgradeToFreshPassBusiness": "الترقية إلى FreshPass Business",
+  "soloPlanCannotAddStaffMessage": "خطة FreshPass Solo الخاصة بك لا تسمح بإضافة المزيد من الموظفين. قم بالترقية إلى FreshPass Business لإضافة أعضاء فريق إضافيين.",
   "viewBusinessPlans": "عرض الخطط",
   "notNow": "ليس الآن",
   "noSubscriptionPlansAvailable": "لا توجد خطط اشتراك متاحة",
