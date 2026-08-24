@@ -793,11 +793,17 @@ export default function SubscriptionScreen() {
     }
   }, [dateDisplay, t]);
 
+  const getDisplayStatus = (status: string | null | undefined) => {
+    if (!status) return "";
+    if (status.trim().toLowerCase() === "trialing") return t("active");
+    return capitalizeFirstLetter(status);
+  };
+
   const statusBadgeLabel = useMemo(() => {
     if (!subscription) return "";
-    if (isTrialing) return t("trialing").toUpperCase();
+    if (isTrialing) return t("active").toUpperCase();
     if (isCancelled) return t("cancelled").toUpperCase();
-    return (subscription.status || "").toUpperCase();
+    return getDisplayStatus(subscription.status).toUpperCase();
   }, [subscription, isTrialing, isCancelled, t]);
 
   const formattedScheduleDate = dateDisplay?.date
@@ -1076,7 +1082,7 @@ export default function SubscriptionScreen() {
                   {isTrialing ? t("trialStatus") : t("subscriptionStatus")}
                 </Text>
                 <Text style={styles.paymentProviderValue}>
-                  {capitalizeFirstLetter(subscription.stripeStatus) ||
+                  {getDisplayStatus(subscription.stripeStatus) ||
                     t("notAvailable")}
                 </Text>
               </View>
