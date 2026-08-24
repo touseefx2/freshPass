@@ -1,56 +1,25 @@
-import React, { useMemo, useCallback } from "react";
-import Logger from "@/src/services/logger";
-import {
-  StyleSheet,
-  Text,
-  View,
-  TouchableOpacity,
-  Alert,
-  Image,
-  Dimensions,
-  FlatList,
-  Platform,
-} from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
+import React, { useMemo, useState, useEffect } from "react";
+import { StyleSheet, Text, View, TextInput, Pressable } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
-import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
-import { addPhoto, removePhoto } from "@/src/state/slices/completeProfileSlice";
 import {
-  handleMediaLibraryPermission,
-  handleCameraPermission,
-} from "@/src/services/mediaPermissionService";
-import { GalleryIcon, CameraIcon } from "@/assets/icons";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const PADDING = moderateWidthScale(20);
-const GAP = moderateWidthScale(10);
-const NUM_COLUMNS = 3;
-
-const calculateItemWidth = () => {
-  const availableWidth = SCREEN_WIDTH - PADDING * 2;
-  const totalGaps = GAP * (NUM_COLUMNS - 1); // 2 gaps for 3 items
-  const itemWidth = (availableWidth - totalGaps) / NUM_COLUMNS;
-  return itemWidth;
-};
-
-type GridItem =
-  | { type: "gallery"; id: string }
-  | { type: "camera"; id: string }
-  | { type: "photo"; id: string; uri: string };
+  setTiktokUrl,
+  setInstagramUrl,
+  setFacebookUrl,
+} from "@/src/state/slices/completeProfileSlice";
+import { CloseIcon } from "@/assets/icons";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
       gap: moderateHeightScale(24),
-      paddingHorizontal: PADDING,
+      paddingHorizontal: moderateWidthScale(20),
     },
     titleSec: {
       marginTop: moderateHeightScale(8),
@@ -61,288 +30,221 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    subtitle: {
-      fontSize: fontSize.size14,
+    subTitle: {
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    gridContainer: {
-      marginTop: moderateHeightScale(10),
-    },
-    columnWrapper: {
-      justifyContent: "flex-start",
-    },
-    gridItem: {
-      aspectRatio: 1,
-      overflow: "hidden",
-      marginRight: GAP,
-      marginBottom: GAP,
-    },
-    actionButton: {
-      width: "100%",
-      height: "100%",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.galleryPhotoBack,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(8),
-    },
-    actionButtonContent: {
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateHeightScale(8),
-    },
-    actionButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-    photoContainer: {
-      position: "relative",
-      width: "100%",
-      height: "100%",
-      backgroundColor: theme.grey15,
+    formGroup: {
+      gap: moderateHeightScale(16),
+      marginTop: moderateHeightScale(10),
+    },
+    field: {
+      borderRadius: moderateWidthScale(8),
       borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(8),
-      alignItems: "center",
-      justifyContent: "center",
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(18),
+      paddingBottom: moderateHeightScale(12),
     },
-    photo: {
-      width: "100%",
-      height: "100%",
-      borderRadius: moderateWidthScale(8),
-    },
-    deleteButton: {
+    label: {
       position: "absolute",
+      left: moderateWidthScale(13),
       top: moderateHeightScale(4),
-      right: moderateWidthScale(4),
-      width: moderateWidthScale(24),
-      height: moderateWidthScale(24),
-      // backgroundColor:"yellow",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 1,
-    },
-    emptyState: {
-      position: "absolute",
-      top: "60%",
-      alignSelf: "center",
-    },
-    emptyStateText: {
-      fontSize: fontSize.size14,
+      color: theme.lightGreen,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-      textAlign: "center",
+      fontSize: fontSize.size11,
+    },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    prefix: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    input: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      paddingVertical: 0,
+      textAlignVertical: "center",
+      includeFontPadding: false,
+    },
+    clearButton: {
+      padding: moderateWidthScale(4),
     },
   });
+
+// Helper function to extract username from URL
+const extractUsername = (url: string, prefix: string): string => {
+  if (!url) return "";
+  if (url.startsWith(prefix)) {
+    return url.substring(prefix.length);
+  }
+  return url;
+};
+
+// Helper function to build full URL
+const buildFullUrl = (username: string, prefix: string): string => {
+  if (!username || username.trim() === "") return "";
+  return prefix + username.trim();
+};
 
 export default function StepEleven() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
-  const { t } = useTranslation();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
-  const { photos } = useAppSelector((state) => state.completeProfile);
+  const { tiktokUrl, instagramUrl, facebookUrl } = useAppSelector(
+    (state) => state.completeProfile
+  );
 
-  const generatePhotoId = () => {
-    return `photo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const TIKTOK_PREFIX = "www.tiktok.com/";
+  const INSTAGRAM_PREFIX = "www.instagram.com/";
+  const FACEBOOK_PREFIX = "www.facebook.com/";
+
+  // Extract usernames from stored URLs
+  const [tiktokUsername, setTiktokUsername] = useState(
+    extractUsername(tiktokUrl, TIKTOK_PREFIX)
+  );
+  const [instagramUsername, setInstagramUsername] = useState(
+    extractUsername(instagramUrl, INSTAGRAM_PREFIX)
+  );
+  const [facebookUsername, setFacebookUsername] = useState(
+    extractUsername(facebookUrl, FACEBOOK_PREFIX)
+  );
+
+  // Update local state when Redux state changes (e.g., on clear)
+  useEffect(() => {
+    setTiktokUsername(extractUsername(tiktokUrl, TIKTOK_PREFIX));
+  }, [tiktokUrl]);
+
+  useEffect(() => {
+    setInstagramUsername(extractUsername(instagramUrl, INSTAGRAM_PREFIX));
+  }, [instagramUrl]);
+
+  useEffect(() => {
+    setFacebookUsername(extractUsername(facebookUrl, FACEBOOK_PREFIX));
+  }, [facebookUrl]);
+
+  const handleTiktokChange = (username: string) => {
+    setTiktokUsername(username);
+    const fullUrl = buildFullUrl(username, TIKTOK_PREFIX);
+    dispatch(setTiktokUrl(fullUrl));
   };
 
-  const handleSelectFromGallery = useCallback(async () => {
-    const hasPermission = await handleMediaLibraryPermission();
-    if (!hasPermission) {
-      return;
-    }
+  const handleInstagramChange = (username: string) => {
+    setInstagramUsername(username);
+    const fullUrl = buildFullUrl(username, INSTAGRAM_PREFIX);
+    dispatch(setInstagramUrl(fullUrl));
+  };
 
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.8,
-        allowsEditing: false,
-        ...(Platform.OS === "ios" && {
-          preferredAssetRepresentationMode:
-            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
-              .Compatible,
-        }),
-      });
+  const handleFacebookChange = (username: string) => {
+    setFacebookUsername(username);
+    const fullUrl = buildFullUrl(username, FACEBOOK_PREFIX);
+    dispatch(setFacebookUrl(fullUrl));
+  };
 
-      if (!result.canceled && result.assets) {
-        result.assets.forEach((asset) => {
-          if (asset.uri) {
-            dispatch(
-              addPhoto({
-                id: generatePhotoId(),
-                uri: asset.uri,
-              }),
-            );
-          }
-        });
-      }
-    } catch (error) {
-      Logger.error("Error selecting image from gallery:", error);
-      Alert.alert(
-        "Error",
-        "Failed to select image from gallery. Please try again.",
-      );
-    }
-  }, [dispatch]);
+  const handleClearTiktok = () => {
+    setTiktokUsername("");
+    dispatch(setTiktokUrl(""));
+  };
 
-  const handleTakePhoto = useCallback(async () => {
-    const hasPermission = await handleCameraPermission();
-    if (!hasPermission) {
-      return;
-    }
+  const handleClearInstagram = () => {
+    setInstagramUsername("");
+    dispatch(setInstagramUrl(""));
+  };
 
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
-        ...(Platform.OS === "ios" && {
-          preferredAssetRepresentationMode:
-            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
-              .Compatible,
-        }),
-      });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        dispatch(
-          addPhoto({
-            id: generatePhotoId(),
-            uri: result.assets[0].uri,
-          }),
-        );
-      }
-    } catch (error) {
-      Logger.error("Error taking photo:", error);
-      Alert.alert(t("error"), t("failedToTakePhoto"));
-    }
-  }, [dispatch]);
-
-  const handleDeletePhoto = useCallback(
-    (id: string) => {
-      dispatch(removePhoto(id));
-    },
-    [dispatch],
-  );
-
-  const itemWidth = useMemo(() => calculateItemWidth(), []);
-
-  // Create data array: gallery, camera, then photos
-  const gridData = useMemo<GridItem[]>(() => {
-    const items: GridItem[] = [
-      { type: "gallery", id: "gallery" },
-      { type: "camera", id: "camera" },
-      ...photos.map((photo) => ({
-        type: "photo" as const,
-        id: photo.id,
-        uri: photo.uri,
-      })),
-    ];
-    return items;
-  }, [photos]);
-
-  const renderItem = useCallback(
-    ({ item, index }: { item: GridItem; index: number }) => {
-      const isLastInRow = (index + 1) % NUM_COLUMNS === 0;
-      const itemStyle = [
-        styles.gridItem,
-        { width: itemWidth },
-        isLastInRow && { marginRight: 0 },
-      ];
-
-      if (item.type === "gallery") {
-        return (
-          <TouchableOpacity
-            style={itemStyle}
-            onPress={handleSelectFromGallery}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionButton}>
-              <View style={styles.actionButtonContent}>
-                <GalleryIcon color={theme.darkGreen} />
-                <Text style={styles.actionButtonText}>from gallery</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      }
-
-      if (item.type === "camera") {
-        return (
-          <TouchableOpacity
-            style={itemStyle}
-            onPress={handleTakePhoto}
-            activeOpacity={0.7}
-          >
-            <View style={styles.actionButton}>
-              <View style={styles.actionButtonContent}>
-                <CameraIcon color={theme.darkGreen} />
-                <Text style={styles.actionButtonText}>from camera</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        );
-      }
-
-      // Photo item
-      return (
-        <View style={itemStyle}>
-          <View style={styles.photoContainer}>
-            <Image source={{ uri: item.uri }} style={styles.photo} />
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDeletePhoto(item.id)}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name="delete-outline"
-                size={moderateWidthScale(20)}
-                color={theme.red}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
-    },
-    [
-      itemWidth,
-      theme,
-      handleSelectFromGallery,
-      handleTakePhoto,
-      handleDeletePhoto,
-    ],
-  );
+  const handleClearFacebook = () => {
+    setFacebookUsername("");
+    dispatch(setFacebookUrl(""));
+  };
 
   return (
     <View style={styles.container}>
       <View style={styles.titleSec}>
-        <Text style={styles.title}>Build trust with photos</Text>
-        <Text style={styles.subtitle}>
-          Clients book salon barbers with great portfolios first.
+        <Text style={styles.title}>
+          Link your social media account
+          <Text style={styles.subTitle}> (if any)</Text>
         </Text>
       </View>
 
-      <FlatList
-        data={gridData}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        numColumns={NUM_COLUMNS}
-        columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={styles.gridContainer}
-        scrollEnabled={false}
-      />
-
-      {photos.length === 0 && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateText}>
-            You didn't select anything yet
-          </Text>
+      <View style={styles.formGroup}>
+        <View style={styles.field}>
+          <Text style={styles.label}>TikTok</Text>
+          <View style={styles.inputRow}>
+            <Text style={styles.prefix}>{TIKTOK_PREFIX}</Text>
+            <TextInput
+              style={styles.input}
+              value={tiktokUsername}
+              onChangeText={handleTiktokChange}
+              placeholder="username"
+              placeholderTextColor={theme.lightGreen2}
+            />
+            {tiktokUsername && tiktokUsername.trim() !== "" && (
+              <Pressable
+                onPress={handleClearTiktok}
+                style={styles.clearButton}
+                hitSlop={moderateWidthScale(8)}
+              >
+                <CloseIcon color={theme.darkGreen} />
+              </Pressable>
+            )}
+          </View>
         </View>
-      )}
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Instagram</Text>
+          <View style={styles.inputRow}>
+            <Text style={styles.prefix}>{INSTAGRAM_PREFIX}</Text>
+            <TextInput
+              style={styles.input}
+              value={instagramUsername}
+              onChangeText={handleInstagramChange}
+              placeholder="username"
+              placeholderTextColor={theme.lightGreen2}
+            />
+            {instagramUsername && instagramUsername.trim() !== "" && (
+              <Pressable
+                onPress={handleClearInstagram}
+                style={styles.clearButton}
+                hitSlop={moderateWidthScale(8)}
+              >
+                <CloseIcon color={theme.darkGreen} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Facebook</Text>
+          <View style={styles.inputRow}>
+            <Text style={styles.prefix}>{FACEBOOK_PREFIX}</Text>
+            <TextInput
+              style={styles.input}
+              value={facebookUsername}
+              onChangeText={handleFacebookChange}
+              placeholder="username"
+              placeholderTextColor={theme.lightGreen2}
+            />
+            {facebookUsername && facebookUsername.trim() !== "" && (
+              <Pressable
+                onPress={handleClearFacebook}
+                style={styles.clearButton}
+                hitSlop={moderateWidthScale(8)}
+              >
+                <CloseIcon color={theme.darkGreen} />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
+
+

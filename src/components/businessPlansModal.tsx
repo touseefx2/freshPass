@@ -981,48 +981,6 @@ function BusinessPlansModalContent({
                 {plan.description && (
                   <Text style={styles.planDescription}>{plan.description}</Text>
                 )}
-                <Text style={styles.billingPeriodLabel}>
-                  {t("businessPlanBillingPeriodIncludes")}
-                </Text>
-                <View style={styles.planDetails}>
-                  {plan.visits !== null && (
-                    <View style={styles.detailRow}>
-                      <Feather
-                        name="calendar"
-                        size={iconScale(16)}
-                        color={theme.darkGreen}
-                        style={styles.detailIcon}
-                      />
-                      <Text style={styles.detailText}>
-                        {plan.visits} {t("visitsIncluded")}
-                      </Text>
-                    </View>
-                  )}
-                  {plan.services && plan.services.length > 0 && (
-                    <View style={styles.detailRow}>
-                      <Feather
-                        name="check-circle"
-                        size={iconScale(16)}
-                        color={theme.darkGreen}
-                        style={styles.detailIcon}
-                      />
-                      <Text style={styles.detailText}>
-                        {plan.services.length} {t("servicesIncluded")}
-                      </Text>
-                    </View>
-                  )}
-                  <View style={styles.detailRow}>
-                    <Feather
-                      name="check-circle"
-                      size={iconScale(16)}
-                      color={theme.darkGreen}
-                      style={styles.detailIcon}
-                    />
-                    <Text style={styles.detailText}>
-                      {t("activePlanReady")}
-                    </Text>
-                  </View>
-                </View>
                 {!loadingAdditionalServices &&
                   additionalServices.length > 0 && (
                     <View style={styles.addOnSection}>

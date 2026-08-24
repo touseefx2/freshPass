@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   BackHandler,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   View,
   TouchableOpacity,
   Text,
@@ -28,6 +27,7 @@ import StepEight from "./components/StepEight";
 import StepNine from "./components/StepNine";
 import StepTen from "./components/StepTen";
 import StepEleven from "./components/StepEleven";
+import StepTwelve from "./components/StepTwelve";
 import { createStyles } from "./styles";
 import {
   goToNextStep,
@@ -38,8 +38,6 @@ import {
 import PrivacyBanner from "@/src/components/privacyBanner";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
-import { Feather } from "@expo/vector-icons";
-import { iconScale } from "@/src/theme/dimensions";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 import { businessEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -58,7 +56,6 @@ export default function CompleteProfile() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSkipLoading, setIsSkipLoading] = useState(false);
   const [isStepOneDropdownOpen, setIsStepOneDropdownOpen] = useState(false);
-  const [plansPreviewVisible, setPlansPreviewVisible] = useState(false);
   const {
     currentStep,
     totalSteps,
@@ -76,6 +73,7 @@ export default function CompleteProfile() {
     addressStage,
     selectedLocation,
     teamSize,
+    selectedBusinessPlanId,
     businessHours,
     services,
     subscriptions,
@@ -87,12 +85,6 @@ export default function CompleteProfile() {
   } = useAppSelector((state) => state.completeProfile);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const userRole = useAppSelector((state) => state.user.userRole);
-
-  useEffect(() => {
-    if (currentStep !== 5) {
-      setPlansPreviewVisible(false);
-    }
-  }, [currentStep]);
 
   // Check if onboarding is not completed - prevent back navigation
   // Only for business users (staff and client have their own profile pages)
@@ -200,10 +192,17 @@ export default function CompleteProfile() {
     }
 
     if (currentStep === 6) {
-      body = { ...body };
+      body = {
+        ...body,
+        selected_business_plan_id: selectedBusinessPlanId,
+      };
     }
 
     if (currentStep === 7) {
+      body = { ...body };
+    }
+
+    if (currentStep === 8) {
       // Transform businessHours to API format
       const businessHoursArray = Object.keys(businessHours).map((day) => {
         const dayData = businessHours[day];
@@ -232,7 +231,7 @@ export default function CompleteProfile() {
       body = { ...body, business_hours: businessHoursArray };
     }
 
-    if (currentStep === 8) {
+    if (currentStep === 9) {
       // Transform services to API format - name and description sent for both template and custom
       const servicesArray = services.map((service) => {
         const isCustomService = service.id.startsWith("custom-");
@@ -250,7 +249,7 @@ export default function CompleteProfile() {
       body = { ...body, services: servicesArray };
     }
 
-    if (currentStep === 9) {
+    if (currentStep === 10) {
       // Transform subscriptions to API format
       const subscriptionPlansArray = subscriptions.map((subscription) => {
         const planServices = subscription.serviceIds.map((id) => parseInt(id, 10));
@@ -273,7 +272,7 @@ export default function CompleteProfile() {
       body = { ...body, subscription_plans: subscriptionPlansArray };
     }
 
-    if (currentStep === 10) {
+    if (currentStep === 11) {
       const socialMediaLinks: {
         facebook?: string;
         instagram?: string;
@@ -313,7 +312,7 @@ export default function CompleteProfile() {
     //   return;
     // }
 
-    if (currentStep === 8 && services.length === 0) {
+    if (currentStep === 9 && services.length === 0) {
       dispatch(goToNextStep());
       return;
     }
@@ -324,8 +323,8 @@ export default function CompleteProfile() {
       let requestBody: any;
       let config: any = undefined;
 
-      if (currentStep === 11) {
-        // For step 11, use FormData to send files (JPEG-converted for iPhone HEIC)
+      if (currentStep === 12) {
+        // For step 12, use FormData to send files (JPEG-converted for iPhone HEIC)
         const formData = new FormData();
 
         // Add step
@@ -387,7 +386,7 @@ export default function CompleteProfile() {
               }),
             );
           }
-          // Navigate to acceptTerms screen when step 11 is completed
+          // Navigate to acceptTerms screen when last step is completed
           router.replace(`/(main)/${MAIN_ROUTES.ACCEPT_TERMS}`);
         }
       } else {
@@ -412,20 +411,20 @@ export default function CompleteProfile() {
   };
 
   const handleSkip = async () => {
-    // Skip button: make API call with empty data for steps 10 and 11
+    // Skip button: make API call with empty data for steps 11 and 12
     setIsSkipLoading(true);
     try {
       let requestBody: any;
       let config: any = undefined;
 
-      if (currentStep === 10) {
-        // Step 10: Send empty social_media_links object
+      if (currentStep === 11) {
+        // Step 11: Send empty social_media_links object
         requestBody = {
           step: currentStep.toString(),
           social_media_links: {},
         };
-      } else if (currentStep === 11) {
-        // Step 11: Send empty portfolio_photos array
+      } else if (currentStep === 12) {
+        // Step 12: Send empty portfolio_photos array
         const formData = new FormData();
         formData.append("step", currentStep.toString());
         // Don't append any photos - backend will interpret as empty array []
@@ -449,7 +448,7 @@ export default function CompleteProfile() {
 
       if (response.success) {
         // Navigate to acceptTerms screen after successful skip
-        if (currentStep === 10) {
+        if (currentStep === 11) {
           dispatch(goToNextStep());
         } else {
           if (businessStatus) {
@@ -571,27 +570,26 @@ export default function CompleteProfile() {
       return !teamSize;
     }
     if (currentStep === 6) {
-      // Step 6 is optional - can continue without invitations
-      return false;
+      return !selectedBusinessPlanId;
     }
     if (currentStep === 7) {
-      // Step 7 is optional - can continue without setting business hours
-      // User can set business hours later from settings
+      // Step 7 is optional - can continue without invitations
       return false;
     }
     if (currentStep === 8) {
-      // Step 8: Require at least one service (template-based OR custom).
-      // Custom services (no template_id) are added via + and still count.
-      return services.length === 0;
-    }
-    if (currentStep === 9) {
-      // Step 9 is optional - can continue without adding subscriptions
+      // Step 8 is optional - can continue without setting business hours
       return false;
     }
+    if (currentStep === 9) {
+      // Step 9: Require at least one service (template-based OR custom).
+      return services.length === 0;
+    }
     if (currentStep === 10) {
-      // Step 10: Disable continue if all social media usernames are empty
-      // Enable if at least one username has value
-      // Extract usernames from full URLs (remove prefix)
+      // Step 10 is optional - can continue without adding subscriptions
+      return false;
+    }
+    if (currentStep === 11) {
+      // Step 11: Disable continue if all social media usernames are empty
       const getUsername = (url: string, prefix: string) => {
         if (!url) return "";
         if (url.startsWith(prefix)) {
@@ -610,8 +608,8 @@ export default function CompleteProfile() {
         facebookUsername !== "";
       return !hasAnySocialMedia;
     }
-    if (currentStep === 11) {
-      // Step 11: Disable continue if no photos are selected
+    if (currentStep === 12) {
+      // Step 12: Disable continue if no photos are selected
       return photos.length <= 0;
     }
     return false;
@@ -630,6 +628,7 @@ export default function CompleteProfile() {
     addressStage,
     selectedLocation,
     teamSize,
+    selectedBusinessPlanId,
     businessHours,
     services,
     facebookUrl,
@@ -655,12 +654,7 @@ export default function CompleteProfile() {
       case 4:
         return <StepFour />;
       case 5:
-        return (
-          <StepFive
-            plansPreviewVisible={plansPreviewVisible}
-            onClosePlansPreview={() => setPlansPreviewVisible(false)}
-          />
-        );
+        return <StepFive />;
       case 6:
         return <StepSix />;
       case 7:
@@ -673,10 +667,12 @@ export default function CompleteProfile() {
         return <StepTen />;
       case 11:
         return <StepEleven />;
+      case 12:
+        return <StepTwelve />;
       default:
         return null;
     }
-  }, [currentStep, handleContinue, plansPreviewVisible]);
+  }, [currentStep, handleContinue, isStepOneDropdownOpen]);
 
   const continueLabel = useMemo(() => {
     if (currentStep === totalSteps) {
@@ -712,25 +708,9 @@ export default function CompleteProfile() {
           {renderStep}
         </KeyboardAwareScrollView>
         <View style={styles.buttonWrapper}>
-          {currentStep === 5 && (
-            <TouchableOpacity
-              style={styles.viewPlansButton}
-              onPress={() => setPlansPreviewVisible(true)}
-              activeOpacity={0.7}
-            >
-              <Feather
-                name="file-text"
-                size={iconScale(18)}
-                color={(colors as Theme).darkGreen}
-              />
-              <Text style={styles.viewPlansButtonText}>
-                {t("viewAvailablePlans")}
-              </Text>
-            </TouchableOpacity>
-          )}
-          {(currentStep === 10 || currentStep === 11) && (
+          {(currentStep === 11 || currentStep === 12) && (
             <>
-              {currentStep == 11 && (
+              {currentStep == 12 && (
                 <PrivacyBanner message={t("appOnlyAccessesSelectedPhotos")} />
               )}
 

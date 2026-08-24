@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Modal,
   StyleSheet,
@@ -7,6 +7,7 @@ import {
   Text,
   ScrollView,
   StatusBar,
+  Animated,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
@@ -29,6 +30,14 @@ const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   return planType.includes("unlimited") || name.includes("unlimited");
 };
 
+const isSoloPlan = (plan: SubscriptionPlan): boolean => {
+  if (plan.is_solo === true) return true;
+  if (plan.is_solo === false) return false;
+  const name = plan.name?.toLowerCase() ?? "";
+  const planType = plan.planType?.toLowerCase() ?? "";
+  return name.includes("solo") || planType.includes("solo");
+};
+
 export interface SubscriptionPlan {
   id: number;
   name: string;
@@ -40,6 +49,52 @@ export interface SubscriptionPlan {
   createdAt: string;
   services: any[];
   app_store_product_id?: string | null;
+  is_solo?: boolean;
+}
+
+type PlanTab = "solo" | "business";
+
+function SelectedPlanStatus({ label }: { label: string }) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
+  const styles = useMemo(() => createStyles(theme), [colors]);
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    anim.setValue(0);
+    Animated.spring(anim, {
+      toValue: 1,
+      friction: 6,
+      tension: 140,
+      useNativeDriver: true,
+    }).start();
+  }, [anim]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.selectedStatus,
+        {
+          opacity: anim,
+          transform: [
+            {
+              scale: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.82, 1],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
+      <Feather
+        name="check-circle"
+        size={iconScale(18)}
+        color={theme.buttonBack}
+      />
+      <Text style={styles.selectedStatusText}>{label}</Text>
+    </Animated.View>
+  );
 }
 
 export interface AdditionalService {
@@ -52,8 +107,11 @@ export interface AdditionalService {
 }
 
 interface BusinessPlansPreviewModalProps {
-  visible: boolean;
-  onClose: () => void;
+  visible?: boolean;
+  onClose?: () => void;
+  embedded?: boolean;
+  selectedPlanId?: number | null;
+  onSelectPlan?: (planId: number) => void;
   plans: SubscriptionPlan[];
   additionalServices: AdditionalService[];
   loading: boolean;
@@ -136,6 +194,9 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(20),
     },
+    contentEmbedded: {
+      paddingTop: moderateHeightScale(8),
+    },
     errorContainer: {
       flex: 1,
       justifyContent: "center",
@@ -159,6 +220,75 @@ const createStyles = (theme: Theme) =>
       padding: moderateWidthScale(20),
       borderWidth: 1,
       borderColor: theme.borderLight,
+    },
+    planCardEmbedded: {
+      shadowOpacity: 0.06,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    selectPlanButton: {
+      marginTop: moderateHeightScale(16),
+      alignSelf: "stretch",
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(12),
+    },
+    selectPlanButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    selectedStatus: {
+      marginTop: moderateHeightScale(16),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(4),
+    },
+    selectedStatusText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+    },
+    planTabRow: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(999),
+      padding: moderateWidthScale(3),
+      gap: moderateWidthScale(2),
+    },
+    planTab: {
+      minWidth: moderateWidthScale(88),
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(18),
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: "transparent",
+    },
+    planTabActive: {
+      backgroundColor: theme.buttonBack,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.18,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    planTabText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      letterSpacing: 0.3,
+    },
+    planTabTextActive: {
+      color: theme.white,
+      fontFamily: fonts.fontBold,
     },
     shadow: {
       shadowColor: theme.shadow,
@@ -295,6 +425,9 @@ const createStyles = (theme: Theme) =>
 
 function BusinessPlansPreviewModalContent({
   onClose,
+  embedded,
+  selectedPlanId,
+  onSelectPlan,
   plans,
   additionalServices,
   loading,
@@ -309,6 +442,7 @@ function BusinessPlansPreviewModalContent({
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const [trialDays, setTrialDays] = useState("");
+  const [activeTab, setActiveTab] = useState<PlanTab>("solo");
 
   useEffect(() => {
     let cancelled = false;
@@ -329,6 +463,33 @@ function BusinessPlansPreviewModalContent({
     [plans],
   );
 
+  const soloPlans = useMemo(
+    () => standardPlans.filter((plan) => isSoloPlan(plan)),
+    [standardPlans],
+  );
+
+  const businessPlans = useMemo(
+    () => standardPlans.filter((plan) => !isSoloPlan(plan)),
+    [standardPlans],
+  );
+
+  const usePlanTabs = Boolean(
+    onSelectPlan && soloPlans.length > 0 && businessPlans.length > 0,
+  );
+
+  useEffect(() => {
+    if (!usePlanTabs) return;
+    if (selectedPlanId == null) return;
+    const selected = standardPlans.find((plan) => plan.id === selectedPlanId);
+    if (!selected) return;
+    setActiveTab(isSoloPlan(selected) ? "solo" : "business");
+  }, [selectedPlanId, standardPlans, usePlanTabs]);
+
+  const visiblePlans = useMemo(() => {
+    if (!usePlanTabs) return standardPlans;
+    return activeTab === "solo" ? soloPlans : businessPlans;
+  }, [usePlanTabs, activeTab, standardPlans, soloPlans, businessPlans]);
+
   const showTrialBanner = Number.parseInt(trialDays, 10) > 0;
 
   const featuredAddOnPrice = (() => {
@@ -344,27 +505,31 @@ function BusinessPlansPreviewModalContent({
     return parsed.toFixed(2);
   };
 
-  return (
-    <View
-      style={[
+  const overlayStyle = embedded
+    ? styles.modalContainer
+    : [
         styles.modalOverlay,
         {
           paddingTop: insets.top,
           paddingBottom: insets.bottom + moderateHeightScale(20),
         },
-      ]}
-    >
+      ];
+
+  return (
+    <View style={overlayStyle}>
       <View style={styles.modalContainer}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>{t("businessPlans")}</Text>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.closeButton}
-            activeOpacity={0.7}
-          >
-            <Feather name="x" size={iconScale(24)} color={theme.darkGreen} />
-          </TouchableOpacity>
-        </View>
+        {!embedded && (
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>{t("businessPlans")}</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeButton}
+              activeOpacity={0.7}
+            >
+              <Feather name="x" size={iconScale(24)} color={theme.darkGreen} />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {loading && plans.length === 0 ? (
           <Skeleton screenType="BusinessPlans" styles={styles} />
@@ -381,9 +546,13 @@ function BusinessPlansPreviewModalContent({
           </View>
         ) : (
           <ScrollView
-            style={styles.content}
+            style={embedded ? undefined : styles.content}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.plansContainer}
+            contentContainerStyle={[
+              styles.plansContainer,
+              embedded && styles.contentEmbedded,
+            ]}
+            scrollEnabled={!embedded}
           >
             <View style={styles.introSection}>
               <View style={styles.introSectionRow}>
@@ -443,10 +612,57 @@ function BusinessPlansPreviewModalContent({
               ) : null}
             </View>
 
-            {standardPlans.map((plan) => {
+            {usePlanTabs ? (
+              <View style={styles.planTabRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.planTab,
+                    activeTab === "solo" && styles.planTabActive,
+                  ]}
+                  onPress={() => setActiveTab("solo")}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.planTabText,
+                      activeTab === "solo" && styles.planTabTextActive,
+                    ]}
+                  >
+                    {t("solo")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.planTab,
+                    activeTab === "business" && styles.planTabActive,
+                  ]}
+                  onPress={() => setActiveTab("business")}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.planTabText,
+                      activeTab === "business" && styles.planTabTextActive,
+                    ]}
+                  >
+                    {t("business")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {visiblePlans.map((plan) => {
               const planPrice = formatPlanPrice(plan.price);
+              const isSelected = selectedPlanId === plan.id;
               return (
-                <View key={plan.id} style={[styles.planCard, styles.shadow]}>
+                <View
+                  key={plan.id}
+                  style={[
+                    styles.planCard,
+                    styles.shadow,
+                    embedded && styles.planCardEmbedded,
+                  ]}
+                >
                   <View style={styles.planHeader}>
                     <Text style={styles.planName}>{plan.name}</Text>
                     <View style={styles.planPriceContainer}>
@@ -474,48 +690,6 @@ function BusinessPlansPreviewModalContent({
                       {plan.description}
                     </Text>
                   ) : null}
-                  <Text style={styles.billingPeriodLabel}>
-                    {t("businessPlanBillingPeriodIncludes")}
-                  </Text>
-                  <View style={styles.planDetails}>
-                    {plan.visits !== null && (
-                      <View style={styles.detailRow}>
-                        <Feather
-                          name="calendar"
-                          size={iconScale(16)}
-                          color={theme.darkGreen}
-                          style={styles.detailIcon}
-                        />
-                        <Text style={styles.detailText}>
-                          {plan.visits} {t("visitsIncluded")}
-                        </Text>
-                      </View>
-                    )}
-                    {plan.services && plan.services.length > 0 && (
-                      <View style={styles.detailRow}>
-                        <Feather
-                          name="check-circle"
-                          size={iconScale(16)}
-                          color={theme.darkGreen}
-                          style={styles.detailIcon}
-                        />
-                        <Text style={styles.detailText}>
-                          {plan.services.length} {t("servicesIncluded")}
-                        </Text>
-                      </View>
-                    )}
-                    <View style={styles.detailRow}>
-                      <Feather
-                        name="check-circle"
-                        size={iconScale(16)}
-                        color={theme.darkGreen}
-                        style={styles.detailIcon}
-                      />
-                      <Text style={styles.detailText}>
-                        {t("activePlanReady")}
-                      </Text>
-                    </View>
-                  </View>
                   {!loadingAdditionalServices &&
                     additionalServices.length > 0 && (
                       <View style={styles.addOnSection}>
@@ -550,6 +724,21 @@ function BusinessPlansPreviewModalContent({
                           ))}
                       </View>
                     )}
+                  {onSelectPlan ? (
+                    isSelected ? (
+                      <SelectedPlanStatus label={t("selected")} />
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.selectPlanButton}
+                        onPress={() => onSelectPlan(plan.id)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.selectPlanButtonText}>
+                          {t("select")}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  ) : null}
                 </View>
               );
             })}
@@ -561,8 +750,11 @@ function BusinessPlansPreviewModalContent({
 }
 
 export default function BusinessPlansPreviewModal({
-  visible,
+  visible = true,
   onClose,
+  embedded = false,
+  selectedPlanId,
+  onSelectPlan,
   plans,
   additionalServices,
   loading,
@@ -571,6 +763,26 @@ export default function BusinessPlansPreviewModal({
   apiError,
   onRetry,
 }: BusinessPlansPreviewModalProps) {
+  const content = (
+    <BusinessPlansPreviewModalContent
+      onClose={onClose}
+      embedded={embedded}
+      selectedPlanId={selectedPlanId}
+      onSelectPlan={onSelectPlan}
+      plans={plans}
+      additionalServices={additionalServices}
+      loading={loading}
+      loadingAdditionalServices={loadingAdditionalServices}
+      error={error}
+      apiError={apiError}
+      onRetry={onRetry}
+    />
+  );
+
+  if (embedded) {
+    return content;
+  }
+
   if (!visible) return null;
 
   return (
@@ -581,16 +793,7 @@ export default function BusinessPlansPreviewModal({
       onRequestClose={onClose}
     >
       <StatusBar barStyle="dark-content" />
-      <BusinessPlansPreviewModalContent
-        onClose={onClose}
-        plans={plans}
-        additionalServices={additionalServices}
-        loading={loading}
-        loadingAdditionalServices={loadingAdditionalServices}
-        error={error}
-        apiError={apiError}
-        onRetry={onRetry}
-      />
+      {content}
     </Modal>
   );
 }

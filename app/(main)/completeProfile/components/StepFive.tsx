@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -8,14 +8,6 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import { setTeamSize } from "@/src/state/slices/completeProfileSlice";
-import { ApiService } from "@/src/services/api";
-import { businessEndpoints } from "@/src/services/endpoints";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { useTranslation } from "react-i18next";
-import BusinessPlansPreviewModal, {
-  AdditionalService,
-  SubscriptionPlan,
-} from "@/src/components/businessPlansPreviewModal";
 
 interface TeamSizeOption {
   id: string;
@@ -55,7 +47,7 @@ const createStyles = (theme: Theme) =>
     },
     titleSec: {
       marginTop: moderateHeightScale(8),
-      gap: 5,
+      gap: moderateHeightScale(5),
     },
     title: {
       fontSize: fontSize.size24,
@@ -116,87 +108,11 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-interface StepFiveProps {
-  plansPreviewVisible: boolean;
-  onClosePlansPreview: () => void;
-}
-
-export default function StepFive({
-  plansPreviewVisible,
-  onClosePlansPreview,
-}: StepFiveProps) {
+export default function StepFive() {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
-  const { t } = useTranslation();
-  const { showBanner } = useNotificationContext();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const { teamSize } = useAppSelector((state) => state.completeProfile);
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [additionalServices, setAdditionalServices] = useState<
-    AdditionalService[]
-  >([]);
-  const [loading, setLoading] = useState(false);
-  const [loadingAdditionalServices, setLoadingAdditionalServices] =
-    useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [apiError, setApiError] = useState(false);
-
-  const fetchPlans = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setApiError(false);
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: {
-          data: SubscriptionPlan[];
-        };
-      }>(businessEndpoints.subscriptionPlans());
-
-      if (response.success && response.data?.data) {
-        setPlans(response.data.data);
-      } else {
-        setError("Failed to load subscription plans");
-        setApiError(true);
-      }
-    } catch (err: any) {
-      setError(err.message || "Failed to load subscription plans");
-      setApiError(true);
-      showBanner(
-        t("error"),
-        err.message || t("failedToLoadSubscriptionPlans"),
-        "error",
-        2500,
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [showBanner, t]);
-
-  const fetchAdditionalServices = useCallback(async () => {
-    setLoadingAdditionalServices(true);
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: AdditionalService[];
-      }>(businessEndpoints.additionalServices("business"));
-
-      if (response.success && response.data) {
-        setAdditionalServices(response.data);
-      }
-    } catch {
-      // Silent fail; add-ons section will just be empty
-    } finally {
-      setLoadingAdditionalServices(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchPlans();
-    void fetchAdditionalServices();
-  }, [fetchPlans, fetchAdditionalServices]);
 
   return (
     <View style={styles.container}>
@@ -242,18 +158,6 @@ export default function StepFive({
           );
         })}
       </View>
-
-      <BusinessPlansPreviewModal
-        visible={plansPreviewVisible}
-        onClose={onClosePlansPreview}
-        plans={plans}
-        additionalServices={additionalServices}
-        loading={loading}
-        loadingAdditionalServices={loadingAdditionalServices}
-        error={error}
-        apiError={apiError}
-        onRetry={fetchPlans}
-      />
     </View>
   );
 }

@@ -39,22 +39,6 @@ export const createStyles = (theme: Theme) =>
     skipButtonDisabled: {
       opacity: 0.5,
     },
-    viewPlansButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(8),
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(14),
-      borderWidth: 1,
-      borderColor: theme.darkGreen,
-    },
-    viewPlansButtonText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
   });
 
 

@@ -1,6 +1,6 @@
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 
-const TOTAL_STEPS = 11 as const;
+const TOTAL_STEPS = 12 as const;
 
 export interface CompleteProfileState {
   currentStep: number;
@@ -31,6 +31,7 @@ export interface CompleteProfileState {
     longitude: number;
   } | null;
   teamSize: { id: string; title: string } | null;
+  selectedBusinessPlanId: number | null;
   staffInvitationEmail: string;
   staffInvitations: Array<{ email: string; status: "sent" | "accepted" }>;
   businessHours: {
@@ -134,7 +135,7 @@ export interface CompleteProfileState {
 
 const initialState: CompleteProfileState = {
   currentStep: 1,
-  // currentStep: 11,
+  // currentStep: 12,
   totalSteps: TOTAL_STEPS,
   searchTerm: "",
   businessCategory: null,
@@ -156,6 +157,7 @@ const initialState: CompleteProfileState = {
   addressStage: "search",
   selectedLocation: null,
   teamSize: null,
+  selectedBusinessPlanId: null,
   staffInvitationEmail: "",
   staffInvitations: [],
   businessHours: {
@@ -295,11 +297,15 @@ const completeProfileSlice = createSlice({
         }
 
         if (nextStep < 6) {
+          state.selectedBusinessPlanId = null;
+        }
+
+        if (nextStep < 7) {
           state.staffInvitationEmail = "";
           state.staffInvitations = [];
         }
 
-        if (nextStep < 7) {
+        if (nextStep < 8) {
           // Reset business hours
           const days = [
             "Sunday",
@@ -322,24 +328,24 @@ const completeProfileSlice = createSlice({
           });
         }
 
-        if (nextStep < 8) {
+        if (nextStep < 9) {
           // Reset services
           state.services = [];
         }
 
-        if (nextStep < 9) {
+        if (nextStep < 10) {
           // Reset subscriptions
           state.subscriptions = [];
         }
 
-        if (nextStep < 10) {
+        if (nextStep < 11) {
           // Reset social media URLs
           state.tiktokUrl = "";
           state.instagramUrl = "";
           state.facebookUrl = "";
         }
 
-        if (nextStep < 11) {
+        if (nextStep < 12) {
           // Reset photos
           state.photos = [];
         }
@@ -442,6 +448,12 @@ const completeProfileSlice = createSlice({
       action: PayloadAction<{ id: string; title: string } | null>,
     ) => {
       state.teamSize = action.payload;
+    },
+    setSelectedBusinessPlanId: (
+      state,
+      action: PayloadAction<number | null>,
+    ) => {
+      state.selectedBusinessPlanId = action.payload;
     },
     setStaffInvitationEmail: (state, action: PayloadAction<string>) => {
       state.staffInvitationEmail = action.payload;
@@ -864,6 +876,7 @@ export const {
   setAddressStage,
   setSelectedLocation,
   setTeamSize,
+  setSelectedBusinessPlanId,
   setStaffInvitationEmail,
   addStaffInvitation,
   setStaffInvitations,
