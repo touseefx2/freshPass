@@ -57,6 +57,54 @@ const isUnlimitedPlan = (plan: SubscriptionPlan): boolean => {
   return planType.includes("unlimited") || name.includes("unlimited");
 };
 
+const isSoloPlan = (plan: SubscriptionPlan): boolean => {
+  if (plan.is_solo === true) return true;
+  if (plan.is_solo === false) return false;
+  const name = plan.name?.toLowerCase() ?? "";
+  const planType = plan.planType?.toLowerCase() ?? "";
+  return name.includes("solo") || planType.includes("solo");
+};
+
+type PlanTab = "solo" | "business";
+
+const extractSelectedBusinessPlanId = (payload: unknown): number | null => {
+  if (payload == null || typeof payload !== "object") return null;
+  const data = payload as Record<string, unknown>;
+
+  const candidates = [
+    data.selected_business_plan_id,
+    data.selectedBusinessPlanId,
+    data.plan_id,
+    data.planId,
+    data.id,
+  ];
+
+  for (const value of candidates) {
+    const parsed =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number.parseInt(value, 10)
+          : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  const nestedPlan = data.plan ?? data.selected_business_plan ?? data.subscription_plan;
+  if (nestedPlan && typeof nestedPlan === "object") {
+    const planObj = nestedPlan as Record<string, unknown>;
+    const nestedId = planObj.id ?? planObj.plan_id ?? planObj.planId;
+    const parsed =
+      typeof nestedId === "number"
+        ? nestedId
+        : typeof nestedId === "string"
+          ? Number.parseInt(nestedId, 10)
+          : NaN;
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+
+  return null;
+};
+
 interface SubscriptionPlan {
   id: number;
   name: string;
@@ -363,6 +411,42 @@ const createStyles = (theme: Theme) =>
       color: theme.text,
       textAlign: "center",
     },
+    planTabRow: {
+      alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(999),
+      padding: moderateWidthScale(3),
+      gap: moderateWidthScale(2),
+    },
+    planTab: {
+      minWidth: moderateWidthScale(88),
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(18),
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: "transparent",
+    },
+    planTabActive: {
+      backgroundColor: theme.buttonBack,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.18,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    planTabText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      letterSpacing: 0.3,
+    },
+    planTabTextActive: {
+      color: theme.white,
+      fontFamily: fonts.fontBold,
+    },
     processingOverlay: {
       position: "absolute",
       top: 0,
@@ -424,6 +508,10 @@ function BusinessPlansModalContent({
   >({});
   const [hasUsedTrial, setHasUsedTrial] = useState(false);
   const [trialDays, setTrialDays] = useState("");
+  const [activeTab, setActiveTab] = useState<PlanTab>("solo");
+  const [selectedBusinessPlanId, setSelectedBusinessPlanId] = useState<
+    number | null
+  >(null);
   const isIos = Platform.OS === "ios";
   /** Trial already used → show Subscribe instead of Start trial */
   const showSubscribeInsteadOfTrial = hasUsedTrial;
@@ -476,6 +564,39 @@ function BusinessPlansModalContent({
     () => plans.filter((plan) => !isUnlimitedPlan(plan)),
     [plans],
   );
+
+  const soloPlans = useMemo(
+    () => standardPlans.filter((plan) => isSoloPlan(plan)),
+    [standardPlans],
+  );
+
+  const businessPlans = useMemo(
+    () => standardPlans.filter((plan) => !isSoloPlan(plan)),
+    [standardPlans],
+  );
+
+  const usePlanTabs = soloPlans.length > 0 && businessPlans.length > 0;
+
+  const visiblePlans = useMemo(() => {
+    if (!usePlanTabs) return standardPlans;
+    return activeTab === "solo" ? soloPlans : businessPlans;
+  }, [usePlanTabs, activeTab, standardPlans, soloPlans, businessPlans]);
+
+  useEffect(() => {
+    if (!usePlanTabs) return;
+
+    if (selectedBusinessPlanId != null) {
+      const matched = standardPlans.find(
+        (plan) => plan.id === selectedBusinessPlanId,
+      );
+      if (matched) {
+        setActiveTab(isSoloPlan(matched) ? "solo" : "business");
+        return;
+      }
+    }
+
+    setActiveTab("solo");
+  }, [usePlanTabs, selectedBusinessPlanId, standardPlans]);
 
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
@@ -571,6 +692,25 @@ function BusinessPlansModalContent({
     }
   };
 
+  const fetchSelectedBusinessPlan = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message?: string;
+        data?: unknown;
+      }>(businessEndpoints.moduleData("selected-business-plan"));
+
+      if (response.success) {
+        const planId = extractSelectedBusinessPlanId(response.data);
+        setSelectedBusinessPlanId(planId);
+      } else {
+        setSelectedBusinessPlanId(null);
+      }
+    } catch {
+      setSelectedBusinessPlanId(null);
+    }
+  };
+
   const fetchAdditionalServices = async () => {
     setLoadingAdditionalServices(true);
     try {
@@ -645,8 +785,10 @@ function BusinessPlansModalContent({
 
   useEffect(() => {
     if (visible) {
+      setSelectedBusinessPlanId(null);
       fetchPlans();
       fetchAdditionalServices();
+      void fetchSelectedBusinessPlan();
       void resolveTrialDays()
         .then(setTrialDays)
         .catch((err: unknown) => {
@@ -952,7 +1094,46 @@ function BusinessPlansModalContent({
               ) : null}
             </View>
 
-            {standardPlans.map((plan) => {
+            {usePlanTabs ? (
+              <View style={styles.planTabRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.planTab,
+                    activeTab === "solo" && styles.planTabActive,
+                  ]}
+                  onPress={() => setActiveTab("solo")}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.planTabText,
+                      activeTab === "solo" && styles.planTabTextActive,
+                    ]}
+                  >
+                    {t("solo")}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.planTab,
+                    activeTab === "business" && styles.planTabActive,
+                  ]}
+                  onPress={() => setActiveTab("business")}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={[
+                      styles.planTabText,
+                      activeTab === "business" && styles.planTabTextActive,
+                    ]}
+                  >
+                    {t("business")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {visiblePlans.map((plan) => {
               const totalPrice = getTotalPriceForPlan(plan);
               return (
               <View key={plan.id} style={[styles.planCard, styles.shadow]}>
