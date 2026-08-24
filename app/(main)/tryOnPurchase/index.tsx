@@ -37,6 +37,8 @@ import {
   setActionLoader,
   setActionLoaderTitle,
   setAiService,
+  setTryOnPurchaseSuccessModalVisible,
+  setTryOnPurchaseSuccessSource,
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import Logger from "@/src/services/logger";
@@ -48,15 +50,26 @@ export default function TryOnPurchase() {
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const user = useAppSelector((state) => state.user);
   const aiService = useAppSelector((state) => state.general.aiService);
+  const purchaseSource = useAppSelector(
+    (state) => state.general.tryOnPurchaseSuccessSource,
+  );
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
-    serviceId?: string;
-    screen?: string;
+    serviceId?: string | string[];
+    screen?: string | string[];
   }>();
-  const serviceId = params.serviceId ? Number(params.serviceId) : null;
-  const screen = params.screen ?? "";
+  const rawServiceId = Array.isArray(params.serviceId)
+    ? params.serviceId[0]
+    : params.serviceId;
+  const rawScreen = Array.isArray(params.screen)
+    ? params.screen[0]
+    : params.screen;
+  const serviceId = rawServiceId ? Number(rawServiceId) : null;
+  // Prefer Redux source (set when opening purchase); fall back to route param
+  const screen: "explore" | "tools" =
+    purchaseSource === "tools" || rawScreen === "tools" ? "tools" : "explore";
   const isIos = Platform.OS === "ios";
 
   const [localBanner, setLocalBanner] = useState<{
@@ -158,10 +171,11 @@ export default function TryOnPurchase() {
       : t("tryOnModalPricing");
 
   const handleSkip = () => {
+    dispatch(setTryOnPurchaseSuccessSource(null));
     router.back();
   };
 
-  const refreshQuotaAndNavigate = async (quotaFromVerify?: number) => {
+  const refreshQuotaAndShowSuccess = async (quotaFromVerify?: number) => {
     dispatch(setActionLoader(true));
     dispatch(setActionLoaderTitle(t("pleaseWait")));
 
@@ -181,11 +195,20 @@ export default function TryOnPurchase() {
       // ignore
     } finally {
       dispatch(setActionLoader(false));
-      if (screen === "explore") {
-        router.replace("/(main)/aiTools/toolList" as any);
-      } else {
-        router.back();
-      }
+      // Close buy screen first, then show congrats on the underlying screen
+      const successSource: "explore" | "tools" =
+        purchaseSource === "tools" || screen === "tools" ? "tools" : "explore";
+      // Lock source before closing so route unmount can't lose it
+      dispatch(setTryOnPurchaseSuccessSource(successSource));
+      router.back();
+      setTimeout(() => {
+        dispatch(
+          setTryOnPurchaseSuccessModalVisible({
+            visible: true,
+            source: successSource,
+          }),
+        );
+      }, 350);
     }
   };
 
@@ -215,14 +238,7 @@ export default function TryOnPurchase() {
       productId,
     });
 
-    setLocalBanner({
-      visible: true,
-      title: t("success"),
-      message: t("paymentSuccessful") ?? "Payment successful!",
-      type: "success",
-    });
-
-    await refreshQuotaAndNavigate(verifyResponse.data?.ai_quota);
+    await refreshQuotaAndShowSuccess(verifyResponse.data?.ai_quota);
   };
 
   const handleStripePayment = async (serviceIdForPurchase: number) => {
@@ -287,14 +303,7 @@ export default function TryOnPurchase() {
       return;
     }
 
-    setLocalBanner({
-      visible: true,
-      title: t("success"),
-      message: t("paymentSuccessful") ?? "Payment successful!",
-      type: "success",
-    });
-
-    await refreshQuotaAndNavigate();
+    await refreshQuotaAndShowSuccess();
   };
 
   const handleUpgradePress = async () => {

@@ -42,6 +42,7 @@ import {
   openFullImageModal,
   setAiHairTryOnConsentAccepted,
   setAiService,
+  setTryOnPurchaseSuccessSource,
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import AiHairTryOnConsentModal from "@/src/components/aiHairTryOnConsentModal";
@@ -479,6 +480,7 @@ export default function Tools() {
   }, [t]);
 
   const openTryOnPurchase = useCallback(() => {
+    dispatch(setTryOnPurchaseSuccessSource("tools"));
     router.push({
       pathname: "/(main)/tryOnPurchase",
       params: {
@@ -486,7 +488,7 @@ export default function Tools() {
         screen: "tools",
       },
     });
-  }, [hairTryOnService, router]);
+  }, [dispatch, hairTryOnService, router]);
 
   const executeHairTryonGeneration = useCallback(async () => {
     if (needsTryOnPurchase) {

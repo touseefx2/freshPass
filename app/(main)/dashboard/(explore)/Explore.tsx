@@ -41,6 +41,7 @@ import {
   clearSearchState,
   setCurrentLocation,
   setAiService,
+  setTryOnPurchaseSuccessSource,
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import TryOnBanner from "./TryOnBanner";
@@ -162,6 +163,7 @@ export default function ExploreScreen() {
   useEffect(() => {
     if (showTryOnModal && hairTryOnService) {
       dispatch(setIsFirstShowTryOn(true));
+      dispatch(setTryOnPurchaseSuccessSource("explore"));
       router.push({
         pathname: "/(main)/tryOnPurchase",
         params: { serviceId: String(hairTryOnService.id), screen: "explore" },

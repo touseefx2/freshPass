@@ -94,6 +94,10 @@ export interface GeneralState {
   hasSeenStripeConnectCongrats: boolean;
   /** After Create from Stripe congrats — don't auto-open business plans this session */
   suppressBusinessPlansAutoOpen: boolean;
+  /** After AI Hair Try-On purchase success; not persisted */
+  tryOnPurchaseSuccessModalVisible: boolean;
+  /** Where purchase started — controls congrats CTA (explore navigates, tools just closes) */
+  tryOnPurchaseSuccessSource: "explore" | "tools" | null;
   /** Full-screen Remote Config gates (not persisted) — hide other modals while true */
   maintenanceModeActive: boolean;
   forceUpdateActive: boolean;
@@ -165,6 +169,8 @@ const initialState: GeneralState = {
   stripeConnectModalVisible: false,
   hasSeenStripeConnectCongrats: false,
   suppressBusinessPlansAutoOpen: false,
+  tryOnPurchaseSuccessModalVisible: false,
+  tryOnPurchaseSuccessSource: null,
   maintenanceModeActive: false,
   forceUpdateActive: false,
   bookingTryOnImageUrls: [],
@@ -303,6 +309,33 @@ const generalSlice = createSlice({
     setSuppressBusinessPlansAutoOpen(state, action: PayloadAction<boolean>) {
       state.suppressBusinessPlansAutoOpen = action.payload;
     },
+    setTryOnPurchaseSuccessModalVisible(
+      state,
+      action: PayloadAction<
+        | boolean
+        | { visible: boolean; source?: "explore" | "tools" }
+      >,
+    ) {
+      if (typeof action.payload === "boolean") {
+        state.tryOnPurchaseSuccessModalVisible = action.payload;
+        if (!action.payload) {
+          state.tryOnPurchaseSuccessSource = null;
+        }
+        return;
+      }
+      state.tryOnPurchaseSuccessModalVisible = action.payload.visible;
+      if (!action.payload.visible) {
+        state.tryOnPurchaseSuccessSource = null;
+      } else if (action.payload.source) {
+        state.tryOnPurchaseSuccessSource = action.payload.source;
+      }
+    },
+    setTryOnPurchaseSuccessSource(
+      state,
+      action: PayloadAction<"explore" | "tools" | null>,
+    ) {
+      state.tryOnPurchaseSuccessSource = action.payload;
+    },
     setMaintenanceModeActive(state, action: PayloadAction<boolean>) {
       state.maintenanceModeActive = action.payload;
       if (action.payload) {
@@ -310,6 +343,8 @@ const generalSlice = createSlice({
         state.businessPlansModalVisible = false;
         state.guestModeModalVisible = false;
         state.fullImageModalVisible = false;
+        state.tryOnPurchaseSuccessModalVisible = false;
+        state.tryOnPurchaseSuccessSource = null;
         state.actionLoader = false;
       }
     },
@@ -320,6 +355,8 @@ const generalSlice = createSlice({
         state.businessPlansModalVisible = false;
         state.guestModeModalVisible = false;
         state.fullImageModalVisible = false;
+        state.tryOnPurchaseSuccessModalVisible = false;
+        state.tryOnPurchaseSuccessSource = null;
         state.actionLoader = false;
       }
     },
@@ -468,6 +505,8 @@ const generalSlice = createSlice({
       // Keep hasSeenStripeConnectCongrats — must survive logout
       // state.hasSeenStripeConnectCongrats = false;
       state.suppressBusinessPlansAutoOpen = false;
+      state.tryOnPurchaseSuccessModalVisible = false;
+      state.tryOnPurchaseSuccessSource = null;
       state.maintenanceModeActive = false;
       state.forceUpdateActive = false;
       state.bookingTryOnImageUrls = [];
@@ -505,6 +544,8 @@ export const {
   setStripeConnectModalVisible,
   setHasSeenStripeConnectCongrats,
   setSuppressBusinessPlansAutoOpen,
+  setTryOnPurchaseSuccessModalVisible,
+  setTryOnPurchaseSuccessSource,
   setMaintenanceModeActive,
   setForceUpdateActive,
   setBookingTryOnImageUrls,
