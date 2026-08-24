@@ -121,8 +121,12 @@ interface StaffLeave {
   created_at: string;
 }
 
-const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
-  const hour24 = hour; // 0 to 23
+const SLOT_INTERVAL_MINUTES = 30;
+
+const TIME_SLOTS = Array.from({ length: (24 * 60) / SLOT_INTERVAL_MINUTES }, (_, index) => {
+  const totalMinutes = index * SLOT_INTERVAL_MINUTES;
+  const hour24 = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
   let formattedHour: number;
   let suffix: string;
 
@@ -140,7 +144,11 @@ const TIME_SLOTS = Array.from({ length: 24 }, (_, hour) => {
     suffix = "pm";
   }
 
-  return `${formattedHour} ${suffix}`;
+  if (minutes === 0) {
+    return `${formattedHour} ${suffix}`;
+  }
+
+  return `${formattedHour}:${minutes.toString().padStart(2, "0")} ${suffix}`;
 });
 
 const getWeekDays = (date: dayjs.Dayjs) => {
@@ -150,7 +158,9 @@ const getWeekDays = (date: dayjs.Dayjs) => {
 
 const convertTo24Hour = (time12h: string) => {
   const [time, period] = time12h.split(" ");
-  const hour = parseInt(time);
+  const [hourPart, minutePart = "0"] = time.split(":");
+  const hour = parseInt(hourPart, 10);
+  const minutes = parseInt(minutePart, 10);
   let hour24: number;
 
   if (period === "am") {
@@ -168,7 +178,7 @@ const convertTo24Hour = (time12h: string) => {
     }
   }
 
-  return `${hour24.toString().padStart(2, "0")}:00`;
+  return `${hour24.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
 };
 
 const createStyles = (theme: Theme) =>
@@ -300,7 +310,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(5),
 
       alignSelf: "flex-start",
-      marginBottom: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(8),
     },
     breakSlotText: {
       fontSize: fontSize.size11,
@@ -311,10 +321,10 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
-      minHeight: heightScale(80),
+      minHeight: heightScale(50),
     },
     timeSlotRowWithMultiple: {
-      minHeight: heightScale(120),
+      minHeight: heightScale(80),
     },
     timeSlot: {
       width: widthScale(80),
@@ -737,12 +747,12 @@ export default function CalendarScreen() {
   }, [leaves, selectedDate]);
 
   const getBreaksForSlot = useCallback(
-    (slotHour: number): StaffLeave[] => {
+    (slotHour: number, slotMinute: number = 0): StaffLeave[] => {
       const dateStr = selectedDate.format("YYYY-MM-DD");
       const slotStart = dayjs.utc(
-        `${dateStr}T${String(slotHour).padStart(2, "0")}:00:00.000Z`,
+        `${dateStr}T${String(slotHour).padStart(2, "0")}:${String(slotMinute).padStart(2, "0")}:00.000Z`,
       );
-      const slotEnd = slotStart.add(1, "hour");
+      const slotEnd = slotStart.add(SLOT_INTERVAL_MINUTES, "minute");
       return leaves.filter((l) => {
         if (l.type !== "break") return false;
         const bStart = dayjs.utc(l.start_time);
@@ -981,13 +991,16 @@ export default function CalendarScreen() {
   ) => {
     setLeaveDetailBoxVisible(false);
     setApplyBoxType(type);
-    const slotHour = slotTime12h
-      ? parseInt(convertTo24Hour(slotTime12h).split(":")[0], 10)
-      : 9;
+    const [slotHourStr, slotMinuteStr = "0"] = slotTime12h
+      ? convertTo24Hour(slotTime12h).split(":")
+      : ["9", "0"];
+    const slotHour = parseInt(slotHourStr, 10);
+    const slotMinute = parseInt(slotMinuteStr, 10);
+    const endTotalMinutes = slotHour * 60 + slotMinute + SLOT_INTERVAL_MINUTES;
     setApplyBoxSlotHour(slotHour);
-    setApplyBoxBreakStartMinutes(0);
-    setApplyBoxBreakEndHour(slotHour + 1 < 24 ? slotHour + 1 : 0);
-    setApplyBoxBreakEndMinutes(0);
+    setApplyBoxBreakStartMinutes(slotMinute);
+    setApplyBoxBreakEndHour(Math.floor(endTotalMinutes / 60) % 24);
+    setApplyBoxBreakEndMinutes(endTotalMinutes % 60);
     setApplyBoxVisible(true);
   };
 
@@ -1485,8 +1498,10 @@ export default function CalendarScreen() {
             >
               {TIME_SLOTS.map((time) => {
                 const timeSlot24h = convertTo24Hour(time);
-                const [slotHour] = timeSlot24h.split(":").map(Number);
-                const breaksInSlot = getBreaksForSlot(slotHour);
+                const [slotHour, slotMinute = 0] = timeSlot24h
+                  .split(":")
+                  .map(Number);
+                const breaksInSlot = getBreaksForSlot(slotHour, slotMinute);
                 const filteredAppointments = appointments.filter(
                   (appointment) => {
                     if (!appointment.scheduled_at) return false;
@@ -1506,12 +1521,11 @@ export default function CalendarScreen() {
                     const scheduledMinutes =
                       scheduledHour * 60 + scheduledMinute;
 
-                    const [slotHour] = timeSlot24h.split(":").map(Number);
-                    const slotMinutes = slotHour * 60;
+                    const slotMinutes = slotHour * 60 + slotMinute;
 
                     return (
                       scheduledMinutes >= slotMinutes &&
-                      scheduledMinutes < slotMinutes + 60
+                      scheduledMinutes < slotMinutes + SLOT_INTERVAL_MINUTES
                     );
                   },
                 );
