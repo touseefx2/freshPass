@@ -17,6 +17,7 @@ export type NotificationNavigationData = {
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
  * - type "ai_memory" → aiMemories (AI memories screen)
+ * - type "manageSubscriptionList" → Profile → Business profile settings → Manage subscriptions
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 export function navigateFromNotificationData(
@@ -69,6 +70,22 @@ export function navigateFromNotificationData(
   if (type === "ai_memory") {
     router.push("/(main)/aiMemories" as any);
     Logger.log("------>navigateFromNotificationData (ai_memory) -> aiMemories");
+    return;
+  }
+
+  if (type === "manageSubscriptionList") {
+    router.push("/(main)/dashboard/(account)");
+    setTimeout(() => {
+      router.push("/(main)/dashboard/(account)/(businessProfileSettings)");
+      setTimeout(() => {
+        router.push(
+          "/(main)/dashboard/(account)/(businessProfileSettings)/subscriptions",
+        );
+      }, 15);
+    }, 15);
+    Logger.log(
+      "------>navigateFromNotificationData (manageSubscriptionList) -> subscriptions",
+    );
     return;
   }
 
