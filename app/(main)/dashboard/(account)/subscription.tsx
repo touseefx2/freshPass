@@ -13,6 +13,7 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -353,20 +354,108 @@ const createStyles = (theme: Theme) =>
     },
     emptyContainer: {
       flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(60),
+      justifyContent: "flex-start",
       paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(20),
+      paddingBottom: moderateHeightScale(8),
+      gap: moderateHeightScale(20),
     },
-    emptyIcon: {
-      marginBottom: moderateHeightScale(20),
+    emptyIntroCard: {
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(20),
+      borderLeftWidth: 4,
+      borderLeftColor: theme.buttonBack,
     },
-    emptyText: {
-      fontSize: fontSize.size16,
+    emptyIntroTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(14),
+      marginBottom: moderateHeightScale(14),
+    },
+    emptyIntroTextWrap: {
+      flex: 1,
+    },
+    emptyIconWrap: {
+      width: moderateWidthScale(52),
+      height: moderateWidthScale(52),
+      borderRadius: moderateWidthScale(26),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emptyEyebrow: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(4),
+      letterSpacing: 0.4,
+      textTransform: "uppercase",
+    },
+    emptyTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    emptySubtitle: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.text,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
+    },
+    emptyBenefitsCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(6),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    emptyBenefitRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+    },
+    emptyBenefitIconWrap: {
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen05,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: moderateHeightScale(1),
+    },
+    emptyBenefitCopy: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    emptyBenefitTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    emptyBenefitText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size18,
+    },
+    emptyBenefitDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.borderLight,
+    },
+    emptyFooterHint: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
       textAlign: "center",
-      marginBottom: moderateHeightScale(8),
+      marginTop: moderateHeightScale(10),
+      lineHeight: fontSize.size16,
     },
     emptySubtext: {
       fontSize: fontSize.size14,
@@ -833,21 +922,76 @@ export default function SubscriptionScreen() {
       ) : !subscription ? (
         <>
           <View style={styles.emptyContainer}>
-            <Feather
-              name="credit-card"
-              size={moderateWidthScale(64)}
-              color={theme.lightGreen}
-              style={styles.emptyIcon}
-            />
-            <Text style={styles.emptyText}>
-              {t("noActiveSubscriptionFound")}
-            </Text>
+            <View style={styles.emptyIntroCard}>
+              <View style={styles.emptyIntroTop}>
+                <View style={styles.emptyIconWrap}>
+                  <Feather
+                    name="briefcase"
+                    size={iconScale(22)}
+                    color={theme.buttonBack}
+                  />
+                </View>
+                <View style={styles.emptyIntroTextWrap}>
+                  <Text style={styles.emptyEyebrow}>{t("subscription")}</Text>
+                  <Text style={styles.emptyTitle}>
+                    {t("noActiveSubscriptionFound")}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.emptySubtitle}>
+                {t("noActiveSubscriptionSubtitle")}
+              </Text>
+            </View>
+
+            <View style={styles.emptyBenefitsCard}>
+              {(
+                [
+                  {
+                    icon: "globe" as const,
+                    title: t("noActiveSubscriptionBenefit1"),
+                    text: t("noActiveSubscriptionBenefit1Desc"),
+                  },
+                  {
+                    icon: "calendar" as const,
+                    title: t("noActiveSubscriptionBenefit2"),
+                    text: t("noActiveSubscriptionBenefit2Desc"),
+                  },
+                  {
+                    icon: "zap" as const,
+                    title: t("noActiveSubscriptionBenefit3"),
+                    text: t("noActiveSubscriptionBenefit3Desc"),
+                  },
+                ] as const
+              ).map((item, index, list) => (
+                <React.Fragment key={item.icon}>
+                  <View style={styles.emptyBenefitRow}>
+                    <View style={styles.emptyBenefitIconWrap}>
+                      <Feather
+                        name={item.icon}
+                        size={iconScale(15)}
+                        color={theme.buttonBack}
+                      />
+                    </View>
+                    <View style={styles.emptyBenefitCopy}>
+                      <Text style={styles.emptyBenefitTitle}>{item.title}</Text>
+                      <Text style={styles.emptyBenefitText}>{item.text}</Text>
+                    </View>
+                  </View>
+                  {index < list.length - 1 ? (
+                    <View style={styles.emptyBenefitDivider} />
+                  ) : null}
+                </React.Fragment>
+              ))}
+            </View>
           </View>
           <View style={styles.buttonContainer}>
             <Button
-              title={t("buyPlan")}
+              title={t("chooseAPlan")}
               onPress={() => setBusinessPlansModalVisible(true)}
             />
+            <Text style={styles.emptyFooterHint}>
+              {t("noActiveSubscriptionFooterHint")}
+            </Text>
           </View>
         </>
       ) : (
