@@ -13,6 +13,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Pressable,
+  Image,
+  GestureResponderEvent,
+  DimensionValue,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -27,7 +30,6 @@ import {
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
-import { PersonIcon } from "@/assets/icons";
 import TimePickerModal from "@/src/components/timePickerModal";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -59,6 +61,9 @@ interface Appointment {
   status: string;
   user: string;
   userEmail: string;
+  userProfilePic?: string | null;
+  userImage?: string | null;
+  userAvatar?: string | null;
   subscription: string | null;
   subscriptionServices:
     | Array<{
@@ -103,10 +108,14 @@ interface CalendarAppointment {
   id: string;
   title: string;
   scheduled_at: string;
+  date: string;
+  start_minutes: number;
+  duration_minutes: number;
   duration: string;
   price: number;
   status_label: string;
   client_name: string;
+  avatar_url: string;
   originalAppointment: Appointment;
 }
 
@@ -121,64 +130,146 @@ interface StaffLeave {
   created_at: string;
 }
 
+interface PositionedAppointment {
+  appointment: CalendarAppointment;
+  top: number;
+  height: number;
+  lane: number;
+  laneCount: number;
+}
+
+interface BreakBlock {
+  leave: StaffLeave;
+  startMinutes: number;
+  endMinutes: number;
+}
+
+type ViewMode = "day" | "week" | "month";
+
 const SLOT_INTERVAL_MINUTES = 30;
-
-const TIME_SLOTS = Array.from({ length: (24 * 60) / SLOT_INTERVAL_MINUTES }, (_, index) => {
-  const totalMinutes = index * SLOT_INTERVAL_MINUTES;
-  const hour24 = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  let formattedHour: number;
-  let suffix: string;
-
-  if (hour24 === 0) {
-    formattedHour = 12;
-    suffix = "am";
-  } else if (hour24 < 12) {
-    formattedHour = hour24;
-    suffix = "am";
-  } else if (hour24 === 12) {
-    formattedHour = 12;
-    suffix = "pm";
-  } else {
-    formattedHour = hour24 - 12;
-    suffix = "pm";
-  }
-
-  if (minutes === 0) {
-    return `${formattedHour} ${suffix}`;
-  }
-
-  return `${formattedHour}:${minutes.toString().padStart(2, "0")} ${suffix}`;
-});
+const HOUR_HEIGHT = heightScale(148);
+const MIN_BLOCK_HEIGHT_COMPACT = heightScale(80);
+const MIN_BLOCK_HEIGHT_DETAILED = heightScale(62);
+const TIME_GUTTER_WIDTH = widthScale(38);
+const BLOCK_LINE_HEIGHT = moderateHeightScale(16);
+const BLOCK_AVATAR_SIZE = widthScale(18);
+const GRID_START_HOUR = 0;
+const GRID_END_HOUR = 24;
+const MONTH_CELL_HEIGHT = heightScale(54);
+const DAY_CIRCLE_SIZE = widthScale(36);
 
 const getWeekDays = (date: dayjs.Dayjs) => {
   const startOfWeek = date.startOf("week");
   return Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, "day"));
 };
 
-const convertTo24Hour = (time12h: string) => {
-  const [time, period] = time12h.split(" ");
-  const [hourPart, minutePart = "0"] = time.split(":");
-  const hour = parseInt(hourPart, 10);
-  const minutes = parseInt(minutePart, 10);
-  let hour24: number;
+const formatHourLabel = (hour: number) => {
+  const normalized = hour % 24;
+  const suffix = normalized < 12 ? "AM" : "PM";
+  const displayHour = normalized % 12 || 12;
+  return `${displayHour} ${suffix}`;
+};
 
-  if (period === "am") {
-    if (hour === 12) {
-      hour24 = 0; // 12 am = midnight (00:00)
-    } else {
-      hour24 = hour;
-    }
-  } else {
-    // pm
-    if (hour === 12) {
-      hour24 = 12; // 12 pm = noon (12:00)
-    } else {
-      hour24 = hour + 12;
-    }
+const formatMinutesLabel = (minutes: number) => {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  const suffix = hour < 12 ? "AM" : "PM";
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${minute.toString().padStart(2, "0")} ${suffix}`;
+};
+
+const formatShortTimeLabel = (minutes: number) => {
+  const hour = Math.floor(minutes / 60);
+  const minute = minutes % 60;
+  return `${hour % 12 || 12}:${minute.toString().padStart(2, "0")}`;
+};
+
+const resolveCustomerAvatar = (appointment: Appointment) => {
+  const fallback = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  const raw =
+    appointment.userProfilePic ??
+    appointment.userImage ??
+    appointment.userAvatar ??
+    null;
+
+  if (typeof raw !== "string" || raw.trim() === "") return fallback;
+
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
   }
 
-  return `${hour24.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  const base = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+  const path = trimmed.replace(/^\//, "");
+  return path ? `${base}/${path}` : fallback;
+};
+
+// Splits overlapping appointments of one day into side-by-side lanes
+const layoutDayAppointments = (
+  dayAppointments: CalendarAppointment[],
+  startHour: number,
+  minBlockHeight: number,
+): PositionedAppointment[] => {
+  const sorted = [...dayAppointments].sort(
+    (a, b) =>
+      a.start_minutes - b.start_minutes ||
+      a.duration_minutes - b.duration_minutes,
+  );
+
+  const positioned: PositionedAppointment[] = [];
+  let cluster: CalendarAppointment[] = [];
+  let clusterEnd = -1;
+
+  const blockMinutes = (appointment: CalendarAppointment) =>
+    Math.max(appointment.duration_minutes, SLOT_INTERVAL_MINUTES);
+
+  const flushCluster = () => {
+    if (cluster.length === 0) return;
+
+    const laneEnds: number[] = [];
+    const laneOf = new Map<string, number>();
+
+    cluster.forEach((appointment) => {
+      const end = appointment.start_minutes + blockMinutes(appointment);
+      let lane = laneEnds.findIndex(
+        (laneEnd) => laneEnd <= appointment.start_minutes,
+      );
+      if (lane === -1) lane = laneEnds.length;
+      laneEnds[lane] = end;
+      laneOf.set(appointment.id, lane);
+    });
+
+    cluster.forEach((appointment) => {
+      const offsetMinutes = appointment.start_minutes - startHour * 60;
+      positioned.push({
+        appointment,
+        top: (offsetMinutes / 60) * HOUR_HEIGHT,
+        height: Math.max(
+          (blockMinutes(appointment) / 60) * HOUR_HEIGHT,
+          minBlockHeight,
+        ),
+        lane: laneOf.get(appointment.id) ?? 0,
+        laneCount: laneEnds.length,
+      });
+    });
+
+    cluster = [];
+    clusterEnd = -1;
+  };
+
+  sorted.forEach((appointment) => {
+    if (cluster.length > 0 && appointment.start_minutes >= clusterEnd) {
+      flushCluster();
+    }
+    cluster.push(appointment);
+    clusterEnd = Math.max(
+      clusterEnd,
+      appointment.start_minutes + blockMinutes(appointment),
+    );
+  });
+  flushCluster();
+
+  return positioned;
 };
 
 const createStyles = (theme: Theme) =>
@@ -190,64 +281,131 @@ const createStyles = (theme: Theme) =>
     content: {
       flex: 1,
     },
-    calendarHeader: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(12),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-      backgroundColor: theme.lightGreen1,
-    },
-    weekNavigation: {
+    toolbar: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingTop: moderateHeightScale(12),
+      paddingBottom: moderateHeightScale(10),
+      gap: moderateWidthScale(8),
     },
-    weekText: {
-      fontSize: fontSize.size14,
+    segmentGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexShrink: 1,
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      padding: moderateWidthScale(3),
+    },
+    segment: {
+      flexShrink: 1,
+      paddingHorizontal: moderateWidthScale(11),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(16),
+    },
+    segmentActive: {
+      backgroundColor: theme.darkGreen,
+    },
+    segmentText: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.text,
+      color: theme.darkGreen,
+    },
+    segmentTextActive: {
+      color: theme.white,
+      fontFamily: fonts.fontBold,
+    },
+    toolbarRight: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexShrink: 0,
+      gap: moderateWidthScale(6),
+    },
+    todayButton: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.orangeBrown30,
+    },
+    todayButtonText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.selectCard,
     },
     arrowButton: {
-      padding: moderateWidthScale(8),
-    },
-    daysRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(4),
-    },
-    dayContainer: {
+      width: widthScale(32),
+      height: widthScale(32),
+      borderRadius: widthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
       alignItems: "center",
-      flex: 1,
+      justifyContent: "center",
+    },
+    rangeRow: {
+      alignItems: "center",
+      paddingBottom: moderateHeightScale(10),
+    },
+    rangeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    daysStrip: {
+      flexDirection: "row",
+      paddingTop: moderateHeightScale(6),
+      paddingBottom: moderateHeightScale(8),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    daysStripGutter: {
+      width: TIME_GUTTER_WIDTH,
+    },
+    dayCell: {
+      alignItems: "center",
     },
     dayName: {
       fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
-      marginBottom: moderateHeightScale(8),
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(5),
     },
     dayNumberContainer: {
-      width: widthScale(36),
-      height: widthScale(36),
-      borderRadius: widthScale(18),
+      width: DAY_CIRCLE_SIZE,
+      height: DAY_CIRCLE_SIZE,
+      borderRadius: DAY_CIRCLE_SIZE / 2,
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
     },
     dayNumberSelected: {
-      backgroundColor: theme.orangeBrown30,
+      backgroundColor: theme.darkGreen,
+    },
+    dayNumberToday: {
+      borderWidth: 1.5,
+      borderColor: theme.orangeBrown,
     },
     dayNumber: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontMedium,
-      color: theme.text,
+      color: theme.darkGreen,
+      textAlign: "center",
+      includeFontPadding: false,
     },
-    dayNumberSelectedText: {
-      color: theme.text,
+    dayDot: {
+      width: widthScale(5),
+      height: widthScale(5),
+      borderRadius: widthScale(3),
+      backgroundColor: theme.buttonBack,
+      marginTop: moderateHeightScale(3),
     },
-    dayNumberTodayText: {
-      color: theme.primary,
+    dayDotPlaceholder: {
+      width: widthScale(5),
+      height: widthScale(5),
+      marginTop: moderateHeightScale(3),
     },
     agendaContainer: {
       flex: 1,
@@ -257,24 +415,12 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
-    },
-    allDayLabel: {
-      width: widthScale(80),
-      paddingVertical: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(12),
-      borderRightWidth: 1,
-      borderRightColor: theme.borderLight,
-      justifyContent: "center",
-    },
-    allDayText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      backgroundColor: theme.lightGreen05,
     },
     todayLabel: {
       flex: 1,
-      paddingVertical: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
       justifyContent: "center",
     },
     todayLabelRow: {
@@ -284,8 +430,8 @@ const createStyles = (theme: Theme) =>
     },
     todayText: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
     leaveBox: {
       flexDirection: "row",
@@ -304,128 +450,292 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.primary,
     },
-    breakSlotBox: {
+    manageAvailabilityText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.primary,
+      marginLeft: moderateWidthScale(8),
+    },
+    gridRow: {
+      flexDirection: "row",
+    },
+    timeGutter: {
+      width: TIME_GUTTER_WIDTH,
+      borderRightWidth: 1,
+      borderRightColor: theme.borderLight,
+    },
+    hourLabel: {
+      position: "absolute",
+      right: moderateWidthScale(4),
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen6,
+    },
+    columnsArea: {
+      flex: 1,
+    },
+    hourLine: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      height: 1,
+      backgroundColor: theme.borderLight,
+    },
+    halfHourLine: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      height: 1,
+      backgroundColor: theme.lightGreen05,
+    },
+    columnsRow: {
+      flexDirection: "row",
+    },
+    dayColumn: {
+      borderLeftWidth: 1,
+      borderLeftColor: theme.borderLight,
+    },
+    dayColumnSelected: {
+      backgroundColor: theme.lightGreen05,
+    },
+    blockWrapper: {
+      position: "absolute",
+      paddingHorizontal: moderateWidthScale(1),
+      paddingBottom: moderateHeightScale(2),
+    },
+    block: {
+      flex: 1,
+      borderRadius: moderateWidthScale(6),
+      borderLeftWidth: 2,
+      paddingHorizontal: moderateWidthScale(3),
+      paddingVertical: moderateHeightScale(4),
+      justifyContent: "space-between",
+      overflow: "hidden",
+    },
+    blockTime: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      lineHeight: BLOCK_LINE_HEIGHT,
+    },
+    blockClient: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      lineHeight: BLOCK_LINE_HEIGHT,
+    },
+    blockService: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: BLOCK_LINE_HEIGHT,
+    },
+    blockAvatar: {
+      alignSelf: "flex-start",
+      width: BLOCK_AVATAR_SIZE,
+      height: BLOCK_AVATAR_SIZE,
+      borderRadius: BLOCK_AVATAR_SIZE / 2,
+      backgroundColor: theme.emptyProfileImage,
+    },
+    blockDetailed: {
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(10),
+    },
+    detailRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(5),
-
-      alignSelf: "flex-start",
-      marginBottom: moderateHeightScale(8),
+      gap: moderateWidthScale(10),
     },
-    breakSlotText: {
+    detailAvatar: {
+      width: widthScale(32),
+      height: widthScale(32),
+      borderRadius: widthScale(16),
+      backgroundColor: theme.emptyProfileImage,
+    },
+    detailInfo: {
+      flex: 1,
+    },
+    detailTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    detailMeta: {
       fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
+    },
+    statusBadge: {
+      backgroundColor: theme.appointmentStatus,
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(4),
+    },
+    statusBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.appointmentStatusText,
+    },
+    breakBlock: {
+      position: "absolute",
+      left: moderateWidthScale(2),
+      right: moderateWidthScale(2),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.orangeBrown015,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: moderateWidthScale(4),
+      overflow: "hidden",
+    },
+    breakBlockText: {
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontBold,
       color: theme.selectCard,
     },
-    timeSlotRow: {
+    closedTint: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: theme.orangeBrown01,
+    },
+    closedChip: {
+      position: "absolute",
+      top: moderateHeightScale(6),
+      left: 0,
+      right: 0,
+      alignItems: "center",
+    },
+    closedChipInner: {
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.orangeBrown30,
+    },
+    closedChipText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.selectCard,
+    },
+    nowLine: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      height: 1.5,
+      backgroundColor: theme.buttonBack,
+      zIndex: 5,
+    },
+    nowDot: {
+      position: "absolute",
+      left: -widthScale(3),
+      top: -widthScale(3),
+      width: widthScale(7),
+      height: widthScale(7),
+      borderRadius: widthScale(4),
+      backgroundColor: theme.buttonBack,
+    },
+    nowPill: {
+      position: "absolute",
+      right: moderateWidthScale(2),
+      paddingHorizontal: moderateWidthScale(5),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.buttonBack,
+      zIndex: 6,
+    },
+    nowPillText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    monthWeekdaysRow: {
       flexDirection: "row",
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-      minHeight: heightScale(50),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingBottom: moderateHeightScale(6),
     },
-    timeSlotRowWithMultiple: {
-      minHeight: heightScale(80),
-    },
-    timeSlot: {
-      width: widthScale(80),
-      paddingVertical: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(12),
-      borderRightWidth: 1,
-      borderRightColor: theme.borderLight,
-      justifyContent: "flex-start",
-    },
-    timeSlotText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
-    },
-    appointmentsContainer: {
+    monthWeekdayText: {
       flex: 1,
-      paddingVertical: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(12),
+      textAlign: "center",
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
-    appointmentWrapper: {
-      marginBottom: moderateHeightScale(8),
+    monthRow: {
+      flexDirection: "row",
+      paddingHorizontal: moderateWidthScale(8),
     },
-    appointmentWrapperLast: {
-      marginBottom: 0,
-    },
-    appointmentCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
+    monthCell: {
+      flex: 1,
+      height: MONTH_CELL_HEIGHT,
+      alignItems: "center",
+      justifyContent: "flex-start",
+      paddingTop: moderateHeightScale(4),
       borderWidth: 1,
       borderColor: theme.borderLight,
     },
-    shadow: {
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
-      elevation: 2,
+    monthCellSelected: {
+      backgroundColor: theme.lightGreen07,
     },
-    appointmentHeader: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: moderateHeightScale(8),
-      width: "100%",
-    },
-    appointmentLeftSection: {
-      width: "70%",
-    },
-    appointmentTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    appointmentRightSection: {
-      alignItems: "flex-end",
-      gap: moderateHeightScale(8),
-      width: "29%",
-    },
-    clientNameContainer: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
-    },
-    clientNameText: {
+    monthCellNumber: {
       fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
-      width: "70%",
     },
-    appointmentStatus: {
-      backgroundColor: theme.orangeBrown30,
-      paddingHorizontal: moderateWidthScale(4),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(4),
+    monthCellNumberMuted: {
+      color: theme.lightGreen4,
     },
-    appointmentStatusText: {
+    monthCellNumberToday: {
+      color: theme.selectCard,
+      fontFamily: fonts.fontBold,
+    },
+    monthDotsRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(2),
+      marginTop: moderateHeightScale(4),
+    },
+    monthDot: {
+      width: widthScale(5),
+      height: widthScale(5),
+      borderRadius: widthScale(3),
+      backgroundColor: theme.buttonBack,
+    },
+    monthCountText: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
-      color: theme.selectCard,
-    },
-    appointmentMeta: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
+    },
+    monthListHeader: {
+      paddingHorizontal: moderateWidthScale(14),
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(6),
+    },
+    monthListHeaderText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    listCard: {
+      marginHorizontal: moderateWidthScale(14),
+      marginBottom: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(10),
+      borderLeftWidth: 3,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
     },
     emptyState: {
-      paddingVertical: moderateHeightScale(20),
+      paddingVertical: moderateHeightScale(24),
       alignItems: "center",
     },
     emptyStateText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-    },
-    timeSlotClickable: {
-      flex: 1,
     },
     applyBoxOverlay: {
       position: "absolute",
@@ -666,11 +976,15 @@ export default function CalendarScreen() {
   }, [i18n.language]);
 
   const today = dayjs();
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [selectedDate, setSelectedDate] = useState(today);
   const [week, setWeek] = useState(getWeekDays(today));
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
   const [leaves, setLeaves] = useState<StaffLeave[]>([]);
   const [loading, setLoading] = useState(false);
+  const [nowMinutes, setNowMinutes] = useState(
+    today.hour() * 60 + today.minute(),
+  );
   const [applyBoxVisible, setApplyBoxVisible] = useState(false);
   const [applyBoxType, setApplyBoxType] = useState<"leave" | "break">("leave");
   const [applyBoxSlotHour, setApplyBoxSlotHour] = useState(9);
@@ -691,21 +1005,51 @@ export default function CalendarScreen() {
   const currentDate = selectedDate.format("YYYY-MM-DD");
   const isPastDate = selectedDate.isBefore(today, "day");
 
-  // Set to current week on mount
+  const blockPalette = useMemo(
+    () => [
+      { bg: theme.lightGreen07, accent: theme.buttonBack },
+      { bg: theme.orangeBrown015, accent: theme.orangeBrown },
+      { bg: theme.upcomingCard, accent: theme.selectCard },
+      { bg: theme.lightGreen1, accent: theme.darkGreenLight },
+    ],
+    [theme],
+  );
+
+  const getPalette = useCallback(
+    (id: string) => {
+      const numeric = Number(id.replace(/\D/g, "")) || id.length;
+      return blockPalette[numeric % blockPalette.length];
+    },
+    [blockPalette],
+  );
+
+  const fetchRange = useMemo(() => {
+    if (viewMode === "month") {
+      return {
+        from: selectedDate.startOf("month").startOf("week"),
+        to: selectedDate.endOf("month").endOf("week"),
+      };
+    }
+    return { from: week[0], to: week[6] };
+  }, [viewMode, selectedDate, week]);
+
+  const fetchFrom = fetchRange.from.format("YYYY-MM-DD");
+  const fetchTo = fetchRange.to.format("YYYY-MM-DD");
+
   useEffect(() => {
-    const currentWeek = getWeekDays(today);
-    setWeek(currentWeek);
-    setSelectedDate(today);
+    const interval = setInterval(() => {
+      const now = dayjs();
+      setNowMinutes(now.hour() * 60 + now.minute());
+    }, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Fetch appointments when week changes
+  // Fetch appointments whenever the visible range changes
   useEffect(() => {
     if (userRole === "business" || userRole === "staff") {
-      if (week.length > 0) {
-        fetchAppointments();
-      }
+      fetchAppointments(fetchFrom, fetchTo);
     }
-  }, [week]);
+  }, [fetchFrom, fetchTo, userRole]);
 
   // Refetch leaves when screen comes into focus (staff and business)
   useFocusEffect(
@@ -746,31 +1090,24 @@ export default function CalendarScreen() {
     });
   }, [leaves, selectedDate]);
 
-  const getBreaksForSlot = useCallback(
-    (slotHour: number, slotMinute: number = 0): StaffLeave[] => {
-      const dateStr = selectedDate.format("YYYY-MM-DD");
-      const slotStart = dayjs.utc(
-        `${dateStr}T${String(slotHour).padStart(2, "0")}:${String(slotMinute).padStart(2, "0")}:00.000Z`,
-      );
-      const slotEnd = slotStart.add(SLOT_INTERVAL_MINUTES, "minute");
-      return leaves.filter((l) => {
-        if (l.type !== "break") return false;
-        const bStart = dayjs.utc(l.start_time);
-        const bEnd = dayjs.utc(l.end_time);
-        return !slotStart.isAfter(bEnd) && slotEnd.isAfter(bStart);
-      });
-    },
-    [leaves, selectedDate],
-  );
+  const breakBlocks = useMemo<BreakBlock[]>(() => {
+    return leaves
+      .filter((l) => l.type === "break")
+      .map((l) => {
+        const start = dayjs.utc(l.start_time);
+        const end = dayjs.utc(l.end_time);
+        return {
+          leave: l,
+          startMinutes: start.hour() * 60 + start.minute(),
+          endMinutes: end.hour() * 60 + end.minute(),
+        };
+      })
+      .filter((block) => block.endMinutes > block.startMinutes);
+  }, [leaves]);
 
-  const fetchAppointments = async () => {
-    if (week.length === 0) return;
-
+  const fetchAppointments = async (fromDate: string, toDate: string) => {
     setLoading(true);
     try {
-      const appointment_from_date = week[0].format("YYYY-MM-DD");
-      const appointment_to_date = week[6].format("YYYY-MM-DD");
-
       const response = await ApiService.get<{
         success: boolean;
         message: string;
@@ -785,8 +1122,8 @@ export default function CalendarScreen() {
         };
       }>(
         appointmentsEndpoints.list({
-          appointment_from_date,
-          appointment_to_date,
+          appointment_from_date: fromDate,
+          appointment_to_date: toDate,
           per_page: 100,
           direction: "desc",
         }),
@@ -872,8 +1209,12 @@ export default function CalendarScreen() {
       const year = dateParts[2];
       const [hour, minute] = appointment.appointmentTime.split(":");
 
+      const dateKey = `${year}-${month}-${day}`;
+      const startMinutes =
+        parseInt(hour, 10) * 60 + parseInt(minute || "0", 10);
+
       const scheduledAt = dayjs(
-        `${year}-${month}-${day} ${hour}:${minute}`,
+        `${dateKey} ${hour}:${minute}`,
         "YYYY-MM-DD HH:mm",
       ).toISOString();
 
@@ -893,44 +1234,158 @@ export default function CalendarScreen() {
         id: appointment.id.toString(),
         title: getServiceTitles(),
         scheduled_at: scheduledAt,
+        date: dateKey,
+        start_minutes: startMinutes,
+        duration_minutes: totalMinutes,
         duration: durationText,
         price: parseFloat(appointment.paidAmount),
         status_label: statusLabel,
         client_name: clientName,
+        avatar_url: resolveCustomerAvatar(appointment),
         originalAppointment: appointment,
       };
     });
   };
 
-  const nextWeek = () => {
-    const next = selectedDate.add(7, "day");
-    const nextWeekDays = getWeekDays(next);
-    setSelectedDate(nextWeekDays[0]);
-    setWeek(nextWeekDays);
+  const appointmentsByDate = useMemo(() => {
+    const map: Record<string, CalendarAppointment[]> = {};
+    appointments.forEach((appointment) => {
+      if (!map[appointment.date]) map[appointment.date] = [];
+      map[appointment.date].push(appointment);
+    });
+    return map;
+  }, [appointments]);
+
+  const gridDays = useMemo(
+    () => (viewMode === "week" ? week : [selectedDate]),
+    [viewMode, week, selectedDate],
+  );
+
+  // Full day grid, one row per hour (12 AM – 12 AM)
+  const hours = useMemo(
+    () =>
+      Array.from(
+        { length: GRID_END_HOUR - GRID_START_HOUR + 1 },
+        (_, index) => GRID_START_HOUR + index,
+      ),
+    [],
+  );
+
+  const gridHeight = (GRID_END_HOUR - GRID_START_HOUR) * HOUR_HEIGHT;
+
+  const layoutByDate = useMemo(() => {
+    const map: Record<string, PositionedAppointment[]> = {};
+    gridDays.forEach((day) => {
+      const key = day.format("YYYY-MM-DD");
+      map[key] = layoutDayAppointments(
+        appointmentsByDate[key] ?? [],
+        GRID_START_HOUR,
+        viewMode === "day"
+          ? MIN_BLOCK_HEIGHT_DETAILED
+          : MIN_BLOCK_HEIGHT_COMPACT,
+      );
+    });
+    return map;
+  }, [gridDays, appointmentsByDate, viewMode]);
+
+  const isTodayVisible = useMemo(
+    () => gridDays.some((day) => day.isSame(today, "day")),
+    [gridDays],
+  );
+
+  const nowTop = ((nowMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+  const showNowLine = isTodayVisible && viewMode !== "month";
+
+  const monthWeeks = useMemo(() => {
+    const start = selectedDate.startOf("month").startOf("week");
+    const end = selectedDate.endOf("month").endOf("week");
+    const rows: dayjs.Dayjs[][] = [];
+    let cursor = start;
+    while (cursor.isBefore(end, "day") || cursor.isSame(end, "day")) {
+      rows.push(Array.from({ length: 7 }, (_, i) => cursor.add(i, "day")));
+      cursor = cursor.add(7, "day");
+    }
+    return rows;
+  }, [selectedDate]);
+
+  const selectedDayAppointments = useMemo(
+    () =>
+      [...(appointmentsByDate[currentDate] ?? [])].sort(
+        (a, b) => a.start_minutes - b.start_minutes,
+      ),
+    [appointmentsByDate, currentDate],
+  );
+
+  // Bring the grid to the current time (or first appointment) of the visible day
+  useEffect(() => {
+    if (viewMode === "month") return;
+    const firstAppointment = selectedDayAppointments[0];
+    const anchorMinutes = isTodayVisible
+      ? nowMinutes
+      : (firstAppointment?.start_minutes ?? 9 * 60);
+    const offset =
+      ((anchorMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT - HOUR_HEIGHT;
+    const timeout = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(0, offset),
+        animated: false,
+      });
+    }, 80);
+    return () => clearTimeout(timeout);
+  }, [viewMode, currentDate, selectedDayAppointments.length]);
+
+  const closeOverlays = () => {
+    setApplyBoxVisible(false);
+    setLeaveDetailBoxVisible(false);
   };
 
-  const prevWeek = () => {
-    const prev = selectedDate.subtract(7, "day");
-    const prevWeekDays = getWeekDays(prev);
-    setSelectedDate(prevWeekDays[6]);
-    setWeek(prevWeekDays);
+  const goToDate = (date: dayjs.Dayjs) => {
+    setSelectedDate(date);
+    setWeek(getWeekDays(date));
   };
 
-  const formatDate = (date: dayjs.Dayjs) => {
-    if (date.isSame(today, "day")) {
-      return t("todayInParens");
-    } else if (date.isSame(today.add(1, "day"), "day")) {
-      return t("tomorrowInParens");
-    } else if (date.isSame(today.subtract(1, "day"), "day")) {
-      return t("yesterdayInParens");
+  const handlePrev = () => {
+    closeOverlays();
+    if (viewMode === "day") {
+      goToDate(selectedDate.subtract(1, "day"));
+    } else if (viewMode === "week") {
+      goToDate(selectedDate.subtract(7, "day"));
     } else {
-      return `(${date.format("MMM D, YYYY")})`;
+      goToDate(selectedDate.subtract(1, "month").startOf("month"));
     }
   };
 
-  const formatAppointmentDate = (dateString: string) => {
-    const date = dayjs(dateString);
-    return `${date.format("M/D/YYYY")} - ${date.format("h:mm a")}`;
+  const handleNext = () => {
+    closeOverlays();
+    if (viewMode === "day") {
+      goToDate(selectedDate.add(1, "day"));
+    } else if (viewMode === "week") {
+      goToDate(selectedDate.add(7, "day"));
+    } else {
+      goToDate(selectedDate.add(1, "month").startOf("month"));
+    }
+  };
+
+  const handleToday = () => {
+    closeOverlays();
+    goToDate(dayjs());
+  };
+
+  const rangeLabel = useMemo(() => {
+    if (viewMode === "day") return selectedDate.format("dddd, MMM D, YYYY");
+    if (viewMode === "month") return selectedDate.format("MMMM YYYY");
+    return `${week[0].format("MMM D")} - ${week[6].format("MMM D, YYYY")}`;
+  }, [viewMode, selectedDate, week]);
+
+  const formatDate = (date: dayjs.Dayjs) => {
+    if (date.isSame(today, "day")) {
+      return t("today");
+    } else if (date.isSame(today.add(1, "day"), "day")) {
+      return t("tomorrow");
+    } else if (date.isSame(today.subtract(1, "day"), "day")) {
+      return t("yesterday");
+    }
+    return date.format("MMM D, YYYY");
   };
 
   const openLeaveDetailBox = (leave: StaffLeave) => {
@@ -943,12 +1398,6 @@ export default function CalendarScreen() {
     if (!iso) return "—";
     const datePart = iso.slice(0, 10);
     return dayjs(datePart).format("MMM D, YYYY");
-  };
-
-  const formatLeaveDetailDateTime = (iso: string) => {
-    if (!iso) return "—";
-    const d = dayjs.utc(iso);
-    return d.format("MMM D, YYYY · h:mm a");
   };
 
   const formatLeaveDetailTimeOnly = (iso: string) => {
@@ -987,20 +1436,16 @@ export default function CalendarScreen() {
 
   const openApplyBox = (
     type: "leave" | "break" = "leave",
-    slotTime12h?: string,
+    startMinutes?: number,
   ) => {
     setLeaveDetailBoxVisible(false);
     setApplyBoxType(type);
-    const [slotHourStr, slotMinuteStr = "0"] = slotTime12h
-      ? convertTo24Hour(slotTime12h).split(":")
-      : ["9", "0"];
-    const slotHour = parseInt(slotHourStr, 10);
-    const slotMinute = parseInt(slotMinuteStr, 10);
-    const endTotalMinutes = slotHour * 60 + slotMinute + SLOT_INTERVAL_MINUTES;
-    setApplyBoxSlotHour(slotHour);
-    setApplyBoxBreakStartMinutes(slotMinute);
-    setApplyBoxBreakEndHour(Math.floor(endTotalMinutes / 60) % 24);
-    setApplyBoxBreakEndMinutes(endTotalMinutes % 60);
+    const start = startMinutes ?? 9 * 60;
+    const end = start + SLOT_INTERVAL_MINUTES;
+    setApplyBoxSlotHour(Math.floor(start / 60));
+    setApplyBoxBreakStartMinutes(start % 60);
+    setApplyBoxBreakEndHour(Math.floor(end / 60) % 24);
+    setApplyBoxBreakEndMinutes(end % 60);
     setApplyBoxVisible(true);
   };
 
@@ -1119,88 +1564,528 @@ export default function CalendarScreen() {
     }
   };
 
+  const openAppointment = (appointment: CalendarAppointment) => {
+    router.push({
+      pathname: "/(main)/bookingDetailsById",
+      params: {
+        bookingId: appointment.id,
+      },
+    });
+  };
+
+  const handleColumnPress = (
+    day: dayjs.Dayjs,
+    event: GestureResponderEvent,
+  ) => {
+    if (!canManageLeaves) return;
+    if (day.isBefore(today, "day")) return;
+
+    if (applyBoxVisible || leaveDetailBoxVisible) {
+      closeOverlays();
+      return;
+    }
+
+    const rawMinutes =
+      GRID_START_HOUR * 60 +
+      Math.max(0, (event.nativeEvent.locationY / HOUR_HEIGHT) * 60);
+    const snapped = Math.min(
+      23 * 60 + 30,
+      Math.floor(rawMinutes / SLOT_INTERVAL_MINUTES) * SLOT_INTERVAL_MINUTES,
+    );
+
+    if (!day.isSame(selectedDate, "day")) {
+      setSelectedDate(day);
+    }
+    openApplyBox("break", snapped);
+  };
+
+  const laneStyle = (lane: number, laneCount: number) => ({
+    left: `${(lane * 100) / laneCount}%` as DimensionValue,
+    width: `${100 / laneCount}%` as DimensionValue,
+  });
+
+  const renderCompactBlock = (positioned: PositionedAppointment) => {
+    const { appointment, top, height, lane, laneCount } = positioned;
+    const palette = getPalette(appointment.id);
+    // Time + client + avatar + padding are always shown, the rest of the box is
+    // filled with as many service lines as fit.
+    const reservedHeight =
+      BLOCK_LINE_HEIGHT * 2 + BLOCK_AVATAR_SIZE + moderateHeightScale(12);
+    const serviceLines = Math.max(
+      1,
+      Math.min(4, Math.floor((height - reservedHeight) / BLOCK_LINE_HEIGHT)),
+    );
+    return (
+      <View
+        key={appointment.id}
+        style={[
+          styles.blockWrapper,
+          { top, height },
+          laneStyle(lane, laneCount),
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.block,
+            { backgroundColor: palette.bg, borderLeftColor: palette.accent },
+          ]}
+          activeOpacity={0.8}
+          onPress={() => openAppointment(appointment)}
+        >
+          <Text
+            numberOfLines={1}
+            style={[styles.blockTime, { color: palette.accent }]}
+          >
+            {formatShortTimeLabel(appointment.start_minutes)}
+          </Text>
+          <Text numberOfLines={1} style={styles.blockClient}>
+            {appointment.client_name}
+          </Text>
+          <Text numberOfLines={serviceLines} style={styles.blockService}>
+            {appointment.title}
+          </Text>
+          <Image
+            source={{ uri: appointment.avatar_url }}
+            style={styles.blockAvatar}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderDetailCardContent = (appointment: CalendarAppointment) => (
+    <View style={styles.detailRow}>
+      <Image
+        source={{ uri: appointment.avatar_url }}
+        style={styles.detailAvatar}
+        resizeMode="cover"
+      />
+      <View style={styles.detailInfo}>
+        <Text numberOfLines={1} style={styles.detailTitle}>
+          {appointment.title}
+        </Text>
+        <Text numberOfLines={1} style={styles.detailMeta}>
+          {formatMinutesLabel(appointment.start_minutes)} •{" "}
+          {appointment.duration} • {appointment.client_name}
+        </Text>
+      </View>
+      <View style={styles.statusBadge}>
+        <Text numberOfLines={1} style={styles.statusBadgeText}>
+          {appointment.status_label}
+        </Text>
+      </View>
+    </View>
+  );
+
+  const renderDetailBlock = (positioned: PositionedAppointment) => {
+    const { appointment, top, height, lane, laneCount } = positioned;
+    const palette = getPalette(appointment.id);
+    return (
+      <View
+        key={appointment.id}
+        style={[
+          styles.blockWrapper,
+          { top, height },
+          laneStyle(lane, laneCount),
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.block,
+            styles.blockDetailed,
+            { backgroundColor: palette.bg, borderLeftColor: palette.accent },
+          ]}
+          activeOpacity={0.8}
+          onPress={() => openAppointment(appointment)}
+        >
+          {renderDetailCardContent(appointment)}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderListCard = (appointment: CalendarAppointment) => {
+    const palette = getPalette(appointment.id);
+    return (
+      <TouchableOpacity
+        key={appointment.id}
+        style={[
+          styles.listCard,
+          { backgroundColor: palette.bg, borderLeftColor: palette.accent },
+        ]}
+        activeOpacity={0.8}
+        onPress={() => openAppointment(appointment)}
+      >
+        {renderDetailCardContent(appointment)}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderDayColumn = (day: dayjs.Dayjs, columnWidth?: number) => {
+    const dateStr = day.format("YYYY-MM-DD");
+    const positionedList = layoutByDate[dateStr] ?? [];
+    const isSelectedDay = day.isSame(selectedDate, "day");
+    const showClosedOverlay =
+      isSelectedDay && leaveForSelectedDate?.type === "leave";
+
+    return (
+      <Pressable
+        key={dateStr}
+        style={[
+          styles.dayColumn,
+          columnWidth ? { width: columnWidth } : { flex: 1 },
+          { height: gridHeight },
+          viewMode === "week" && isSelectedDay && styles.dayColumnSelected,
+        ]}
+        onPress={(event) => handleColumnPress(day, event)}
+      >
+        {isSelectedDay &&
+          breakBlocks.map((block) => {
+            const top =
+              ((block.startMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+            const height = Math.max(
+              ((block.endMinutes - block.startMinutes) / 60) * HOUR_HEIGHT,
+              heightScale(20),
+            );
+            return (
+              <TouchableOpacity
+                key={`break-${block.leave.id}`}
+                style={[styles.breakBlock, { top, height }]}
+                activeOpacity={0.8}
+                onPress={() => openLeaveDetailBox(block.leave)}
+              >
+                <MaterialIcons
+                  name="free-breakfast"
+                  size={iconScale(12)}
+                  color={theme.selectCard}
+                />
+                <Text style={styles.breakBlockText}>{t("breakUpper")}</Text>
+              </TouchableOpacity>
+            );
+          })}
+
+        {positionedList.map((positioned) =>
+          viewMode === "day"
+            ? renderDetailBlock(positioned)
+            : renderCompactBlock(positioned),
+        )}
+
+        {showClosedOverlay && leaveForSelectedDate ? (
+          <>
+            <View style={styles.closedTint} pointerEvents="none" />
+            <TouchableOpacity
+              style={styles.closedChip}
+              activeOpacity={0.8}
+              onPress={() => openLeaveDetailBox(leaveForSelectedDate)}
+            >
+              <View style={styles.closedChipInner}>
+                <Text numberOfLines={1} style={styles.closedChipText}>
+                  {t("closeUpper")}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </>
+        ) : null}
+      </Pressable>
+    );
+  };
+
+  const renderDayCell = (day: dayjs.Dayjs, fixedWidth?: number) => {
+    const dateStr = day.format("YYYY-MM-DD");
+    const hasAppointments = (appointmentsByDate[dateStr] ?? []).length > 0;
+    const isSelected = day.isSame(selectedDate, "day");
+    const isToday = day.isSame(today, "day");
+    return (
+      <TouchableOpacity
+        key={dateStr}
+        style={[styles.dayCell, fixedWidth ? { width: fixedWidth } : { flex: 1 }]}
+        activeOpacity={0.7}
+        onPress={() => {
+          closeOverlays();
+          setSelectedDate(day);
+        }}
+      >
+        <Text style={styles.dayName}>{day.format("ddd")}</Text>
+        <View
+          style={[
+            styles.dayNumberContainer,
+            isSelected && styles.dayNumberSelected,
+            isToday && styles.dayNumberToday,
+          ]}
+        >
+          <Text
+            style={[
+              styles.dayNumber,
+              {
+                color: isSelected
+                  ? theme.white
+                  : isToday
+                    ? theme.selectCard
+                    : theme.darkGreen,
+                fontFamily:
+                  isSelected || isToday ? fonts.fontBold : fonts.fontMedium,
+              },
+            ]}
+          >
+            {day.format("D")}
+          </Text>
+        </View>
+        {hasAppointments ? (
+          <View style={styles.dayDot} />
+        ) : (
+          <View style={styles.dayDotPlaceholder} />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderTimeGrid = (columnWidth?: number) => (
+    <ScrollView
+      ref={scrollViewRef}
+      style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{
+        paddingTop: moderateHeightScale(12),
+        paddingBottom: moderateHeightScale(28),
+      }}
+    >
+      <View style={[styles.gridRow, { height: gridHeight }]}>
+        <View style={[styles.timeGutter, { height: gridHeight }]}>
+          {hours.map((hour, index) => (
+            <Text
+              key={hour}
+              style={[
+                styles.hourLabel,
+                { top: index * HOUR_HEIGHT - moderateHeightScale(6) },
+              ]}
+            >
+              {formatHourLabel(hour)}
+            </Text>
+          ))}
+          {showNowLine && (
+            <View
+              style={[
+                styles.nowPill,
+                { top: nowTop - moderateHeightScale(8) },
+              ]}
+            >
+              <Text style={styles.nowPillText}>
+                {formatShortTimeLabel(nowMinutes)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={[styles.columnsArea, { height: gridHeight }]}>
+          {hours.map((hour, index) => (
+            <React.Fragment key={`line-${hour}`}>
+              <View style={[styles.hourLine, { top: index * HOUR_HEIGHT }]} />
+              {index < hours.length - 1 && (
+                <View
+                  style={[
+                    styles.halfHourLine,
+                    { top: index * HOUR_HEIGHT + HOUR_HEIGHT / 2 },
+                  ]}
+                />
+              )}
+            </React.Fragment>
+          ))}
+
+          <View style={[styles.columnsRow, { height: gridHeight }]}>
+            {gridDays.map((day) => renderDayColumn(day, columnWidth))}
+          </View>
+
+          {showNowLine && (
+            <View style={[styles.nowLine, { top: nowTop }]}>
+              <View style={styles.nowDot} />
+            </View>
+          )}
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  // Header keeps the same gutter offset as the grid so each day sits right on
+  // top of its own column.
+  const renderWeekView = () => (
+    <View style={{ flex: 1 }}>
+      <View style={styles.daysStrip}>
+        <View style={styles.daysStripGutter} />
+        {week.map((day) => renderDayCell(day))}
+      </View>
+      {renderTimeGrid()}
+    </View>
+  );
+
+  const renderDayView = () => (
+    <View style={{ flex: 1 }}>
+      <View style={styles.daysStrip}>
+        {week.map((day) => renderDayCell(day))}
+      </View>
+      {renderTimeGrid()}
+    </View>
+  );
+
+  const renderMonthView = () => (
+    <ScrollView
+      style={{ flex: 1 }}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: moderateHeightScale(28) }}
+    >
+      <View style={styles.monthWeekdaysRow}>
+        {monthWeeks[0]?.map((day) => (
+          <Text key={`wd-${day.format("dd")}`} style={styles.monthWeekdayText}>
+            {day.format("dd")}
+          </Text>
+        ))}
+      </View>
+
+      {monthWeeks.map((weekRow) => (
+        <View key={`row-${weekRow[0].format("YYYY-MM-DD")}`} style={styles.monthRow}>
+          {weekRow.map((day) => {
+            const dateStr = day.format("YYYY-MM-DD");
+            const count = (appointmentsByDate[dateStr] ?? []).length;
+            const isCurrentMonth = day.isSame(selectedDate, "month");
+            const isSelectedDay = day.isSame(selectedDate, "day");
+            const isToday = day.isSame(today, "day");
+            return (
+              <TouchableOpacity
+                key={dateStr}
+                style={[
+                  styles.monthCell,
+                  isSelectedDay && styles.monthCellSelected,
+                ]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  closeOverlays();
+                  setSelectedDate(day);
+                  setWeek(getWeekDays(day));
+                }}
+              >
+                <Text
+                  style={[
+                    styles.monthCellNumber,
+                    !isCurrentMonth && styles.monthCellNumberMuted,
+                    isToday && styles.monthCellNumberToday,
+                  ]}
+                >
+                  {day.format("D")}
+                </Text>
+                {count > 0 && (
+                  <>
+                    <View style={styles.monthDotsRow}>
+                      {Array.from({ length: Math.min(count, 3) }).map(
+                        (_, dotIndex) => (
+                          <View
+                            key={`dot-${dateStr}-${dotIndex}`}
+                            style={styles.monthDot}
+                          />
+                        ),
+                      )}
+                    </View>
+                    {count > 3 && (
+                      <Text style={styles.monthCountText}>+{count - 3}</Text>
+                    )}
+                  </>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+
+      <View style={styles.monthListHeader}>
+        <Text style={styles.monthListHeaderText}>
+          {selectedDate.format("dddd, MMM D, YYYY")}
+        </Text>
+      </View>
+
+      {selectedDayAppointments.length > 0 ? (
+        selectedDayAppointments.map((appointment) => renderListCard(appointment))
+      ) : (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>
+            {t("noAppointmentsToDisplay")}
+          </Text>
+        </View>
+      )}
+    </ScrollView>
+  );
+
   return (
     <View style={styles.container}>
       <DashboardHeader />
       <View style={styles.content}>
-        {/* Calendar Header */}
-        <View style={styles.calendarHeader}>
-          <View style={styles.weekNavigation}>
+        {/* Toolbar: view switcher + today + navigation */}
+        <View style={styles.toolbar}>
+          <View style={styles.segmentGroup}>
+            {(["day", "week", "month"] as ViewMode[]).map((mode) => (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.segment,
+                  viewMode === mode && styles.segmentActive,
+                ]}
+                activeOpacity={0.8}
+                onPress={() => {
+                  closeOverlays();
+                  setViewMode(mode);
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.segmentText,
+                    viewMode === mode && styles.segmentTextActive,
+                  ]}
+                >
+                  {t(mode)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.toolbarRight}>
+            <TouchableOpacity
+              style={styles.todayButton}
+              activeOpacity={0.8}
+              onPress={handleToday}
+            >
+              <Text style={styles.todayButtonText}>{t("today")}</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.arrowButton}
-              onPress={() => {
-                setApplyBoxVisible(false);
-                setLeaveDetailBoxVisible(false);
-                prevWeek();
-              }}
+              activeOpacity={0.8}
+              onPress={handlePrev}
             >
               <MaterialIcons
                 name="keyboard-arrow-left"
-                size={iconScale(24)}
-                color={theme.text}
+                size={iconScale(20)}
+                color={theme.darkGreen}
               />
             </TouchableOpacity>
-            <Text style={styles.weekText}>
-              {week[0].format("MMM D")} - {week[6].format("MMM D, YYYY")}
-            </Text>
             <TouchableOpacity
               style={styles.arrowButton}
-              onPress={() => {
-                setApplyBoxVisible(false);
-                setLeaveDetailBoxVisible(false);
-                nextWeek();
-              }}
+              activeOpacity={0.8}
+              onPress={handleNext}
             >
               <MaterialIcons
                 name="keyboard-arrow-right"
-                size={iconScale(24)}
-                color={theme.text}
+                size={iconScale(20)}
+                color={theme.darkGreen}
               />
             </TouchableOpacity>
           </View>
-
-          {/* Days Row */}
-          <View style={styles.daysRow}>
-            {week.map((day) => {
-              const isSelected = day.isSame(selectedDate, "day");
-              const isToday = day.isSame(today, "day");
-              // Show brown circle only if selected (not just for today)
-              const showBrownCircle = isSelected;
-              // Show red text only if today (and not selected, or if selected then both apply)
-              return (
-                <TouchableOpacity
-                  key={day.format("YYYY-MM-DD")}
-                  style={styles.dayContainer}
-                  onPress={() => {
-                    setApplyBoxVisible(false);
-                    setLeaveDetailBoxVisible(false);
-                    setSelectedDate(day);
-                  }}
-                >
-                  <Text style={styles.dayName}>{day.format("ddd")}</Text>
-                  <View
-                    style={[
-                      styles.dayNumberContainer,
-                      showBrownCircle && styles.dayNumberSelected,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.dayNumber,
-                        isSelected && styles.dayNumberSelectedText,
-                        isToday && styles.dayNumberTodayText,
-                      ]}
-                    >
-                      {day.format("D")}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
 
-        {/* Agenda View */}
+        {viewMode === "month" && (
+          <View style={styles.rangeRow}>
+            <Text style={styles.rangeText}>{rangeLabel}</Text>
+          </View>
+        )}
+
+        {/* Agenda */}
         <View style={styles.agendaContainer}>
           <View style={{ flex: 1 }}>
             <TouchableOpacity
@@ -1220,9 +2105,6 @@ export default function CalendarScreen() {
                 }
               }}
             >
-              <View style={styles.allDayLabel}>
-                <Text style={styles.allDayText}>{t("allDay")}</Text>
-              </View>
               <View style={styles.todayLabel}>
                 <View style={styles.todayLabelRow}>
                   <Text style={styles.todayText}>
@@ -1252,19 +2134,9 @@ export default function CalendarScreen() {
                   {canManageLeaves && !leaveForSelectedDate && !isPastDate && (
                     <TouchableOpacity
                       onPress={() => openApplyBox("leave")}
-                      style={{ marginLeft: moderateWidthScale(8) }}
                       activeOpacity={0.7}
                     >
-                      <Text
-                        style={[
-                          styles.todayText,
-                          {
-                            color: theme.primary,
-                            fontFamily: fonts.fontMedium,
-                            fontSize: fontSize.size12,
-                          },
-                        ]}
-                      >
+                      <Text style={styles.manageAvailabilityText}>
                         {t("manageAvailability")}
                       </Text>
                     </TouchableOpacity>
@@ -1455,7 +2327,9 @@ export default function CalendarScreen() {
                   )}
                   {selectedLeave.reason ? (
                     <View style={styles.leaveDetailBoxRow}>
-                      <Text style={styles.leaveDetailBoxLabel}>{t("reason")}</Text>
+                      <Text style={styles.leaveDetailBoxLabel}>
+                        {t("reason")}
+                      </Text>
                       <Text style={styles.leaveDetailBoxValue}>
                         {selectedLeave.reason}
                       </Text>
@@ -1490,182 +2364,11 @@ export default function CalendarScreen() {
               </Pressable>
             )}
 
-            <ScrollView
-              ref={scrollViewRef}
-              style={{ flex: 1 }}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: moderateHeightScale(20) }}
-            >
-              {TIME_SLOTS.map((time) => {
-                const timeSlot24h = convertTo24Hour(time);
-                const [slotHour, slotMinute = 0] = timeSlot24h
-                  .split(":")
-                  .map(Number);
-                const breaksInSlot = getBreaksForSlot(slotHour, slotMinute);
-                const filteredAppointments = appointments.filter(
-                  (appointment) => {
-                    if (!appointment.scheduled_at) return false;
-
-                    const scheduledDate = dayjs(
-                      appointment.scheduled_at,
-                    ).format("YYYY-MM-DD");
-                    const scheduledTime = dayjs(
-                      appointment.scheduled_at,
-                    ).format("HH:mm");
-
-                    if (scheduledDate !== currentDate) return false;
-
-                    const [scheduledHour, scheduledMinute] = scheduledTime
-                      .split(":")
-                      .map(Number);
-                    const scheduledMinutes =
-                      scheduledHour * 60 + scheduledMinute;
-
-                    const slotMinutes = slotHour * 60 + slotMinute;
-
-                    return (
-                      scheduledMinutes >= slotMinutes &&
-                      scheduledMinutes < slotMinutes + SLOT_INTERVAL_MINUTES
-                    );
-                  },
-                );
-
-                const hasMultipleAppointments = filteredAppointments.length > 1;
-
-                const slotLeave =
-                  breaksInSlot.length > 0
-                    ? breaksInSlot[0]
-                    : leaveForSelectedDate || null;
-
-                return (
-                  <View
-                    key={time}
-                    style={[
-                      styles.timeSlotRow,
-                      hasMultipleAppointments && styles.timeSlotRowWithMultiple,
-                    ]}
-                  >
-                    {canManageLeaves ? (
-                      <TouchableOpacity
-                        style={styles.timeSlot}
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          if (slotLeave) {
-                            openLeaveDetailBox(slotLeave);
-                          } else if (!isPastDate) {
-                            openApplyBox("break", time);
-                          }
-                        }}
-                      >
-                        <View style={styles.timeSlotClickable}>
-                          <Text style={styles.timeSlotText}>{time}</Text>
-                          {breaksInSlot.length > 0 && (
-                            <View style={styles.breakSlotBox}>
-                              <MaterialIcons
-                                name="free-breakfast"
-                                size={iconScale(12)}
-                                color={theme.selectCard}
-                              />
-                              <Text style={styles.breakSlotText}>BREAK</Text>
-                            </View>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      <View style={styles.timeSlot}>
-                        <Text style={styles.timeSlotText}>{time}</Text>
-                        {breaksInSlot.length > 0 && (
-                          <TouchableOpacity
-                            style={styles.breakSlotBox}
-                            onPress={() => openLeaveDetailBox(breaksInSlot[0])}
-                            activeOpacity={0.7}
-                          >
-                            <MaterialIcons
-                              name="free-breakfast"
-                              size={iconScale(12)}
-                              color={theme.selectCard}
-                            />
-                            <Text style={styles.breakSlotText}>BREAK</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    )}
-                    <View style={styles.appointmentsContainer}>
-                      {filteredAppointments.length > 0 ? (
-                        filteredAppointments.map((appointment, index) => {
-                          const isLast = index === appointments.length - 1;
-                          return (
-                            <View
-                              key={appointment.id}
-                              style={[
-                                styles.appointmentWrapper,
-                                isLast && styles.appointmentWrapperLast,
-                              ]}
-                            >
-                              <TouchableOpacity
-                                style={[styles.appointmentCard, styles.shadow]}
-                                activeOpacity={0.7}
-                                onPress={() => {
-                                  router.push({
-                                    pathname: "/(main)/bookingDetailsById",
-                                    params: {
-                                      bookingId: appointment.id,
-                                    },
-                                  });
-                                }}
-                              >
-                                <View style={styles.appointmentHeader}>
-                                  <View style={styles.appointmentLeftSection}>
-                                    <Text
-                                      numberOfLines={1}
-                                      style={styles.appointmentTitle}
-                                    >
-                                      {appointment.title}
-                                    </Text>
-                                    <Text style={styles.appointmentMeta}>
-                                      {formatAppointmentDate(
-                                        appointment.scheduled_at,
-                                      )}{" "}
-                                      • {appointment.duration}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.appointmentRightSection}>
-                                    <View style={styles.clientNameContainer}>
-                                      <PersonIcon
-                                        width={moderateWidthScale(14)}
-                                        height={moderateWidthScale(14)}
-                                        color={theme.darkGreen}
-                                      />
-                                      <Text
-                                        numberOfLines={1}
-                                        style={styles.clientNameText}
-                                      >
-                                        {appointment.client_name}
-                                      </Text>
-                                    </View>
-                                    <View style={styles.appointmentStatus}>
-                                      <Text
-                                        style={styles.appointmentStatusText}
-                                      >
-                                        {appointment.status_label}
-                                      </Text>
-                                    </View>
-                                  </View>
-                                </View>
-                              </TouchableOpacity>
-                            </View>
-                          );
-                        })
-                      ) : (
-                        <View style={styles.emptyState}>
-                          <Text style={styles.emptyStateText}></Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
+            {viewMode === "month"
+              ? renderMonthView()
+              : viewMode === "week"
+                ? renderWeekView()
+                : renderDayView()}
           </View>
         </View>
       </View>
