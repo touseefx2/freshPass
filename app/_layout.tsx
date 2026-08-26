@@ -29,6 +29,7 @@ import FullImageModal from "@/src/components/fullImageModal";
 import StripeConnectModalHandler from "@/src/components/StripeConnectModalHandler";
 import StripeConnectedCongratsModalHandler from "@/src/components/StripeConnectedCongratsModalHandler";
 import TryOnPurchaseSuccessModalHandler from "@/src/components/TryOnPurchaseSuccessModalHandler";
+import BusinessPlanPurchasedCongratsModalHandler from "@/src/components/BusinessPlanPurchasedCongratsModalHandler";
 import BusinessPlansModalHandler from "@/src/components/BusinessPlansModalHandler";
 import { prefetchPurchaseRemoteConfig } from "@/src/services/remoteConfigService";
 import { resolveStripePublishableKey } from "@/src/services/stripeService";
@@ -131,6 +132,7 @@ export default function RootLayout() {
                     <StripeConnectModalHandler />
                     <StripeConnectedCongratsModalHandler />
                     <TryOnPurchaseSuccessModalHandler />
+                    <BusinessPlanPurchasedCongratsModalHandler />
                     <BusinessPlansModalHandler />
                     <ForceUpdateHandler />
                     <MaintenanceModeHandler />

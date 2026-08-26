@@ -489,6 +489,8 @@
   "stripeConnectedCongratsTitle": "تم ربط Stripe!",
   "stripeConnectedCongratsSubtitle": "حساب Stripe الخاص بك متصل الآن.",
   "stripeConnectedCongratsMessage": "لنبني باقة اشتراكك ونبدأ بتنمية عملك.",
+  "businessPlanPurchasedCongratsSubtitle": "خطة عملك أصبحت نشطة الآن.",
+  "businessPlanPurchasedCongratsMessage": "يمكنك الآن تفعيل نشاطك التجاري عبر المفتاح ليظهر للعملاء. كما يمكنك استخدام بقية الميزات، وسيتمكن العملاء من الحجز لديك.",
   "buildMySubscription": "إنشاء اشتراكي",
   "connectNow": "الاتصال الآن",
   "failedToLoadSubscriptionPlans": "فشل في تحميل خطط الاشتراك",

@@ -94,6 +94,8 @@ export interface GeneralState {
   hasSeenStripeConnectCongrats: boolean;
   /** After Create from Stripe congrats — don't auto-open business plans this session */
   suppressBusinessPlansAutoOpen: boolean;
+  /** After Solo/Business plan purchase success; not persisted */
+  businessPlanPurchasedCongratsVisible: boolean;
   /** After AI Hair Try-On purchase success; not persisted */
   tryOnPurchaseSuccessModalVisible: boolean;
   /** Where purchase started — controls congrats CTA (explore navigates, tools just closes) */
@@ -169,6 +171,7 @@ const initialState: GeneralState = {
   stripeConnectModalVisible: false,
   hasSeenStripeConnectCongrats: false,
   suppressBusinessPlansAutoOpen: false,
+  businessPlanPurchasedCongratsVisible: false,
   tryOnPurchaseSuccessModalVisible: false,
   tryOnPurchaseSuccessSource: null,
   maintenanceModeActive: false,
@@ -309,6 +312,12 @@ const generalSlice = createSlice({
     setSuppressBusinessPlansAutoOpen(state, action: PayloadAction<boolean>) {
       state.suppressBusinessPlansAutoOpen = action.payload;
     },
+    setBusinessPlanPurchasedCongratsVisible(
+      state,
+      action: PayloadAction<boolean>,
+    ) {
+      state.businessPlanPurchasedCongratsVisible = action.payload;
+    },
     setTryOnPurchaseSuccessModalVisible(
       state,
       action: PayloadAction<
@@ -345,6 +354,7 @@ const generalSlice = createSlice({
         state.fullImageModalVisible = false;
         state.tryOnPurchaseSuccessModalVisible = false;
         state.tryOnPurchaseSuccessSource = null;
+        state.businessPlanPurchasedCongratsVisible = false;
         state.actionLoader = false;
       }
     },
@@ -357,6 +367,7 @@ const generalSlice = createSlice({
         state.fullImageModalVisible = false;
         state.tryOnPurchaseSuccessModalVisible = false;
         state.tryOnPurchaseSuccessSource = null;
+        state.businessPlanPurchasedCongratsVisible = false;
         state.actionLoader = false;
       }
     },
@@ -507,6 +518,7 @@ const generalSlice = createSlice({
       state.suppressBusinessPlansAutoOpen = false;
       state.tryOnPurchaseSuccessModalVisible = false;
       state.tryOnPurchaseSuccessSource = null;
+      state.businessPlanPurchasedCongratsVisible = false;
       state.maintenanceModeActive = false;
       state.forceUpdateActive = false;
       state.bookingTryOnImageUrls = [];
@@ -544,6 +556,7 @@ export const {
   setStripeConnectModalVisible,
   setHasSeenStripeConnectCongrats,
   setSuppressBusinessPlansAutoOpen,
+  setBusinessPlanPurchasedCongratsVisible,
   setTryOnPurchaseSuccessModalVisible,
   setTryOnPurchaseSuccessSource,
   setMaintenanceModeActive,

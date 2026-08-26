@@ -489,6 +489,8 @@
   "stripeConnectedCongratsTitle": "Stripe接続完了！",
   "stripeConnectedCongratsSubtitle": "Stripeアカウントの接続が完了しました。",
   "stripeConnectedCongratsMessage": "サブスクリプションパッケージを作成して、ビジネスを成長させましょう。",
+  "businessPlanPurchasedCongratsSubtitle": "ビジネスプランが有効になりました。",
+  "businessPlanPurchasedCongratsMessage": "トグルでビジネスを有効にすると、お客様に表示されます。その他の機能も利用でき、お客様は予約できるようになります。",
   "buildMySubscription": "サブスクリプションを作成",
   "connectNow": "今すぐ接続",
   "failedToLoadSubscriptionPlans": "サブスクリプションプランの読み込みに失敗しました",

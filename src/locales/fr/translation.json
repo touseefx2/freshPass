@@ -489,6 +489,8 @@
   "stripeConnectedCongratsTitle": "Stripe connecté !",
   "stripeConnectedCongratsSubtitle": "Votre compte Stripe est maintenant connecté.",
   "stripeConnectedCongratsMessage": "Créons votre forfait d'abonnement et commençons à faire croître votre activité.",
+  "businessPlanPurchasedCongratsSubtitle": "Votre forfait professionnel est maintenant actif.",
+  "businessPlanPurchasedCongratsMessage": "Vous pouvez maintenant activer votre entreprise avec le bouton bascule pour qu'elle s'affiche auprès des clients. Vous pourrez aussi utiliser les autres fonctionnalités, et les clients pourront réserver chez vous.",
   "buildMySubscription": "Créer mon abonnement",
   "connectNow": "Connecter maintenant",
   "failedToLoadSubscriptionPlans": "Échec du chargement des forfaits",

@@ -47,6 +47,10 @@ import NotificationBanner from "@/src/components/notificationBanner";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { fetchUserStatus } from "../state/thunks/businessThunks";
+import {
+  setBusinessPlanPurchasedCongratsVisible,
+  setSuppressBusinessPlansAutoOpen,
+} from "@/src/state/slices/generalSlice";
 
 const TERMS_AND_CONDITIONS_URL = process.env.EXPO_PUBLIC_TERMS_URL || "";
 const PRIVACY_POLICY_URL = process.env.EXPO_PUBLIC_PRIVACY_URL || "";
@@ -811,20 +815,18 @@ function BusinessPlansModalContent({
 
   const finishSubscriptionSuccess = () => {
     onSuccess?.();
+    dispatch(setSuppressBusinessPlansAutoOpen(true));
     onClose();
     dispatch(fetchUserStatus({ showError: false }));
+    setTimeout(() => {
+      dispatch(setBusinessPlanPurchasedCongratsVisible(true));
+    }, 350);
   };
 
   const completeSubscriptionSuccess = async (_isTrial: boolean) => {
     setProcessingPayment(true);
     setTimeout(() => {
       setProcessingPayment(false);
-      showBanner(
-        t("success"),
-        t("planPurchasedSuccessfully"),
-        "success",
-        4000,
-      );
       finishSubscriptionSuccess();
     }, 2500);
   };
@@ -851,12 +853,6 @@ function BusinessPlansModalContent({
       additionalServiceIds: selectedAddOns,
     });
 
-    showBanner(
-      t("success"),
-      t("planPurchasedSuccessfully"),
-      "success",
-      4000,
-    );
     finishSubscriptionSuccess();
   };
 

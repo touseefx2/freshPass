@@ -36,6 +36,9 @@ export default function BusinessPlansModalHandler() {
   const suppressBusinessPlansAutoOpen = useAppSelector(
     (state) => state.general.suppressBusinessPlansAutoOpen,
   );
+  const businessPlanPurchasedCongratsVisible = useAppSelector(
+    (state) => state.general.businessPlanPurchasedCongratsVisible,
+  );
   const hasAutoOpenedOnce = useRef(false);
 
   const isOnHomeTab = Array.isArray(segments) && segments.includes("(home)");
@@ -52,7 +55,8 @@ export default function BusinessPlansModalHandler() {
     businessStatus?.stripe_onboarding_status === "completed" &&
     businessStatus?.has_subscription === false &&
     !waitingForStripeCongrats &&
-    !suppressBusinessPlansAutoOpen;
+    !suppressBusinessPlansAutoOpen &&
+    !businessPlanPurchasedCongratsVisible;
 
   // Create navigates away from home — clear suppress so plans can auto-open on return
   useEffect(() => {

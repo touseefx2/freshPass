@@ -489,6 +489,8 @@
   "stripeConnectedCongratsTitle": "¡Stripe conectado!",
   "stripeConnectedCongratsSubtitle": "Tu cuenta de Stripe ya está conectada.",
   "stripeConnectedCongratsMessage": "Vamos a crear tu paquete de suscripción y empezar a hacer crecer tu negocio.",
+  "businessPlanPurchasedCongratsSubtitle": "Tu plan de negocio ya está activo.",
+  "businessPlanPurchasedCongratsMessage": "Ahora puedes activar tu negocio con el interruptor para que los clientes te vean. También podrás usar el resto de funciones, y los clientes podrán reservar contigo.",
   "buildMySubscription": "Crear mi suscripción",
   "connectNow": "Conectar ahora",
   "failedToLoadSubscriptionPlans": "Error al cargar planes de suscripción",
