@@ -609,13 +609,13 @@ const createStyles = (theme: Theme) =>
       overflow: "hidden",
       paddingHorizontal: moderateWidthScale(1),
     },
-    breakBlockText: {
+    leaveLabelText: {
       fontSize: fontSize.size8,
       fontFamily: fonts.fontBold,
       color: theme.red,
       textAlign: "center",
       includeFontPadding: false,
-      // fontScale floors at 12pt; shrink visually so "BREAK" fits week columns
+      // fontScale floors at 12pt; shrink so label fits narrow week columns
       transform: [{ scale: 0.7 }],
     },
     closedTint: {
@@ -630,6 +630,7 @@ const createStyles = (theme: Theme) =>
       borderStyle: "dashed",
       borderColor: theme.lightRedBorder,
       backgroundColor: theme.lightRed,
+      overflow: "hidden",
     },
     closedChip: {
       position: "absolute",
@@ -1851,7 +1852,7 @@ export default function CalendarScreen() {
               activeOpacity={0.8}
               onPress={() => openLeaveDetailBox(block.leave)}
             >
-              <Text style={styles.breakBlockText} numberOfLines={1}>
+              <Text style={styles.leaveLabelText} numberOfLines={1}>
                 {t("breakUpper")}
               </Text>
             </TouchableOpacity>
@@ -1875,7 +1876,7 @@ export default function CalendarScreen() {
               activeOpacity={0.8}
               onPress={() => openLeaveDetailBox(dayLeave)}
             >
-              <Text numberOfLines={1} style={styles.breakBlockText}>
+              <Text numberOfLines={1} style={styles.leaveLabelText}>
                 {t("closeUpper")}
               </Text>
             </TouchableOpacity>
