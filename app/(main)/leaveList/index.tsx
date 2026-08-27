@@ -21,24 +21,15 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { MaterialIcons } from "@expo/vector-icons";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
 import RetryButton from "@/src/components/retryButton";
+import {
+  formatLeaveDateDisplay,
+  formatLeaveDateTimeDisplay,
+  LeaveRecord,
+} from "@/src/utils/leaveDateTime";
 
-dayjs.extend(utc);
-
-interface LeaveItem {
-  id: number;
-  staff_id: number;
-  staff_name: string;
-  type: "leave" | "break";
-  start_time: string;
-  end_time: string;
-  reason: string | null;
-  created_at: string;
-}
+type LeaveItem = LeaveRecord;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -123,7 +114,6 @@ export default function LeaveList() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const { t } = useTranslation();
-  const { showBanner } = useNotificationContext();
 
   const [leaves, setLeaves] = useState<LeaveItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,18 +148,6 @@ export default function LeaveList() {
     }, [fetchLeaves]),
   );
 
-  const formatDateOnly = (iso: string) => {
-    if (!iso) return "—";
-    const datePart = iso.slice(0, 10);
-    return dayjs(datePart).format("MMM D, YYYY");
-  };
-
-  const formatDateTime = (iso: string) => {
-    if (!iso) return "—";
-    const d = dayjs.utc(iso);
-    return d.format("MMM D, YYYY · h:mm a");
-  };
-
   const navigateToDetail = (item: LeaveItem) => {
     router.push({
       pathname: "/(main)/leaveDetail",
@@ -177,6 +155,8 @@ export default function LeaveList() {
         leaveId: String(item.id),
         staffName: item.staff_name || "",
         leaveType: item.type,
+        startDate: item.start_date || "",
+        endDate: item.end_date || "",
         startTime: item.start_time || "",
         endTime: item.end_time || "",
         reason: item.reason || "",
@@ -188,11 +168,11 @@ export default function LeaveList() {
   const renderItem = ({ item }: { item: LeaveItem }) => {
     const isLeave = item.type === "leave";
     const startStr = isLeave
-      ? formatDateOnly(item.start_time)
-      : formatDateTime(item.start_time);
+      ? formatLeaveDateDisplay(item.start_date, true)
+      : formatLeaveDateTimeDisplay(item.start_date, item.start_time);
     const endStr = isLeave
-      ? formatDateOnly(item.end_time)
-      : formatDateTime(item.end_time);
+      ? formatLeaveDateDisplay(item.end_date, true)
+      : formatLeaveDateTimeDisplay(item.end_date, item.end_time);
 
     return (
       <TouchableOpacity

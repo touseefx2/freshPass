@@ -28,6 +28,7 @@ import DatePickerModal from "@/src/components/datePickerModal";
 import TimePickerModal from "@/src/components/timePickerModal";
 import Button from "@/src/components/button";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { toApiTime } from "@/src/utils/leaveDateTime";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -227,12 +228,12 @@ export default function ApplyLeave() {
     try {
       const reasonPayload = reason.trim() || undefined;
       if (leaveBreakType === "leave") {
-        const startTime = fromDate.startOf("day").format("YYYY-MM-DD HH:mm:ss");
-        const endTime = toDate.endOf("day").format("YYYY-MM-DD HH:mm:ss");
         const body = {
-          start_time: startTime,
-          end_time: endTime,
-          type: "leave",
+          start_date: fromDate.format("YYYY-MM-DD"),
+          end_date: toDate.format("YYYY-MM-DD"),
+          start_time: null,
+          end_time: null,
+          type: "leave" as const,
           ...(reasonPayload && { reason: reasonPayload }),
         };
         const response = await ApiService.post<{
@@ -257,20 +258,25 @@ export default function ApplyLeave() {
           );
         }
       } else {
-        const startTime = fromDate
-          .hour(breakStartHours)
-          .minute(breakStartMinutes)
-          .second(0)
-          .format("YYYY-MM-DD HH:mm:ss");
-        const endTime = toDate
-          .hour(breakEndHours)
-          .minute(breakEndMinutes)
-          .second(0)
-          .format("YYYY-MM-DD HH:mm:ss");
+        const startMinutes = breakStartHours * 60 + breakStartMinutes;
+        const endMinutes = breakEndHours * 60 + breakEndMinutes;
+        if (endMinutes <= startMinutes && fromDate.isSame(toDate, "day")) {
+          showBanner(
+            t("apiFailed") || "Error",
+            t("endTimeMustBeGreater") || "End time must be after start time.",
+            "error",
+            2500,
+          );
+          setApplyLoading(false);
+          return;
+        }
+
         const body = {
-          start_time: startTime,
-          end_time: endTime,
-          type: "break",
+          start_date: fromDate.format("YYYY-MM-DD"),
+          end_date: toDate.format("YYYY-MM-DD"),
+          start_time: toApiTime(breakStartHours, breakStartMinutes),
+          end_time: toApiTime(breakEndHours, breakEndMinutes),
+          type: "break" as const,
           ...(reasonPayload && { reason: reasonPayload }),
         };
         const response = await ApiService.post<{

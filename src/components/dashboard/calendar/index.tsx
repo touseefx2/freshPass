@@ -32,7 +32,6 @@ import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import TimePickerModal from "@/src/components/timePickerModal";
 import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
 import "dayjs/locale/ar";
@@ -41,8 +40,14 @@ import "dayjs/locale/es";
 import "dayjs/locale/de";
 import "dayjs/locale/ja";
 
-dayjs.extend(utc);
 import { ApiService } from "@/src/services/api";
+import {
+  formatLeaveDateDisplay,
+  formatLeaveTimeDisplay,
+  leaveCoversDay,
+  timeToMinutes,
+  toApiTime,
+} from "@/src/utils/leaveDateTime";
 import {
   appointmentsEndpoints,
   staffEndpoints,
@@ -124,8 +129,10 @@ interface StaffLeave {
   staff_id: number;
   staff_name: string;
   type: "leave" | "break";
-  start_time: string;
-  end_time: string;
+  start_date: string;
+  start_time: string | null;
+  end_date: string;
+  end_time: string | null;
   reason: string | null;
   created_at: string;
 }
@@ -590,49 +597,47 @@ const createStyles = (theme: Theme) =>
     breakBlock: {
       position: "absolute",
       zIndex: 2,
-      left: moderateWidthScale(2),
-      right: moderateWidthScale(2),
-      borderRadius: moderateWidthScale(6),
+      left: moderateWidthScale(1),
+      right: moderateWidthScale(1),
+      borderRadius: moderateWidthScale(4),
       borderWidth: 1,
       borderStyle: "dashed",
-      borderColor: theme.orangeBrown,
-      backgroundColor: theme.orangeBrown015,
+      borderColor: theme.lightRedBorder,
+      backgroundColor: theme.lightRed,
       alignItems: "center",
       justifyContent: "center",
-      flexDirection: "row",
-      gap: moderateWidthScale(4),
       overflow: "hidden",
+      paddingHorizontal: moderateWidthScale(1),
     },
     breakBlockText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size8,
       fontFamily: fonts.fontBold,
-      color: theme.selectCard,
+      color: theme.red,
+      textAlign: "center",
+      includeFontPadding: false,
+      // fontScale floors at 12pt; shrink visually so "BREAK" fits week columns
+      transform: [{ scale: 0.7 }],
     },
     closedTint: {
       position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: theme.orangeBrown01,
+      zIndex: 2,
+      top: moderateHeightScale(1),
+      left: moderateWidthScale(1),
+      right: moderateWidthScale(1),
+      bottom: moderateHeightScale(1),
+      borderRadius: moderateWidthScale(4),
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: theme.lightRedBorder,
+      backgroundColor: theme.lightRed,
     },
     closedChip: {
       position: "absolute",
+      zIndex: 3,
       top: moderateHeightScale(6),
-      left: 0,
-      right: 0,
+      left: moderateWidthScale(1),
+      right: moderateWidthScale(1),
       alignItems: "center",
-    },
-    closedChipInner: {
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(3),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.orangeBrown30,
-    },
-    closedChipText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontBold,
-      color: theme.selectCard,
     },
     nowLine: {
       position: "absolute",
@@ -715,6 +720,12 @@ const createStyles = (theme: Theme) =>
       height: widthScale(5),
       borderRadius: widthScale(3),
       backgroundColor: theme.buttonBack,
+    },
+    monthLeaveDot: {
+      width: widthScale(5),
+      height: widthScale(5),
+      borderRadius: widthScale(3),
+      backgroundColor: theme.red,
     },
     monthCountText: {
       fontSize: fontSize.size10,
@@ -947,13 +958,13 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(6),
       paddingVertical: moderateHeightScale(2),
       borderRadius: moderateWidthScale(4),
-      backgroundColor: theme.orangeBrown015,
+      backgroundColor: theme.lightRed,
       alignSelf: "flex-start",
     },
     leaveDetailBoxTypeBadgeText: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
+      color: theme.red,
     },
     leaveDetailBoxCancelWrap: {
       flexDirection: "row",
@@ -1048,8 +1059,25 @@ export default function CalendarScreen() {
     return { from: week[0], to: week[6] };
   }, [viewMode, selectedDate, week]);
 
+  // Leaves use calendar-month bounds in month view (not pad weeks).
+  const leavesFetchRange = useMemo(() => {
+    if (viewMode === "day") {
+      const day = selectedDate;
+      return { from: day, to: day };
+    }
+    if (viewMode === "month") {
+      return {
+        from: selectedDate.startOf("month"),
+        to: selectedDate.endOf("month"),
+      };
+    }
+    return { from: week[0], to: week[6] };
+  }, [viewMode, selectedDate, week]);
+
   const fetchFrom = fetchRange.from.format("YYYY-MM-DD");
   const fetchTo = fetchRange.to.format("YYYY-MM-DD");
+  const leavesFetchFrom = leavesFetchRange.from.format("YYYY-MM-DD");
+  const leavesFetchTo = leavesFetchRange.to.format("YYYY-MM-DD");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1066,25 +1094,18 @@ export default function CalendarScreen() {
     }
   }, [fetchFrom, fetchTo, userRole]);
 
-  // Refetch leaves when screen comes into focus (staff and business)
-  useFocusEffect(
-    useCallback(() => {
-      if (canManageLeaves) {
-        fetchLeaves();
-      }
-    }, [canManageLeaves, selectedDate]),
-  );
-
-  const fetchLeaves = async () => {
-    setLeaves([]);
+  const fetchLeaves = useCallback(async () => {
     try {
-      const date = selectedDate.format("YYYY-MM-DD");
-
       const response = await ApiService.get<{
         success: boolean;
         message: string;
         data: StaffLeave[];
-      }>(staffEndpoints.leavesList({ date }));
+      }>(
+        staffEndpoints.leavesList({
+          start_date: leavesFetchFrom,
+          end_date: leavesFetchTo,
+        }),
+      );
 
       if (response.success && response.data && Array.isArray(response.data)) {
         setLeaves(response.data);
@@ -1094,30 +1115,74 @@ export default function CalendarScreen() {
     } catch {
       setLeaves([]);
     }
-  };
+  }, [leavesFetchFrom, leavesFetchTo]);
+
+  // Refetch leaves when range changes or screen focuses
+  useEffect(() => {
+    if (canManageLeaves) {
+      fetchLeaves();
+    }
+  }, [canManageLeaves, fetchLeaves]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (canManageLeaves) {
+        fetchLeaves();
+      }
+    }, [canManageLeaves, fetchLeaves]),
+  );
 
   const leaveForSelectedDate = useMemo(() => {
     const dateStr = selectedDate.format("YYYY-MM-DD");
-    return leaves.find((l) => {
-      const startDate = dayjs.utc(l.start_time).format("YYYY-MM-DD");
-      const endDate = dayjs.utc(l.end_time).format("YYYY-MM-DD");
-      return dateStr >= startDate && dateStr <= endDate;
-    });
+    return leaves.find((l) => leaveCoversDay(l, dateStr));
   }, [leaves, selectedDate]);
 
-  const breakBlocks = useMemo<BreakBlock[]>(() => {
-    return leaves
-      .filter((l) => l.type === "break")
-      .map((l) => {
-        const start = dayjs.utc(l.start_time);
-        const end = dayjs.utc(l.end_time);
-        return {
-          leave: l,
-          startMinutes: start.hour() * 60 + start.minute(),
-          endMinutes: end.hour() * 60 + end.minute(),
-        };
-      })
-      .filter((block) => block.endMinutes > block.startMinutes);
+  const getBreakBlocksForDay = useCallback(
+    (day: dayjs.Dayjs): BreakBlock[] => {
+      const dateStr = day.format("YYYY-MM-DD");
+      return leaves
+        .filter((l) => l.type === "break" && leaveCoversDay(l, dateStr))
+        .map((l) => {
+          const startMinutes =
+            dateStr === l.start_date ? timeToMinutes(l.start_time, 0) : 0;
+          const endMinutes =
+            dateStr === l.end_date
+              ? timeToMinutes(l.end_time, 24 * 60)
+              : 24 * 60;
+          return {
+            leave: l,
+            startMinutes,
+            endMinutes,
+          };
+        })
+        .filter((block) => block.endMinutes > block.startMinutes);
+    },
+    [leaves],
+  );
+
+  const getLeaveForDay = useCallback(
+    (day: dayjs.Dayjs) => {
+      const dateStr = day.format("YYYY-MM-DD");
+      return leaves.find(
+        (l) => l.type === "leave" && leaveCoversDay(l, dateStr),
+      );
+    },
+    [leaves],
+  );
+
+  /** Dates in the current leaves response that have a close (leave) or break. */
+  const leaveDotDates = useMemo(() => {
+    const dates = new Set<string>();
+    leaves.forEach((leave) => {
+      let cursor = dayjs(leave.start_date);
+      const end = dayjs(leave.end_date);
+      if (!cursor.isValid() || !end.isValid()) return;
+      while (cursor.isBefore(end, "day") || cursor.isSame(end, "day")) {
+        dates.add(cursor.format("YYYY-MM-DD"));
+        cursor = cursor.add(1, "day");
+      }
+    });
+    return dates;
   }, [leaves]);
 
   const fetchAppointments = async (fromDate: string, toDate: string) => {
@@ -1409,17 +1474,11 @@ export default function CalendarScreen() {
     setLeaveDetailBoxVisible(true);
   };
 
-  const formatLeaveDetailDateOnly = (iso: string) => {
-    if (!iso) return "—";
-    const datePart = iso.slice(0, 10);
-    return dayjs(datePart).format("MMM D, YYYY");
-  };
+  const formatLeaveDetailDateOnly = (dateStr: string) =>
+    formatLeaveDateDisplay(dateStr, true);
 
-  const formatLeaveDetailTimeOnly = (iso: string) => {
-    if (!iso) return "—";
-    const d = dayjs.utc(iso);
-    return d.format("h:mm a");
-  };
+  const formatLeaveDetailTimeOnly = (timeStr: string | null) =>
+    formatLeaveTimeDisplay(timeStr);
 
   const handleCancelLeaveFromBox = async () => {
     if (selectedLeave == null) return;
@@ -1498,13 +1557,14 @@ export default function CalendarScreen() {
     setApplyBoxLoading(true);
     try {
       const date = applyBoxDate;
+      const dateStr = date.format("YYYY-MM-DD");
       if (applyBoxType === "leave") {
-        const startTime = date.startOf("day").format("YYYY-MM-DD HH:mm:ss");
-        const endTime = date.endOf("day").format("YYYY-MM-DD HH:mm:ss");
         const body = {
-          start_time: startTime,
-          end_time: endTime,
-          type: "leave",
+          start_date: dateStr,
+          end_date: dateStr,
+          start_time: null,
+          end_time: null,
+          type: "leave" as const,
         };
         const response = await ApiService.post<{
           success: boolean;
@@ -1529,16 +1589,11 @@ export default function CalendarScreen() {
           );
         }
       } else {
-        const startDateTime = date
-          .hour(applyBoxSlotHour)
-          .minute(applyBoxBreakStartMinutes)
-          .second(0);
-        const endDateTime = date
-          .hour(applyBoxBreakEndHour)
-          .minute(applyBoxBreakEndMinutes)
-          .second(0);
+        const startMinutes =
+          applyBoxSlotHour * 60 + applyBoxBreakStartMinutes;
+        const endMinutes = applyBoxBreakEndHour * 60 + applyBoxBreakEndMinutes;
 
-        if (!endDateTime.isAfter(startDateTime)) {
+        if (endMinutes <= startMinutes) {
           showBanner(
             t("apiFailed") || "Error",
             t("endTimeMustBeGreater"),
@@ -1548,12 +1603,12 @@ export default function CalendarScreen() {
           return;
         }
 
-        const startTime = startDateTime.format("YYYY-MM-DD HH:mm:ss");
-        const endTime = endDateTime.format("YYYY-MM-DD HH:mm:ss");
         const body = {
-          start_time: startTime,
-          end_time: endTime,
-          type: "break",
+          start_date: dateStr,
+          end_date: dateStr,
+          start_time: toApiTime(applyBoxSlotHour, applyBoxBreakStartMinutes),
+          end_time: toApiTime(applyBoxBreakEndHour, applyBoxBreakEndMinutes),
+          type: "break" as const,
         };
         const response = await ApiService.post<{
           success: boolean;
@@ -1604,12 +1659,23 @@ export default function CalendarScreen() {
     event: GestureResponderEvent,
   ) => {
     if (!canManageLeaves) return;
-    if (day.isBefore(today, "day")) return;
 
     if (applyBoxVisible || leaveDetailBoxVisible) {
       closeOverlays();
       return;
     }
+
+    // Closed day: tap anywhere on the shaded column opens cancel/detail box.
+    const closedLeave = getLeaveForDay(day);
+    if (closedLeave) {
+      if (!day.isSame(selectedDate, "day")) {
+        setSelectedDate(day);
+      }
+      openLeaveDetailBox(closedLeave);
+      return;
+    }
+
+    if (day.isBefore(today, "day")) return;
 
     // Snap click Y to the nearest 30-minute slot in that day column.
     const rawMinutes =
@@ -1751,8 +1817,9 @@ export default function CalendarScreen() {
     const dateStr = day.format("YYYY-MM-DD");
     const positionedList = layoutByDate[dateStr] ?? [];
     const isSelectedDay = day.isSame(selectedDate, "day");
-    const showClosedOverlay =
-      isSelectedDay && leaveForSelectedDate?.type === "leave";
+    const dayLeave = getLeaveForDay(day);
+    const dayBreaks = getBreakBlocksForDay(day);
+    const showClosedOverlay = !!dayLeave;
 
     return (
       <View
@@ -1770,30 +1837,26 @@ export default function CalendarScreen() {
           onPress={(event) => handleColumnPress(day, event)}
         />
 
-        {isSelectedDay &&
-          breakBlocks.map((block) => {
-            const top =
-              ((block.startMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
-            const height = Math.max(
-              ((block.endMinutes - block.startMinutes) / 60) * HOUR_HEIGHT,
-              heightScale(20),
-            );
-            return (
-              <TouchableOpacity
-                key={`break-${block.leave.id}`}
-                style={[styles.breakBlock, { top, height }]}
-                activeOpacity={0.8}
-                onPress={() => openLeaveDetailBox(block.leave)}
-              >
-                <MaterialIcons
-                  name="free-breakfast"
-                  size={iconScale(12)}
-                  color={theme.selectCard}
-                />
-                <Text style={styles.breakBlockText}>{t("breakUpper")}</Text>
-              </TouchableOpacity>
-            );
-          })}
+        {dayBreaks.map((block) => {
+          const top =
+            ((block.startMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+          const height = Math.max(
+            ((block.endMinutes - block.startMinutes) / 60) * HOUR_HEIGHT,
+            heightScale(20),
+          );
+          return (
+            <TouchableOpacity
+              key={`break-${dateStr}-${block.leave.id}`}
+              style={[styles.breakBlock, { top, height }]}
+              activeOpacity={0.8}
+              onPress={() => openLeaveDetailBox(block.leave)}
+            >
+              <Text style={styles.breakBlockText} numberOfLines={1}>
+                {t("breakUpper")}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
 
         {positionedList.map((positioned) =>
           viewMode === "day"
@@ -1801,19 +1864,20 @@ export default function CalendarScreen() {
             : renderCompactBlock(positioned),
         )}
 
-        {showClosedOverlay && leaveForSelectedDate ? (
+        {showClosedOverlay && dayLeave ? (
           <>
-            <View style={styles.closedTint} pointerEvents="none" />
+            <Pressable
+              style={styles.closedTint}
+              onPress={() => openLeaveDetailBox(dayLeave)}
+            />
             <TouchableOpacity
               style={styles.closedChip}
               activeOpacity={0.8}
-              onPress={() => openLeaveDetailBox(leaveForSelectedDate)}
+              onPress={() => openLeaveDetailBox(dayLeave)}
             >
-              <View style={styles.closedChipInner}>
-                <Text numberOfLines={1} style={styles.closedChipText}>
-                  {t("closeUpper")}
-                </Text>
-              </View>
+              <Text numberOfLines={1} style={styles.breakBlockText}>
+                {t("closeUpper")}
+              </Text>
             </TouchableOpacity>
           </>
         ) : null}
@@ -1983,6 +2047,7 @@ export default function CalendarScreen() {
           {weekRow.map((day) => {
             const dateStr = day.format("YYYY-MM-DD");
             const count = (appointmentsByDate[dateStr] ?? []).length;
+            const hasLeaveOrClose = leaveDotDates.has(dateStr);
             const isCurrentMonth = day.isSame(selectedDate, "month");
             const isSelectedDay = day.isSame(selectedDate, "day");
             const isToday = day.isSame(today, "day");
@@ -2009,10 +2074,13 @@ export default function CalendarScreen() {
                 >
                   {day.format("D")}
                 </Text>
-                {count > 0 && (
-                  <>
-                    <View style={styles.monthDotsRow}>
-                      {Array.from({ length: Math.min(count, 3) }).map(
+                {(count > 0 || hasLeaveOrClose) && (
+                  <View style={styles.monthDotsRow}>
+                    {hasLeaveOrClose && (
+                      <View style={styles.monthLeaveDot} />
+                    )}
+                    {count > 0 &&
+                      Array.from({ length: Math.min(count, 3) }).map(
                         (_, dotIndex) => (
                           <View
                             key={`dot-${dateStr}-${dotIndex}`}
@@ -2020,11 +2088,10 @@ export default function CalendarScreen() {
                           />
                         ),
                       )}
-                    </View>
-                    {count > 3 && (
-                      <Text style={styles.monthCountText}>+{count - 3}</Text>
-                    )}
-                  </>
+                  </View>
+                )}
+                {count > 3 && (
+                  <Text style={styles.monthCountText}>+{count - 3}</Text>
                 )}
               </TouchableOpacity>
             );
@@ -2337,7 +2404,7 @@ export default function CalendarScreen() {
                   <View style={styles.leaveDetailBoxHeaderRow}>
                     <Text style={styles.leaveDetailBoxDateText}>
                       {formatLeaveDetailDateOnly(
-                        selectedLeave.start_time || "",
+                        selectedLeave.start_date || "",
                       )}
                     </Text>
                     <TouchableOpacity
@@ -2355,11 +2422,8 @@ export default function CalendarScreen() {
                   </View>
                   {selectedLeave.type === "break" && (
                     <Text style={styles.leaveDetailBoxTimeText}>
-                      {formatLeaveDetailTimeOnly(
-                        selectedLeave.start_time || "",
-                      )}{" "}
-                      –{" "}
-                      {formatLeaveDetailTimeOnly(selectedLeave.end_time || "")}
+                      {formatLeaveDetailTimeOnly(selectedLeave.start_time)} –{" "}
+                      {formatLeaveDetailTimeOnly(selectedLeave.end_time)}
                     </Text>
                   )}
                   {selectedLeave.reason ? (

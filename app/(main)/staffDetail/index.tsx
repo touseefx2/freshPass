@@ -31,6 +31,7 @@ import { staffEndpoints } from "@/src/services/endpoints";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ChatIcon } from "@/assets/icons";
+import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -279,8 +280,10 @@ export interface StaffLeave {
   staff_name: string | null;
   staff: unknown;
   type: "break" | "leave";
-  start_time: string;
-  end_time: string;
+  start_date: string;
+  start_time: string | null;
+  end_date: string;
+  end_time: string | null;
   reason: string | null;
   created_at: string;
 }
@@ -333,52 +336,6 @@ function formatTime(time: string | null | undefined): string {
   const ampm = hourNum >= 12 ? "PM" : "AM";
   const displayHour = hourNum % 12 || 12;
   return `${displayHour}:${minutes} ${ampm}`;
-}
-
-const UTC_OPTIONS: Intl.DateTimeFormatOptions = {
-  timeZone: "UTC",
-};
-
-const currentYear = () => new Date().getFullYear();
-
-function formatLeaveDateTimeUTC(isoString: string): string {
-  try {
-    const d = new Date(isoString);
-    const showYear = d.getUTCFullYear() !== currentYear();
-    const dateStr = d.toLocaleDateString("en-US", {
-      ...UTC_OPTIONS,
-      day: "numeric",
-      month: "short",
-      ...(showYear ? { year: "numeric" } : {}),
-    });
-    const timeStr = d.toLocaleTimeString("en-US", {
-      ...UTC_OPTIONS,
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    return `${dateStr}, ${timeStr}`;
-  } catch {
-    return "--";
-  }
-}
-
-function formatLeaveDateOnlyUTC(
-  isoString: string,
-  alwaysShowYear = false,
-): string {
-  try {
-    const d = new Date(isoString);
-    const showYear = alwaysShowYear || d.getUTCFullYear() !== currentYear();
-    return d.toLocaleDateString("en-US", {
-      ...UTC_OPTIONS,
-      day: "numeric",
-      month: "short",
-      ...(showYear ? { year: "numeric" } : {}),
-    });
-  } catch {
-    return "--";
-  }
 }
 
 export default function StaffDetail() {
@@ -882,9 +839,7 @@ export default function StaffDetail() {
                       : t("close") || "Close"}
                   </Text>
                   <Text style={styles.hoursTime}>
-                    {leave.type === "leave"
-                      ? formatLeaveDateOnlyUTC(leave.start_time, true)
-                      : `${formatLeaveDateTimeUTC(leave.start_time)} – ${formatLeaveDateTimeUTC(leave.end_time)}`}
+                    {formatLeaveRangeDisplay(leave)}
                   </Text>
                 </View>
               ))}

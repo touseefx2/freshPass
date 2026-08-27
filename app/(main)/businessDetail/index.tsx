@@ -65,6 +65,7 @@ import { ApiService, checkInternetConnection } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
 import RetryButton from "@/src/components/retryButton";
+import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
 import ExploreSegmentToggle, {
   type ExploreSegmentValue,
 } from "../dashboard/(explore)/ExploreSegmentToggle";
@@ -1282,52 +1283,6 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
   });
-
-const UTC_OPTIONS: Intl.DateTimeFormatOptions = {
-  timeZone: "UTC",
-};
-
-const currentYear = () => new Date().getFullYear();
-
-function formatLeaveDateTimeUTC(isoString: string): string {
-  try {
-    const d = new Date(isoString);
-    const showYear = d.getUTCFullYear() !== currentYear();
-    const dateStr = d.toLocaleDateString("en-US", {
-      ...UTC_OPTIONS,
-      day: "numeric",
-      month: "short",
-      ...(showYear ? { year: "numeric" } : {}),
-    });
-    const timeStr = d.toLocaleTimeString("en-US", {
-      ...UTC_OPTIONS,
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    return `${dateStr}, ${timeStr}`;
-  } catch {
-    return "--";
-  }
-}
-
-function formatLeaveDateOnlyUTC(
-  isoString: string,
-  alwaysShowYear = false,
-): string {
-  try {
-    const d = new Date(isoString);
-    const showYear = alwaysShowYear || d.getUTCFullYear() !== currentYear();
-    return d.toLocaleDateString("en-US", {
-      ...UTC_OPTIONS,
-      day: "numeric",
-      month: "short",
-      ...(showYear ? { year: "numeric" } : {}),
-    });
-  } catch {
-    return "--";
-  }
-}
 
 export default function BusinessDetailScreen() {
   const { colors } = useTheme();
@@ -2642,9 +2597,7 @@ export default function BusinessDetailScreen() {
                         : t("close") || "Close"}
                     </Text>
                     <Text style={styles.hoursTime}>
-                      {leave.type === "leave"
-                        ? formatLeaveDateOnlyUTC(leave.start_time, true)
-                        : `${formatLeaveDateTimeUTC(leave.start_time)} – ${formatLeaveDateTimeUTC(leave.end_time)}`}
+                      {formatLeaveRangeDisplay(leave)}
                     </Text>
                   </View>
                 ))}

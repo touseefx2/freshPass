@@ -13,12 +13,12 @@ import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import dayjs from "dayjs";
-import utc from "dayjs/plugin/utc";
 import Button from "@/src/components/button";
-
-dayjs.extend(utc);
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import {
+  formatLeaveDateDisplay,
+  formatLeaveDateTimeDisplay,
+} from "@/src/utils/leaveDateTime";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -86,6 +86,8 @@ export default function LeaveDetail() {
     leaveId?: string;
     staffName?: string;
     leaveType?: string;
+    startDate?: string;
+    endDate?: string;
     startTime?: string;
     endTime?: string;
     reason?: string;
@@ -95,10 +97,11 @@ export default function LeaveDetail() {
   const [cancelling, setCancelling] = useState(false);
 
   const leaveId = params.leaveId ? Number(params.leaveId) : null;
-  const staffName = params.staffName ?? "";
   const leaveType = (params.leaveType ?? "leave") as "leave" | "break";
-  const startTime = params.startTime ?? "";
-  const endTime = params.endTime ?? "";
+  const startDate = params.startDate ?? "";
+  const endDate = params.endDate ?? "";
+  const startTime = params.startTime || null;
+  const endTime = params.endTime || null;
   const reason = params.reason ?? "";
   const createdAt = params.createdAt ?? "";
 
@@ -114,21 +117,11 @@ export default function LeaveDetail() {
         ? "Cancelling closed day..."
         : "Cancel Closed Day";
 
-  const formatDateTime = (iso: string) => {
-    if (!iso) return "—";
-    const d = dayjs.utc(iso);
-    return d.format("MMM D, YYYY · h:mm a");
-  };
-
-  const formatDateOnly = (iso: string) => {
-    if (!iso) return "—";
-    const datePart = iso.slice(0, 10);
-    return dayjs(datePart).format("MMM D, YYYY");
-  };
-
-  const formatStartEnd = (iso: string) => {
-    if (!iso) return "—";
-    return leaveType === "leave" ? formatDateOnly(iso) : formatDateTime(iso);
+  const formatStartEnd = (dateStr: string, timeStr: string | null) => {
+    if (!dateStr) return "—";
+    return leaveType === "leave"
+      ? formatLeaveDateDisplay(dateStr, true)
+      : formatLeaveDateTimeDisplay(dateStr, timeStr);
   };
 
   const handleCancelLeave = async () => {
@@ -176,17 +169,17 @@ export default function LeaveDetail() {
               </Text>
             </View>
           </View>
-          {/* <View style={styles.row}>
-            <Text style={styles.label}>Staff</Text>
-            <Text style={styles.value}>{staffName || "—"}</Text>
-          </View> */}
           <View style={styles.row}>
             <Text style={styles.label}>Start</Text>
-            <Text style={styles.value}>{formatStartEnd(startTime)}</Text>
+            <Text style={styles.value}>
+              {formatStartEnd(startDate, startTime)}
+            </Text>
           </View>
           <View style={styles.row}>
             <Text style={styles.label}>End</Text>
-            <Text style={styles.value}>{formatStartEnd(endTime)}</Text>
+            <Text style={styles.value}>
+              {formatStartEnd(endDate, endTime)}
+            </Text>
           </View>
           {reason ? (
             <View style={styles.row}>
@@ -196,7 +189,9 @@ export default function LeaveDetail() {
           ) : null}
           <View style={[styles.row, styles.rowLast]}>
             <Text style={styles.label}>Created</Text>
-            <Text style={styles.value}>{formatDateOnly(createdAt)}</Text>
+            <Text style={styles.value}>
+              {formatLeaveDateDisplay(createdAt.slice(0, 10), true)}
+            </Text>
           </View>
         </View>
 
