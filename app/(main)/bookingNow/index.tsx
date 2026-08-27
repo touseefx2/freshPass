@@ -1249,6 +1249,7 @@ export default function BookingNow() {
     businessId: reduxBusinessId,
     businessHours,
     selectedPaymentMethod: reduxPaymentMethod,
+    subscriptionPlanType,
   } = businessData || {
     selectedService: null,
     allServices: [],
@@ -1258,7 +1259,12 @@ export default function BookingNow() {
     businessId: "",
     businessHours: null,
     selectedPaymentMethod: "payNow",
+    subscriptionPlanType: null,
   };
+
+  const isSoloPlan =
+    typeof subscriptionPlanType === "string" &&
+    subscriptionPlanType.toLowerCase() === "solo";
 
   // Use Redux directly - no local state needed
   const selectedServices = useMemo(() => {
@@ -1395,11 +1401,22 @@ export default function BookingNow() {
         message: string;
         data: {
           business: any;
+          subscription_plan_type?: "Solo" | "Business" | null;
+          subscription_status?: "active" | "inactive";
         };
       }>(businessEndpoints.businessDetails(businessId));
 
       if (response.success && response.data?.business) {
         const businessData = response.data.business;
+        const planTypeRaw = response.data.subscription_plan_type ?? null;
+        const subscriptionPlanTypeFromApi: "Solo" | "Business" | null =
+          planTypeRaw === "Solo" || planTypeRaw === "Business"
+            ? planTypeRaw
+            : null;
+        const subscriptionStatusFromApi: "active" | "inactive" =
+          response.data.subscription_status === "active"
+            ? "active"
+            : "inactive";
 
         // Parse business hours from API format to Redux format
         const parseTimeToHoursMinutes = (
@@ -1623,9 +1640,16 @@ export default function BookingNow() {
           staffMembers: staffMembersData,
           businessId: businessId,
           businessHours: businessHoursData,
+          subscriptionPlanType: subscriptionPlanTypeFromApi,
+          subscriptionStatus: subscriptionStatusFromApi,
         };
 
         dispatch(setBusinessDataAction(businessPayload));
+
+        // Solo plans have no staff picker — keep selection as "anyone"
+        if (subscriptionPlanTypeFromApi === "Solo") {
+          dispatch(setSelectedStaff("anyone"));
+        }
 
         // Set selected service in selectedServices - skip for subscription booking
         if (params.subscription_id) {
@@ -2149,76 +2173,82 @@ export default function BookingNow() {
           ]}
         />
 
-        {/* Staff Selection */}
-        <View>
-          <Text style={styles.staffTitle}>Choose staff members</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.staffList}
-          >
-            {staffList.map((staff) => {
-              const isAnyone = staff.id === "anyone";
-              const isActive = staff.active;
+        {/* Staff Selection — hidden for Solo subscription plan */}
+        {!isSoloPlan && (
+          <View>
+            <Text style={styles.staffTitle}>Choose staff members</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.staffList}
+            >
+              {staffList.map((staff) => {
+                const isAnyone = staff.id === "anyone";
+                const isActive = staff.active;
 
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  key={staff.id}
-                  style={[
-                    styles.staffCard,
-                    selectedStaff === staff.id && styles.staffCardSelected,
-                    isAnyone && styles.staffCardAnyone,
-                    !isAnyone && styles.shadow,
-                  ]}
-                  onPress={() => {
-                    dispatch(setSelectedStaff(staff.id));
-                  }}
-                >
-                  <>
-                    {!isAnyone && (
-                      <View style={styles.staffImageWrapper}>
-                        <Image
-                          source={{ uri: staff.image || "" }}
-                          style={styles.staffImage}
-                        />
-                        <View
-                          style={[
-                            styles.staffStatusDot,
-                            isActive
-                              ? styles.staffStatusDotActive
-                              : styles.staffStatusDotInactive,
-                          ]}
-                        />
-                      </View>
-                    )}
-
-                    <View style={styles.staffInfo}>
-                      <Text
-                        style={styles.staffName}
-                        numberOfLines={isAnyone ? 2 : 1}
-                      >
-                        {staff.name}
-                      </Text>
-                      {staff.experience ? (
-                        <Text style={styles.staffExperience} numberOfLines={1}>
-                          {staff.experience}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <View style={[styles.radioButton]}>
-                      {selectedStaff === staff.id && (
-                        <View style={styles.radioButtonInner} />
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    key={staff.id}
+                    style={[
+                      styles.staffCard,
+                      selectedStaff === staff.id && styles.staffCardSelected,
+                      isAnyone && styles.staffCardAnyone,
+                      !isAnyone && styles.shadow,
+                    ]}
+                    onPress={() => {
+                      dispatch(setSelectedStaff(staff.id));
+                    }}
+                  >
+                    <>
+                      {!isAnyone && (
+                        <View style={styles.staffImageWrapper}>
+                          <Image
+                            source={{ uri: staff.image || "" }}
+                            style={styles.staffImage}
+                          />
+                          <View
+                            style={[
+                              styles.staffStatusDot,
+                              isActive
+                                ? styles.staffStatusDotActive
+                                : styles.staffStatusDotInactive,
+                            ]}
+                          />
+                        </View>
                       )}
-                    </View>
-                  </>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
 
-        <View style={[styles.line, { marginTop: moderateHeightScale(20) }]} />
+                      <View style={styles.staffInfo}>
+                        <Text
+                          style={styles.staffName}
+                          numberOfLines={isAnyone ? 2 : 1}
+                        >
+                          {staff.name}
+                        </Text>
+                        {staff.experience ? (
+                          <Text style={styles.staffExperience} numberOfLines={1}>
+                            {staff.experience}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <View style={[styles.radioButton]}>
+                        {selectedStaff === staff.id && (
+                          <View style={styles.radioButtonInner} />
+                        )}
+                      </View>
+                    </>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {!isSoloPlan && (
+          <View
+            style={[styles.line, { marginTop: moderateHeightScale(20) }]}
+          />
+        )}
 
         {/* Availability Section */}
         <View style={styles.section}>
@@ -3146,6 +3176,7 @@ export default function BookingNow() {
                     selected_subscription_service_ids: JSON.stringify(
                       selectedSubscriptionServiceIds,
                     ),
+                    subscription_plan_type: subscriptionPlanType ?? "",
                   },
                 });
                 return;
@@ -3179,6 +3210,7 @@ export default function BookingNow() {
                     tryOnImageUrls.length > 0
                       ? JSON.stringify(tryOnImageUrls)
                       : "",
+                  subscription_plan_type: subscriptionPlanType ?? "",
                 },
               });
             }}

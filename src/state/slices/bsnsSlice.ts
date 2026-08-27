@@ -47,6 +47,10 @@ export interface BusinessState {
   selectedTimeSlot: string | null; // e.g. "09:00"
   selectedPaymentMethod: "payNow" | "payLater";
   selectedNote: string;
+  /** From GET /api/business/details — "Solo" | "Business" | null */
+  subscriptionPlanType: "Solo" | "Business" | null;
+  /** From GET /api/business/details — "active" | "inactive" */
+  subscriptionStatus: "active" | "inactive";
 }
 
 const initialState: BusinessState = {
@@ -61,6 +65,8 @@ const initialState: BusinessState = {
   selectedTimeSlot: null,
   selectedPaymentMethod: "payNow",
   selectedNote: "",
+  subscriptionPlanType: null,
+  subscriptionStatus: "inactive",
 };
 
 const bsnsSlice = createSlice({
@@ -76,6 +82,8 @@ const bsnsSlice = createSlice({
         staffMembers?: StaffMember[];
         businessId?: string;
         businessHours?: BusinessHours | null;
+        subscriptionPlanType?: "Solo" | "Business" | null;
+        subscriptionStatus?: "active" | "inactive";
       }>,
     ) {
       if (action.payload.selectedService !== undefined) {
@@ -100,6 +108,12 @@ const bsnsSlice = createSlice({
       }
       if (action.payload.businessHours !== undefined) {
         state.businessHours = action.payload.businessHours;
+      }
+      if (action.payload.subscriptionPlanType !== undefined) {
+        state.subscriptionPlanType = action.payload.subscriptionPlanType;
+      }
+      if (action.payload.subscriptionStatus !== undefined) {
+        state.subscriptionStatus = action.payload.subscriptionStatus;
       }
     },
     setSelectedServices(state, action: PayloadAction<Service[]>) {

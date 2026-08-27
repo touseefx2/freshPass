@@ -1354,6 +1354,12 @@ export default function BusinessDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [businessData, setBusinessData] = useState<any>(null);
+  const [subscriptionPlanType, setSubscriptionPlanType] = useState<
+    "Solo" | "Business" | null
+  >(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<
+    "active" | "inactive"
+  >("inactive");
 
   const [serviceTemplates, setServiceTemplates] = useState<
     Array<{
@@ -1394,11 +1400,22 @@ export default function BusinessDetailScreen() {
         message: string;
         data: {
           business: any;
+          subscription_plan_type?: "Solo" | "Business" | null;
+          subscription_status?: "active" | "inactive";
         };
       }>(businessEndpoints.businessDetails(params.business_id));
 
       if (response.success && response.data?.business) {
         setBusinessData(response.data.business);
+        const planType = response.data.subscription_plan_type ?? null;
+        setSubscriptionPlanType(
+          planType === "Solo" || planType === "Business" ? planType : null,
+        );
+        setSubscriptionStatus(
+          response.data.subscription_status === "active"
+            ? "active"
+            : "inactive",
+        );
         setIsFavorited(
           typeof response.data.business.is_favorited === "boolean"
             ? response.data.business.is_favorited
@@ -3165,6 +3182,8 @@ export default function BusinessDetailScreen() {
                                     staffMembers: staffMembersData,
                                     businessId: params.business_id || "",
                                     businessHours: businessHoursData,
+                                    subscriptionPlanType,
+                                    subscriptionStatus,
                                   };
                                   dispatch(
                                     setBusinessDataAction(businessPayload),
