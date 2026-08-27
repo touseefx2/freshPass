@@ -505,29 +505,36 @@ const createStyles = (theme: Theme) =>
     },
     block: {
       flex: 1,
-      borderRadius: moderateWidthScale(6),
-      borderLeftWidth: 2,
-      paddingHorizontal: moderateWidthScale(3),
-      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(8),
+      borderLeftWidth: 3,
+      paddingHorizontal: moderateWidthScale(4),
+      paddingVertical: moderateHeightScale(5),
       justifyContent: "space-between",
       overflow: "hidden",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 1,
     },
     blockTime: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size9,
       fontFamily: fonts.fontBold,
       lineHeight: BLOCK_LINE_HEIGHT,
     },
     blockClient: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       lineHeight: BLOCK_LINE_HEIGHT,
+      textTransform:"capitalize"
     },
     blockService: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size9,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.darkGreenLight,
       lineHeight: BLOCK_LINE_HEIGHT,
+      textTransform:"capitalize"
     },
     blockAvatar: {
       alignSelf: "flex-start",
@@ -535,6 +542,8 @@ const createStyles = (theme: Theme) =>
       height: BLOCK_AVATAR_SIZE,
       borderRadius: BLOCK_AVATAR_SIZE / 2,
       backgroundColor: theme.emptyProfileImage,
+      borderWidth: 1,
+      borderColor: theme.white80,
     },
     blockDetailed: {
       justifyContent: "center",
@@ -1007,10 +1016,12 @@ export default function CalendarScreen() {
 
   const blockPalette = useMemo(
     () => [
-      { bg: theme.lightGreen07, accent: theme.buttonBack },
-      { bg: theme.orangeBrown015, accent: theme.orangeBrown },
-      { bg: theme.upcomingCard, accent: theme.selectCard },
-      { bg: theme.lightGreen1, accent: theme.darkGreenLight },
+      { bg: theme.apptMintBg, accent: theme.apptMintAccent },
+      { bg: theme.apptPeachBg, accent: theme.apptPeachAccent },
+      { bg: theme.apptBlueBg, accent: theme.apptBlueAccent },
+      { bg: theme.apptPinkBg, accent: theme.apptPinkAccent },
+      { bg: theme.apptLavenderBg, accent: theme.apptLavenderAccent },
+      { bg: theme.apptGoldBg, accent: theme.apptGoldAccent },
     ],
     [theme],
   );
