@@ -291,7 +291,10 @@ export default function HairPipelineProcessingModal({
               style={styles.btnPrimary}
               onPress={() => {
                 onClose();
-                router.push("/aiRequests");
+                router.push({
+                  pathname: "/aiRequests",
+                  params: { fromProcessingModal: "1" },
+                });
               }}
               activeOpacity={0.7}
             >

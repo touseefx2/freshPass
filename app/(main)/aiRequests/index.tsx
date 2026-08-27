@@ -77,12 +77,30 @@ function formatDateTime(value: string): string {
 export default function AiRequests() {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ returnTo?: string }>();
+  const params = useLocalSearchParams<{
+    returnTo?: string;
+    fromProcessingModal?: string;
+  }>();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const isTryOnFlow =
     params.returnTo === "booking" || params.returnTo === "chat";
+  const fromProcessingModal = params.fromProcessingModal === "1";
   const headerTitle = isTryOnFlow ? t("tryOnList") : t("aiRequests");
+
+  const handleRobotPress = useCallback(() => {
+    // Came from generate modal → skip tool screen, land on AI Tools list
+    if (fromProcessingModal) {
+      if (router.canDismiss()) {
+        router.dismiss(2);
+      } else {
+        router.back();
+        router.back();
+      }
+      return;
+    }
+    router.back();
+  }, [fromProcessingModal]);
 
   const [jobs, setJobs] = useState<AiRequestJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -306,9 +324,7 @@ export default function AiRequests() {
               />
             )
           }
-          onRightPress={() => {
-            router.back();
-          }}
+          onRightPress={handleRobotPress}
         />
         <View style={styles.listContent}>
           <ActivityIndicator size="large" color={theme.primary} />
@@ -335,9 +351,7 @@ export default function AiRequests() {
             />
           )
         }
-        onRightPress={() => {
-          router.back();
-        }}
+        onRightPress={handleRobotPress}
       />
       <FlatList
         data={jobs}
