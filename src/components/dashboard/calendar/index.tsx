@@ -492,6 +492,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
     },
     dayColumn: {
+      position: "relative",
       borderLeftWidth: 1,
       borderLeftColor: theme.borderLight,
     },
@@ -500,6 +501,7 @@ const createStyles = (theme: Theme) =>
     },
     blockWrapper: {
       position: "absolute",
+      zIndex: 2,
       paddingHorizontal: moderateWidthScale(1),
       paddingBottom: moderateHeightScale(2),
     },
@@ -587,6 +589,7 @@ const createStyles = (theme: Theme) =>
     },
     breakBlock: {
       position: "absolute",
+      zIndex: 2,
       left: moderateWidthScale(2),
       right: moderateWidthScale(2),
       borderRadius: moderateWidthScale(6),
@@ -995,6 +998,7 @@ export default function CalendarScreen() {
     today.hour() * 60 + today.minute(),
   );
   const [applyBoxVisible, setApplyBoxVisible] = useState(false);
+  const [applyBoxDate, setApplyBoxDate] = useState(today);
   const [applyBoxType, setApplyBoxType] = useState<"leave" | "break">("leave");
   const [applyBoxSlotHour, setApplyBoxSlotHour] = useState(9);
   const [applyBoxBreakStartMinutes, setApplyBoxBreakStartMinutes] = useState(0);
@@ -1448,15 +1452,26 @@ export default function CalendarScreen() {
   const openApplyBox = (
     type: "leave" | "break" = "leave",
     startMinutes?: number,
+    date?: dayjs.Dayjs,
   ) => {
     setLeaveDetailBoxVisible(false);
+    const targetDate = date ?? selectedDate;
+    setApplyBoxDate(targetDate);
+    if (!targetDate.isSame(selectedDate, "day")) {
+      setSelectedDate(targetDate);
+    }
     setApplyBoxType(type);
     const start = startMinutes ?? 9 * 60;
-    const end = start + SLOT_INTERVAL_MINUTES;
+    const end = Math.min(start + SLOT_INTERVAL_MINUTES, 24 * 60);
     setApplyBoxSlotHour(Math.floor(start / 60));
     setApplyBoxBreakStartMinutes(start % 60);
-    setApplyBoxBreakEndHour(Math.floor(end / 60) % 24);
-    setApplyBoxBreakEndMinutes(end % 60);
+    if (end >= 24 * 60) {
+      setApplyBoxBreakEndHour(23);
+      setApplyBoxBreakEndMinutes(59);
+    } else {
+      setApplyBoxBreakEndHour(Math.floor(end / 60));
+      setApplyBoxBreakEndMinutes(end % 60);
+    }
     setApplyBoxVisible(true);
   };
 
@@ -1482,7 +1497,7 @@ export default function CalendarScreen() {
   const applyLeaveBreakFromBox = async () => {
     setApplyBoxLoading(true);
     try {
-      const date = selectedDate;
+      const date = applyBoxDate;
       if (applyBoxType === "leave") {
         const startTime = date.startOf("day").format("YYYY-MM-DD HH:mm:ss");
         const endTime = date.endOf("day").format("YYYY-MM-DD HH:mm:ss");
@@ -1596,18 +1611,17 @@ export default function CalendarScreen() {
       return;
     }
 
+    // Snap click Y to the nearest 30-minute slot in that day column.
     const rawMinutes =
       GRID_START_HOUR * 60 +
       Math.max(0, (event.nativeEvent.locationY / HOUR_HEIGHT) * 60);
+    const maxStart = 24 * 60 - SLOT_INTERVAL_MINUTES;
     const snapped = Math.min(
-      23 * 60 + 30,
+      maxStart,
       Math.floor(rawMinutes / SLOT_INTERVAL_MINUTES) * SLOT_INTERVAL_MINUTES,
     );
 
-    if (!day.isSame(selectedDate, "day")) {
-      setSelectedDate(day);
-    }
-    openApplyBox("break", snapped);
+    openApplyBox("break", snapped, day);
   };
 
   const laneStyle = (lane: number, laneCount: number) => ({
@@ -1741,7 +1755,7 @@ export default function CalendarScreen() {
       isSelectedDay && leaveForSelectedDate?.type === "leave";
 
     return (
-      <Pressable
+      <View
         key={dateStr}
         style={[
           styles.dayColumn,
@@ -1749,8 +1763,13 @@ export default function CalendarScreen() {
           { height: gridHeight },
           viewMode === "week" && isSelectedDay && styles.dayColumnSelected,
         ]}
-        onPress={(event) => handleColumnPress(day, event)}
       >
+        {/* Empty-slot tap target: appointments/breaks sit above and keep their own presses. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={(event) => handleColumnPress(day, event)}
+        />
+
         {isSelectedDay &&
           breakBlocks.map((block) => {
             const top =
@@ -1798,7 +1817,7 @@ export default function CalendarScreen() {
             </TouchableOpacity>
           </>
         ) : null}
-      </Pressable>
+      </View>
     );
   };
 
@@ -1891,9 +1910,13 @@ export default function CalendarScreen() {
         <View style={[styles.columnsArea, { height: gridHeight }]}>
           {hours.map((hour, index) => (
             <React.Fragment key={`line-${hour}`}>
-              <View style={[styles.hourLine, { top: index * HOUR_HEIGHT }]} />
+              <View
+                pointerEvents="none"
+                style={[styles.hourLine, { top: index * HOUR_HEIGHT }]}
+              />
               {index < hours.length - 1 && (
                 <View
+                  pointerEvents="none"
                   style={[
                     styles.halfHourLine,
                     { top: index * HOUR_HEIGHT + HOUR_HEIGHT / 2 },
@@ -1908,7 +1931,10 @@ export default function CalendarScreen() {
           </View>
 
           {showNowLine && (
-            <View style={[styles.nowLine, { top: nowTop }]}>
+            <View
+              pointerEvents="none"
+              style={[styles.nowLine, { top: nowTop }]}
+            >
               <View style={styles.nowDot} />
             </View>
           )}
@@ -2144,7 +2170,7 @@ export default function CalendarScreen() {
                   )}
                   {canManageLeaves && !leaveForSelectedDate && !isPastDate && (
                     <TouchableOpacity
-                      onPress={() => openApplyBox("leave")}
+                      onPress={() => openApplyBox("leave", undefined, selectedDate)}
                       activeOpacity={0.7}
                     >
                       <Text style={styles.manageAvailabilityText}>
@@ -2167,7 +2193,7 @@ export default function CalendarScreen() {
                 >
                   <View style={styles.applyBoxHeaderRow}>
                     <Text style={styles.applyBoxDateText}>
-                      {selectedDate.format("DD/MM/YYYY")}
+                      {applyBoxDate.format("DD/MM/YYYY")}
                     </Text>
                     <TouchableOpacity
                       style={styles.applyBoxCloseBtn}
