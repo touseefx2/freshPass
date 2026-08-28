@@ -4,6 +4,7 @@ import Logger from "@/src/services/logger";
 export type NotificationNavigationData = {
   type?: string | null;
   model_id?: number | null;
+  job_id?: string | null;
   sender?: {
     id: number;
     name?: string;
@@ -17,6 +18,7 @@ export type NotificationNavigationData = {
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
  * - type "ai_memory" → aiMemories (AI memories screen)
+ * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → Profile → Business profile settings → Manage subscriptions
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
@@ -71,6 +73,23 @@ export function navigateFromNotificationData(
     router.push("/(main)/aiMemories" as any);
     Logger.log("------>navigateFromNotificationData (ai_memory) -> aiMemories");
     return;
+  }
+
+  if (type === "airequest") {
+    const jobId = data.job_id as string | undefined;
+    if (jobId) {
+       
+        router.push({
+          pathname: "/aiResults",
+          params: { jobId },
+        });
+     
+      Logger.log(
+        "------>navigateFromNotificationData (airequest) -> aiRequests -> aiResults",
+        { jobId },
+      );
+      return;
+    }
   }
 
   if (type === "manageSubscriptionList") {

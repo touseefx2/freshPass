@@ -57,6 +57,7 @@ type NotificationItem = {
   apiId: number; // API notification ID for marking as read
   type?: string | null;
   model_id?: number | null;
+  data?: Record<string, unknown> | null;
   sender?: {
     id: number;
     name?: string;
@@ -245,6 +246,7 @@ type ApiNotification = {
   user_id: number;
   type?: string | null;
   model_id?: number | null;
+  data?: Record<string, unknown> | null;
   title: string;
   message: string;
   is_read: boolean;
@@ -325,6 +327,7 @@ export default function NotificationsScreen() {
       createdAt: apiNotif.created_at,
       type: apiNotif.type ?? null,
       model_id: apiNotif.model_id ?? null,
+      data: apiNotif.data ?? null,
       sender: apiNotif.sender ?? null,
     };
   };
@@ -714,6 +717,7 @@ export default function NotificationsScreen() {
                 navigateFromNotificationData(
                   router,
                   {
+                    ...(item.data ?? {}),
                     type: item.type,
                     model_id: item.model_id,
                     sender: item.sender,
