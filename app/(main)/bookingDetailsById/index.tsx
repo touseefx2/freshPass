@@ -1025,7 +1025,7 @@ export default function bookingDetailsById() {
     }
   };
 
-  const getStatusLabel = (status: BookingStatus) => {
+  const getStatusLabel = (status: BookingStatus, customerName?: string) => {
     switch (status) {
       case "ongoing":
         return "On going";
@@ -1034,6 +1034,9 @@ export default function bookingDetailsById() {
       case "complete":
         return "Complete";
       case "cancelled":
+        if (userRole === "staff" || userRole === "business") {
+          return `${customerName || "Customer"} canceled`;
+        }
         return "You canceled";
       case "expired":
         return "Expired";
@@ -1525,7 +1528,7 @@ export default function bookingDetailsById() {
                       getStatusTextStyle(booking.status),
                     ]}
                   >
-                    {getStatusLabel(booking.status)}
+                    {getStatusLabel(booking.status, booking.user)}
                   </Text>
                 </View>
               </View>
