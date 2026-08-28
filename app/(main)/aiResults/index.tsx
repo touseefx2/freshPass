@@ -683,11 +683,17 @@ type PotentialContactsResponse = {
 export default function AiResults() {
   const { colors } = useTheme();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ jobId?: string; returnTo?: string }>();
+  const params = useLocalSearchParams<{
+    jobId?: string;
+    returnTo?: string;
+    fromNotification?: string;
+  }>();
   const jobId = params.jobId;
   const fromBooking = params.returnTo === "booking";
   const fromChat = params.returnTo === "chat";
+  const fromNotification = params.fromNotification === "1";
   const isSelectionMode = fromBooking || fromChat;
+  const showRobotIcon = !isSelectionMode && !fromNotification;
   const router = useRouter();
   const { showBanner } = useNotificationContext();
 
@@ -2104,7 +2110,7 @@ export default function AiResults() {
               gap: moderateWidthScale(12),
             }}
           >
-            {!isSelectionMode ? (
+            {showRobotIcon ? (
               <TouchableOpacity
                 onPress={() => {
                   router.back();

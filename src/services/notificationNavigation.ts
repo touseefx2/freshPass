@@ -81,7 +81,7 @@ export function navigateFromNotificationData(
        
         router.push({
           pathname: "/aiResults",
-          params: { jobId },
+          params: { jobId, fromNotification: "1" },
         });
      
       Logger.log(
