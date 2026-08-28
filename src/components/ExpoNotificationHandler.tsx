@@ -50,22 +50,10 @@ export default function ExpoNotificationHandler() {
       },
     );
 
-    // Handle app opened from KILLED state by notification tap (listener doesn't fire in that case).
-    // Only when user is logged in: on Android the "last" response can persist across cold starts,
-    // so we avoid acting on it when not authenticated (no notification was tapped this launch).
-    if (accessToken) {
-      Notifications.getLastNotificationResponseAsync().then((response) => {
-        if (!response) return;
-        const data = response.notification.request.content.data as
-          | Record<string, unknown>
-          | undefined;
-        Logger.log("------>Notification tap (cold start), data:", data);
-        // Small delay so app shell is mounted and router is ready
-        setTimeout(() => navigateFromNotificationData(router, data), 4000);
-      });
-    }
+    // Cold start (killed app) is handled in app/index.tsx after splash navigation.
 
-    // Fired when user taps on notification (app in BACKGROUND - when killed, use getLastNotificationResponseAsync above)
+    // Fired when user taps on notification (app in background or foreground).
+    // Killed-app cold start is handled in app/index.tsx via pendingNotificationNavigation.
     responseListenerRef.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
         const data = response.notification.request.content.data as

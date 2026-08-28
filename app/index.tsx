@@ -9,6 +9,12 @@ import { IMAGES } from "@/src/constant/images";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { useEffect, useMemo, useRef } from "react";
 import Logger from "@/src/services/logger";
+import {
+  clearLastNotificationResponse,
+  clearPendingNotificationData,
+  consumePendingNotificationNavigation,
+  queueColdStartNotificationIfNeeded,
+} from "@/src/services/pendingNotificationNavigation";
 
 // Safety net in case the Lottie splash never fires onAnimationFinish /
 // onAnimationFailure on some devices (seen intermittently on certain
@@ -26,7 +32,7 @@ export default function Index() {
   const isGuest = user.isGuest;
   const hasNavigatedRef = useRef(false);
 
-  const handleNavigation = () => {
+  const handleNavigation = async () => {
     if (hasNavigatedRef.current) {
       return;
     }
@@ -40,10 +46,18 @@ export default function Index() {
     // without a role since they never log in.
     const hasValidSession = (!!accessToken && !!userRole) || isGuest;
 
+    // Queue cold-start notification tap before routing so consume runs after splash.
+    if (accessToken) {
+      await queueColdStartNotificationIfNeeded();
+    }
+
     if (hasValidSession) {
       resetToDashboardHome();
+      consumePendingNotificationNavigation(router);
     } else {
       router.replace(`/(main)/${MAIN_ROUTES.ROLE}` as any);
+      clearPendingNotificationData();
+      void clearLastNotificationResponse();
     }
   };
 

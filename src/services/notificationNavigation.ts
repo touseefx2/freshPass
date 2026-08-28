@@ -14,7 +14,8 @@ export type NotificationNavigationData = {
 
 /**
  * Navigate based on notification data (push payload or API notification item).
- * Used by ExpoNotificationHandler (push tap) and Notifications screen (list item tap).
+ * Used by ExpoNotificationHandler (push tap), Notifications screen (list item tap),
+ * and pendingNotificationNavigation (cold start after splash).
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
  * - type "ai_memory" → aiMemories (AI memories screen)
