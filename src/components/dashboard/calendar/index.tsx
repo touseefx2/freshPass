@@ -167,6 +167,12 @@ const GRID_END_HOUR = 24;
 const MONTH_CELL_HEIGHT = heightScale(54);
 const DAY_CIRCLE_SIZE = widthScale(36);
 const SWIPE_THRESHOLD = moderateWidthScale(50);
+const APPLY_BOX_WIDTH = widthScale(168);
+const APPLY_BOX_MAX_HEIGHT = heightScale(148);
+const DEFAULT_OVERLAY_ANCHOR = {
+  top: moderateHeightScale(42),
+  left: moderateWidthScale(12),
+};
 
 const getWeekDays = (date: dayjs.Dayjs) => {
   const startOfWeek = date.startOf("week");
@@ -770,18 +776,15 @@ const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
       bottom: 0,
-      paddingTop: moderateHeightScale(44),
-      paddingHorizontal: moderateWidthScale(12),
-      alignItems: "flex-start",
-      justifyContent: "flex-start",
       zIndex: 10,
     },
     applyBoxDropdown: {
-      maxWidth: widthScale(210),
+      position: "absolute",
+      width: APPLY_BOX_WIDTH,
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(6),
-      paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(5),
+      paddingVertical: moderateHeightScale(5),
       borderWidth: 1,
       borderColor: theme.borderLine,
       shadowOffset: {
@@ -796,39 +799,40 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "flex-start",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(1),
     },
     applyBoxCloseBtn: {
-      padding: moderateWidthScale(2),
+      padding: moderateWidthScale(1),
       marginTop: moderateHeightScale(-2),
       marginRight: moderateWidthScale(-2),
     },
     applyBoxDateText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.text,
     },
     applyBoxHint: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size9,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      marginBottom: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(3),
+      lineHeight: moderateHeightScale(12),
     },
     applyBoxRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(4),
+      gap: moderateWidthScale(6),
+      marginBottom: moderateHeightScale(3),
     },
     applyBoxRadioRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(4),
+      gap: moderateWidthScale(3),
     },
     applyBoxRadioOuter: {
-      width: widthScale(14),
-      height: widthScale(14),
-      borderRadius: widthScale(7),
+      width: widthScale(12),
+      height: widthScale(12),
+      borderRadius: widthScale(6),
       borderWidth: 1.5,
       borderColor: theme.borderLine,
       alignItems: "center",
@@ -838,26 +842,26 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.primary,
     },
     applyBoxRadioInner: {
-      width: widthScale(6),
-      height: widthScale(6),
+      width: widthScale(5),
+      height: widthScale(5),
       borderRadius: widthScale(3),
       backgroundColor: theme.primary,
     },
     applyBoxOptionText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
       color: theme.text,
     },
     applyBoxSlotRow: {
       flexDirection: "row",
-      gap: moderateWidthScale(6),
-      marginBottom: moderateHeightScale(4),
+      gap: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(3),
     },
     applyBoxSlotLabel: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size9,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      marginBottom: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(1),
     },
     applyBoxTimeTouch: {
       flex: 1,
@@ -866,12 +870,12 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       borderWidth: 1,
       borderColor: theme.borderLine,
-      borderRadius: moderateWidthScale(5),
-      paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(5),
+      paddingVertical: moderateHeightScale(3),
     },
     applyBoxTimeText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size9,
       fontFamily: fonts.fontRegular,
       color: theme.text,
     },
@@ -880,14 +884,14 @@ const createStyles = (theme: Theme) =>
       justifyContent: "flex-end",
     },
     applyBoxButton: {
-      paddingVertical: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(5),
+      paddingVertical: moderateHeightScale(3),
+      paddingHorizontal: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(4),
       backgroundColor: theme.primary,
       alignItems: "center",
     },
     applyBoxButtonText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
@@ -897,18 +901,15 @@ const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
       bottom: 0,
-      paddingTop: moderateHeightScale(44),
-      paddingHorizontal: moderateWidthScale(12),
-      alignItems: "flex-start",
-      justifyContent: "flex-start",
       zIndex: 10,
     },
     leaveDetailBoxDropdown: {
-      maxWidth: widthScale(210),
+      position: "absolute",
+      width: APPLY_BOX_WIDTH,
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(6),
-      paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(5),
+      paddingVertical: moderateHeightScale(5),
       borderWidth: 1,
       borderColor: theme.borderLine,
       shadowOffset: { width: 0, height: 2 },
@@ -923,7 +924,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(2),
     },
     leaveDetailBoxDateText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.text,
     },
@@ -933,7 +934,7 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateWidthScale(-2),
     },
     leaveDetailBoxTimeText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size9,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(2),
@@ -994,6 +995,7 @@ export default function CalendarScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const scrollViewRef = useRef<ScrollView>(null);
+  const overlayContainerRef = useRef<View>(null);
   const { showBanner } = useNotificationContext();
   const router = useRouter();
   const userRole = useAppSelector((state: any) => state.user.userRole);
@@ -1028,6 +1030,7 @@ export default function CalendarScreen() {
   const [leaveDetailBoxVisible, setLeaveDetailBoxVisible] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null);
   const [leaveDetailCancelling, setLeaveDetailCancelling] = useState(false);
+  const [overlayAnchor, setOverlayAnchor] = useState(DEFAULT_OVERLAY_ANCHOR);
 
   const canManageLeaves = userRole === "staff" || userRole === "business";
   const currentDate = selectedDate.format("YYYY-MM-DD");
@@ -1424,6 +1427,26 @@ export default function CalendarScreen() {
     setLeaveDetailBoxVisible(false);
   };
 
+  const setAnchorFromEvent = useCallback((event: GestureResponderEvent) => {
+    const { pageX, pageY } = event.nativeEvent;
+    overlayContainerRef.current?.measureInWindow(
+      (containerX, containerY, containerW, containerH) => {
+        const rawTop = pageY - containerY;
+        const rawLeft = pageX - containerX;
+        setOverlayAnchor({
+          top: Math.min(
+            Math.max(moderateHeightScale(4), rawTop),
+            Math.max(moderateHeightScale(4), containerH - APPLY_BOX_MAX_HEIGHT),
+          ),
+          left: Math.min(
+            Math.max(moderateWidthScale(4), rawLeft),
+            Math.max(moderateWidthScale(4), containerW - APPLY_BOX_WIDTH),
+          ),
+        });
+      },
+    );
+  }, []);
+
   const goToDate = (date: dayjs.Dayjs) => {
     setSelectedDate(date);
     setWeek(getWeekDays(date));
@@ -1489,8 +1512,16 @@ export default function CalendarScreen() {
     return date.format("MMM D, YYYY");
   };
 
-  const openLeaveDetailBox = (leave: StaffLeave) => {
+  const openLeaveDetailBox = (
+    leave: StaffLeave,
+    event?: GestureResponderEvent,
+  ) => {
     setApplyBoxVisible(false);
+    if (event) {
+      setAnchorFromEvent(event);
+    } else {
+      setOverlayAnchor(DEFAULT_OVERLAY_ANCHOR);
+    }
     setSelectedLeave(leave);
     setLeaveDetailBoxVisible(true);
   };
@@ -1533,8 +1564,14 @@ export default function CalendarScreen() {
     type: "leave" | "break" = "leave",
     startMinutes?: number,
     date?: dayjs.Dayjs,
+    event?: GestureResponderEvent,
   ) => {
     setLeaveDetailBoxVisible(false);
+    if (event) {
+      setAnchorFromEvent(event);
+    } else {
+      setOverlayAnchor(DEFAULT_OVERLAY_ANCHOR);
+    }
     const targetDate = date ?? selectedDate;
     setApplyBoxDate(targetDate);
     if (!targetDate.isSame(selectedDate, "day")) {
@@ -1692,7 +1729,7 @@ export default function CalendarScreen() {
       if (!day.isSame(selectedDate, "day")) {
         setSelectedDate(day);
       }
-      openLeaveDetailBox(closedLeave);
+      openLeaveDetailBox(closedLeave, event);
       return;
     }
 
@@ -1708,7 +1745,7 @@ export default function CalendarScreen() {
       Math.floor(rawMinutes / SLOT_INTERVAL_MINUTES) * SLOT_INTERVAL_MINUTES,
     );
 
-    openApplyBox("break", snapped, day);
+    openApplyBox("break", snapped, day, event);
   };
 
   const laneStyle = (lane: number, laneCount: number) => ({
@@ -1870,7 +1907,7 @@ export default function CalendarScreen() {
               key={`break-${dateStr}-${block.leave.id}`}
               style={[styles.breakBlock, { top, height }]}
               activeOpacity={0.8}
-              onPress={() => openLeaveDetailBox(block.leave)}
+              onPress={(event) => openLeaveDetailBox(block.leave, event)}
             >
               <Text style={styles.leaveLabelText} numberOfLines={1}>
                 {t("breakUpper")}
@@ -1889,12 +1926,12 @@ export default function CalendarScreen() {
           <>
             <Pressable
               style={styles.closedTint}
-              onPress={() => openLeaveDetailBox(dayLeave)}
+              onPress={(event) => openLeaveDetailBox(dayLeave, event)}
             />
             <TouchableOpacity
               style={styles.closedChip}
               activeOpacity={0.8}
-              onPress={() => openLeaveDetailBox(dayLeave)}
+              onPress={(event) => openLeaveDetailBox(dayLeave, event)}
             >
               <Text numberOfLines={1} style={styles.leaveLabelText}>
                 {t("closeUpper")}
@@ -2213,7 +2250,7 @@ export default function CalendarScreen() {
         {/* Agenda */}
         <View style={styles.agendaContainer}>
           <GestureDetector gesture={swipeGesture}>
-          <View style={{ flex: 1 }}>
+          <View ref={overlayContainerRef} style={{ flex: 1 }}>
             <TouchableOpacity
               style={styles.agendaHeader}
               activeOpacity={1}
@@ -2277,7 +2314,13 @@ export default function CalendarScreen() {
                 onPress={() => setApplyBoxVisible(false)}
               >
                 <Pressable
-                  style={styles.applyBoxDropdown}
+                  style={[
+                    styles.applyBoxDropdown,
+                    {
+                      top: overlayAnchor.top,
+                      left: overlayAnchor.left,
+                    },
+                  ]}
                   onPress={(event) => event.stopPropagation()}
                 >
                   <View style={styles.applyBoxHeaderRow}>
@@ -2292,7 +2335,7 @@ export default function CalendarScreen() {
                     >
                       <MaterialIcons
                         name="close"
-                        size={iconScale(16)}
+                        size={iconScale(14)}
                         color={theme.text}
                       />
                     </TouchableOpacity>
@@ -2339,12 +2382,12 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                   </View>
                   {applyBoxType === "break" && (
-                    <View style={{ marginBottom: moderateHeightScale(4) }}>
+                    <View style={{ marginBottom: moderateHeightScale(3) }}>
                       <View
                         style={{
                           flexDirection: "row",
-                          gap: moderateWidthScale(6),
-                          marginBottom: moderateHeightScale(2),
+                          gap: moderateWidthScale(4),
+                          marginBottom: moderateHeightScale(1),
                         }}
                       >
                         <Text style={[styles.applyBoxSlotLabel, { flex: 1 }]}>
@@ -2371,7 +2414,7 @@ export default function CalendarScreen() {
                           </Text>
                           <Feather
                             name="clock"
-                            size={iconScale(12)}
+                            size={iconScale(10)}
                             color={theme.lightGreen}
                           />
                         </TouchableOpacity>
@@ -2391,7 +2434,7 @@ export default function CalendarScreen() {
                           </Text>
                           <Feather
                             name="clock"
-                            size={iconScale(12)}
+                            size={iconScale(10)}
                             color={theme.lightGreen}
                           />
                         </TouchableOpacity>
@@ -2420,7 +2463,13 @@ export default function CalendarScreen() {
                 onPress={() => setLeaveDetailBoxVisible(false)}
               >
                 <Pressable
-                  style={styles.leaveDetailBoxDropdown}
+                  style={[
+                    styles.leaveDetailBoxDropdown,
+                    {
+                      top: overlayAnchor.top,
+                      left: overlayAnchor.left,
+                    },
+                  ]}
                   onPress={(e) => e.stopPropagation()}
                 >
                   <View style={styles.leaveDetailBoxHeaderRow}>
@@ -2437,7 +2486,7 @@ export default function CalendarScreen() {
                     >
                       <MaterialIcons
                         name="close"
-                        size={iconScale(16)}
+                        size={iconScale(14)}
                         color={theme.text}
                       />
                     </TouchableOpacity>
