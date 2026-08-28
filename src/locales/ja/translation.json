@@ -819,6 +819,8 @@
   "noActiveSubscriptionBenefit3Desc": "FreshPassのプロ向けツールをすべて解放。",
   "noActiveSubscriptionFooterHint": "確定前にSoloとBusinessを比較できます。",
   "chooseAPlan": "プランを選ぶ",
+  "buyNewPlan": "新しいプランを購入",
+  "buyNewPlanHint": "プランはキャンセル済みです。{{date}}まで引き続きご利用いただけます。その後も利用するには新しいプランをお選びください。",
   "freeTrialActive": "無料トライアル有効",
   "yourTrialEndsOn": "トライアル終了日",
   "cardLast4Digits": "カード（下4桁）",

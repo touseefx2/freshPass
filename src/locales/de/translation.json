@@ -819,6 +819,8 @@
   "noActiveSubscriptionBenefit3Desc": "Schalte die vollständigen FreshPass-Profi-Tools frei.",
   "noActiveSubscriptionFooterHint": "Du kannst Solo und Business prüfen, bevor du bestätigst.",
   "chooseAPlan": "Plan wählen",
+  "buyNewPlan": "Neuen Plan kaufen",
+  "buyNewPlanHint": "Ihr Tarif ist gekündigt. Sie können ihn bis zum {{date}} weiter nutzen. Wählen Sie danach einen neuen Tarif.",
   "freeTrialActive": "Kostenlose Testversion aktiv",
   "yourTrialEndsOn": "Ihre Testversion endet am",
   "cardLast4Digits": "Karte (letzte 4 Ziffern)",

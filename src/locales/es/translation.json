@@ -819,6 +819,8 @@
   "noActiveSubscriptionBenefit3Desc": "Desbloquea todas las herramientas profesionales de FreshPass.",
   "noActiveSubscriptionFooterHint": "Puedes revisar Solo y Business antes de confirmar.",
   "chooseAPlan": "Elegir un plan",
+  "buyNewPlan": "Comprar nuevo plan",
+  "buyNewPlanHint": "Tu plan está cancelado. Puedes seguir usándolo hasta el {{date}}. Elige un nuevo plan para continuar después.",
   "freeTrialActive": "Prueba gratuita activa",
   "yourTrialEndsOn": "Tu prueba termina el",
   "cardLast4Digits": "Tarjeta (últimos 4 dígitos)",

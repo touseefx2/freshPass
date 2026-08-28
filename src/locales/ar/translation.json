@@ -819,6 +819,8 @@
   "noActiveSubscriptionBenefit3Desc": "افتح مجموعة أدوات FreshPass الاحترافية كاملة.",
   "noActiveSubscriptionFooterHint": "يمكنك مراجعة خطط Solo وBusiness قبل التأكيد.",
   "chooseAPlan": "اختر خطة",
+  "buyNewPlan": "شراء خطة جديدة",
+  "buyNewPlanHint": "تم إلغاء خطتك. يمكنك الاستمرار في استخدامها حتى {{date}}. اختر خطة جديدة للمتابعة بعد ذلك.",
   "freeTrialActive": "الفترة التجريبية المجانية نشطة",
   "yourTrialEndsOn": "تنتهي فترتك التجريبية في",
   "cardLast4Digits": "البطاقة (آخر 4 أرقام)",
