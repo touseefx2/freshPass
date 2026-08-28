@@ -54,6 +54,8 @@ import {
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter, useFocusEffect } from "expo-router";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
@@ -164,6 +166,7 @@ const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
 const MONTH_CELL_HEIGHT = heightScale(54);
 const DAY_CIRCLE_SIZE = widthScale(36);
+const SWIPE_THRESHOLD = moderateWidthScale(50);
 
 const getWeekDays = (date: dayjs.Dayjs) => {
   const startOfWeek = date.startOf("week");
@@ -1426,7 +1429,7 @@ export default function CalendarScreen() {
     setWeek(getWeekDays(date));
   };
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     closeOverlays();
     if (viewMode === "day") {
       goToDate(selectedDate.subtract(1, "day"));
@@ -1435,9 +1438,9 @@ export default function CalendarScreen() {
     } else {
       goToDate(selectedDate.subtract(1, "month").startOf("month"));
     }
-  };
+  }, [viewMode, selectedDate]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     closeOverlays();
     if (viewMode === "day") {
       goToDate(selectedDate.add(1, "day"));
@@ -1446,7 +1449,23 @@ export default function CalendarScreen() {
     } else {
       goToDate(selectedDate.add(1, "month").startOf("month"));
     }
-  };
+  }, [viewMode, selectedDate]);
+
+  const swipeGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-24, 24])
+        .failOffsetY([-12, 12])
+        .onEnd((event) => {
+          "worklet";
+          if (event.translationX <= -SWIPE_THRESHOLD) {
+            runOnJS(handleNext)();
+          } else if (event.translationX >= SWIPE_THRESHOLD) {
+            runOnJS(handlePrev)();
+          }
+        }),
+    [handleNext, handlePrev],
+  );
 
   const handleToday = () => {
     closeOverlays();
@@ -2193,6 +2212,7 @@ export default function CalendarScreen() {
 
         {/* Agenda */}
         <View style={styles.agendaContainer}>
+          <GestureDetector gesture={swipeGesture}>
           <View style={{ flex: 1 }}>
             <TouchableOpacity
               style={styles.agendaHeader}
@@ -2473,6 +2493,7 @@ export default function CalendarScreen() {
                 ? renderWeekView()
                 : renderDayView()}
           </View>
+          </GestureDetector>
         </View>
       </View>
 
