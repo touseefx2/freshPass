@@ -1205,6 +1205,7 @@ export default function CalendarScreen() {
         appointmentsEndpoints.list({
           appointment_from_date: fromDate,
           appointment_to_date: toDate,
+          status: "scheduled",
           per_page: 100,
           direction: "desc",
         }),
