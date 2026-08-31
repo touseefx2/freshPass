@@ -344,6 +344,39 @@ export const aiTransactionsEndpoints = {
 };
 
 /**
+ * Business customers endpoints
+ */
+export const customersEndpoints = {
+  list: (params?: {
+    search?: string;
+    subscription_state?: string;
+    sort?: string;
+    direction?: "asc" | "desc";
+    page?: number;
+    per_page?: number;
+    from_date?: string;
+    to_date?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.subscription_state) {
+      queryParams.append("subscription_state", params.subscription_state);
+    }
+    if (params?.sort) queryParams.append("sort", params.sort);
+    if (params?.direction) queryParams.append("direction", params.direction);
+    if (params?.page != null) queryParams.append("page", params.page.toString());
+    if (params?.per_page != null) {
+      queryParams.append("per_page", params.per_page.toString());
+    }
+    if (params?.from_date) queryParams.append("from_date", params.from_date);
+    if (params?.to_date) queryParams.append("to_date", params.to_date);
+    const query = queryParams.toString();
+    return `/api/customers${query ? `?${query}` : ""}`;
+  },
+  detail: (id: string | number) => `/api/customers/${id}`,
+};
+
+/**
  * Favorites endpoints
  */
 export const favoritesEndpoints = {

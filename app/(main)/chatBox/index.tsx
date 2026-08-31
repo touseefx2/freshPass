@@ -1075,6 +1075,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
       color: theme.white,
+      textTransform: "capitalize",
     },
     sepLine: {
       width: "100%",

@@ -334,7 +334,8 @@ export const Skeleton = ({
     | "Team"
     | "Availability"
     | "CategorySelect"
-    | "VerificationModal";
+    | "VerificationModal"
+    | "Customers";
   styles?: Record<string, any>;
 }) => {
   const { colors } = useTheme();
@@ -580,6 +581,43 @@ export const Skeleton = ({
     </>
   ) : null;
 
+  const customersSkeleton = (
+    <>
+      {[...Array(5)].map((_, index) => (
+        <View
+          key={index}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingVertical: moderateHeightScale(14),
+            borderBottomWidth: 1,
+            borderBottomColor: (colors as Theme).borderLight,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+            <View style={skeletonStyles.staffOnDutyAvatar} />
+            <View style={{ flex: 1, marginLeft: moderateWidthScale(12) }}>
+              <View style={skeletonStyles.workHistoryServiceSkeleton} />
+              <View
+                style={[
+                  skeletonStyles.workHistoryDateSkeleton,
+                  { marginTop: moderateHeightScale(4) },
+                ]}
+              />
+            </View>
+          </View>
+          <View
+            style={[
+              skeletonStyles.workHistoryDateSkeleton,
+              { width: moderateWidthScale(72) },
+            ]}
+          />
+        </View>
+      ))}
+    </>
+  );
+
   const reviewsSkeleton = styles ? (
     <>
       <View style={styles.headerSection}>
@@ -804,6 +842,11 @@ export const Skeleton = ({
       {screenType === "VerificationModal" && (
         <SkeletonPlaceholder backgroundColor="#E8DFB8" highlightColor="#DCCF9E">
           {verificationModalSkeleton}
+        </SkeletonPlaceholder>
+      )}
+      {screenType === "Customers" && (
+        <SkeletonPlaceholder backgroundColor="#E8DFB8" highlightColor="#DCCF9E">
+          {customersSkeleton}
         </SkeletonPlaceholder>
       )}
     </>

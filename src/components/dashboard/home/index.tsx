@@ -20,6 +20,7 @@ import SummaryStats from "./components/SummaryStats";
 import StaffOnDuty from "./components/StaffOnDuty";
 import AppointmentsSection from "./components/AppointmentsSection";
 import WorkHistory from "./components/WorkHistory";
+import CustomersSection from "./components/CustomersSection";
 import WelcomeSection from "./components/WelcomeSection";
 import DashboardHeader from "../../DashboardHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -523,6 +524,15 @@ export default function HomeScreen() {
               callApi={handleFetchAppointments}
             />
           </View>
+
+          <View style={styles.line} />
+
+          {/* Customers - Business only */}
+          {userRole === "business" && (
+            <View style={styles.workHistoryContainer}>
+              <CustomersSection />
+            </View>
+          )}
 
           <View style={styles.line} />
 
