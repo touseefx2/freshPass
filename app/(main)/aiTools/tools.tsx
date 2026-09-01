@@ -86,7 +86,7 @@ export default function Tools() {
   const toolType = params.toolType || "";
   const headerTitle = toolType || t("aiTools");
   const businessId = user?.business_id ?? "";
-  const userId = Number(user?.id) ?? 0;
+  const userId = Number(user?.id);
 
   useFocusEffect(
     useCallback(() => {
@@ -496,6 +496,11 @@ export default function Tools() {
       return;
     }
 
+    if (!userId || !Number.isFinite(userId)) {
+      showBanner(t("error"), t("pleaseSignInToContinue"), "error", 3000);
+      return;
+    }
+
     setIsGenerating(true);
     dispatch(setActionLoader(true));
 
@@ -671,6 +676,11 @@ export default function Tools() {
     // Check if business_id is available (only for social media tools)
     if (toolType !== "Hair Tryon" && !businessId) {
       showBanner(t("error"), t("businessIdNotFound"), "error", 3000);
+      return;
+    }
+
+    if (!userId || !Number.isFinite(userId)) {
+      showBanner(t("error"), t("pleaseSignInToContinue"), "error", 3000);
       return;
     }
 

@@ -208,5 +208,35 @@ export const createStyles = (theme: Theme) =>
       fontSize: fontSize.size16,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen4,
+      textAlign: "center",
+    },
+    errorStateText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(16),
+    },
+    sectionHeader: {
+      paddingTop: moderateHeightScale(8),
+      paddingBottom: moderateHeightScale(12),
+    },
+    sectionHeaderText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    errorBanner: {
+      marginBottom: moderateHeightScale(16),
+      padding: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.appointmentStatus,
+      gap: moderateHeightScale(12),
+    },
+    errorBannerText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      textAlign: "center",
     },
   });

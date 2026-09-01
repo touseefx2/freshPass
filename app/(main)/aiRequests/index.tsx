@@ -2,14 +2,14 @@ import React, { useMemo, useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   ActivityIndicator,
   RefreshControl,
   StatusBar,
   TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/src/hooks/hooks";
+import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
@@ -19,12 +19,15 @@ import { aiRequestsEndpoints } from "@/src/services/endpoints";
 import dayjs from "dayjs";
 import { MaterialIcons } from "@expo/vector-icons";
 import { moderateWidthScale } from "@/src/theme/dimensions";
-
-// const DEFAULT_AI_REQUESTS_IMAGE =
-//   process.env.EXPO_PUBLIC_DEFAULT_AI_REQUESTS_IMAGE || "";
+import RetryButton from "@/src/components/retryButton";
 
 const PER_PAGE = 20;
 const POLL_INTERVAL_MS = 10000;
+
+const HAIR_TRYON_JOB_TYPES = new Set([
+  "generate_with_replicate",
+  "hair_pipeline",
+]);
 
 export type AiRequestJob = {
   job_id: string;
@@ -36,6 +39,7 @@ export type AiRequestJob = {
   response?: Record<string, unknown>;
   expiry_date: string;
   status: string;
+  message?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -58,18 +62,80 @@ type AiRequestsApiResponse = {
   };
 };
 
-function formatDate(value: string): string {
-  const d = dayjs(value);
-  if (d.isValid()) {
-    return d.format("MMM D, YYYY");
-  }
-  return value;
+type AiRequestSection = {
+  dayKey: string;
+  title: string;
+  count: number;
+  data: AiRequestJob[];
+};
+
+function isHairTryonJob(job: AiRequestJob): boolean {
+  const jobType =
+    job.request_payload?.job_type ?? job.response?.job_type ?? "";
+  return (
+    typeof jobType === "string" && HAIR_TRYON_JOB_TYPES.has(jobType)
+  );
 }
 
-function formatDateTime(value: string): string {
+function filterJobsForRole(
+  jobs: AiRequestJob[],
+  shouldFilterHairTryon: boolean,
+): AiRequestJob[] {
+  if (!shouldFilterHairTryon) return jobs;
+  return jobs.filter(isHairTryonJob);
+}
+
+function formatSectionDayLabel(dayKey: string, t: (key: string) => string): string {
+  const sectionDate = dayjs(dayKey);
+  if (!sectionDate.isValid()) return dayKey;
+
+  const today = dayjs().startOf("day");
+  const yesterday = today.subtract(1, "day");
+
+  if (sectionDate.isSame(today, "day")) {
+    return t("today");
+  }
+  if (sectionDate.isSame(yesterday, "day")) {
+    return t("yesterday");
+  }
+  return sectionDate.format("D MMMM YYYY");
+}
+
+function buildSections(
+  jobs: AiRequestJob[],
+  t: (key: string, options?: Record<string, unknown>) => string,
+): AiRequestSection[] {
+  const sectionsByDay = new Map<string, AiRequestJob[]>();
+  const orderedDayKeys: string[] = [];
+
+  for (const job of jobs) {
+    const dayKey = dayjs(job.created_at).format("YYYY-MM-DD");
+    if (!sectionsByDay.has(dayKey)) {
+      sectionsByDay.set(dayKey, []);
+      orderedDayKeys.push(dayKey);
+    }
+    sectionsByDay.get(dayKey)!.push(job);
+  }
+
+  return orderedDayKeys.map((dayKey) => {
+    const dayJobs = sectionsByDay.get(dayKey) ?? [];
+    const dayLabel = formatSectionDayLabel(dayKey, t);
+    return {
+      dayKey,
+      title: t("aiHistoryDayHeader", {
+        date: dayLabel,
+        count: dayJobs.length,
+      }),
+      count: dayJobs.length,
+      data: dayJobs,
+    };
+  });
+}
+
+function formatTime(value: string): string {
   const d = dayjs(value);
   if (d.isValid()) {
-    return d.format("MMM D, YYYY · h:mm A");
+    return d.format("h:mm A");
   }
   return value;
 }
@@ -81,15 +147,19 @@ export default function AiRequests() {
     returnTo?: string;
     fromProcessingModal?: string;
   }>();
+  const accessToken = useAppSelector((state) => state.user.accessToken);
+  const isGuest = useAppSelector((state) => state.user.isGuest);
+  const userRole = useAppSelector((state) => state.user.userRole);
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const isTryOnFlow =
     params.returnTo === "booking" || params.returnTo === "chat";
   const fromProcessingModal = params.fromProcessingModal === "1";
   const headerTitle = isTryOnFlow ? t("tryOnList") : t("aiRequests");
+  const shouldFilterHairTryon = isTryOnFlow || userRole !== "business";
+  const canFetchHistory = Boolean(accessToken) && !isGuest;
 
   const handleRobotPress = useCallback(() => {
-    // Came from generate modal → skip tool screen, land on AI Tools list
     if (fromProcessingModal) {
       if (router.canDismiss()) {
         router.dismiss(2);
@@ -106,6 +176,7 @@ export default function AiRequests() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const isPollingRef = useRef(false);
@@ -116,6 +187,15 @@ export default function AiRequests() {
       append: boolean = false,
       silent: boolean = false,
     ) => {
+      if (!canFetchHistory || !accessToken) {
+        if (!silent) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
+        return;
+      }
+
       if (!silent) {
         if (append) {
           setLoadingMore(true);
@@ -127,10 +207,18 @@ export default function AiRequests() {
       try {
         const response = await ApiService.get<AiRequestsApiResponse>(
           aiRequestsEndpoints.list({ page, per_page: PER_PAGE }),
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          },
         );
 
         if (response?.data) {
-          const newData = response.data as AiRequestJob[];
+          const newData = filterJobsForRole(
+            response.data as AiRequestJob[],
+            shouldFilterHairTryon,
+          );
           if (append) {
             setJobs((prev) => [...prev, ...newData]);
           } else {
@@ -139,12 +227,14 @@ export default function AiRequests() {
           setCurrentPage(response.meta?.current_page ?? page);
           const nextLink = response.links?.next;
           setHasMore(!!nextLink);
+          setLoadError(false);
         } else if (!append) {
           setJobs([]);
+          setLoadError(false);
         }
-      } catch (_error) {
-        if (!append && !silent) {
-          setJobs([]);
+      } catch {
+        if (!silent) {
+          setLoadError(true);
         }
       } finally {
         if (!silent) {
@@ -154,16 +244,20 @@ export default function AiRequests() {
         }
       }
     },
-    [],
+    [accessToken, canFetchHistory, shouldFilterHairTryon],
   );
 
-  // Poll while this screen is focused; stop when navigating away (back or forward)
   useFocusEffect(
     useCallback(() => {
+      if (!canFetchHistory) {
+        setLoading(false);
+        return;
+      }
+
       fetchJobs(1, false);
 
       const intervalId = setInterval(() => {
-        if (isPollingRef.current) return;
+        if (isPollingRef.current || !canFetchHistory) return;
         isPollingRef.current = true;
         fetchJobs(1, false, true).finally(() => {
           isPollingRef.current = false;
@@ -174,18 +268,24 @@ export default function AiRequests() {
         clearInterval(intervalId);
         isPollingRef.current = false;
       };
-    }, [fetchJobs]),
+    }, [canFetchHistory, fetchJobs]),
   );
 
   const loadMore = useCallback(() => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || !canFetchHistory) return;
     fetchJobs(currentPage + 1, true);
-  }, [loadingMore, hasMore, currentPage, fetchJobs]);
+  }, [loadingMore, hasMore, currentPage, fetchJobs, canFetchHistory]);
 
   const handleRefresh = useCallback(() => {
+    if (!canFetchHistory) return;
     setRefreshing(true);
     fetchJobs(1, false);
-  }, [fetchJobs]);
+  }, [canFetchHistory, fetchJobs]);
+
+  const sections = useMemo(
+    () => buildSections(jobs, t),
+    [jobs, t],
+  );
 
   const getStatusBadgeStyle = useCallback(
     (status: string) => {
@@ -276,9 +376,9 @@ export default function AiRequests() {
                 </View>
               ) : null}
               <View style={styles.jobCardFooter}>
-                <Text style={styles.jobCardMetaLabel}>Created</Text>
+                <Text style={styles.jobCardMetaLabel}>{t("aiHistoryTime")}</Text>
                 <Text style={styles.jobCardMetaValue} numberOfLines={1}>
-                  {formatDateTime(item.created_at)}
+                  {formatTime(item.created_at)}
                 </Text>
               </View>
             </View>
@@ -286,10 +386,19 @@ export default function AiRequests() {
         </TouchableOpacity>
       );
     },
-    [styles, t, getStatusBadgeStyle, getStatusTextColor],
+    [styles, t, getStatusBadgeStyle, getStatusTextColor, params.returnTo],
   );
 
   const keyExtractor = useCallback((item: AiRequestJob) => item.job_id, []);
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: AiRequestSection }) => (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionHeaderText}>{section.title}</Text>
+      </View>
+    ),
+    [styles.sectionHeader, styles.sectionHeaderText],
+  );
 
   const renderFooter = useCallback(() => {
     if (!loadingMore) return null;
@@ -300,17 +409,70 @@ export default function AiRequests() {
     );
   }, [loadingMore, styles.loadingFooter, theme.primary]);
 
-  const listEmptyComponent = useCallback(
-    () =>
-      !loading ? (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>{t("noAiRequests")}</Text>
-        </View>
-      ) : null,
-    [loading, styles.emptyStateContainer, styles.emptyStateText, t],
-  );
+  const renderListHeader = useCallback(() => {
+    if (!loadError || jobs.length === 0) return null;
+    return (
+      <View style={styles.errorBanner}>
+        <Text style={styles.errorBannerText}>{t("aiHistoryLoadError")}</Text>
+        <RetryButton
+          onPress={() => fetchJobs(1, false)}
+          loading={loading && !refreshing}
+        />
+      </View>
+    );
+  }, [
+    loadError,
+    jobs.length,
+    styles.errorBanner,
+    styles.errorBannerText,
+    t,
+    fetchJobs,
+    loading,
+    refreshing,
+  ]);
 
-  if (loading && jobs.length === 0) {
+  const listEmptyComponent = useCallback(() => {
+    if (loading) return null;
+
+    if (isGuest) {
+      return (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>
+            {t("aiHistorySignInRequired")}
+          </Text>
+        </View>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.errorStateText}>{t("aiHistoryLoadError")}</Text>
+          <RetryButton
+            onPress={() => fetchJobs(1, false)}
+            loading={loading}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyStateContainer}>
+        <Text style={styles.emptyStateText}>{t("noAiRequests")}</Text>
+      </View>
+    );
+  }, [
+    loading,
+    isGuest,
+    loadError,
+    styles.emptyStateContainer,
+    styles.emptyStateText,
+    styles.errorStateText,
+    t,
+    fetchJobs,
+  ]);
+
+  if (loading && jobs.length === 0 && !loadError && canFetchHistory) {
     return (
       <View style={styles.safeArea}>
         <StackHeader
@@ -353,9 +515,10 @@ export default function AiRequests() {
         }
         onRightPress={handleRobotPress}
       />
-      <FlatList
-        data={jobs}
+      <SectionList
+        sections={sections}
         renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
@@ -363,6 +526,8 @@ export default function AiRequests() {
         onEndReachedThreshold={0.4}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={listEmptyComponent}
+        ListHeaderComponent={renderListHeader}
+        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
