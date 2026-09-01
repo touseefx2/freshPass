@@ -18,6 +18,21 @@ export function getBusinessCustomerInitials(name: string): string {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
+export function resolveBusinessCustomerAvatarUrl(
+  profileImageUrl?: string | null,
+): string | null {
+  if (!profileImageUrl?.trim()) return null;
+
+  const trimmed = profileImageUrl.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+
+  const base = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+  const path = trimmed.replace(/^\//, "");
+  return path ? `${base}/${path}` : null;
+}
+
 export function formatBusinessCustomerDate(
   dateString?: string | null,
 ): string {

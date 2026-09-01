@@ -918,13 +918,13 @@
   "contactInfo": "Contact info",
   "call": "Call",
   "chat": "Chat",
-  "currentPeriodStart": "Period starts",
-  "currentPeriodEnd": "Period ends",
+  "currentPeriodStart": "Current period start",
+  "currentPeriodEnd": "Current period end",
   "accessUntil": "Access until",
   "subscriptionEnd": "Subscription end",
   "hasAccess": "Has access",
   "purchasedOn": "Purchased on",
   "appointment": "Appointment",
   "noOneOffPurchases": "No one-off purchases yet",
-  "subscriptionDatesHelper": "Subscription start is when they first subscribed. Current period is this billing cycle. Subscription end is when access stops after cancel or expiry."
+  "subscriptionDatesHelper": "Subscription start is when they first joined. Current period start and end are this billing cycle. Subscription end is when access stops after cancel or expiry."
 }

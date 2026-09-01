@@ -37,6 +37,7 @@ export type BusinessCustomer = {
   name: string;
   phone: string | null;
   email: string | null;
+  profile_image_url?: string | null;
   customerSince: string | null;
   currentStatus: string | null;
   subscriptions: BusinessCustomerSubscription[];

@@ -24,6 +24,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
+import BusinessCustomerAvatar from "@/src/components/businessCustomerAvatar";
 import { fetchBusinessCustomerDetail } from "@/src/services/customersService";
 import type {
   BusinessCustomer,
@@ -36,11 +37,10 @@ import {
   formatBusinessCustomerTime,
   formatPaymentMethodLabel,
   formatPurchaseServicesLabel,
-  getBusinessCustomerInitials,
   getBusinessCustomerListStatus,
   getStatusPillColors,
-  getSubscriptionPeriodLabel,
   getSubscriptionStartDate,
+  resolveBusinessCustomerAvatarUrl,
 } from "@/src/utils/businessCustomerDisplay";
 import { getCustomerSubscriptionPill } from "@/src/utils/customerSubscriptionLifecycle";
 
@@ -94,22 +94,6 @@ const createStyles = (theme: Theme) =>
     heroTop: {
       flexDirection: "row",
       alignItems: "center",
-    },
-    avatar: {
-      width: widthScale(64),
-      height: widthScale(64),
-      borderRadius: widthScale(32),
-      backgroundColor: theme.lightGreen1,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    avatarText: {
-      fontSize: fontSize.size22,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
     },
     heroInfo: {
       flex: 1,
@@ -426,7 +410,10 @@ export default function BusinessCustomerDetail() {
         chatItem: JSON.stringify({
           id: String(data.id),
           name: data.name ?? "",
-          image: process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "",
+          image:
+            resolveBusinessCustomerAvatarUrl(data.profile_image_url) ??
+            process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ??
+            "",
         }),
       },
     });
@@ -475,14 +462,12 @@ export default function BusinessCustomerDetail() {
 
         <View style={styles.detailGrid}>
           {renderDetailRow(t("subscriptionStartDate"), getSubscriptionStartDate(sub))}
-          {hasPeriodStart && hasPeriodEnd && periodStart !== periodEnd ? (
-            <>
-              {renderDetailRow(t("currentPeriodStart"), periodStart)}
-              {renderDetailRow(t("currentPeriodEnd"), periodEnd)}
-            </>
-          ) : (
-            renderDetailRow(t("currentPeriod"), getSubscriptionPeriodLabel(sub))
-          )}
+          {hasPeriodStart
+            ? renderDetailRow(t("currentPeriodStart"), periodStart)
+            : null}
+          {hasPeriodEnd
+            ? renderDetailRow(t("currentPeriodEnd"), periodEnd)
+            : null}
           {sub.trialStartsAt || sub.trialEndsAt
             ? renderDetailRow(
                 t("trialPeriod"),
@@ -611,11 +596,13 @@ export default function BusinessCustomerDetail() {
       >
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {getBusinessCustomerInitials(data.name)}
-              </Text>
-            </View>
+            <BusinessCustomerAvatar
+              name={data.name}
+              profileImageUrl={data.profile_image_url}
+              size={widthScale(64)}
+              style={{ marginRight: moderateWidthScale(14) }}
+              textSize={fontSize.size22}
+            />
             <View style={styles.heroInfo}>
               <Text style={styles.profileName}>{data.name}</Text>
               {data.customerSince ? (

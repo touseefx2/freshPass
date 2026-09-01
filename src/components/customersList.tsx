@@ -23,12 +23,12 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import FloatingInput from "@/src/components/floatingInput";
 import RetryButton from "@/src/components/retryButton";
+import BusinessCustomerAvatar from "@/src/components/businessCustomerAvatar";
 import { Skeleton } from "@/src/components/skeletons";
 import { fetchBusinessCustomers } from "@/src/services/customersService";
 import type { BusinessCustomer } from "@/src/types/customers";
 import {
   getBusinessCustomerContactLine,
-  getBusinessCustomerInitials,
   getBusinessCustomerListStatus,
   getStatusPillColors,
 } from "@/src/utils/businessCustomerDisplay";
@@ -116,20 +116,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(14),
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
-    },
-    avatarContainer: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.lightGreen1,
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: moderateWidthScale(12),
-    },
-    avatarText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
     },
     rowContent: {
       flex: 1,
@@ -336,11 +322,12 @@ export default function CustomersList() {
           style={styles.rowContainer}
           onPress={() => handleCustomerPress(item)}
         >
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>
-              {getBusinessCustomerInitials(item.name)}
-            </Text>
-          </View>
+          <BusinessCustomerAvatar
+            name={item.name}
+            profileImageUrl={item.profile_image_url}
+            size={moderateWidthScale(40)}
+            style={{ marginRight: moderateWidthScale(12) }}
+          />
           <View style={styles.rowContent}>
             <Text style={styles.rowName} numberOfLines={1}>
               {item.name}
