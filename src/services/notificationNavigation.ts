@@ -1,5 +1,6 @@
 import type { Router } from "expo-router";
 import Logger from "@/src/services/logger";
+import { store } from "@/src/state/store";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -21,6 +22,7 @@ export type NotificationNavigationData = {
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → Profile → Business profile settings → Manage subscriptions
+ * - type "business" | "service" + model_id (customer role) → businessDetail
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
@@ -113,6 +115,22 @@ export function navigateFromNotificationData(
       Logger.log(
         "------>navigateFromNotificationData (airequest) -> aiRequests -> aiResults",
         { jobId },
+      );
+      return;
+    }
+  }
+
+  if (type === "business" || type === "service") {
+    const modelId = data.model_id as number | undefined;
+    const userRole = store.getState().user.userRole;
+    if (userRole === "customer" && modelId != null) {
+      router.push({
+        pathname: "/(main)/businessDetail",
+        params: { business_id: String(modelId) },
+      });
+      Logger.log(
+        `------>navigateFromNotificationData (${type}) -> businessDetail`,
+        { business_id: modelId },
       );
       return;
     }
