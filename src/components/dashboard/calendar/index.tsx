@@ -1733,7 +1733,13 @@ export default function CalendarScreen() {
       return;
     }
 
-    if (day.isBefore(today, "day")) return;
+    // Past days: select the column only (no break/leave apply box).
+    if (day.isBefore(today, "day")) {
+      if (!day.isSame(selectedDate, "day")) {
+        setSelectedDate(day);
+      }
+      return;
+    }
 
     // Snap click Y to the nearest 30-minute slot in that day column.
     const rawMinutes =
