@@ -134,6 +134,7 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
     },
     statusPill: {
+      flexShrink: 0,
       paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(999),

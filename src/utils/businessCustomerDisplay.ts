@@ -156,9 +156,12 @@ export function getStatusPillColors(
     green: string;
     orangeBrown: string;
     red: string;
-    lightGreen: string;
     darkGreen: string;
-    lightGreen1: string;
+    buttonBack: string;
+    lightGreen07: string;
+    lightGreen13: string;
+    lightGreen015: string;
+    lightRed: string;
     white: string;
   },
 ): { backgroundColor: string; color: string } {
@@ -168,10 +171,16 @@ export function getStatusPillColors(
     case "warning":
       return { backgroundColor: theme.orangeBrown, color: theme.white };
     case "danger":
-      return { backgroundColor: theme.red, color: theme.white };
+      return { backgroundColor: theme.lightRed, color: theme.red };
     case "info":
-      return { backgroundColor: theme.lightGreen1, color: theme.darkGreen };
+      return {
+        backgroundColor: theme.lightGreen015,
+        color: theme.buttonBack,
+      };
     default:
-      return { backgroundColor: theme.lightGreen, color: theme.darkGreen };
+      return {
+        backgroundColor: theme.lightGreen13,
+        color: theme.darkGreen,
+      };
   }
 }

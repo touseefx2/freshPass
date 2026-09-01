@@ -113,6 +113,7 @@ const createStyles = (theme: Theme) =>
     },
     overallStatusPill: {
       alignSelf: "flex-start",
+      flexShrink: 0,
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(999),
@@ -224,6 +225,7 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     statusPill: {
+      flexShrink: 0,
       paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(999),

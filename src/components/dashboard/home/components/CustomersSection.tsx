@@ -62,6 +62,7 @@ const createStyles = (theme: Theme) =>
       textTransform: "capitalize",
     },
     statusPill: {
+      flexShrink: 0,
       paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(999),
