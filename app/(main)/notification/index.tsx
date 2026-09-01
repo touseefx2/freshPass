@@ -722,7 +722,10 @@ export default function NotificationsScreen() {
                     model_id: item.model_id,
                     sender: item.sender,
                   },
-                  { skipNotificationScreen: true },
+                  {
+                    skipNotificationScreen: true,
+                    fromInAppList: true,
+                  },
                 );
                 if (!item.isRead) {
                   handleMarkAsRead(item.apiId, item.id);

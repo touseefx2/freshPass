@@ -18,15 +18,28 @@ export type NotificationNavigationData = {
  * and pendingNotificationNavigation (cold start after splash).
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
- * - type "ai_memory" → aiMemories (AI memories screen)
+ * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → Profile → Business profile settings → Manage subscriptions
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
+const AI_MEMORY_CHAIN_STEP_MS = 15;
+const AI_MEMORY_BACK_DELAY_MS = 50;
+
+function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
+  router.push("/(main)/dashboard/(account)");
+  setTimeout(() => {
+    router.push("/(main)/aiTools/toolList");
+    setTimeout(() => {
+      router.push("/(main)/aiMemories");
+    }, AI_MEMORY_CHAIN_STEP_MS);
+  }, AI_MEMORY_CHAIN_STEP_MS);
+}
+
 export function navigateFromNotificationData(
   router: Router,
   data: NotificationNavigationData | undefined,
-  options?: { skipNotificationScreen?: boolean },
+  options?: { skipNotificationScreen?: boolean; fromInAppList?: boolean },
 ): void {
   if (!data || !data?.type) return;
   Logger.log("------>navigateFromNotificationData", data);
@@ -71,8 +84,20 @@ export function navigateFromNotificationData(
   }
 
   if (type === "ai_memory") {
-    router.push("/(main)/aiMemories" as any);
-    Logger.log("------>navigateFromNotificationData (ai_memory) -> aiMemories");
+    if (options?.fromInAppList) {
+      if (router.canGoBack()) {
+        router.back();
+      }
+      setTimeout(() => {
+        navigateToAiMemoriesViaProfileAndTools(router);
+      }, AI_MEMORY_BACK_DELAY_MS);
+    } else {
+      navigateToAiMemoriesViaProfileAndTools(router);
+    }
+    Logger.log(
+      "------>navigateFromNotificationData (ai_memory) -> account -> toolList -> aiMemories",
+      { fromInAppList: options?.fromInAppList ?? false },
+    );
     return;
   }
 
