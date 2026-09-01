@@ -42,6 +42,17 @@ import "dayjs/locale/ja";
 
 import { ApiService } from "@/src/services/api";
 import {
+  findBreakConflictingAppointments,
+  findDefaultBreakEnd,
+  findNextAvailableBreakStart,
+  getAppointmentsForDay,
+  hasBookedAppointmentsOnDay,
+  isValidBreakEndSlot,
+  isValidBreakStartSlot,
+  isTimeSlotInsideBookedPeriod,
+  setMinutesOnDay,
+} from "@/src/utils/appointmentLeaveConflict";
+import {
   formatLeaveDateDisplay,
   formatLeaveTimeDisplay,
   leaveCoversDay,
@@ -1404,6 +1415,51 @@ export default function CalendarScreen() {
     [appointmentsByDate, currentDate],
   );
 
+  const applyBoxDayAppointments = useMemo(
+    () =>
+      getAppointmentsForDay(
+        appointmentsByDate,
+        applyBoxDate.format("YYYY-MM-DD"),
+      ),
+    [appointmentsByDate, applyBoxDate],
+  );
+
+  const applyBreakStartMinutes =
+    applyBoxSlotHour * 60 + applyBoxBreakStartMinutes;
+  const applyBreakEndMinutes =
+    applyBoxBreakEndHour * 60 + applyBoxBreakEndMinutes;
+
+  const isApplyBoxTimeOptionAvailable = useCallback(
+    (hours: number, minutes: number) => {
+      if (applyBoxType !== "break") return true;
+
+      const slotMinutes = hours * 60 + minutes;
+
+      if (applyBoxTimePickerTarget === "start") {
+        return isValidBreakStartSlot(slotMinutes, applyBoxDayAppointments);
+      }
+
+      if (applyBoxTimePickerTarget === "end") {
+        return (
+          isValidBreakEndSlot(
+            applyBreakStartMinutes,
+            slotMinutes,
+            applyBoxDayAppointments,
+          ) &&
+          !isTimeSlotInsideBookedPeriod(slotMinutes, applyBoxDayAppointments)
+        );
+      }
+
+      return true;
+    },
+    [
+      applyBoxType,
+      applyBoxTimePickerTarget,
+      applyBoxDayAppointments,
+      applyBreakStartMinutes,
+    ],
+  );
+
   // Bring the grid to the current time (or first appointment) of the visible day
   useEffect(() => {
     if (viewMode === "month") return;
@@ -1560,6 +1616,18 @@ export default function CalendarScreen() {
     }
   };
 
+  const setApplyBoxBreakTimes = useCallback(
+    (startMinutes: number, endMinutes: number) => {
+      const start = setMinutesOnDay(startMinutes);
+      const end = setMinutesOnDay(endMinutes);
+      setApplyBoxSlotHour(start.hours);
+      setApplyBoxBreakStartMinutes(start.minutes);
+      setApplyBoxBreakEndHour(end.hours);
+      setApplyBoxBreakEndMinutes(end.minutes);
+    },
+    [],
+  );
+
   const openApplyBox = (
     type: "leave" | "break" = "leave",
     startMinutes?: number,
@@ -1578,18 +1646,38 @@ export default function CalendarScreen() {
       setSelectedDate(targetDate);
     }
     setApplyBoxType(type);
-    const start = startMinutes ?? 9 * 60;
-    const end = Math.min(start + SLOT_INTERVAL_MINUTES, 24 * 60);
-    setApplyBoxSlotHour(Math.floor(start / 60));
-    setApplyBoxBreakStartMinutes(start % 60);
-    if (end >= 24 * 60) {
-      setApplyBoxBreakEndHour(23);
-      setApplyBoxBreakEndMinutes(59);
-    } else {
-      setApplyBoxBreakEndHour(Math.floor(end / 60));
-      setApplyBoxBreakEndMinutes(end % 60);
-    }
+
+    const dayAppointments = getAppointmentsForDay(
+      appointmentsByDate,
+      targetDate.format("YYYY-MM-DD"),
+    );
+    const preferredStart = startMinutes ?? 9 * 60;
+    const resolvedStart =
+      type === "break"
+        ? (findNextAvailableBreakStart(preferredStart, dayAppointments) ??
+          preferredStart)
+        : preferredStart;
+    const resolvedEnd =
+      type === "break"
+        ? findDefaultBreakEnd(resolvedStart, dayAppointments)
+        : Math.min(resolvedStart + SLOT_INTERVAL_MINUTES, 24 * 60);
+
+    setApplyBoxBreakTimes(resolvedStart, resolvedEnd);
     setApplyBoxVisible(true);
+  };
+
+  const selectApplyBoxType = (type: "leave" | "break") => {
+    setApplyBoxType(type);
+    if (type !== "break") return;
+
+    const resolvedStart =
+      findNextAvailableBreakStart(applyBreakStartMinutes, applyBoxDayAppointments) ??
+      applyBreakStartMinutes;
+    const resolvedEnd = findDefaultBreakEnd(
+      resolvedStart,
+      applyBoxDayAppointments,
+    );
+    setApplyBoxBreakTimes(resolvedStart, resolvedEnd);
   };
 
   const formatApplyBoxTime = (hours: number, minutes: number) => {
@@ -1601,8 +1689,28 @@ export default function CalendarScreen() {
 
   const handleApplyBoxTimeSelect = (hours: number, minutes: number) => {
     if (applyBoxTimePickerTarget === "start") {
+      const newStartMinutes = hours * 60 + minutes;
       setApplyBoxSlotHour(hours);
       setApplyBoxBreakStartMinutes(minutes);
+
+      const currentEndMinutes =
+        applyBoxBreakEndHour * 60 + applyBoxBreakEndMinutes;
+      if (
+        currentEndMinutes <= newStartMinutes ||
+        !isValidBreakEndSlot(
+          newStartMinutes,
+          currentEndMinutes,
+          applyBoxDayAppointments,
+        )
+      ) {
+        const nextEnd = findDefaultBreakEnd(
+          newStartMinutes,
+          applyBoxDayAppointments,
+        );
+        const end = setMinutesOnDay(nextEnd);
+        setApplyBoxBreakEndHour(end.hours);
+        setApplyBoxBreakEndMinutes(end.minutes);
+      }
     } else if (applyBoxTimePickerTarget === "end") {
       setApplyBoxBreakEndHour(hours);
       setApplyBoxBreakEndMinutes(minutes);
@@ -1616,7 +1724,19 @@ export default function CalendarScreen() {
     try {
       const date = applyBoxDate;
       const dateStr = date.format("YYYY-MM-DD");
+      const dayAppointments = getAppointmentsForDay(appointmentsByDate, dateStr);
+
       if (applyBoxType === "leave") {
+        if (hasBookedAppointmentsOnDay(appointmentsByDate, dateStr)) {
+          showBanner(
+            t("apiFailed") || "Error",
+            t("cannotCloseDayWithAppointments"),
+            "error",
+            3000,
+          );
+          return;
+        }
+
         const body = {
           start_date: dateStr,
           end_date: dateStr,
@@ -1657,6 +1777,26 @@ export default function CalendarScreen() {
             t("endTimeMustBeGreater"),
             "error",
             2500,
+          );
+          return;
+        }
+
+        const conflictingAppointments = findBreakConflictingAppointments(
+          dayAppointments,
+          startMinutes,
+          endMinutes,
+        );
+        if (conflictingAppointments.length > 0) {
+          const conflict = conflictingAppointments[0];
+          showBanner(
+            t("apiFailed") || "Error",
+            t("breakOverlapsAppointment", {
+              client: conflict.client_name || t("appointment"),
+              service: conflict.title || t("service"),
+              time: formatMinutesLabel(conflict.start_minutes),
+            }),
+            "error",
+            3500,
           );
           return;
         }
@@ -2352,7 +2492,7 @@ export default function CalendarScreen() {
                   <View style={styles.applyBoxRow}>
                     <TouchableOpacity
                       style={styles.applyBoxRadioRow}
-                      onPress={() => setApplyBoxType("leave")}
+                      onPress={() => selectApplyBoxType("leave")}
                       activeOpacity={0.7}
                     >
                       <View
@@ -2370,7 +2510,7 @@ export default function CalendarScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.applyBoxRadioRow}
-                      onPress={() => setApplyBoxType("break")}
+                      onPress={() => selectApplyBoxType("break")}
                       activeOpacity={0.7}
                     >
                       <View
@@ -2564,6 +2704,7 @@ export default function CalendarScreen() {
             ? applyBoxBreakStartMinutes
             : applyBoxBreakEndMinutes
         }
+        isOptionAvailable={isApplyBoxTimeOptionAvailable}
         onSelect={handleApplyBoxTimeSelect}
         onClose={() => {
           setApplyBoxTimePickerVisible(false);

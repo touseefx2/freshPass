@@ -887,6 +887,8 @@
   "leaveCancelledSuccessfully": "Congé annulé avec succès",
   "breakApplied": "Pause appliquée.",
   "endTimeMustBeGreater": "L'heure de fin doit être supérieure à l'heure de début.",
+  "cannotCloseDayWithAppointments": "Ce jour ne peut pas être fermé car des rendez-vous sont déjà programmés.",
+  "breakOverlapsAppointment": "Cette pause chevauche {{service}} de {{client}} à {{time}}.",
   "closeUpper": "FERMÉ",
   "breakUpper": "PAUSE",
   "reason": "Raison",

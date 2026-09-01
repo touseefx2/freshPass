@@ -887,6 +887,8 @@
   "leaveCancelledSuccessfully": "Urlaub erfolgreich storniert",
   "breakApplied": "Pause angewendet.",
   "endTimeMustBeGreater": "Die Endzeit muss nach der Startzeit liegen.",
+  "cannotCloseDayWithAppointments": "Dieser Tag kann nicht geschlossen werden, da bereits Termine geplant sind.",
+  "breakOverlapsAppointment": "Diese Pause überschneidet sich mit {{service}} von {{client}} um {{time}}.",
   "closeUpper": "GESCHLOSSEN",
   "breakUpper": "PAUSE",
   "reason": "Grund",

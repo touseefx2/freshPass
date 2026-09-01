@@ -23,6 +23,7 @@ interface TimePickerModalProps {
   currentMinutes: number;
   onSelect: (hours: number, minutes: number) => void;
   onClose: () => void;
+  isOptionAvailable?: (hours: number, minutes: number) => boolean;
 }
 
 const TIME_OPTIONS = Array.from({ length: 24 * 2 }, (_, i) => {
@@ -69,9 +70,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
-    dropdownItemTextSelected: {
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
+    emptyStateText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      paddingVertical: moderateHeightScale(24),
     },
   });
 
@@ -81,6 +85,7 @@ export default function TimePickerModal({
   currentMinutes,
   onSelect,
   onClose,
+  isOptionAvailable,
 }: TimePickerModalProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -88,16 +93,32 @@ export default function TimePickerModal({
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
 
+  const visibleOptions = useMemo(
+    () =>
+      TIME_OPTIONS.filter((option) =>
+        isOptionAvailable
+          ? isOptionAvailable(option.hours, option.minutes)
+          : true,
+      ),
+    [isOptionAvailable],
+  );
+
   const currentValue = getTimeValue(currentHours, currentMinutes);
 
   useEffect(() => {
     if (visible && scrollRef.current) {
-      const y = Math.max(0, currentValue * ITEM_HEIGHT);
+      const selectedIndex = visibleOptions.findIndex(
+        (option) => option.value === currentValue,
+      );
+      const y = Math.max(
+        0,
+        (selectedIndex >= 0 ? selectedIndex : 0) * ITEM_HEIGHT,
+      );
       setTimeout(() => {
         scrollRef.current?.scrollTo({ y, animated: false });
       }, 50);
     }
-  }, [visible, currentValue]);
+  }, [visible, currentValue, visibleOptions]);
 
   if (!visible) return null;
 
@@ -113,25 +134,29 @@ export default function TimePickerModal({
           style={[styles.dropdownModal, { paddingBottom: insets.bottom + 15 }]}
         >
           <ScrollView ref={scrollRef}>
-            {TIME_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  onSelect(option.hours, option.minutes);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.dropdownItemText,
-                    currentValue === option.value &&
-                      styles.dropdownItemTextSelected,
-                  ]}
+            {visibleOptions.length > 0 ? (
+              visibleOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    onSelect(option.hours, option.minutes);
+                  }}
                 >
-                  {option.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      currentValue === option.value &&
+                        styles.dropdownItemTextSelected,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyStateText}>No available times</Text>
+            )}
           </ScrollView>
         </View>
       </Pressable>

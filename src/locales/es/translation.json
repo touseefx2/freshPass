@@ -887,6 +887,8 @@
   "leaveCancelledSuccessfully": "Ausencia cancelada con éxito",
   "breakApplied": "Descanso aplicado.",
   "endTimeMustBeGreater": "La hora de fin debe ser posterior a la hora de inicio.",
+  "cannotCloseDayWithAppointments": "Este día no se puede cerrar porque ya hay citas programadas.",
+  "breakOverlapsAppointment": "Este descanso se superpone con {{service}} de {{client}} a las {{time}}.",
   "closeUpper": "CERRADO",
   "breakUpper": "DESCANSO",
   "reason": "Motivo",
