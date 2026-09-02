@@ -45,6 +45,8 @@ export interface BusinessState {
   businessHours: BusinessHours | null;
   selectedDate: string | null; // YYYY-MM-DD
   selectedTimeSlot: string | null; // e.g. "09:00"
+  /** Auto-assigned from available_staff[0] when "Anyone" + slot selected */
+  assignedStaffId: number | null;
   selectedPaymentMethod: "payNow" | "payLater";
   selectedNote: string;
   /** From GET /api/business/details — "Solo" | "Business" | null */
@@ -63,6 +65,7 @@ const initialState: BusinessState = {
   businessHours: null,
   selectedDate: null,
   selectedTimeSlot: null,
+  assignedStaffId: null,
   selectedPaymentMethod: "payNow",
   selectedNote: "",
   subscriptionPlanType: null,
@@ -128,6 +131,9 @@ const bsnsSlice = createSlice({
     setSelectedTimeSlot(state, action: PayloadAction<string | null>) {
       state.selectedTimeSlot = action.payload;
     },
+    setAssignedStaffId(state, action: PayloadAction<number | null>) {
+      state.assignedStaffId = action.payload;
+    },
     setSelectedPaymentMethod(
       state,
       action: PayloadAction<"payNow" | "payLater">,
@@ -157,6 +163,7 @@ export const {
   setSelectedStaff,
   setSelectedDate,
   setSelectedTimeSlot,
+  setAssignedStaffId,
   setSelectedPaymentMethod,
   setSelectedNote,
   addService,

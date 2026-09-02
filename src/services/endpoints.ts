@@ -144,6 +144,39 @@ export const dashboardEndpoints = {
   },
 };
 
+export interface AvailableSlotStaff {
+  id: number;
+  name: string | null;
+}
+
+export interface AvailableSlot {
+  start: string;
+  end: string;
+  available_staff?: AvailableSlotStaff[];
+}
+
+/** Resolve staff_id for POST/PUT appointment when "Anyone" auto-assigns first available staff. */
+export function resolveAppointmentStaffId(params: {
+  selectedStaff: string;
+  assignedStaffId: number | null;
+  selectedTimeSlot?: string | null;
+  slots?: AvailableSlot[];
+}): number | undefined {
+  if (params.selectedStaff !== "anyone") {
+    const id = parseInt(params.selectedStaff, 10);
+    return Number.isNaN(id) ? undefined : id;
+  }
+  if (params.assignedStaffId != null) {
+    return params.assignedStaffId;
+  }
+  if (params.selectedTimeSlot && params.slots?.length) {
+    const slot = params.slots.find((s) => s.start === params.selectedTimeSlot);
+    const firstStaff = slot?.available_staff?.[0];
+    if (firstStaff) return firstStaff.id;
+  }
+  return undefined;
+}
+
 export const appointmentsEndpoints = {
   list: (params?: {
     status?: string;

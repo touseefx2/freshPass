@@ -34,6 +34,7 @@ import {
   setSelectedStaff,
   setSelectedDate,
   setSelectedTimeSlot,
+  setAssignedStaffId,
   setSelectedPaymentMethod,
   setSelectedNote,
   resetBusiness,
@@ -51,6 +52,8 @@ import Logger from "@/src/services/logger";
 import {
   businessEndpoints,
   appointmentsEndpoints,
+  type AvailableSlot,
+  resolveAppointmentStaffId,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Theme } from "@/src/theme/colors";
@@ -1339,7 +1342,7 @@ export default function BookingNow() {
     useState<TimeSlotCategory>("morning");
   const scrollViewRef = useRef<ScrollView>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
-  const [apiSlots, setApiSlots] = useState<string[]>([]);
+  const [apiSlots, setApiSlots] = useState<AvailableSlot[]>([]);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [tryOnImageUrls, setTryOnImageUrls] = useState<string[]>([]);
@@ -1773,7 +1776,18 @@ export default function BookingNow() {
     }
     setSelectedTimeSlotState(null);
     dispatch(setSelectedTimeSlot(null));
+    dispatch(setAssignedStaffId(null));
   }, [selectedStaff, staffMembers, dispatch]);
+
+  // Auto-assign first available staff when "Anyone" + slot already selected (e.g. reschedule preset)
+  useEffect(() => {
+    if (selectedStaff !== "anyone" || !selectedTimeSlot || apiSlots.length === 0) {
+      return;
+    }
+    const slotData = apiSlots.find((s) => s.start === selectedTimeSlot);
+    const firstStaff = slotData?.available_staff?.[0];
+    dispatch(setAssignedStaffId(firstStaff?.id ?? null));
+  }, [selectedStaff, selectedTimeSlot, apiSlots, dispatch]);
 
   const getDayNameFromDate = (date: dayjs.Dayjs): string => {
     const dayNamesFull = [
@@ -1792,6 +1806,7 @@ export default function BookingNow() {
   useEffect(() => {
     setSelectedTimeSlotState(null);
     dispatch(setSelectedTimeSlot(null));
+    dispatch(setAssignedStaffId(null));
   }, [selectedDate, dispatch]);
 
   const fetchAvailableSlots = useCallback(() => {
@@ -1818,7 +1833,7 @@ export default function BookingNow() {
     ApiService.get<{
       success?: boolean;
       message?: string;
-      data?: Array<{ start: string; end: string }>;
+      data?: AvailableSlot[];
     }>(
       appointmentsEndpoints.availableSlots({
         business_id: parseInt(String(businessId), 10),
@@ -1839,7 +1854,7 @@ export default function BookingNow() {
           return;
         }
         const list = res?.data && Array.isArray(res.data) ? res.data : [];
-        setApiSlots(list.map((s) => s.start));
+        setApiSlots(list);
       })
       .catch((err: any) => {
         setApiSlots([]);
@@ -1866,7 +1881,10 @@ export default function BookingNow() {
     fetchAvailableSlots();
   }, [fetchAvailableSlots]);
 
-  const availableTimeSlots = apiSlots;
+  const availableTimeSlots = useMemo(
+    () => apiSlots.map((s) => s.start),
+    [apiSlots],
+  );
 
   const sortedTimeSlots = useMemo(
     () => sortTimeSlots(availableTimeSlots),
@@ -1945,6 +1963,14 @@ export default function BookingNow() {
     setSelectedTimeSlotState(slot);
     dispatch(setSelectedTimeSlot(slot));
     setSelectedCategory(getSlotCategory(slot));
+
+    if (selectedStaff === "anyone") {
+      const slotData = apiSlots.find((s) => s.start === slot);
+      const firstStaff = slotData?.available_staff?.[0];
+      dispatch(setAssignedStaffId(firstStaff?.id ?? null));
+    } else {
+      dispatch(setAssignedStaffId(null));
+    }
   };
 
   const prevWeek = () => {
@@ -3050,8 +3076,12 @@ export default function BookingNow() {
                 );
                 return;
               }
-              const staffId =
-                selectedStaff === "anyone" ? null : parseInt(selectedStaff, 10);
+              const resolvedStaffId = resolveAppointmentStaffId({
+                selectedStaff,
+                assignedStaffId: businessData?.assignedStaffId ?? null,
+                selectedTimeSlot,
+                slots: apiSlots,
+              });
               const appointmentDate = selectedDate.format("YYYY-MM-DD");
               const appointmentTime = selectedTimeSlot;
               const appointmentType =
@@ -3074,8 +3104,8 @@ export default function BookingNow() {
                 appointment_time: appointmentTime,
                 notes: note.trim() || undefined,
               };
-              if (staffId != null && !Number.isNaN(staffId)) {
-                body.staff_id = staffId;
+              if (resolvedStaffId != null) {
+                body.staff_id = resolvedStaffId;
               }
               if (appointmentType === "service" && params.service_ids) {
                 try {
