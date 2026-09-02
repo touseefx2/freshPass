@@ -20,6 +20,7 @@ import dayjs from "dayjs";
 import { MaterialIcons } from "@expo/vector-icons";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import RetryButton from "@/src/components/retryButton";
+import EmptyState from "@/src/components/emptyState";
 
 const PER_PAGE = 20;
 const POLL_INTERVAL_MS = 10000;
@@ -436,41 +437,40 @@ export default function AiRequests() {
 
     if (isGuest) {
       return (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>
-            {t("aiHistorySignInRequired")}
-          </Text>
-        </View>
+        <EmptyState
+          icon="lock-outline"
+          title={t("aiHistorySignInRequired")}
+          subtitle={t("aiHistorySignInSubtitle")}
+        />
       );
     }
 
     if (loadError) {
       return (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.errorStateText}>{t("aiHistoryLoadError")}</Text>
-          <RetryButton
-            onPress={() => fetchJobs(1, false)}
-            loading={loading}
-          />
-        </View>
+        <EmptyState
+          icon="wifi-off"
+          title={t("aiHistoryLoadErrorTitle")}
+          subtitle={t("aiHistoryLoadError")}
+          actionTitle={t("retry")}
+          onActionPress={() => fetchJobs(1, false)}
+        />
       );
     }
 
     return (
-      <View style={styles.emptyStateContainer}>
-        <Text style={styles.emptyStateText}>{t("noAiRequests")}</Text>
-      </View>
+      <EmptyState
+        icon={isTryOnFlow ? "content-cut" : "auto-awesome"}
+        title={isTryOnFlow ? t("noTryOnRequests") : t("noAiRequests")}
+        subtitle={
+          isTryOnFlow
+            ? t("tryOnRequestsEmptySubtitle")
+            : t("aiRequestsEmptySubtitle")
+        }
+        actionTitle={isTryOnFlow ? undefined : t("exploreAiTools")}
+        onActionPress={isTryOnFlow ? undefined : () => router.back()}
+      />
     );
-  }, [
-    loading,
-    isGuest,
-    loadError,
-    styles.emptyStateContainer,
-    styles.emptyStateText,
-    styles.errorStateText,
-    t,
-    fetchJobs,
-  ]);
+  }, [loading, isGuest, loadError, isTryOnFlow, t, fetchJobs]);
 
   if (loading && jobs.length === 0 && !loadError && canFetchHistory) {
     return (

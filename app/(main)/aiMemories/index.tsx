@@ -16,6 +16,7 @@ import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
+import EmptyState from "@/src/components/emptyState";
 import { ApiService } from "@/src/services/api";
 import { memoriesEndpoints } from "@/src/services/endpoints";
 
@@ -217,11 +218,15 @@ export default function AiMemories() {
   const listEmpty = useMemo(
     () =>
       !loading && sections.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>{t("noMemoriesFound")}</Text>
-        </View>
+        <EmptyState
+          icon="photo-library"
+          title={t("noMemoriesFound")}
+          subtitle={t("memoriesEmptySubtitle")}
+          actionTitle={t("exploreAiTools")}
+          onActionPress={() => router.back()}
+        />
       ) : null,
-    [loading, sections.length, styles, t],
+    [loading, sections.length, t, router],
   );
 
   return (
