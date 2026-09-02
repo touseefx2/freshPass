@@ -221,6 +221,10 @@ export const appointmentsEndpoints = {
     `/api/appointments/${bookingId}/cancel`,
   reschedule: (appointmentId: string | number) =>
     `/api/appointments/${appointmentId}/reschedule`,
+  tipDetails: (appointmentId: string | number) =>
+    `/api/appointments/${appointmentId}/tip`,
+  tipPaymentSheet: (appointmentId: string | number) =>
+    `/api/appointments/${appointmentId}/tip/payment-sheet`,
   availableSlots: (params: {
     business_id: number;
     date: string;

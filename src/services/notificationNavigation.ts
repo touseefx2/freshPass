@@ -2,9 +2,22 @@ import type { Router } from "expo-router";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
 
+export type NotificationSubType =
+  | "appointment_scheduled"
+  | "appointment_rescheduled"
+  | "appointment_cancelled"
+  | "appointment_cancelled_refunded"
+  | "appointment_reminder"
+  | "payment_request"
+  | "review_request"
+  | "tip_request"
+  | "subscription_usage";
+
 export type NotificationNavigationData = {
   type?: string | null;
   model_id?: number | null;
+  subType?: string | null;
+  sub_type?: string | null;
   job_id?: string | null;
   sender?: {
     id: number;
@@ -12,6 +25,16 @@ export type NotificationNavigationData = {
     profile_image_url?: string | null;
   } | null;
 } & Record<string, unknown>;
+
+function getNotificationSubType(
+  data: NotificationNavigationData,
+): NotificationSubType | null {
+  const raw = data.subType ?? data.sub_type ?? null;
+  if (typeof raw !== "string" || !raw.trim()) {
+    return null;
+  }
+  return raw as NotificationSubType;
+}
 
 /**
  * Navigate based on notification data (push payload or API notification item).
@@ -73,15 +96,53 @@ export function navigateFromNotificationData(
   if (type === "appointment") {
     const modelId = data.model_id as number | undefined;
     if (modelId != null) {
-      router.push({
-        pathname: "/(main)/bookingDetailsById",
-        params: { bookingId: modelId },
-      });
-      Logger.log(
-        "------>navigateFromNotificationData (appointment) -> bookingDetailsById",
-        { bookingId: modelId },
-      );
-      return;
+      const subType = getNotificationSubType(data);
+
+      switch (subType) {
+        case "review_request":
+          router.push({
+            pathname: "/(main)/bookingDetailsById",
+            params: { bookingId: String(modelId), openReview: "1" },
+          });
+          Logger.log(
+            "------>navigateFromNotificationData (review_request) -> bookingDetailsById",
+            { bookingId: modelId },
+          );
+          return;
+
+        case "tip_request":
+          router.push({
+            pathname: "/(main)/bookingDetailsById",
+            params: { bookingId: String(modelId) },
+          });
+          Logger.log(
+            "------>navigateFromNotificationData (tip_request) -> bookingDetailsById",
+            { bookingId: modelId },
+          );
+          return;
+
+        case "payment_request":
+          router.push({
+            pathname: "/(main)/bookingDetailsById",
+            params: { bookingId: String(modelId), openPay: "1" },
+          });
+          Logger.log(
+            "------>navigateFromNotificationData (payment_request) -> bookingDetailsById",
+            { bookingId: modelId },
+          );
+          return;
+
+        default:
+          router.push({
+            pathname: "/(main)/bookingDetailsById",
+            params: { bookingId: String(modelId) },
+          });
+          Logger.log(
+            "------>navigateFromNotificationData (appointment) -> bookingDetailsById",
+            { bookingId: modelId, subType },
+          );
+          return;
+      }
     }
   }
 

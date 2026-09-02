@@ -68,6 +68,7 @@ import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
 } from "@/src/components/PotentialContactsModal";
+import TipSection from "@/src/components/tipSection";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
@@ -143,6 +144,19 @@ interface BookingItem {
   staffId?: number | null;
   subscription_id?: number | null;
   service_ids: number[] | null;
+  staffImage?: string | null;
+  tipRecipientType?: "staff" | "business";
+  tipRecipientName?: string;
+  canTip?: boolean;
+  tip?: {
+    id: number;
+    amount: number;
+    currency: string;
+    recipientType: "staff" | "business";
+    recipientStaffId: number | null;
+    recipientName: string;
+    paidAt: string;
+  } | null;
   images?: Array<{
     id: number;
     name: string;
@@ -214,6 +228,19 @@ interface ApiBookingResponse {
     mime_type?: string | null;
     size?: number | null;
   }>;
+  tipRecipientType?: "staff" | "business";
+  tipRecipientStaffId?: number | null;
+  tipRecipientName?: string;
+  canTip?: boolean;
+  tip?: {
+    id: number;
+    amount: number;
+    currency: string;
+    recipientType: "staff" | "business";
+    recipientStaffId: number | null;
+    recipientName: string;
+    paidAt: string;
+  } | null;
 }
 
 const createStyles = (theme: Theme) =>
@@ -383,6 +410,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    staffDetailValue: {
+      textTransform: "capitalize",
+    },
     detailsRowBottomLine: {
       width: "100%",
       height: 1,
@@ -478,6 +508,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(4),
+      textTransform: "capitalize",
     },
     businessAddress: {
       fontSize: fontSize.size12,
@@ -942,8 +973,13 @@ export default function bookingDetailsById() {
       appointmentTime: apiData.appointmentTime,
       userId: apiData.userId ?? null,
       staffId: apiData.staffId ?? null,
+      staffImage: apiData.staffImage ?? null,
       subscription_id: apiData.subscriptionId,
       service_ids: service_ids,
+      tipRecipientType: apiData.tipRecipientType,
+      tipRecipientName: apiData.tipRecipientName,
+      canTip: apiData.canTip ?? false,
+      tip: apiData.tip ?? null,
       images:
         Array.isArray(apiData.images) && apiData.images.length > 0
           ? apiData.images.map((img: any) => ({
@@ -1591,7 +1627,10 @@ export default function bookingDetailsById() {
                         ? t("myBarber")
                         : t("myCustomer")}
                     </Text>
-                    <Text style={styles.detailValue} numberOfLines={2}>
+                    <Text
+                      style={[styles.detailValue, styles.staffDetailValue]}
+                      numberOfLines={2}
+                    >
                       {staffClientname}
                     </Text>
                   </TouchableOpacity>
@@ -1899,6 +1938,21 @@ export default function bookingDetailsById() {
               </View>
             </View>
           )}
+
+          {userRole === "customer" &&
+            isComplete &&
+            booking.type === "service" &&
+            (booking.canTip || booking.tip) && (
+              <TipSection
+                appointmentId={Number(booking.id)}
+                initialCanTip={booking.canTip}
+                initialTip={booking.tip}
+                fallbackRecipientName={booking.tipRecipientName}
+                fallbackRecipientType={booking.tipRecipientType}
+                fallbackRecipientImage={booking.staffImage}
+                onTipComplete={fetchBookingDetails}
+              />
+            )}
 
           <View style={styles.line} />
 
