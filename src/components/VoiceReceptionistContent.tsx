@@ -19,10 +19,17 @@ import {
 import { Theme } from "@/src/theme/colors";
 import { iconScale } from "@/src/theme/dimensions";
 import { Audio } from "expo-av";
+import {
+  activateKeepAwakeAsync,
+  deactivateKeepAwake,
+} from "expo-keep-awake";
 import { Ionicons } from "@expo/vector-icons";
 import AudioRecord from "react-native-audio-record";
 import { Buffer } from "buffer";
 import Logger from "@/src/services/logger";
+
+/** Tag so keep-awake is scoped to Freshy voice and released on end call / unmount. */
+const FRESHY_VOICE_KEEP_AWAKE_TAG = "FreshyVoiceSession";
 
 export type ChatBoxStyles = Record<string, any>;
 
@@ -213,6 +220,22 @@ export const VoiceReceptionistContent = forwardRef<
       if (intervalId) clearInterval(intervalId);
     };
   }, [isListening]);
+
+  // Prevent device idle sleep while Freshy voice session is active (iOS + Android).
+  // Released when user ends the call, connection drops, or this component unmounts.
+  useEffect(() => {
+    const shouldKeepAwake = isConnected || isListening || isStarting;
+    if (!shouldKeepAwake) {
+      deactivateKeepAwake(FRESHY_VOICE_KEEP_AWAKE_TAG).catch(() => {});
+      return;
+    }
+    activateKeepAwakeAsync(FRESHY_VOICE_KEEP_AWAKE_TAG).catch((err) => {
+      Logger.error("[VoiceReceptionist] Failed to activate keep-awake", err);
+    });
+    return () => {
+      deactivateKeepAwake(FRESHY_VOICE_KEEP_AWAKE_TAG).catch(() => {});
+    };
+  }, [isConnected, isListening, isStarting]);
 
   const disconnectDueToError = useCallback(() => {
     isClosedRef.current = true;
