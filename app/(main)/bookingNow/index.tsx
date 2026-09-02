@@ -480,6 +480,7 @@ const createStyles = (theme: Theme) => {
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(2),
+      textTransform: "capitalize",
     },
     staffExperience: {
       fontSize: fontSize.size11,
