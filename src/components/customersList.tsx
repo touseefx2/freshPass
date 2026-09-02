@@ -48,12 +48,7 @@ type SubscriptionFilter =
 const FILTER_OPTIONS: { key: SubscriptionFilter; labelKey: string }[] = [
   { key: "all", labelKey: "all" },
   { key: "active", labelKey: "active" },
-  { key: "trialing", labelKey: "trial" },
-  { key: "pending", labelKey: "pending" },
-  { key: "paused", labelKey: "paused" },
   { key: "expired", labelKey: "expired" },
-  { key: "cancelled", labelKey: "cancelled" },
-  { key: "none", labelKey: "oneOffOnly" },
 ];
 
 const createStyles = (theme: Theme) =>
