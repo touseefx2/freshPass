@@ -144,6 +144,60 @@ export const dashboardEndpoints = {
   },
 };
 
+/**
+ * Business earnings endpoints
+ */
+export const businessEarningsEndpoints = {
+  report: (params?: {
+    month?: string;
+    revenue_source?: string;
+    payment_status?: string;
+    transaction_type?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.month) queryParams.append("month", params.month);
+    if (params?.revenue_source && params.revenue_source !== "all") {
+      queryParams.append("revenue_source", params.revenue_source);
+    }
+    if (params?.payment_status && params.payment_status !== "all") {
+      queryParams.append("payment_status", params.payment_status);
+    }
+    if (params?.transaction_type && params.transaction_type !== "all") {
+      queryParams.append("transaction_type", params.transaction_type);
+    }
+    const query = queryParams.toString();
+    return `/api/business/earnings${query ? `?${query}` : ""}`;
+  },
+  months: (months: number = 12) =>
+    `/api/business/earnings/months?months=${months}`,
+  transactions: (params?: {
+    month?: string;
+    revenue_source?: string;
+    payment_status?: string;
+    transaction_type?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.month) queryParams.append("month", params.month);
+    if (params?.revenue_source && params.revenue_source !== "all") {
+      queryParams.append("revenue_source", params.revenue_source);
+    }
+    if (params?.payment_status && params.payment_status !== "all") {
+      queryParams.append("payment_status", params.payment_status);
+    }
+    if (params?.transaction_type && params.transaction_type !== "all") {
+      queryParams.append("transaction_type", params.transaction_type);
+    }
+    if (params?.page != null) queryParams.append("page", params.page.toString());
+    if (params?.per_page != null) {
+      queryParams.append("per_page", params.per_page.toString());
+    }
+    const query = queryParams.toString();
+    return `/api/business/earnings/transactions${query ? `?${query}` : ""}`;
+  },
+};
+
 export interface AvailableSlotStaff {
   id: number;
   name: string | null;

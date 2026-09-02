@@ -183,6 +183,8 @@ export default function DashboardLayout() {
     Array.isArray(segments) &&
     segments.includes("(home)") &&
     segments.includes("userReviews");
+  const isBusinessEarningsScreen =
+    Array.isArray(segments) && segments.includes("businessEarnings");
   const isStaffDetailScreen =
     Array.isArray(segments) && segments.includes("staffDetail");
   const isAiRequestsScreen =
@@ -264,6 +266,7 @@ export default function DashboardLayout() {
   // Check if we should hide the AI chat button and tab bar on certain screens
   const shouldHideAiChat =
     isUserReviewsScreen ||
+    isBusinessEarningsScreen ||
     isStaffDetailScreen ||
     isAiRequestsScreen ||
     isAiResultsScreen ||

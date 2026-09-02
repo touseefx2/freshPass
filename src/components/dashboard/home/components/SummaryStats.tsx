@@ -174,7 +174,16 @@ export default function SummaryStats({ data, callApi }: SummaryStatsProps) {
   return (
     <>
       <View style={isStaff ? styles.statsRowStaff : styles.statsRow}>
-        <View style={[styles.revenueCard, styles.shadow]}>
+        <TouchableOpacity
+          disabled={isStaff}
+          activeOpacity={0.8}
+          style={[styles.revenueCard, styles.shadow]}
+          onPress={() => {
+            if (isBusiness) {
+              router.push("/(main)/businessEarnings");
+            }
+          }}
+        >
           <View style={styles.titleSec}>
             <Text numberOfLines={1} style={styles.revenueAmount}>
               {isStaff ? upcomingCount : formatRevenue(monthlyRevenue)}
@@ -192,10 +201,19 @@ export default function SummaryStats({ data, callApi }: SummaryStatsProps) {
               />
             )}
           </View>
-          <Text numberOfLines={1} style={styles.revenueLabel}>
-            {isStaff ? t("upcomingAppointment") : t("totalRevenue")}
-          </Text>
-        </View>
+          <View style={styles.titleSec}>
+            <Text numberOfLines={1} style={styles.revenueLabel}>
+              {isStaff ? t("upcomingAppointment") : t("totalRevenue")}
+            </Text>
+            {isBusiness && (
+              <Entypo
+                name="chevron-small-right"
+                size={iconScale(18)}
+                color={theme.white}
+              />
+            )}
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity
           disabled={isStaff}
           activeOpacity={0.8}

@@ -9,6 +9,7 @@ import BusinessPlansModal from "@/src/components/businessPlansModal";
 
 const HOME_TAB_NESTED_ROUTES = [
   "userReviews",
+  "businessEarnings",
   "appointmentDetail",
   "workHistory",
   "businessList",
