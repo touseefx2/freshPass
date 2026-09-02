@@ -66,6 +66,7 @@ import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import { canAddStaffMembers, isSoloSubscription } from "@/src/state/slices/userSlice";
 import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import { getDefaultHoursFromBounds } from "@/src/utils/businessHoursBounds";
 
 const DAYS = [
   "Monday",
@@ -539,6 +540,9 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       paddingVertical: moderateHeightScale(16),
     },
+    dayRowDisabled: {
+      opacity: 0.45,
+    },
     dayLeft: {
       flexDirection: "row",
       alignItems: "center",
@@ -555,6 +559,11 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
+    },
+    businessClosedHint: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     dayHoursContainer: {
       flex: 1,
@@ -765,6 +774,19 @@ export default function AddStaffScreen() {
       if (response.success && response.data?.business_hours) {
         const parsed = parseBusinessHoursFromAPI(response.data.business_hours);
         setSalonBusinessHours(parsed);
+        // Staff cannot be available on days the business is closed
+        setBusinessHours((prev) => {
+          const updated = { ...prev };
+          DAYS.forEach((day) => {
+            if (parsed[day] && !parsed[day].isOpen) {
+              updated[day] = {
+                ...(updated[day] || defaultDayData()),
+                isOpen: false,
+              };
+            }
+          });
+          return updated;
+        });
       }
     } catch (error: any) {
       Logger.error("Failed to fetch availability:", error);
@@ -776,6 +798,20 @@ export default function AddStaffScreen() {
       );
     }
   }, [showBanner]);
+
+  const isBusinessDayClosed = useCallback(
+    (day: string): boolean => {
+      if (!salonBusinessHours) return false;
+      const salonDay = salonBusinessHours[day];
+      return !!salonDay && !salonDay.isOpen;
+    },
+    [salonBusinessHours],
+  );
+
+  const allowedCopyDays = useMemo(() => {
+    if (!salonBusinessHours) return undefined;
+    return DAYS.filter((day) => salonBusinessHours[day]?.isOpen);
+  }, [salonBusinessHours]);
 
   useEffect(() => {
     fetchAvailability();
@@ -1019,6 +1055,7 @@ export default function AddStaffScreen() {
   }, []);
 
   const handleDayPress = (day: string) => {
+    if (isBusinessDayClosed(day)) return;
     setSelectedDay(day);
     setBottomSheetVisible(true);
   };
@@ -1056,7 +1093,7 @@ export default function AddStaffScreen() {
       updated[day] = dayData;
       if (copyHoursEnabled && selectedDays?.length) {
         selectedDays.forEach((d) => {
-          if (d !== day) updated[d] = dayData;
+          if (d !== day && !isBusinessDayClosed(d)) updated[d] = dayData;
         });
       }
       return updated;
@@ -1065,6 +1102,7 @@ export default function AddStaffScreen() {
   };
 
   const getDayDisplayText = (day: string): string | React.ReactNode => {
+    if (isBusinessDayClosed(day)) return "Business closed";
     const dayData = businessHours[day];
     if (!dayData?.isOpen) return "Closed";
     if (!dayData.fromHours && !dayData.tillHours) return "---";
@@ -1096,6 +1134,7 @@ export default function AddStaffScreen() {
   };
 
   const handleToggleDay = (day: string, value: boolean) => {
+    if (isBusinessDayClosed(day)) return;
     const dayData = businessHours[day];
     setBusinessHours((prev) => ({
       ...prev,
@@ -1111,14 +1150,17 @@ export default function AddStaffScreen() {
         dayData.tillHours === 0 &&
         dayData.tillMinutes === 0;
       if (hasNoHours) {
+        const defaults = getDefaultHoursFromBounds(
+          salonBusinessHours?.[day] ?? null,
+        );
         setBusinessHours((prev) => ({
           ...prev,
           [day]: {
             ...prev[day],
-            fromHours: 10,
-            fromMinutes: 0,
-            tillHours: 19,
-            tillMinutes: 30,
+            fromHours: defaults.fromHours,
+            fromMinutes: defaults.fromMinutes,
+            tillHours: defaults.tillHours,
+            tillMinutes: defaults.tillMinutes,
             breaks: [],
             isOpen: true,
           },
@@ -1590,25 +1632,38 @@ export default function AddStaffScreen() {
         <View style={styles.daysContainer}>
           {DAYS.map((day, index) => {
             const dayData = businessHours[day];
-            const isOpen = dayData?.isOpen ?? false;
+            const businessClosed = isBusinessDayClosed(day);
+            const isOpen = businessClosed ? false : (dayData?.isOpen ?? false);
             const displayText = getDayDisplayText(day);
 
             return (
               <React.Fragment key={day}>
                 <TouchableOpacity
-                  style={styles.dayRow}
+                  style={[
+                    styles.dayRow,
+                    businessClosed && styles.dayRowDisabled,
+                  ]}
                   onPress={() => handleDayPress(day)}
-                  activeOpacity={0.7}
+                  disabled={businessClosed}
+                  activeOpacity={businessClosed ? 1 : 0.7}
                 >
                   <View style={styles.dayLeft}>
                     <CustomToggle
                       value={isOpen}
                       onValueChange={(value) => handleToggleDay(day, value)}
+                      disabled={businessClosed}
                     />
                     <Text style={styles.dayName}>{day}</Text>
                     <View style={styles.dayHoursContainer}>
                       {typeof displayText === "string" ? (
-                        <Text style={styles.dayHours}>{displayText}</Text>
+                        <Text
+                          style={[
+                            styles.dayHours,
+                            businessClosed && styles.businessClosedHint,
+                          ]}
+                        >
+                          {displayText}
+                        </Text>
                       ) : (
                         <View style={styles.dayHoursMultiple}>
                           {displayText}
@@ -1618,7 +1673,9 @@ export default function AddStaffScreen() {
                     <Feather
                       name="chevron-right"
                       size={moderateWidthScale(18)}
-                      color={theme.darkGreen}
+                      color={
+                        businessClosed ? theme.lightGreen2 : theme.darkGreen
+                      }
                       style={styles.chevronIcon}
                     />
                   </View>
@@ -1700,6 +1757,18 @@ export default function AddStaffScreen() {
                 }
               : undefined
           }
+          businessBounds={
+            salonBusinessHours?.[selectedDay]
+              ? {
+                  isOpen: salonBusinessHours[selectedDay].isOpen,
+                  fromHours: salonBusinessHours[selectedDay].fromHours,
+                  fromMinutes: salonBusinessHours[selectedDay].fromMinutes,
+                  tillHours: salonBusinessHours[selectedDay].tillHours,
+                  tillMinutes: salonBusinessHours[selectedDay].tillMinutes,
+                }
+              : null
+          }
+          allowedCopyDays={allowedCopyDays}
         />
       )}
 

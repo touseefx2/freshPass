@@ -15,6 +15,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+import { isTimeWithinBounds } from "@/src/utils/businessHoursBounds";
 
 interface PickerDropdownProps {
   visible: boolean;
@@ -23,6 +24,12 @@ interface PickerDropdownProps {
   onSelect: (hours: number, minutes: number) => void;
   onClose: () => void;
   buttonRef?: React.RefObject<View | null>;
+  /** Inclusive lower bound for selectable times (optional). */
+  minHours?: number;
+  minMinutes?: number;
+  /** Inclusive upper bound for selectable times (optional). */
+  maxHours?: number;
+  maxMinutes?: number;
 }
 
 const TIME_OPTIONS = Array.from({ length: 24 * 2 }, (_, i) => {
@@ -56,7 +63,7 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(8),
       maxHeight: moderateHeightScale(170),
       width: moderateWidthScale(130),
-      shadowColor: theme.shadow  ,
+      shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.25,
       shadowRadius: 8,
@@ -86,6 +93,10 @@ export default function PickerDropdown({
   onSelect,
   onClose,
   buttonRef,
+  minHours,
+  minMinutes = 0,
+  maxHours,
+  maxMinutes = 0,
 }: PickerDropdownProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -98,9 +109,24 @@ export default function PickerDropdown({
 
   const currentValue = getTimeValue(currentHours, currentMinutes);
 
+  const hasBounds = minHours !== undefined && maxHours !== undefined;
+
+  const filteredOptions = useMemo(() => {
+    if (!hasBounds) return TIME_OPTIONS;
+    return TIME_OPTIONS.filter((option) =>
+      isTimeWithinBounds(
+        option.hours,
+        option.minutes,
+        minHours!,
+        minMinutes,
+        maxHours!,
+        maxMinutes,
+      ),
+    );
+  }, [hasBounds, minHours, minMinutes, maxHours, maxMinutes]);
+
   useEffect(() => {
     if (visible && buttonRef?.current) {
-      // Small delay to ensure ref is measured after render
       const timer = setTimeout(() => {
         if (buttonRef?.current) {
           buttonRef.current.measureInWindow((x, y, width, height) => {
@@ -113,7 +139,6 @@ export default function PickerDropdown({
       }, 50);
       return () => clearTimeout(timer);
     } else if (visible && !buttonRef) {
-      // Fallback: center on screen if no ref provided
       setMenuPosition({
         x: moderateWidthScale(100),
         y: moderateHeightScale(200),
@@ -125,11 +150,14 @@ export default function PickerDropdown({
 
   useEffect(() => {
     if (visible && menuPosition != null && scrollViewRef.current) {
-      const itemHeight =
-        moderateHeightScale(12) * 2 + 20 + 1;
+      const itemHeight = moderateHeightScale(12) * 2 + 20 + 1;
+      const selectedIndex = Math.max(
+        0,
+        filteredOptions.findIndex((option) => option.value === currentValue),
+      );
       const scrollY = Math.max(
         0,
-        currentValue * itemHeight - moderateHeightScale(85)
+        selectedIndex * itemHeight - moderateHeightScale(85),
       );
       const timer = setTimeout(() => {
         scrollViewRef.current?.scrollTo({
@@ -139,7 +167,7 @@ export default function PickerDropdown({
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [visible, menuPosition, currentValue]);
+  }, [visible, menuPosition, currentValue, filteredOptions]);
 
   if (!visible) return null;
 
@@ -163,7 +191,7 @@ export default function PickerDropdown({
               styles.dropdown,
               {
                 left: menuPosition.x,
-                top: menuPosition.y+20,
+                top: menuPosition.y + 20,
               },
             ]}
           >
@@ -172,7 +200,7 @@ export default function PickerDropdown({
               nestedScrollEnabled
               showsVerticalScrollIndicator={false}
             >
-              {TIME_OPTIONS.map((option, index) => (
+              {filteredOptions.map((option, index) => (
                 <View key={option.value}>
                   {index > 0 && (
                     <View
@@ -184,7 +212,9 @@ export default function PickerDropdown({
                     />
                   )}
                   <TouchableOpacity
-                    onPress={() => handleMenuItemPress(option.hours, option.minutes)}
+                    onPress={() =>
+                      handleMenuItemPress(option.hours, option.minutes)
+                    }
                     style={styles.dropdownItem}
                   >
                     <Text
@@ -206,4 +236,3 @@ export default function PickerDropdown({
     </Modal>
   );
 }
-

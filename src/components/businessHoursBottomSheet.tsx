@@ -16,6 +16,14 @@ import {
 } from "@/src/state/slices/completeProfileSlice";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import PickerDropdown from "@/src/components/PickerDropdown";
+import {
+  DayHoursBounds,
+  formatBoundsLabel,
+  getDefaultHoursFromBounds,
+  getTotalMinutes,
+  isOvernightRange,
+  isWindowWithinBounds,
+} from "@/src/utils/businessHoursBounds";
 
 interface BusinessHoursBottomSheetProps {
   visible: boolean;
@@ -49,6 +57,14 @@ interface BusinessHoursBottomSheetProps {
       tillMinutes: number;
     }>;
   };
+  /**
+   * When set (staff availability flows), time pickers are clamped to these
+   * business hours and validation rejects windows outside them.
+   * Omit for business-owned availability screens.
+   */
+  businessBounds?: DayHoursBounds | null;
+  /** Days that may receive "copy hours" (business-open days). */
+  allowedCopyDays?: string[];
 }
 
 interface BreakTime {
@@ -57,9 +73,6 @@ interface BreakTime {
   tillHours: number;
   tillMinutes: number;
 }
-
-const getTotalMinutes = (hours: number, minutes: number) =>
-  hours * 60 + minutes;
 
 const DAYS = [
   "Sunday",
@@ -235,12 +248,21 @@ export default function BusinessHoursBottomSheet({
   day,
   onSave,
   initialData,
+  businessBounds,
+  allowedCopyDays,
 }: BusinessHoursBottomSheetProps) {
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
   const { businessHours } = useAppSelector((state) => state.completeProfile);
+
+  const constrainToBusiness =
+    !!businessBounds && businessBounds.isOpen === true;
+
+  const defaultHours = getDefaultHoursFromBounds(
+    constrainToBusiness ? businessBounds : null,
+  );
 
   // Use initialData if provided (for non-Redux usage), otherwise use Redux state
   const dayData = initialData
@@ -261,12 +283,6 @@ export default function BusinessHoursBottomSheet({
         breaks: [],
       };
 
-  // Default hours: 9 AM - 6 PM
-  const DEFAULT_FROM_HOURS = 9;
-  const DEFAULT_FROM_MINUTES = 0;
-  const DEFAULT_TILL_HOURS = 18;
-  const DEFAULT_TILL_MINUTES = 0;
-
   // Check if day has no hours set
   const hasNoHours =
     (dayData.fromHours === 0 &&
@@ -276,16 +292,16 @@ export default function BusinessHoursBottomSheet({
     (!dayData.fromHours && !dayData.tillHours);
 
   const [fromHours, setFromHours] = useState(
-    hasNoHours ? DEFAULT_FROM_HOURS : dayData.fromHours || 0,
+    hasNoHours ? defaultHours.fromHours : dayData.fromHours || 0,
   );
   const [fromMinutes, setFromMinutes] = useState(
-    hasNoHours ? DEFAULT_FROM_MINUTES : dayData.fromMinutes || 0,
+    hasNoHours ? defaultHours.fromMinutes : dayData.fromMinutes || 0,
   );
   const [tillHours, setTillHours] = useState(
-    hasNoHours ? DEFAULT_TILL_HOURS : dayData.tillHours || 0,
+    hasNoHours ? defaultHours.tillHours : dayData.tillHours || 0,
   );
   const [tillMinutes, setTillMinutes] = useState(
-    hasNoHours ? DEFAULT_TILL_MINUTES : dayData.tillMinutes || 0,
+    hasNoHours ? defaultHours.tillMinutes : dayData.tillMinutes || 0,
   );
   const [breaks, setBreaks] = useState<BreakTime[]>(dayData.breaks || []);
   const [copyHoursEnabled, setCopyHoursEnabled] = useState(false);
@@ -309,9 +325,15 @@ export default function BusinessHoursBottomSheet({
   const breakFromButtonRefs = useRef<{ [key: number]: View | null }>({});
   const breakTillButtonRefs = useRef<{ [key: number]: View | null }>({});
 
+  const copyableDays = useMemo(() => {
+    const otherDays = DAYS.filter((d) => d !== day);
+    if (!allowedCopyDays || allowedCopyDays.length === 0) return otherDays;
+    const allowed = new Set(allowedCopyDays);
+    return otherDays.filter((d) => allowed.has(d));
+  }, [allowedCopyDays, day]);
+
   useEffect(() => {
     if (visible && day) {
-      // Recompute dayData to ensure we have the latest initialData or Redux state
       const currentDayData = initialData
         ? {
             isOpen: true,
@@ -330,87 +352,94 @@ export default function BusinessHoursBottomSheet({
             breaks: [],
           };
 
-      // Check if day has no hours set (all zeros)
-      const hasNoHours =
+      const dayHasNoHours =
         (currentDayData.fromHours === 0 &&
           currentDayData.fromMinutes === 0 &&
           currentDayData.tillHours === 0 &&
           currentDayData.tillMinutes === 0) ||
         (!currentDayData.fromHours && !currentDayData.tillHours);
 
+      const defaults = getDefaultHoursFromBounds(
+        constrainToBusiness ? businessBounds : null,
+      );
+
       let currentFromHours = 0;
       let currentFromMinutes = 0;
       let currentTillHours = 0;
       let currentTillMinutes = 0;
 
-      // If no hours are set, use default hours (9 AM - 6 PM)
-      if (hasNoHours) {
-        currentFromHours = 9; // 9 AM
-        currentFromMinutes = 0;
-        currentTillHours = 18; // 6 PM
-        currentTillMinutes = 0;
-        setFromHours(9);
-        setFromMinutes(0);
-        setTillHours(18);
-        setTillMinutes(0);
+      if (dayHasNoHours) {
+        currentFromHours = defaults.fromHours;
+        currentFromMinutes = defaults.fromMinutes;
+        currentTillHours = defaults.tillHours;
+        currentTillMinutes = defaults.tillMinutes;
       } else {
         currentFromHours = currentDayData.fromHours || 0;
         currentFromMinutes = currentDayData.fromMinutes || 0;
         currentTillHours = currentDayData.tillHours || 0;
         currentTillMinutes = currentDayData.tillMinutes || 0;
-        setFromHours(currentFromHours);
-        setFromMinutes(currentFromMinutes);
-        setTillHours(currentTillHours);
-        setTillMinutes(currentTillMinutes);
+
+        // Clamp existing values into business bounds when constraining
+        if (constrainToBusiness && businessBounds) {
+          const within = isWindowWithinBounds(
+            currentFromHours,
+            currentFromMinutes,
+            currentTillHours,
+            currentTillMinutes,
+            businessBounds.fromHours,
+            businessBounds.fromMinutes,
+            businessBounds.tillHours,
+            businessBounds.tillMinutes,
+          );
+          if (!within) {
+            currentFromHours = businessBounds.fromHours;
+            currentFromMinutes = businessBounds.fromMinutes;
+            currentTillHours = businessBounds.tillHours;
+            currentTillMinutes = businessBounds.tillMinutes;
+          }
+        }
       }
+
+      setFromHours(currentFromHours);
+      setFromMinutes(currentFromMinutes);
+      setTillHours(currentTillHours);
+      setTillMinutes(currentTillMinutes);
 
       // Auto-add at least 1 break time field if no breaks exist
       const existingBreaks = currentDayData.breaks || [];
       if (existingBreaks.length === 0) {
-        // Calculate default break time: 1 hour in the middle of business hours
-        const fromTotalMinutes = getTotalMinutes(
+        const fromTotal = getTotalMinutes(currentFromHours, currentFromMinutes);
+        const tillTotal = getTotalMinutes(currentTillHours, currentTillMinutes);
+        const overnight = isOvernightRange(
           currentFromHours,
           currentFromMinutes,
-        );
-        const tillTotalMinutes = getTotalMinutes(
           currentTillHours,
           currentTillMinutes,
         );
-        const totalDuration = tillTotalMinutes - fromTotalMinutes;
+        const totalDuration = overnight
+          ? 24 * 60 - fromTotal + tillTotal
+          : tillTotal - fromTotal;
 
-        // Only set default break if business hours are at least 2 hours (need space for 1 hour break)
-        if (totalDuration >= 120) {
-          // Calculate middle point and set 1 hour break (60 minutes)
-          const middlePoint = fromTotalMinutes + Math.floor(totalDuration / 2);
-          const breakStartMinutes = middlePoint - 30; // Start 30 minutes before middle
-          const breakEndMinutes = middlePoint + 30; // End 30 minutes after middle (exactly 1 hour)
+        if (totalDuration >= 120 && !overnight) {
+          const middlePoint = fromTotal + Math.floor(totalDuration / 2);
+          const breakStartMinutes = middlePoint - 30;
+          const breakEndMinutes = middlePoint + 30;
 
-          // Ensure break is within business hours
-          const adjustedBreakStart = Math.max(
-            fromTotalMinutes,
-            breakStartMinutes,
-          );
+          const adjustedBreakStart = Math.max(fromTotal, breakStartMinutes);
           const adjustedBreakEnd = Math.min(
-            tillTotalMinutes,
+            tillTotal,
             adjustedBreakStart + 60,
           );
 
-          // Convert back to hours and minutes
-          const breakFromHours = Math.floor(adjustedBreakStart / 60);
-          const breakFromMinutes = adjustedBreakStart % 60;
-          const breakTillHours = Math.floor(adjustedBreakEnd / 60);
-          const breakTillMinutes = adjustedBreakEnd % 60;
-
           setBreaks([
             {
-              fromHours: breakFromHours,
-              fromMinutes: breakFromMinutes,
-              tillHours: breakTillHours,
-              tillMinutes: breakTillMinutes,
+              fromHours: Math.floor(adjustedBreakStart / 60),
+              fromMinutes: adjustedBreakStart % 60,
+              tillHours: Math.floor(adjustedBreakEnd / 60),
+              tillMinutes: adjustedBreakEnd % 60,
             },
           ]);
         } else {
-          // If business hours are too short, set empty break (user can set manually)
           setBreaks([
             {
               fromHours: 0,
@@ -425,8 +454,10 @@ export default function BusinessHoursBottomSheet({
       }
       setCopyHoursEnabled(false);
       setSelectedDays([]);
+      setOpeningHoursError(null);
+      setBreakTimeError(null);
     }
-  }, [visible, day, initialData, businessHours]);
+  }, [visible, day, initialData, businessHours, businessBounds, constrainToBusiness]);
 
   const handleSave = () => {
     setOpeningHoursError(null);
@@ -434,11 +465,15 @@ export default function BusinessHoursBottomSheet({
 
     const fromTotalMinutes = getTotalMinutes(fromHours, fromMinutes);
     const tillTotalMinutes = getTotalMinutes(tillHours, tillMinutes);
+    const staffOvernight = isOvernightRange(
+      fromHours,
+      fromMinutes,
+      tillHours,
+      tillMinutes,
+    );
 
     let hasError = false;
 
-    // Validate opening hours: from must be less than till
-    // Check if times are set (we set defaults, so if both are 0, user might have cleared them or selected 12 AM for both)
     const bothAreZero =
       fromHours === 0 &&
       fromMinutes === 0 &&
@@ -446,15 +481,36 @@ export default function BusinessHoursBottomSheet({
       tillMinutes === 0;
 
     if (bothAreZero) {
-      // This could be "not set" or "both 12 AM" - either way, it's invalid
       setOpeningHoursError("Please select valid opening and closing times.");
       hasError = true;
-    } else if (fromTotalMinutes >= tillTotalMinutes) {
+    } else if (!staffOvernight && fromTotalMinutes >= tillTotalMinutes) {
       setOpeningHoursError("Opening time must be earlier than closing time.");
+      hasError = true;
+    } else if (
+      constrainToBusiness &&
+      businessBounds &&
+      !isWindowWithinBounds(
+        fromHours,
+        fromMinutes,
+        tillHours,
+        tillMinutes,
+        businessBounds.fromHours,
+        businessBounds.fromMinutes,
+        businessBounds.tillHours,
+        businessBounds.tillMinutes,
+      )
+    ) {
+      setOpeningHoursError(
+        `Hours must stay within business open hours (${formatBoundsLabel(
+          businessBounds.fromHours,
+          businessBounds.fromMinutes,
+          businessBounds.tillHours,
+          businessBounds.tillMinutes,
+        )}).`,
+      );
       hasError = true;
     }
 
-    // Filter valid breaks (non-empty ones)
     const validBreaks = breaks.filter(
       (breakTime) =>
         breakTime.fromHours > 0 ||
@@ -463,9 +519,7 @@ export default function BusinessHoursBottomSheet({
         breakTime.tillMinutes > 0,
     );
 
-    // Validate break times
     if (validBreaks.length > 0) {
-      // Check for duplicate break times
       for (let i = 0; i < validBreaks.length; i++) {
         for (let j = i + 1; j < validBreaks.length; j++) {
           const break1From = getTotalMinutes(
@@ -496,7 +550,6 @@ export default function BusinessHoursBottomSheet({
         if (hasError) break;
       }
 
-      // Check each break time validity
       if (!hasError) {
         const hasInvalidBreak = validBreaks.some((breakTime) => {
           const breakFrom = getTotalMinutes(
@@ -508,13 +561,22 @@ export default function BusinessHoursBottomSheet({
             breakTime.tillMinutes,
           );
 
-          // Break from must be less than break till
           if (breakFrom >= breakTill) {
             return true;
           }
 
-          // Break time must be within opening hours
-          if (breakFrom < fromTotalMinutes || breakTill > tillTotalMinutes) {
+          if (
+            !isWindowWithinBounds(
+              breakTime.fromHours,
+              breakTime.fromMinutes,
+              breakTime.tillHours,
+              breakTime.tillMinutes,
+              fromHours,
+              fromMinutes,
+              tillHours,
+              tillMinutes,
+            )
+          ) {
             return true;
           }
 
@@ -534,7 +596,10 @@ export default function BusinessHoursBottomSheet({
       return;
     }
 
-    // If onSave callback is provided, use it (for non-Redux usage)
+    const daysToCopy = selectedDays.filter((d) =>
+      copyableDays.includes(d),
+    );
+
     if (onSave) {
       onSave(
         day,
@@ -544,10 +609,9 @@ export default function BusinessHoursBottomSheet({
         tillMinutes,
         validBreaks,
         copyHoursEnabled,
-        selectedDays,
+        daysToCopy,
       );
     } else {
-      // Otherwise use Redux (for completeProfile flow)
       dispatch(
         setDayHours({
           day,
@@ -559,8 +623,8 @@ export default function BusinessHoursBottomSheet({
         }),
       );
 
-      if (copyHoursEnabled && selectedDays.length > 0) {
-        selectedDays.forEach((selectedDay) => {
+      if (copyHoursEnabled && daysToCopy.length > 0) {
+        daysToCopy.forEach((selectedDay) => {
           dispatch(
             setDayHours({
               day: selectedDay,
@@ -670,11 +734,23 @@ export default function BusinessHoursBottomSheet({
         onFooterButtonPress={handleSave}
       >
         <View style={{ gap: 3 }}>
-          <Text style={styles.sectionTitle}>Business hours</Text>
+          <Text style={styles.sectionTitle}>Working hours</Text>
           <Text style={styles.sectionDescription}>
-            Set your business hours for {day}s here. To edit hours for a
-            specific date, use your calendar.
+            {constrainToBusiness && businessBounds
+              ? `Set hours for ${day}s within the business open window.`
+              : `Set your business hours for ${day}s here. To edit hours for a specific date, use your calendar.`}
           </Text>
+          {constrainToBusiness && businessBounds ? (
+            <Text style={styles.sectionDescription}>
+              Business open{" "}
+              {formatBoundsLabel(
+                businessBounds.fromHours,
+                businessBounds.fromMinutes,
+                businessBounds.tillHours,
+                businessBounds.tillMinutes,
+              )}
+            </Text>
+          ) : null}
         </View>
 
         <View style={{ gap: 5, marginTop: moderateHeightScale(12) }}>
@@ -845,29 +921,30 @@ export default function BusinessHoursBottomSheet({
               <TouchableOpacity
                 style={[
                   styles.dayPill,
-                  selectedDays.length === DAYS.length - 1 &&
+                  selectedDays.length === copyableDays.length &&
+                    copyableDays.length > 0 &&
                     styles.dayPillSelected,
                 ]}
                 onPress={() => {
-                  const otherDays = DAYS.filter((d) => d !== day);
-                  if (selectedDays.length === otherDays.length) {
+                  if (selectedDays.length === copyableDays.length) {
                     setSelectedDays([]);
                   } else {
-                    setSelectedDays(otherDays);
+                    setSelectedDays([...copyableDays]);
                   }
                 }}
               >
-                {selectedDays.length === DAYS.length - 1 && (
-                  <Feather
-                    name="check"
-                    size={iconScale(14)}
-                    color={theme.darkGreen}
-                    style={{ marginRight: moderateWidthScale(4) }}
-                  />
-                )}
+                {selectedDays.length === copyableDays.length &&
+                  copyableDays.length > 0 && (
+                    <Feather
+                      name="check"
+                      size={iconScale(14)}
+                      color={theme.darkGreen}
+                      style={{ marginRight: moderateWidthScale(4) }}
+                    />
+                  )}
                 <Text style={[styles.dayPillText]}>All</Text>
               </TouchableOpacity>
-              {DAYS.filter((d) => d !== day).map((dayName) => {
+              {copyableDays.map((dayName) => {
                 const isSelected = selectedDays.includes(dayName);
                 return (
                   <TouchableOpacity
@@ -902,6 +979,18 @@ export default function BusinessHoursBottomSheet({
         onSelect={(hours, minutes) => handleTimeSelect(hours, minutes, "from")}
         onClose={() => setShowFromDropdown(false)}
         buttonRef={fromButtonRef}
+        minHours={
+          constrainToBusiness ? businessBounds!.fromHours : undefined
+        }
+        minMinutes={
+          constrainToBusiness ? businessBounds!.fromMinutes : undefined
+        }
+        maxHours={
+          constrainToBusiness ? businessBounds!.tillHours : undefined
+        }
+        maxMinutes={
+          constrainToBusiness ? businessBounds!.tillMinutes : undefined
+        }
       />
 
       <PickerDropdown
@@ -911,6 +1000,18 @@ export default function BusinessHoursBottomSheet({
         onSelect={(hours, minutes) => handleTimeSelect(hours, minutes, "till")}
         onClose={() => setShowTillDropdown(false)}
         buttonRef={tillButtonRef}
+        minHours={
+          constrainToBusiness ? businessBounds!.fromHours : undefined
+        }
+        minMinutes={
+          constrainToBusiness ? businessBounds!.fromMinutes : undefined
+        }
+        maxHours={
+          constrainToBusiness ? businessBounds!.tillHours : undefined
+        }
+        maxMinutes={
+          constrainToBusiness ? businessBounds!.tillMinutes : undefined
+        }
       />
 
       {breaks.map((breakTime, index) => {
@@ -927,6 +1028,10 @@ export default function BusinessHoursBottomSheet({
               }
               onClose={() => setShowBreakFromDropdown(null)}
               buttonRef={breakFromRef ? { current: breakFromRef } : undefined}
+              minHours={fromHours}
+              minMinutes={fromMinutes}
+              maxHours={tillHours}
+              maxMinutes={tillMinutes}
             />
             <PickerDropdown
               visible={showBreakTillDropdown === index}
@@ -937,6 +1042,10 @@ export default function BusinessHoursBottomSheet({
               }
               onClose={() => setShowBreakTillDropdown(null)}
               buttonRef={breakTillRef ? { current: breakTillRef } : undefined}
+              minHours={fromHours}
+              minMinutes={fromMinutes}
+              maxHours={tillHours}
+              maxMinutes={tillMinutes}
             />
           </React.Fragment>
         );
