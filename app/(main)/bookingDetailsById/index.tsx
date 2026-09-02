@@ -69,6 +69,13 @@ import PotentialContactsModal, {
   type PotentialContact,
 } from "@/src/components/PotentialContactsModal";
 import TipSection from "@/src/components/tipSection";
+import {
+  formatTipAmount,
+  formatTipRecipientName,
+  resolveApiImageUrl,
+  type PaidTip,
+  type PendingTip,
+} from "@/src/services/tipService";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
@@ -114,6 +121,7 @@ interface BookingItem {
   dateTime: string;
   duration: string;
   price: string;
+  serviceTotal?: number | null;
   user: string;
   status: BookingStatus;
   businessId?: number;
@@ -148,15 +156,8 @@ interface BookingItem {
   tipRecipientType?: "staff" | "business";
   tipRecipientName?: string;
   canTip?: boolean;
-  tip?: {
-    id: number;
-    amount: number;
-    currency: string;
-    recipientType: "staff" | "business";
-    recipientStaffId: number | null;
-    recipientName: string;
-    paidAt: string;
-  } | null;
+  tip?: PaidTip | null;
+  pendingTip?: PendingTip | null;
   images?: Array<{
     id: number;
     name: string;
@@ -232,15 +233,8 @@ interface ApiBookingResponse {
   tipRecipientStaffId?: number | null;
   tipRecipientName?: string;
   canTip?: boolean;
-  tip?: {
-    id: number;
-    amount: number;
-    currency: string;
-    recipientType: "staff" | "business";
-    recipientStaffId: number | null;
-    recipientName: string;
-    paidAt: string;
-  } | null;
+  tip?: PaidTip | null;
+  pendingTip?: PendingTip | null;
 }
 
 const createStyles = (theme: Theme) =>
@@ -554,15 +548,59 @@ const createStyles = (theme: Theme) =>
     },
     paymentSection: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       marginVertical: moderateHeightScale(16),
       paddingHorizontal: moderateWidthScale(20),
     },
     paymentIcon: {
       marginRight: moderateWidthScale(12),
+      marginTop: moderateHeightScale(2),
     },
     paymentTextContainer: {
       flex: 1,
+    },
+    paymentBreakdownCard: {
+      marginTop: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen05,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      gap: moderateHeightScale(6),
+    },
+    paymentBreakdownRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    paymentBreakdownLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+      textTransform: "capitalize",
+    },
+    paymentBreakdownValue: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    paymentBreakdownTotalLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    paymentBreakdownTotalValue: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    paymentBreakdownDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginVertical: moderateHeightScale(2),
     },
     paymentLabel: {
       fontSize: fontSize.size13,
@@ -577,6 +615,68 @@ const createStyles = (theme: Theme) =>
     },
     paymentAmountVal: {
       fontFamily: fonts.fontMedium,
+    },
+    tipReceiptSection: {
+      paddingHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(8),
+    },
+    tipReceiptCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      padding: moderateWidthScale(14),
+      gap: moderateWidthScale(12),
+    },
+    tipReceiptAvatar: {
+      width: widthScale(48),
+      height: widthScale(48),
+      borderRadius: widthScale(24),
+      backgroundColor: theme.emptyProfileImage,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      borderWidth: 2,
+      borderColor: theme.orangeBrown30,
+    },
+    tipReceiptAvatarImage: {
+      width: "100%",
+      height: "100%",
+    },
+    tipReceiptInitial: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    tipReceiptInfo: {
+      flex: 1,
+    },
+    tipReceiptEyebrow: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+      marginBottom: moderateHeightScale(4),
+    },
+    tipReceiptTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    tipReceiptSubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textTransform: "capitalize",
+    },
+    tipReceiptAmount: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
     },
     payOnlineButtonContainer: {},
     payOnlineButton: {
@@ -954,6 +1054,12 @@ export default function bookingDetailsById() {
       duration: duration,
       user: apiData.user ?? "User",
       price: formatPrice(price),
+      serviceTotal:
+        typeof price === "number"
+          ? price
+          : typeof price === "string"
+            ? Number.parseFloat(price)
+            : null,
       status: mapApiStatusToBookingStatus(apiData.status),
       businessId: apiData.businessId,
       businessName: apiData.businessTitle || "---",
@@ -980,6 +1086,7 @@ export default function bookingDetailsById() {
       tipRecipientName: apiData.tipRecipientName,
       canTip: apiData.canTip ?? false,
       tip: apiData.tip ?? null,
+      pendingTip: apiData.pendingTip ?? null,
       images:
         Array.isArray(apiData.images) && apiData.images.length > 0
           ? apiData.images.map((img: any) => ({
@@ -1084,6 +1191,38 @@ export default function bookingDetailsById() {
   const isCancelled =
     booking?.status === "cancelled" || booking?.status === "expired";
   const isComplete = booking?.status === "complete";
+
+  const paidTipBreakdown = useMemo(() => {
+    if (!booking?.tip) return null;
+
+    const tipAmount = booking.tip.amount;
+    const serviceAmount = Number.isFinite(booking.serviceTotal)
+      ? (booking.serviceTotal as number)
+      : Number.parseFloat(String(booking.paidAmount ?? booking.price)) || 0;
+    const paidRaw = Number.parseFloat(String(booking.paidAmount ?? ""));
+    // Backend may return paidAmount as service-only; if it matches service, add tip for display total.
+    const totalPaid =
+      Number.isFinite(paidRaw) && Math.abs(paidRaw - (serviceAmount + tipAmount)) < 0.02
+        ? paidRaw
+        : Number.isFinite(paidRaw) && Math.abs(paidRaw - serviceAmount) < 0.02
+          ? serviceAmount + tipAmount
+          : Number.isFinite(paidRaw)
+            ? paidRaw
+            : serviceAmount + tipAmount;
+
+    return {
+      serviceAmount,
+      tipAmount,
+      totalPaid,
+      recipientName: formatTipRecipientName(booking.tip.recipientName),
+      currency: booking.tip.currency || "usd",
+    };
+  }, [booking]);
+
+  const tipReceiptImageUri = useMemo(
+    () => resolveApiImageUrl(booking?.staffImage),
+    [booking?.staffImage],
+  );
 
   // Show review modal only when: status complete, customer, and no review exists yet (reviews API returns empty data)
   useEffect(() => {
@@ -1892,11 +2031,87 @@ export default function bookingDetailsById() {
                     <Text style={styles.paymentLabel}>
                       {userRole === "customer" ? "I" : staffClientname} paid
                     </Text>
-                    <Text style={styles.paymentAmount}>
-                      <Text style={styles.paymentAmountVal}>
-                        {formatPrice(booking.paidAmount)}
+                    {paidTipBreakdown ? (
+                      <View style={styles.paymentBreakdownCard}>
+                        <View style={styles.paymentBreakdownRow}>
+                          <Text style={styles.paymentBreakdownLabel}>
+                            Service
+                          </Text>
+                          <Text style={styles.paymentBreakdownValue}>
+                            {formatPrice(paidTipBreakdown.serviceAmount)}
+                          </Text>
+                        </View>
+                        <View style={styles.paymentBreakdownRow}>
+                          <Text style={styles.paymentBreakdownLabel}>
+                            Tip for {paidTipBreakdown.recipientName}
+                          </Text>
+                          <Text style={styles.paymentBreakdownValue}>
+                            {formatTipAmount(
+                              paidTipBreakdown.tipAmount,
+                              paidTipBreakdown.currency,
+                            )}
+                          </Text>
+                        </View>
+                        <View style={styles.paymentBreakdownDivider} />
+                        <View style={styles.paymentBreakdownRow}>
+                          <Text style={styles.paymentBreakdownTotalLabel}>
+                            Total paid
+                          </Text>
+                          <Text style={styles.paymentBreakdownTotalValue}>
+                            {formatPrice(paidTipBreakdown.totalPaid)}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Text style={styles.paymentAmount}>
+                        <Text style={styles.paymentAmountVal}>
+                          {formatPrice(booking.paidAmount)}
+                        </Text>
                       </Text>
+                    )}
+                  </>
+                ) : booking.pendingTip ? (
+                  <>
+                    <Text style={styles.paymentLabel}>
+                      {userRole === "customer" ? "I" : staffClientname} will pay
                     </Text>
+                    <View style={styles.paymentBreakdownCard}>
+                      <View style={styles.paymentBreakdownRow}>
+                        <Text style={styles.paymentBreakdownLabel}>
+                          Service
+                        </Text>
+                        <Text style={styles.paymentBreakdownValue}>
+                          {booking.price}
+                        </Text>
+                      </View>
+                      <View style={styles.paymentBreakdownRow}>
+                        <Text style={styles.paymentBreakdownLabel}>
+                          Tip for{" "}
+                          {formatTipRecipientName(
+                            booking.pendingTip.recipientName,
+                          )}
+                        </Text>
+                        <Text style={styles.paymentBreakdownValue}>
+                          {formatTipAmount(
+                            booking.pendingTip.amount,
+                            booking.pendingTip.currency,
+                          )}
+                        </Text>
+                      </View>
+                      <View style={styles.paymentBreakdownDivider} />
+                      <View style={styles.paymentBreakdownRow}>
+                        <Text style={styles.paymentBreakdownTotalLabel}>
+                          Due {isComplete ? "now" : "on completion"}
+                        </Text>
+                        <Text style={styles.paymentBreakdownTotalValue}>
+                          {formatPrice(
+                            (Number.isFinite(booking.serviceTotal)
+                              ? (booking.serviceTotal as number)
+                              : 0) + booking.pendingTip.amount,
+                          )}
+                        </Text>
+                      </View>
+                    </View>
                   </>
                 ) : (
                   <>
@@ -1913,7 +2128,6 @@ export default function bookingDetailsById() {
                 )}
               </View>
               {!isCancelled &&
-                // !isComplete &&
                 userRole === "customer" &&
                 !(
                   booking.paymentMethod === "pay_now" &&
@@ -1939,10 +2153,56 @@ export default function bookingDetailsById() {
             </View>
           )}
 
+          {/* Paid tip receipt — show for any paid tip (including tip-at-booking) */}
+          {userRole === "customer" &&
+            booking.type === "service" &&
+            booking.tip &&
+            paidTipBreakdown && (
+              <View style={styles.tipReceiptSection}>
+                <View style={styles.tipReceiptCard}>
+                  <View style={styles.tipReceiptAvatar}>
+                    {tipReceiptImageUri ? (
+                      <Image
+                        source={{ uri: tipReceiptImageUri }}
+                        style={styles.tipReceiptAvatarImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={styles.tipReceiptInitial}>
+                        {paidTipBreakdown.recipientName.charAt(0).toUpperCase() ||
+                          "?"}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.tipReceiptInfo}>
+                    <Text style={styles.tipReceiptEyebrow}>Tip sent</Text>
+                    <Text style={styles.tipReceiptTitle}>
+                      You tipped{" "}
+                      {formatTipAmount(
+                        paidTipBreakdown.tipAmount,
+                        paidTipBreakdown.currency,
+                      )}
+                    </Text>
+                    <Text style={styles.tipReceiptSubtitle}>
+                      To {paidTipBreakdown.recipientName}
+                    </Text>
+                  </View>
+                  <Text style={styles.tipReceiptAmount}>
+                    {formatTipAmount(
+                      paidTipBreakdown.tipAmount,
+                      paidTipBreakdown.currency,
+                    )}
+                  </Text>
+                </View>
+              </View>
+            )}
+
           {userRole === "customer" &&
             isComplete &&
             booking.type === "service" &&
-            (booking.canTip || booking.tip) && (
+            !booking.pendingTip &&
+            !booking.tip &&
+            booking.canTip && (
               <TipSection
                 appointmentId={Number(booking.id)}
                 initialCanTip={booking.canTip}

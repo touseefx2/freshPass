@@ -10,6 +10,14 @@ import Logger from "./logger";
 
 const STRIPE_KEY_CACHE = "@freshpass/stripe_publishable_key";
 
+export type PaymentSheetTipInfo = {
+  id: number;
+  amount: number;
+  recipientType: "staff" | "business";
+  recipientStaffId: number | null;
+  recipientName: string;
+};
+
 export interface PaymentSheetParams {
   paymentIntent: string; // Payment Intent client secret
   customerSessionClientSecret?: string; // Customer Session client secret (newer approach)
@@ -19,6 +27,11 @@ export interface PaymentSheetParams {
   subscriptionId?: number; // Subscription ID
   /** Business Stripe account holding this PaymentIntent. Null/absent for platform payments. */
   connectedAccountId?: string | null;
+  serviceAmount?: number;
+  tipAmount?: number;
+  totalAmount?: number;
+  currency?: string;
+  tip?: PaymentSheetTipInfo | null;
 }
 
 interface PaymentSheetApiResponse {
@@ -186,18 +199,35 @@ interface AppointmentPaymentSheetApiResponse {
     paymentIntent: string;
     setupIntent: string;
     connectedAccountId?: string | null;
+    serviceAmount?: number;
+    tipAmount?: number;
+    totalAmount?: number;
+    currency?: string;
+    tip?: PaymentSheetTipInfo | null;
   };
 }
 
+/**
+ * @param tipAmount undefined = keep booking tip; null/0 = clear tip; number = set/replace tip
+ */
 export const fetchAppointmentPaymentSheetParams = async (
   appointmentId: number,
+  tipAmount?: number | null,
 ): Promise<PaymentSheetParams> => {
   try {
+    const body: { appointment_id: number; tip_amount?: number | null } = {
+      appointment_id: appointmentId,
+    };
+
+    // Important: only send tip_amount when explicitly provided.
+    // Omitting the field keeps the tip chosen at booking.
+    if (tipAmount !== undefined) {
+      body.tip_amount = tipAmount;
+    }
+
     const response = await ApiService.post<AppointmentPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheet,
-      {
-        appointment_id: appointmentId,
-      },
+      body,
     );
 
     // Extract data from nested response structure
@@ -209,6 +239,11 @@ export const fetchAppointmentPaymentSheetParams = async (
         paymentIntent: response.data.paymentIntent || "",
         setupIntent: response.data.setupIntent,
         connectedAccountId: response.data.connectedAccountId ?? null,
+        serviceAmount: response.data.serviceAmount,
+        tipAmount: response.data.tipAmount,
+        totalAmount: response.data.totalAmount,
+        currency: response.data.currency,
+        tip: response.data.tip ?? null,
       };
     }
 

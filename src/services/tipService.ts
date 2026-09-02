@@ -8,15 +8,28 @@ export type TipRecipient = {
   image?: string | null;
 };
 
+export type TipSource = "booking" | "after_service";
+
 export type PaidTip = {
   id: number;
   amount: number;
   currency: string;
   status?: string;
+  source?: TipSource;
   recipientType: "staff" | "business";
   recipientStaffId: number | null;
   recipientName: string;
-  paidAt: string;
+  paidAt?: string;
+};
+
+export type PendingTip = {
+  id: number;
+  amount: number;
+  currency: string;
+  source: TipSource;
+  recipientType: "staff" | "business";
+  recipientStaffId: number | null;
+  recipientName: string;
 };
 
 export type TipDetails = {
@@ -29,7 +42,27 @@ export type TipDetails = {
   maxAmount: number;
   suggestedAmounts: number[];
   tip: PaidTip | null;
+  pendingTip?: PendingTip | null;
 };
+
+export const TIP_MIN_AMOUNT = 1;
+export const TIP_MAX_AMOUNT = 1000;
+
+/** Same rule as backend: 15/20/25% of service total, ceil, de-dupe, clamp. */
+export function computeSuggestedTipAmounts(serviceTotal: number): number[] {
+  if (!Number.isFinite(serviceTotal) || serviceTotal <= 0) {
+    return [3, 4, 5].filter(
+      (amount) => amount >= TIP_MIN_AMOUNT && amount <= TIP_MAX_AMOUNT,
+    );
+  }
+
+  const raw = [0.15, 0.2, 0.25].map((pct) => Math.ceil(serviceTotal * pct));
+  return [...new Set(raw)]
+    .filter(
+      (amount) => amount >= TIP_MIN_AMOUNT && amount <= TIP_MAX_AMOUNT,
+    )
+    .sort((a, b) => a - b);
+}
 
 export type TipPaymentSheetData = {
   customer: string;
@@ -63,6 +96,11 @@ function capitalizeWords(value: string): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
+}
+
+export function formatTipRecipientName(name?: string | null): string {
+  if (!name?.trim()) return "";
+  return capitalizeWords(name.trim());
 }
 
 /** Resolve relative API image paths with EXPO_PUBLIC_API_BASE_URL. */

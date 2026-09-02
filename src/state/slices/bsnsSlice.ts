@@ -49,6 +49,8 @@ export interface BusinessState {
   assignedStaffId: number | null;
   selectedPaymentMethod: "payNow" | "payLater";
   selectedNote: string;
+  /** Tip chosen at booking. null = no tip. */
+  selectedTipAmount: number | null;
   /** From GET /api/business/details — "Solo" | "Business" | null */
   subscriptionPlanType: "Solo" | "Business" | null;
   /** From GET /api/business/details — "active" | "inactive" */
@@ -68,6 +70,7 @@ const initialState: BusinessState = {
   assignedStaffId: null,
   selectedPaymentMethod: "payNow",
   selectedNote: "",
+  selectedTipAmount: null,
   subscriptionPlanType: null,
   subscriptionStatus: "inactive",
 };
@@ -143,6 +146,9 @@ const bsnsSlice = createSlice({
     setSelectedNote(state, action: PayloadAction<string>) {
       state.selectedNote = action.payload;
     },
+    setSelectedTipAmount(state, action: PayloadAction<number | null>) {
+      state.selectedTipAmount = action.payload;
+    },
     addService(state, action: PayloadAction<Service>) {
       const service = action.payload;
       if (!state.selectedServices.find((s) => s.id === service.id)) {
@@ -166,6 +172,7 @@ export const {
   setAssignedStaffId,
   setSelectedPaymentMethod,
   setSelectedNote,
+  setSelectedTipAmount,
   addService,
   removeService,
   resetBusiness,

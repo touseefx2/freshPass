@@ -39,8 +39,15 @@ import {
 } from "@/src/theme/dimensions";
 import { SvgXml } from "react-native-svg";
 import Button from "@/src/components/button";
+import BookingTipPicker from "@/src/components/bookingTipPicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import {
+  TIP_MIN_AMOUNT,
+  TIP_MAX_AMOUNT,
+  formatTipAmount,
+} from "@/src/services/tipService";
+import { setSelectedTipAmount } from "@/src/state/slices/bsnsSlice";
 import {
   formatCustomerScheduleDate,
   getCustomerScheduleDateLabel,
@@ -1210,6 +1217,7 @@ function CheckoutContent() {
     assignedStaffId: reduxAssignedStaffId,
     selectedPaymentMethod: reduxPaymentMethod,
     selectedNote: reduxNote,
+    selectedTipAmount: reduxTipAmount,
   } = businessData;
   const bookingTryOnImageUrls = useAppSelector(
     (state) => state.general.bookingTryOnImageUrls,
@@ -1282,6 +1290,10 @@ function CheckoutContent() {
     (sum, service) => sum + service.price,
     0,
   );
+  const tipAmount =
+    typeof reduxTipAmount === "number" && reduxTipAmount > 0
+      ? reduxTipAmount
+      : 0;
   const staffImageUri = resolveStaffImageUri(
     selectedStaffId,
     selectedStaffMember,
@@ -1289,7 +1301,7 @@ function CheckoutContent() {
   // Tax rate (5% = 0.1)
   const taxRate = 0.0;
   const tax = totalPrice * taxRate;
-  const estimatedTotal = totalPrice + tax;
+  const estimatedTotal = totalPrice + tax + tipAmount;
 
   // Update selected staff member when staff ID or auto-assigned staff changes
   useEffect(() => {
@@ -1536,6 +1548,19 @@ function CheckoutContent() {
       return;
     }
 
+    if (
+      tipAmount > 0 &&
+      (tipAmount < TIP_MIN_AMOUNT || tipAmount > TIP_MAX_AMOUNT)
+    ) {
+      showBanner(
+        "Invalid tip",
+        `Tip must be between ${formatTipAmount(TIP_MIN_AMOUNT)} and ${formatTipAmount(TIP_MAX_AMOUNT)}.`,
+        "warning",
+        4000,
+      );
+      return;
+    }
+
     if (isGuest) {
       dispatch(setGuestModeModalVisible(true));
       return;
@@ -1554,6 +1579,7 @@ function CheckoutContent() {
       service_ids: number[];
       appointment_date: string;
       appointment_time: string;
+      tip_amount?: number | null;
       notes?: string;
       staff_id?: number;
       subscription_id?: number;
@@ -1566,6 +1592,11 @@ function CheckoutContent() {
       appointment_date: reduxSelectedDate || "",
       appointment_time: reduxSelectedTimeSlot || "",
     };
+
+    // Only for service bookings, and only when the customer chose one.
+    if (!subscriptionId && tipAmount > 0) {
+      requestBody.tip_amount = tipAmount;
+    }
 
     // Add notes only if it exists
     if (note && note.trim()) {
@@ -1647,7 +1678,7 @@ function CheckoutContent() {
           }
 
           try {
-            // Step 1: Fetch payment sheet parameters from backend
+            // Omit tip_amount so the tip recorded on booking is kept.
             const {
               paymentIntent,
               setupIntent,
@@ -1655,7 +1686,19 @@ function CheckoutContent() {
               ephemeralKey,
               customer,
               connectedAccountId,
+              serviceAmount,
+              tipAmount: sheetTipAmount,
+              totalAmount,
             } = await fetchAppointmentPaymentSheetParams(appointmentId);
+
+            const chargedService =
+              typeof serviceAmount === "number" ? serviceAmount : totalPrice;
+            const chargedTip =
+              typeof sheetTipAmount === "number" ? sheetTipAmount : tipAmount;
+            const chargedTotal =
+              typeof totalAmount === "number"
+                ? totalAmount
+                : chargedService + chargedTip + tax;
 
             try {
               await useStripeAccount(connectedAccountId);
@@ -1767,9 +1810,10 @@ function CheckoutContent() {
                     selectedDate: reduxSelectedDate || "",
                     selectedTimeSlot: reduxSelectedTimeSlot || "",
                     paymentMethod: paymentMethod,
-                    totalPrice: totalPrice.toFixed(2),
+                    totalPrice: chargedService.toFixed(2),
+                    tipAmount: chargedTip.toFixed(2),
                     tax: tax.toFixed(2),
-                    estimatedTotal: estimatedTotal.toFixed(2),
+                    estimatedTotal: chargedTotal.toFixed(2),
                     businessId: businessId || "",
                     business_id: businessId || "",
                     note: note || "",
@@ -1832,6 +1876,7 @@ function CheckoutContent() {
               selectedTimeSlot: reduxSelectedTimeSlot || "",
               paymentMethod: paymentMethod,
               totalPrice: totalPrice.toFixed(2),
+              tipAmount: tipAmount.toFixed(2),
               tax: tax.toFixed(2),
               estimatedTotal: estimatedTotal.toFixed(2),
               businessId: businessId || "",
@@ -2005,6 +2050,26 @@ function CheckoutContent() {
                   </Text>
                 </View>
               ) : null}
+
+              {/* Tip — above payment method display (service bookings only) */}
+              {!isSubscriptionMode && (
+                <>
+                  <Text style={styles.sectionLabel}>Tip</Text>
+                  <BookingTipPicker
+                    serviceTotal={totalPrice}
+                    tipAmount={reduxTipAmount ?? null}
+                    onTipAmountChange={(amount) =>
+                      dispatch(setSelectedTipAmount(amount))
+                    }
+                    recipientName={
+                      selectedStaffId === "anyone" && assignedStaffId == null
+                        ? null
+                        : (selectedStaffMember?.name ?? null)
+                    }
+                    compact
+                  />
+                </>
+              )}
 
               {/* Payment - hide for subscription mode */}
               {!isSubscriptionMode && (
@@ -2180,11 +2245,19 @@ function CheckoutContent() {
               {!isSubscriptionMode && (
                 <>
                   <View style={styles.footerSubRow}>
-                    <Text style={styles.footerSubLabel}>Subtotal:</Text>
+                    <Text style={styles.footerSubLabel}>Service:</Text>
                     <Text style={styles.footerSubValue}>
                       ${totalPrice.toFixed(2)} USD
                     </Text>
                   </View>
+                  {tipAmount > 0 ? (
+                    <View style={styles.footerSubRow}>
+                      <Text style={styles.footerSubLabel}>Tip:</Text>
+                      <Text style={styles.footerSubValue}>
+                        ${tipAmount.toFixed(2)} USD
+                      </Text>
+                    </View>
+                  ) : null}
                   <View style={styles.footerSubRow}>
                     <Text style={styles.footerSubLabel}>Tax:</Text>
                     <Text style={styles.footerSubValue}>
