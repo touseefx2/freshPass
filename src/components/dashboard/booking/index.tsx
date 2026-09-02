@@ -233,6 +233,9 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       marginLeft: moderateWidthScale(3),
     },
+    staffInfoText: {
+      textTransform: "capitalize",
+    },
     dateTimeRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -725,7 +728,10 @@ export default function BookingScreen() {
               height={moderateWidthScale(15)}
               color={theme.lightGreen}
             />
-            <Text numberOfLines={1} style={styles.infoText}>
+            <Text
+              numberOfLines={1}
+              style={[styles.infoText, styles.staffInfoText]}
+            >
               {item.staffName}
             </Text>
           </View>
