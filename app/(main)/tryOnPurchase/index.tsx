@@ -39,6 +39,7 @@ import {
   setAiService,
   setTryOnPurchaseSuccessModalVisible,
   setTryOnPurchaseSuccessSource,
+  setGuestModeModalVisible,
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import Logger from "@/src/services/logger";
@@ -307,6 +308,11 @@ export default function TryOnPurchase() {
   };
 
   const handleUpgradePress = async () => {
+    if (user.isGuest) {
+      dispatch(setGuestModeModalVisible(true));
+      return;
+    }
+
     if (!service?.id) {
       return;
     }

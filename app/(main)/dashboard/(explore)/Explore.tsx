@@ -42,6 +42,7 @@ import {
   setCurrentLocation,
   setAiService,
   setTryOnPurchaseSuccessSource,
+  setGuestModeModalVisible,
 } from "@/src/state/slices/generalSlice";
 import type { AdditionalServiceItem } from "@/src/state/slices/generalSlice";
 import TryOnBanner from "./TryOnBanner";
@@ -747,6 +748,10 @@ export default function ExploreScreen() {
           <TryOnBanner
             service={hairTryOnService}
             onPress={() => {
+              if (user.isGuest) {
+                dispatch(setGuestModeModalVisible(true));
+                return;
+              }
               router.push("/(main)/aiTools/toolList");
             }}
             onDismiss={() => dispatch(setTryOnBannerDismissed(true))}
