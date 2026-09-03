@@ -350,6 +350,7 @@
   "aiHistoryTime": "Time",
   "pleaseSignInToContinue": "Please sign in to continue.",
   "happyWeekend": "Happy Weekend",
+  "memoriesListHint": "Each card starts from the first creation and includes the next 7 days. Tap a card to see its images organized by date.",
   "deleteAccount": "Delete account",
   "logout": "Logout",
   "areYouSureLogout": "Are you sure you want to logout?",

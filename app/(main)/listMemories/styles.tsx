@@ -273,6 +273,40 @@ export const createStyles = (theme: Theme) =>
       paddingBottom: moderateHeightScale(32),
       flexGrow: 1,
     },
+    dateSection: {
+      marginBottom: moderateHeightScale(20),
+    },
+    dateSectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(10),
+      gap: moderateWidthScale(10),
+    },
+    dateSectionTitlePill: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.white80,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    dateSectionTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+    },
+    dateSectionHeaderLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: theme.borderLight,
+      opacity: 0.8,
+    },
+    dateSectionSeparator: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      opacity: 0.7,
+      marginTop: moderateHeightScale(18),
+    },
     modalImageGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -285,6 +319,9 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightGreen2,
       borderWidth: 1,
       borderColor: theme.borderLight,
+    },
+    modalImageCardFull: {
+      width: "100%",
     },
     modalImageCardInner: {
       width: "100%",

@@ -253,6 +253,13 @@ export const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(2),
       opacity: 0.9,
     },
+    listHint: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      marginBottom: moderateHeightScale(16),
+      lineHeight: moderateHeightScale(20),
+    },
     listContent: {
       flexGrow: 1,
       paddingVertical: moderateHeightScale(24),

@@ -352,6 +352,7 @@
   "aiHistoryTime": "時間",
   "pleaseSignInToContinue": "続行するにはサインインしてください。",
   "happyWeekend": "良い週末を",
+  "memoriesListHint": "各カードは最初の作品作成日から始まり、その後7日間を含みます。タップすると画像を日付順に確認できます。",
   "deleteAccount": "アカウントを削除",
   "logout": "ログアウト",
   "areYouSureLogout": "ログアウトしますか？",

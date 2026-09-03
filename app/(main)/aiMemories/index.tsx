@@ -23,6 +23,7 @@ import { memoriesEndpoints } from "@/src/services/endpoints";
 export interface MemorySection {
   weekKey: string;
   dateLabel: string;
+  weekRange: string; // e.g. "1 Sep – 7 Sep 2026"
   items: MemoryItem[];
 }
 
@@ -46,17 +47,46 @@ type MemoriesResponse = {
   total: number;
 };
 
-function getWeekKey(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00");
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(d);
-  monday.setDate(diff);
-  const y = monday.getFullYear();
-  const w = Math.ceil(
-    (monday.getTime() - new Date(y, 0, 1).getTime()) / 604800000,
-  );
-  return `${y}-W${String(w).padStart(2, "0")}`;
+const MONTH_SHORT = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+function parseMemoryDate(dateStr: string): Date {
+  return new Date(dateStr + "T12:00:00");
+}
+
+function getSevenDayEnd(start: Date): Date {
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return end;
+}
+
+function formatWeekRange(dateStr: string): string {
+  const start = parseMemoryDate(dateStr);
+  const end = getSevenDayEnd(start);
+  const startDay = start.getDate();
+  const startMonth = MONTH_SHORT[start.getMonth()];
+  const endDay = end.getDate();
+  const endMonth = MONTH_SHORT[end.getMonth()];
+
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${startDay} ${startMonth} ${start.getFullYear()} – ${endDay} ${endMonth} ${end.getFullYear()}`;
+  }
+  if (start.getMonth() === end.getMonth()) {
+    return `${startDay} – ${endDay} ${endMonth} ${end.getFullYear()}`;
+  }
+  return `${startDay} ${startMonth} – ${endDay} ${endMonth} ${end.getFullYear()}`;
 }
 
 function formatDateLabel(dateStr: string): string {
@@ -65,30 +95,37 @@ function formatDateLabel(dateStr: string): string {
 }
 
 function groupByWeek(items: MemoryItem[]): MemorySection[] {
-  const byWeek = new Map<string, MemoryItem[]>();
-  for (const item of items) {
-    const key = getWeekKey(item.date);
-    if (!byWeek.has(key)) byWeek.set(key, []);
-    byWeek.get(key)!.push(item);
-  }
+  const ungrouped = [...items].sort(
+    (a, b) => parseMemoryDate(a.date).getTime() - parseMemoryDate(b.date).getTime(),
+  );
   const sections: MemorySection[] = [];
-  byWeek.forEach((weekItems, weekKey) => {
-    const sorted = [...weekItems].sort(
+
+  let index = 0;
+  while (index < ungrouped.length) {
+    const startDate = ungrouped[index].date;
+    const endTime = getSevenDayEnd(parseMemoryDate(startDate)).getTime();
+    const weekItems: MemoryItem[] = [];
+
+    while (
+      index < ungrouped.length &&
+      parseMemoryDate(ungrouped[index].date).getTime() <= endTime
+    ) {
+      weekItems.push(ungrouped[index]);
+      index += 1;
+    }
+
+    weekItems.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-    const firstDate = sorted[0]?.date ?? "";
     sections.push({
-      weekKey,
-      dateLabel: formatDateLabel(firstDate),
-      items: sorted,
+      weekKey: startDate,
+      dateLabel: formatDateLabel(startDate),
+      weekRange: formatWeekRange(startDate),
+      items: weekItems,
     });
-  });
-  sections.sort(
-    (a, b) =>
-      new Date(b.items[0]?.date ?? 0).getTime() -
-      new Date(a.items[0]?.date ?? 0).getTime(),
-  );
-  return sections;
+  }
+
+  return sections.reverse();
 }
 
 export default function AiMemories() {
@@ -195,7 +232,7 @@ export default function AiMemories() {
           </View>
           <View style={styles.sectionCardOverlay}>
             <Text style={styles.sectionCardTitle}>{t("happyWeekend")}</Text>
-            <Text style={styles.sectionCardDate}>{item.dateLabel}</Text>
+            <Text style={styles.sectionCardDate}>{item.weekRange}</Text>
           </View>
         </TouchableOpacity>
       );
@@ -227,6 +264,14 @@ export default function AiMemories() {
         />
       ) : null,
     [loading, sections.length, t, router],
+  );
+
+  const listHeader = useMemo(
+    () =>
+      sections.length > 0 ? (
+        <Text style={styles.listHint}>{t("memoriesListHint")}</Text>
+      ) : null,
+    [sections.length, styles.listHint, t],
   );
 
   return (
@@ -261,6 +306,7 @@ export default function AiMemories() {
           contentContainerStyle={styles.listContent}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.3}
+          ListHeaderComponent={listHeader}
           ListFooterComponent={listFooter}
           ListEmptyComponent={listEmpty}
           showsVerticalScrollIndicator={false}

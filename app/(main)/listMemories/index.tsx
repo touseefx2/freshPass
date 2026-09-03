@@ -108,6 +108,7 @@ function MemoryVideoCard({
 export interface MemorySection {
   weekKey: string;
   dateLabel: string;
+  weekRange?: string; // e.g. "1 Sep – 7 Sep 2026"
   items: MemoryItem[];
 }
 
@@ -132,6 +133,47 @@ function parseSectionParam(param: string | undefined): MemorySection | null {
       return parsed;
   } catch {}
   return null;
+}
+
+const MONTH_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatDateLabel(dateStr: string): string {
+  try {
+    const d = new Date(dateStr + "T12:00:00");
+    return `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+  } catch {
+    return dateStr;
+  }
+}
+
+type DateGroup = {
+  date: string;
+  dateLabel: string;
+  items: MemoryItem[];
+};
+
+function groupItemsByDate(items: MemoryItem[]): DateGroup[] {
+  const byDate = new Map<string, MemoryItem[]>();
+  for (const item of items) {
+    const key = item.date || "unknown";
+    if (!byDate.has(key)) byDate.set(key, []);
+    byDate.get(key)!.push(item);
+  }
+  const groups: DateGroup[] = [];
+  byDate.forEach((dateItems, date) => {
+    groups.push({
+      date,
+      dateLabel: formatDateLabel(date),
+      items: dateItems,
+    });
+  });
+  groups.sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  );
+  return groups;
 }
 
 export default function ListMemories() {
@@ -169,6 +211,16 @@ export default function ListMemories() {
       setSelectedSection(section);
     }
   }, [params.openSection]);
+
+  const dateGroups = useMemo(
+    () => groupItemsByDate(selectedSection?.items ?? []),
+    [selectedSection?.items],
+  );
+
+  const flatItems = useMemo(
+    () => dateGroups.flatMap((g) => g.items),
+    [dateGroups],
+  );
 
   const fetchPotentialContacts = useCallback(
     async (pageNum: number, append: boolean) => {
@@ -229,11 +281,11 @@ export default function ListMemories() {
 
   const openFullImage = useCallback(
     (imageUrl: string, index: number) => {
-      if (!selectedSection?.items?.length) return;
-      const allUrls = selectedSection.items.map((i) => getItemUrl(i));
+      if (!flatItems.length) return;
+      const allUrls = flatItems.map((i) => getItemUrl(i));
       dispatch(openFullImageModal({ images: allUrls, initialIndex: index }));
     },
-    [selectedSection?.items, dispatch],
+    [flatItems, dispatch],
   );
 
   const onPotentialContactPress = useCallback(
@@ -306,7 +358,7 @@ export default function ListMemories() {
         translucent
       />
       <StackHeader
-        title={selectedSection ? selectedSection.dateLabel : t("memories")}
+        title={selectedSection ? (selectedSection.weekRange ?? selectedSection.dateLabel) : t("memories")}
         rightIcon={
           <MaterialIcons
             name="smart-toy"
@@ -336,73 +388,109 @@ export default function ListMemories() {
           contentContainerStyle={styles.modalScrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.modalImageGrid}>
-            {selectedSection.items.map((item, index) => {
-              const itemUrl = getItemUrl(item);
-              const isVideo = item.type === "video";
-              return (
-                <View
-                  key={itemUrl ? `${itemUrl}-${index}` : `item-${index}`}
-                  style={styles.modalImageCard}
-                >
-                  <View style={styles.modalImageCardInner}>
-                    {isVideo ? (
-                      <MemoryVideoCard
-                        videoUrl={itemUrl}
-                        styles={styles}
-                        theme={theme}
-                      />
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.modalResultImageTouchable}
-                        onPress={() => openFullImage(itemUrl, index)}
-                        activeOpacity={0.9}
-                      >
-                        <Image
-                          source={{ uri: itemUrl }}
-                          style={styles.modalResultImage}
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      style={[
-                        styles.modalShareButton,
-                        isVideo && styles.modalShareButtonVideo,
-                      ]}
-                      onPress={() => openShareSheetForImage(itemUrl)}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialIcons
-                        name="share"
-                        size={moderateWidthScale(14)}
-                        color={theme.white}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.modalDownloadButton,
-                        isVideo && styles.modalDownloadButtonVideo,
-                      ]}
-                      onPress={() => downloadMedia(itemUrl)}
-                      disabled={downloadingUrl === itemUrl}
-                      activeOpacity={0.7}
-                    >
-                      {downloadingUrl === itemUrl ? (
-                        <ActivityIndicator size="small" color={theme.white} />
-                      ) : (
-                        <Feather
-                          name="download"
-                          size={moderateWidthScale(14)}
-                          color={theme.white}
-                        />
-                      )}
-                    </TouchableOpacity>
+          {dateGroups.map((group, groupIndex) => {
+            const groupStartIndex = flatItems.findIndex(
+              (i) => i === group.items[0],
+            );
+            const isLastGroup = groupIndex === dateGroups.length - 1;
+            return (
+              <View key={group.date} style={styles.dateSection}>
+                <View style={styles.dateSectionHeader}>
+                  <View style={styles.dateSectionTitlePill}>
+                    <Text style={styles.dateSectionTitle}>{group.dateLabel}</Text>
                   </View>
+                  <View style={styles.dateSectionHeaderLine} />
                 </View>
-              );
-            })}
-          </View>
+                <View style={styles.modalImageGrid}>
+                  {group.items.map((item, indexInGroup) => {
+                    const itemUrl = getItemUrl(item);
+                    const isVideo = item.type === "video";
+                    const globalIndex =
+                      groupStartIndex >= 0
+                        ? groupStartIndex + indexInGroup
+                        : indexInGroup;
+                    const isLastOddFullWidth =
+                      group.items.length % 2 === 1 &&
+                      indexInGroup === group.items.length - 1;
+                    return (
+                      <View
+                        key={
+                          itemUrl
+                            ? `${itemUrl}-${group.date}-${indexInGroup}`
+                            : `item-${group.date}-${indexInGroup}`
+                        }
+                        style={[
+                          styles.modalImageCard,
+                          isLastOddFullWidth && styles.modalImageCardFull,
+                        ]}
+                      >
+                        <View style={styles.modalImageCardInner}>
+                          {isVideo ? (
+                            <MemoryVideoCard
+                              videoUrl={itemUrl}
+                              styles={styles}
+                              theme={theme}
+                            />
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.modalResultImageTouchable}
+                              onPress={() => openFullImage(itemUrl, globalIndex)}
+                              activeOpacity={0.9}
+                            >
+                              <Image
+                                source={{ uri: itemUrl }}
+                                style={styles.modalResultImage}
+                                resizeMode="cover"
+                              />
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={[
+                              styles.modalShareButton,
+                              isVideo && styles.modalShareButtonVideo,
+                            ]}
+                            onPress={() => openShareSheetForImage(itemUrl)}
+                            activeOpacity={0.8}
+                          >
+                            <MaterialIcons
+                              name="share"
+                              size={moderateWidthScale(14)}
+                              color={theme.white}
+                            />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[
+                              styles.modalDownloadButton,
+                              isVideo && styles.modalDownloadButtonVideo,
+                            ]}
+                            onPress={() => downloadMedia(itemUrl)}
+                            disabled={downloadingUrl === itemUrl}
+                            activeOpacity={0.7}
+                          >
+                            {downloadingUrl === itemUrl ? (
+                              <ActivityIndicator
+                                size="small"
+                                color={theme.white}
+                              />
+                            ) : (
+                              <Feather
+                                name="download"
+                                size={moderateWidthScale(14)}
+                                color={theme.white}
+                              />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+                {!isLastGroup ? (
+                  <View style={styles.dateSectionSeparator} />
+                ) : null}
+              </View>
+            );
+          })}
         </ScrollView>
       ) : null}
 
