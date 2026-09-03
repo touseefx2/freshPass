@@ -8,7 +8,17 @@ import axios, {
 import NetInfo from "@react-native-community/netinfo";
 import { persistor, store } from "@/src/state/store";
 import { setTokens, resetUser } from "@/src/state/slices/userSlice";
-import { clearGeneral, setActionLoader } from "@/src/state/slices/generalSlice";
+import {
+  clearGeneral,
+  setActionLoader,
+  setAiChatDataConsentAccepted,
+  setAiHairTryOnConsentAccepted,
+  setAiVoiceDataConsentAccepted,
+  setIsFirstShowTryOn,
+  setIsVisitFirst,
+  setRegisterEmail,
+  setSavedPassword,
+} from "@/src/state/slices/generalSlice";
 import { resetCompleteProfile } from "../state/slices/completeProfileSlice";
 import { Platform } from "react-native";
 import { router } from "expo-router";
@@ -279,6 +289,18 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
       store.dispatch(setActionLoader(false));
     }
 
+    // Fields intentionally kept across logout (skipped in clearGeneral) — snapshot
+    // before purge so we can re-persist them after storage is wiped.
+    const {
+      registerEmail,
+      savedPassword,
+      isVisitFirst,
+      isFirstShowTryOn,
+      aiHairTryOnConsentAccepted,
+      aiChatDataConsentAccepted,
+      aiVoiceDataConsentAccepted,
+    } = store.getState().general;
+
     // Clear Redux state (in-memory)
     store.dispatch(resetCompleteProfile());
     store.dispatch(clearGeneral());
@@ -292,6 +314,39 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
     } catch (err) {
       Logger.error("Logout: persistor.purge failed", err);
     }
+
+    // Re-apply preserved general fields so redux-persist writes them again.
+    // Reset to defaults first so Immer sees a real change (same-value dispatch
+    // would skip and leave storage empty after purge).
+    store.dispatch(setIsVisitFirst(true));
+    store.dispatch(setIsFirstShowTryOn(false));
+    store.dispatch(setSavedPassword(null));
+    store.dispatch(setAiHairTryOnConsentAccepted(false));
+    store.dispatch(setAiChatDataConsentAccepted(false));
+    store.dispatch(setAiVoiceDataConsentAccepted(false));
+    if (registerEmail != null) {
+      store.dispatch(setRegisterEmail(""));
+    }
+
+    store.dispatch(setIsVisitFirst(isVisitFirst));
+    store.dispatch(setIsFirstShowTryOn(isFirstShowTryOn));
+    store.dispatch(setSavedPassword(savedPassword));
+    store.dispatch(
+      setAiHairTryOnConsentAccepted(aiHairTryOnConsentAccepted),
+    );
+    store.dispatch(setAiChatDataConsentAccepted(aiChatDataConsentAccepted));
+    store.dispatch(
+      setAiVoiceDataConsentAccepted(aiVoiceDataConsentAccepted),
+    );
+    if (registerEmail != null) {
+      store.dispatch(setRegisterEmail(registerEmail));
+    }
+    try {
+      await persistor.flush();
+    } catch (err) {
+      Logger.error("Logout: persistor.flush failed", err);
+    }
+
     router.replace(`/(main)/${MAIN_ROUTES.ROLE}`);
   } finally {
     isLoggingOut = false;
