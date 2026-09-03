@@ -326,7 +326,7 @@ export default function CustomersList() {
           />
           <View style={styles.rowContent}>
             <Text style={styles.rowName} numberOfLines={1}>
-              {item.name}
+              {item.name?.trim() || "Unknown"}
             </Text>
             <Text style={styles.rowSubtitle} numberOfLines={1}>
               {getBusinessCustomerContactLine(item)}

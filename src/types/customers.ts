@@ -34,7 +34,7 @@ export type BusinessCustomerPurchase = {
 
 export type BusinessCustomer = {
   id: number;
-  name: string;
+  name: string | null;
   phone: string | null;
   email: string | null;
   profile_image_url?: string | null;

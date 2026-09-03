@@ -606,7 +606,9 @@ export default function BusinessCustomerDetail() {
               textSize={fontSize.size22}
             />
             <View style={styles.heroInfo}>
-              <Text style={styles.profileName}>{data.name}</Text>
+              <Text style={styles.profileName}>
+                {data.name?.trim() || "Unknown"}
+              </Text>
               {data.customerSince ? (
                 <Text style={styles.profileMeta}>
                   {t("customerSince")} {formatBusinessCustomerDate(data.customerSince)}

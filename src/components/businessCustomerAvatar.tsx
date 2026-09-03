@@ -9,7 +9,7 @@ import {
 } from "@/src/utils/businessCustomerDisplay";
 
 type BusinessCustomerAvatarProps = {
-  name: string;
+  name?: string | null;
   profileImageUrl?: string | null;
   size: number;
   style?: ViewStyle;
