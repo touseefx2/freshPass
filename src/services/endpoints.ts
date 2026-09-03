@@ -99,6 +99,7 @@ export const businessEndpoints = {
   favorite: (businessId: string | number) =>
     `/api/businesses/${businessId}/favorite`,
   generateSubscription: `/api/subscription/generate`,
+  stripeConnectCongratsSeen: `/api/business/stripe-connect-congrats/seen`,
 };
 
 /**

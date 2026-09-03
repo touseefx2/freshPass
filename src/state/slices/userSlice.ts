@@ -13,6 +13,8 @@ export interface BusinessStatus {
   } | null;
   stripe_onboarding_status: string;
   stripe_onboarding_link: string | null;
+  /** Server: business already dismissed Stripe-connected congrats (any device) */
+  has_seen_stripe_connect_congrats: boolean;
   has_subscription: boolean;
   subscription_status: string;
   subscription_plan_name: string | null;
@@ -62,6 +64,8 @@ const withDerivedBusinessStatus = (status: BusinessStatus): BusinessStatus => {
     ...status,
     subscription_plan_name,
     subscription_is_single,
+    has_seen_stripe_connect_congrats:
+      status.has_seen_stripe_connect_congrats === true,
     hasAddStaff: deriveHasAddStaff(
       status.subscription_status,
       subscription_is_single,

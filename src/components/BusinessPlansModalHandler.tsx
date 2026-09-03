@@ -31,9 +31,6 @@ export default function BusinessPlansModalHandler() {
     (state) =>
       state.general.maintenanceModeActive || state.general.forceUpdateActive,
   );
-  const hasSeenStripeConnectCongrats = useAppSelector(
-    (state) => state.general.hasSeenStripeConnectCongrats,
-  );
   const suppressBusinessPlansAutoOpen = useAppSelector(
     (state) => state.general.suppressBusinessPlansAutoOpen,
   );
@@ -46,7 +43,7 @@ export default function BusinessPlansModalHandler() {
 
   const waitingForStripeCongrats =
     businessStatus?.stripe_onboarding_status === "completed" &&
-    hasSeenStripeConnectCongrats === false;
+    businessStatus?.has_seen_stripe_connect_congrats !== true;
 
   const showBusinessSubscription =
     !appGateBlocked &&

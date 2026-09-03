@@ -3,9 +3,9 @@ import { useRouter, useSegments } from "expo-router";
 import { useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import {
   setBusinessPlansModalVisible,
-  setHasSeenStripeConnectCongrats,
   setSuppressBusinessPlansAutoOpen,
 } from "@/src/state/slices/generalSlice";
+import { markStripeConnectCongratsSeen } from "@/src/state/thunks/businessThunks";
 import StripeConnectedCongratsModal from "@/src/components/StripeConnectedCongratsModal";
 
 export default function StripeConnectedCongratsModalHandler() {
@@ -14,9 +14,6 @@ export default function StripeConnectedCongratsModalHandler() {
   const segments = useSegments() as string[];
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
-  const hasSeenStripeConnectCongrats = useAppSelector(
-    (state) => state.general.hasSeenStripeConnectCongrats,
-  );
   const appGateBlocked = useAppSelector(
     (state) =>
       state.general.maintenanceModeActive || state.general.forceUpdateActive,
@@ -30,12 +27,13 @@ export default function StripeConnectedCongratsModalHandler() {
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "completed" &&
-    hasSeenStripeConnectCongrats === false;
+    businessStatus?.has_seen_stripe_connect_congrats !== true;
 
   const handleCreate = () => {
     dispatch(setSuppressBusinessPlansAutoOpen(true));
     dispatch(setBusinessPlansModalVisible(false));
-    dispatch(setHasSeenStripeConnectCongrats(true));
+    // Optimistic hide + persist on server (idempotent; retry on next launch if fails)
+    void dispatch(markStripeConnectCongratsSeen());
 
     // Profile → Business profile settings → Manage subscription list
     router.push("/(main)/dashboard/(account)");

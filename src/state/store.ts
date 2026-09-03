@@ -59,7 +59,6 @@ const generalPersistConfig = {
     "aiVoiceDataConsentAccepted",
     "recentLocations",
     "recentSearches",
-    "hasSeenStripeConnectCongrats",
   ], // Only persist these fields
 };
 

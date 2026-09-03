@@ -90,8 +90,6 @@ export interface GeneralState {
   chatContactsLoadingMore: boolean;
   businessPlansModalVisible: boolean;
   stripeConnectModalVisible: boolean;
-  /** Shown after first Stripe connect success; persisted, not cleared on logout */
-  hasSeenStripeConnectCongrats: boolean;
   /** After Create from Stripe congrats — don't auto-open business plans this session */
   suppressBusinessPlansAutoOpen: boolean;
   /** After Solo/Business plan purchase success; not persisted */
@@ -169,7 +167,6 @@ const initialState: GeneralState = {
   chatContactsLoadingMore: false,
   businessPlansModalVisible: false,
   stripeConnectModalVisible: false,
-  hasSeenStripeConnectCongrats: false,
   suppressBusinessPlansAutoOpen: false,
   businessPlanPurchasedCongratsVisible: false,
   tryOnPurchaseSuccessModalVisible: false,
@@ -305,9 +302,6 @@ const generalSlice = createSlice({
     },
     setStripeConnectModalVisible(state, action: PayloadAction<boolean>) {
       state.stripeConnectModalVisible = action.payload;
-    },
-    setHasSeenStripeConnectCongrats(state, action: PayloadAction<boolean>) {
-      state.hasSeenStripeConnectCongrats = action.payload;
     },
     setSuppressBusinessPlansAutoOpen(state, action: PayloadAction<boolean>) {
       state.suppressBusinessPlansAutoOpen = action.payload;
@@ -513,8 +507,6 @@ const generalSlice = createSlice({
       state.chatContactsLoadingMore = false;
       state.businessPlansModalVisible = false;
       state.stripeConnectModalVisible = false;
-      // Keep hasSeenStripeConnectCongrats — must survive logout
-      // state.hasSeenStripeConnectCongrats = false;
       state.suppressBusinessPlansAutoOpen = false;
       state.tryOnPurchaseSuccessModalVisible = false;
       state.tryOnPurchaseSuccessSource = null;
@@ -554,7 +546,6 @@ export const {
   setGuestModeModalVisible,
   setBusinessPlansModalVisible,
   setStripeConnectModalVisible,
-  setHasSeenStripeConnectCongrats,
   setSuppressBusinessPlansAutoOpen,
   setBusinessPlanPurchasedCongratsVisible,
   setTryOnPurchaseSuccessModalVisible,

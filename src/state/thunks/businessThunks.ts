@@ -55,6 +55,7 @@ export const fetchUserStatus = createAsyncThunk<
           business_category: null,
           stripe_onboarding_status: "",
           stripe_onboarding_link: null,
+          has_seen_stripe_connect_congrats: true,
           has_subscription: false,
           subscription_status: "",
           subscription_plan_name: null,
@@ -93,6 +94,8 @@ export const fetchUserStatus = createAsyncThunk<
         const businessStatusData = {
           ...response.data,
           active: response.data.active ?? false,
+          has_seen_stripe_connect_congrats:
+            response.data.has_seen_stripe_connect_congrats === true,
         };
 
         dispatch(setBusinessStatus(businessStatusData));
@@ -193,3 +196,45 @@ export const updateBusinessActiveStatus = createAsyncThunk<
     }
   },
 );
+
+/** Mark Stripe-connected congrats as seen for this business (idempotent, server-persisted). */
+export const markStripeConnectCongratsSeen = createAsyncThunk<
+  boolean,
+  void,
+  { dispatch: AppDispatch; state: RootState }
+>("business/markStripeConnectCongratsSeen", async (_, { dispatch, getState }) => {
+  const current = getState().user.businessStatus;
+  if (current && !current.has_seen_stripe_connect_congrats) {
+    dispatch(
+      setBusinessStatus({
+        ...current,
+        has_seen_stripe_connect_congrats: true,
+      }),
+    );
+  }
+
+  try {
+    const response = await ApiService.post<{
+      success: boolean;
+      message: string;
+      data?: { has_seen_stripe_connect_congrats?: boolean };
+    }>(businessEndpoints.stripeConnectCongratsSeen, {});
+
+    if (response.success) {
+      const latest = getState().user.businessStatus;
+      if (latest) {
+        dispatch(
+          setBusinessStatus({
+            ...latest,
+            has_seen_stripe_connect_congrats: true,
+          }),
+        );
+      }
+      return true;
+    }
+    return false;
+  } catch {
+    // Idempotent retry on next show is fine — do not block UX
+    return false;
+  }
+});
