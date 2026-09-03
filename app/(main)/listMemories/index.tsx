@@ -398,6 +398,9 @@ export default function ListMemories() {
                 <View style={styles.dateSectionHeader}>
                   <View style={styles.dateSectionTitlePill}>
                     <Text style={styles.dateSectionTitle}>{group.dateLabel}</Text>
+                    <View style={styles.dateSectionCountBadge}>
+                      <Text style={styles.dateSectionCountText}>{group.items.length}</Text>
+                    </View>
                   </View>
                   <View style={styles.dateSectionHeaderLine} />
                 </View>
