@@ -786,6 +786,8 @@
   "unselectSection": "Désélectionner la section",
   "noDataFound": "Aucune donnée trouvée",
   "noLeaves": "Pas encore de congés ni de pauses.",
+  "noLeavesYet": "Pas encore de congés ni de pauses",
+  "leavesEmptySubtitle": "Lorsque vous demanderez un congé ou une pause, cela apparaîtra ici.",
   "aiStillProcessing": "L'IA est encore en cours de traitement",
   "resultNotFound": "Résultat introuvable",
   "download": "Télécharger",

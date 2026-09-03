@@ -21,6 +21,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import EmptyState from "@/src/components/emptyState";
 import FloatingInput from "@/src/components/floatingInput";
 import RetryButton from "@/src/components/retryButton";
 import BusinessCustomerAvatar from "@/src/components/businessCustomerAvatar";
@@ -137,19 +138,6 @@ const createStyles = (theme: Theme) =>
     statusPillText: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
-    },
-    emptyContainer: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(40),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    emptyText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
     },
     errorContainer: {
       flex: 1,
@@ -369,9 +357,11 @@ export default function CustomersList() {
       );
     }
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>{t("noCustomersFound")}</Text>
-      </View>
+      <EmptyState
+        icon="people-outline"
+        title={t("noCustomersYet")}
+        subtitle={t("customersEmptySubtitle")}
+      />
     );
   }, [loading, error, styles, t, fetchCustomers]);
 

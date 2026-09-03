@@ -786,6 +786,8 @@
   "unselectSection": "Abschnitt abwählen",
   "noDataFound": "Keine Daten gefunden",
   "noLeaves": "Noch keine Urlaube oder Pausen.",
+  "noLeavesYet": "Noch keine Urlaube oder Pausen",
+  "leavesEmptySubtitle": "Wenn Sie eine Auszeit oder Pause beantragen, erscheint sie hier.",
   "aiStillProcessing": "KI wird noch verarbeitet",
   "resultNotFound": "Ergebnis nicht gefunden",
   "download": "Herunterladen",

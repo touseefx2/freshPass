@@ -786,6 +786,8 @@
   "unselectSection": "Deseleccionar sección",
   "noDataFound": "No se encontraron datos",
   "noLeaves": "Aún no hay ausencias ni pausas.",
+  "noLeavesYet": "Aún no hay ausencias ni pausas",
+  "leavesEmptySubtitle": "Cuando solicites tiempo libre o una pausa, aparecerá aquí.",
   "aiStillProcessing": "La IA sigue procesando",
   "resultNotFound": "Resultado no encontrado",
   "download": "Descargar",

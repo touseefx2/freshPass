@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   FlatList,
-  Dimensions,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -19,6 +18,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import EmptyState from "@/src/components/emptyState";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -75,18 +75,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.text,
-    },
-    emptyContainer: {
-      flex: 1,
-      minHeight: Dimensions.get("window").height * 0.6,
-      justifyContent: "center",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(40),
-    },
-    emptyText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
     },
     errorContainer: {
       paddingVertical: moderateHeightScale(24),
@@ -223,19 +211,18 @@ export default function LeaveList() {
           <Text style={styles.errorText}>{error}</Text>
           <RetryButton onPress={fetchLeaves} loading={loading} />
         </View>
+      ) : leaves.length === 0 ? (
+        <EmptyState
+          icon="event-busy"
+          title={t("noLeavesYet")}
+          subtitle={t("leavesEmptySubtitle")}
+        />
       ) : (
         <FlatList
           data={leaves}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>
-                {t("noLeaves") || "No leaves or breaks yet."}
-              </Text>
-            </View>
-          }
         />
       )}
     </View>

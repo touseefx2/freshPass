@@ -786,6 +786,8 @@
   "unselectSection": "セクションの選択解除",
   "noDataFound": "データが見つかりません",
   "noLeaves": "休暇や休憩はまだありません。",
+  "noLeavesYet": "休暇や休憩はまだありません",
+  "leavesEmptySubtitle": "休暇や休憩を申請すると、ここに表示されます。",
   "aiStillProcessing": "AIはまだ処理中です",
   "resultNotFound": "結果が見つかりません",
   "download": "ダウンロード",
