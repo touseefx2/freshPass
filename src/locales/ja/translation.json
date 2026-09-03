@@ -243,6 +243,7 @@
   "unlockAIFeatures": "AI機能を解除",
   "unlockAIFeaturesDescription": "AIヘア試着を使用するにはクレジットが必要です。プレミアム機能にアクセスするにはプランをアップグレードしてください。",
   "upgradePlan": "プランをアップグレード",
+  "upgradePlanHint": "FreshPass Businessにアップグレードして、スタッフを追加し、より多くのチーム機能を解除しましょう。",
   "aiToolPlanPurchased": "おめでとうございます！AIツールプランを購入しました",
   "useHaritryon": "Haritryonを使用",
   "checkout": "お会計",

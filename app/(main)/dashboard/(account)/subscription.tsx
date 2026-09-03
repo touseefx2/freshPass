@@ -7,7 +7,8 @@ import {
   Alert,
   Linking,
 } from "react-native";
-import { useTheme, useAppDispatch } from "@/src/hooks/hooks";
+import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { isSoloSubscription } from "@/src/state/slices/userSlice";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -629,6 +630,11 @@ export default function SubscriptionScreen() {
   const [cancelling, setCancelling] = useState(false);
   const [businessPlansModalVisible, setBusinessPlansModalVisible] =
     useState(false);
+  const [businessPlansModalBusinessOnly, setBusinessPlansModalBusinessOnly] =
+    useState(false);
+
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const isSoloPlanActive = isSoloSubscription(businessStatus);
 
   const isCancelled = isStripeCancelled(subscription?.stripeStatus);
   const isTrialing = subscription
@@ -642,6 +648,18 @@ export default function SubscriptionScreen() {
     !!subscription && isApplePayment && !isCancelled && !subscription.hasEnded;
   const showBuyNewPlan =
     !!subscription && canRepurchaseCancelledSubscription(subscription);
+  const showUpgradePlan =
+    !!subscription && isSoloPlanActive && !isCancelled && !subscription.hasEnded;
+
+  const openBusinessPlansModal = useCallback((businessOnly = false) => {
+    setBusinessPlansModalBusinessOnly(businessOnly);
+    setBusinessPlansModalVisible(true);
+  }, []);
+
+  const closeBusinessPlansModal = useCallback(() => {
+    setBusinessPlansModalVisible(false);
+    setBusinessPlansModalBusinessOnly(false);
+  }, []);
   const dateDisplay = subscription
     ? getSubscriptionDateDisplay(subscription)
     : null;
@@ -990,7 +1008,7 @@ export default function SubscriptionScreen() {
           <View style={styles.buttonContainer}>
             <Button
               title={t("chooseAPlan")}
-              onPress={() => setBusinessPlansModalVisible(true)}
+              onPress={() => openBusinessPlansModal(false)}
             />
             <Text style={styles.emptyFooterHint}>
               {t("noActiveSubscriptionFooterHint")}
@@ -1312,7 +1330,17 @@ export default function SubscriptionScreen() {
               </Text>
               <Button
                 title={t("buyNewPlan")}
-                onPress={() => setBusinessPlansModalVisible(true)}
+                onPress={() => openBusinessPlansModal(false)}
+              />
+            </View>
+          )}
+
+          {showUpgradePlan && (
+            <View style={styles.buttonContainer}>
+              <Text style={styles.cancelHintText}>{t("upgradePlanHint")}</Text>
+              <Button
+                title={t("upgradePlan")}
+                onPress={() => openBusinessPlansModal(true)}
               />
             </View>
           )}
@@ -1320,8 +1348,9 @@ export default function SubscriptionScreen() {
       )}
       <BusinessPlansModal
         visible={businessPlansModalVisible}
-        onClose={() => setBusinessPlansModalVisible(false)}
+        onClose={closeBusinessPlansModal}
         onSuccess={handlePlanPurchaseSuccess}
+        businessOnly={businessPlansModalBusinessOnly}
       />
     </SafeAreaView>
   );

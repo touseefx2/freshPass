@@ -243,6 +243,7 @@
   "unlockAIFeatures": "Débloquer les fonctionnalités IA",
   "unlockAIFeaturesDescription": "Vous avez besoin de crédits pour utiliser l'essai de coiffure IA. Mettez à niveau votre forfait pour accéder à ces fonctionnalités premium.",
   "upgradePlan": "Mettre à niveau le forfait",
+  "upgradePlanHint": "Passez à FreshPass Business pour ajouter du personnel et débloquer plus de fonctionnalités d'équipe.",
   "aiToolPlanPurchased": "Félicitations ! Vous avez acheté le forfait outils IA",
   "useHaritryon": "Utiliser Haritryon",
   "checkout": "Paiement",

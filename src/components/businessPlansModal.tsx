@@ -137,6 +137,8 @@ interface BusinessPlansModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  /** When true, hide Solo tab and only show Business plans (e.g. Solo → Business upgrade). */
+  businessOnly?: boolean;
 }
 
 const createStyles = (theme: Theme) =>
@@ -484,6 +486,7 @@ function BusinessPlansModalContent({
   visible,
   onClose,
   onSuccess,
+  businessOnly = false,
 }: BusinessPlansModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -579,14 +582,28 @@ function BusinessPlansModalContent({
     [standardPlans],
   );
 
-  const usePlanTabs = soloPlans.length > 0 && businessPlans.length > 0;
+  const usePlanTabs =
+    !businessOnly && soloPlans.length > 0 && businessPlans.length > 0;
 
   const visiblePlans = useMemo(() => {
+    if (businessOnly) return businessPlans;
     if (!usePlanTabs) return standardPlans;
     return activeTab === "solo" ? soloPlans : businessPlans;
-  }, [usePlanTabs, activeTab, standardPlans, soloPlans, businessPlans]);
+  }, [
+    businessOnly,
+    usePlanTabs,
+    activeTab,
+    standardPlans,
+    soloPlans,
+    businessPlans,
+  ]);
 
   useEffect(() => {
+    if (businessOnly) {
+      setActiveTab("business");
+      return;
+    }
+
     if (!usePlanTabs) return;
 
     if (selectedBusinessPlanId != null) {
@@ -600,7 +617,7 @@ function BusinessPlansModalContent({
     }
 
     setActiveTab("solo");
-  }, [usePlanTabs, selectedBusinessPlanId, standardPlans]);
+  }, [businessOnly, usePlanTabs, selectedBusinessPlanId, standardPlans]);
 
   const [localBanner, setLocalBanner] = useState<{
     visible: boolean;
@@ -1280,6 +1297,7 @@ export default function BusinessPlansModal({
   visible,
   onClose,
   onSuccess,
+  businessOnly = false,
 }: BusinessPlansModalProps) {
   if (!visible) return null;
 
@@ -1295,6 +1313,7 @@ export default function BusinessPlansModal({
         visible={visible}
         onClose={onClose}
         onSuccess={onSuccess}
+        businessOnly={businessOnly}
       />
     </Modal>
   );

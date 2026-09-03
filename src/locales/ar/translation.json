@@ -243,6 +243,7 @@
   "unlockAIFeatures": "فتح ميزات الذكاء الاصطناعي",
   "unlockAIFeaturesDescription": "تحتاج إلى رصيد لاستخدام تجربة الشعر بالذكاء الاصطناعي. قم بترقية خطتك للوصول إلى هذه الميزات المميزة.",
   "upgradePlan": "ترقية الخطة",
+  "upgradePlanHint": "قم بالترقية إلى FreshPass Business لإضافة موظفين وفتح المزيد من ميزات الفريق.",
   "aiToolPlanPurchased": "تهانينا! لقد اشتريت خطة أدوات الذكاء الاصطناعي",
   "useHaritryon": "استخدم Haritryon",
   "checkout": "الدفع",
