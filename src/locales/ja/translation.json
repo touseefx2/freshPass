@@ -807,6 +807,8 @@
   "createdAt": "作成日",
   "viewInvoice": "請求書を表示",
   "myPurchases": "購入履歴",
+  "noPurchasesYet": "まだ購入がありません",
+  "purchasesEmptySubtitle": "クレジットパックやAI購入履歴がここに表示されます。AIツールから始めましょう。",
   "failedToLoadSubscription": "サブスクリプションの読み込みに失敗しました",
   "cancelTrialConfirm": "トライアルをキャンセルしてもよろしいですか？",
   "cancelSubscriptionConfirm": "サブスクリプションをキャンセルしてもよろしいですか？",

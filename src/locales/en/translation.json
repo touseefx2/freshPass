@@ -816,6 +816,8 @@
   "createdAt": "Created at",
   "viewInvoice": "View invoice",
   "myPurchases": "My Purchases",
+  "noPurchasesYet": "No purchases yet",
+  "purchasesEmptySubtitle": "Your credit packs and AI purchases will show up here. Explore AI Tools to get started.",
   "failedToLoadSubscription": "Failed to load subscription",
   "cancelTrialConfirm": "Are you sure you want to cancel your trial?",
   "cancelSubscriptionConfirm": "Are you sure you want to cancel your subscription?",

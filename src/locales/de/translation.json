@@ -807,6 +807,8 @@
   "createdAt": "Erstellt am",
   "viewInvoice": "Rechnung anzeigen",
   "myPurchases": "Meine Käufe",
+  "noPurchasesYet": "Noch keine Käufe",
+  "purchasesEmptySubtitle": "Ihre Credit-Pakete und KI-Käufe erscheinen hier. Entdecken Sie die KI-Tools, um zu starten.",
   "failedToLoadSubscription": "Abonnement konnte nicht geladen werden",
   "cancelTrialConfirm": "Möchten Sie Ihre Testversion wirklich kündigen?",
   "cancelSubscriptionConfirm": "Möchten Sie Ihr Abonnement wirklich kündigen?",

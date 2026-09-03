@@ -20,6 +20,7 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
+import EmptyState from "@/src/components/emptyState";
 import { ApiService } from "@/src/services/api";
 import { aiTransactionsEndpoints } from "@/src/services/endpoints";
 import dayjs from "dayjs";
@@ -221,12 +222,19 @@ export default function AiTransactions() {
   const listEmptyComponent = useCallback(
     () =>
       !loading ? (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>{t("noAiTransactions")}</Text>
-        </View>
+        <EmptyState
+          icon="shopping-bag"
+          title={t("noPurchasesYet")}
+          subtitle={t("purchasesEmptySubtitle")}
+          actionTitle={t("exploreAiTools")}
+          onActionPress={() => router.back()}
+        />
       ) : null,
-    [loading, styles.emptyStateContainer, styles.emptyStateText, t],
+    [loading, t, router],
   );
+
+  const showInitialLoader =
+    loading && !refreshing && transactions.length === 0;
 
   return (
     <View style={styles.safeArea}>
@@ -246,26 +254,32 @@ export default function AiTransactions() {
         }
         onRightPress={() => router.back()}
       />
-      <FlatList
-        data={transactions}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.4}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={listEmptyComponent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.primary}
-            colors={[theme.primary]}
-          />
-        }
-      />
+      {showInitialLoader ? (
+        <View style={styles.emptyStateContainer}>
+          <ActivityIndicator size="small" color={theme.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={transactions}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={listEmptyComponent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+            />
+          }
+        />
+      )}
     </View>
   );
 }

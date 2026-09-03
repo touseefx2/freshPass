@@ -807,6 +807,8 @@
   "createdAt": "Creado el",
   "viewInvoice": "Ver factura",
   "myPurchases": "Mis compras",
+  "noPurchasesYet": "Aún no hay compras",
+  "purchasesEmptySubtitle": "Tus packs de créditos y compras de IA aparecerán aquí. Explora las herramientas de IA para empezar.",
   "failedToLoadSubscription": "No se pudo cargar la suscripción",
   "cancelTrialConfirm": "¿Estás seguro de que quieres cancelar tu prueba?",
   "cancelSubscriptionConfirm": "¿Estás seguro de que quieres cancelar tu suscripción?",

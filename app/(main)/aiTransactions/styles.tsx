@@ -225,7 +225,7 @@ export const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     emptyStateContainer: {
-      flexGrow: 1,
+      flex: 1,
       paddingVertical: moderateHeightScale(48),
       paddingHorizontal: moderateWidthScale(20),
       alignItems: "center",

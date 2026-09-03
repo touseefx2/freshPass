@@ -807,6 +807,8 @@
   "createdAt": "تاريخ الإنشاء",
   "viewInvoice": "عرض الفاتورة",
   "myPurchases": "مشترياتي",
+  "noPurchasesYet": "لا توجد مشتريات بعد",
+  "purchasesEmptySubtitle": "ستظهر باقات الرصيد ومشتريات الذكاء الاصطناعي هنا. استكشف أدوات الذكاء الاصطناعي للبدء.",
   "failedToLoadSubscription": "فشل في تحميل الاشتراك",
   "cancelTrialConfirm": "هل أنت متأكد أنك تريد إلغاء الفترة التجريبية؟",
   "cancelSubscriptionConfirm": "هل أنت متأكد أنك تريد إلغاء اشتراكك؟",
