@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  ScrollView,
 } from "react-native";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -22,6 +23,7 @@ import {
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { useRouter, useFocusEffect } from "expo-router";
 import Button from "@/src/components/button";
+import EmptyState from "@/src/components/emptyState";
 import { Feather } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
@@ -205,17 +207,9 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       marginBottom: moderateHeightScale(20),
     },
-    emptyChatContainer: {
-      flex: 1,
-      alignItems: "center",
+    emptyStateContainer: {
+      flexGrow: 1,
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    emptyChatText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
     },
   });
 
@@ -495,9 +489,24 @@ export default function ChatScreen() {
           <ActivityIndicator size="large" color={theme.darkGreen} />
         </View>
       ) : !loading && contacts.length === 0 ? (
-        <View style={styles.emptyChatContainer}>
-          <Text style={styles.emptyChatText}>{t("noAnyChat")}</Text>
-        </View>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.emptyStateContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.darkGreen]}
+              tintColor={theme.darkGreen}
+            />
+          }
+        >
+          <EmptyState
+            icon="chat-bubble-outline"
+            title={t("noAnyChat")}
+            subtitle={t("chatsEmptySubtitle")}
+          />
+        </ScrollView>
       ) : (
         <SectionList
           style={styles.content}

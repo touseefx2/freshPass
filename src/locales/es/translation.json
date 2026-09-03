@@ -87,6 +87,7 @@
   "guestMode": "Inicia sesión para continuar",
   "chatBox": "Chat",
   "noAnyChat": "Aún no hay chats",
+  "chatsEmptySubtitle": "Cuando envíes un mensaje a un negocio o cliente, tus conversaciones aparecerán aquí.",
   "bookingList": "Lista de reservas",
   "noBookingsFound": "No se encontraron reservas",
   "noBookingsYet": "Aún no hay reservas",

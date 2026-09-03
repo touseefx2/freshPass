@@ -85,6 +85,7 @@
   "guestMode": "Sign in to continue",
   "chatBox": "Chat box",
   "noAnyChat": "No chats yet",
+  "chatsEmptySubtitle": "When you message a business or customer, your conversations will show up here.",
   "bookingList": "Booking list",
   "noBookingsFound": "No bookings found",
   "noBookingsYet": "No bookings yet",

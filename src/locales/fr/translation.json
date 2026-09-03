@@ -87,6 +87,7 @@
   "guestMode": "Connectez-vous pour continuer",
   "chatBox": "Boîte de discussion",
   "noAnyChat": "Pas encore de chats",
+  "chatsEmptySubtitle": "Lorsque vous envoyez un message à un établissement ou un client, vos conversations apparaîtront ici.",
   "bookingList": "Liste des réservations",
   "noBookingsFound": "Aucune réservation trouvée",
   "noBookingsYet": "Pas encore de réservations",

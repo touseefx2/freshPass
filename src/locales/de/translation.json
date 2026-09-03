@@ -87,6 +87,7 @@
   "guestMode": "Anmelden zum Fortfahren",
   "chatBox": "Chat",
   "noAnyChat": "Noch keine Chats",
+  "chatsEmptySubtitle": "Wenn Sie einem Unternehmen oder Kunden schreiben, erscheinen Ihre Unterhaltungen hier.",
   "bookingList": "Buchungsliste",
   "noBookingsFound": "Keine Buchungen gefunden",
   "noBookingsYet": "Noch keine Buchungen",

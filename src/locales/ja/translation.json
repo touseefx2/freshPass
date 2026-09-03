@@ -87,6 +87,7 @@
   "guestMode": "続行するにはログイン",
   "chatBox": "チャット",
   "noAnyChat": "チャットはまだありません",
+  "chatsEmptySubtitle": "店舗やお客様にメッセージを送ると、会話がここに表示されます。",
   "bookingList": "予約一覧",
   "noBookingsFound": "予約が見つかりません",
   "noBookingsYet": "まだ予約がありません",
