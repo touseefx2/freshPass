@@ -112,3 +112,10 @@ export function pickAccessibleSubscription<T extends SubscriptionAccessFields>(
 ): T | null {
   return items.find((item) => subscriptionGrantsAccess(item)) ?? null;
 }
+
+/** Cancelled (or canceled) but entitlement has not ended yet — show repurchase CTA. */
+export function canRepurchaseCancelledSubscription(
+  sub: SubscriptionAccessFields,
+): boolean {
+  return isStripeCancelled(sub.stripeStatus) && subscriptionGrantsAccess(sub);
+}

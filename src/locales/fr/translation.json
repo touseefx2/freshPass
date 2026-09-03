@@ -831,6 +831,8 @@
   "noActiveSubscriptionBenefit3Desc": "Débloquez l’ensemble des outils professionnels FreshPass.",
   "noActiveSubscriptionFooterHint": "Vous pouvez comparer Solo et Business avant de confirmer.",
   "chooseAPlan": "Choisir un plan",
+  "buyNewPlan": "Acheter un nouveau plan",
+  "buyNewPlanHint": "Votre forfait est annulé. Vous pouvez continuer à l'utiliser jusqu'au {{date}}. Choisissez un nouveau forfait pour continuer ensuite.",
   "freeTrialActive": "Essai gratuit actif",
   "yourTrialEndsOn": "Votre essai se termine le",
   "cardLast4Digits": "Carte (4 derniers chiffres)",

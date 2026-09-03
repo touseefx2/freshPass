@@ -32,6 +32,7 @@ import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import {
+  canRepurchaseCancelledSubscription,
   getSubscriptionDateDisplay,
   isStripeCancelled,
   isSubscriptionTrialing,
@@ -639,6 +640,8 @@ export default function SubscriptionScreen() {
     !!subscription && !isApplePayment && !isCancelled && !subscription.hasEnded;
   const showAppleCancelHelp =
     !!subscription && isApplePayment && !isCancelled && !subscription.hasEnded;
+  const showBuyNewPlan =
+    !!subscription && canRepurchaseCancelledSubscription(subscription);
   const dateDisplay = subscription
     ? getSubscriptionDateDisplay(subscription)
     : null;
@@ -1292,6 +1295,24 @@ export default function SubscriptionScreen() {
                 title={t("manageInAppStore")}
                 onPress={handleOpenAppStoreSubscriptions}
                 backgroundColor={theme.buttonBack}
+              />
+            </View>
+          )}
+
+          {showBuyNewPlan && (
+            <View style={styles.buttonContainer}>
+              <Text style={styles.cancelHintText}>
+                {t("buyNewPlanHint", {
+                  date: formatTrialEndDate(
+                    subscription.endsAt ||
+                      subscription.trialEndsAt ||
+                      subscription.nextPaymentDate,
+                  ),
+                })}
+              </Text>
+              <Button
+                title={t("buyNewPlan")}
+                onPress={() => setBusinessPlansModalVisible(true)}
               />
             </View>
           )}

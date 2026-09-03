@@ -840,6 +840,8 @@
   "noActiveSubscriptionBenefit3Desc": "Unlock the full set of FreshPass professional tools.",
   "noActiveSubscriptionFooterHint": "You can review Solo and Business plans before confirming.",
   "chooseAPlan": "Choose a plan",
+  "buyNewPlan": "Buy new plan",
+  "buyNewPlanHint": "Your plan is cancelled. You can keep using it until {{date}}. Choose a new plan to continue after that.",
   "freeTrialActive": "Free trial active",
   "yourTrialEndsOn": "Your trial ends on",
   "cardLast4Digits": "Card (last 4 digits)",
