@@ -46,6 +46,7 @@ function getNotificationSubType(
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → Profile → Business profile settings → Manage subscriptions
+ * - type "subscription" (customer role) → Profile → Customer subscriptions
  * - type "business" | "service" + model_id (customer role) → businessDetail
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
@@ -212,6 +213,39 @@ export function navigateFromNotificationData(
       "------>navigateFromNotificationData (manageSubscriptionList) -> subscriptions",
     );
     return;
+  }
+
+  if (type === "subscription") {
+    const userRole = store.getState().user.userRole;
+    if (userRole === "customer") {
+      const navigateToCustomerSubscriptions = () => {
+        router.push("/(main)/dashboard/(account)");
+        setTimeout(() => {
+          router.push("/(main)/dashboard/(account)/subscriptionCustomer");
+        }, AI_MEMORY_CHAIN_STEP_MS);
+      };
+
+      if (options?.fromInAppList) {
+        if (router.canGoBack()) {
+          router.back();
+        }
+        setTimeout(() => {
+          navigateToCustomerSubscriptions();
+        }, AI_MEMORY_BACK_DELAY_MS);
+      } else {
+        navigateToCustomerSubscriptions();
+      }
+
+      Logger.log(
+        "------>navigateFromNotificationData (subscription) -> account -> subscriptionCustomer",
+        {
+          model_id: data.model_id,
+          event: data.event,
+          fromInAppList: options?.fromInAppList ?? false,
+        },
+      );
+      return;
+    }
   }
 
   if (!options?.skipNotificationScreen) {
