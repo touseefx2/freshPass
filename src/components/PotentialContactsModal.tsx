@@ -9,7 +9,7 @@ import {
   Modal,
   FlatList,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -20,6 +20,7 @@ import {
   iconScale,
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
+import EmptyState from "@/src/components/emptyState";
 
 export type PotentialContact = {
   id: number;
@@ -155,6 +156,13 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    emptyListContent: {
+      flexGrow: 1,
+      justifyContent: "center",
+    },
+    emptyState: {
+      paddingVertical: moderateHeightScale(16),
+    },
   });
 
 type PotentialContactsModalProps = {
@@ -187,8 +195,15 @@ export default function PotentialContactsModal({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { t } = useTranslation();
+  const userRole = useAppSelector((state) => state.user.userRole);
 
   const showError = error && !loading && contacts.length === 0;
+
+  const emptySubtitle = useMemo(() => {
+    if (userRole === "business") return t("potentialUsersEmptyBusiness");
+    if (userRole === "staff") return t("potentialUsersEmptyStaff");
+    return t("potentialUsersEmptyCustomer");
+  }, [userRole, t]);
 
   return (
     <Modal
@@ -242,6 +257,17 @@ export default function PotentialContactsModal({
                 showsVerticalScrollIndicator={false}
                 data={contacts}
                 keyExtractor={(item) => String(item.id)}
+                contentContainerStyle={
+                  contacts.length === 0 ? styles.emptyListContent : undefined
+                }
+                ListEmptyComponent={
+                  <EmptyState
+                    icon="people-outline"
+                    title={t("noUsersYet")}
+                    subtitle={emptySubtitle}
+                    containerStyle={styles.emptyState}
+                  />
+                }
                 renderItem={({ item }) => {
                   const avatarUri = getPotentialContactAvatar(item.avatar);
                   return (
