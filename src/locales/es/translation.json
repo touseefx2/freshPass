@@ -815,6 +815,8 @@
   "no": "No",
   "yesCancelTrial": "Sí, cancelar prueba",
   "yesCancelSubscription": "Sí, cancelar suscripción",
+  "keepTrial": "Mantener prueba",
+  "keepSubscription": "Mantener suscripción",
   "cancelTrialHint": "Si cancelas, no se te cobrará. Puedes seguir usando tu prueba hasta el {{date}}.",
   "cancelSubscriptionHint": "Si cancelas, tu suscripción seguirá activa hasta el {{date}}. No se te volverá a cobrar.",
   "appleCancelTrialHint": "Esta prueba gratuita se factura a través de App Store. En App Store, selecciona el mismo Apple ID con el que compraste esta prueba; si hay otra cuenta, no aparecerá. Toca Gestionar en App Store y desactiva la renovación automática. Puedes seguir usando la prueba hasta el {{date}}.",

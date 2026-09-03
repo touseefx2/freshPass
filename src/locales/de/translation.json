@@ -815,6 +815,8 @@
   "no": "Nein",
   "yesCancelTrial": "Ja, Testversion kündigen",
   "yesCancelSubscription": "Ja, Abonnement kündigen",
+  "keepTrial": "Testversion behalten",
+  "keepSubscription": "Abonnement behalten",
   "cancelTrialHint": "Wenn Sie kündigen, werden Ihnen keine Kosten berechnet. Sie können Ihre Testversion bis zum {{date}} weiter nutzen.",
   "cancelSubscriptionHint": "Wenn Sie kündigen, bleibt Ihr Abonnement bis zum {{date}} aktiv. Es werden keine weiteren Kosten berechnet.",
   "appleCancelTrialHint": "Diese kostenlose Testversion wird über den App Store abgerechnet. Wählen Sie im App Store dieselbe Apple-ID, mit der die Testversion gekauft wurde — bei einem anderen Konto wird sie nicht angezeigt. Tippen Sie auf Im App Store verwalten und deaktivieren Sie die automatische Verlängerung. Sie können die Testversion bis zum {{date}} weiter nutzen.",

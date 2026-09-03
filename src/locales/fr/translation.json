@@ -815,6 +815,8 @@
   "no": "Non",
   "yesCancelTrial": "Oui, annuler l'essai",
   "yesCancelSubscription": "Oui, annuler l'abonnement",
+  "keepTrial": "Garder l'essai",
+  "keepSubscription": "Garder l'abonnement",
   "cancelTrialHint": "Si vous annulez, vous ne serez pas facturé. Vous pouvez continuer à utiliser votre essai jusqu'au {{date}}.",
   "cancelSubscriptionHint": "Si vous annulez, votre abonnement restera actif jusqu'au {{date}}. Vous ne serez plus facturé.",
   "appleCancelTrialHint": "Cet essai gratuit est facturé via l'App Store. Dans l'App Store, sélectionnez le même identifiant Apple que celui utilisé pour cet essai — si un autre compte est sélectionné, l'essai n'apparaîtra pas. Appuyez sur Gérer dans l'App Store, puis désactivez le renouvellement automatique. Vous pouvez continuer à utiliser l'essai jusqu'au {{date}}.",

@@ -815,6 +815,8 @@
   "no": "いいえ",
   "yesCancelTrial": "はい、トライアルをキャンセル",
   "yesCancelSubscription": "はい、サブスクリプションをキャンセル",
+  "keepTrial": "トライアルを続ける",
+  "keepSubscription": "サブスクリプションを続ける",
   "cancelTrialHint": "キャンセルしても料金は発生しません。トライアルは{{date}}までご利用いただけます。",
   "cancelSubscriptionHint": "キャンセルしても、サブスクリプションは{{date}}まで有効です。以降の請求はありません。",
   "appleCancelTrialHint": "この無料トライアルはApp Storeで課金されます。App Storeでは、購入に使った同じApple IDを選択してください。別のアカウントだと表示されません。「App Storeで管理」をタップし、自動更新をオフにしてください。トライアルは{{date}}までご利用いただけます。",

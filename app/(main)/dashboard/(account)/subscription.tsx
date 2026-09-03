@@ -4,8 +4,9 @@ import {
   ScrollView,
   View,
   Text,
-  Alert,
   Linking,
+  Pressable,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
@@ -28,6 +29,7 @@ import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { LinearGradient } from "expo-linear-gradient";
 import BusinessPlansModal from "@/src/components/businessPlansModal";
+import CancelSubscriptionConfirmModal from "@/src/components/cancelSubscriptionConfirmModal";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -346,13 +348,65 @@ const createStyles = (theme: Theme) =>
       marginHorizontal: moderateWidthScale(20),
       marginVertical: moderateHeightScale(32),
     },
-    cancelHintText: {
+    actionsSection: {
+      marginHorizontal: moderateWidthScale(20),
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(28),
+    },
+    actionHintText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
       lineHeight: fontSize.size18,
       marginBottom: moderateHeightScale(12),
+    },
+    secondaryAction: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(14),
+      minHeight: moderateHeightScale(44),
+      marginTop: moderateHeightScale(4),
+    },
+    secondaryActionText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
+    cancelActionText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
+      textAlign: "center",
+    },
+    outlinedButton: {
+      height: moderateHeightScale(48),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderMedium,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightGreen05,
+    },
+    outlinedButtonText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    cancelOutlinedButton: {
+      height: moderateHeightScale(48),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightRedBorder,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightRed,
+    },
+    cancelOutlinedButtonText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.red,
     },
     emptyContainer: {
       flex: 1,
@@ -632,6 +686,7 @@ export default function SubscriptionScreen() {
     useState(false);
   const [businessPlansModalBusinessOnly, setBusinessPlansModalBusinessOnly] =
     useState(false);
+  const [cancelConfirmVisible, setCancelConfirmVisible] = useState(false);
 
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const isSoloPlanActive = isSoloSubscription(businessStatus);
@@ -650,6 +705,7 @@ export default function SubscriptionScreen() {
     !!subscription && canRepurchaseCancelledSubscription(subscription);
   const showUpgradePlan =
     !!subscription && isSoloPlanActive && !isCancelled && !subscription.hasEnded;
+  const hasPrimaryPlanAction = showUpgradePlan || showBuyNewPlan;
 
   const openBusinessPlansModal = useCallback((businessOnly = false) => {
     setBusinessPlansModalBusinessOnly(businessOnly);
@@ -813,25 +869,17 @@ export default function SubscriptionScreen() {
 
   const handleCancel = () => {
     if (!subscription || cancelling) return;
+    setCancelConfirmVisible(true);
+  };
 
-    Alert.alert(
-      isTrialing ? t("cancelTrial") : t("cancelSubscription"),
-      isTrialing ? t("cancelTrialConfirm") : t("cancelSubscriptionConfirm"),
-      [
-        {
-          text: t("no"),
-          style: "cancel",
-        },
-        {
-          text: isTrialing ? t("yesCancelTrial") : t("yesCancelSubscription"),
-          style: "destructive",
-          onPress: () => {
-            cancelCurrentSubscription();
-          },
-        },
-      ],
-      { cancelable: true },
-    );
+  const handleCloseCancelConfirm = () => {
+    if (cancelling) return;
+    setCancelConfirmVisible(false);
+  };
+
+  const handleConfirmCancel = () => {
+    setCancelConfirmVisible(false);
+    void cancelCurrentSubscription();
   };
 
   const formatCardNumber = (lastFour: string | null) => {
@@ -1273,75 +1321,102 @@ export default function SubscriptionScreen() {
             )}
           </View>
 
-          {canCancel && (
-            <View style={styles.buttonContainer}>
-              <Text style={styles.cancelHintText}>
-                {isTrialing
-                  ? t("cancelTrialHint", {
-                      date: formatTrialEndDate(subscription.trialEndsAt),
-                    })
-                  : t("cancelSubscriptionHint", {
+          {(hasPrimaryPlanAction || canCancel || showAppleCancelHelp) && (
+            <View style={styles.actionsSection}>
+              {showUpgradePlan && (
+                <>
+                  <Text style={styles.actionHintText}>
+                    {t("upgradePlanHint")}
+                  </Text>
+                  <Button
+                    title={t("upgradePlan")}
+                    onPress={() => openBusinessPlansModal(true)}
+                  />
+                </>
+              )}
+
+              {showBuyNewPlan && (
+                <>
+                  <Text style={styles.actionHintText}>
+                    {t("buyNewPlanHint", {
                       date: formatTrialEndDate(
-                        subscription.nextPaymentDate || subscription.endsAt,
+                        subscription.endsAt ||
+                          subscription.trialEndsAt ||
+                          subscription.nextPaymentDate,
                       ),
                     })}
-              </Text>
-              <Button
-                title={isTrialing ? t("cancelTrial") : t("cancelSubscription")}
-                onPress={handleCancel}
-                loading={cancelling}
-                disabled={cancelling}
-                backgroundColor={theme.buttonBack}
-              />
-            </View>
-          )}
+                  </Text>
+                  <Button
+                    title={t("buyNewPlan")}
+                    onPress={() => openBusinessPlansModal(false)}
+                  />
+                </>
+              )}
 
-          {showAppleCancelHelp && (
-            <View style={styles.buttonContainer}>
-              <Text style={styles.cancelHintText}>
-                {isTrialing
-                  ? t("appleCancelTrialHint", {
-                      date: formatTrialEndDate(subscription.trialEndsAt),
-                    })
-                  : t("appleCancelSubscriptionHint", {
-                      date: formatTrialEndDate(
-                        subscription.nextPaymentDate || subscription.endsAt,
-                      ),
-                    })}
-              </Text>
-              <Button
-                title={t("manageInAppStore")}
-                onPress={handleOpenAppStoreSubscriptions}
-                backgroundColor={theme.buttonBack}
-              />
-            </View>
-          )}
+              {canCancel && (
+                <Pressable
+                  onPress={handleCancel}
+                  disabled={cancelling}
+                  style={
+                    hasPrimaryPlanAction
+                      ? styles.secondaryAction
+                      : styles.cancelOutlinedButton
+                  }
+                >
+                  {cancelling ? (
+                    <ActivityIndicator size="small" color={theme.red} />
+                  ) : (
+                    <Text
+                      style={
+                        hasPrimaryPlanAction
+                          ? styles.cancelActionText
+                          : styles.cancelOutlinedButtonText
+                      }
+                    >
+                      {isTrialing
+                        ? t("cancelTrial")
+                        : t("cancelSubscription")}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
 
-          {showBuyNewPlan && (
-            <View style={styles.buttonContainer}>
-              <Text style={styles.cancelHintText}>
-                {t("buyNewPlanHint", {
-                  date: formatTrialEndDate(
-                    subscription.endsAt ||
-                      subscription.trialEndsAt ||
-                      subscription.nextPaymentDate,
-                  ),
-                })}
-              </Text>
-              <Button
-                title={t("buyNewPlan")}
-                onPress={() => openBusinessPlansModal(false)}
-              />
-            </View>
-          )}
-
-          {showUpgradePlan && (
-            <View style={styles.buttonContainer}>
-              <Text style={styles.cancelHintText}>{t("upgradePlanHint")}</Text>
-              <Button
-                title={t("upgradePlan")}
-                onPress={() => openBusinessPlansModal(true)}
-              />
+              {showAppleCancelHelp && (
+                <>
+                  {!hasPrimaryPlanAction && (
+                    <Text style={styles.actionHintText}>
+                      {isTrialing
+                        ? t("appleCancelTrialHint", {
+                            date: formatTrialEndDate(subscription.trialEndsAt),
+                          })
+                        : t("appleCancelSubscriptionHint", {
+                            date: formatTrialEndDate(
+                              subscription.nextPaymentDate ||
+                                subscription.endsAt,
+                            ),
+                          })}
+                    </Text>
+                  )}
+                  <Pressable
+                    onPress={handleOpenAppStoreSubscriptions}
+                    style={
+                      hasPrimaryPlanAction
+                        ? styles.secondaryAction
+                        : styles.outlinedButton
+                    }
+                  >
+                    <Text
+                      style={
+                        hasPrimaryPlanAction
+                          ? styles.secondaryActionText
+                          : styles.outlinedButtonText
+                      }
+                    >
+                      {t("manageInAppStore")}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           )}
         </ScrollView>
@@ -1351,6 +1426,19 @@ export default function SubscriptionScreen() {
         onClose={closeBusinessPlansModal}
         onSuccess={handlePlanPurchaseSuccess}
         businessOnly={businessPlansModalBusinessOnly}
+      />
+      <CancelSubscriptionConfirmModal
+        visible={cancelConfirmVisible}
+        isTrialing={isTrialing}
+        endDate={formatTrialEndDate(
+          isTrialing
+            ? subscription?.trialEndsAt ?? null
+            : subscription?.nextPaymentDate ||
+                subscription?.endsAt ||
+                null,
+        )}
+        onClose={handleCloseCancelConfirm}
+        onConfirm={handleConfirmCancel}
       />
     </SafeAreaView>
   );
