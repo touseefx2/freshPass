@@ -186,6 +186,9 @@ export default function HomeScreen() {
   };
 
   const handleFetchChatUnreadCount = async () => {
+    if (isGuest || !user.accessToken) {
+      return;
+    }
     try {
       const response = await ApiService.get<{
         success: boolean;
@@ -204,6 +207,9 @@ export default function HomeScreen() {
   };
 
   const handleFetchUserDetails = async () => {
+    if (isGuest || !user.accessToken) {
+      return;
+    }
     try {
       const response = await ApiService.get<{
         success: boolean;
@@ -271,7 +277,7 @@ export default function HomeScreen() {
   };
 
   useEffect(() => {
-    if (isCustomer) {
+    if (isCustomer && !isGuest && user.accessToken) {
       fetchAdditionalServices();
       handleFetchUserDetails();
     }
@@ -279,11 +285,12 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (isCustomer) {
+      // Skip for guests / no real token — env guest Bearer 401s as "Session expired"
+      if (isCustomer && !isGuest && user.accessToken) {
         dispatch(fetchNotificationUnreadCount());
         handleFetchChatUnreadCount();
       }
-    }, []),
+    }, [isCustomer, isGuest, user.accessToken]),
   );
 
   return (

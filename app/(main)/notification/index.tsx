@@ -278,6 +278,10 @@ export default function NotificationsScreen() {
   const user = useAppSelector((state) => state.user);
   const userRole = user.userRole;
   const isGuest = user.isGuest;
+  const accessToken = user.accessToken;
+  // Same race as chat: after guest Sign In, logout clears isGuest before
+  // navigation finishes — calling with only the env guest token 401s.
+  const canFetchNotifications = !isGuest && Boolean(accessToken);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -381,7 +385,7 @@ export default function NotificationsScreen() {
     page: number = 1,
     append: boolean = false,
   ) => {
-    if (isGuest) {
+    if (!canFetchNotifications) {
       setLoading(false);
       setLoadingMore(false);
       return;
@@ -429,11 +433,9 @@ export default function NotificationsScreen() {
     }
   };
 
-  // Fetch unread count uses shared thunk (isGuest checked at call sites).
-
   // Mark notification as read
   const handleMarkAsRead = async (notificationId: number, itemId: string) => {
-    if (isGuest) {
+    if (!canFetchNotifications) {
       return;
     }
     try {
@@ -464,7 +466,7 @@ export default function NotificationsScreen() {
 
   // Mark all notifications as read
   const handleMarkAllAsRead = async () => {
-    if (isGuest) {
+    if (!canFetchNotifications) {
       return;
     }
     setMarkAllAsReadLoading(true);
@@ -492,17 +494,17 @@ export default function NotificationsScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!isGuest) {
+      if (canFetchNotifications) {
         fetchNotifications(1, false);
         dispatch(fetchNotificationUnreadCount());
       } else {
         setLoading(false);
       }
-    }, [isGuest]),
+    }, [canFetchNotifications]),
   );
 
   const handleRefresh = async () => {
-    if (isGuest) {
+    if (!canFetchNotifications) {
       setRefreshing(false);
       return;
     }
@@ -537,7 +539,7 @@ export default function NotificationsScreen() {
   };
 
   const loadMore = () => {
-    if (isGuest) {
+    if (!canFetchNotifications) {
       return;
     }
     if (!loadingMore && currentPage < totalPages) {

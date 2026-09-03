@@ -341,6 +341,7 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
     if (registerEmail != null) {
       store.dispatch(setRegisterEmail(registerEmail));
     }
+    
     try {
       await persistor.flush();
     } catch (err) {

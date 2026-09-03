@@ -10,7 +10,14 @@ export const fetchNotificationUnreadCount = createAsyncThunk<
   { dispatch: AppDispatch; state: RootState }
 >(
   "notifications/fetchUnreadCount",
-  async (_, { dispatch }) => {
+  async (_, { dispatch, getState }) => {
+    const { isGuest, accessToken } = getState().user;
+    // Guest (or post-logout race with only env guest token) must not hit this API —
+    // guest Bearer 401s and wrongly triggers "Session expired".
+    if (isGuest || !accessToken) {
+      return;
+    }
+
     const response = await ApiService.get<{
       success: boolean;
       message: string;
