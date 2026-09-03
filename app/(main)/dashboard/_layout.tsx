@@ -380,7 +380,8 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(calendar)"
           options={{
-            title: isCustomer ? t("tabAppointments") : t("tabCalendar"),
+            title:
+              isCustomer || isGuest ? t("tabAppointments") : t("tabCalendar"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
                 style={[styles.iconContainer, focused && styles.iconBackground]}
