@@ -270,6 +270,7 @@ export default function ChatScreen() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
+  const accessToken = user.accessToken as string | null;
   const contacts = useAppSelector((state) => state.general.chatContacts);
   const page = useAppSelector((state) => state.general.chatContactsPage);
   const lastPage = useAppSelector(
@@ -406,20 +407,28 @@ export default function ChatScreen() {
     }
   }, [dispatch]);
 
+  // Require a real accessToken — after guest Sign In, logout clears isGuest
+  // before navigation finishes; fetching with only the env guest token 401s
+  // and wrongly shows "Session Expired".
+  const canFetchChat = !isGuest && Boolean(accessToken);
+
   useFocusEffect(
     useCallback(() => {
-      if (!isGuest) {
+      if (canFetchChat) {
         fetchContacts(1, false);
         handleFetchChatUnreadCount();
-      } else dispatch(setChatContactsLoading(false));
-    }, [isGuest, fetchContacts, handleFetchChatUnreadCount, dispatch]),
+      } else {
+        dispatch(setChatContactsLoading(false));
+      }
+    }, [canFetchChat, fetchContacts, handleFetchChatUnreadCount, dispatch]),
   );
 
   const onRefresh = useCallback(() => {
+    if (!canFetchChat) return;
     dispatch(setChatContactsRefreshing(true));
     fetchContacts(1, false);
     handleFetchChatUnreadCount();
-  }, [fetchContacts, handleFetchChatUnreadCount, dispatch]);
+  }, [canFetchChat, fetchContacts, handleFetchChatUnreadCount, dispatch]);
 
   const onEndReached = useCallback(() => {
     if (loadingMore || loading || page >= lastPage) return;
