@@ -954,5 +954,14 @@
   "earningsFeeDataIncomplete": "Faltan detalles de comisiones en {{count}} pagos de este mes; el total de deducciones puede ser menor.",
   "earningsVsMonth": "{{direction}} {{amount}} vs {{month}}",
   "earningsVsMonthFlat": "Igual que {{month}}",
+  "earningsAllStaff": "Todo el personal",
+  "earningsStaffPickerTitle": "Filtrar por personal",
+  "earningsByStaff": "Por miembro del personal",
+  "earningsByStaffTitle": "Ingresos por personal",
+  "earningsStaffRemoved": "Eliminado",
+  "earningsUnassigned": "Negocio (sin personal)",
+  "earningsNetApproximate": "Aprox.",
+  "earningsStaffLoadError": "No se pudieron cargar los ingresos del personal.",
+  "earningsTotal": "Total",
   "seeAll": "Ver todo"
 }

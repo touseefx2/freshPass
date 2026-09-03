@@ -954,5 +954,14 @@
   "earningsFeeDataIncomplete": "Gebührendetails fehlen für {{count}} Zahlungen dieses Monats — die Abzugssumme kann zu niedrig sein.",
   "earningsVsMonth": "{{direction}} {{amount}} vs {{month}}",
   "earningsVsMonthFlat": "Gleich wie {{month}}",
+  "earningsAllStaff": "Alle Mitarbeiter",
+  "earningsStaffPickerTitle": "Nach Mitarbeiter filtern",
+  "earningsByStaff": "Nach Mitarbeiter",
+  "earningsByStaffTitle": "Einnahmen nach Mitarbeiter",
+  "earningsStaffRemoved": "Entfernt",
+  "earningsUnassigned": "Unternehmen (kein Mitarbeiter)",
+  "earningsNetApproximate": "Ca.",
+  "earningsStaffLoadError": "Mitarbeiter-Einnahmen konnten nicht geladen werden.",
+  "earningsTotal": "Gesamt",
   "seeAll": "Alle anzeigen"
 }

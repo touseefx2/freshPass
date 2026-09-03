@@ -954,5 +954,14 @@
   "earningsFeeDataIncomplete": "Les frais manquent pour {{count}} paiements de ce mois ; le total des déductions peut être sous-estimé.",
   "earningsVsMonth": "{{direction}} {{amount}} vs {{month}}",
   "earningsVsMonthFlat": "Identique à {{month}}",
+  "earningsAllStaff": "Tout le personnel",
+  "earningsStaffPickerTitle": "Filtrer par employé",
+  "earningsByStaff": "Par employé",
+  "earningsByStaffTitle": "Revenus par employé",
+  "earningsStaffRemoved": "Retiré",
+  "earningsUnassigned": "Entreprise (sans employé)",
+  "earningsNetApproximate": "Approx.",
+  "earningsStaffLoadError": "Impossible de charger les revenus du personnel.",
+  "earningsTotal": "Total",
   "seeAll": "Tout voir"
 }

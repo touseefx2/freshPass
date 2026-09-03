@@ -24,10 +24,13 @@ export type EarningsRevenueSource =
   | "tip"
   | "other";
 
+export type StaffIdFilter = number | "all";
+
 export interface EarningsFilters {
   revenueSource?: RevenueSourceFilter;
   paymentStatus?: PaymentStatusFilter;
   transactionType?: TransactionTypeFilter;
+  staffId?: StaffIdFilter;
 }
 
 export interface EarningsQueryParams extends EarningsFilters {
@@ -43,6 +46,14 @@ export interface EarningsPeriod {
   from: string;
   to: string;
   timezone: string;
+}
+
+export interface EarningsStaffRef {
+  id: number;
+  name: string | null;
+  profileImage: string | null;
+  active: boolean;
+  removed: boolean;
 }
 
 export interface EarningsSummary {
@@ -88,7 +99,7 @@ export interface RevenueBySourceRow {
 export interface TipRecipient {
   recipientType: "staff" | "business";
   recipientStaffId: number | null;
-  recipientName: string;
+  recipientName: string | null;
   amount: number;
   count: number;
 }
@@ -124,7 +135,9 @@ export interface EarningsReport {
     revenueSource: RevenueSourceFilter;
     transactionType: TransactionTypeFilter;
     paymentStatus: PaymentStatusFilter;
+    staffId: number | null;
   };
+  staff: EarningsStaffRef | null;
   summary: EarningsSummary;
   revenue: EarningsRevenue;
   deductions: EarningsDeductions;
@@ -145,6 +158,51 @@ export interface EarningsMonthRow {
   hasActivity: boolean;
 }
 
+export interface StaffEarningsRevenue {
+  subscriptionRevenue: number;
+  appointmentRevenue: number;
+  tipRevenue: number;
+  otherRevenue: number;
+}
+
+export interface StaffEarningsRow {
+  staffId: number | null;
+  name: string;
+  profileImage: string | null;
+  active: boolean | null;
+  removed: boolean;
+  isUnassigned: boolean;
+  grossEarnings: number;
+  stripeFees: number;
+  platformFees: number;
+  refunds: number;
+  refundedPlatformFees: number;
+  totalDeductions: number;
+  netEarnings: number;
+  revenue: StaffEarningsRevenue;
+  transactionsCount: number;
+  refundsCount: number;
+  transactionsMissingFeeData: number;
+}
+
+export interface StaffEarningsReport {
+  period: EarningsPeriod;
+  currency: string;
+  filters: {
+    revenueSource: RevenueSourceFilter;
+    transactionType: TransactionTypeFilter;
+    paymentStatus: PaymentStatusFilter;
+  };
+  totals: {
+    grossEarnings: number;
+    totalDeductions: number;
+    netEarnings: number;
+    transactionsCount: number;
+    staffCount: number;
+  };
+  staff: StaffEarningsRow[];
+}
+
 export interface EarningsTransaction {
   id: number;
   source: EarningsRevenueSource;
@@ -152,18 +210,21 @@ export interface EarningsTransaction {
   description: string;
   customerName: string | null;
   amount: number;
+  /** null means Stripe has not reported a fee. Render as "—", never 0. */
   stripeFee: number | null;
   platformFee: number | null;
   netAmount: number;
   refundAmount: number;
   refundedAt: string | null;
   status: EarningsTransactionStatus;
-  paidAt: string;
+  paidAt: string | null;
   cardLastFour: string | null;
   receiptUrl: string | null;
   appointmentId: number | null;
   subscriptionId: number | null;
   tipRecipientName: string | null;
+  staffId: number | null;
+  staffName: string | null;
 }
 
 export interface EarningsTransactionsMeta {
@@ -186,6 +247,12 @@ export interface EarningsMonthsApiResponse {
   data: {
     months: EarningsMonthRow[];
   };
+}
+
+export interface StaffEarningsApiResponse {
+  success: boolean;
+  message: string;
+  data: StaffEarningsReport;
 }
 
 export interface EarningsTransactionsApiResponse {

@@ -954,5 +954,14 @@
   "earningsFeeDataIncomplete": "تفاصيل الرسوم غير متوفرة لـ {{count}} من مدفوعات هذا الشهر، لذا قد يكون إجمالي الخصم أقل من الواقع.",
   "earningsVsMonth": "{{direction}} {{amount}} مقابل {{month}}",
   "earningsVsMonthFlat": "نفس {{month}}",
+  "earningsAllStaff": "كل الموظفين",
+  "earningsStaffPickerTitle": "تصفية حسب الموظف",
+  "earningsByStaff": "حسب الموظف",
+  "earningsByStaffTitle": "الأرباح حسب الموظف",
+  "earningsStaffRemoved": "تمت الإزالة",
+  "earningsUnassigned": "النشاط (بدون موظف)",
+  "earningsNetApproximate": "تقريبي",
+  "earningsStaffLoadError": "تعذر تحميل أرباح الموظفين.",
+  "earningsTotal": "الإجمالي",
   "seeAll": "عرض الكل"
 }

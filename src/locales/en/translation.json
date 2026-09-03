@@ -990,5 +990,14 @@
   "earningsFeeDataIncomplete": "Fee details are unavailable for {{count}} of this month's payments, so the deduction total may be understated.",
   "earningsVsMonth": "{{direction}} {{amount}} vs {{month}}",
   "earningsVsMonthFlat": "Same as {{month}}",
+  "earningsAllStaff": "All staff",
+  "earningsStaffPickerTitle": "Filter by staff",
+  "earningsByStaff": "By staff member",
+  "earningsByStaffTitle": "Earnings by staff",
+  "earningsStaffRemoved": "Removed",
+  "earningsUnassigned": "Business (no staff member)",
+  "earningsNetApproximate": "Approx.",
+  "earningsStaffLoadError": "Couldn't load staff earnings.",
+  "earningsTotal": "Total",
   "seeAll": "See all"
 }

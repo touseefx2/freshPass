@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -24,25 +24,44 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
-import EarningsFilterModal from "@/src/components/earningsFilterModal";
+import EarningsFilterModal, {
+  type EarningsCoreFilters,
+} from "@/src/components/earningsFilterModal";
+import EarningsStaffPickerModal from "@/src/components/earningsStaffPickerModal";
+import EarningsStaffRow from "@/src/components/earningsStaffRow";
 import EarningsTransactionRow from "@/src/components/earningsTransactionRow";
 import {
   DEFAULT_EARNINGS_FILTERS,
   EARNINGS_PREVIEW_PER_PAGE,
+  EARNINGS_STAFF_PREVIEW_COUNT,
   fetchEarningsMonths,
   fetchEarningsReport,
   fetchEarningsTransactions,
+  fetchStaffEarnings,
   formatMoney,
   formatMoneyPlain,
   getCurrentMonthKey,
+  isStaffIdValidationError,
 } from "@/src/services/businessEarningsService";
 import type {
   EarningsFilters,
   EarningsMonthRow,
   EarningsReport,
   EarningsTransaction,
+  StaffEarningsReport,
+  StaffEarningsRow,
+  StaffIdFilter,
 } from "@/src/types/businessEarnings";
 import { createStyles } from "./styles";
+
+function parseStaffIdParam(
+  value: string | string[] | undefined,
+): StaffIdFilter {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || raw === "all") return "all";
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : "all";
+}
 
 export default function BusinessEarningsScreen() {
   const { colors } = useTheme();
@@ -51,14 +70,24 @@ export default function BusinessEarningsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const userRole = useAppSelector((state) => state.user.userRole);
+  const params = useLocalSearchParams<{ staff_id?: string }>();
 
   const [months, setMonths] = useState<EarningsMonthRow[]>([]);
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthKey());
-  const [filters, setFilters] =
-    useState<Required<EarningsFilters>>(DEFAULT_EARNINGS_FILTERS);
+  const [filters, setFilters] = useState<EarningsCoreFilters>({
+    revenueSource: DEFAULT_EARNINGS_FILTERS.revenueSource,
+    paymentStatus: DEFAULT_EARNINGS_FILTERS.paymentStatus,
+    transactionType: DEFAULT_EARNINGS_FILTERS.transactionType,
+  });
+  const [selectedStaffId, setSelectedStaffId] =
+    useState<StaffIdFilter>("all");
   const [filterVisible, setFilterVisible] = useState(false);
+  const [staffPickerVisible, setStaffPickerVisible] = useState(false);
 
   const [report, setReport] = useState<EarningsReport | null>(null);
+  const [staffReport, setStaffReport] = useState<StaffEarningsReport | null>(
+    null,
+  );
   const [previewTxns, setPreviewTxns] = useState<EarningsTransaction[]>([]);
 
   const [initialLoading, setInitialLoading] = useState(true);
@@ -66,6 +95,7 @@ export default function BusinessEarningsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [reportError, setReportError] = useState(false);
   const [txnError, setTxnError] = useState(false);
+  const [staffError, setStaffError] = useState(false);
   const [monthsLoaded, setMonthsLoaded] = useState(false);
 
   useEffect(() => {
@@ -73,6 +103,11 @@ export default function BusinessEarningsScreen() {
       router.back();
     }
   }, [userRole, router]);
+
+  useEffect(() => {
+    if (params.staff_id === undefined) return;
+    setSelectedStaffId(parseStaffIdParam(params.staff_id));
+  }, [params.staff_id]);
 
   const monthIndex = useMemo(
     () => months.findIndex((m) => m.month === selectedMonth),
@@ -90,23 +125,62 @@ export default function BusinessEarningsScreen() {
     return months[monthIndex + 1] ?? null;
   }, [months, monthIndex]);
 
+  const combinedFilters: Required<EarningsFilters> = useMemo(
+    () => ({ ...filters, staffId: selectedStaffId }),
+    [filters, selectedStaffId],
+  );
+
   const filtersActive =
     filters.revenueSource !== "all" ||
     filters.paymentStatus !== "all" ||
     filters.transactionType !== "all";
 
-  const loadMonths = useCallback(async () => {
-    const list = await fetchEarningsMonths();
+  const staffFilterActive = selectedStaffId !== "all";
+
+  const selectedStaffLabel = useMemo(() => {
+    if (!staffFilterActive) return t("earningsAllStaff");
+    if (report?.staff?.name) {
+      return report.staff.removed
+        ? `${report.staff.name} (${t("earningsStaffRemoved")})`
+        : report.staff.name;
+    }
+    const fromList = staffReport?.staff.find(
+      (s) => s.staffId === selectedStaffId,
+    );
+    return fromList?.name ?? t("earningsAllStaff");
+  }, [staffFilterActive, report, staffReport, selectedStaffId, t]);
+
+  const staffPreviewRows = useMemo(() => {
+    if (!staffReport?.staff?.length) return [];
+    const people = staffReport.staff.filter((s) => !s.isUnassigned);
+    const unassigned = staffReport.staff.find((s) => s.isUnassigned);
+    const top = people.slice(0, EARNINGS_STAFF_PREVIEW_COUNT);
+    const rows: StaffEarningsRow[] = [...top];
+    if (unassigned && unassigned.grossEarnings > 0) {
+      rows.push(unassigned);
+    }
+    return rows;
+  }, [staffReport]);
+
+  const loadMonths = useCallback(async (staffId: StaffIdFilter = "all") => {
+    const list = await fetchEarningsMonths(undefined, staffId);
     setMonths(list);
     if (list.length > 0) {
       const current = getCurrentMonthKey();
       const hasCurrent = list.some((m) => m.month === current);
       if (!hasCurrent) {
-        setSelectedMonth(list[0].month);
+        setSelectedMonth((prev) =>
+          list.some((m) => m.month === prev) ? prev : list[0].month,
+        );
       }
     }
     setMonthsLoaded(true);
   }, []);
+
+  const clearStaffFilter = useCallback(() => {
+    setSelectedStaffId("all");
+    router.setParams({ staff_id: "all" });
+  }, [router]);
 
   const loadReport = useCallback(
     async (month: string, nextFilters: Required<EarningsFilters>) => {
@@ -115,14 +189,21 @@ export default function BusinessEarningsScreen() {
       try {
         const data = await fetchEarningsReport(month, nextFilters);
         setReport(data);
-      } catch {
+      } catch (error) {
+        if (
+          nextFilters.staffId !== "all" &&
+          isStaffIdValidationError(error)
+        ) {
+          clearStaffFilter();
+          return;
+        }
         setReportError(true);
       } finally {
         setReportLoading(false);
         setInitialLoading(false);
       }
     },
-    [],
+    [clearStaffFilter],
   );
 
   const loadPreview = useCallback(
@@ -136,9 +217,29 @@ export default function BusinessEarningsScreen() {
           EARNINGS_PREVIEW_PER_PAGE,
         );
         setPreviewTxns(transactions);
-      } catch {
+      } catch (error) {
+        if (
+          nextFilters.staffId !== "all" &&
+          isStaffIdValidationError(error)
+        ) {
+          clearStaffFilter();
+          return;
+        }
         setTxnError(true);
         setPreviewTxns([]);
+      }
+    },
+    [clearStaffFilter],
+  );
+
+  const loadStaff = useCallback(
+    async (month: string, nextFilters: EarningsCoreFilters) => {
+      setStaffError(false);
+      try {
+        const data = await fetchStaffEarnings(month, nextFilters);
+        setStaffReport(data);
+      } catch {
+        setStaffError(true);
       }
     },
     [],
@@ -146,35 +247,50 @@ export default function BusinessEarningsScreen() {
 
   useEffect(() => {
     if (userRole !== "business") return;
-    loadMonths().catch(() => setMonthsLoaded(true));
-  }, [userRole, loadMonths]);
+    loadMonths(selectedStaffId).catch(() => setMonthsLoaded(true));
+  }, [userRole, selectedStaffId, loadMonths]);
 
   useEffect(() => {
     if (userRole !== "business" || !monthsLoaded) return;
-    loadReport(selectedMonth, filters);
-    loadPreview(selectedMonth, filters);
+    loadReport(selectedMonth, combinedFilters);
+    loadPreview(selectedMonth, combinedFilters);
   }, [
     userRole,
     monthsLoaded,
     selectedMonth,
-    filters,
+    combinedFilters,
     loadReport,
     loadPreview,
   ]);
 
+  useEffect(() => {
+    if (userRole !== "business" || !monthsLoaded) return;
+    loadStaff(selectedMonth, filters);
+  }, [userRole, monthsLoaded, selectedMonth, filters, loadStaff]);
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadMonths();
+      await loadMonths(selectedStaffId);
     } catch {
       // ignore
     }
     await Promise.all([
-      loadReport(selectedMonth, filters),
-      loadPreview(selectedMonth, filters),
+      loadReport(selectedMonth, combinedFilters),
+      loadPreview(selectedMonth, combinedFilters),
+      loadStaff(selectedMonth, filters),
     ]);
     setRefreshing(false);
-  }, [loadMonths, loadReport, loadPreview, selectedMonth, filters]);
+  }, [
+    loadMonths,
+    loadReport,
+    loadPreview,
+    loadStaff,
+    selectedMonth,
+    combinedFilters,
+    filters,
+    selectedStaffId,
+  ]);
 
   const canGoNewer = monthIndex > 0;
   const canGoOlder = monthIndex >= 0 && monthIndex < months.length - 1;
@@ -189,9 +305,14 @@ export default function BusinessEarningsScreen() {
     setSelectedMonth(months[monthIndex + 1].month);
   };
 
-  const currency = report?.currency ?? "USD";
+  const currency = report?.currency ?? staffReport?.currency ?? "USD";
   const hasActivity = report?.summary?.hasActivity === true;
   const showFaded = reportLoading && !!report && !initialLoading;
+  const showStaffBreakdown =
+    !staffFilterActive &&
+    hasActivity &&
+    !!staffReport &&
+    staffReport.totals.transactionsCount > 0;
 
   const netDelta = useMemo(() => {
     if (!report || !previousMonthRow) return null;
@@ -206,9 +327,32 @@ export default function BusinessEarningsScreen() {
         revenue_source: filters.revenueSource,
         payment_status: filters.paymentStatus,
         transaction_type: filters.transactionType,
+        staff_id:
+          selectedStaffId === "all" ? "all" : String(selectedStaffId),
         label: selectedMonthLabel,
         currency,
       },
+    });
+  };
+
+  const openStaffScreen = () => {
+    router.push({
+      pathname: "/(main)/businessEarnings/staff",
+      params: {
+        month: selectedMonth,
+        revenue_source: filters.revenueSource,
+        payment_status: filters.paymentStatus,
+        transaction_type: filters.transactionType,
+        label: selectedMonthLabel,
+        currency,
+      },
+    });
+  };
+
+  const applyStaffFilter = (staffId: StaffIdFilter) => {
+    setSelectedStaffId(staffId);
+    router.setParams({
+      staff_id: staffId === "all" ? "all" : String(staffId),
     });
   };
 
@@ -256,6 +400,46 @@ export default function BusinessEarningsScreen() {
         <Text style={styles.filterBtnText}>{t("earningsFilters")}</Text>
       </TouchableOpacity>
     </View>
+  );
+
+  const renderStaffControls = () => (
+    <>
+      <TouchableOpacity
+        style={styles.staffPickerBtn}
+        onPress={() => setStaffPickerVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.staffPickerLabel} numberOfLines={1}>
+          {selectedStaffLabel}
+        </Text>
+        <Ionicons
+          name="chevron-down"
+          size={iconScale(18)}
+          color={theme.darkGreen}
+        />
+      </TouchableOpacity>
+
+      {staffFilterActive && (
+        <View style={styles.staffChipRow}>
+          <View style={styles.staffChip}>
+            <Text style={styles.staffChipText} numberOfLines={1}>
+              {selectedStaffLabel}
+            </Text>
+            <TouchableOpacity
+              style={styles.staffChipClear}
+              onPress={clearStaffFilter}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons
+                name="close"
+                size={iconScale(14)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </>
   );
 
   const renderSkeleton = () => (
@@ -350,6 +534,55 @@ export default function BusinessEarningsScreen() {
     );
   };
 
+  const renderStaffSection = () => {
+    if (staffFilterActive) return null;
+
+    if (staffError) {
+      return (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>{t("earningsByStaff")}</Text>
+          <View style={styles.txnErrorWrap}>
+            <Text style={styles.txnErrorText}>
+              {t("earningsStaffLoadError")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => loadStaff(selectedMonth, filters)}
+            >
+              <Text style={styles.retryLink}>{t("retry")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    if (!showStaffBreakdown || staffPreviewRows.length === 0) return null;
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitleInline}>{t("earningsByStaff")}</Text>
+          <TouchableOpacity onPress={openStaffScreen} activeOpacity={0.7}>
+            <Text style={styles.seeAll}>{t("seeAll")}</Text>
+          </TouchableOpacity>
+        </View>
+        {staffPreviewRows.map((row, idx) => (
+          <EarningsStaffRow
+            key={row.staffId ?? `unassigned-${idx}`}
+            item={row}
+            currency={currency}
+            compact
+            isLast={idx === staffPreviewRows.length - 1}
+            onPress={
+              row.staffId != null
+                ? () => applyStaffFilter(row.staffId as number)
+                : undefined
+            }
+          />
+        ))}
+      </View>
+    );
+  };
+
   const renderBody = () => {
     if (initialLoading) return renderSkeleton();
 
@@ -374,6 +607,10 @@ export default function BusinessEarningsScreen() {
         </View>
       );
     }
+
+    const sourceRows = staffFilterActive
+      ? report.revenueBySource.filter((src) => src.source !== "subscription")
+      : report.revenueBySource;
 
     return (
       <View style={showFaded ? styles.contentFaded : undefined}>
@@ -425,10 +662,10 @@ export default function BusinessEarningsScreen() {
           </View>
         </View>
 
-        {report.revenueBySource.length > 0 && (
+        {sourceRows.length > 0 && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>{t("earningsWhereFrom")}</Text>
-            {report.revenueBySource.map((src) => (
+            {sourceRows.map((src) => (
               <View key={src.source} style={styles.sourceRow}>
                 <View style={styles.sourceTop}>
                   <Text style={styles.rowLabel}>{src.label}</Text>
@@ -443,6 +680,8 @@ export default function BusinessEarningsScreen() {
             ))}
           </View>
         )}
+
+        {renderStaffSection()}
 
         {renderDeductions()}
 
@@ -503,7 +742,7 @@ export default function BusinessEarningsScreen() {
                 {t("earningsTransactionsError")}
               </Text>
               <TouchableOpacity
-                onPress={() => loadPreview(selectedMonth, filters)}
+                onPress={() => loadPreview(selectedMonth, combinedFilters)}
               >
                 <Text style={styles.retryLink}>{t("retry")}</Text>
               </TouchableOpacity>
@@ -551,6 +790,7 @@ export default function BusinessEarningsScreen() {
         }
       >
         {renderMonthBar()}
+        {renderStaffControls()}
         {reportLoading && !report && !initialLoading ? (
           <ActivityIndicator
             style={{ marginTop: moderateHeightScale(24) }}
@@ -566,6 +806,14 @@ export default function BusinessEarningsScreen() {
         filters={filters}
         onClose={() => setFilterVisible(false)}
         onApply={setFilters}
+      />
+
+      <EarningsStaffPickerModal
+        visible={staffPickerVisible}
+        staff={staffReport?.staff ?? []}
+        selectedStaffId={selectedStaffId}
+        onClose={() => setStaffPickerVisible(false)}
+        onSelect={applyStaffFilter}
       />
     </View>
   );

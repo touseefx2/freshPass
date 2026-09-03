@@ -16,7 +16,10 @@ import {
 } from "@/src/theme/dimensions";
 import dayjs from "dayjs";
 import type { EarningsTransaction } from "@/src/types/businessEarnings";
-import { formatMoneyPlain } from "@/src/services/businessEarningsService";
+import {
+  formatMoneyPlain,
+  isViewableReceiptUrl,
+} from "@/src/services/businessEarningsService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -142,18 +145,27 @@ export default function EarningsTransactionRow({
         ? styles.badgeTextPartial
         : undefined;
 
-  const paidLabel = dayjs(item.paidAt).isValid()
-    ? dayjs(item.paidAt).format("MMM D, YYYY · h:mm A")
-    : item.paidAt;
+  const paidLabel =
+    item.paidAt && dayjs(item.paidAt).isValid()
+      ? dayjs(item.paidAt).format("MMM D, YYYY · h:mm A")
+      : item.paidAt ?? "";
 
   const feeOrDash = (value: number | null) =>
     value === null ? "—" : formatMoneyPlain(value, currency);
 
+  const canViewReceipt = isViewableReceiptUrl(item.receiptUrl);
+
   const openReceipt = () => {
-    if (item.receiptUrl) {
+    if (canViewReceipt && item.receiptUrl) {
       Linking.openURL(item.receiptUrl);
     }
   };
+
+  const attributionParts: string[] = [item.sourceLabel];
+  if (item.staffName) attributionParts.push(item.staffName);
+  if (item.tipRecipientName && item.tipRecipientName !== item.staffName) {
+    attributionParts.push(item.tipRecipientName);
+  }
 
   return (
     <View style={styles.card}>
@@ -172,13 +184,14 @@ export default function EarningsTransactionRow({
         </Text>
       )}
       <Text style={styles.meta} numberOfLines={1}>
-        {item.sourceLabel}
-        {item.tipRecipientName ? ` · ${item.tipRecipientName}` : ""}
+        {attributionParts.join(" · ")}
       </Text>
-      <Text style={styles.meta} numberOfLines={1}>
-        {paidLabel}
-        {item.cardLastFour ? ` · •••• ${item.cardLastFour}` : ""}
-      </Text>
+      {!!paidLabel && (
+        <Text style={styles.meta} numberOfLines={1}>
+          {paidLabel}
+          {item.cardLastFour ? ` · •••• ${item.cardLastFour}` : ""}
+        </Text>
+      )}
 
       <View style={styles.amountsRow}>
         <View style={styles.amountBlock}>
@@ -208,7 +221,7 @@ export default function EarningsTransactionRow({
         </View>
       </View>
 
-      {!!item.receiptUrl && (
+      {canViewReceipt && (
         <TouchableOpacity
           style={styles.receiptBtn}
           onPress={openReceipt}

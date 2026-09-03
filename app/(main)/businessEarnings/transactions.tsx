@@ -27,12 +27,14 @@ import {
   EARNINGS_TRANSACTIONS_PER_PAGE,
   fetchEarningsTransactions,
   getCurrentMonthKey,
+  isStaffIdValidationError,
 } from "@/src/services/businessEarningsService";
 import type {
   EarningsFilters,
   EarningsTransaction,
   PaymentStatusFilter,
   RevenueSourceFilter,
+  StaffIdFilter,
   TransactionTypeFilter,
 } from "@/src/types/businessEarnings";
 import { createStyles } from "./styles";
@@ -49,6 +51,15 @@ function asFilterValue<T extends string>(
   return fallback;
 }
 
+function parseStaffId(
+  value: string | string[] | undefined,
+): StaffIdFilter {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw || raw === "all") return "all";
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : "all";
+}
+
 export default function BusinessEarningsTransactionsScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -61,6 +72,7 @@ export default function BusinessEarningsTransactionsScreen() {
     revenue_source?: string;
     payment_status?: string;
     transaction_type?: string;
+    staff_id?: string;
     label?: string;
     currency?: string;
   }>();
@@ -72,6 +84,14 @@ export default function BusinessEarningsTransactionsScreen() {
     "USD";
   const label =
     (Array.isArray(params.label) ? params.label[0] : params.label) || month;
+
+  const [staffId, setStaffId] = useState<StaffIdFilter>(() =>
+    parseStaffId(params.staff_id),
+  );
+
+  useEffect(() => {
+    setStaffId(parseStaffId(params.staff_id));
+  }, [params.staff_id]);
 
   const filters: Required<EarningsFilters> = useMemo(
     () => ({
@@ -90,8 +110,14 @@ export default function BusinessEarningsTransactionsScreen() {
         ["all", "charge", "refund"] as const,
         DEFAULT_EARNINGS_FILTERS.transactionType,
       ) as TransactionTypeFilter,
+      staffId,
     }),
-    [params.revenue_source, params.payment_status, params.transaction_type],
+    [
+      params.revenue_source,
+      params.payment_status,
+      params.transaction_type,
+      staffId,
+    ],
   );
 
   const [transactions, setTransactions] = useState<EarningsTransaction[]>([]);
@@ -132,7 +158,11 @@ export default function BusinessEarningsTransactionsScreen() {
         }
         setCurrentPage(meta.currentPage ?? page);
         setHasMore(!!meta.hasMore);
-      } catch {
+      } catch (err) {
+        if (filters.staffId !== "all" && isStaffIdValidationError(err)) {
+          setStaffId("all");
+          return;
+        }
         if (!append) {
           setTransactions([]);
           setError(true);

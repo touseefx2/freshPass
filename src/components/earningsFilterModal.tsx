@@ -17,12 +17,17 @@ import {
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
 import type {
-  EarningsFilters,
   PaymentStatusFilter,
   RevenueSourceFilter,
   TransactionTypeFilter,
 } from "@/src/types/businessEarnings";
 import { DEFAULT_EARNINGS_FILTERS } from "@/src/services/businessEarningsService";
+
+export type EarningsCoreFilters = {
+  revenueSource: RevenueSourceFilter;
+  paymentStatus: PaymentStatusFilter;
+  transactionType: TransactionTypeFilter;
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -107,9 +112,9 @@ type ChipOption<T extends string> = { value: T; label: string };
 
 type Props = {
   visible: boolean;
-  filters: Required<EarningsFilters>;
+  filters: EarningsCoreFilters;
   onClose: () => void;
-  onApply: (filters: Required<EarningsFilters>) => void;
+  onApply: (filters: EarningsCoreFilters) => void;
 };
 
 export default function EarningsFilterModal({
@@ -210,7 +215,13 @@ export default function EarningsFilterModal({
             />
             <TouchableOpacity
               style={styles.resetBtn}
-              onPress={() => setDraft(DEFAULT_EARNINGS_FILTERS)}
+              onPress={() =>
+                setDraft({
+                  revenueSource: DEFAULT_EARNINGS_FILTERS.revenueSource,
+                  paymentStatus: DEFAULT_EARNINGS_FILTERS.paymentStatus,
+                  transactionType: DEFAULT_EARNINGS_FILTERS.transactionType,
+                })
+              }
               activeOpacity={0.7}
             >
               <Text style={styles.resetText}>{t("earningsResetFilters")}</Text>

@@ -954,5 +954,14 @@
   "earningsFeeDataIncomplete": "今月の支払いのうち{{count}}件で手数料情報が不足しているため、控除合計が低く表示される可能性があります。",
   "earningsVsMonth": "{{direction}} {{amount}}（{{month}}比）",
   "earningsVsMonthFlat": "{{month}}と同じ",
+  "earningsAllStaff": "全スタッフ",
+  "earningsStaffPickerTitle": "スタッフで絞り込み",
+  "earningsByStaff": "スタッフ別",
+  "earningsByStaffTitle": "スタッフ別の売上",
+  "earningsStaffRemoved": "削除済み",
+  "earningsUnassigned": "店舗（スタッフなし）",
+  "earningsNetApproximate": "概算",
+  "earningsStaffLoadError": "スタッフの売上を読み込めませんでした。",
+  "earningsTotal": "合計",
   "seeAll": "すべて見る"
 }
