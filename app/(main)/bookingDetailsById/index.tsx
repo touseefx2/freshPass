@@ -422,6 +422,49 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.borderLight,
       marginTop: moderateHeightScale(16),
     },
+    assignedStaffRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: moderateHeightScale(14),
+      marginHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(8),
+      borderLeftWidth: moderateWidthScale(3),
+      borderLeftColor: theme.darkGreen,
+      gap: moderateWidthScale(10),
+    },
+    assignedStaffAvatar: {
+      width: widthScale(36),
+      height: widthScale(36),
+      borderRadius: widthScale(36 / 2),
+      backgroundColor: theme.lightGreen05,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    assignedStaffAvatarImage: {
+      width: "100%",
+      height: "100%",
+    },
+    assignedStaffTextContainer: {
+      flex: 1,
+    },
+    assignedStaffLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    assignedStaffName: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
     notesContainer: {
       marginTop: moderateHeightScale(14),
       marginHorizontal: moderateWidthScale(20),
@@ -846,6 +889,24 @@ export default function bookingDetailsById() {
     staffClientname = booking?.user ?? "User";
   }
 
+  const hasAssignedStaff =
+    userRole === "business" && booking?.staffId != null;
+
+  const assignedStaffDisplayName = useMemo(() => {
+    const name =
+      typeof booking?.staffName === "string" ? booking.staffName.trim() : "";
+    if (!name || name.toLowerCase() === "anyone") {
+      return null;
+    }
+    return name;
+  }, [booking?.staffName]);
+
+  const assignedStaffImageUri = useMemo(() => {
+    const resolved = resolveApiImageUrl(booking?.staffImage);
+    const fallback = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE?.trim() ?? "";
+    return resolved || fallback || null;
+  }, [booking?.staffImage]);
+
   const handlePersonPress = useCallback(() => {
     if (!booking) {
       return;
@@ -873,6 +934,18 @@ export default function bookingDetailsById() {
       });
     }
   }, [booking, router, staffClientname, userRole]);
+
+  const handleAssignedStaffPress = useCallback(() => {
+    const staffId = booking?.staffId;
+    if (staffId == null) {
+      return;
+    }
+
+    router.push({
+      pathname: "/(main)/staffDetail",
+      params: { id: String(staffId) },
+    });
+  }, [booking?.staffId, router]);
 
   const mapApiStatusToBookingStatus = (apiStatus: string): BookingStatus => {
     switch (apiStatus.toLowerCase()) {
@@ -1857,6 +1930,40 @@ export default function bookingDetailsById() {
                 <Text style={styles.notesLabel}>{t("notes")}</Text>
                 <Text style={styles.notesText}>{booking.notes}</Text>
               </View>
+            )}
+
+            {/* Assigned staff - business role only, when staff is assigned */}
+            {hasAssignedStaff && (
+              <TouchableOpacity
+                style={styles.assignedStaffRow}
+                activeOpacity={0.7}
+                onPress={handleAssignedStaffPress}
+              >
+                <View style={styles.assignedStaffAvatar}>
+                  {assignedStaffImageUri ? (
+                    <Image
+                      source={{ uri: assignedStaffImageUri }}
+                      style={styles.assignedStaffAvatarImage}
+                    />
+                  ) : (
+                    <PersonIcon
+                      width={moderateWidthScale(18)}
+                      height={moderateWidthScale(18)}
+                      color={theme.darkGreen}
+                    />
+                  )}
+                </View>
+                <View style={styles.assignedStaffTextContainer}>
+                  <Text style={styles.assignedStaffLabel}>
+                    {t("assignedStaff")}
+                  </Text>
+                  {assignedStaffDisplayName ? (
+                    <Text style={styles.assignedStaffName} numberOfLines={1}>
+                      {assignedStaffDisplayName}
+                    </Text>
+                  ) : null}
+                </View>
+              </TouchableOpacity>
             )}
           </View>
 
