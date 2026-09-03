@@ -27,6 +27,7 @@ import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "../../DashboardHeaderClient";
+import EmptyState from "@/src/components/emptyState";
 
 type TabType = "all" | "complete" | "cancelled";
 type ListType = "subscriptions" | "individual";
@@ -300,17 +301,6 @@ const createStyles = (theme: Theme) =>
     },
     statusTextPending: {
       color: theme.appointmentStatusText,
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(60),
-    },
-    emptyText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
     },
     loadingContainer: {
       flex: 1,
@@ -881,15 +871,36 @@ export default function BookingScreen() {
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
+              flexGrow: 1,
               paddingBottom: moderateHeightScale(20),
               paddingHorizontal: moderateWidthScale(16),
             }}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.3}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>{t("noBookingsFound")}</Text>
-              </View>
+              <EmptyState
+                icon={
+                  selectedTab === "complete"
+                    ? "check-circle-outline"
+                    : selectedTab === "cancelled"
+                      ? "cancel"
+                      : "event-note"
+                }
+                title={
+                  selectedTab === "complete"
+                    ? t("noCompletedBookings")
+                    : selectedTab === "cancelled"
+                      ? t("noCancelledBookings")
+                      : t("noBookingsYet")
+                }
+                subtitle={
+                  selectedTab === "complete"
+                    ? t("completedBookingsEmptySubtitle")
+                    : selectedTab === "cancelled"
+                      ? t("cancelledBookingsEmptySubtitle")
+                      : t("bookingsEmptySubtitle")
+                }
+              />
             }
             ListFooterComponent={
               loadingMore ? (
