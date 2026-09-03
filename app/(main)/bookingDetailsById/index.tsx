@@ -2328,7 +2328,9 @@ export default function bookingDetailsById() {
             </View>
           )}
 
-          {userRole === "customer" && booking.canTip && (
+          {userRole === "customer" &&
+            booking.canTip &&
+            !booking.owesPayment && (
             <TipSection
               appointmentId={Number(booking.id)}
               initialCanTip={booking.canTip}
