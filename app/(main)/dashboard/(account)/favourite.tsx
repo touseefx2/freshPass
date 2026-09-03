@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -19,6 +19,8 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import EmptyState from "@/src/components/emptyState";
+import Button from "@/src/components/button";
 import { ApiService } from "@/src/services/api";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -107,23 +109,28 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.white,
     },
-    emptyContainer: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(40),
-    },
-    emptyText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      textAlign: "center",
-    },
     loaderContainer: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
       paddingVertical: moderateHeightScale(40),
+    },
+    errorContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(28),
+      gap: moderateHeightScale(16),
+    },
+    errorText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: moderateHeightScale(22),
+    },
+    retryButton: {
+      minWidth: widthScale(160),
     },
   });
 
@@ -133,7 +140,6 @@ export default function FavouriteScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const user = useAppSelector((state) => state.user);
 
   const [favorites, setFavorites] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -288,10 +294,21 @@ export default function FavouriteScreen() {
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
-      ) : favorites.length === 0 && !error ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>{t("noDataFound")}</Text>
+      ) : error && favorites.length === 0 ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <Button
+            title={t("retry")}
+            onPress={() => fetchFavorites(1, "initial")}
+            containerStyle={styles.retryButton}
+          />
         </View>
+      ) : favorites.length === 0 ? (
+        <EmptyState
+          icon="favorite-border"
+          title={t("noFavoritesYet")}
+          subtitle={t("favoritesEmptySubtitle")}
+        />
       ) : (
         <FlatList
           data={favorites}

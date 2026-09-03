@@ -18,6 +18,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import EmptyState from "@/src/components/emptyState";
 import { MaterialIcons } from "@expo/vector-icons";
 import { ApiService } from "@/src/services/api";
 import { reviewsEndpoints } from "@/src/services/endpoints";
@@ -166,18 +167,6 @@ const createStyles = (theme: Theme) =>
       textDecorationLine: "underline",
       textDecorationColor: theme.selectCard,
       marginTop: moderateHeightScale(8),
-    },
-    emptyStateContainer: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(40),
-    },
-    emptyStateText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
     },
     loadingFooter: {
       paddingVertical: moderateHeightScale(20),
@@ -408,9 +397,15 @@ export default function UserReviewsScreen() {
   const renderEmptyState = () => {
     if (loading) return null;
     return (
-      <View style={styles.emptyStateContainer}>
-        <Text style={styles.emptyStateText}>{t("noAnyReview")}</Text>
-      </View>
+      <EmptyState
+        icon="star-border"
+        title={t("noReviewsYet")}
+        subtitle={
+          isCustomerReview
+            ? t("reviewsEmptySubtitle")
+            : t("businessReviewsEmptySubtitle")
+        }
+      />
     );
   };
 
