@@ -21,10 +21,7 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
-import Button from "@/src/components/button";
-import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { MAIN_ROUTES } from "@/src/constant/routes";
 import {
   NotificationBellOutlineIcon,
   ProposalDocumentIcon,
@@ -46,6 +43,7 @@ import { navigateFromNotificationData } from "@/src/services/notificationNavigat
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import StackHeader from "@/src/components/StackHeader";
+import EmptyState from "@/src/components/emptyState";
 
 dayjs.extend(relativeTime);
 
@@ -197,16 +195,8 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     emptyStateContainer: {
-      flex: 1,
-      alignItems: "center",
+      flexGrow: 1,
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    emptyStateText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      textAlign: "center",
     },
     screenTitle: {
       fontSize: fontSize.size22,
@@ -729,7 +719,7 @@ export default function NotificationsScreen() {
         </View>
       ) : notifications.length === 0 ? (
         <ScrollView
-          style={styles.content}
+          style={{ flex: 1 }}
           contentContainerStyle={styles.emptyStateContainer}
           refreshControl={
             <RefreshControl
@@ -740,7 +730,11 @@ export default function NotificationsScreen() {
             />
           }
         >
-          <Text style={styles.emptyStateText}>{t("noNotificationsYet")}</Text>
+          <EmptyState
+            icon="notifications-none"
+            title={t("noNotificationsYet")}
+            subtitle={t("notificationsEmptySubtitle")}
+          />
         </ScrollView>
       ) : (
         <SectionList
