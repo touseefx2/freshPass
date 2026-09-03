@@ -37,7 +37,6 @@ import {
   setAssignedStaffId,
   setSelectedPaymentMethod,
   setSelectedNote,
-  setSelectedTipAmount,
   resetBusiness,
   setBusinessData as setBusinessDataAction,
   type StaffMember,
@@ -68,16 +67,11 @@ import {
 import { SvgXml } from "react-native-svg";
 import { LeafLogo } from "@/assets/icons";
 import Button from "@/src/components/button";
-import BookingTipPicker from "@/src/components/bookingTipPicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
 import { MorningIcon, EveningIcon, NightIcon, CloseIcon } from "@/assets/icons";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
-import {
-  TIP_MIN_AMOUNT,
-  TIP_MAX_AMOUNT,
-} from "@/src/services/tipService";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -1307,7 +1301,6 @@ export default function BookingNow() {
     businessId: reduxBusinessId,
     businessHours,
     selectedPaymentMethod: reduxPaymentMethod,
-    selectedTipAmount: reduxTipAmount,
     subscriptionPlanType,
   } = businessData || {
     selectedService: null,
@@ -1318,7 +1311,6 @@ export default function BookingNow() {
     businessId: "",
     businessHours: null,
     selectedPaymentMethod: "payNow",
-    selectedTipAmount: null,
     subscriptionPlanType: null,
   };
 
@@ -2081,18 +2073,9 @@ export default function BookingNow() {
     (sum, service) => sum + service.price,
     0,
   );
-  const tipAmount =
-    typeof reduxTipAmount === "number" && reduxTipAmount > 0
-      ? reduxTipAmount
-      : 0;
   const taxRate = 0.0;
   const tax = totalPrice * taxRate;
-  const estimatedTotal = totalPrice + tax + tipAmount;
-
-  const tipRecipientName =
-    selectedStaff === "anyone"
-      ? null
-      : (selectedStaffMember?.name ?? null);
+  const estimatedTotal = totalPrice + tax;
 
   const handleDeleteService = (serviceId: number) => {
     const updatedServices = selectedServices.filter(
@@ -2639,24 +2622,12 @@ export default function BookingNow() {
               </TouchableOpacity>
             )}
 
-            {/* Tip + Payment Method Section - hide for subscription booking */}
+            {/* Payment Method Section - hide for subscription booking */}
             {!isSubscriptionBooking && (
               <>
                 <View
                   style={[styles.line, { marginTop: moderateHeightScale(20) }]}
                 />
-
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>Add a tip (optional)</Text>
-                  <BookingTipPicker
-                    serviceTotal={totalPrice}
-                    tipAmount={reduxTipAmount ?? null}
-                    onTipAmountChange={(amount) =>
-                      dispatch(setSelectedTipAmount(amount))
-                    }
-                    recipientName={tipRecipientName}
-                  />
-                </View>
 
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>Choose payment method</Text>
@@ -3042,14 +3013,6 @@ export default function BookingNow() {
                     ${totalPrice.toFixed(2)} USD
                   </Text>
                 </View>
-                {tipAmount > 0 ? (
-                  <View style={styles.priceRow}>
-                    <Text style={styles.priceLabel}>Tip:</Text>
-                    <Text style={styles.priceValue}>
-                      ${tipAmount.toFixed(2)} USD
-                    </Text>
-                  </View>
-                ) : null}
                 <View style={styles.priceRow}>
                   <Text style={styles.priceLabel}>Tax:</Text>
                   <Text style={styles.priceValue}>${tax.toFixed(2)} USD</Text>
@@ -3247,18 +3210,6 @@ export default function BookingNow() {
                 showBanner(
                   "Select time",
                   "Please select a date and time slot before checkout.",
-                  "warning",
-                  4000,
-                );
-                return;
-              }
-              if (
-                tipAmount > 0 &&
-                (tipAmount < TIP_MIN_AMOUNT || tipAmount > TIP_MAX_AMOUNT)
-              ) {
-                showBanner(
-                  "Invalid tip",
-                  `Tip must be between $${TIP_MIN_AMOUNT.toFixed(2)} and $${TIP_MAX_AMOUNT.toFixed(2)}.`,
                   "warning",
                   4000,
                 );

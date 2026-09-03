@@ -207,23 +207,13 @@ interface AppointmentPaymentSheetApiResponse {
   };
 }
 
-/**
- * @param tipAmount undefined = keep booking tip; null/0 = clear tip; number = set/replace tip
- */
 export const fetchAppointmentPaymentSheetParams = async (
   appointmentId: number,
-  tipAmount?: number | null,
 ): Promise<PaymentSheetParams> => {
   try {
-    const body: { appointment_id: number; tip_amount?: number | null } = {
+    const body: { appointment_id: number } = {
       appointment_id: appointmentId,
     };
-
-    // Important: only send tip_amount when explicitly provided.
-    // Omitting the field keeps the tip chosen at booking.
-    if (tipAmount !== undefined) {
-      body.tip_amount = tipAmount;
-    }
 
     const response = await ApiService.post<AppointmentPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheet,

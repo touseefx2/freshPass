@@ -45,25 +45,6 @@ export type TipDetails = {
   pendingTip?: PendingTip | null;
 };
 
-export const TIP_MIN_AMOUNT = 1;
-export const TIP_MAX_AMOUNT = 1000;
-
-/** Same rule as backend: 15/20/25% of service total, ceil, de-dupe, clamp. */
-export function computeSuggestedTipAmounts(serviceTotal: number): number[] {
-  if (!Number.isFinite(serviceTotal) || serviceTotal <= 0) {
-    return [3, 4, 5].filter(
-      (amount) => amount >= TIP_MIN_AMOUNT && amount <= TIP_MAX_AMOUNT,
-    );
-  }
-
-  const raw = [0.15, 0.2, 0.25].map((pct) => Math.ceil(serviceTotal * pct));
-  return [...new Set(raw)]
-    .filter(
-      (amount) => amount >= TIP_MIN_AMOUNT && amount <= TIP_MAX_AMOUNT,
-    )
-    .sort((a, b) => a - b);
-}
-
 export type TipPaymentSheetData = {
   customer: string;
   paymentIntent: string;

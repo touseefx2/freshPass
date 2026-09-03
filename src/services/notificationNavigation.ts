@@ -8,6 +8,7 @@ export type NotificationSubType =
   | "appointment_cancelled"
   | "appointment_cancelled_refunded"
   | "appointment_reminder"
+  | "appointment_completed"
   | "payment_request"
   | "review_request"
   | "tip_request"

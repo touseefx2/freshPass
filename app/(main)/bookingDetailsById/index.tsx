@@ -103,6 +103,10 @@ const backArrowIconSvg = `
 // Hours before appointment (current time must be at least this many hours behind appointment) to show Reschedule button
 const HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE = 1;
 
+// A tip only becomes available once the Stripe webhook settles the service
+// payment, which lands a moment after the payment sheet closes.
+const TIP_AVAILABILITY_POLL_DELAYS_MS = [0, 2000, 2000];
+
 type BookingStatus =
   | "ongoing"
   | "active"
@@ -133,6 +137,9 @@ interface BookingItem {
   businessAverageRating?: number;
   paymentMethod?: string;
   paidAmount?: string | null;
+  /** Service payment is still outstanding. Only field to branch payment UI on. */
+  owesPayment?: boolean;
+  paidAt?: string | null;
   subscriptionVisits?: {
     used: number;
     upcoming: number;
@@ -217,6 +224,8 @@ interface ApiBookingResponse {
   appointmentTime: string;
   status: string;
   paidAmount: string | null;
+  owesPayment?: boolean;
+  paidAt?: string | null;
   notes: string | null;
   cancelReason: string | null;
   cancelDate: string | null;
@@ -824,6 +833,11 @@ export default function bookingDetailsById() {
   const [error, setError] = useState<string | null>(null);
 
   const bookingId = params.bookingId as string;
+  // Set by payment_request / review_request notifications so the tap lands in
+  // the relevant flow instead of just the details screen.
+  const shouldOpenPay = params.openPay === "1";
+  const shouldOpenReview = params.openReview === "1";
+  const hasHandledNotificationAction = useRef(false);
   const userRole = useAppSelector((state) => state.user.userRole);
   let staffClientname = "";
   if (userRole === "customer") {
@@ -1070,6 +1084,12 @@ export default function bookingDetailsById() {
       businessAverageRating: apiData.businessAverageRating || 0,
       paymentMethod: apiData.paymentMethod,
       paidAmount: apiData.paidAmount,
+      owesPayment:
+        apiData.owesPayment ??
+        // Older responses have no owesPayment; settling a pay-later
+        // appointment rewrites the method to pay_now, so this matches.
+        !(apiData.paymentMethod === "pay_now" && apiData.paidAmount != null),
+      paidAt: apiData.paidAt ?? null,
       subscriptionVisits: apiData.subscriptionVisits || null,
       planName,
       type: apiData.appointmentType,
@@ -1127,6 +1147,40 @@ export default function bookingDetailsById() {
       setError(err?.message || "Failed to fetch booking details");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Refetch without touching the loading state, so background refreshes don't
+  // replace the screen with a spinner.
+  const refreshBookingSilently = async (): Promise<BookingItem | null> => {
+    if (!bookingId) return null;
+
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: ApiBookingResponse;
+      }>(appointmentsEndpoints.getById(bookingId));
+
+      if (response.success && response.data) {
+        const mappedBooking = mapApiResponseToBookingItem(response.data);
+        setBooking(mappedBooking);
+        return mappedBooking;
+      }
+    } catch {
+      // Leave the current booking on screen; the next focus refetch corrects it.
+    }
+
+    return null;
+  };
+
+  const refreshUntilTipAvailable = async () => {
+    for (const delayMs of TIP_AVAILABILITY_POLL_DELAYS_MS) {
+      if (delayMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+      const updated = await refreshBookingSilently();
+      if (updated?.canTip) return;
     }
   };
 
@@ -1232,6 +1286,9 @@ export default function bookingDetailsById() {
       isComplete &&
       userRole === "customer" &&
       !hasShownReviewPromptForVisit.current &&
+      // A payment notification must land in the payment sheet, not behind a
+      // review modal. Once the payment is settled the prompt can show again.
+      !(shouldOpenPay && booking.owesPayment) &&
       booking.businessId != null &&
       user?.id != null
     ) {
@@ -1638,7 +1695,9 @@ export default function bookingDetailsById() {
           "success",
           3000,
         );
-        await fetchBookingDetails();
+        // Not awaited: the Stripe account must be released straight away, and
+        // the tip card can appear once the webhook settles the payment.
+        void refreshUntilTipAvailable();
       } finally {
         await useStripeAccount(null);
       }
@@ -1656,6 +1715,20 @@ export default function bookingDetailsById() {
       dispatch(setActionLoader(false));
     }
   };
+
+  // Act on the notification the customer tapped, once the booking has loaded.
+  // The ref keeps a re-render from reopening the Stripe sheet.
+  useEffect(() => {
+    if (!booking || loading || hasHandledNotificationAction.current) return;
+
+    if (shouldOpenPay && booking.owesPayment) {
+      hasHandledNotificationAction.current = true;
+      void handlePayOnline();
+    } else if (shouldOpenReview) {
+      hasHandledNotificationAction.current = true;
+      void checkAndShowReviewPrompt();
+    }
+  }, [booking, loading]);
 
   const renderContent = () => {
     if (loading) {
@@ -2024,7 +2097,7 @@ export default function bookingDetailsById() {
                 />
               </View>
               <View style={styles.paymentTextContainer}>
-                {booking.paymentMethod === "pay_now" &&
+                {!booking.owesPayment &&
                 booking.paidAmount !== null &&
                 booking.paidAmount !== undefined ? (
                   <>
@@ -2070,49 +2143,6 @@ export default function bookingDetailsById() {
                       </Text>
                     )}
                   </>
-                ) : booking.pendingTip ? (
-                  <>
-                    <Text style={styles.paymentLabel}>
-                      {userRole === "customer" ? "I" : staffClientname} will pay
-                    </Text>
-                    <View style={styles.paymentBreakdownCard}>
-                      <View style={styles.paymentBreakdownRow}>
-                        <Text style={styles.paymentBreakdownLabel}>
-                          Service
-                        </Text>
-                        <Text style={styles.paymentBreakdownValue}>
-                          {booking.price}
-                        </Text>
-                      </View>
-                      <View style={styles.paymentBreakdownRow}>
-                        <Text style={styles.paymentBreakdownLabel}>
-                          Tip for{" "}
-                          {formatTipRecipientName(
-                            booking.pendingTip.recipientName,
-                          )}
-                        </Text>
-                        <Text style={styles.paymentBreakdownValue}>
-                          {formatTipAmount(
-                            booking.pendingTip.amount,
-                            booking.pendingTip.currency,
-                          )}
-                        </Text>
-                      </View>
-                      <View style={styles.paymentBreakdownDivider} />
-                      <View style={styles.paymentBreakdownRow}>
-                        <Text style={styles.paymentBreakdownTotalLabel}>
-                          Due {isComplete ? "now" : "on completion"}
-                        </Text>
-                        <Text style={styles.paymentBreakdownTotalValue}>
-                          {formatPrice(
-                            (Number.isFinite(booking.serviceTotal)
-                              ? (booking.serviceTotal as number)
-                              : 0) + booking.pendingTip.amount,
-                          )}
-                        </Text>
-                      </View>
-                    </View>
-                  </>
                 ) : (
                   <>
                     <Text style={styles.paymentLabel}>
@@ -2129,10 +2159,7 @@ export default function bookingDetailsById() {
               </View>
               {!isCancelled &&
                 userRole === "customer" &&
-                !(
-                  booking.paymentMethod === "pay_now" &&
-                  booking.paidAmount != null
-                ) && (
+                booking.owesPayment && (
                   <Button
                     title={t("payOnline")}
                     onPress={handlePayOnline}
@@ -2154,65 +2181,57 @@ export default function bookingDetailsById() {
           )}
 
           {/* Paid tip receipt — show for any paid tip (including tip-at-booking) */}
-          {userRole === "customer" &&
-            booking.type === "service" &&
-            booking.tip &&
-            paidTipBreakdown && (
-              <View style={styles.tipReceiptSection}>
-                <View style={styles.tipReceiptCard}>
-                  <View style={styles.tipReceiptAvatar}>
-                    {tipReceiptImageUri ? (
-                      <Image
-                        source={{ uri: tipReceiptImageUri }}
-                        style={styles.tipReceiptAvatarImage}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Text style={styles.tipReceiptInitial}>
-                        {paidTipBreakdown.recipientName.charAt(0).toUpperCase() ||
-                          "?"}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.tipReceiptInfo}>
-                    <Text style={styles.tipReceiptEyebrow}>Tip sent</Text>
-                    <Text style={styles.tipReceiptTitle}>
-                      You tipped{" "}
-                      {formatTipAmount(
-                        paidTipBreakdown.tipAmount,
-                        paidTipBreakdown.currency,
-                      )}
+          {userRole === "customer" && booking.tip && paidTipBreakdown && (
+            <View style={styles.tipReceiptSection}>
+              <View style={styles.tipReceiptCard}>
+                <View style={styles.tipReceiptAvatar}>
+                  {tipReceiptImageUri ? (
+                    <Image
+                      source={{ uri: tipReceiptImageUri }}
+                      style={styles.tipReceiptAvatarImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text style={styles.tipReceiptInitial}>
+                      {paidTipBreakdown.recipientName.charAt(0).toUpperCase() ||
+                        "?"}
                     </Text>
-                    <Text style={styles.tipReceiptSubtitle}>
-                      To {paidTipBreakdown.recipientName}
-                    </Text>
-                  </View>
-                  <Text style={styles.tipReceiptAmount}>
+                  )}
+                </View>
+                <View style={styles.tipReceiptInfo}>
+                  <Text style={styles.tipReceiptEyebrow}>Tip sent</Text>
+                  <Text style={styles.tipReceiptTitle}>
+                    You tipped{" "}
                     {formatTipAmount(
                       paidTipBreakdown.tipAmount,
                       paidTipBreakdown.currency,
                     )}
                   </Text>
+                  <Text style={styles.tipReceiptSubtitle}>
+                    To {paidTipBreakdown.recipientName}
+                  </Text>
                 </View>
+                <Text style={styles.tipReceiptAmount}>
+                  {formatTipAmount(
+                    paidTipBreakdown.tipAmount,
+                    paidTipBreakdown.currency,
+                  )}
+                </Text>
               </View>
-            )}
+            </View>
+          )}
 
-          {userRole === "customer" &&
-            isComplete &&
-            booking.type === "service" &&
-            !booking.pendingTip &&
-            !booking.tip &&
-            booking.canTip && (
-              <TipSection
-                appointmentId={Number(booking.id)}
-                initialCanTip={booking.canTip}
-                initialTip={booking.tip}
-                fallbackRecipientName={booking.tipRecipientName}
-                fallbackRecipientType={booking.tipRecipientType}
-                fallbackRecipientImage={booking.staffImage}
-                onTipComplete={fetchBookingDetails}
-              />
-            )}
+          {userRole === "customer" && booking.canTip && (
+            <TipSection
+              appointmentId={Number(booking.id)}
+              initialCanTip={booking.canTip}
+              initialTip={booking.tip}
+              fallbackRecipientName={booking.tipRecipientName}
+              fallbackRecipientType={booking.tipRecipientType}
+              fallbackRecipientImage={booking.staffImage}
+              onTipComplete={fetchBookingDetails}
+            />
+          )}
 
           <View style={styles.line} />
 

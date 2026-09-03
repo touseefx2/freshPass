@@ -29,6 +29,12 @@ import {
   NotificationBellOutlineIcon,
   ProposalDocumentIcon,
   MessageBubbleOutlineIcon,
+  WalletIcon,
+  DollarCheckIcon,
+  StarIcon,
+  CircleTickIcon,
+  SubscriptionTicketIcon,
+  CalendarIcon,
 } from "@/assets/icons";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { notificationsEndpoints } from "@/src/services/endpoints";
@@ -43,7 +49,16 @@ import StackHeader from "@/src/components/StackHeader";
 
 dayjs.extend(relativeTime);
 
-type NotificationIconType = "notification" | "proposal" | "message";
+type NotificationIconType =
+  | "notification"
+  | "proposal"
+  | "message"
+  | "payment"
+  | "tip"
+  | "review"
+  | "completed"
+  | "subscription"
+  | "schedule";
 
 type NotificationItem = {
   id: string;
@@ -56,6 +71,7 @@ type NotificationItem = {
   createdAt: string; // full ISO datetime e.g. "2024-01-17T09:30:00Z"
   apiId: number; // API notification ID for marking as read
   type?: string | null;
+  sub_type?: string | null;
   model_id?: number | null;
   data?: Record<string, unknown> | null;
   sender?: {
@@ -245,6 +261,7 @@ type ApiNotification = {
   id: number;
   user_id: number;
   type?: string | null;
+  sub_type?: string | null;
   model_id?: number | null;
   data?: Record<string, unknown> | null;
   title: string;
@@ -279,14 +296,39 @@ export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [markAllAsReadLoading, setMarkAllAsReadLoading] = useState(false);
 
-  // Determine icon type from title
-  const getIconType = (title: string): NotificationIconType => {
-    const lowerTitle = title.toLowerCase();
-    if (lowerTitle.includes("proposal")) {
-      return "proposal";
+  // Determine the icon from sub_type where one exists, since titles are copy
+  // the backend is free to reword.
+  const getIconType = (
+    subType: string | null,
+    type: string | null,
+    title: string,
+  ): NotificationIconType => {
+    switch (subType) {
+      case "payment_request":
+        return "payment";
+      case "tip_request":
+        return "tip";
+      case "review_request":
+        return "review";
+      case "appointment_completed":
+        return "completed";
+      case "subscription_usage":
+        return "subscription";
+      case "appointment_scheduled":
+      case "appointment_rescheduled":
+      case "appointment_cancelled":
+      case "appointment_cancelled_refunded":
+        return "schedule";
+      case "appointment_reminder":
+        return "notification";
     }
-    if (lowerTitle.includes("message")) {
+
+    if (type === "message") {
       return "message";
+    }
+    // Proposals carry no sub_type, so the title is still the only signal.
+    if (title.toLowerCase().includes("proposal")) {
+      return "proposal";
     }
     return "notification";
   };
@@ -316,16 +358,28 @@ export default function NotificationsScreen() {
 
   // Map API notification to NotificationItem
   const mapApiNotification = (apiNotif: ApiNotification): NotificationItem => {
+    // The sub type may arrive at the root or nested in data, depending on how
+    // the row was written.
+    const subType =
+      apiNotif.sub_type ??
+      (typeof apiNotif.data?.subType === "string"
+        ? apiNotif.data.subType
+        : null) ??
+      (typeof apiNotif.data?.sub_type === "string"
+        ? apiNotif.data.sub_type
+        : null);
+
     return {
       id: apiNotif.id.toString(),
       apiId: apiNotif.id,
       title: apiNotif.title,
       description: apiNotif.message,
       timeLabel: formatTimeLabel(apiNotif.created_at),
-      icon: getIconType(apiNotif.title),
+      icon: getIconType(subType, apiNotif.type ?? null, apiNotif.title),
       isRead: apiNotif.is_read,
       createdAt: apiNotif.created_at,
       type: apiNotif.type ?? null,
+      sub_type: subType,
       model_id: apiNotif.model_id ?? null,
       data: apiNotif.data ?? null,
       sender: apiNotif.sender ?? null,
@@ -583,6 +637,28 @@ export default function NotificationsScreen() {
             color={theme.darkGreen}
           />
         );
+      case "payment":
+        return <WalletIcon width={24} height={24} color={theme.darkGreen} />;
+      case "tip":
+        return (
+          <DollarCheckIcon width={24} height={24} color={theme.darkGreen} />
+        );
+      case "review":
+        return <StarIcon width={24} height={24} color={theme.darkGreen} />;
+      case "completed":
+        return (
+          <CircleTickIcon width={24} height={24} color={theme.darkGreen} />
+        );
+      case "subscription":
+        return (
+          <SubscriptionTicketIcon
+            width={24}
+            height={24}
+            color={theme.darkGreen}
+          />
+        );
+      case "schedule":
+        return <CalendarIcon width={24} height={24} color={theme.darkGreen} />;
       default:
         return (
           <NotificationBellOutlineIcon
@@ -719,6 +795,7 @@ export default function NotificationsScreen() {
                   {
                     ...(item.data ?? {}),
                     type: item.type,
+                    sub_type: item.sub_type,
                     model_id: item.model_id,
                     sender: item.sender,
                   },
