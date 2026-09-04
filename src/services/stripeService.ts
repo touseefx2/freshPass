@@ -71,6 +71,18 @@ function describeKey(key: string, source: string) {
   };
 }
 
+export function stripeModeFromKey(key: string): "live" | "test" | null {
+  if (key.startsWith("pk_live_")) return "live";
+  if (key.startsWith("pk_test_")) return "test";
+  return null;
+}
+
+export async function getStripeModeHeaders(): Promise<Record<string, string>> {
+  const key = await resolveStripePublishableKey();
+  const mode = stripeModeFromKey(key);
+  return mode ? { "X-Stripe-Mode": mode } : {};
+}
+
 /**
  * Resolves Stripe publishable key from GET /api/config/stripe,
  * with AsyncStorage cache for offline / failed network.
@@ -166,6 +178,7 @@ export const fetchPaymentSheetParams = async (
         subscription_plan_id: planId,
         additional_service_ids: additionalServiceIds,
       },
+      { headers: await getStripeModeHeaders() },
     );
 
     // Extract data from nested response structure
@@ -218,6 +231,7 @@ export const fetchAppointmentPaymentSheetParams = async (
     const response = await ApiService.post<AppointmentPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheet,
       body,
+      { headers: await getStripeModeHeaders() },
     );
 
     // Extract data from nested response structure
@@ -263,6 +277,7 @@ export const fetchAiToolsPaymentSheetParams = async (
     const response = await ApiService.post<AiToolsPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheetAiTools,
       { service_id: serviceId },
+      { headers: await getStripeModeHeaders() },
     );
 
     if (response.success && response.data) {

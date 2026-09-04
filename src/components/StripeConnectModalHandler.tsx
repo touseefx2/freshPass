@@ -19,6 +19,8 @@ export default function StripeConnectModalHandler() {
   const segments = useSegments() as string[];
 
   const isOnHomeTab = Array.isArray(segments) && segments.includes("(home)");
+  const isOnConnectFlow =
+    Array.isArray(segments) && segments.includes("stripeConnectOnboarding");
 
   const showStripeBanner =
     !appGateBlocked &&
@@ -28,10 +30,10 @@ export default function StripeConnectModalHandler() {
     businessStatus?.stripe_onboarding_status === "pending";
 
   useEffect(() => {
-    if (!showStripeBanner) {
+    if (!showStripeBanner && !isOnConnectFlow) {
       setDismissed(false);
     }
-  }, [showStripeBanner]);
+  }, [showStripeBanner, isOnConnectFlow]);
 
   const visible =
     !appGateBlocked &&

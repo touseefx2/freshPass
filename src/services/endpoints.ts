@@ -122,6 +122,8 @@ export const stripeEndpoints = {
   paymentSheet: `/api/payment-sheet`,
   paymentSheetAiTools: `/api/payment-sheet/ai-tools`,
   profile: `/api/staff/details`,
+  connectAccountSession: `/api/stripe/connect/account-session`,
+  connectStatus: `/api/stripe/connect/status`,
 };
 
 /**

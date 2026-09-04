@@ -26,6 +26,7 @@ import CustomToggleInside from "@/src/components/customToggleInside";
 import { updateBusinessActiveStatus } from "@/src/state/thunks/businessThunks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
+import { Feather } from "@expo/vector-icons";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -58,18 +59,41 @@ const createStyles = (theme: Theme) =>
       height: 0.5,
       backgroundColor: theme.white85,
     },
-    stripeBanner: {
-      backgroundColor: theme.darkGreen,
-      paddingHorizontal: moderateWidthScale(15),
+    actionBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.orangeBrown015,
+      paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(10),
+      gap: moderateWidthScale(10),
     },
-    stripeBannerText: {
+    actionIconWrap: {
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    actionTitle: {
+      flex: 1,
       fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    actionCta: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.darkGreen,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(8),
+      gap: moderateWidthScale(2),
+    },
+    actionCtaText: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.white,
-      textAlign: "center",
-      textDecorationLine: "underline",
-      textDecorationColor: theme.white,
     },
     logoImage: {
       width: widthScale(156),
@@ -123,7 +147,6 @@ function DashboardHeader({
     businessStatus?.stripe_onboarding_status === "completed" &&
     businessStatus?.has_subscription === false;
 
- 
   // For staff and client, always allow going online
   const actualCanGoOnline =
     userRole !== "business" || (!showStripeBanner && !showBusinessSubscriptipn);
@@ -175,7 +198,14 @@ function DashboardHeader({
         }
       }
     },
-    [dispatch, isOnline, actualCanGoOnline, handleBlockedActiveToggle, showBanner, t],
+    [
+      dispatch,
+      isOnline,
+      actualCanGoOnline,
+      handleBlockedActiveToggle,
+      showBanner,
+      t,
+    ],
   );
 
   return (
@@ -213,18 +243,36 @@ function DashboardHeader({
                 ? handleStripeOnboardingPress
                 : handleBusinessSubscriptionPress
             }
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
-            <View style={styles.stripeBanner}>
-              <Text style={styles.stripeBannerText}>
+            <View style={styles.actionBanner}>
+              <View style={styles.actionIconWrap}>
+                <Feather
+                  name={showStripeBanner ? "credit-card" : "briefcase"}
+                  size={moderateWidthScale(15)}
+                  color={theme.white}
+                />
+              </View>
+              <Text style={styles.actionTitle} numberOfLines={1}>
                 {showStripeBanner
                   ? t("pleaseCompleteStripe")
                   : t("pleaseBuyBusinessPlan")}
               </Text>
+              <View style={styles.actionCta}>
+                <Text style={styles.actionCtaText}>
+                  {showStripeBanner
+                    ? t("setupPayoutsCta")
+                    : t("viewBusinessPlans")}
+                </Text>
+                <Feather
+                  name="chevron-right"
+                  size={moderateWidthScale(14)}
+                  color={theme.white}
+                />
+              </View>
             </View>
           </TouchableOpacity>
         )}
-
     </View>
   );
 }

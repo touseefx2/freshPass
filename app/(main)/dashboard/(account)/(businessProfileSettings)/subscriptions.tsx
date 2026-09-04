@@ -1155,7 +1155,7 @@ export default function ManageSubscriptionsScreen() {
                   </Text>
                 </View>
                 <Text style={styles.infoBodyText}>
-                  {t("pleaseCompleteStripe")}
+                  {t("subscriptionPlansConnectStripeHint")}
                 </Text>
               </View>
             )}

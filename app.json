@@ -134,6 +134,12 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.414197082710-52nnfclv444bbkiddqmb71f65ao7id3d"
         }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "enableGooglePay": false
+        }
       ]
     ],
     "experiments": {

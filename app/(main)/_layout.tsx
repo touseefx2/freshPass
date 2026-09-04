@@ -28,6 +28,7 @@ export default function MainLayout() {
           gestureEnabled: false,
         }}
       />
+      <Stack.Screen name="stripeConnectOnboarding" />
     </Stack>
   );
 }

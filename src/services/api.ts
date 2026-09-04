@@ -385,6 +385,12 @@ const getErrorMessage = (error: AxiosError): string => {
       return "You don't have permission to perform this action.";
     case 404:
       return "Resource not found.";
+    case 409:
+      return (
+        (data as any)?.message ||
+        (data as any)?.error ||
+        "Please restart the app and try again."
+      );
     case 422:
       return (
         (data as any)?.message ||

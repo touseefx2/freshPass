@@ -65,6 +65,7 @@ export default function CompleteProfile() {
     countryCode,
     phoneNumber,
     phoneIsValid,
+    dateOfBirth,
     appointmentVolume,
     streetAddress,
     area,
@@ -155,9 +156,25 @@ export default function CompleteProfile() {
     }
 
     if (currentStep === 2) {
-      // If phone is empty, send empty string
-      // const ownerPhone =
-      //   phoneNumber.trim().length > 0 ? `${countryCode}${phoneNumber}` : "";
+      const monthMap: Record<string, string> = {
+        Jan: "01",
+        Feb: "02",
+        Mar: "03",
+        Apr: "04",
+        May: "05",
+        Jun: "06",
+        Jul: "07",
+        Aug: "08",
+        Sep: "09",
+        Oct: "10",
+        Nov: "11",
+        Dec: "12",
+      };
+
+      const ownerDateOfBirth =
+        dateOfBirth?.date && dateOfBirth?.month && dateOfBirth?.year
+          ? `${dateOfBirth.year}-${monthMap[dateOfBirth.month] ?? dateOfBirth.month}-${dateOfBirth.date.padStart(2, "0")}`
+          : "";
 
       body = {
         ...body,
@@ -165,6 +182,7 @@ export default function CompleteProfile() {
         owner_name: fullName.trim(),
         owner_phone: phoneNumber,
         country_code: countryCode,
+        owner_date_of_birth: ownerDateOfBirth,
       };
     }
 
@@ -528,30 +546,34 @@ export default function CompleteProfile() {
       return !businessCategory;
     }
     if (currentStep === 2) {
-      // Business name and full name are required
+      // Business name, full name, and phone are required
       const businessNameValid = businessName.trim().length > 0;
       const fullNameValid = fullName.trim().length > 0;
+      const phoneValid =
+        phoneNumber.trim().length > 0 && phoneIsValid;
 
-      // Phone is optional, but if provided, it must be valid
-      const phoneProvided = phoneNumber.trim().length > 0;
-      const phoneValid = !phoneProvided || phoneIsValid;
+      // Date of birth is optional, but if any part is set all three must be set
+      const hasDate = dateOfBirth?.date && dateOfBirth.date.trim().length > 0;
+      const hasMonth =
+        dateOfBirth?.month && dateOfBirth.month.trim().length > 0;
+      const hasYear = dateOfBirth?.year && dateOfBirth.year.trim().length > 0;
+      const dateOfBirthValid =
+        (!hasDate && !hasMonth && !hasYear) ||
+        (!!hasDate && !!hasMonth && !!hasYear);
 
-      // Validate names using validation service
       const businessNameValidation = validateName(
         businessName.trim(),
         "Business name"
       );
       const fullNameValidation = validateName(fullName.trim(), "Full name");
 
-      // Enable continue if:
-      // 1. Business name and full name are filled and valid
-      // 2. Phone is either empty OR valid
       return (
         !businessNameValid ||
         !fullNameValid ||
         !businessNameValidation.isValid ||
         !fullNameValidation.isValid ||
-        !phoneValid
+        !phoneValid ||
+        !dateOfBirthValid
       );
     }
     if (currentStep === 3) {
@@ -622,6 +644,7 @@ export default function CompleteProfile() {
     fullName,
     phoneNumber,
     phoneIsValid,
+    dateOfBirth,
     state,
     streetAddress,
     zipCode,
