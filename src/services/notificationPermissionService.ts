@@ -1,6 +1,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform, Alert, Linking } from "react-native";
 import Constants from "expo-constants";
+import { openNativeNotificationSettings } from "@/modules/open-notification-settings";
 import Logger from "./logger";
 
 /**
@@ -174,48 +175,42 @@ export const showNotificationPermissionAlert = (
 /**
  * Open device settings (iOS or Android)
  * Android: Opens app notification settings directly (API 26+), not just App info.
- * iOS: Opens app's Notification settings screen directly (Allow Notifications, Banners, etc.).
+ * iOS 15.4+: Opens Notification settings directly via UIApplication.openNotificationSettingsURLString.
+ * Older iOS: Falls back to the app's root Settings page.
  */
 export const openNotificationSettings = async (): Promise<void> => {
   try {
     if (Platform.OS === "ios") {
-      const bundleId =
-        Constants.expoConfig?.ios?.bundleIdentifier ?? "com.freshpass";
-      const notificationSettingsURL = `app-settings:root=NOTIFICATIONS&path=${bundleId}`;
+      const opened = await openNativeNotificationSettings();
+      if (opened) {
+        return;
+      }
+      // Native module missing (needs rebuild) or open failed — app Settings page
+      await Linking.openSettings();
+      return;
+    }
 
+    // Android: open notification settings directly (skips App info screen)
+    const apiLevel = Platform.Version as number;
+    const packageName =
+      Constants.expoConfig?.android?.package ?? "com.freshpass";
+    if (apiLevel >= 26 && "sendIntent" in Linking) {
       try {
-        await Linking.openURL(notificationSettingsURL);
+        await (Linking as any).sendIntent(
+          "android.settings.APP_NOTIFICATION_SETTINGS",
+          [
+            {
+              key: "android.provider.extra.APP_PACKAGE",
+              value: packageName,
+            },
+          ],
+        );
         return;
       } catch {
-        // Deep link not supported or blocked; fallback to app settings page
-        Logger.log(
-          "Deep link not supported or blocked; fallback to app settings page",
-        );
-        await Linking.openSettings();
+        // Fallback to app settings if intent fails
       }
-    } else {
-      // Android: open notification settings directly (skips App info screen)
-      const apiLevel = Platform.Version as number;
-      const packageName =
-        Constants.expoConfig?.android?.package ?? "com.freshpass";
-      if (apiLevel >= 26 && "sendIntent" in Linking) {
-        try {
-          await (Linking as any).sendIntent(
-            "android.settings.APP_NOTIFICATION_SETTINGS",
-            [
-              {
-                key: "android.provider.extra.APP_PACKAGE",
-                value: packageName,
-              },
-            ],
-          );
-          return;
-        } catch {
-          // Fallback to app settings if intent fails
-        }
-      }
-      await Linking.openSettings();
     }
+    await Linking.openSettings();
   } catch (error) {
     Logger.error("Error opening settings:", error);
     Alert.alert(

@@ -1,0 +1,1 @@
+export { openNativeNotificationSettings } from "./src";

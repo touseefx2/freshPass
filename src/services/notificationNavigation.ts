@@ -46,10 +46,11 @@ function getNotificationSubType(
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → Profile → Business profile settings → Manage subscriptions
- * - type "subscription" (customer role) → Profile → Customer subscriptions
- * - type "business" | "service" + model_id (customer role) → businessDetail
- * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
- */
+  * - type "subscription" (customer role) → Profile → Customer subscriptions
+  * - type "subscription" (business role) → Profile → Subscription
+  * - type "business" | "service" + model_id (customer role) → businessDetail
+  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
+  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
 const AI_MEMORY_BACK_DELAY_MS = 50;
 
@@ -217,11 +218,18 @@ export function navigateFromNotificationData(
 
   if (type === "subscription") {
     const userRole = store.getState().user.userRole;
-    if (userRole === "customer") {
-      const navigateToCustomerSubscriptions = () => {
+    const subscriptionPath =
+      userRole === "business"
+        ? "/(main)/dashboard/(account)/subscription"
+        : userRole === "customer"
+          ? "/(main)/dashboard/(account)/subscriptionCustomer"
+          : null;
+
+    if (subscriptionPath) {
+      const navigateToSubscriptions = () => {
         router.push("/(main)/dashboard/(account)");
         setTimeout(() => {
-          router.push("/(main)/dashboard/(account)/subscriptionCustomer");
+          router.push(subscriptionPath);
         }, AI_MEMORY_CHAIN_STEP_MS);
       };
 
@@ -230,17 +238,20 @@ export function navigateFromNotificationData(
           router.back();
         }
         setTimeout(() => {
-          navigateToCustomerSubscriptions();
+          navigateToSubscriptions();
         }, AI_MEMORY_BACK_DELAY_MS);
       } else {
-        navigateToCustomerSubscriptions();
+        navigateToSubscriptions();
       }
 
       Logger.log(
-        "------>navigateFromNotificationData (subscription) -> account -> subscriptionCustomer",
+        `------>navigateFromNotificationData (subscription) -> account -> ${
+          userRole === "business" ? "subscription" : "subscriptionCustomer"
+        }`,
         {
           model_id: data.model_id,
           event: data.event,
+          userRole,
           fromInAppList: options?.fromInAppList ?? false,
         },
       );
