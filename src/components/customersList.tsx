@@ -62,12 +62,12 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     searchContainer: {
-      marginTop: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(8),
+      marginTop: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(10),
       paddingHorizontal: moderateWidthScale(20),
     },
     filterWrapper: {
-      marginBottom: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(10),
     },
     filterScrollContent: {
       flexDirection: "row",
@@ -80,8 +80,8 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(7),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(8),
       borderRadius: moderateWidthScale(999),
       borderWidth: 1,
       borderColor: theme.borderNormal,
@@ -93,7 +93,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.borderDark,
     },
     filterButtonText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
@@ -103,25 +103,29 @@ const createStyles = (theme: Theme) =>
     },
     listContent: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(24),
+      paddingBottom: moderateHeightScale(28),
       flexGrow: 1,
     },
     rowContainer: {
       flexDirection: "row",
       alignItems: "center",
       paddingVertical: moderateHeightScale(14),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(8),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     rowContent: {
       flex: 1,
       marginRight: moderateWidthScale(8),
     },
     rowName: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(3),
       textTransform: "capitalize",
     },
     rowSubtitle: {
@@ -131,8 +135,8 @@ const createStyles = (theme: Theme) =>
     },
     statusPill: {
       flexShrink: 0,
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(999),
     },
     statusPillText: {
@@ -309,7 +313,7 @@ export default function CustomersList() {
           <BusinessCustomerAvatar
             name={item.name}
             profileImageUrl={item.profile_image_url}
-            size={moderateWidthScale(40)}
+            size={moderateWidthScale(44)}
             style={{ marginRight: moderateWidthScale(12) }}
           />
           <View style={styles.rowContent}>

@@ -1,8 +1,11 @@
 import dayjs from "dayjs";
 import type {
   BusinessCustomer,
+  BusinessCustomerAppointmentService,
   BusinessCustomerPurchaseService,
   BusinessCustomerSubscription,
+  BusinessCustomerSubscriptionService,
+  BusinessCustomerVisits,
 } from "@/src/types/customers";
 import type { CustomerSubscriptionPillTone } from "@/src/utils/customerSubscriptionLifecycle";
 
@@ -126,7 +129,7 @@ export function getBusinessCustomerContactLine(
 }
 
 export function formatPurchaseServiceName(
-  service: BusinessCustomerPurchaseService,
+  service: BusinessCustomerPurchaseService | BusinessCustomerAppointmentService,
 ): string {
   if (typeof service === "string") return service.trim();
   if (!service || typeof service !== "object") return "";
@@ -135,7 +138,10 @@ export function formatPurchaseServiceName(
 }
 
 export function formatPurchaseServicesLabel(
-  services?: BusinessCustomerPurchaseService[] | null,
+  services?:
+    | BusinessCustomerPurchaseService[]
+    | BusinessCustomerAppointmentService[]
+    | null,
   additionalServices?: BusinessCustomerPurchaseService[] | null,
 ): string {
   const names = [...(services ?? []), ...(additionalServices ?? [])]
@@ -147,6 +153,107 @@ export function formatPurchaseServicesLabel(
 export function formatPaymentMethodLabel(method?: string | null): string {
   if (!method?.trim()) return "--";
   return method
+    .trim()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+/** Clamp fill at 100% so mid-period allowance cuts cannot overflow the bar */
+export function getServiceUsageProgress(
+  used: number,
+  quantity: number,
+): number {
+  if (quantity <= 0) return used > 0 ? 1 : 0;
+  return Math.min(1, Math.max(0, used / quantity));
+}
+
+export function formatRemainingOfQuantity(
+  remaining: number,
+  quantity: number,
+): string {
+  return `${remaining} of ${quantity} left`;
+}
+
+export function getSubscriptionServiceTotals(
+  sub: Pick<BusinessCustomerSubscription, "services" | "serviceTotals">,
+): { quantity: number; used: number; remaining: number } | null {
+  if (sub.serviceTotals) return sub.serviceTotals;
+  const services = sub.services ?? [];
+  if (services.length === 0) return null;
+  return services.reduce(
+    (acc, service) => ({
+      quantity: acc.quantity + (service.quantity ?? 0),
+      used: acc.used + (service.used ?? 0),
+      remaining: acc.remaining + (service.remaining ?? 0),
+    }),
+    { quantity: 0, used: 0, remaining: 0 },
+  );
+}
+
+export function formatSubscriptionPriceSubtitle(
+  sub: Pick<
+    BusinessCustomerSubscription,
+    "price" | "currentPeriodEnd" | "hasAccess" | "endsAt" | "stripeStatus"
+  >,
+  labels?: {
+    perMonth?: string;
+    renews?: (date: string) => string;
+    accessUntil?: (date: string) => string;
+  },
+): string {
+  const price = formatBusinessCustomerPrice(sub.price);
+  const perMonth = labels?.perMonth ?? "/ month";
+  const parts = [`${price} ${perMonth}`.trim()];
+
+  if (sub.endsAt && sub.hasAccess) {
+    const date = formatBusinessCustomerDate(sub.endsAt);
+    parts.push(
+      labels?.accessUntil?.(date) ?? `access until ${date}`,
+    );
+  } else if (sub.currentPeriodEnd && sub.hasAccess) {
+    const date = formatBusinessCustomerDate(sub.currentPeriodEnd);
+    parts.push(labels?.renews?.(date) ?? `renews ${date}`);
+  }
+
+  return parts.join(" · ");
+}
+
+export function formatAppointmentDateTime(
+  date?: string | null,
+  time?: string | null,
+): string {
+  const dateLabel = formatBusinessCustomerDate(date);
+  const timeLabel = formatBusinessCustomerTime(time);
+  if (dateLabel === "--" && !timeLabel) return "--";
+  if (!timeLabel) return dateLabel;
+  if (dateLabel === "--") return timeLabel;
+  return `${dateLabel} · ${timeLabel}`;
+}
+
+export function getStaffDisplayName(
+  staffName?: string | null,
+  fallback = "Any available",
+): string {
+  const trimmed = staffName?.trim();
+  return trimmed || fallback;
+}
+
+export function formatVisitsSummary(visits: BusinessCustomerVisits): string {
+  return `${visits.remaining} of ${visits.total} visits left`;
+}
+
+export function getServiceRemainingLabel(
+  service: Pick<
+    BusinessCustomerSubscriptionService,
+    "remaining" | "quantity"
+  >,
+): string {
+  return formatRemainingOfQuantity(service.remaining, service.quantity);
+}
+
+export function formatStatusLabel(status?: string | null): string {
+  if (!status?.trim()) return "Unknown";
+  return status
     .trim()
     .replace(/_/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());

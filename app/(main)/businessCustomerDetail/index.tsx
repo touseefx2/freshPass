@@ -18,6 +18,7 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -30,15 +31,22 @@ import type {
   BusinessCustomer,
   BusinessCustomerPurchase,
   BusinessCustomerSubscription,
+  BusinessCustomerSubscriptionAppointment,
+  BusinessCustomerSubscriptionService,
 } from "@/src/types/customers";
 import {
+  formatAppointmentDateTime,
   formatBusinessCustomerDate,
   formatBusinessCustomerPrice,
-  formatBusinessCustomerTime,
   formatPaymentMethodLabel,
   formatPurchaseServicesLabel,
+  formatStatusLabel,
+  formatSubscriptionPriceSubtitle,
   getBusinessCustomerListStatus,
+  getServiceUsageProgress,
+  getStaffDisplayName,
   getStatusPillColors,
+  getSubscriptionServiceTotals,
   getSubscriptionStartDate,
   resolveBusinessCustomerAvatarUrl,
 } from "@/src/utils/businessCustomerDisplay";
@@ -70,21 +78,21 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingBottom: moderateHeightScale(40),
-      paddingTop: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(12),
     },
     heroCard: {
       marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(20),
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(16),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(18),
+      borderRadius: moderateWidthScale(18),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(20),
       ...Platform.select({
         ios: {
           shadowColor: theme.shadow,
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.1,
-          shadowRadius: moderateWidthScale(8),
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.08,
+          shadowRadius: moderateWidthScale(12),
         },
         android: {
           elevation: 3,
@@ -99,7 +107,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     profileName: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textTransform: "capitalize",
@@ -109,22 +117,22 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      marginBottom: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(10),
     },
     overallStatusPill: {
       alignSelf: "flex-start",
       flexShrink: 0,
       paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(4),
+      paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(999),
     },
     overallStatusText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
     },
     actionRow: {
       flexDirection: "row",
-      marginTop: moderateHeightScale(16),
+      marginTop: moderateHeightScale(18),
       gap: moderateWidthScale(10),
     },
     actionChip: {
@@ -134,9 +142,11 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       gap: moderateWidthScale(6),
       backgroundColor: theme.lightGreen1,
-      borderRadius: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
       paddingHorizontal: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     actionChipText: {
       fontSize: fontSize.size12,
@@ -145,34 +155,45 @@ const createStyles = (theme: Theme) =>
     },
     sectionContainer: {
       paddingHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(18),
+      marginBottom: moderateHeightScale(22),
     },
     sectionHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(12),
     },
     sectionTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     sectionCount: {
+      minWidth: moderateWidthScale(24),
+      height: moderateWidthScale(24),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(8),
+    },
+    sectionCountText: {
       fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     contactCard: {
-      backgroundColor: theme.lightGreen1,
-      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
       paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(6),
+      paddingVertical: moderateHeightScale(4),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     contactRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(14),
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
     },
@@ -180,10 +201,10 @@ const createStyles = (theme: Theme) =>
       borderBottomWidth: 0,
     },
     contactIconWrap: {
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(32),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.white,
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen1,
       alignItems: "center",
       justifyContent: "center",
       marginRight: moderateWidthScale(12),
@@ -198,47 +219,212 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(2),
     },
     contactValue: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
     card: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(16),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
       marginBottom: moderateHeightScale(12),
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: moderateWidthScale(8),
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
     },
     cardHeader: {
       flexDirection: "row",
       alignItems: "flex-start",
       justifyContent: "space-between",
-      marginBottom: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(6),
       gap: moderateWidthScale(8),
     },
     cardTitle: {
       flex: 1,
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     statusPill: {
       flexShrink: 0,
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(999),
     },
     statusPillText: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
     },
-    priceText: {
-      fontSize: fontSize.size16,
+    planDescription: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(8),
+      lineHeight: fontSize.size18,
+    },
+    priceSubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(14),
+    },
+    divider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginBottom: moderateHeightScale(14),
+    },
+    includedHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(12),
+    },
+    includedTitle: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    includedSummary: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+    },
+    serviceRow: {
+      marginBottom: moderateHeightScale(14),
+    },
+    serviceRowLast: {
+      marginBottom: 0,
+    },
+    serviceTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(6),
+      gap: moderateWidthScale(10),
+    },
+    serviceName: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    serviceRemaining: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    progressTrack: {
+      height: heightScale(6),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen1,
+      overflow: "hidden",
+    },
+    progressFill: {
+      height: "100%",
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.green,
+    },
+    visitsBox: {
+      backgroundColor: theme.lightGreen1,
+      borderRadius: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(14),
+    },
+    visitsTop: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(8),
+    },
+    visitsLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    visitsValue: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+    },
+    visitsMeta: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(8),
+    },
+    mutedNote: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size16,
+      marginTop: moderateHeightScale(4),
       marginBottom: moderateHeightScale(12),
+    },
+    emptyInline: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(4),
+    },
+    appointmentsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(10),
+    },
+    appointmentsTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    appointmentRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+      gap: moderateWidthScale(10),
+    },
+    appointmentBody: {
+      flex: 1,
+      minWidth: 0,
+    },
+    appointmentDate: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    appointmentMeta: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    appointmentStaff: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    appointmentStatus: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      maxWidth: widthScale(80),
+      textAlign: "right",
     },
     detailGrid: {
       gap: moderateHeightScale(8),
@@ -264,18 +450,20 @@ const createStyles = (theme: Theme) =>
       textAlign: "right",
     },
     helperNote: {
-      marginTop: moderateHeightScale(10),
+      marginTop: moderateHeightScale(12),
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       lineHeight: fontSize.size16,
     },
     emptyCard: {
-      backgroundColor: theme.lightGreen1,
-      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
       paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(20),
+      paddingVertical: moderateHeightScale(22),
       alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     emptyCardText: {
       fontSize: fontSize.size13,
@@ -291,7 +479,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(8),
     },
     purchaseAmount: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -299,14 +487,35 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(12),
       textTransform: "capitalize",
+    },
+    staffRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: moderateHeightScale(12),
+      paddingTop: moderateHeightScale(12),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+      gap: moderateWidthScale(10),
+    },
+    staffLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    staffName: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
   });
 
 function mapSubscriptionToPillFields(sub: BusinessCustomerSubscription) {
   return {
     status: sub.status,
+    stripeStatus: sub.stripeStatus,
     hasAccess: sub.hasAccess,
     endsAt: sub.endsAt,
     trialStartsAt: sub.trialStartsAt,
@@ -329,6 +538,19 @@ function getPurchaseStatusPill(status?: string | null) {
     label: status?.trim() || "Unknown",
     tone: "neutral" as const,
   };
+}
+
+function getAppointmentStatusTone(status?: string | null) {
+  const normalized = status?.trim().toLowerCase() ?? "";
+  if (normalized === "completed") return "success" as const;
+  if (normalized === "cancelled" || normalized === "canceled") {
+    return "warning" as const;
+  }
+  if (normalized === "expired") return "danger" as const;
+  if (normalized === "scheduled" || normalized === "pending") {
+    return "info" as const;
+  }
+  return "neutral" as const;
 }
 
 export default function BusinessCustomerDetail() {
@@ -431,19 +653,103 @@ export default function BusinessCustomerDetail() {
     );
   };
 
+  const renderServiceRow = (
+    service: BusinessCustomerSubscriptionService,
+    isLast: boolean,
+  ) => {
+    const progress = getServiceUsageProgress(service.used, service.quantity);
+
+    return (
+      <View
+        key={service.id}
+        style={[styles.serviceRow, isLast && styles.serviceRowLast]}
+      >
+        <View style={styles.serviceTop}>
+          <Text style={styles.serviceName} numberOfLines={1}>
+            {service.name}
+          </Text>
+          <Text style={styles.serviceRemaining}>
+            {t("remainingOfQuantity", {
+              remaining: service.remaining,
+              quantity: service.quantity,
+            })}
+          </Text>
+        </View>
+        <View style={styles.progressTrack}>
+          <View
+            style={[styles.progressFill, { width: `${progress * 100}%` }]}
+          />
+        </View>
+      </View>
+    );
+  };
+
+  const renderAppointmentRow = (
+    appointment: BusinessCustomerSubscriptionAppointment,
+  ) => {
+    const servicesLabel = formatPurchaseServicesLabel(appointment.services);
+    const statusTone = getAppointmentStatusTone(appointment.status);
+    const statusColors = getStatusPillColors(statusTone, theme);
+    const hasAssignedStaff =
+      appointment.staffId != null || !!appointment.staffName?.trim();
+    const staffName = hasAssignedStaff
+      ? getStaffDisplayName(appointment.staffName, t("anyAvailableStaff"))
+      : t("anyAvailableStaff");
+
+    return (
+      <View key={appointment.id} style={styles.appointmentRow}>
+        <BusinessCustomerAvatar
+          name={hasAssignedStaff ? appointment.staffName : null}
+          profileImageUrl={
+            hasAssignedStaff ? appointment.staffImageUrl : null
+          }
+          size={moderateWidthScale(32)}
+          textSize={fontSize.size11}
+        />
+        <View style={styles.appointmentBody}>
+          <Text style={styles.appointmentDate} numberOfLines={1}>
+            {formatAppointmentDateTime(
+              appointment.appointmentDate,
+              appointment.appointmentTime,
+            )}
+          </Text>
+          <Text style={styles.appointmentMeta} numberOfLines={1}>
+            {servicesLabel || t("service")}
+          </Text>
+          <Text style={styles.appointmentStaff} numberOfLines={1}>
+            {staffName}
+          </Text>
+        </View>
+        <Text
+          style={[styles.appointmentStatus, { color: statusColors.color }]}
+          numberOfLines={2}
+        >
+          {formatStatusLabel(appointment.status)}
+        </Text>
+      </View>
+    );
+  };
+
   const renderSubscriptionCard = (
     sub: BusinessCustomerSubscription,
     index: number,
   ) => {
     const pill = getCustomerSubscriptionPill(mapSubscriptionToPillFields(sub));
     const pillColors = getStatusPillColors(pill.tone, theme);
+    const services = sub.services ?? [];
+    const appointments = sub.appointments ?? [];
+    const totals = getSubscriptionServiceTotals(sub);
+    const reflectsPlan =
+      typeof sub.reflectsPlanChanges === "boolean"
+        ? sub.reflectsPlanChanges
+        : sub.hasAccess;
     const periodStart = formatBusinessCustomerDate(sub.currentPeriodStart);
     const periodEnd = formatBusinessCustomerDate(sub.currentPeriodEnd);
     const hasPeriodStart = periodStart !== "--";
     const hasPeriodEnd = periodEnd !== "--";
 
     return (
-      <View key={`${sub.plan}-${index}`} style={styles.card}>
+      <View key={`${sub.id ?? sub.plan}-${index}`} style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>{sub.plan}</Text>
           <View
@@ -458,12 +764,103 @@ export default function BusinessCustomerDetail() {
           </View>
         </View>
 
-        <Text style={styles.priceText}>
-          {formatBusinessCustomerPrice(sub.price)}
+        {sub.planDescription?.trim() ? (
+          <Text style={styles.planDescription}>{sub.planDescription.trim()}</Text>
+        ) : null}
+
+        <Text style={styles.priceSubtitle}>
+          {formatSubscriptionPriceSubtitle(sub, {
+            perMonth: t("perMonth"),
+            renews: (date) => t("renewsOnDate", { date }),
+            accessUntil: (date) => t("accessUntilDate", { date }),
+          })}
         </Text>
 
+        {!reflectsPlan ? (
+          <Text style={styles.mutedNote}>{t("planEndedAllowanceNote")}</Text>
+        ) : null}
+
+        <View style={styles.divider} />
+
+        {sub.visits ? (
+          <View style={styles.visitsBox}>
+            <View style={styles.visitsTop}>
+              <Text style={styles.visitsLabel}>{t("visitAllowance")}</Text>
+              <Text style={styles.visitsValue}>
+                {t("remainingOfQuantity", {
+                  remaining: sub.visits.remaining,
+                  quantity: sub.visits.total,
+                })}
+              </Text>
+            </View>
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${
+                      getServiceUsageProgress(
+                        sub.visits.used + sub.visits.upcoming,
+                        sub.visits.total,
+                      ) * 100
+                    }%`,
+                  },
+                ]}
+              />
+            </View>
+            {sub.visits.upcoming > 0 ? (
+              <Text style={styles.visitsMeta}>
+                {t("visitsUpcoming", { count: sub.visits.upcoming })}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+
+        <View style={styles.includedHeader}>
+          <Text style={styles.includedTitle}>{t("whatsIncluded")}</Text>
+          {totals && totals.quantity > 0 ? (
+            <Text style={styles.includedSummary}>
+              {t("remainingOfQuantity", {
+                remaining: totals.remaining,
+                quantity: totals.quantity,
+              })}
+            </Text>
+          ) : null}
+        </View>
+
+        {services.length > 0 ? (
+          services.map((service, serviceIndex) =>
+            renderServiceRow(service, serviceIndex === services.length - 1),
+          )
+        ) : (
+          <Text style={styles.emptyInline}>{t("noServicesIncluded")}</Text>
+        )}
+
+        <View style={styles.divider} />
+
+        <View style={styles.appointmentsHeader}>
+          <Text style={styles.appointmentsTitle}>
+            {t("appointments")} (
+            {typeof sub.appointmentCount === "number"
+              ? sub.appointmentCount
+              : appointments.length}
+            )
+          </Text>
+        </View>
+
+        {appointments.length > 0 ? (
+          appointments.map(renderAppointmentRow)
+        ) : (
+          <Text style={styles.emptyInline}>{t("noSubscriptionAppointments")}</Text>
+        )}
+
+        <View style={[styles.divider, { marginTop: moderateHeightScale(12) }]} />
+
         <View style={styles.detailGrid}>
-          {renderDetailRow(t("subscriptionStartDate"), getSubscriptionStartDate(sub))}
+          {renderDetailRow(
+            t("subscriptionStartDate"),
+            getSubscriptionStartDate(sub),
+          )}
           {hasPeriodStart
             ? renderDetailRow(t("currentPeriodStart"), periodStart)
             : null}
@@ -484,7 +881,7 @@ export default function BusinessCustomerDetail() {
             : null}
           {sub.endsAt
             ? renderDetailRow(
-                t("subscriptionEnd"),
+                sub.hasAccess ? t("accessUntil") : t("subscriptionEnd"),
                 formatBusinessCustomerDate(sub.endsAt),
               )
             : null}
@@ -509,13 +906,13 @@ export default function BusinessCustomerDetail() {
     );
     const statusPill = getPurchaseStatusPill(purchase.status);
     const pillColors = getStatusPillColors(statusPill.tone, theme);
-    const timeLabel = formatBusinessCustomerTime(purchase.appointmentTime);
-    const dateLabel = purchase.appointmentDate
-      ? formatBusinessCustomerDate(purchase.appointmentDate)
-      : formatBusinessCustomerDate(purchase.purchasedAt);
+    const staffName = getStaffDisplayName(
+      purchase.staffName,
+      t("anyAvailableStaff"),
+    );
 
     return (
-      <View key={`${purchase.purchasedAt}-${index}`} style={styles.card}>
+      <View key={`${purchase.id ?? purchase.purchasedAt}-${index}`} style={styles.card}>
         <View style={styles.purchaseTopRow}>
           <Text style={styles.purchaseAmount}>
             {formatBusinessCustomerPrice(purchase.amount)}
@@ -539,7 +936,10 @@ export default function BusinessCustomerDetail() {
         <View style={styles.detailGrid}>
           {renderDetailRow(
             t("appointment"),
-            timeLabel ? `${dateLabel} · ${timeLabel}` : dateLabel,
+            formatAppointmentDateTime(
+              purchase.appointmentDate,
+              purchase.appointmentTime,
+            ),
           )}
           {renderDetailRow(
             t("purchasedOn"),
@@ -551,6 +951,21 @@ export default function BusinessCustomerDetail() {
                 formatPaymentMethodLabel(purchase.paymentMethod),
               )
             : null}
+        </View>
+
+        <View style={styles.staffRow}>
+          <BusinessCustomerAvatar
+            name={purchase.staffId ? purchase.staffName : null}
+            profileImageUrl={purchase.staffId ? purchase.staffImageUrl : null}
+            size={moderateWidthScale(32)}
+            textSize={fontSize.size11}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.staffLabel}>{t("staff")}</Text>
+            <Text style={styles.staffName} numberOfLines={1}>
+              {staffName}
+            </Text>
+          </View>
         </View>
       </View>
     );
@@ -601,7 +1016,7 @@ export default function BusinessCustomerDetail() {
             <BusinessCustomerAvatar
               name={data.name}
               profileImageUrl={data.profile_image_url}
-              size={widthScale(64)}
+              size={widthScale(68)}
               style={{ marginRight: moderateWidthScale(14) }}
               textSize={fontSize.size22}
             />
@@ -611,7 +1026,8 @@ export default function BusinessCustomerDetail() {
               </Text>
               {data.customerSince ? (
                 <Text style={styles.profileMeta}>
-                  {t("customerSince")} {formatBusinessCustomerDate(data.customerSince)}
+                  {t("customerSince")}{" "}
+                  {formatBusinessCustomerDate(data.customerSince)}
                 </Text>
               ) : null}
               <View
@@ -668,7 +1084,9 @@ export default function BusinessCustomerDetail() {
 
         {(hasPhone || hasEmail) && (
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>{t("contactInfo")}</Text>
+            <Text style={[styles.sectionTitle, { marginBottom: moderateHeightScale(12) }]}>
+              {t("contactInfo")}
+            </Text>
             <View style={styles.contactCard}>
               {hasPhone ? (
                 <View
@@ -712,9 +1130,11 @@ export default function BusinessCustomerDetail() {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>{t("subscriptions")}</Text>
-            <Text style={styles.sectionCount}>
-              {data.subscriptions.length}
-            </Text>
+            <View style={styles.sectionCount}>
+              <Text style={styles.sectionCountText}>
+                {data.subscriptionCount ?? data.subscriptions.length}
+              </Text>
+            </View>
           </View>
           {hasSubscriptions ? (
             data.subscriptions.map(renderSubscriptionCard)
@@ -732,7 +1152,11 @@ export default function BusinessCustomerDetail() {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>{t("oneOffPurchases")}</Text>
-            <Text style={styles.sectionCount}>{data.purchases.length}</Text>
+            <View style={styles.sectionCount}>
+              <Text style={styles.sectionCountText}>
+                {data.purchaseCount ?? data.purchases.length}
+              </Text>
+            </View>
           </View>
           {hasPurchases ? (
             data.purchases.map(renderPurchaseCard)

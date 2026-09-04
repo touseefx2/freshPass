@@ -3,17 +3,64 @@ import { customersEndpoints } from "./endpoints";
 import type {
   BusinessCustomer,
   BusinessCustomerDetailResponse,
+  BusinessCustomerPurchase,
+  BusinessCustomerSubscription,
   BusinessCustomersListParams,
   BusinessCustomersListResponse,
 } from "@/src/types/customers";
 
 export const CUSTOMERS_PER_PAGE = 20;
 
+function normalizeSubscription(
+  subscription: BusinessCustomerSubscription,
+): BusinessCustomerSubscription {
+  return {
+    ...subscription,
+    services: subscription.services ?? [],
+    appointments: subscription.appointments ?? [],
+    visits: subscription.visits ?? null,
+    reflectsPlanChanges:
+      typeof subscription.reflectsPlanChanges === "boolean"
+        ? subscription.reflectsPlanChanges
+        : subscription.hasAccess,
+    appointmentCount:
+      typeof subscription.appointmentCount === "number"
+        ? subscription.appointmentCount
+        : (subscription.appointments ?? []).length,
+  };
+}
+
+function normalizePurchase(
+  purchase: BusinessCustomerPurchase,
+): BusinessCustomerPurchase {
+  return {
+    ...purchase,
+    services: purchase.services ?? [],
+    additionalServices: purchase.additionalServices ?? [],
+    staffId: purchase.staffId ?? null,
+    staffName: purchase.staffName ?? null,
+    staffImageUrl: purchase.staffImageUrl ?? null,
+  };
+}
+
 function normalizeCustomer(customer: BusinessCustomer): BusinessCustomer {
+  const subscriptions = (customer.subscriptions ?? []).map(
+    normalizeSubscription,
+  );
+  const purchases = (customer.purchases ?? []).map(normalizePurchase);
+
   return {
     ...customer,
-    subscriptions: customer.subscriptions ?? [],
-    purchases: customer.purchases ?? [],
+    subscriptions,
+    purchases,
+    subscriptionCount:
+      typeof customer.subscriptionCount === "number"
+        ? customer.subscriptionCount
+        : subscriptions.length,
+    purchaseCount:
+      typeof customer.purchaseCount === "number"
+        ? customer.purchaseCount
+        : purchases.length,
   };
 }
 
