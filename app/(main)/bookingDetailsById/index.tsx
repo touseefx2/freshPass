@@ -1325,17 +1325,15 @@ export default function bookingDetailsById() {
     const tipAmount = booking.tip.amount;
     const serviceAmount = Number.isFinite(booking.serviceTotal)
       ? (booking.serviceTotal as number)
-      : Number.parseFloat(String(booking.paidAmount ?? booking.price)) || 0;
+      : Number.parseFloat(String(booking.price)) || 0;
     const paidRaw = Number.parseFloat(String(booking.paidAmount ?? ""));
-    // Backend may return paidAmount as service-only; if it matches service, add tip for display total.
+    const combined = serviceAmount + tipAmount;
+    // Prefer backend paidAmount only when it already covers service + tip.
+    // Otherwise paidAmount can be service-only or tip-only after a separate tip charge.
     const totalPaid =
-      Number.isFinite(paidRaw) && Math.abs(paidRaw - (serviceAmount + tipAmount)) < 0.02
+      Number.isFinite(paidRaw) && paidRaw >= combined - 0.02
         ? paidRaw
-        : Number.isFinite(paidRaw) && Math.abs(paidRaw - serviceAmount) < 0.02
-          ? serviceAmount + tipAmount
-          : Number.isFinite(paidRaw)
-            ? paidRaw
-            : serviceAmount + tipAmount;
+        : combined;
 
     return {
       serviceAmount,

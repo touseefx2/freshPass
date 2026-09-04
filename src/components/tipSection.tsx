@@ -289,32 +289,6 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       paddingVertical: moderateHeightScale(8),
     },
-    pendingCard: {
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.orangeBrown01,
-      borderWidth: 1,
-      borderColor: theme.orangeBrown30,
-      padding: moderateWidthScale(14),
-    },
-    pendingTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(6),
-    },
-    pendingAmount: {
-      fontSize: fontSize.size22,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(6),
-    },
-    pendingText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      lineHeight: fontSize.size18,
-      textTransform: "capitalize",
-    },
     loadingRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -413,9 +387,12 @@ export default function TipSection({
   const [submitting, setSubmitting] = useState(false);
 
   const paidTip = tipDetails?.tip ?? initialTip ?? null;
-  const pendingTip = tipDetails?.pendingTip ?? null;
+  // pendingTip is ignored for UI — still show the tip card so user can tip/retry
   const canTip =
-    tipDetails?.canTip ?? (initialCanTip && !paidTip && !pendingTip);
+    !paidTip &&
+    (tipDetails?.canTip === true ||
+      tipDetails?.pendingTip != null ||
+      (tipDetails == null && !!initialCanTip));
 
   const loadTipDetails = useCallback(async () => {
     if (paidTip && !initialCanTip) {
@@ -508,7 +485,7 @@ export default function TipSection({
   };
 
   const handleConfirmTip = async () => {
-    if (!tipDetails?.canTip || activeAmount == null) {
+    if (!canTip || !tipDetails || activeAmount == null) {
       return;
     }
 
@@ -636,25 +613,8 @@ export default function TipSection({
     );
   };
 
-  const renderPending = () => {
-    if (!pendingTip) return null;
-
-    return (
-      <View style={styles.pendingCard}>
-        <Text style={styles.pendingTitle}>Tip pending with payment</Text>
-        <Text style={styles.pendingAmount}>
-          {formatTipAmount(pendingTip.amount, pendingTip.currency)}
-        </Text>
-        <Text style={styles.pendingText}>
-          {tipDetails?.reason ||
-            `Your tip for ${pendingTip.recipientName} will be charged with your service payment.`}
-        </Text>
-      </View>
-    );
-  };
-
   const renderTipForm = () => {
-    if (!tipDetails?.canTip) return null;
+    if (!canTip || !tipDetails) return null;
 
     return (
       <>
@@ -738,18 +698,9 @@ export default function TipSection({
             </View>
           ) : (
             <>
-              {paidTip ? (
-                renderReceipt()
-              ) : pendingTip ? (
-                <>
-                  {renderRecipient()}
-                  {renderPending()}
-                </>
-              ) : (
-                renderRecipient()
-              )}
-              {!paidTip && !pendingTip && canTip ? renderTipForm() : null}
-              {!paidTip && !pendingTip && !canTip && tipDetails?.reason ? (
+              {paidTip ? renderReceipt() : renderRecipient()}
+              {!paidTip && canTip ? renderTipForm() : null}
+              {!paidTip && !canTip && tipDetails?.reason ? (
                 <Text style={styles.reasonText}>{tipDetails.reason}</Text>
               ) : null}
             </>
