@@ -222,16 +222,89 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(2),
     },
     receiptCard: {
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(20),
+      paddingVertical: moderateHeightScale(18),
       paddingHorizontal: moderateWidthScale(16),
-      borderRadius: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(16),
       backgroundColor: theme.lightGreen07,
       borderWidth: 1,
       borderColor: theme.lightGreen1,
     },
+    receiptTopRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
     receiptAvatarWrap: {
-      marginBottom: moderateHeightScale(12),
+      position: "relative",
+    },
+    receiptBadge: {
+      position: "absolute",
+      right: -moderateWidthScale(2),
+      bottom: -moderateHeightScale(2),
+      width: widthScale(20),
+      height: widthScale(20),
+      borderRadius: widthScale(10),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: theme.white,
+      zIndex: 1,
+    },
+    receiptInfo: {
+      flex: 1,
+    },
+    receiptEyebrow: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      letterSpacing: 0.4,
+      marginBottom: moderateHeightScale(4),
+    },
+    receiptName: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+      marginBottom: moderateHeightScale(2),
+    },
+    receiptSubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size18,
+    },
+    receiptAmountPill: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: widthScale(64),
+    },
+    receiptAmount: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+    },
+    receiptFooter: {
+      marginTop: moderateHeightScale(12),
+      paddingTop: moderateHeightScale(12),
+      borderTopWidth: 1,
+      borderTopColor: theme.lightGreen1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    receiptFooterText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size16,
     },
     receiptIconWrap: {
       width: widthScale(52),
@@ -241,12 +314,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       marginBottom: moderateHeightScale(12),
-    },
-    receiptAmount: {
-      fontSize: fontSize.size28,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(6),
     },
     receiptText: {
       fontSize: fontSize.size14,
@@ -558,19 +625,48 @@ export default function TipSection({
 
     return (
       <View style={styles.receiptCard}>
-        <View style={styles.receiptAvatarWrap}>
-          <RecipientAvatar
-            name={recipient.name}
-            image={recipient.image}
-            styles={styles}
-          />
+        <View style={styles.receiptTopRow}>
+          <View style={styles.receiptAvatarWrap}>
+            <RecipientAvatar
+              name={recipient.name}
+              image={recipient.image}
+              styles={styles}
+            />
+            <View style={styles.receiptBadge}>
+              <Ionicons
+                name="heart"
+                size={moderateWidthScale(10)}
+                color={theme.buttonText}
+              />
+            </View>
+          </View>
+
+          <View style={styles.receiptInfo}>
+            <Text style={styles.receiptEyebrow}>Thank you</Text>
+            <Text style={styles.receiptName}>{recipient.name}</Text>
+            <Text style={styles.receiptSubtitle}>
+              Received your appreciation
+            </Text>
+          </View>
+
+          <View style={styles.receiptAmountPill}>
+            <Text style={styles.receiptAmount}>
+              {formatTipAmount(paidTip.amount, paidTip.currency)}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.receiptAmount}>
-          {formatTipAmount(paidTip.amount, paidTip.currency)}
-        </Text>
-        <Text style={styles.receiptText}>
-          Thank you for tipping {paidTip.recipientName}
-        </Text>
+
+        <View style={styles.receiptFooter}>
+          <Ionicons
+            name="checkmark-circle"
+            size={moderateWidthScale(16)}
+            color={theme.buttonBack}
+          />
+          <Text style={styles.receiptFooterText}>
+            Your tip of {formatTipAmount(paidTip.amount, paidTip.currency)} was
+            shared successfully
+          </Text>
+        </View>
       </View>
     );
   };

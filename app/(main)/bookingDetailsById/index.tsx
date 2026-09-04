@@ -673,25 +673,31 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(8),
     },
     tipReceiptCard: {
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.lightGreen07,
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      padding: moderateWidthScale(16),
+      overflow: "hidden",
+    },
+    tipReceiptTopRow: {
       flexDirection: "row",
       alignItems: "center",
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.white,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      padding: moderateWidthScale(14),
       gap: moderateWidthScale(12),
     },
+    tipReceiptAvatarWrap: {
+      position: "relative",
+    },
     tipReceiptAvatar: {
-      width: widthScale(48),
-      height: widthScale(48),
-      borderRadius: widthScale(24),
+      width: widthScale(52),
+      height: widthScale(52),
+      borderRadius: widthScale(26),
       backgroundColor: theme.emptyProfileImage,
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
       borderWidth: 2,
-      borderColor: theme.orangeBrown30,
+      borderColor: theme.orangeBrown,
     },
     tipReceiptAvatarImage: {
       width: "100%",
@@ -702,33 +708,73 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    tipReceiptBadge: {
+      position: "absolute",
+      right: -moderateWidthScale(2),
+      bottom: -moderateHeightScale(2),
+      width: widthScale(20),
+      height: widthScale(20),
+      borderRadius: widthScale(10),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 2,
+      borderColor: theme.white,
+    },
     tipReceiptInfo: {
       flex: 1,
     },
     tipReceiptEyebrow: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      textTransform: "uppercase",
-      letterSpacing: 0.5,
+      color: theme.orangeBrown,
+      letterSpacing: 0.4,
       marginBottom: moderateHeightScale(4),
     },
     tipReceiptTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      textTransform: "capitalize",
       marginBottom: moderateHeightScale(2),
     },
     tipReceiptSubtitle: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      textTransform: "capitalize",
+      lineHeight: fontSize.size18,
+    },
+    tipReceiptAmountPill: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: widthScale(64),
     },
     tipReceiptAmount: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.buttonBack,
+    },
+    tipReceiptFooter: {
+      marginTop: moderateHeightScale(12),
+      paddingTop: moderateHeightScale(12),
+      borderTopWidth: 1,
+      borderTopColor: theme.lightGreen1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
+    tipReceiptFooterText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size16,
     },
     payOnlineButtonContainer: {},
     payOnlineButton: {
@@ -2289,39 +2335,67 @@ export default function bookingDetailsById() {
           {userRole === "customer" && booking.tip && paidTipBreakdown && (
             <View style={styles.tipReceiptSection}>
               <View style={styles.tipReceiptCard}>
-                <View style={styles.tipReceiptAvatar}>
-                  {tipReceiptImageUri ? (
-                    <Image
-                      source={{ uri: tipReceiptImageUri }}
-                      style={styles.tipReceiptAvatarImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <Text style={styles.tipReceiptInitial}>
-                      {paidTipBreakdown.recipientName.charAt(0).toUpperCase() ||
-                        "?"}
+                <View style={styles.tipReceiptTopRow}>
+                  <View style={styles.tipReceiptAvatarWrap}>
+                    <View style={styles.tipReceiptAvatar}>
+                      {tipReceiptImageUri ? (
+                        <Image
+                          source={{ uri: tipReceiptImageUri }}
+                          style={styles.tipReceiptAvatarImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <Text style={styles.tipReceiptInitial}>
+                          {paidTipBreakdown.recipientName
+                            .charAt(0)
+                            .toUpperCase() || "?"}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.tipReceiptBadge}>
+                      <Ionicons
+                        name="heart"
+                        size={moderateWidthScale(10)}
+                        color={theme.buttonText}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.tipReceiptInfo}>
+                    <Text style={styles.tipReceiptEyebrow}>Thank you</Text>
+                    <Text style={styles.tipReceiptTitle}>
+                      {paidTipBreakdown.recipientName}
                     </Text>
-                  )}
+                    <Text style={styles.tipReceiptSubtitle}>
+                      Received your appreciation
+                    </Text>
+                  </View>
+
+                  <View style={styles.tipReceiptAmountPill}>
+                    <Text style={styles.tipReceiptAmount}>
+                      {formatTipAmount(
+                        paidTipBreakdown.tipAmount,
+                        paidTipBreakdown.currency,
+                      )}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.tipReceiptInfo}>
-                  <Text style={styles.tipReceiptEyebrow}>Tip sent</Text>
-                  <Text style={styles.tipReceiptTitle}>
-                    You tipped{" "}
+
+                <View style={styles.tipReceiptFooter}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={moderateWidthScale(16)}
+                    color={theme.buttonBack}
+                  />
+                  <Text style={styles.tipReceiptFooterText}>
+                    Your tip of{" "}
                     {formatTipAmount(
                       paidTipBreakdown.tipAmount,
                       paidTipBreakdown.currency,
-                    )}
-                  </Text>
-                  <Text style={styles.tipReceiptSubtitle}>
-                    To {paidTipBreakdown.recipientName}
+                    )}{" "}
+                    was shared successfully
                   </Text>
                 </View>
-                <Text style={styles.tipReceiptAmount}>
-                  {formatTipAmount(
-                    paidTipBreakdown.tipAmount,
-                    paidTipBreakdown.currency,
-                  )}
-                </Text>
               </View>
             </View>
           )}
