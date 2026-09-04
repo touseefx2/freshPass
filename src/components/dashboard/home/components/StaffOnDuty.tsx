@@ -24,7 +24,10 @@ import {
   canAddStaffMembers,
   isSoloSubscription,
 } from "@/src/state/slices/userSlice";
-import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  setBusinessPlansModalVisible,
+  setBusinessPlansModalBusinessOnly,
+} from "@/src/state/slices/generalSlice";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 
@@ -187,6 +190,12 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     dispatch(setBusinessPlansModalVisible(true));
   };
 
+  const handleUpgradePlan = () => {
+    setUpgradeModalVisible(false);
+    dispatch(setBusinessPlansModalBusinessOnly(true));
+    dispatch(setBusinessPlansModalVisible(true));
+  };
+
   return (
     <View style={styles.staffContainer}>
       <View style={styles.sectionHeader}>
@@ -270,6 +279,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
       <UpgradeToBusinessModal
         visible={upgradeModalVisible}
         onClose={() => setUpgradeModalVisible(false)}
+        onUpgradePlan={handleUpgradePlan}
       />
     </View>
   );

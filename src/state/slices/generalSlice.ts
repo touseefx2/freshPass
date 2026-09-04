@@ -89,6 +89,8 @@ export interface GeneralState {
   chatContactsRefreshing: boolean;
   chatContactsLoadingMore: boolean;
   businessPlansModalVisible: boolean;
+  /** When true, BusinessPlansModal shows only Business plans (Solo → Business upgrade). */
+  businessPlansModalBusinessOnly: boolean;
   stripeConnectModalVisible: boolean;
   /** After Create from Stripe congrats — don't auto-open business plans this session */
   suppressBusinessPlansAutoOpen: boolean;
@@ -166,6 +168,7 @@ const initialState: GeneralState = {
   chatContactsRefreshing: false,
   chatContactsLoadingMore: false,
   businessPlansModalVisible: false,
+  businessPlansModalBusinessOnly: false,
   stripeConnectModalVisible: false,
   suppressBusinessPlansAutoOpen: false,
   businessPlanPurchasedCongratsVisible: false,
@@ -299,6 +302,12 @@ const generalSlice = createSlice({
     },
     setBusinessPlansModalVisible(state, action: PayloadAction<boolean>) {
       state.businessPlansModalVisible = action.payload;
+      if (!action.payload) {
+        state.businessPlansModalBusinessOnly = false;
+      }
+    },
+    setBusinessPlansModalBusinessOnly(state, action: PayloadAction<boolean>) {
+      state.businessPlansModalBusinessOnly = action.payload;
     },
     setStripeConnectModalVisible(state, action: PayloadAction<boolean>) {
       state.stripeConnectModalVisible = action.payload;
@@ -344,6 +353,7 @@ const generalSlice = createSlice({
       if (action.payload) {
         state.stripeConnectModalVisible = false;
         state.businessPlansModalVisible = false;
+        state.businessPlansModalBusinessOnly = false;
         state.guestModeModalVisible = false;
         state.fullImageModalVisible = false;
         state.tryOnPurchaseSuccessModalVisible = false;
@@ -357,6 +367,7 @@ const generalSlice = createSlice({
       if (action.payload) {
         state.stripeConnectModalVisible = false;
         state.businessPlansModalVisible = false;
+        state.businessPlansModalBusinessOnly = false;
         state.guestModeModalVisible = false;
         state.fullImageModalVisible = false;
         state.tryOnPurchaseSuccessModalVisible = false;
@@ -506,6 +517,7 @@ const generalSlice = createSlice({
       state.chatContactsRefreshing = false;
       state.chatContactsLoadingMore = false;
       state.businessPlansModalVisible = false;
+      state.businessPlansModalBusinessOnly = false;
       state.stripeConnectModalVisible = false;
       state.suppressBusinessPlansAutoOpen = false;
       state.tryOnPurchaseSuccessModalVisible = false;
@@ -545,6 +557,7 @@ export const {
   closeFullImageModal,
   setGuestModeModalVisible,
   setBusinessPlansModalVisible,
+  setBusinessPlansModalBusinessOnly,
   setStripeConnectModalVisible,
   setSuppressBusinessPlansAutoOpen,
   setBusinessPlanPurchasedCongratsVisible,

@@ -27,6 +27,9 @@ export default function BusinessPlansModalHandler() {
   const businessPlansModalVisible = useAppSelector(
     (state) => state.general.businessPlansModalVisible,
   );
+  const businessPlansModalBusinessOnly = useAppSelector(
+    (state) => state.general.businessPlansModalBusinessOnly,
+  );
   const appGateBlocked = useAppSelector(
     (state) =>
       state.general.maintenanceModeActive || state.general.forceUpdateActive,
@@ -81,6 +84,7 @@ export default function BusinessPlansModalHandler() {
     <BusinessPlansModal
       visible={!appGateBlocked && businessPlansModalVisible}
       onClose={handleClose}
+      businessOnly={businessPlansModalBusinessOnly}
     />
   );
 }

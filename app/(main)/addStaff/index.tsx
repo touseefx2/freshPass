@@ -65,7 +65,7 @@ import Logger from "@/src/services/logger";
 import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import { canAddStaffMembers, isSoloSubscription } from "@/src/state/slices/userSlice";
-import { setBusinessPlansModalVisible } from "@/src/state/slices/generalSlice";
+import { setBusinessPlansModalVisible, setBusinessPlansModalBusinessOnly } from "@/src/state/slices/generalSlice";
 import { getDefaultHoursFromBounds } from "@/src/utils/businessHoursBounds";
 
 const DAYS = [
@@ -1793,6 +1793,11 @@ export default function AddStaffScreen() {
       <UpgradeToBusinessModal
         visible={upgradeModalVisible}
         onClose={() => setUpgradeModalVisible(false)}
+        onUpgradePlan={() => {
+          setUpgradeModalVisible(false);
+          dispatch(setBusinessPlansModalBusinessOnly(true));
+          dispatch(setBusinessPlansModalVisible(true));
+        }}
       />
     </SafeAreaView>
   );

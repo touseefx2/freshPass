@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
   Pressable,
+  TouchableOpacity,
 } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -95,21 +96,34 @@ const createStyles = (theme: Theme) =>
     },
     buttonContainer: {
       width: "100%",
+      gap: moderateHeightScale(4),
     },
     primaryButton: {
       borderRadius: moderateWidthScale(28),
       height: moderateHeightScale(52),
+    },
+    skipButton: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(14),
+    },
+    skipButtonText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
   });
 
 interface UpgradeToBusinessModalProps {
   visible: boolean;
   onClose: () => void;
+  onUpgradePlan: () => void;
 }
 
 export default function UpgradeToBusinessModal({
   visible,
   onClose,
+  onUpgradePlan,
 }: UpgradeToBusinessModalProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -212,10 +226,19 @@ export default function UpgradeToBusinessModal({
 
           <View style={styles.buttonContainer}>
             <Button
-              title={t("ok")}
-              onPress={onClose}
+              title={t("upgradePlan")}
+              onPress={onUpgradePlan}
               containerStyle={styles.primaryButton}
             />
+
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={onClose}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+            >
+              <Text style={styles.skipButtonText}>{t("skip")}</Text>
+            </TouchableOpacity>
           </View>
         </Pressable>
       </Pressable>
