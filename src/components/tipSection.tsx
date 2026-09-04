@@ -5,7 +5,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { useStripe } from "@stripe/stripe-react-native";
@@ -172,33 +171,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(12),
     },
-    chipsRow: {
-      flexDirection: "row",
-      gap: moderateWidthScale(10),
-      marginBottom: moderateHeightScale(14),
-    },
-    chip: {
-      flex: 1,
-      paddingVertical: moderateHeightScale(14),
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1.5,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.background,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    chipSelected: {
-      borderColor: theme.buttonBack,
-      backgroundColor: theme.buttonBack,
-    },
-    chipText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    chipTextSelected: {
-      color: theme.buttonText,
-    },
     customAmountContainer: {
       flexDirection: "row",
       alignItems: "center",
@@ -208,29 +180,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
       paddingHorizontal: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(6),
-    },
-    customAmountLabelWrap: {
-      marginRight: moderateWidthScale(12),
-      paddingRight: moderateWidthScale(12),
-      borderRightWidth: 1,
-      borderRightColor: theme.borderLight,
-    },
-    customAmountLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-    },
-    customAmountInputRow: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    currencyPrefix: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginRight: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(16),
     },
     customAmountInput: {
       flex: 1,
@@ -238,13 +188,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       padding: 0,
-    },
-    amountHint: {
-      marginBottom: moderateHeightScale(16),
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      textAlign: "right",
     },
     receiptCard: {
       alignItems: "center",
@@ -382,7 +325,6 @@ export default function TipSection({
 
   const [loading, setLoading] = useState(initialCanTip && !initialTip);
   const [tipDetails, setTipDetails] = useState<TipDetails | null>(null);
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -403,10 +345,6 @@ export default function TipSection({
       setLoading(true);
       const details = await fetchTipDetails(appointmentId);
       setTipDetails(details);
-      if (details.suggestedAmounts.length > 0) {
-        setSelectedAmount(details.suggestedAmounts[0]);
-        setCustomAmount("");
-      }
     } catch {
       if (!paidTip) {
         setTipDetails(null);
@@ -452,28 +390,20 @@ export default function TipSection({
   ]);
 
   const activeAmount = useMemo(() => {
-    if (customAmount.trim()) {
-      const parsed = Number.parseFloat(customAmount);
-      return Number.isFinite(parsed) ? parsed : null;
-    }
-    return selectedAmount;
-  }, [customAmount, selectedAmount]);
-
-  const handleSelectSuggested = (amount: number) => {
-    setSelectedAmount(amount);
-    setCustomAmount("");
-  };
+    if (!customAmount.trim()) return null;
+    const parsed = Number.parseFloat(customAmount);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [customAmount]);
 
   const handleCustomAmountChange = (value: string) => {
     const sanitized = value.replace(/[^0-9.]/g, "");
     setCustomAmount(sanitized);
-    setSelectedAmount(null);
   };
 
   const validateAmount = (): string | null => {
     if (!tipDetails) return "Tip details are unavailable.";
     if (activeAmount == null || Number.isNaN(activeAmount)) {
-      return "Please choose or enter a tip amount.";
+      return "Please enter a tip amount.";
     }
     if (activeAmount < tipDetails.minAmount) {
       return `Minimum tip is ${formatTipAmount(tipDetails.minAmount, tipDetails.currency)}.`;
@@ -619,48 +549,17 @@ export default function TipSection({
     return (
       <>
         <View style={styles.divider} />
-        <Text style={styles.amountSectionTitle}>Select tip amount</Text>
-        <View style={styles.chipsRow}>
-          {tipDetails.suggestedAmounts.map((amount) => {
-            const isSelected =
-              selectedAmount === amount && customAmount.trim() === "";
-            return (
-              <TouchableOpacity
-                key={amount}
-                style={[styles.chip, isSelected && styles.chipSelected]}
-                onPress={() => handleSelectSuggested(amount)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[styles.chipText, isSelected && styles.chipTextSelected]}
-                >
-                  {formatTipAmount(amount, tipDetails.currency)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
+        <Text style={styles.amountSectionTitle}>Amount</Text>
         <View style={styles.customAmountContainer}>
-          <View style={styles.customAmountLabelWrap}>
-            <Text style={styles.customAmountLabel}>Other</Text>
-          </View>
-          <View style={styles.customAmountInputRow}>
-            <Text style={styles.currencyPrefix}>$</Text>
-            <TextInput
-              style={styles.customAmountInput}
-              value={customAmount}
-              onChangeText={handleCustomAmountChange}
-              keyboardType="decimal-pad"
-              placeholder="0.00"
-              placeholderTextColor={theme.lightGreen5}
-            />
-          </View>
+          <TextInput
+            style={styles.customAmountInput}
+            value={customAmount}
+            onChangeText={handleCustomAmountChange}
+            keyboardType="decimal-pad"
+            placeholder="Enter amount"
+            placeholderTextColor={theme.lightGreen5}
+          />
         </View>
-        <Text style={styles.amountHint}>
-          Min {formatTipAmount(tipDetails.minAmount, tipDetails.currency)} · Max{" "}
-          {formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}
-        </Text>
 
         <Button
           title="Send tip"
