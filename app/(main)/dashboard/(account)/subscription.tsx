@@ -361,6 +361,9 @@ const createStyles = (theme: Theme) =>
       lineHeight: fontSize.size18,
       marginBottom: moderateHeightScale(12),
     },
+    actionHintTextAfterPrimary: {
+      marginTop: moderateHeightScale(16),
+    },
     secondaryAction: {
       alignItems: "center",
       justifyContent: "center",
@@ -1383,20 +1386,23 @@ export default function SubscriptionScreen() {
 
               {showAppleCancelHelp && (
                 <>
-                  {!hasPrimaryPlanAction && (
-                    <Text style={styles.actionHintText}>
-                      {isTrialing
-                        ? t("appleCancelTrialHint", {
-                            date: formatTrialEndDate(subscription.trialEndsAt),
-                          })
-                        : t("appleCancelSubscriptionHint", {
-                            date: formatTrialEndDate(
-                              subscription.nextPaymentDate ||
-                                subscription.endsAt,
-                            ),
-                          })}
-                    </Text>
-                  )}
+                  <Text
+                    style={[
+                      styles.actionHintText,
+                      hasPrimaryPlanAction && styles.actionHintTextAfterPrimary,
+                    ]}
+                  >
+                    {isTrialing
+                      ? t("appleCancelTrialHint", {
+                          date: formatTrialEndDate(subscription.trialEndsAt),
+                        })
+                      : t("appleCancelSubscriptionHint", {
+                          date: formatTrialEndDate(
+                            subscription.nextPaymentDate ||
+                              subscription.endsAt,
+                          ),
+                        })}
+                  </Text>
                   <Pressable
                     onPress={handleOpenAppStoreSubscriptions}
                     style={
