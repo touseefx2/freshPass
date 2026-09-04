@@ -7,6 +7,8 @@ import {
   Linking,
   Pressable,
   ActivityIndicator,
+  AppState,
+  type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { isSoloSubscription } from "@/src/state/slices/userSlice";
@@ -725,6 +727,7 @@ export default function SubscriptionScreen() {
 
   const fetchSeqRef = useRef(0);
   const refetchingAfterPurchaseRef = useRef(false);
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const fetchSubscription = useCallback(
     async (options?: { retries?: number }) => {
@@ -792,8 +795,23 @@ export default function SubscriptionScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (refetchingAfterPurchaseRef.current) return;
-      fetchSubscription();
+      if (!refetchingAfterPurchaseRef.current) {
+        fetchSubscription();
+      }
+
+      const onAppStateChange = (nextState: AppStateStatus) => {
+        if (
+          appStateRef.current.match(/inactive|background/) &&
+          nextState === "active" &&
+          !refetchingAfterPurchaseRef.current
+        ) {
+          fetchSubscription();
+        }
+        appStateRef.current = nextState;
+      };
+
+      const appStateSub = AppState.addEventListener("change", onAppStateChange);
+      return () => appStateSub.remove();
     }, [fetchSubscription]),
   );
 
