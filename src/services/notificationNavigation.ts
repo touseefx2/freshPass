@@ -45,12 +45,12 @@ function getNotificationSubType(
  * - type "appointment" + model_id → bookingDetailsById
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
- * - type "manageSubscriptionList" → Profile → Business profile settings → Manage subscriptions
-  * - type "subscription" (customer role) → Profile → Customer subscriptions
-  * - type "subscription" (business role) → Profile → Subscription
-  * - type "business" | "service" + model_id (customer role) → businessDetail
-  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
-  */
+ * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
+ * - type "subscription" (customer role) → Profile → Customer subscriptions
+ * - type "subscription" (business role) → Profile → Subscription
+ * - type "business" | "service" + model_id (customer role) → businessDetail
+ * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
+ */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
 const AI_MEMORY_BACK_DELAY_MS = 50;
 
@@ -200,18 +200,10 @@ export function navigateFromNotificationData(
     }
   }
 
+  // Stripe Connect Setup Complete — informational only; do not navigate
   if (type === "manageSubscriptionList") {
-    router.push("/(main)/dashboard/(account)");
-    setTimeout(() => {
-      router.push("/(main)/dashboard/(account)/(businessProfileSettings)");
-      setTimeout(() => {
-        router.push(
-          "/(main)/dashboard/(account)/(businessProfileSettings)/subscriptions",
-        );
-      }, 15);
-    }, 15);
     Logger.log(
-      "------>navigateFromNotificationData (manageSubscriptionList) -> subscriptions",
+      "------>navigateFromNotificationData (manageSubscriptionList) -> skipped (no navigation)",
     );
     return;
   }
