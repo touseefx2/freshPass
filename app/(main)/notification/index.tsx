@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useRef, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,8 @@ import {
   RefreshControl,
   ScrollView,
   StatusBar,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -44,6 +46,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import StackHeader from "@/src/components/StackHeader";
 import EmptyState from "@/src/components/emptyState";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 dayjs.extend(relativeTime);
 
@@ -96,7 +99,11 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateHeightScale(20),
     },
     listContent: {
-      paddingBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(20),
+    },
+    list: {
+      flex: 1,
     },
     sectionHeaderContainer: {
       flexDirection: "row",
@@ -272,6 +279,7 @@ export default function NotificationsScreen() {
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -285,10 +293,12 @@ export default function NotificationsScreen() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
   const [markAllAsReadLoading, setMarkAllAsReadLoading] = useState(false);
+  const loadingMoreRef = useRef(false);
+  const currentPageRef = useRef(1);
+  const totalPagesRef = useRef(1);
+  const hasScrolledRef = useRef(false);
 
   // Determine the icon from sub_type where one exists, since titles are copy
   // the backend is free to reword.
@@ -388,10 +398,12 @@ export default function NotificationsScreen() {
     if (!canFetchNotifications) {
       setLoading(false);
       setLoadingMore(false);
+      loadingMoreRef.current = false;
       return;
     }
 
     if (append) {
+      loadingMoreRef.current = true;
       setLoadingMore(true);
     } else {
       setLoading(true);
@@ -417,8 +429,10 @@ export default function NotificationsScreen() {
         } else {
           setNotifications(mappedNotifications);
         }
-        setCurrentPage(response.data.current_page);
-        setTotalPages(response.data.last_page);
+        const nextPage = response.data.current_page;
+        const lastPage = response.data.last_page;
+        currentPageRef.current = nextPage;
+        totalPagesRef.current = lastPage;
       }
     } catch (error: any) {
       showBanner(
@@ -430,6 +444,7 @@ export default function NotificationsScreen() {
     } finally {
       setLoading(false);
       setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
   };
 
@@ -495,6 +510,9 @@ export default function NotificationsScreen() {
   useFocusEffect(
     useCallback(() => {
       if (canFetchNotifications) {
+        hasScrolledRef.current = false;
+        currentPageRef.current = 1;
+        totalPagesRef.current = 1;
         fetchNotifications(1, false);
         dispatch(fetchNotificationUnreadCount());
       } else {
@@ -526,6 +544,7 @@ export default function NotificationsScreen() {
         return;
       }
 
+      hasScrolledRef.current = false;
       // Call both APIs in parallel
       await Promise.all([
         fetchNotifications(1, false),
@@ -538,14 +557,37 @@ export default function NotificationsScreen() {
     }
   };
 
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
     if (!canFetchNotifications) {
       return;
     }
-    if (!loadingMore && currentPage < totalPages) {
-      fetchNotifications(currentPage + 1, true);
+    if (loading || loadingMoreRef.current) {
+      return;
     }
-  };
+    if (currentPageRef.current >= totalPagesRef.current) {
+      return;
+    }
+    if (!hasScrolledRef.current) {
+      return;
+    }
+    fetchNotifications(currentPageRef.current + 1, true);
+  }, [canFetchNotifications, loading]);
+
+  // Android SectionList often misses onEndReached — also load near the end on scroll.
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+      if (contentOffset.y > 20) {
+        hasScrolledRef.current = true;
+      }
+      const distanceFromEnd =
+        contentSize.height - layoutMeasurement.height - contentOffset.y;
+      if (distanceFromEnd < moderateHeightScale(160)) {
+        loadMore();
+      }
+    },
+    [loadMore],
+  );
 
   const sections = useMemo<NotificationSection[]>(() => {
     if (notifications.length === 0) {
@@ -740,8 +782,13 @@ export default function NotificationsScreen() {
         </ScrollView>
       ) : (
         <SectionList
-          style={styles.content}
-          contentContainerStyle={styles.listContent}
+          style={styles.list}
+          contentContainerStyle={[
+            styles.listContent,
+            {
+              paddingBottom: insets.bottom + moderateHeightScale(40),
+            },
+          ]}
           sections={sections}
           showsVerticalScrollIndicator={false}
           keyExtractor={(item) => item.id}
@@ -838,8 +885,10 @@ export default function NotificationsScreen() {
             </TouchableOpacity>
           )}
           ListFooterComponent={renderFooter}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           onEndReached={loadMore}
-          onEndReachedThreshold={0.5}
+          onEndReachedThreshold={0.3}
           stickySectionHeadersEnabled={false}
         />
       )}
