@@ -2326,9 +2326,8 @@ export default function bookingDetailsById() {
             </View>
           )}
 
-          {userRole === "customer" &&
-            booking.canTip &&
-            !booking.owesPayment && (
+          {/* Show tip even while service payment is owed (pay-later after complete). */}
+          {userRole === "customer" && booking.canTip && (
             <TipSection
               appointmentId={Number(booking.id)}
               initialCanTip={booking.canTip}
