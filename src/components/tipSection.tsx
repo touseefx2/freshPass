@@ -160,34 +160,66 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       lineHeight: fontSize.size18,
     },
-    divider: {
-      height: 1,
-      backgroundColor: theme.borderLight,
-      marginVertical: moderateHeightScale(16),
+    tipFormPanel: {
+      marginTop: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.lightGreen05,
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      padding: moderateWidthScale(14),
     },
     amountSectionTitle: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
       marginBottom: moderateHeightScale(12),
     },
-    customAmountContainer: {
+    amountDisplay: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(18),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      marginBottom: moderateHeightScale(14),
+    },
+    amountDisplayActive: {
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.background,
+    },
+    amountInputRow: {
       flexDirection: "row",
       alignItems: "center",
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      backgroundColor: theme.background,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(16),
+      justifyContent: "center",
+    },
+    currencyPrefix: {
+      fontSize: fontSize.size32,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginRight: moderateWidthScale(2),
     },
     customAmountInput: {
-      flex: 1,
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontMedium,
+      minWidth: widthScale(80),
+      maxWidth: widthScale(160),
+      fontSize: fontSize.size32,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       padding: 0,
+      textAlign: "center",
+    },
+    amountPlaceholderLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      marginBottom: moderateHeightScale(4),
+      letterSpacing: 0.3,
+    },
+    sendButtonWrap: {
+      marginTop: moderateHeightScale(2),
     },
     receiptCard: {
       alignItems: "center",
@@ -546,27 +578,41 @@ export default function TipSection({
   const renderTipForm = () => {
     if (!canTip || !tipDetails) return null;
 
+    const hasAmount = customAmount.trim().length > 0;
+
     return (
-      <>
-        <View style={styles.divider} />
+      <View style={styles.tipFormPanel}>
         <Text style={styles.amountSectionTitle}>Amount</Text>
-        <View style={styles.customAmountContainer}>
-          <TextInput
-            style={styles.customAmountInput}
-            value={customAmount}
-            onChangeText={handleCustomAmountChange}
-            keyboardType="decimal-pad"
-            placeholder="Enter amount"
-            placeholderTextColor={theme.lightGreen5}
-          />
+
+        <View
+          style={[
+            styles.amountDisplay,
+            hasAmount && styles.amountDisplayActive,
+          ]}
+        >
+          <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
+          <View style={styles.amountInputRow}>
+            <Text style={styles.currencyPrefix}>$</Text>
+            <TextInput
+              style={styles.customAmountInput}
+              value={customAmount}
+              onChangeText={handleCustomAmountChange}
+              keyboardType="decimal-pad"
+              placeholder="0"
+              placeholderTextColor={theme.lightGreen5}
+              selectionColor={theme.orangeBrown}
+            />
+          </View>
         </View>
 
-        <Button
-          title="Send tip"
-          onPress={handleConfirmTip}
-          disabled={submitting || activeAmount == null}
-        />
-      </>
+        <View style={styles.sendButtonWrap}>
+          <Button
+            title="Send tip"
+            onPress={handleConfirmTip}
+            disabled={submitting || activeAmount == null}
+          />
+        </View>
+      </View>
     );
   };
 
