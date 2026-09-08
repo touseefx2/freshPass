@@ -220,13 +220,22 @@ interface AppointmentPaymentSheetApiResponse {
   };
 }
 
+/**
+ * @param tipAmount — only for completed unpaid pay-later (`paymentDueNow`).
+ *   Omit / undefined / null = no tip. Never send 0 (API rejects below min).
+ */
 export const fetchAppointmentPaymentSheetParams = async (
   appointmentId: number,
+  tipAmount?: number | null,
 ): Promise<PaymentSheetParams> => {
   try {
-    const body: { appointment_id: number } = {
+    const body: { appointment_id: number; tip_amount?: number } = {
       appointment_id: appointmentId,
     };
+
+    if (tipAmount != null && tipAmount > 0) {
+      body.tip_amount = tipAmount;
+    }
 
     const response = await ApiService.post<AppointmentPaymentSheetApiResponse>(
       stripeEndpoints.paymentSheet,

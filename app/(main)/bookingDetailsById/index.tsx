@@ -69,6 +69,7 @@ import PotentialContactsModal, {
   type PotentialContact,
 } from "@/src/components/PotentialContactsModal";
 import TipSection from "@/src/components/tipSection";
+import PayAndTipModal from "@/src/components/payAndTipModal";
 import {
   formatTipAmount,
   formatTipRecipientName,
@@ -137,8 +138,13 @@ interface BookingItem {
   businessAverageRating?: number;
   paymentMethod?: string;
   paidAmount?: string | null;
-  /** Service payment is still outstanding. Only field to branch payment UI on. */
+  /** Service payment is still outstanding. Keep using for existing pay UI. */
   owesPayment?: boolean;
+  /**
+   * Completed pay-later appointment that is still unpaid.
+   * Use this to open combined service + tip payment sheet.
+   */
+  paymentDueNow?: boolean;
   paidAt?: string | null;
   subscriptionVisits?: {
     used: number;
@@ -225,6 +231,7 @@ interface ApiBookingResponse {
   status: string;
   paidAmount: string | null;
   owesPayment?: boolean;
+  paymentDueNow?: boolean;
   paidAt?: string | null;
   notes: string | null;
   cancelReason: string | null;
@@ -920,6 +927,7 @@ export default function bookingDetailsById() {
   const [booking, setBooking] = useState<BookingItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [payAndTipModalVisible, setPayAndTipModalVisible] = useState(false);
 
   const bookingId = params.bookingId as string;
   // Set by payment_request / review_request notifications so the tap lands in
@@ -1208,6 +1216,7 @@ export default function bookingDetailsById() {
         // Older responses have no owesPayment; settling a pay-later
         // appointment rewrites the method to pay_now, so this matches.
         !(apiData.paymentMethod === "pay_now" && apiData.paidAmount != null),
+      paymentDueNow: apiData.paymentDueNow ?? false,
       paidAt: apiData.paidAt ?? null,
       subscriptionVisits: apiData.subscriptionVisits || null,
       planName,
@@ -1723,7 +1732,7 @@ export default function bookingDetailsById() {
     }
   };
 
-  const handlePayOnline = async () => {
+  const handlePayOnline = async (tipAmount?: number | null) => {
     if (!booking?.id) {
       showBanner(
         t("error"),
@@ -1749,7 +1758,10 @@ export default function bookingDetailsById() {
         ephemeralKey,
         customer,
         connectedAccountId,
-      } = await fetchAppointmentPaymentSheetParams(appointmentId);
+      } = await fetchAppointmentPaymentSheetParams(
+        appointmentId,
+        tipAmount,
+      );
       dispatch(setActionLoader(false));
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -1833,6 +1845,36 @@ export default function bookingDetailsById() {
     }
   };
 
+  /**
+   * Completed unpaid pay-later: tip chooser then one sheet.
+   * Skip chooser when a tip was already committed at booking.
+   * All other owesPayment cases keep the existing direct pay sheet.
+   */
+  const startPayOnlineFlow = () => {
+    if (!booking) return;
+
+    if (booking.paymentDueNow) {
+      const hasBookingPendingTip =
+        booking.pendingTip?.source === "booking" &&
+        booking.pendingTip.amount > 0;
+
+      if (hasBookingPendingTip) {
+        void handlePayOnline(null);
+        return;
+      }
+
+      setPayAndTipModalVisible(true);
+      return;
+    }
+
+    void handlePayOnline();
+  };
+
+  const handlePayAndTipContinue = (tipAmount: number | null) => {
+    setPayAndTipModalVisible(false);
+    void handlePayOnline(tipAmount);
+  };
+
   // Act on the notification the customer tapped, once the booking has loaded.
   // The ref keeps a re-render from reopening the Stripe sheet.
   useEffect(() => {
@@ -1840,7 +1882,7 @@ export default function bookingDetailsById() {
 
     if (shouldOpenPay && booking.owesPayment) {
       hasHandledNotificationAction.current = true;
-      void handlePayOnline();
+      startPayOnlineFlow();
     } else if (shouldOpenReview) {
       hasHandledNotificationAction.current = true;
       void checkAndShowReviewPrompt();
@@ -2313,7 +2355,7 @@ export default function bookingDetailsById() {
                 booking.owesPayment && (
                   <Button
                     title={t("payOnline")}
-                    onPress={handlePayOnline}
+                    onPress={startPayOnlineFlow}
                     containerStyle={styles.payOnlineButton}
                     textStyle={styles.payOnlineButtonText}
                   />
@@ -2400,8 +2442,11 @@ export default function bookingDetailsById() {
             </View>
           )}
 
-          {/* Show tip even while service payment is owed (pay-later after complete). */}
-          {userRole === "customer" && booking.canTip && (
+          {/* Standalone tip after a paid visit — not for unpaid completed pay-later
+              (that tip is collected in the combined pay sheet instead). */}
+          {userRole === "customer" &&
+            booking.canTip &&
+            !booking.paymentDueNow && (
             <TipSection
               appointmentId={Number(booking.id)}
               initialCanTip={booking.canTip}
@@ -2500,6 +2545,18 @@ export default function bookingDetailsById() {
           onContactPress={onPotentialContactPress}
           onEndReached={onPotentialEndReached}
           sending={shareSending}
+        />
+
+        {/* Combined service + tip pay for completed unpaid pay-later */}
+        <PayAndTipModal
+          visible={payAndTipModalVisible}
+          appointmentId={Number(booking.id)}
+          serviceAmount={booking.serviceTotal}
+          fallbackRecipientName={
+            booking.tipRecipientName || booking.staffName
+          }
+          onClose={() => setPayAndTipModalVisible(false)}
+          onContinue={handlePayAndTipContinue}
         />
       </>
     );
