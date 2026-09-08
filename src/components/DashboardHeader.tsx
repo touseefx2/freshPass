@@ -222,6 +222,16 @@ function DashboardHeader({
           </View>
           {isCustomer ? (
             <View style={{ width: 16, height: moderateHeightScale(38) }} />
+          ) : userRole === "business" ? (
+            // Inactive/Active toggle hidden for business role
+            // <View style={styles.toggleContainer}>
+            //   <CustomToggleInside
+            //     value={isOnline}
+            //     onValueChange={handleToggleChange}
+            //     loading={toggleLoading}
+            //   />
+            // </View>
+            null
           ) : (
             <View style={styles.toggleContainer}>
               <CustomToggleInside
