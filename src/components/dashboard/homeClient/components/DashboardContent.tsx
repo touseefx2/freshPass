@@ -18,6 +18,7 @@ import {
   businessEndpoints,
   appointmentsEndpoints,
   generalEndpoints,
+  favoritesEndpoints,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
@@ -29,6 +30,9 @@ import {
 import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
+import ShowFavorites, {
+  FavoriteBusiness,
+} from "./ShowFavorites";
 import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -422,6 +426,12 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(20),
     },
+    favoriteSectionTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      flexShrink: 1,
+    },
   });
 
 interface Appointment {
@@ -502,6 +512,7 @@ interface VerifiedSalon {
   rating: number;
   reviewCount: number;
   image: string | null;
+  ownerName?: string | null;
 }
 
 export default function DashboardContent() {
@@ -534,6 +545,9 @@ export default function DashboardContent() {
   >([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
+  const [favoriteBusinesses, setFavoriteBusinesses] = useState<
+    FavoriteBusiness[]
+  >([]);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
   const [proTipLoading, setProTipLoading] = useState(false);
@@ -587,6 +601,83 @@ export default function DashboardContent() {
     }
   };
 
+  const buildBusinessImageUrl = (item: {
+    image_url?: string | null;
+    logo_url?: string | null;
+    portfolio_photos?: Array<{ url?: string }>;
+  }) => {
+    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
+    const defaultImage = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
+
+    if (item.portfolio_photos?.[0]?.url) {
+      return item.portfolio_photos[0].url;
+    }
+
+    const rawUrl = item.image_url || item.logo_url || null;
+    if (!rawUrl) {
+      return defaultImage;
+    }
+
+    if (typeof rawUrl === "string" && rawUrl.startsWith("http")) {
+      return rawUrl;
+    }
+
+    return `${baseUrl}${rawUrl}`;
+  };
+
+  const getOwnerName = (item: {
+    owner?: { name?: string | null } | null;
+    owner_name?: string | null;
+  }) => {
+    const name = item.owner?.name || item.owner_name || null;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  };
+
+  const fetchFavoriteBusinesses = async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        data: {
+          data: Array<{
+            id: number;
+            title: string;
+            address: string;
+            average_rating: number;
+            ratings_count: number;
+            image_url: string | null;
+            logo_url: string | null;
+            owner?: { id?: number; name?: string | null } | null;
+            owner_name?: string | null;
+            category?: { id: number; name: string; slug: string } | null;
+            portfolio_photos?: Array<{
+              id: number;
+              path: string;
+              url: string;
+            }>;
+          }>;
+        };
+      }>(favoritesEndpoints.list({ page: 1, per_page: 15 }));
+
+      const items = response?.data?.data ?? [];
+      const mappedFavorites: FavoriteBusiness[] = items.map((item) => ({
+        id: item.id,
+        businessName: item.title,
+        address: item.address,
+        rating: item.average_rating || 0,
+        reviewCount: item.ratings_count || 0,
+        image: buildBusinessImageUrl(item),
+        categoryName: item.category?.name ?? null,
+        ownerName: getOwnerName(item),
+      }));
+
+      setFavoriteBusinesses(mappedFavorites);
+    } catch (error) {
+      if (isRequestCanceled(error)) return;
+      Logger.error("Failed to fetch favorite businesses:", error);
+      setFavoriteBusinesses([]);
+    }
+  };
+
   const fetchBusinessesDeals = async () => {
     try {
       setDealsLoading(true);
@@ -611,6 +702,8 @@ export default function DashboardContent() {
           ratings_count: number;
           image_url: string | null;
           logo_url: string | null;
+          owner?: { id?: number; name?: string | null } | null;
+          owner_name?: string | null;
           portfolio_photos?: Array<{
             id: number;
             path: string;
@@ -620,27 +713,15 @@ export default function DashboardContent() {
       }>(url);
 
       if (response.success && response.data) {
-        // Map API response to VerifiedSalon format
-        const mappedSalons: VerifiedSalon[] = response.data.map((item) => {
-          let imageUrl = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
-
-          if (
-            item.portfolio_photos &&
-            item.portfolio_photos.length > 0 &&
-            item.portfolio_photos[0]?.url
-          ) {
-            imageUrl = item.portfolio_photos[0].url;
-          }
-
-          return {
-            id: item.id,
-            businessName: item.title,
-            address: item.address,
-            rating: item.average_rating || 0,
-            reviewCount: item.ratings_count || 0,
-            image: imageUrl,
-          };
-        });
+        const mappedSalons: VerifiedSalon[] = response.data.map((item) => ({
+          id: item.id,
+          businessName: item.title,
+          address: item.address,
+          rating: item.average_rating || 0,
+          reviewCount: item.ratings_count || 0,
+          image: buildBusinessImageUrl(item),
+          ownerName: getOwnerName(item),
+        }));
 
         setVerifiedSalonsDeals(mappedSalons);
       }
@@ -678,6 +759,8 @@ export default function DashboardContent() {
           ratings_count: number;
           image_url: string | null;
           logo_url: string | null;
+          owner?: { id?: number; name?: string | null } | null;
+          owner_name?: string | null;
           portfolio_photos?: Array<{
             id: number;
             path: string;
@@ -687,27 +770,15 @@ export default function DashboardContent() {
       }>(url);
 
       if (response.success && response.data) {
-        // Map API response to VerifiedSalon format
-        const mappedSalons: VerifiedSalon[] = response.data.map((item) => {
-          let imageUrl = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
-
-          if (
-            item.portfolio_photos &&
-            item.portfolio_photos.length > 0 &&
-            item.portfolio_photos[0]?.url
-          ) {
-            imageUrl = item.portfolio_photos[0].url;
-          }
-
-          return {
-            id: item.id,
-            businessName: item.title,
-            address: item.address,
-            rating: item.average_rating || 0,
-            reviewCount: item.ratings_count || 0,
-            image: imageUrl,
-          };
-        });
+        const mappedSalons: VerifiedSalon[] = response.data.map((item) => ({
+          id: item.id,
+          businessName: item.title,
+          address: item.address,
+          rating: item.average_rating || 0,
+          reviewCount: item.ratings_count || 0,
+          image: buildBusinessImageUrl(item),
+          ownerName: getOwnerName(item),
+        }));
 
         setVerifiedSalons(mappedSalons);
       }
@@ -927,6 +998,9 @@ export default function DashboardContent() {
     useCallback(() => {
       if (userRole === "customer") {
         fetchAppointments();
+        fetchFavoriteBusinesses();
+      } else {
+        setFavoriteBusinesses([]);
       }
       if (isCusotmerandGuest) {
         fetchCategories();
@@ -974,6 +1048,25 @@ export default function DashboardContent() {
       {userRole === "customer" && appointments.length > 0 && (
         <View style={styles.section}>
           <ShowAppointments appointments={appointments} />
+        </View>
+      )}
+
+      {favoriteBusinesses.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.favoriteSectionTitle}>
+              {t("favoriteBusinesses")}
+            </Text>
+            <Text
+              style={styles.sectionViewMore}
+              onPress={() =>
+                router.push("/(main)/dashboard/(account)/favourite" as any)
+              }
+            >
+              {t("seeAll")}
+            </Text>
+          </View>
+          <ShowFavorites favorites={favoriteBusinesses} />
         </View>
       )}
 
