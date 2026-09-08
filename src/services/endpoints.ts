@@ -112,6 +112,7 @@ export const userEndpoints = {
   changePassword: `/api/user/change-password`,
   deleteAccount: `/api/user/account`,
   status: `/api/user/status`,
+  pushToken: `/api/user/push-token`,
 };
 
 /**

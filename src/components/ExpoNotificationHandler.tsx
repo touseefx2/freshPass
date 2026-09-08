@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import Logger from "@/src/services/logger";
@@ -6,6 +7,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
 import { useAppDispatch, useAppSelector } from "../hooks/hooks";
 import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
+import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 
 /**
  * Configure how notifications are presented when app is in foreground,
@@ -16,6 +18,7 @@ export default function ExpoNotificationHandler() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const accessToken = useAppSelector((state) => state.user.accessToken);
+  const isGuest = useAppSelector((state) => state.user.isGuest);
   const { showBanner } = useNotificationContext();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(
     null,
@@ -23,6 +26,31 @@ export default function ExpoNotificationHandler() {
   const receivedListenerRef = useRef<Notifications.EventSubscription | null>(
     null,
   );
+  const appStateRef = useRef<AppStateStatus>(AppState.currentState);
+
+  // Keep Expo push token registered while signed in (login alone is not enough —
+  // reinstall / new build clears it and nothing put it back until next login).
+  useEffect(() => {
+    if (!accessToken || isGuest) {
+      return;
+    }
+
+    void syncExpoPushTokenToBackend({ force: true });
+
+    const onAppStateChange = (nextState: AppStateStatus) => {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextState === "active"
+      ) {
+        // Re-sync if Expo handed a new token, or after user enabled permission in Settings
+        void syncExpoPushTokenToBackend();
+      }
+      appStateRef.current = nextState;
+    };
+
+    const subscription = AppState.addEventListener("change", onAppStateChange);
+    return () => subscription.remove();
+  }, [accessToken, isGuest]);
 
   useEffect(() => {
     // Show notification when app is in foreground (banner + sound)

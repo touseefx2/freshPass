@@ -62,6 +62,11 @@ export const requestNotificationPermission =
 
       // Step 2: If already granted, return success
       if (existingStatus === "granted") {
+        // Keep backend token in sync whenever permission is already on
+        void import("@/src/services/pushTokenService").then(
+          ({ syncExpoPushTokenToBackend }) =>
+            syncExpoPushTokenToBackend({ force: true }),
+        );
         return {
           granted: true,
           canRequestAgain: false,
@@ -85,13 +90,11 @@ export const requestNotificationPermission =
           });
         }
 
-        // Get push token (optional, for sending push notifications from server)
-        try {
-          const token = await Notifications.getExpoPushTokenAsync();
-          Logger.log("Push token:", token);
-        } catch (error) {
-          Logger.log("Could not get push token:", error);
-        }
+        // Register token with backend after permission is granted
+        void import("@/src/services/pushTokenService").then(
+          ({ syncExpoPushTokenToBackend }) =>
+            syncExpoPushTokenToBackend({ force: true }),
+        );
 
         return {
           granted: true,

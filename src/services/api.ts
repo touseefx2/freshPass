@@ -308,6 +308,13 @@ const handleLogout = async (options?: { skipApi?: boolean }) => {
     store.dispatch(resetBusiness());
     store.dispatch(resetChat());
     store.dispatch(resetUser());
+    // Next login must re-register the device push token
+    try {
+      const { clearLastSentExpoPushToken } = await import("./pushTokenService");
+      await clearLastSentExpoPushToken();
+    } catch (err) {
+      Logger.error("Logout: clear last push token failed", err);
+    }
     // Purge persisted cache so rehydration doesn't restore old user/general data
     try {
       await persistor.purge();
