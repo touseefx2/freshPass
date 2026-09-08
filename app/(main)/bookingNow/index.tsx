@@ -65,12 +65,19 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { SvgXml } from "react-native-svg";
-import { LeafLogo } from "@/assets/icons";
+import {
+  LeafLogo,
+  SearchIcon,
+  MorningIcon,
+  EveningIcon,
+  NightIcon,
+  CloseIcon,
+} from "@/assets/icons";
 import Button from "@/src/components/button";
+import FloatingInput from "@/src/components/floatingInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
-import { MorningIcon, EveningIcon, NightIcon, CloseIcon } from "@/assets/icons";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -406,67 +413,104 @@ const createStyles = (theme: Theme) => {
       borderWidth: 1.5,
       borderColor: theme.selectCard,
     },
+    staffSection: {
+      paddingTop: moderateHeightScale(4),
+    },
+    staffSearchContainer: {
+      paddingHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(16),
+    },
+    staffSearchInput: {
+      backgroundColor: theme.white,
+    },
     staffTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(14),
       paddingHorizontal: moderateWidthScale(20),
     },
     staffList: {
       flexDirection: "row",
       gap: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(2),
+      paddingBottom: moderateHeightScale(4),
     },
     staffCard: {
-      width: widthScale(180),
+      width: widthScale(200),
+      minHeight: heightScale(96),
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(14),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
     },
     shadow: {
       shadowColor: theme.shadow,
       shadowOffset: {
         width: 0,
-        height: 1,
+        height: 2,
       },
-      shadowOpacity: 0.18,
-      shadowRadius: 1.0,
-      elevation: 1,
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 2,
     },
-    staffCardSelected: {},
+    staffCardSelected: {
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.orangeBrown01,
+    },
     staffCardAnyone: {
       justifyContent: "space-between",
-      width: widthScale(130),
+      width: widthScale(168),
+      backgroundColor: theme.lightGreen015,
+      borderColor: theme.lightGreen2,
+    },
+    staffCardAnyoneSelected: {
+      borderColor: theme.orangeBrown,
       backgroundColor: theme.lightGreen015,
     },
     staffImageWrapper: {
       position: "relative",
-      width: widthScale(35),
-      height: widthScale(35),
+      width: widthScale(52),
+      height: widthScale(52),
       justifyContent: "center",
       alignItems: "center",
     },
     staffImage: {
-      width: widthScale(35),
-      height: widthScale(35),
-      borderRadius: widthScale(35 / 2),
+      width: widthScale(52),
+      height: widthScale(52),
+      borderRadius: widthScale(52 / 2),
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 1,
       borderColor: theme.borderLight,
       overflow: "hidden",
     },
+    staffAnyoneAvatar: {
+      width: widthScale(52),
+      height: widthScale(52),
+      borderRadius: widthScale(52 / 2),
+      backgroundColor: theme.lightGreen1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    staffAnyoneAvatarText: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
     staffStatusDot: {
       position: "absolute",
       bottom: 2,
       right: 2,
-      width: moderateWidthScale(7),
-      height: moderateWidthScale(7),
-      borderRadius: moderateWidthScale(7) / 2,
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(10) / 2,
+      borderWidth: 1.5,
+      borderColor: theme.white,
       zIndex: 9999,
     },
     staffStatusDotActive: {
@@ -477,27 +521,38 @@ const createStyles = (theme: Theme) => {
     },
     staffInfo: {
       flex: 1,
+      minWidth: 0,
     },
     staffName: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(4),
       textTransform: "capitalize",
     },
     staffExperience: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    staffEmptyText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(8),
+    },
     radioButton: {
-      width: moderateWidthScale(20),
-      height: moderateWidthScale(20),
-      borderRadius: moderateWidthScale(10),
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
       borderWidth: 2,
       borderColor: theme.lightGreen2,
       alignItems: "center",
       justifyContent: "center",
+    },
+    radioButtonSelected: {
+      borderColor: theme.orangeBrown,
     },
     radioButtonInner: {
       width: moderateWidthScale(10),
@@ -1329,6 +1384,7 @@ export default function BookingNow() {
 
   const selectedStaff = reduxSelectedStaff || "anyone";
   const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
+  const [staffSearchQuery, setStaffSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedStaffMember, setSelectedStaffMember] =
@@ -2053,22 +2109,33 @@ export default function BookingNow() {
     }
   };
 
-  const staffList = [
-    {
+  const staffList = useMemo(() => {
+    const query = staffSearchQuery.trim().toLowerCase();
+    const anyoneItem = {
       id: "anyone",
       name: "Anyone who's available",
-      experience: null,
-      image: null,
-      active: null,
-    },
-    ...staffMembers.map((staff) => ({
-      id: staff.id.toString(),
-      name: staff.name,
-      experience: staff.experience ?? null,
-      image: staff.image,
-      active: staff.active,
-    })),
-  ];
+      experience: null as string | number | null,
+      image: null as string | null,
+      active: null as boolean | null,
+    };
+    const filteredStaff = staffMembers
+      .filter((staff) => {
+        if (!query) return true;
+        return staff.name.toLowerCase().includes(query);
+      })
+      .map((staff) => ({
+        id: staff.id.toString(),
+        name: staff.name,
+        experience: staff.experience ?? null,
+        image: staff.image,
+        active: staff.active,
+      }));
+
+    const showAnyone =
+      !query || anyoneItem.name.toLowerCase().includes(query);
+
+    return showAnyone ? [anyoneItem, ...filteredStaff] : filteredStaff;
+  }, [staffMembers, staffSearchQuery]);
   const totalPrice = selectedServices.reduce(
     (sum, service) => sum + service.price,
     0,
@@ -2215,33 +2282,65 @@ export default function BookingNow() {
 
         {/* Staff Selection — hidden for Solo subscription plan */}
         {!isSoloPlan && (
-          <View>
-            <Text style={styles.staffTitle}>Choose staff members</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.staffList}
-            >
-              {staffList.map((staff) => {
-                const isAnyone = staff.id === "anyone";
-                const isActive = staff.active;
+          <View style={styles.staffSection}>
+            <View style={styles.staffSearchContainer}>
+              <FloatingInput
+                label="Search staff"
+                value={staffSearchQuery}
+                onChangeText={setStaffSearchQuery}
+                placeholder="Search staff by name"
+                placeholderTextColor={theme.lightGreen}
+                containerStyle={styles.staffSearchInput}
+                returnKeyType="search"
+                showClearButton
+                onClear={() => setStaffSearchQuery("")}
+                renderLeftAccessory={() => (
+                  <SearchIcon
+                    width={widthScale(18)}
+                    height={heightScale(18)}
+                    color={theme.darkGreen}
+                  />
+                )}
+              />
+            </View>
 
-                return (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    key={staff.id}
-                    style={[
-                      styles.staffCard,
-                      selectedStaff === staff.id && styles.staffCardSelected,
-                      isAnyone && styles.staffCardAnyone,
-                      !isAnyone && styles.shadow,
-                    ]}
-                    onPress={() => {
-                      dispatch(setSelectedStaff(staff.id));
-                    }}
-                  >
-                    <>
-                      {!isAnyone && (
+            <Text style={styles.staffTitle}>Choose staff members</Text>
+
+            {staffList.length === 0 ? (
+              <Text style={styles.staffEmptyText}>No staff members found</Text>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.staffList}
+              >
+                {staffList.map((staff) => {
+                  const isAnyone = staff.id === "anyone";
+                  const isSelected = selectedStaff === staff.id;
+                  const isActive = staff.active;
+
+                  return (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      key={staff.id}
+                      style={[
+                        styles.staffCard,
+                        styles.shadow,
+                        isAnyone && styles.staffCardAnyone,
+                        isSelected &&
+                          (isAnyone
+                            ? styles.staffCardAnyoneSelected
+                            : styles.staffCardSelected),
+                      ]}
+                      onPress={() => {
+                        dispatch(setSelectedStaff(staff.id));
+                      }}
+                    >
+                      {isAnyone ? (
+                        <View style={styles.staffAnyoneAvatar}>
+                          <Text style={styles.staffAnyoneAvatarText}>A</Text>
+                        </View>
+                      ) : (
                         <View style={styles.staffImageWrapper}>
                           <Image
                             source={{ uri: staff.image || "" }}
@@ -2269,18 +2368,27 @@ export default function BookingNow() {
                           <Text style={styles.staffExperience} numberOfLines={1}>
                             {staff.experience}
                           </Text>
+                        ) : isAnyone ? (
+                          <Text style={styles.staffExperience} numberOfLines={1}>
+                            First available
+                          </Text>
                         ) : null}
                       </View>
-                      <View style={[styles.radioButton]}>
-                        {selectedStaff === staff.id && (
+                      <View
+                        style={[
+                          styles.radioButton,
+                          isSelected && styles.radioButtonSelected,
+                        ]}
+                      >
+                        {isSelected && (
                           <View style={styles.radioButtonInner} />
                         )}
                       </View>
-                    </>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            )}
           </View>
         )}
 

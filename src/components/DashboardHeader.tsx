@@ -54,6 +54,37 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
     },
+    statusBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(7),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.white15,
+      borderWidth: 1,
+      borderColor: theme.white15,
+    },
+    statusDot: {
+      width: moderateWidthScale(7),
+      height: moderateWidthScale(7),
+      borderRadius: moderateWidthScale(7) / 2,
+    },
+    statusDotActive: {
+      backgroundColor: theme.toggleActive,
+    },
+    statusDotInactive: {
+      backgroundColor: theme.white50,
+    },
+    statusText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      letterSpacing: 0.3,
+    },
+    statusTextInactive: {
+      color: theme.white80,
+    },
     line: {
       width: "100%",
       height: 0.5,
@@ -223,15 +254,26 @@ function DashboardHeader({
           {isCustomer ? (
             <View style={{ width: 16, height: moderateHeightScale(38) }} />
           ) : userRole === "business" ? (
-            // Inactive/Active toggle hidden for business role
-            // <View style={styles.toggleContainer}>
-            //   <CustomToggleInside
-            //     value={isOnline}
-            //     onValueChange={handleToggleChange}
-            //     loading={toggleLoading}
-            //   />
-            // </View>
-            null
+            <View style={styles.toggleContainer}>
+              <View style={styles.statusBadge}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    isOnline
+                      ? styles.statusDotActive
+                      : styles.statusDotInactive,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.statusText,
+                    !isOnline && styles.statusTextInactive,
+                  ]}
+                >
+                  {isOnline ? t("active") : t("inactive")}
+                </Text>
+              </View>
+            </View>
           ) : (
             <View style={styles.toggleContainer}>
               <CustomToggleInside
