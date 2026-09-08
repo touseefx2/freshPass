@@ -18,6 +18,7 @@ import {
   Pressable,
   Linking,
   Dimensions,
+  Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
@@ -419,53 +420,54 @@ const createStyles = (theme: Theme) => {
     staffSearchContainer: {
       paddingHorizontal: moderateWidthScale(20),
       marginBottom: moderateHeightScale(16),
+      marginTop: moderateHeightScale(2),
     },
     staffSearchInput: {
       backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
     },
     staffTitle: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(12),
       paddingHorizontal: moderateWidthScale(20),
     },
     staffList: {
       flexDirection: "row",
       gap: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(4),
+      paddingBottom: moderateHeightScale(6),
     },
     staffCard: {
-      width: widthScale(200),
-      minHeight: heightScale(96),
+      width: widthScale(152),
+      minHeight: heightScale(176),
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(14),
-      flexDirection: "row",
+      borderRadius: moderateWidthScale(18),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(12),
       alignItems: "center",
-      gap: moderateWidthScale(12),
       borderWidth: 1.5,
       borderColor: theme.borderLight,
+      position: "relative",
     },
     shadow: {
       shadowColor: theme.shadow,
       shadowOffset: {
         width: 0,
-        height: 2,
+        height: 3,
       },
-      shadowOpacity: 0.12,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 3,
     },
     staffCardSelected: {
       borderColor: theme.orangeBrown,
       backgroundColor: theme.orangeBrown01,
     },
     staffCardAnyone: {
-      justifyContent: "space-between",
-      width: widthScale(168),
+      width: widthScale(172),
       backgroundColor: theme.lightGreen015,
       borderColor: theme.lightGreen2,
     },
@@ -475,30 +477,34 @@ const createStyles = (theme: Theme) => {
     },
     staffImageWrapper: {
       position: "relative",
-      width: widthScale(52),
-      height: widthScale(52),
+      width: widthScale(78),
+      height: widthScale(78),
       justifyContent: "center",
       alignItems: "center",
+      marginBottom: moderateHeightScale(12),
     },
     staffImage: {
-      width: widthScale(52),
-      height: widthScale(52),
-      borderRadius: widthScale(52 / 2),
+      width: widthScale(78),
+      height: widthScale(78),
+      borderRadius: widthScale(78 / 2),
       backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.borderLight,
       overflow: "hidden",
     },
     staffAnyoneAvatar: {
-      width: widthScale(52),
-      height: widthScale(52),
-      borderRadius: widthScale(52 / 2),
+      width: widthScale(78),
+      height: widthScale(78),
+      borderRadius: widthScale(78 / 2),
       backgroundColor: theme.lightGreen1,
       alignItems: "center",
       justifyContent: "center",
+      marginBottom: moderateHeightScale(12),
+      borderWidth: 2,
+      borderColor: theme.lightGreen2,
     },
     staffAnyoneAvatarText: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -506,10 +512,10 @@ const createStyles = (theme: Theme) => {
       position: "absolute",
       bottom: 2,
       right: 2,
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(10) / 2,
-      borderWidth: 1.5,
+      width: moderateWidthScale(12),
+      height: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(12) / 2,
+      borderWidth: 2,
       borderColor: theme.white,
       zIndex: 9999,
     },
@@ -520,29 +526,54 @@ const createStyles = (theme: Theme) => {
       backgroundColor: theme.lightGreen5,
     },
     staffInfo: {
-      flex: 1,
-      minWidth: 0,
+      width: "100%",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(2),
     },
     staffName: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(4),
+      textAlign: "center",
       textTransform: "capitalize",
     },
+    staffNameAnyone: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+      textTransform: "none",
+    },
+    staffAnyoneInfoButton: {
+      position: "absolute",
+      bottom: moderateHeightScale(10),
+      right: moderateWidthScale(10),
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.white,
+      zIndex: 2,
+    },
     staffExperience: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
+      textAlign: "center",
     },
     staffEmptyText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(8),
     },
     radioButton: {
+      position: "absolute",
+      top: moderateHeightScale(10),
+      right: moderateWidthScale(10),
       width: moderateWidthScale(22),
       height: moderateWidthScale(22),
       borderRadius: moderateWidthScale(11),
@@ -550,6 +581,8 @@ const createStyles = (theme: Theme) => {
       borderColor: theme.lightGreen2,
       alignItems: "center",
       justifyContent: "center",
+      backgroundColor: theme.white,
+      zIndex: 2,
     },
     radioButtonSelected: {
       borderColor: theme.orangeBrown,
@@ -559,6 +592,40 @@ const createStyles = (theme: Theme) => {
       height: moderateWidthScale(10),
       borderRadius: moderateWidthScale(5),
       backgroundColor: theme.orangeBrown,
+    },
+    anyoneHintOverlay: {
+      flex: 1,
+      backgroundColor: theme.lightGreen22,
+      justifyContent: "center",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(28),
+    },
+    anyoneHintBubble: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingRight: moderateWidthScale(36),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      maxWidth: widthScale(320),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.18,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    anyoneHintText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: moderateHeightScale(20),
+    },
+    anyoneHintClose: {
+      position: "absolute",
+      top: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      padding: moderateWidthScale(4),
     },
     section: {
       marginTop: moderateHeightScale(16),
@@ -1385,6 +1452,7 @@ export default function BookingNow() {
   const selectedStaff = reduxSelectedStaff || "anyone";
   const [addServiceModalVisible, setAddServiceModalVisible] = useState(false);
   const [staffSearchQuery, setStaffSearchQuery] = useState("");
+  const [showAnyoneHint, setShowAnyoneHint] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedStaffMember, setSelectedStaffMember] =
@@ -2283,6 +2351,8 @@ export default function BookingNow() {
         {/* Staff Selection — hidden for Solo subscription plan */}
         {!isSoloPlan && (
           <View style={styles.staffSection}>
+            <Text style={styles.staffTitle}>Choose staff members</Text>
+
             <View style={styles.staffSearchContainer}>
               <FloatingInput
                 label="Search staff"
@@ -2303,8 +2373,6 @@ export default function BookingNow() {
                 )}
               />
             </View>
-
-            <Text style={styles.staffTitle}>Choose staff members</Text>
 
             {staffList.length === 0 ? (
               <Text style={styles.staffEmptyText}>No staff members found</Text>
@@ -2336,6 +2404,31 @@ export default function BookingNow() {
                         dispatch(setSelectedStaff(staff.id));
                       }}
                     >
+                      <View
+                        style={[
+                          styles.radioButton,
+                          isSelected && styles.radioButtonSelected,
+                        ]}
+                      >
+                        {isSelected && (
+                          <View style={styles.radioButtonInner} />
+                        )}
+                      </View>
+
+                      {isAnyone && (
+                        <TouchableOpacity
+                          style={styles.staffAnyoneInfoButton}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          onPress={() => setShowAnyoneHint(true)}
+                        >
+                          <MaterialIcons
+                            name="info-outline"
+                            size={moderateWidthScale(15)}
+                            color={theme.lightGreen}
+                          />
+                        </TouchableOpacity>
+                      )}
+
                       {isAnyone ? (
                         <View style={styles.staffAnyoneAvatar}>
                           <Text style={styles.staffAnyoneAvatarText}>A</Text>
@@ -2358,30 +2451,22 @@ export default function BookingNow() {
                       )}
 
                       <View style={styles.staffInfo}>
-                        <Text
-                          style={styles.staffName}
-                          numberOfLines={isAnyone ? 2 : 1}
-                        >
-                          {staff.name}
-                        </Text>
-                        {staff.experience ? (
-                          <Text style={styles.staffExperience} numberOfLines={1}>
-                            {staff.experience}
+                        {isAnyone ? (
+                          <Text style={styles.staffNameAnyone}>
+                            {staff.name}
                           </Text>
-                        ) : isAnyone ? (
-                          <Text style={styles.staffExperience} numberOfLines={1}>
-                            First available
-                          </Text>
-                        ) : null}
-                      </View>
-                      <View
-                        style={[
-                          styles.radioButton,
-                          isSelected && styles.radioButtonSelected,
-                        ]}
-                      >
-                        {isSelected && (
-                          <View style={styles.radioButtonInner} />
+                        ) : (
+                          <>
+                            <Text style={styles.staffName}>{staff.name}</Text>
+                            {staff.experience ? (
+                              <Text
+                                style={styles.staffExperience}
+                                numberOfLines={2}
+                              >
+                                {staff.experience}
+                              </Text>
+                            ) : null}
+                          </>
                         )}
                       </View>
                     </TouchableOpacity>
@@ -2389,6 +2474,37 @@ export default function BookingNow() {
                 })}
               </ScrollView>
             )}
+
+            <Modal
+              visible={showAnyoneHint}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowAnyoneHint(false)}
+            >
+              <View style={styles.anyoneHintOverlay}>
+                <Pressable
+                  style={StyleSheet.absoluteFillObject}
+                  onPress={() => setShowAnyoneHint(false)}
+                />
+                <View style={styles.anyoneHintBubble}>
+                  <TouchableOpacity
+                    style={styles.anyoneHintClose}
+                    onPress={() => setShowAnyoneHint(false)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(16)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.anyoneHintText}>
+                    Any staff available in your time slot will be assigned to
+                    you
+                  </Text>
+                </View>
+              </View>
+            </Modal>
           </View>
         )}
 
