@@ -65,6 +65,10 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.white15,
     },
+    statusBadgeInactive: {
+      backgroundColor: theme.lightRed30,
+      borderColor: theme.lightRedBorder,
+    },
     statusDot: {
       width: moderateWidthScale(7),
       height: moderateWidthScale(7),
@@ -74,7 +78,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.toggleActive,
     },
     statusDotInactive: {
-      backgroundColor: theme.white50,
+      backgroundColor: theme.red,
     },
     statusText: {
       fontSize: fontSize.size12,
@@ -83,7 +87,7 @@ const createStyles = (theme: Theme) =>
       letterSpacing: 0.3,
     },
     statusTextInactive: {
-      color: theme.white80,
+      color: theme.link,
     },
     line: {
       width: "100%",
@@ -255,7 +259,12 @@ function DashboardHeader({
             <View style={{ width: 16, height: moderateHeightScale(38) }} />
           ) : userRole === "business" ? (
             <View style={styles.toggleContainer}>
-              <View style={styles.statusBadge}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  !isOnline && styles.statusBadgeInactive,
+                ]}
+              >
                 <View
                   style={[
                     styles.statusDot,
