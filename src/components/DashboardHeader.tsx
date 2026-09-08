@@ -65,10 +65,6 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.white15,
     },
-    statusBadgeInactive: {
-      backgroundColor: theme.lightRed30,
-      borderColor: theme.lightRedBorder,
-    },
     statusDot: {
       width: moderateWidthScale(7),
       height: moderateWidthScale(7),
@@ -85,9 +81,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
       letterSpacing: 0.3,
-    },
-    statusTextInactive: {
-      color: theme.link,
     },
     line: {
       width: "100%",
@@ -259,12 +252,7 @@ function DashboardHeader({
             <View style={{ width: 16, height: moderateHeightScale(38) }} />
           ) : userRole === "business" ? (
             <View style={styles.toggleContainer}>
-              <View
-                style={[
-                  styles.statusBadge,
-                  !isOnline && styles.statusBadgeInactive,
-                ]}
-              >
+              <View style={styles.statusBadge}>
                 <View
                   style={[
                     styles.statusDot,
@@ -273,12 +261,7 @@ function DashboardHeader({
                       : styles.statusDotInactive,
                   ]}
                 />
-                <Text
-                  style={[
-                    styles.statusText,
-                    !isOnline && styles.statusTextInactive,
-                  ]}
-                >
+                <Text style={styles.statusText}>
                   {isOnline ? t("active") : t("inactive")}
                 </Text>
               </View>
