@@ -16,18 +16,27 @@ import {
   TextInput,
   Pressable,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
-import { AntDesign, MaterialIcons, Feather } from "@expo/vector-icons";
+import { AntDesign, MaterialIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
-import { staffEndpoints, userEndpoints } from "@/src/services/endpoints";
-import { setUserDetails } from "@/src/state/slices/userSlice";
+import {
+  exploreEndpoints,
+  staffEndpoints,
+  userEndpoints,
+} from "@/src/services/endpoints";
+import {
+  isSoloSubscription,
+  setUserDetails,
+} from "@/src/state/slices/userSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -43,7 +52,7 @@ import {
   validateEmail,
   validateName,
 } from "@/src/services/validationService";
-import { CloseIcon } from "@/assets/icons";
+import { CloseIcon, SearchIcon } from "@/assets/icons";
 import {
   CountryCode as PhoneCountryCode,
   getExampleNumber,
@@ -315,7 +324,170 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    barbershopSection: {
+      marginBottom: moderateHeightScale(8),
+    },
+    barbershopSectionTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(12),
+    },
+    barbershopSearchContainer: {
+      marginBottom: moderateHeightScale(12),
+    },
+    barbershopListSection: {
+      marginBottom: moderateHeightScale(12),
+    },
+    barbershopSectionHeading: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    barbershopItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    barbershopItemLast: {
+      borderBottomWidth: 0,
+    },
+    barbershopItemSelected: {
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(12),
+      borderBottomWidth: 0,
+      marginBottom: moderateHeightScale(12),
+    },
+    barbershopPlaceholder: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen2,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    barbershopLogoImage: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(8),
+    },
+    barbershopContent: {
+      flex: 1,
+    },
+    barbershopTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.text,
+      textTransform: "capitalize",
+    },
+    barbershopOwnerName: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
+      textTransform: "capitalize",
+    },
+    barbershopAddress: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.text,
+      marginTop: moderateHeightScale(2),
+    },
+    barbershopEmptyState: {
+      paddingVertical: moderateHeightScale(16),
+      alignItems: "center",
+    },
+    barbershopEmptyText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    barbershopLoadingContainer: {
+      paddingVertical: moderateHeightScale(16),
+      alignItems: "center",
+    },
   });
+
+type BarbershopSearchItem = {
+  id: number;
+  slug: string;
+  title: string;
+  logo_url?: string | null;
+  street_address?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  owner?: { id: number; name: string } | null;
+};
+
+type ServiceBusinessListResponse = {
+  success: boolean;
+  message: string;
+  data: {
+    service_templates: unknown[];
+    businesses: BarbershopSearchItem[];
+  };
+};
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
+const DEFAULT_BUSINESS_LOGO =
+  process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+const BARBERSHOP_SEARCH_DEBOUNCE_MS = 400;
+
+function getBusinessLogoUrl(logo: string | null | undefined): string {
+  if (logo == null || logo.trim() === "") {
+    return DEFAULT_BUSINESS_LOGO;
+  }
+  const trimmed = logo.trim();
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  return `${BASE_URL}${trimmed}`;
+}
+
+function BarbershopLogoImage({
+  logo,
+  theme,
+  styles,
+}: {
+  logo: string | null | undefined;
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const [imageError, setImageError] = useState(false);
+  const uri = getBusinessLogoUrl(logo);
+  const showPlaceholder = !uri || imageError;
+
+  if (showPlaceholder) {
+    return (
+      <View style={styles.barbershopPlaceholder}>
+        <Ionicons
+          name="person-outline"
+          size={moderateWidthScale(22)}
+          color={theme.lightGreen}
+        />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.barbershopPlaceholder}>
+      <Image
+        source={{ uri }}
+        style={styles.barbershopLogoImage}
+        onError={() => setImageError(true)}
+        resizeMode="cover"
+      />
+    </View>
+  );
+}
 
 const FALLBACK_PHONE_PLACEHOLDERS: Record<string, string> = {
   US: "2015550123",
@@ -563,6 +735,9 @@ export default function EditProfileScreen() {
   const user = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
+  const isSoloPlan = isSoloSubscription(user.businessStatus);
+  const excludeBusinessId =
+    user.business_id ?? user.businessStatus?.business_id;
 
   // Initialize state with user data from Redux
   // Backend may send country_code as ISO ("US", "PK") or dial ("+1", "+92"). Normalize to dial code.
@@ -601,6 +776,16 @@ export default function EditProfileScreen() {
     null,
   );
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Solo plan: barbershop search (display-only affiliation)
+  const [barbershopSearchQuery, setBarbershopSearchQuery] = useState("");
+  const [barbershopResults, setBarbershopResults] = useState<
+    BarbershopSearchItem[]
+  >([]);
+  const [barbershopLoading, setBarbershopLoading] = useState(false);
+  const [barbershopHasSearched, setBarbershopHasSearched] = useState(false);
+  const [selectedBarbershop, setSelectedBarbershop] =
+    useState<BarbershopSearchItem | null>(null);
 
   // Phone number state
   const [countryCode, setCountryCode] = useState(initialCountryCode);
@@ -683,6 +868,79 @@ export default function EditProfileScreen() {
       setAboutYourselfError(null);
     }
   }, [aboutYourself, user.userRole]);
+
+  const fetchBarbershopList = useCallback(
+    async (search: string) => {
+      const trimmed = search.trim();
+      if (!trimmed) {
+        setBarbershopResults([]);
+        setBarbershopHasSearched(false);
+        return;
+      }
+      setBarbershopLoading(true);
+      setBarbershopHasSearched(true);
+      try {
+        const url = exploreEndpoints.serviceBusinessList(trimmed, {
+          businesses_only: true,
+          exclude_business_id:
+            typeof excludeBusinessId === "number"
+              ? excludeBusinessId
+              : undefined,
+        });
+        const res = (await ApiService.get(
+          url,
+        )) as ServiceBusinessListResponse;
+        if (res?.success && res?.data) {
+          setBarbershopResults(res.data.businesses ?? []);
+        } else {
+          setBarbershopResults([]);
+        }
+      } catch (error) {
+        Logger.error("Failed to search barbershops:", error);
+        setBarbershopResults([]);
+      } finally {
+        setBarbershopLoading(false);
+      }
+    },
+    [excludeBusinessId],
+  );
+
+  useEffect(() => {
+    if (!isSoloPlan) return;
+    const trimmed = barbershopSearchQuery.trim();
+    if (!trimmed) {
+      setBarbershopResults([]);
+      setBarbershopHasSearched(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetchBarbershopList(barbershopSearchQuery);
+    }, BARBERSHOP_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [barbershopSearchQuery, fetchBarbershopList, isSoloPlan]);
+
+  const handleSelectBarbershop = useCallback((item: BarbershopSearchItem) => {
+    setSelectedBarbershop(item);
+    setBarbershopSearchQuery("");
+    setBarbershopResults([]);
+    setBarbershopHasSearched(false);
+  }, []);
+
+  const handleClearBarbershopSearch = useCallback(() => {
+    setBarbershopSearchQuery("");
+    setBarbershopResults([]);
+    setBarbershopHasSearched(false);
+  }, []);
+
+  const handleClearSelectedBarbershop = useCallback(() => {
+    setSelectedBarbershop(null);
+  }, []);
+
+  const getBarbershopAddress = useCallback((item: BarbershopSearchItem) => {
+    return [item.street_address, item.city, item.state, item.zip_code]
+      .filter(Boolean)
+      .join(", ");
+  }, []);
 
   // Date of birth validation: if any field is selected, all must be selected
   const hasDate = dateOfBirth?.date && dateOfBirth.date.trim().length > 0;
@@ -1462,6 +1720,142 @@ export default function EditProfileScreen() {
           />
           {emailError && <Text style={styles.errorText}>{emailError}</Text>}
         </View>
+
+        {isSoloPlan && (
+          <View style={styles.barbershopSection}>
+            <Text style={styles.barbershopSectionTitle}>
+              {t("selectYourBarbershop")}
+            </Text>
+
+            {selectedBarbershop && (
+              <>
+                <Text style={styles.barbershopSectionHeading}>
+                  {t("selectedBarbershop")}
+                </Text>
+                <View
+                  style={[styles.barbershopItem, styles.barbershopItemSelected]}
+                >
+                  <BarbershopLogoImage
+                    logo={selectedBarbershop.logo_url}
+                    theme={theme}
+                    styles={styles}
+                  />
+                  <View style={styles.barbershopContent}>
+                    <Text style={styles.barbershopTitle} numberOfLines={1}>
+                      {selectedBarbershop.title}
+                    </Text>
+                    {!!selectedBarbershop.owner?.name?.trim() && (
+                      <Text
+                        style={styles.barbershopOwnerName}
+                        numberOfLines={1}
+                      >
+                        {t("ownedBy", {
+                          name: selectedBarbershop.owner.name.trim(),
+                        })}
+                      </Text>
+                    )}
+                    {!!getBarbershopAddress(selectedBarbershop) && (
+                      <Text style={styles.barbershopAddress} numberOfLines={1}>
+                        {getBarbershopAddress(selectedBarbershop)}
+                      </Text>
+                    )}
+                  </View>
+                  <Pressable
+                    onPress={handleClearSelectedBarbershop}
+                    hitSlop={moderateWidthScale(10)}
+                  >
+                    <CloseIcon color={theme.darkGreen} />
+                  </Pressable>
+                </View>
+              </>
+            )}
+
+            <FloatingInput
+              label={t("searchBarbershop")}
+              value={barbershopSearchQuery}
+              onChangeText={setBarbershopSearchQuery}
+              placeholder={t("searchBarbershop")}
+              placeholderTextColor={theme.lightGreen}
+              containerStyle={styles.barbershopSearchContainer}
+              returnKeyType="search"
+              onClear={handleClearBarbershopSearch}
+              showClearButton
+              renderLeftAccessory={() => (
+                <SearchIcon
+                  width={widthScale(18)}
+                  height={heightScale(18)}
+                  color={theme.darkGreen}
+                />
+              )}
+            />
+
+            {barbershopLoading && (
+              <View style={styles.barbershopLoadingContainer}>
+                <ActivityIndicator size="small" color={theme.darkGreen} />
+              </View>
+            )}
+
+            {!barbershopLoading && barbershopResults.length > 0 && (
+              <View style={styles.barbershopListSection}>
+                <Text style={styles.barbershopSectionHeading}>
+                  {t("businesses")}
+                </Text>
+                {barbershopResults.map((item, index) => {
+                  const address = getBarbershopAddress(item);
+                  const isLast = index === barbershopResults.length - 1;
+                  return (
+                    <TouchableOpacity
+                      key={`barbershop-${item.id}`}
+                      style={[
+                        styles.barbershopItem,
+                        isLast && styles.barbershopItemLast,
+                      ]}
+                      onPress={() => handleSelectBarbershop(item)}
+                      activeOpacity={0.7}
+                    >
+                      <BarbershopLogoImage
+                        logo={item.logo_url}
+                        theme={theme}
+                        styles={styles}
+                      />
+                      <View style={styles.barbershopContent}>
+                        <Text style={styles.barbershopTitle} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        {!!item.owner?.name?.trim() && (
+                          <Text
+                            style={styles.barbershopOwnerName}
+                            numberOfLines={1}
+                          >
+                            {t("ownedBy", { name: item.owner.name.trim() })}
+                          </Text>
+                        )}
+                        {address ? (
+                          <Text
+                            style={styles.barbershopAddress}
+                            numberOfLines={1}
+                          >
+                            {address}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {!barbershopLoading &&
+              barbershopHasSearched &&
+              barbershopResults.length === 0 && (
+                <View style={styles.barbershopEmptyState}>
+                  <Text style={styles.barbershopEmptyText}>
+                    {t("noBarbershopFound")}
+                  </Text>
+                </View>
+              )}
+          </View>
+        )}
       </KeyboardAwareScrollView>
 
       <View style={styles.updateButtonContainer}>

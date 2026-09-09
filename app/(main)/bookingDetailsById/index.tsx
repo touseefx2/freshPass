@@ -170,6 +170,8 @@ interface BookingItem {
   tipRecipientType?: "staff" | "business";
   tipRecipientName?: string;
   canTip?: boolean;
+  /** Customer chose No Tip on the pay-and-tip sheet; never ask again. */
+  tipDeclined?: boolean;
   tip?: PaidTip | null;
   pendingTip?: PendingTip | null;
   images?: Array<{
@@ -251,6 +253,7 @@ interface ApiBookingResponse {
   tipRecipientStaffId?: number | null;
   tipRecipientName?: string;
   canTip?: boolean;
+  tipDeclined?: boolean;
   tip?: PaidTip | null;
   pendingTip?: PendingTip | null;
 }
@@ -1243,6 +1246,7 @@ export default function bookingDetailsById() {
       tipRecipientType: apiData.tipRecipientType,
       tipRecipientName: apiData.tipRecipientName,
       canTip: apiData.canTip ?? false,
+      tipDeclined: apiData.tipDeclined ?? false,
       tip: apiData.tip ?? null,
       pendingTip: apiData.pendingTip ?? null,
       images:
@@ -1318,7 +1322,14 @@ export default function bookingDetailsById() {
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }
       const updated = await refreshBookingSilently();
-      if (updated?.canTip) return;
+      // Tip settled: can tip, already tipped, or chose No Tip on pay-and-tip.
+      if (
+        updated?.canTip ||
+        updated?.tip ||
+        (updated?.tipDeclined ?? false)
+      ) {
+        return;
+      }
     }
   };
 
@@ -2453,9 +2464,11 @@ export default function bookingDetailsById() {
           )}
 
           {/* Standalone tip after a paid visit — not for unpaid completed pay-later
-              (that tip is collected in the combined pay sheet instead). */}
+              (that tip is collected in the combined pay sheet instead).
+              tipDeclined: chose No Tip on pay-and-tip; never show the card again. */}
           {userRole === "customer" &&
             booking.canTip &&
+            !(booking.tipDeclined ?? false) &&
             !booking.paymentDueNow && (
             <TipSection
               appointmentId={Number(booking.id)}

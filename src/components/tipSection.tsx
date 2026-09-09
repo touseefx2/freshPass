@@ -428,9 +428,11 @@ export default function TipSection({
   const [submitting, setSubmitting] = useState(false);
 
   const paidTip = tipDetails?.tip ?? initialTip ?? null;
+  const tipDeclined = tipDetails?.tipDeclined ?? false;
   // pendingTip is ignored for UI — still show the tip card so user can tip/retry
   const canTip =
     !paidTip &&
+    !tipDeclined &&
     (tipDetails?.canTip === true ||
       tipDetails?.pendingTip != null ||
       (tipDetails == null && !!initialCanTip));
@@ -594,6 +596,11 @@ export default function TipSection({
       dispatch(setActionLoader(false));
     }
   };
+
+  // Declined tip: hide the card entirely — no "you declined" message.
+  if (tipDeclined && !paidTip) {
+    return null;
+  }
 
   if (!paidTip && !canTip && !loading && !tipDetails) {
     return null;

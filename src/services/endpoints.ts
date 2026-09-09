@@ -459,8 +459,26 @@ export const clientChatEndpoints = {
  * Explore / search endpoints
  */
 export const exploreEndpoints = {
-  serviceBusinessList: (search: string) =>
-    `/api/service-business-list?search=${encodeURIComponent(search)}`,
+  serviceBusinessList: (
+    search: string,
+    options?: {
+      businesses_only?: boolean;
+      exclude_business_id?: number;
+    },
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("search", search);
+    if (options?.businesses_only === true) {
+      queryParams.append("businesses_only", "true");
+    }
+    if (options?.exclude_business_id != null) {
+      queryParams.append(
+        "exclude_business_id",
+        String(options.exclude_business_id),
+      );
+    }
+    return `/api/service-business-list?${queryParams.toString()}`;
+  },
 };
 
 /**

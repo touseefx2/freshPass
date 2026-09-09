@@ -35,6 +35,8 @@ export type PendingTip = {
 export type TipDetails = {
   appointmentId: number;
   canTip: boolean;
+  /** Customer chose No Tip on the pay-and-tip sheet; never ask again. */
+  tipDeclined?: boolean;
   reason: string | null;
   recipient: TipRecipient;
   currency: string;
