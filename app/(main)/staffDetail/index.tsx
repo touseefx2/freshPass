@@ -834,7 +834,7 @@ export default function StaffDetail() {
               </TouchableOpacity>
             </View>
           ) : null}
-          {data?.user?.id != null ? (
+          {data?.user?.id != null && !isOwnerStaff ? (
             <TouchableOpacity
               style={styles.messageRow}
               onPress={handleChatPress}
