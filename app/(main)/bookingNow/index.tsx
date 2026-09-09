@@ -73,6 +73,7 @@ import {
   EveningIcon,
   NightIcon,
   CloseIcon,
+  PeopleIcon,
 } from "@/assets/icons";
 import Button from "@/src/components/button";
 import FloatingInput from "@/src/components/floatingInput";
@@ -435,7 +436,7 @@ const createStyles = (theme: Theme) => {
     },
     staffList: {
       flexDirection: "row",
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(22),
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(6),
     },
@@ -466,15 +467,6 @@ const createStyles = (theme: Theme) => {
       borderColor: theme.orangeBrown,
       backgroundColor: theme.orangeBrown01,
     },
-    staffCardAnyone: {
-      width: widthScale(172),
-      backgroundColor: theme.lightGreen015,
-      borderColor: theme.lightGreen2,
-    },
-    staffCardAnyoneSelected: {
-      borderColor: theme.orangeBrown,
-      backgroundColor: theme.lightGreen015,
-    },
     staffImageWrapper: {
       position: "relative",
       width: widthScale(78),
@@ -496,17 +488,12 @@ const createStyles = (theme: Theme) => {
       width: widthScale(78),
       height: widthScale(78),
       borderRadius: widthScale(78 / 2),
-      backgroundColor: theme.lightGreen1,
+      backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: moderateHeightScale(12),
       borderWidth: 2,
-      borderColor: theme.lightGreen2,
-    },
-    staffAnyoneAvatarText: {
-      fontSize: fontSize.size24,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      borderColor: theme.borderLight,
+      overflow: "hidden",
     },
     staffStatusDot: {
       position: "absolute",
@@ -530,6 +517,13 @@ const createStyles = (theme: Theme) => {
       alignItems: "center",
       paddingHorizontal: moderateWidthScale(2),
     },
+    staffNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(4),
+    },
     staffName: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
@@ -546,16 +540,11 @@ const createStyles = (theme: Theme) => {
       textTransform: "none",
     },
     staffAnyoneInfoButton: {
-      position: "absolute",
-      bottom: moderateHeightScale(10),
-      right: moderateWidthScale(10),
-      width: moderateWidthScale(22),
-      height: moderateWidthScale(22),
-      borderRadius: moderateWidthScale(11),
+      width: moderateWidthScale(18),
+      height: moderateWidthScale(18),
+      borderRadius: moderateWidthScale(9),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.white,
-      zIndex: 2,
     },
     staffExperience: {
       fontSize: fontSize.size13,
@@ -2182,8 +2171,8 @@ export default function BookingNow() {
     const query = staffSearchQuery.trim().toLowerCase();
     const anyoneItem = {
       id: "anyone",
-      name: "Anyone who's available",
-      experience: null as string | number | null,
+      name: "Anyone",
+      experience: "First available staff" as string | number | null,
       image: null as string | null,
       active: null as boolean | null,
       is_owner: false,
@@ -2203,7 +2192,10 @@ export default function BookingNow() {
       }));
 
     const showAnyone =
-      !query || anyoneItem.name.toLowerCase().includes(query);
+      !query ||
+      "anyone".includes(query) ||
+      "anyone who's available".includes(query) ||
+      "first available staff".includes(query);
 
     return showAnyone ? [anyoneItem, ...filteredStaff] : filteredStaff;
   }, [staffMembers, staffSearchQuery]);
@@ -2397,11 +2389,7 @@ export default function BookingNow() {
                       style={[
                         styles.staffCard,
                         styles.shadow,
-                        isAnyone && styles.staffCardAnyone,
-                        isSelected &&
-                          (isAnyone
-                            ? styles.staffCardAnyoneSelected
-                            : styles.staffCardSelected),
+                        isSelected && styles.staffCardSelected,
                       ]}
                       onPress={() => {
                         dispatch(setSelectedStaff(staff.id));
@@ -2418,23 +2406,15 @@ export default function BookingNow() {
                         )}
                       </View>
 
-                      {isAnyone && (
-                        <TouchableOpacity
-                          style={styles.staffAnyoneInfoButton}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          onPress={() => setShowAnyoneHint(true)}
-                        >
-                          <MaterialIcons
-                            name="info-outline"
-                            size={moderateWidthScale(15)}
-                            color={theme.lightGreen}
-                          />
-                        </TouchableOpacity>
-                      )}
-
                       {isAnyone ? (
-                        <View style={styles.staffAnyoneAvatar}>
-                          <Text style={styles.staffAnyoneAvatarText}>A</Text>
+                        <View style={styles.staffImageWrapper}>
+                          <View style={styles.staffAnyoneAvatar}>
+                            <PeopleIcon
+                              width={widthScale(34)}
+                              height={heightScale(34)}
+                              color={theme.darkGreen}
+                            />
+                          </View>
                         </View>
                       ) : (
                         <View style={styles.staffImageWrapper}>
@@ -2455,9 +2435,35 @@ export default function BookingNow() {
 
                       <View style={styles.staffInfo}>
                         {isAnyone ? (
-                          <Text style={styles.staffNameAnyone}>
-                            {staff.name}
-                          </Text>
+                          <>
+                            <View style={styles.staffNameRow}>
+                              <Text style={styles.staffNameAnyone}>
+                                Anyone
+                              </Text>
+                              <TouchableOpacity
+                                style={styles.staffAnyoneInfoButton}
+                                hitSlop={{
+                                  top: 8,
+                                  bottom: 8,
+                                  left: 8,
+                                  right: 8,
+                                }}
+                                onPress={() => setShowAnyoneHint(true)}
+                              >
+                                <MaterialIcons
+                                  name="info-outline"
+                                  size={moderateWidthScale(14)}
+                                  color={theme.lightGreen}
+                                />
+                              </TouchableOpacity>
+                            </View>
+                            <Text
+                              style={styles.staffExperience}
+                              numberOfLines={2}
+                            >
+                              First available staff
+                            </Text>
+                          </>
                         ) : (
                           <>
                             <Text style={styles.staffName}>
