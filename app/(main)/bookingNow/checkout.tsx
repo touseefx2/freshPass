@@ -198,17 +198,24 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(8),
     },
     backButton: {
-      width: widthScale(32),
-      height: heightScale(32),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
+      width: widthScale(36),
+      height: heightScale(36),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
       marginRight: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
     },
     logoContainer: {},
     logoText: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -220,7 +227,8 @@ const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(32),
+      paddingTop: moderateHeightScale(4),
+      paddingBottom: moderateHeightScale(24),
     },
     section: {
       marginTop: moderateHeightScale(16),
@@ -813,12 +821,12 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateWidthScale(14),
     },
     staffAvatar: {
-      width: widthScale(56),
-      height: widthScale(56),
-      borderRadius: widthScale(28),
+      width: widthScale(52),
+      height: widthScale(52),
+      borderRadius: widthScale(26),
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 2,
-      borderColor: theme.orangeBrown30,
+      borderColor: theme.white,
     },
     staffStatusDot: {
       position: "absolute",
@@ -970,19 +978,15 @@ const createStyles = (theme: Theme) =>
     },
     // Subscription Card (when from subscription booking)
     subscriptionCard: {
-      // marginHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(16),
-      marginBottom: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.background,
-      padding: moderateWidthScale(16),
-      borderWidth: 1,
+      marginTop: 0,
+      marginBottom: 0,
+      borderRadius: 0,
+      backgroundColor: "transparent",
+      padding: 0,
+      borderWidth: 0,
       borderColor: theme.borderLight,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      shadowOpacity: 0,
+      elevation: 0,
     },
     cardHeader: {
       flexDirection: "row",
@@ -1182,6 +1186,183 @@ const createStyles = (theme: Theme) =>
     tryOnImageThumb: {
       width: "100%",
       height: "100%",
+    },
+    contentWrap: {
+      flex: 1,
+    },
+    stickyFooter: {
+      backgroundColor: theme.white,
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(16),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: -4 },
+      shadowOpacity: 0.08,
+      shadowRadius: 12,
+      elevation: 10,
+    },
+    stickyMetaRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(4),
+    },
+    stickyMetaLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    stickyMetaValue: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    stickyTotalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(12),
+    },
+    stickyTotalLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    stickyTotalValue: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontExtraBold,
+      color: theme.darkGreen,
+    },
+    sectionCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
+      padding: moderateWidthScale(16),
+      marginTop: moderateHeightScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.07,
+      shadowRadius: 10,
+      elevation: 3,
+    },
+    sectionCardHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(14),
+    },
+    sectionCardTitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.9,
+    },
+    iconChip: {
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: widthScale(12),
+      backgroundColor: theme.orangeBrown015,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconChipMuted: {
+      backgroundColor: theme.lightGreen1,
+    },
+    appointmentValue: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      lineHeight: moderateHeightScale(24),
+      marginBottom: moderateHeightScale(4),
+    },
+    appointmentSub: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    staffRowModern: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(14),
+      padding: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+    },
+    staffInfoModern: {
+      flex: 1,
+    },
+    staffNameModern: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    serviceRowModern: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(12),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    serviceRowModernFirst: {
+      paddingTop: 0,
+    },
+    serviceRowModernLast: {
+      borderBottomWidth: 0,
+      paddingBottom: 0,
+    },
+    serviceNameWrapModern: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      marginRight: moderateWidthScale(12),
+    },
+    serviceDot: {
+      width: moderateWidthScale(8),
+      height: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.orangeBrown,
+      marginRight: moderateWidthScale(10),
+    },
+    serviceNameModern: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    servicePriceModern: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    noteBlockModern: {
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+    },
+    paymentBadgeModern: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      backgroundColor: theme.orangeBrown015,
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(12),
+      alignSelf: "flex-start",
+    },
+    paymentBadgeTextModern: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
   });
 
@@ -1875,7 +2056,6 @@ function CheckoutContent() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity
@@ -1896,251 +2076,261 @@ function CheckoutContent() {
 
       <View style={styles.line} />
 
-      <View style={{ flex: 1 }}>
+      <View style={styles.contentWrap}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.summaryCard}>
-            <View style={styles.summaryCardBody}>
-              {/* Date & Time — left accent */}
-              <View style={styles.dateTimeBlock}>
-                <View style={styles.dateTimeTextWrap}>
-                  <Text style={styles.dateTimeLabel}>Date & time</Text>
-                  <Text style={styles.dateTimeValue}>
-                    {formatDateDisplay(reduxSelectedDate || "")}
-                    {reduxSelectedTimeSlot
-                      ? ` • ${formatSlotTo12h(reduxSelectedTimeSlot)}`
-                      : ""}
-                  </Text>
-                </View>
-                <View style={styles.dateTimeIconWrap}>
-                  <SummaryIcon type="calendar" color={theme.orangeBrown} />
-                </View>
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionCardHeader}>
+              <Text style={styles.sectionCardTitle}>Appointment</Text>
+              <View style={styles.iconChip}>
+                <SummaryIcon type="calendar" color={theme.orangeBrown} />
               </View>
+            </View>
+            <Text style={styles.appointmentValue}>
+              {formatDateDisplay(reduxSelectedDate || "")}
+            </Text>
+            <Text style={styles.appointmentSub}>
+              {reduxSelectedTimeSlot
+                ? formatSlotTo12h(reduxSelectedTimeSlot)
+                : "Time not selected"}
+            </Text>
+          </View>
 
-              {/* Staff — card with avatar */}
-              <Text style={styles.sectionLabel}>Staff</Text>
-              <View style={styles.staffSection}>
-                <View style={styles.staffAvatarWrap}>
-                  {staffImageUri ? (
-                    <Image
-                      source={{ uri: staffImageUri }}
-                      style={styles.staffAvatar}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.staffAvatar} />
-                  )}
-                  {selectedStaffId !== "anyone" && selectedStaffMember && (
-                    <View
-                      style={[
-                        styles.staffStatusDot,
-                        selectedStaffMember.active
-                          ? styles.staffStatusDotActive
-                          : styles.staffStatusDotInactive,
-                      ]}
-                    />
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.staffName}>
-                    {selectedStaffId === "anyone" && assignedStaffId == null
-                      ? "Anyone available"
-                      : (selectedStaffMember?.name ?? "—")}
-                  </Text>
-                  {selectedStaffId !== "anyone" &&
-                    selectedStaffMember?.experience != null && (
-                      <Text style={styles.staffExperience} numberOfLines={1}>
-                        {selectedStaffMember.experience === 1
-                          ? "1 year experience"
-                          : `${selectedStaffMember.experience} years experience`}
-                      </Text>
-                    )}
-                </View>
-                <SummaryIcon type="person" color={theme.lightGreen} />
+          <View style={styles.sectionCard}>
+            <View style={styles.sectionCardHeader}>
+              <Text style={styles.sectionCardTitle}>Staff</Text>
+              <View style={[styles.iconChip, styles.iconChipMuted]}>
+                <SummaryIcon type="person" color={theme.darkGreen} />
               </View>
-
-              {/* Services - hide for subscription mode */}
-              {!isSubscriptionMode && (
-                <>
-                  <Text
+            </View>
+            <View style={styles.staffRowModern}>
+              <View style={styles.staffAvatarWrap}>
+                {staffImageUri ? (
+                  <Image
+                    source={{ uri: staffImageUri }}
+                    style={styles.staffAvatar}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.staffAvatar} />
+                )}
+                {selectedStaffId !== "anyone" && selectedStaffMember && (
+                  <View
                     style={[
-                      styles.sectionLabel,
-                      { marginBottom: moderateHeightScale(10) },
+                      styles.staffStatusDot,
+                      selectedStaffMember.active
+                        ? styles.staffStatusDotActive
+                        : styles.staffStatusDotInactive,
                     ]}
-                  >
-                    Services
+                  />
+                )}
+              </View>
+              <View style={styles.staffInfoModern}>
+                <Text style={styles.staffNameModern}>
+                  {selectedStaffId === "anyone" && assignedStaffId == null
+                    ? "Anyone available"
+                    : (selectedStaffMember?.name ?? "—")}
+                </Text>
+                {selectedStaffId !== "anyone" &&
+                  selectedStaffMember?.experience != null && (
+                    <Text style={styles.staffExperience} numberOfLines={1}>
+                      {selectedStaffMember.experience === 1
+                        ? "1 year experience"
+                        : `${selectedStaffMember.experience} years experience`}
+                    </Text>
+                  )}
+                {selectedStaffId === "anyone" && assignedStaffId != null && (
+                  <Text style={styles.staffExperience} numberOfLines={1}>
+                    Auto-assigned for this slot
                   </Text>
-                  {selectedServices.map((service) => (
-                    <View key={service.id} style={styles.serviceRow}>
-                      <Text style={styles.serviceName} numberOfLines={2}>
-                        {service.name}
-                      </Text>
-                      <Text style={styles.servicePrice}>
-                        ${service.price.toFixed(2)}
-                      </Text>
-                    </View>
-                  ))}
-                </>
-              )}
+                )}
+              </View>
+            </View>
+          </View>
 
-              {tryOnImageUrls.length > 0 && (
-                <>
-                  <Text style={styles.tryOnSectionLabel}>Try-on images</Text>
-                  <View style={styles.tryOnImagesRow}>
-                    {tryOnImageUrls.map((uri, index) => (
-                      <View
-                        key={`${uri}-${index}`}
-                        style={styles.tryOnImageBox}
-                      >
-                        <Image
-                          source={{ uri }}
-                          style={styles.tryOnImageThumb}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    ))}
-                  </View>
-                </>
-              )}
-
-              {note.trim() ? (
-                <View style={styles.noteBlock}>
-                  <Text style={styles.noteLabel}>Note</Text>
-                  <Text style={styles.noteText} numberOfLines={8}>
-                    {note.trim()}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Payment - hide for subscription mode */}
-              {!isSubscriptionMode && (
-                <View style={styles.paymentRow}>
-                  <Text style={styles.paymentLabel}>Payment</Text>
-                  <View style={styles.paymentBadge}>
-                    <SummaryIcon type="payment" color={theme.text} />
-                    <Text style={styles.paymentBadgeText}>
-                      {paymentMethod === "payNow" ? "Pay now" : "Pay later"}
+          {!isSubscriptionMode && (
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionCardHeader}>
+                <Text style={styles.sectionCardTitle}>Services</Text>
+              </View>
+              {selectedServices.map((service, index) => (
+                <View
+                  key={service.id}
+                  style={[
+                    styles.serviceRowModern,
+                    index === 0 && styles.serviceRowModernFirst,
+                    index === selectedServices.length - 1 &&
+                      styles.serviceRowModernLast,
+                  ]}
+                >
+                  <View style={styles.serviceNameWrapModern}>
+                    <View style={styles.serviceDot} />
+                    <Text style={styles.serviceNameModern} numberOfLines={2}>
+                      {service.name}
                     </Text>
                   </View>
+                  <Text style={styles.servicePriceModern}>
+                    ${service.price.toFixed(2)}
+                  </Text>
                 </View>
-              )}
+              ))}
+            </View>
+          )}
 
-              {/* Subscription Card - show only in subscription mode */}
-              {isSubscriptionMode && subscriptionData && (
-                <View style={styles.subscriptionCard}>
-                  {(() => {
-                    const pill = getCustomerSubscriptionPill(subscriptionData);
-                    const dateDisplay =
-                      getCustomerSubscriptionDateDisplay(subscriptionData);
-                    const scheduleDate = formatCustomerScheduleDate(
-                      dateDisplay.kind,
-                      dateDisplay.date,
-                    );
-                    const displayPrice =
-                      getCustomerSubscriptionDisplayPrice(subscriptionData);
-                    return (
-                      <>
-                  <View style={styles.cardHeader}>
-                    <View style={styles.planTitleRow}>
-                      <Feather
-                        name="star"
-                        size={moderateWidthScale(16)}
-                        color={theme.orangeBrown}
-                        style={styles.starIcon}
-                      />
-                      <Text style={styles.planTitle}>
-                        {subscriptionData.subscriptionPlan}
-                      </Text>
-                    </View>
-                    <View style={styles.statusBadge}>
-                      <Text style={styles.statusText}>
-                        {pill.label.toUpperCase()}
-                      </Text>
-                    </View>
+          {tryOnImageUrls.length > 0 && (
+            <View style={styles.sectionCard}>
+              <Text style={styles.tryOnSectionLabel}>Try-on images</Text>
+              <View style={styles.tryOnImagesRow}>
+                {tryOnImageUrls.map((uri, index) => (
+                  <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
+                    <Image
+                      source={{ uri }}
+                      style={styles.tryOnImageThumb}
+                      resizeMode="cover"
+                    />
                   </View>
-                  <View style={styles.topSection}>
-                    <View style={styles.userInfoRow}>
-                      <Feather
-                        name="user"
-                        size={moderateWidthScale(14)}
-                        color={theme.darkGreen}
-                        style={styles.userIcon}
-                      />
-                      <Text style={styles.userText} numberOfLines={1}>
-                        {subscriptionData.business}
-                      </Text>
-                    </View>
-                    <View style={styles.priceBadge}>
-                      <Text style={styles.priceText}>
-                        ${displayPrice}
-                      </Text>
-                      <Text style={styles.planPriceLabel}>/month</Text>
-                    </View>
-                  </View>
-                  <View style={styles.subExpandedDetailSection}>
-                      {subscriptionData.subscriptionPlanDescription && (
-                        <Text style={styles.descriptionText}>
-                          {subscriptionData.subscriptionPlanDescription}
-                        </Text>
-                      )}
+                ))}
+              </View>
+            </View>
+          )}
 
-                      {(subscriptionData.paymentDate || scheduleDate) && (
-                        <View style={styles.paymentRenewalRow}>
-                          {subscriptionData.paymentDate && (
-                            <View style={styles.paymentDateContainer}>
-                              <Feather
-                                name="credit-card"
-                                size={moderateWidthScale(12)}
-                                color={theme.darkGreen}
-                              />
-                              <View style={styles.dateInfoContainer}>
-                                <Text style={styles.dateLabel}>Payment</Text>
-                                <Text style={styles.dateValue}>
-                                  {subscriptionData.paymentDate}
-                                </Text>
-                              </View>
-                            </View>
-                          )}
-                          {scheduleDate && (
-                            <View
-                              style={[
-                                styles.renewalContainer,
-                                !subscriptionData.paymentDate && {
-                                  marginLeft: 0,
-                                },
-                              ]}
-                            >
-                              <Feather
-                                name="calendar"
-                                size={moderateWidthScale(12)}
-                                color={theme.darkGreen}
-                              />
-                              <View style={styles.dateInfoContainer}>
-                                <Text style={styles.dateLabel}>
-                                  {getCustomerScheduleDateLabel(
-                                    dateDisplay.kind,
-                                  )}
-                                </Text>
-                                <Text style={styles.dateValue}>
-                                  {scheduleDate}
-                                </Text>
-                              </View>
-                            </View>
-                          )}
+          {note.trim() ? (
+            <View style={styles.sectionCard}>
+              <View style={styles.noteBlockModern}>
+                <Text style={styles.noteLabel}>Note</Text>
+                <Text style={styles.noteText} numberOfLines={8}>
+                  {note.trim()}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {!isSubscriptionMode && (
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionCardHeader}>
+                <Text style={styles.sectionCardTitle}>Payment</Text>
+              </View>
+              <View style={styles.paymentBadgeModern}>
+                <SummaryIcon type="payment" color={theme.darkGreen} />
+                <Text style={styles.paymentBadgeTextModern}>
+                  {paymentMethod === "payNow" ? "Pay now" : "Pay later"}
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {isSubscriptionMode && subscriptionData && (
+            <View style={styles.sectionCard}>
+              <View style={styles.subscriptionCard}>
+                {(() => {
+                  const pill = getCustomerSubscriptionPill(subscriptionData);
+                  const dateDisplay =
+                    getCustomerSubscriptionDateDisplay(subscriptionData);
+                  const scheduleDate = formatCustomerScheduleDate(
+                    dateDisplay.kind,
+                    dateDisplay.date,
+                  );
+                  const displayPrice =
+                    getCustomerSubscriptionDisplayPrice(subscriptionData);
+                  return (
+                    <>
+                      <View style={styles.cardHeader}>
+                        <View style={styles.planTitleRow}>
+                          <Feather
+                            name="star"
+                            size={moderateWidthScale(16)}
+                            color={theme.orangeBrown}
+                            style={styles.starIcon}
+                          />
+                          <Text style={styles.planTitle}>
+                            {subscriptionData.subscriptionPlan}
+                          </Text>
                         </View>
-                      )}
+                        <View style={styles.statusBadge}>
+                          <Text style={styles.statusText}>
+                            {pill.label.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.topSection}>
+                        <View style={styles.userInfoRow}>
+                          <Feather
+                            name="user"
+                            size={moderateWidthScale(14)}
+                            color={theme.darkGreen}
+                            style={styles.userIcon}
+                          />
+                          <Text style={styles.userText} numberOfLines={1}>
+                            {subscriptionData.business}
+                          </Text>
+                        </View>
+                        <View style={styles.priceBadge}>
+                          <Text style={styles.priceText}>${displayPrice}</Text>
+                          <Text style={styles.planPriceLabel}>/month</Text>
+                        </View>
+                      </View>
+                      <View style={styles.subExpandedDetailSection}>
+                        {subscriptionData.subscriptionPlanDescription && (
+                          <Text style={styles.descriptionText}>
+                            {subscriptionData.subscriptionPlanDescription}
+                          </Text>
+                        )}
 
-                      {selectedSubscriptionPlanServices &&
-                        selectedSubscriptionPlanServices.length >
-                          0 && (
-                          <>
-                            <Text style={styles.subServicesSectionTitle}>
-                              Plan services
-                            </Text>
-                            {selectedSubscriptionPlanServices.map(
-                              (svc) => (
+                        {(subscriptionData.paymentDate || scheduleDate) && (
+                          <View style={styles.paymentRenewalRow}>
+                            {subscriptionData.paymentDate && (
+                              <View style={styles.paymentDateContainer}>
+                                <Feather
+                                  name="credit-card"
+                                  size={moderateWidthScale(12)}
+                                  color={theme.darkGreen}
+                                />
+                                <View style={styles.dateInfoContainer}>
+                                  <Text style={styles.dateLabel}>Payment</Text>
+                                  <Text style={styles.dateValue}>
+                                    {subscriptionData.paymentDate}
+                                  </Text>
+                                </View>
+                              </View>
+                            )}
+                            {scheduleDate && (
+                              <View
+                                style={[
+                                  styles.renewalContainer,
+                                  !subscriptionData.paymentDate && {
+                                    marginLeft: 0,
+                                  },
+                                ]}
+                              >
+                                <Feather
+                                  name="calendar"
+                                  size={moderateWidthScale(12)}
+                                  color={theme.darkGreen}
+                                />
+                                <View style={styles.dateInfoContainer}>
+                                  <Text style={styles.dateLabel}>
+                                    {getCustomerScheduleDateLabel(
+                                      dateDisplay.kind,
+                                    )}
+                                  </Text>
+                                  <Text style={styles.dateValue}>
+                                    {scheduleDate}
+                                  </Text>
+                                </View>
+                              </View>
+                            )}
+                          </View>
+                        )}
+
+                        {selectedSubscriptionPlanServices &&
+                          selectedSubscriptionPlanServices.length > 0 && (
+                            <>
+                              <Text style={styles.subServicesSectionTitle}>
+                                Plan services
+                              </Text>
+                              {selectedSubscriptionPlanServices.map((svc) => (
                                 <View key={svc.id} style={styles.subServiceRow}>
                                   <View style={styles.subServiceNameContainer}>
                                     <Text style={styles.subServiceNameText}>
@@ -2169,51 +2359,43 @@ function CheckoutContent() {
                                     ${svc.price}
                                   </Text>
                                 </View>
-                              ),
-                            )}
-                          </>
-                        )}
-                  </View>
-                      </>
-                    );
-                  })()}
-                </View>
-              )}
-            </View>
-          </View>
-
-          {/* Footer card - hide Subtotal/Tax/Total for subscription mode */}
-          <View style={styles.footerCard}>
-            <View style={styles.footerCardBody}>
-              {!isSubscriptionMode && (
-                <>
-                  <View style={styles.footerSubRow}>
-                    <Text style={styles.footerSubLabel}>Service:</Text>
-                    <Text style={styles.footerSubValue}>
-                      ${totalPrice.toFixed(2)} USD
-                    </Text>
-                  </View>
-                  <View style={styles.footerSubRow}>
-                    <Text style={styles.footerSubLabel}>Tax:</Text>
-                    <Text style={styles.footerSubValue}>
-                      ${tax.toFixed(2)} USD
-                    </Text>
-                  </View>
-                  <View style={styles.footerDivider} />
-                  <View style={styles.footerTotalRow}>
-                    <Text style={styles.footerTotalLabel}>Total:</Text>
-                    <Text style={styles.footerTotalValue}>
-                      ${estimatedTotal.toFixed(2)} USD
-                    </Text>
-                  </View>
-                </>
-              )}
-              <View style={styles.footerButtonWrap}>
-                <Button title={t("confirmBooking")} onPress={handleBookNow} />
+                              ))}
+                            </>
+                          )}
+                      </View>
+                    </>
+                  );
+                })()}
               </View>
             </View>
-          </View>
+          )}
         </ScrollView>
+
+        <View style={styles.stickyFooter}>
+          {!isSubscriptionMode && (
+            <>
+              <View style={styles.stickyMetaRow}>
+                <Text style={styles.stickyMetaLabel}>Service</Text>
+                <Text style={styles.stickyMetaValue}>
+                  ${totalPrice.toFixed(2)} USD
+                </Text>
+              </View>
+              <View style={styles.stickyMetaRow}>
+                <Text style={styles.stickyMetaLabel}>Tax</Text>
+                <Text style={styles.stickyMetaValue}>
+                  ${tax.toFixed(2)} USD
+                </Text>
+              </View>
+              <View style={styles.stickyTotalRow}>
+                <Text style={styles.stickyTotalLabel}>Total</Text>
+                <Text style={styles.stickyTotalValue}>
+                  ${estimatedTotal.toFixed(2)} USD
+                </Text>
+              </View>
+            </>
+          )}
+          <Button title={t("confirmBooking")} onPress={handleBookNow} />
+        </View>
       </View>
 
       {processingPayment && (
@@ -2227,6 +2409,7 @@ function CheckoutContent() {
     </SafeAreaView>
   );
 }
+
 
 export default function Checkout() {
   return <CheckoutContent />;
