@@ -46,7 +46,7 @@ export interface BusinessState {
   businessHours: BusinessHours | null;
   selectedDate: string | null; // YYYY-MM-DD
   selectedTimeSlot: string | null; // e.g. "09:00"
-  /** Auto-assigned from available_staff[0] when "Anyone" + slot selected */
+  /** Auto-assigned from available_staff (random when multiple) when "Anyone" + slot selected */
   assignedStaffId: number | null;
   selectedPaymentMethod: "payNow" | "payLater";
   selectedNote: string;

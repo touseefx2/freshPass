@@ -55,6 +55,7 @@ import {
   appointmentsEndpoints,
   type AvailableSlot,
   resolveAppointmentStaffId,
+  pickRandomAvailableStaff,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Theme } from "@/src/theme/colors";
@@ -1893,14 +1894,14 @@ export default function BookingNow() {
     dispatch(setAssignedStaffId(null));
   }, [selectedStaff, staffMembers, dispatch]);
 
-  // Auto-assign first available staff when "Anyone" + slot already selected (e.g. reschedule preset)
+  // Auto-assign a random available staff when "Anyone" + slot already selected (e.g. reschedule preset)
   useEffect(() => {
     if (selectedStaff !== "anyone" || !selectedTimeSlot || apiSlots.length === 0) {
       return;
     }
     const slotData = apiSlots.find((s) => s.start === selectedTimeSlot);
-    const firstStaff = slotData?.available_staff?.[0];
-    dispatch(setAssignedStaffId(firstStaff?.id ?? null));
+    const picked = pickRandomAvailableStaff(slotData?.available_staff);
+    dispatch(setAssignedStaffId(picked?.id ?? null));
   }, [selectedStaff, selectedTimeSlot, apiSlots, dispatch]);
 
   const getDayNameFromDate = (date: dayjs.Dayjs): string => {
@@ -2080,8 +2081,8 @@ export default function BookingNow() {
 
     if (selectedStaff === "anyone") {
       const slotData = apiSlots.find((s) => s.start === slot);
-      const firstStaff = slotData?.available_staff?.[0];
-      dispatch(setAssignedStaffId(firstStaff?.id ?? null));
+      const picked = pickRandomAvailableStaff(slotData?.available_staff);
+      dispatch(setAssignedStaffId(picked?.id ?? null));
     } else {
       dispatch(setAssignedStaffId(null));
     }
@@ -2172,7 +2173,7 @@ export default function BookingNow() {
     const anyoneItem = {
       id: "anyone",
       name: "Anyone",
-      experience: "First available staff" as string | number | null,
+      experience: "Any available staff" as string | number | null,
       image: null as string | null,
       active: null as boolean | null,
       is_owner: false,
@@ -2195,7 +2196,7 @@ export default function BookingNow() {
       !query ||
       "anyone".includes(query) ||
       "anyone who's available".includes(query) ||
-      "first available staff".includes(query);
+      "any available staff".includes(query);
 
     return showAnyone ? [anyoneItem, ...filteredStaff] : filteredStaff;
   }, [staffMembers, staffSearchQuery]);
@@ -2461,7 +2462,7 @@ export default function BookingNow() {
                               style={styles.staffExperience}
                               numberOfLines={2}
                             >
-                              First available staff
+                              Any available staff
                             </Text>
                           </>
                         ) : (

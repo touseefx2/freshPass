@@ -257,7 +257,17 @@ export interface AvailableSlot {
   available_staff?: AvailableSlotStaff[];
 }
 
-/** Resolve staff_id for POST/PUT appointment when "Anyone" auto-assigns first available staff. */
+/** Pick one staff at random from available_staff (falls back to first if only one). */
+export function pickRandomAvailableStaff(
+  availableStaff?: AvailableSlotStaff[] | null,
+): AvailableSlotStaff | undefined {
+  if (!availableStaff?.length) return undefined;
+  if (availableStaff.length === 1) return availableStaff[0];
+  const index = Math.floor(Math.random() * availableStaff.length);
+  return availableStaff[index];
+}
+
+/** Resolve staff_id for POST/PUT appointment when "Anyone" auto-assigns an available staff. */
 export function resolveAppointmentStaffId(params: {
   selectedStaff: string;
   assignedStaffId: number | null;
@@ -273,8 +283,8 @@ export function resolveAppointmentStaffId(params: {
   }
   if (params.selectedTimeSlot && params.slots?.length) {
     const slot = params.slots.find((s) => s.start === params.selectedTimeSlot);
-    const firstStaff = slot?.available_staff?.[0];
-    if (firstStaff) return firstStaff.id;
+    const picked = pickRandomAvailableStaff(slot?.available_staff);
+    if (picked) return picked.id;
   }
   return undefined;
 }
