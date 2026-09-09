@@ -2362,7 +2362,7 @@ export default function BookingNow() {
                 value={staffSearchQuery}
                 onChangeText={setStaffSearchQuery}
                 placeholder="Search staff by name"
-                placeholderTextColor={theme.lightGreen}
+                placeholderTextColor={theme.lightGreen2}
                 containerStyle={styles.staffSearchInput}
                 returnKeyType="search"
                 showClearButton
