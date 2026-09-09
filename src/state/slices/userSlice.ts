@@ -3,6 +3,29 @@ import Logger from "@/src/services/logger";
 
 export type UserRole = "business" | "customer" | "staff" | null;
 
+export interface OwnerAsStaffStatus {
+  available: boolean;
+  enabled: boolean;
+  staff_id: number | null;
+}
+
+export const DEFAULT_OWNER_AS_STAFF: OwnerAsStaffStatus = {
+  available: false,
+  enabled: false,
+  staff_id: null,
+};
+
+export const normalizeOwnerAsStaff = (
+  value?: Partial<OwnerAsStaffStatus> | null,
+): OwnerAsStaffStatus => ({
+  available: value?.available === true,
+  enabled: value?.enabled === true,
+  staff_id:
+    typeof value?.staff_id === "number" && Number.isFinite(value.staff_id)
+      ? value.staff_id
+      : null,
+});
+
 export interface BusinessStatus {
   onboarding_completed: boolean;
   current_step: number | null;
@@ -23,6 +46,8 @@ export interface BusinessStatus {
   active: boolean;
   business_id?: number;
   business_name?: string;
+  /** Business-plan gate for putting the owner on their own team */
+  owner_as_staff: OwnerAsStaffStatus;
 }
 
 export const deriveHasAddStaff = (
@@ -56,6 +81,11 @@ export const canAddStaffMembers = (
 ): boolean =>
   isBusinessSubscriptionActive(status) && status?.hasAddStaff === true;
 
+/** Show Add/Remove yourself CTA when the plan allows owner-as-staff. */
+export const canUseOwnerAsStaff = (
+  status?: BusinessStatus | null,
+): boolean => status?.owner_as_staff?.available === true;
+
 const withDerivedBusinessStatus = (status: BusinessStatus): BusinessStatus => {
   const subscription_plan_name = status.subscription_plan_name ?? null;
   const subscription_is_single = status.subscription_is_single ?? false;
@@ -70,6 +100,7 @@ const withDerivedBusinessStatus = (status: BusinessStatus): BusinessStatus => {
       status.subscription_status,
       subscription_is_single,
     ),
+    owner_as_staff: normalizeOwnerAsStaff(status.owner_as_staff),
   };
 };
 

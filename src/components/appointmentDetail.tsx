@@ -55,6 +55,7 @@ export interface Appointment {
   paidAmount: string;
   staffName: string;
   staffEmail: string;
+  staffIsOwner?: boolean;
   notes: string | null;
   businessTitle: string;
   businessAddress: string;
@@ -583,7 +584,9 @@ export default function AppointmentDetail({
             <View style={styles.infoContent}>
               <Text style={styles.infoLabel}>Assigned Staff</Text>
               <Text style={styles.infoValueBold} numberOfLines={1}>
-                {appointment.staffName}
+                {appointment.staffIsOwner
+                  ? `${appointment.staffName} · ${t("owner")}`
+                  : appointment.staffName}
               </Text>
               <Text style={styles.infoSubValue} numberOfLines={1}>
                 {appointment.staffEmail}

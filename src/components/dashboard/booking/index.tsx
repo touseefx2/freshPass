@@ -46,6 +46,7 @@ interface BookingItem {
   membershipType?: string;
   planName?: string;
   staffName: string;
+  staffIsOwner?: boolean;
   location?: string;
   dateTime: string;
   duration: string;
@@ -61,6 +62,7 @@ interface ApiAppointment {
   appointmentType: "subscription" | "service";
   status: string;
   staffName: string | null;
+  staffIsOwner?: boolean;
   subscription: string | null;
   subscriptionPlanType: string | null;
   subscriptionPlanDescription: string | null;
@@ -552,6 +554,9 @@ export default function BookingScreen() {
       : undefined;
 
     const staffName = apiAppointment.staffName || "Anyone";
+    const staffIsOwner =
+      apiAppointment.staffIsOwner === true &&
+      staffName.toLowerCase() !== "anyone";
 
     const membershipType = formatMembershipInfo(apiAppointment);
 
@@ -572,6 +577,7 @@ export default function BookingScreen() {
           : serviceName,
       membershipType,
       staffName,
+      staffIsOwner,
       location,
       dateTime: dateTime,
       duration: "",
@@ -722,7 +728,9 @@ export default function BookingScreen() {
               numberOfLines={1}
               style={[styles.infoText, styles.staffInfoText]}
             >
-              {item.staffName}
+              {item.staffIsOwner
+                ? `${item.staffName} · ${t("owner")}`
+                : item.staffName}
             </Text>
           </View>
         </View>

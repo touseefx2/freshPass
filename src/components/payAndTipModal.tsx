@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -46,158 +47,243 @@ const createStyles = (theme: Theme) =>
     overlayFill: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: theme.black,
-      opacity: 0.5,
+      opacity: 0.55,
     },
     sheet: {
-      backgroundColor: theme.white,
-      borderTopLeftRadius: moderateWidthScale(24),
-      borderTopRightRadius: moderateWidthScale(24),
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(20),
+      backgroundColor: theme.background,
+      borderTopLeftRadius: moderateWidthScale(28),
+      borderTopRightRadius: moderateWidthScale(28),
       paddingBottom: moderateHeightScale(28),
-      maxHeight: "88%",
+      maxHeight: "90%",
+      overflow: "hidden",
     },
     handle: {
       alignSelf: "center",
       width: widthScale(40),
       height: moderateHeightScale(4),
       borderRadius: moderateWidthScale(2),
-      backgroundColor: theme.borderLight,
-      marginBottom: moderateHeightScale(16),
+      backgroundColor: theme.lightGreen2,
+      marginTop: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(4),
+    },
+    header: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(12),
+      paddingBottom: moderateHeightScale(16),
+      gap: moderateWidthScale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen1,
+    },
+    headerIconWrap: {
+      width: widthScale(48),
+      height: widthScale(48),
+      borderRadius: widthScale(24),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+    },
+    headerTextWrap: {
+      flex: 1,
     },
     title: {
       fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(6),
+      marginBottom: moderateHeightScale(4),
     },
     subtitle: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      lineHeight: fontSize.size20,
-      marginBottom: moderateHeightScale(18),
+      lineHeight: fontSize.size18,
     },
-    sectionTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(12),
+    content: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(18),
     },
-    chipsRow: {
+    tipPanel: {
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      padding: moderateWidthScale(16),
+      marginBottom: moderateHeightScale(14),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: moderateHeightScale(2) },
+      shadowOpacity: 0.06,
+      shadowRadius: moderateWidthScale(8),
+      elevation: 2,
+    },
+    recipientRow: {
       flexDirection: "row",
-      flexWrap: "wrap",
+      alignItems: "center",
       gap: moderateWidthScale(10),
       marginBottom: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(14),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen1,
     },
-    chip: {
-      minWidth: widthScale(72),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(24),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-      alignItems: "center",
-    },
-    chipSelected: {
-      borderColor: theme.darkGreen,
+    recipientBadge: {
+      width: widthScale(36),
+      height: widthScale(36),
+      borderRadius: widthScale(18),
       backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    chipText: {
+    recipientBadgeText: {
       fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    customAmountContainer: {
-      borderRadius: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      backgroundColor: theme.background,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(14),
-      marginBottom: moderateHeightScale(12),
+    recipientInfo: {
+      flex: 1,
     },
-    customAmountLabel: {
+    recipientEyebrow: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      letterSpacing: 0.4,
+      marginBottom: moderateHeightScale(2),
+    },
+    recipientName: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    amountSectionTitle: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      marginBottom: moderateHeightScale(6),
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
+      marginBottom: moderateHeightScale(10),
     },
-    customAmountInputRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    currencyPrefix: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginRight: moderateWidthScale(4),
-    },
-    customAmountInput: {
-      flex: 1,
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      padding: 0,
-    },
-    amountHint: {
-      marginTop: moderateHeightScale(8),
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-    },
-    noTipButton: {
+    amountDisplay: {
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: moderateHeightScale(12),
-      marginBottom: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(18),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen05,
       borderWidth: 1,
       borderColor: theme.borderLight,
+      marginBottom: moderateHeightScale(12),
+    },
+    amountDisplayActive: {
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.background,
+    },
+    amountPlaceholderLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      marginBottom: moderateHeightScale(4),
+      letterSpacing: 0.3,
+    },
+    amountInputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    currencyPrefix: {
+      fontSize: fontSize.size32,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginRight: moderateWidthScale(2),
+    },
+    customAmountInput: {
+      minWidth: widthScale(80),
+      maxWidth: widthScale(160),
+      fontSize: fontSize.size32,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      padding: 0,
+      textAlign: "center",
+    },
+    noTipButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1.5,
+      borderColor: theme.lightGreen2,
+      borderStyle: "dashed",
       backgroundColor: theme.white,
     },
     noTipButtonSelected: {
-      borderColor: theme.darkGreen,
+      borderStyle: "solid",
+      borderColor: theme.buttonBack,
       backgroundColor: theme.lightGreen07,
     },
     noTipText: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    noTipTextSelected: {
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     breakdownCard: {
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(14),
       marginBottom: moderateHeightScale(16),
-      gap: moderateHeightScale(8),
+    },
+    breakdownHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(12),
+    },
+    breakdownHeaderText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
     },
     breakdownRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
+      marginBottom: moderateHeightScale(10),
     },
     breakdownLabel: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
     breakdownValue: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
+    breakdownDivider: {
+      height: 1,
+      backgroundColor: theme.lightGreen1,
+      marginBottom: moderateHeightScale(10),
+    },
     breakdownTotalLabel: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     breakdownTotalValue: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.buttonBack,
     },
     errorText: {
       fontSize: fontSize.size13,
@@ -210,7 +296,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: moderateHeightScale(32),
+      paddingVertical: moderateHeightScale(40),
       gap: moderateWidthScale(10),
     },
     loadingText: {
@@ -220,7 +306,8 @@ const createStyles = (theme: Theme) =>
     },
     actions: {
       gap: moderateHeightScale(4),
-      marginTop: moderateHeightScale(4),
+      marginTop: moderateHeightScale(2),
+      paddingBottom: moderateHeightScale(4),
     },
     secondaryButton: {
       alignItems: "center",
@@ -239,6 +326,12 @@ function formatMoney(amount: number): string {
   return `$${amount.toFixed(2)}`;
 }
 
+function getNameInitial(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "?";
+  return trimmed.charAt(0).toUpperCase();
+}
+
 export default function PayAndTipModal({
   visible,
   appointmentId,
@@ -254,7 +347,6 @@ export default function PayAndTipModal({
   const [loading, setLoading] = useState(false);
   const [tipDetails, setTipDetails] = useState<TipDetails | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [noTip, setNoTip] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -262,7 +354,6 @@ export default function PayAndTipModal({
   const resetLocalState = useCallback(() => {
     setTipDetails(null);
     setLoadError(null);
-    setSelectedAmount(null);
     setCustomAmount("");
     setNoTip(false);
     setValidationError(null);
@@ -292,21 +383,12 @@ export default function PayAndTipModal({
     void loadDetails();
   }, [visible, loadDetails, resetLocalState]);
 
-  const suggestedAmounts = useMemo(() => {
-    if (!tipDetails) return [];
-    return tipDetails.suggestedAmounts.filter(
-      (amount) => amount >= tipDetails.minAmount && amount <= tipDetails.maxAmount,
-    );
-  }, [tipDetails]);
-
   const activeAmount = useMemo(() => {
     if (noTip) return null;
-    if (customAmount.trim()) {
-      const parsed = Number.parseFloat(customAmount);
-      return Number.isFinite(parsed) ? parsed : null;
-    }
-    return selectedAmount;
-  }, [customAmount, selectedAmount, noTip]);
+    if (!customAmount.trim()) return null;
+    const parsed = Number.parseFloat(customAmount);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [customAmount, noTip]);
 
   const recipientLabel = useMemo(() => {
     if (tipDetails?.recipient) {
@@ -324,24 +406,15 @@ export default function PayAndTipModal({
     return service + tip;
   }, [serviceAmount, activeAmount]);
 
-  const handleSelectSuggested = (amount: number) => {
-    setNoTip(false);
-    setSelectedAmount(amount);
-    setCustomAmount("");
-    setValidationError(null);
-  };
-
   const handleCustomAmountChange = (value: string) => {
     const sanitized = value.replace(/[^0-9.]/g, "");
     setNoTip(false);
     setCustomAmount(sanitized);
-    setSelectedAmount(null);
     setValidationError(null);
   };
 
   const handleSelectNoTip = () => {
     setNoTip(true);
-    setSelectedAmount(null);
     setCustomAmount("");
     setValidationError(null);
   };
@@ -353,7 +426,7 @@ export default function PayAndTipModal({
     }
 
     if (activeAmount == null || Number.isNaN(activeAmount)) {
-      setValidationError("Choose a tip amount or select No Tip.");
+      setValidationError("Enter a tip amount or select No tip, thanks.");
       return;
     }
 
@@ -381,10 +454,13 @@ export default function PayAndTipModal({
   const promptText = tipDetails?.recipient
     ? getTipPromptLabel(tipDetails.recipient)
     : recipientLabel
-      ? `Add an optional tip for ${recipientLabel}, or continue with No Tip.`
-      : "Add an optional tip, or continue with No Tip.";
+      ? `Happy with your visit? Say thanks to ${recipientLabel} with a tip.`
+      : "Happy with your visit? Add an optional tip.";
 
   const canContinue = noTip || activeAmount != null;
+  const hasAmount = customAmount.trim().length > 0;
+  const tipDisplayAmount =
+    noTip || activeAmount == null ? 0 : activeAmount;
 
   return (
     <Modal
@@ -397,8 +473,20 @@ export default function PayAndTipModal({
         <Pressable style={styles.overlayFill} onPress={onClose} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
-          <Text style={styles.title}>Pay for your visit</Text>
-          <Text style={styles.subtitle}>{promptText}</Text>
+
+          <View style={styles.header}>
+            <View style={styles.headerIconWrap}>
+              <Ionicons
+                name="heart"
+                size={moderateWidthScale(22)}
+                color={theme.orangeBrown}
+              />
+            </View>
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.title}>Pay for your visit</Text>
+              <Text style={styles.subtitle}>{promptText}</Text>
+            </View>
+          </View>
 
           {loading ? (
             <View style={styles.loadingRow}>
@@ -407,6 +495,7 @@ export default function PayAndTipModal({
             </View>
           ) : (
             <ScrollView
+              style={styles.content}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
@@ -414,74 +503,86 @@ export default function PayAndTipModal({
                 <Text style={styles.errorText}>{loadError}</Text>
               ) : null}
 
-              {suggestedAmounts.length > 0 ? (
-                <>
-                  <Text style={styles.sectionTitle}>Suggested tip</Text>
-                  <View style={styles.chipsRow}>
-                    {suggestedAmounts.map((amount) => {
-                      const isSelected =
-                        !noTip &&
-                        selectedAmount === amount &&
-                        customAmount.trim() === "";
-                      return (
-                        <TouchableOpacity
-                          key={amount}
-                          style={[styles.chip, isSelected && styles.chipSelected]}
-                          onPress={() => handleSelectSuggested(amount)}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.chipText}>
-                            {formatTipAmount(
-                              amount,
-                              tipDetails?.currency ?? "usd",
-                            )}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+              <View style={styles.tipPanel}>
+                {recipientLabel ? (
+                  <View style={styles.recipientRow}>
+                    <View style={styles.recipientBadge}>
+                      <Text style={styles.recipientBadgeText}>
+                        {getNameInitial(recipientLabel)}
+                      </Text>
+                    </View>
+                    <View style={styles.recipientInfo}>
+                      <Text style={styles.recipientEyebrow}>Tipping</Text>
+                      <Text style={styles.recipientName}>{recipientLabel}</Text>
+                    </View>
+                    <Ionicons
+                      name="sparkles"
+                      size={moderateWidthScale(16)}
+                      color={theme.orangeBrown}
+                    />
                   </View>
-                </>
-              ) : null}
+                ) : null}
 
-              <View style={styles.customAmountContainer}>
-                <Text style={styles.customAmountLabel}>Custom tip</Text>
-                <View style={styles.customAmountInputRow}>
-                  <Text style={styles.currencyPrefix}>$</Text>
-                  <TextInput
-                    style={styles.customAmountInput}
-                    value={customAmount}
-                    onChangeText={handleCustomAmountChange}
-                    keyboardType="decimal-pad"
-                    placeholder="0.00"
-                    placeholderTextColor={theme.lightGreen5}
-                  />
+                <Text style={styles.amountSectionTitle}>Amount</Text>
+                <View
+                  style={[
+                    styles.amountDisplay,
+                    hasAmount && !noTip && styles.amountDisplayActive,
+                  ]}
+                >
+                  <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
+                  <View style={styles.amountInputRow}>
+                    <Text style={styles.currencyPrefix}>$</Text>
+                    <TextInput
+                      style={styles.customAmountInput}
+                      value={customAmount}
+                      onChangeText={handleCustomAmountChange}
+                      keyboardType="decimal-pad"
+                      placeholder="0"
+                      placeholderTextColor={theme.lightGreen5}
+                      selectionColor={theme.orangeBrown}
+                    />
+                  </View>
                 </View>
-                {tipDetails ? (
-                  <Text style={styles.amountHint}>
-                    Min{" "}
-                    {formatTipAmount(tipDetails.minAmount, tipDetails.currency)}{" "}
-                    · Max{" "}
-                    {formatTipAmount(tipDetails.maxAmount, tipDetails.currency)}
-                  </Text>
-                ) : (
-                  <Text style={styles.amountHint}>Min $1.00 · Max $1,000.00</Text>
-                )}
-              </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.noTipButton,
-                  noTip && styles.noTipButtonSelected,
-                ]}
-                onPress={handleSelectNoTip}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.noTipText}>No Tip</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.noTipButton,
+                    noTip && styles.noTipButtonSelected,
+                  ]}
+                  onPress={handleSelectNoTip}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={noTip ? "checkmark-circle" : "close-circle-outline"}
+                    size={moderateWidthScale(18)}
+                    color={noTip ? theme.buttonBack : theme.lightGreen}
+                  />
+                  <Text
+                    style={[
+                      styles.noTipText,
+                      noTip && styles.noTipTextSelected,
+                    ]}
+                  >
+                    No tip, thanks
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               {typeof serviceAmount === "number" &&
               Number.isFinite(serviceAmount) ? (
                 <View style={styles.breakdownCard}>
+                  <View style={styles.breakdownHeader}>
+                    <Ionicons
+                      name="receipt-outline"
+                      size={moderateWidthScale(14)}
+                      color={theme.lightGreen}
+                    />
+                    <Text style={styles.breakdownHeaderText}>
+                      Payment summary
+                    </Text>
+                  </View>
+
                   <View style={styles.breakdownRow}>
                     <Text style={styles.breakdownLabel}>Service</Text>
                     <Text style={styles.breakdownValue}>
@@ -490,15 +591,16 @@ export default function PayAndTipModal({
                   </View>
                   <View style={styles.breakdownRow}>
                     <Text style={styles.breakdownLabel}>
-                      {recipientLabel ? `Tip for ${recipientLabel}` : "Tip"}
+                      {recipientLabel ? `Tip · ${recipientLabel}` : "Tip"}
                     </Text>
                     <Text style={styles.breakdownValue}>
-                      {noTip || activeAmount == null
-                        ? formatMoney(0)
-                        : formatMoney(activeAmount)}
+                      {formatMoney(tipDisplayAmount)}
                     </Text>
                   </View>
-                  <View style={styles.breakdownRow}>
+
+                  <View style={styles.breakdownDivider} />
+
+                  <View style={[styles.breakdownRow, { marginBottom: 0 }]}>
                     <Text style={styles.breakdownTotalLabel}>Total</Text>
                     <Text style={styles.breakdownTotalValue}>
                       {formatMoney(estimatedTotal)}

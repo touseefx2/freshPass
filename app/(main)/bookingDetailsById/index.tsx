@@ -166,6 +166,7 @@ interface BookingItem {
   subscription_id?: number | null;
   service_ids: number[] | null;
   staffImage?: string | null;
+  staffIsOwner?: boolean;
   tipRecipientType?: "staff" | "business";
   tipRecipientName?: string;
   canTip?: boolean;
@@ -226,6 +227,7 @@ interface ApiBookingResponse {
   staffName: string | null;
   staffEmail: string | null;
   staffImage: string | null;
+  staffIsOwner?: boolean;
   appointmentDate: string;
   appointmentTime: string;
   status: string;
@@ -938,7 +940,11 @@ export default function bookingDetailsById() {
   const userRole = useAppSelector((state) => state.user.userRole);
   let staffClientname = "";
   if (userRole === "customer") {
-    staffClientname = booking?.staffName ?? "Anyone";
+    const base = booking?.staffName ?? "Anyone";
+    staffClientname =
+      booking?.staffIsOwner && base.toLowerCase() !== "anyone"
+        ? `${base} · ${t("owner")}`
+        : base;
   } else {
     staffClientname = booking?.user ?? "User";
   }
@@ -952,8 +958,11 @@ export default function bookingDetailsById() {
     if (!name || name.toLowerCase() === "anyone") {
       return null;
     }
+    if (booking?.staffIsOwner) {
+      return `${name} · ${t("owner")}`;
+    }
     return name;
-  }, [booking?.staffName]);
+  }, [booking?.staffIsOwner, booking?.staffName, t]);
 
   const assignedStaffImageUri = useMemo(() => {
     const resolved = resolveApiImageUrl(booking?.staffImage);
@@ -1227,6 +1236,7 @@ export default function bookingDetailsById() {
       appointmentTime: apiData.appointmentTime,
       userId: apiData.userId ?? null,
       staffId: apiData.staffId ?? null,
+      staffIsOwner: apiData.staffIsOwner === true,
       staffImage: apiData.staffImage ?? null,
       subscription_id: apiData.subscriptionId,
       service_ids: service_ids,

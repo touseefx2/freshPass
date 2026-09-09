@@ -18,6 +18,7 @@ interface StaffMember {
   experience: number | null;
   image: string | null;
   active?: boolean | null;
+  is_owner?: boolean;
 }
 
 interface StaffSelectionBottomSheetProps {
@@ -160,6 +161,7 @@ export default function StaffSelectionBottomSheet({
       experience: null,
       image: null,
       active: null,
+      is_owner: false,
     },
     ...staffMembers.map((staff) => ({
       id: staff.id.toString(),
@@ -167,6 +169,7 @@ export default function StaffSelectionBottomSheet({
       experience: staff.experience,
       image: staff.image,
       active: staff.active,
+      is_owner: staff.is_owner === true,
     })),
   ];
 
@@ -227,7 +230,11 @@ export default function StaffSelectionBottomSheet({
                 )}
               </View>
               <View style={styles.staffInfo}>
-                <Text style={styles.staffName}>{staff.name}</Text>
+                <Text style={styles.staffName}>
+                  {staff.is_owner
+                    ? `${staff.name} · ${t("owner")}`
+                    : staff.name}
+                </Text>
                 {staff.experience !== null && (
                   <Text style={styles.staffExperience}>
                     {staff.experience} years of experience

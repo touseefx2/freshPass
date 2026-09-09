@@ -44,6 +44,7 @@ export type BusinessCustomerSubscriptionAppointment = {
   services: BusinessCustomerAppointmentService[];
   staffId: number | null;
   staffName: string | null;
+  staffIsOwner?: boolean;
   /** Storage path — prefix with API base URL */
   staffImageUrl: string | null;
 };
@@ -95,6 +96,7 @@ export type BusinessCustomerPurchase = {
   status: string;
   staffId?: number | null;
   staffName?: string | null;
+  staffIsOwner?: boolean;
   staffImageUrl?: string | null;
 };
 

@@ -242,6 +242,8 @@ export default function HomeScreen() {
           description: string | null;
           invitation_token: string;
           invitation_status: string;
+          is_owner?: boolean;
+          is_business_owner?: boolean;
           completed_appointments_count: number;
           business: {
             id: number;

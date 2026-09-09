@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import {
   ScrollView,
@@ -6,6 +6,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -23,13 +25,12 @@ import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 import { Skeleton } from "@/src/components/skeletons";
 import {
-  addStaffInvitation,
   setStaffInvitationEmail,
-  setStaffInvitations,
 } from "@/src/state/slices/completeProfileSlice";
 import { setActionLoader, setBusinessPlansModalVisible, setBusinessPlansModalBusinessOnly } from "@/src/state/slices/generalSlice";
 import {
   canAddStaffMembers,
+  canUseOwnerAsStaff,
   isSoloSubscription,
 } from "@/src/state/slices/userSlice";
 import { ApiService } from "@/src/services/api";
@@ -37,6 +38,10 @@ import Logger from "@/src/services/logger";
 import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateEmail } from "@/src/services/validationService";
+import {
+  disableOwnerAsStaff,
+  enableOwnerAsStaff,
+} from "@/src/services/ownerAsStaffService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -163,6 +168,28 @@ const createStyles = (theme: Theme) =>
       textTransform: "lowercase",
       opacity: 0.7,
     },
+    ownerCtaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "flex-end",
+      marginTop: moderateHeightScale(4),
+    },
+    ownerCtaText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    ownerTag: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.primary,
+    },
+    memberNameRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      flexWrap: "wrap",
+    },
   });
 
 interface TeamMember {
@@ -176,6 +203,8 @@ interface TeamMember {
   invitation_status: string;
   invited_at: string;
   completed_appointments_count: number;
+  is_owner?: boolean;
+  is_business_owner?: boolean;
 }
 
 export default function ManageTeamScreen() {
@@ -192,12 +221,15 @@ export default function ManageTeamScreen() {
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const canAddStaff = canAddStaffMembers(businessStatus);
   const isSoloPlan = isSoloSubscription(businessStatus);
+  const showOwnerCta = canUseOwnerAsStaff(businessStatus);
+  const ownerEnabled = businessStatus?.owner_as_staff?.enabled === true;
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
+  const [ownerBusy, setOwnerBusy] = useState(false);
 
   const canInvite = React.useMemo(() => {
     if (!staffInvitationEmail.trim()) {
@@ -220,16 +252,50 @@ export default function ManageTeamScreen() {
     setLoading(true);
 
     try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: {
-          staff: TeamMember[];
-        };
-      }>(businessEndpoints.moduleData("team"));
+      const [moduleResponse, staffResponse] = await Promise.all([
+        ApiService.get<{
+          success: boolean;
+          message: string;
+          data: {
+            staff: TeamMember[];
+          };
+        }>(businessEndpoints.moduleData("team")),
+        ApiService.get<{
+          success: boolean;
+          message: string;
+          data: Array<{
+            id: number;
+            is_owner?: boolean;
+            is_business_owner?: boolean;
+          }>;
+        }>(staffEndpoints.list()).catch(() => null),
+      ]);
 
-      if (response.success && response.data?.staff) {
-        setTeamMembers(response.data.staff);
+      if (moduleResponse.success && moduleResponse.data?.staff) {
+        const ownerFlags = new Map<
+          number,
+          { is_owner?: boolean; is_business_owner?: boolean }
+        >();
+        if (staffResponse?.success && Array.isArray(staffResponse.data)) {
+          for (const staff of staffResponse.data) {
+            ownerFlags.set(staff.id, {
+              is_owner: staff.is_owner,
+              is_business_owner: staff.is_business_owner,
+            });
+          }
+        }
+
+        setTeamMembers(
+          moduleResponse.data.staff.map((member) => {
+            const flags = ownerFlags.get(member.id);
+            return {
+              ...member,
+              is_owner: member.is_owner ?? flags?.is_owner,
+              is_business_owner:
+                member.is_business_owner ?? flags?.is_business_owner,
+            };
+          }),
+        );
       } else {
         setTeamMembers([]);
       }
@@ -320,6 +386,97 @@ export default function ManageTeamScreen() {
     }
   };
 
+  const runOwnerEnable = async () => {
+    setOwnerBusy(true);
+    dispatch(setActionLoader(true));
+    try {
+      const response = await enableOwnerAsStaff();
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || t("ownerAddedAsStaffSuccess"),
+          "success",
+          2500,
+        );
+        await fetchTeam();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || t("ownerAsStaffFailed"),
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("enableOwnerAsStaff failed:", error);
+      showBanner(
+        t("error"),
+        error?.message || t("ownerAsStaffFailed"),
+        "error",
+        3000,
+      );
+    } finally {
+      setOwnerBusy(false);
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  const runOwnerDisable = async () => {
+    setOwnerBusy(true);
+    dispatch(setActionLoader(true));
+    try {
+      const response = await disableOwnerAsStaff();
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || t("ownerRemovedAsStaffSuccess"),
+          "success",
+          2500,
+        );
+        await fetchTeam();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || t("ownerAsStaffFailed"),
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("disableOwnerAsStaff failed:", error);
+      showBanner(
+        t("error"),
+        error?.message || t("ownerAsStaffFailed"),
+        "error",
+        3000,
+      );
+    } finally {
+      setOwnerBusy(false);
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  const handleOwnerCtaPress = () => {
+    if (ownerBusy) return;
+    if (!ownerEnabled) {
+      void runOwnerEnable();
+      return;
+    }
+    Alert.alert(t("removeYourself"), t("removeYourselfConfirm"), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("removeYourself"),
+        style: "destructive",
+        onPress: () => {
+          void runOwnerDisable();
+        },
+      },
+    ]);
+  };
+
+  const isOwnerMember = (member: TeamMember) =>
+    member.is_owner === true || member.is_business_owner === true;
+
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <StackHeader title={t("manageTeam")} />
@@ -336,6 +493,26 @@ export default function ManageTeamScreen() {
               <Text style={styles.title}>{t("addStaffMembers")}</Text>
               <Text style={styles.subtitle}>{t("inviteStaffSubtitle")}</Text>
             </View>
+
+            {showOwnerCta && (
+              <View style={styles.ownerCtaRow}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handleOwnerCtaPress}
+                  disabled={ownerBusy}
+                >
+                  {ownerBusy ? (
+                    <ActivityIndicator size="small" color={theme.darkGreen} />
+                  ) : (
+                    <Text style={styles.ownerCtaText}>
+                      {ownerEnabled
+                        ? t("removeYourself")
+                        : t("addYourselfAsStaff")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.inputSection}>
               <View style={styles.inputRowContainer}>
@@ -378,7 +555,8 @@ export default function ManageTeamScreen() {
                 <Text style={styles.invitationsTitle}>
                   {t("invitationsSend")}
                 </Text>
-                {teamMembers.map((member, index) => {
+                {teamMembers.map((member) => {
+                  const owner = isOwnerMember(member);
                   return (
                     <React.Fragment key={member.id}>
                       <View style={styles.memberCard}>
@@ -391,9 +569,14 @@ export default function ManageTeamScreen() {
                         </View>
                         <View style={styles.memberContent}>
                           <View style={styles.memberInfo}>
-                            <Text style={styles.memberName}>
-                              {member.name || member.email}
-                            </Text>
+                            <View style={styles.memberNameRow}>
+                              <Text style={styles.memberName}>
+                                {member.name || member.email}
+                              </Text>
+                              {owner ? (
+                                <Text style={styles.ownerTag}>{t("owner")}</Text>
+                              ) : null}
+                            </View>
                             {member.email && (
                               <Text style={styles.memberEmail}>
                                 {member.email}
@@ -401,9 +584,11 @@ export default function ManageTeamScreen() {
                             )}
                           </View>
                           <Text style={styles.memberStatus}>
-                            {member.invitation_status === "accepted"
-                              ? "Invitation accepted"
-                              : "Invitation sent"}
+                            {owner
+                              ? t("owner")
+                              : member.invitation_status === "accepted"
+                                ? "Invitation accepted"
+                                : "Invitation sent"}
                           </Text>
                         </View>
                       </View>

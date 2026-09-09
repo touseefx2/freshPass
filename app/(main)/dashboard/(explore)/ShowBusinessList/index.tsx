@@ -34,6 +34,7 @@ export interface VerifiedSalon {
   rating: number;
   reviewCount: number;
   image: string | null;
+  ownerName?: string | null;
   services?: ServiceItem[];
   subscriptions?: SubscriptionItem[];
 }
@@ -82,6 +83,11 @@ export function BusinessCard({
           <Text numberOfLines={1} style={styles.verifiedSalonBusinessName}>
             {salon.businessName}
           </Text>
+          {!!salon.ownerName && (
+            <Text numberOfLines={1} style={styles.verifiedSalonOwnerName}>
+              {t("ownedBy", { name: salon.ownerName })}
+            </Text>
+          )}
           <Text numberOfLines={1} style={styles.verifiedSalonAddress}>
             {salon.address}
           </Text>

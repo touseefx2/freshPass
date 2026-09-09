@@ -6,6 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -22,6 +24,7 @@ import { Feather } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
 import {
   canAddStaffMembers,
+  canUseOwnerAsStaff,
   isSoloSubscription,
 } from "@/src/state/slices/userSlice";
 import {
@@ -30,13 +33,19 @@ import {
 } from "@/src/state/slices/generalSlice";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
+import {
+  disableOwnerAsStaff,
+  enableOwnerAsStaff,
+} from "@/src/services/ownerAsStaffService";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     staffContainer: {
       marginBottom: moderateHeightScale(18),
       backgroundColor: theme.lightGreen1,
-      height: moderateHeightScale(140),
+      minHeight: moderateHeightScale(140),
       gap: moderateHeightScale(12),
       paddingVertical: 15,
     },
@@ -55,12 +64,14 @@ const createStyles = (theme: Theme) =>
     sectionRight: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 1,
+      gap: moderateWidthScale(10),
     },
-    sectionLinkText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
+    ownerCtaText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
+      maxWidth: widthScale(160),
+      textAlign: "right",
     },
     staffScrollView: { flex: 1 },
     staffScrollContent: {
@@ -80,7 +91,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: widthScale(52 / 2),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      // overflow: "hidden",
       position: "relative",
     },
     staffAvatarImage: {
@@ -101,6 +111,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
+      textAlign: "center",
+    },
+    ownerTag: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.primary,
       textAlign: "center",
     },
     emptyStateContainer: {
@@ -125,7 +141,7 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-interface StaffData {
+export interface StaffData {
   id: number;
   user_id: number;
   name: string;
@@ -134,6 +150,9 @@ interface StaffData {
   active: number;
   description: string | null;
   invitation_token: string;
+  invitation_status?: string;
+  is_owner?: boolean;
+  is_business_owner?: boolean;
   completed_appointments_count: number;
   business: {
     id: number;
@@ -161,13 +180,17 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { showBanner } = useNotificationContext();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const canAddStaff = canAddStaffMembers(businessStatus);
   const isSoloPlan = isSoloSubscription(businessStatus);
+  const showOwnerCta = canUseOwnerAsStaff(businessStatus);
+  const ownerEnabled = businessStatus?.owner_as_staff?.enabled === true;
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
+  const [ownerBusy, setOwnerBusy] = useState(false);
 
   useEffect(() => {
     callApi();
@@ -185,6 +208,90 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     router.push("/(main)/addStaff");
   };
 
+  const runOwnerEnable = async () => {
+    setOwnerBusy(true);
+    try {
+      const response = await enableOwnerAsStaff();
+      if (response.success) {
+        showBanner(
+          t("success") || "Success",
+          response.message || t("ownerAddedAsStaffSuccess"),
+          "success",
+          2500,
+        );
+        await callApi();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || t("ownerAsStaffFailed"),
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("enableOwnerAsStaff failed:", error);
+      showBanner(
+        t("error"),
+        error?.message || t("ownerAsStaffFailed"),
+        "error",
+        3000,
+      );
+    } finally {
+      setOwnerBusy(false);
+    }
+  };
+
+  const runOwnerDisable = async () => {
+    setOwnerBusy(true);
+    try {
+      const response = await disableOwnerAsStaff();
+      if (response.success) {
+        showBanner(
+          t("success") || "Success",
+          response.message || t("ownerRemovedAsStaffSuccess"),
+          "success",
+          2500,
+        );
+        await callApi();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || t("ownerAsStaffFailed"),
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("disableOwnerAsStaff failed:", error);
+      showBanner(
+        t("error"),
+        error?.message || t("ownerAsStaffFailed"),
+        "error",
+        3000,
+      );
+    } finally {
+      setOwnerBusy(false);
+    }
+  };
+
+  const handleOwnerCtaPress = () => {
+    if (ownerBusy) return;
+    if (!ownerEnabled) {
+      void runOwnerEnable();
+      return;
+    }
+    Alert.alert(t("removeYourself"), t("removeYourselfConfirm"), [
+      { text: t("cancel") || "Cancel", style: "cancel" },
+      {
+        text: t("removeYourself"),
+        style: "destructive",
+        onPress: () => {
+          void runOwnerDisable();
+        },
+      },
+    ]);
+  };
+
   const handleViewPlans = () => {
     setBuyPlanModalVisible(false);
     dispatch(setBusinessPlansModalVisible(true));
@@ -196,21 +303,37 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     dispatch(setBusinessPlansModalVisible(true));
   };
 
+  const isOwnerStaff = (staff: StaffData) =>
+    staff.is_owner === true || staff.is_business_owner === true;
+
   return (
     <View style={styles.staffContainer}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleAddStaffPress}
-          style={styles.addStaffCircle}
-        >
-          <Feather
-            name="plus"
-            size={iconScale(15)}
-            color={theme.white85}
-          />
-        </TouchableOpacity>
+        <View style={styles.sectionRight}>
+          {showOwnerCta && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleOwnerCtaPress}
+              disabled={ownerBusy}
+            >
+              {ownerBusy ? (
+                <ActivityIndicator size="small" color={theme.darkGreen} />
+              ) : (
+                <Text style={styles.ownerCtaText} numberOfLines={2}>
+                  {ownerEnabled ? t("removeYourself") : t("addYourselfAsStaff")}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleAddStaffPress}
+            style={styles.addStaffCircle}
+          >
+            <Feather name="plus" size={iconScale(15)} color={theme.white85} />
+          </TouchableOpacity>
+        </View>
       </View>
       {!data ? (
         <Skeleton screenType="StaffOnDuty" styles={styles} />
@@ -265,6 +388,9 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
               <Text numberOfLines={1} style={styles.staffName}>
                 {staff?.name ?? ""}
               </Text>
+              {isOwnerStaff(staff) ? (
+                <Text style={styles.ownerTag}>{t("owner")}</Text>
+              ) : null}
             </TouchableOpacity>
           ))}
         </ScrollView>

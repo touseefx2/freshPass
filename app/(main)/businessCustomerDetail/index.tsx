@@ -888,6 +888,10 @@ export default function BusinessCustomerDetail() {
     const staffName = hasAssignedStaff
       ? getStaffDisplayName(appointment.staffName, t("anyAvailableStaff"))
       : t("anyAvailableStaff");
+    const staffLabel =
+      hasAssignedStaff && appointment.staffIsOwner
+        ? `${staffName} · ${t("owner")}`
+        : staffName;
 
     return (
       <View
@@ -913,7 +917,7 @@ export default function BusinessCustomerDetail() {
             {servicesLabel || t("service")}
           </Text>
           <Text style={styles.appointmentStaff} numberOfLines={1}>
-            {staffName}
+            {staffLabel}
           </Text>
         </View>
         <View
@@ -1169,6 +1173,10 @@ export default function BusinessCustomerDetail() {
       purchase.staffName,
       t("anyAvailableStaff"),
     );
+    const staffLabel =
+      purchase.staffId && purchase.staffIsOwner
+        ? `${staffName} · ${t("owner")}`
+        : staffName;
     const appointmentLabel = formatAppointmentDateTime(
       purchase.appointmentDate,
       purchase.appointmentTime,
@@ -1260,7 +1268,7 @@ export default function BusinessCustomerDetail() {
             <View style={{ flex: 1 }}>
               <Text style={styles.staffLabel}>{t("staff")}</Text>
               <Text style={styles.staffName} numberOfLines={1}>
-                {staffName}
+                {staffLabel}
               </Text>
             </View>
           </View>

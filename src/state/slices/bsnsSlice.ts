@@ -17,6 +17,7 @@ export interface StaffMember {
   image: string | null;
   working_hours: BusinessHours | null;
   active?: boolean | null;
+  is_owner?: boolean;
 }
 
 export interface BusinessHours {

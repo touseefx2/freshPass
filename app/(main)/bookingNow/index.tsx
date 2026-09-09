@@ -1765,6 +1765,7 @@ export default function BookingNow() {
               image: image,
               working_hours: staffWorkingHours,
               active: staff.active,
+              is_owner: staff.is_owner === true,
             };
           });
 
@@ -2185,6 +2186,7 @@ export default function BookingNow() {
       experience: null as string | number | null,
       image: null as string | null,
       active: null as boolean | null,
+      is_owner: false,
     };
     const filteredStaff = staffMembers
       .filter((staff) => {
@@ -2197,6 +2199,7 @@ export default function BookingNow() {
         experience: staff.experience ?? null,
         image: staff.image,
         active: staff.active,
+        is_owner: staff.is_owner === true,
       }));
 
     const showAnyone =
@@ -2457,7 +2460,11 @@ export default function BookingNow() {
                           </Text>
                         ) : (
                           <>
-                            <Text style={styles.staffName}>{staff.name}</Text>
+                            <Text style={styles.staffName}>
+                              {staff.is_owner
+                                ? `${staff.name} · ${t("owner")}`
+                                : staff.name}
+                            </Text>
                             {staff.experience ? (
                               <Text
                                 style={styles.staffExperience}

@@ -39,6 +39,7 @@ function normalizePurchase(
     additionalServices: purchase.additionalServices ?? [],
     staffId: purchase.staffId ?? null,
     staffName: purchase.staffName ?? null,
+    staffIsOwner: purchase.staffIsOwner === true,
     staffImageUrl: purchase.staffImageUrl ?? null,
   };
 }

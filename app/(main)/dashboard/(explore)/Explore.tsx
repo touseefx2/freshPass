@@ -79,9 +79,18 @@ interface VerifiedSalon {
   rating: number;
   reviewCount: number;
   image: string | null;
+  ownerName?: string | null;
   services?: ServiceItem[];
   subscriptions?: SubscriptionItem[];
 }
+
+const getOwnerName = (item: {
+  owner?: { name?: string | null } | null;
+  owner_name?: string | null;
+}) => {
+  const name = item.owner?.name || item.owner_name || null;
+  return typeof name === "string" && name.trim() ? name.trim() : null;
+};
 
 const SUBSCRIPTION_TEMPLATES: Array<{ id: number; name: string }> = [
   { id: 1, name: "Classic Care" },
@@ -345,6 +354,8 @@ export default function ExploreScreen() {
           ratings_count: number;
           image_url: string | null;
           logo_url: string | null;
+          owner?: { id?: number; name?: string | null } | null;
+          owner_name?: string | null;
           portfolio_photos?: Array<{
             id: number;
             path: string;
@@ -373,6 +384,7 @@ export default function ExploreScreen() {
             rating: item.average_rating || 0,
             reviewCount: item.ratings_count || 0,
             image: imageUrl,
+            ownerName: getOwnerName(item),
           };
         });
 
@@ -441,6 +453,8 @@ export default function ExploreScreen() {
           ratings_count: number;
           image_url: string | null;
           logo_url: string | null;
+          owner?: { id?: number; name?: string | null } | null;
+          owner_name?: string | null;
           portfolio_photos?: Array<{ id: number; path: string; url: string }>;
           services?: Array<{
             id: number;
@@ -484,6 +498,7 @@ export default function ExploreScreen() {
             rating: item.average_rating || 0,
             reviewCount: item.ratings_count || 0,
             image: imageUrl,
+            ownerName: getOwnerName(item),
           };
 
           const services: ServiceItem[] | undefined = item.services?.map(

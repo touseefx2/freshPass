@@ -476,6 +476,7 @@ interface Appointment {
   staffName: string | null;
   staffEmail: string | null;
   staffImage: string | null;
+  staffIsOwner?: boolean;
   appointmentDate: string;
   appointmentTime: string;
   status: string;
@@ -960,7 +961,9 @@ export default function DashboardContent() {
 
           const staffName =
             appointment.staffId && appointment.staffName
-              ? appointment.staffName
+              ? appointment.staffIsOwner
+                ? `${appointment.staffName} · ${t("owner")}`
+                : appointment.staffName
               : "Anyone";
 
           const serviceData =

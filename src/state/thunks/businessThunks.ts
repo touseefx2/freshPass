@@ -12,7 +12,7 @@ import {
   staffEndpoints,
   userEndpoints,
 } from "@/src/services/endpoints";
-import { BusinessStatus, deriveHasAddStaff } from "../slices/userSlice";
+import { BusinessStatus, deriveHasAddStaff, DEFAULT_OWNER_AS_STAFF, normalizeOwnerAsStaff } from "../slices/userSlice";
 
 interface fetchUserStatusOptions {
   showError?: boolean;
@@ -64,6 +64,7 @@ export const fetchUserStatus = createAsyncThunk<
           active: response.data.active ?? response?.active ?? false,
           business_id: response.data.business?.id,
           business_name: response.data.business?.title,
+          owner_as_staff: DEFAULT_OWNER_AS_STAFF,
         };
         dispatch(setBusinessStatus(businessStatusData));
         dispatch(setBusinessStatusError(false));
@@ -96,6 +97,7 @@ export const fetchUserStatus = createAsyncThunk<
           active: response.data.active ?? false,
           has_seen_stripe_connect_congrats:
             response.data.has_seen_stripe_connect_congrats === true,
+          owner_as_staff: normalizeOwnerAsStaff(response.data.owner_as_staff),
         };
 
         dispatch(setBusinessStatus(businessStatusData));
@@ -124,6 +126,7 @@ export const fetchUserStatus = createAsyncThunk<
             businessStatusData.subscription_status,
             subscription_is_single,
           ),
+          owner_as_staff: businessStatusData.owner_as_staff,
         };
       }
       return null;

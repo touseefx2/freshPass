@@ -16,6 +16,8 @@ export const staffEndpoints = {
   invite: `/api/staff/invite`,
   resendInvitation: (staffId: string | number) =>
     `/api/staff/${staffId}/resend-invitation`,
+  ownerEnable: `/api/staff/owner/enable`,
+  ownerDisable: `/api/staff/owner/disable`,
   list: (active?: string) => {
     if (active) {
       return `/api/staff?active=${active}`;

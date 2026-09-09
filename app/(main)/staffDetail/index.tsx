@@ -32,6 +32,8 @@ import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ChatIcon } from "@/assets/icons";
 import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
+import { disableOwnerAsStaff } from "@/src/services/ownerAsStaffService";
+import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -297,6 +299,9 @@ export interface StaffDetailData {
   active: boolean;
   description: string | null;
   invitation_token: string | null;
+  invitation_status?: string;
+  is_owner?: boolean;
+  is_business_owner?: boolean;
   completed_appointments_count: number;
   leaves?: StaffLeave[];
   business: {
@@ -350,6 +355,7 @@ export default function StaffDetail() {
   const staffId = params.id;
   const user = useAppSelector((state: any) => state.user);
   const isBusinessRole = user?.userRole?.toLowerCase() === "business";
+  const ownerStaffId = user?.businessStatus?.owner_as_staff?.staff_id ?? null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -503,6 +509,52 @@ export default function StaffDetail() {
     );
   };
 
+  const handleRemoveYourself = async () => {
+    dispatch(setActionLoader(true));
+    try {
+      const response = await disableOwnerAsStaff();
+      if (response.success) {
+        showBanner(
+          t("success") || "Success",
+          response.message || t("ownerRemovedAsStaffSuccess"),
+          "success",
+          2500,
+        );
+        router.back();
+      } else {
+        showBanner(
+          t("error") || "Error",
+          response.message || t("ownerAsStaffFailed"),
+          "error",
+          3000,
+        );
+      }
+    } catch (err: any) {
+      Logger.error("disableOwnerAsStaff from staff detail failed:", err);
+      showBanner(
+        t("error") || "Error",
+        err?.message || t("ownerAsStaffFailed"),
+        "error",
+        3000,
+      );
+    } finally {
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  const confirmRemoveYourself = () => {
+    Alert.alert(t("removeYourself"), t("removeYourselfConfirm"), [
+      { text: t("cancel") || "Cancel", style: "cancel" },
+      {
+        text: t("removeYourself"),
+        style: "destructive",
+        onPress: () => {
+          void handleRemoveYourself();
+        },
+      },
+    ]);
+  };
+
   const handleChatPress = useCallback(() => {
     if (!data?.user?.id) return;
     const staffImage = data.user?.profile_image_url;
@@ -625,6 +677,14 @@ export default function StaffDetail() {
 
   const isActive = Boolean(data.active);
   const totalAppointments = data.completed_appointments_count ?? 0;
+  const isOwnerStaff =
+    data.is_owner === true ||
+    data.is_business_owner === true ||
+    (ownerStaffId != null && data.id === ownerStaffId);
+  const showPendingInvite =
+    !isOwnerStaff &&
+    data.invitation_token != null &&
+    data.invitation_token !== "";
 
   return (
     <View style={styles.container}>
@@ -634,16 +694,29 @@ export default function StaffDetail() {
         rightIcon={
           isBusinessRole ? (
             <View style={styles.headerRightIcons}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={confirmDeleteStaff}
-              >
-                <MaterialIcons
-                  name="delete-outline"
-                  size={moderateWidthScale(20)}
-                  color={theme.white}
-                />
-              </TouchableOpacity>
+              {isOwnerStaff ? (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={confirmRemoveYourself}
+                >
+                  <MaterialIcons
+                    name="person-remove"
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={confirmDeleteStaff}
+                >
+                  <MaterialIcons
+                    name="delete-outline"
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handleEditPress}
@@ -683,10 +756,13 @@ export default function StaffDetail() {
             />
           </View>
           <Text style={styles.staffName}>{data.name}</Text>
+          {isOwnerStaff ? (
+            <Text style={styles.invitationStatus}>{t("owner")}</Text>
+          ) : null}
           {data.description ? (
             <Text style={styles.description}>{data.description}</Text>
           ) : null}
-          {data.invitation_token != null && data.invitation_token !== "" ? (
+          {showPendingInvite ? (
             <>
               <Text
                 style={[

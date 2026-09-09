@@ -74,6 +74,13 @@ export const createStyles = (theme: Theme) =>
       color: theme.white80,
       includeFontPadding: false,
     },
+    verifiedSalonOwnerName: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      textTransform: "capitalize",
+      includeFontPadding: false,
+    },
     verifiedSalonBottomRow: {
       flexDirection: "row",
       alignItems: "center",

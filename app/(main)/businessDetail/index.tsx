@@ -2155,6 +2155,7 @@ export default function BusinessDetailScreen() {
           experience: staff?.description || null,
           image: image,
           active: staff.active,
+          is_owner: staff.is_owner === true,
         };
       });
   }, [businessData]);
@@ -3169,6 +3170,7 @@ export default function BusinessDetailScreen() {
                                         image: image,
                                         working_hours: staffWorkingHours,
                                         active: staff.active,
+                                        is_owner: staff.is_owner === true,
                                       };
                                     });
 
@@ -3342,11 +3344,15 @@ export default function BusinessDetailScreen() {
                   <Text style={styles.staffName} numberOfLines={1}>
                     {staff.name}
                   </Text>
-                  {staff.experience && (
+                  {staff.is_owner ? (
+                    <Text numberOfLines={1} style={styles.staffExperience}>
+                      {t("owner")}
+                    </Text>
+                  ) : staff.experience ? (
                     <Text numberOfLines={1} style={styles.staffExperience}>
                       {staff.experience}
                     </Text>
-                  )}
+                  ) : null}
                 </View>
               </TouchableOpacity>
             ))}
