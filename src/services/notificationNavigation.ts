@@ -56,11 +56,15 @@ function getNotificationSubType(
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
  * - type "subscription" (customer role) → Profile → Customer subscriptions
  * - type "subscription" (business role) → Profile → Subscription
+ * - type "affiliation" (host) → Profile → Affiliation requests
  * - type "business" | "service" + model_id (customer role) → businessDetail
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
 const AI_MEMORY_BACK_DELAY_MS = 50;
+
+const AFFILIATION_REQUESTS_PATH =
+  "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests";
 
 function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
   router.push("/(main)/dashboard/(account)");
@@ -69,6 +73,14 @@ function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
     setTimeout(() => {
       router.push("/(main)/aiMemories");
     }, AI_MEMORY_CHAIN_STEP_MS);
+  }, AI_MEMORY_CHAIN_STEP_MS);
+}
+
+/** Profile tab first, then Affiliation requests (back stack matches in-app path). */
+function navigateToAffiliationRequestsViaProfile(router: Router): void {
+  router.push("/(main)/dashboard/(account)");
+  setTimeout(() => {
+    router.push(AFFILIATION_REQUESTS_PATH as any);
   }, AI_MEMORY_CHAIN_STEP_MS);
 }
 
@@ -126,14 +138,36 @@ export function navigateFromNotificationData(
       notificationSoloUserId === currentUser.id ||
       currentUser.businessStatus?.subscription_is_single === true;
 
-    const target =
+    const goToAffiliationRequests =
       hostSubTypes.includes(subType as NotificationSubType) ||
-      (subType === "affiliation_removed" && !isSolo)
-        ? "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests"
-        : soloSubTypes.includes(subType as NotificationSubType) ||
-            subType === "affiliation_removed"
-          ? "/(main)/dashboard/(account)/(profile)/editProfile"
-          : "/(main)/notification";
+      (subType === "affiliation_removed" && !isSolo);
+
+    if (goToAffiliationRequests) {
+      if (options?.fromInAppList) {
+        if (router.canGoBack()) {
+          router.back();
+        }
+        setTimeout(() => {
+          navigateToAffiliationRequestsViaProfile(router);
+        }, AI_MEMORY_BACK_DELAY_MS);
+      } else {
+        navigateToAffiliationRequestsViaProfile(router);
+      }
+      Logger.log(
+        "------>navigateFromNotificationData (affiliation) -> account -> affiliationRequests",
+        {
+          subType,
+          fromInAppList: options?.fromInAppList ?? false,
+        },
+      );
+      return;
+    }
+
+    const target =
+      soloSubTypes.includes(subType as NotificationSubType) ||
+      subType === "affiliation_removed"
+        ? "/(main)/dashboard/(account)/(profile)/editProfile"
+        : "/(main)/notification";
 
     navigateFromNotificationList(
       router,
