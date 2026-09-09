@@ -30,6 +30,7 @@ import {
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
+import EmptyState from "@/src/components/emptyState";
 import {
   canAddStaffMembers,
   canUseOwnerAsStaff,
@@ -235,16 +236,7 @@ const createStyles = (theme: Theme) =>
       width: "100%",
     },
     emptyStateContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(28),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    emptyStateText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      paddingVertical: moderateHeightScale(8),
     },
     // Kept for Skeleton compatibility
     staffItem: {
@@ -579,9 +571,13 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         {!data ? (
           <Skeleton screenType="StaffOnDuty" styles={styles} />
         ) : data.length === 0 ? (
-          <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateText}>{t("noStaffOnDuty")}</Text>
-          </View>
+          <EmptyState
+            compact
+            icon="groups"
+            title={t("noStaffOnDuty")}
+            subtitle={t("staffEmptySubtitle")}
+            containerStyle={styles.emptyStateContainer}
+          />
         ) : (
           <Animated.ScrollView
             horizontal

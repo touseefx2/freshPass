@@ -1,0 +1,336 @@
+You are the backend developer for FreshPass (Laravel). Implement Solo “working with / affiliation” as a REQUEST + APPROVE/REJECT flow. Display only. No booking, billing, staff, or payout behavior changes.
+
+CONTEXT — what already exists
+- Solo owners can currently send `workingWithBusiness` (camelCase) on `POST /api/user` (multipart). Empty string / "0" / "null" / "undefined" means clear.
+- Responses use snake_case: `working_with_business_id`, `working_with_business` (full BusinessResource) on `GET /api/user/details` and `GET /api/business/details`.
+- Only Solo-plan owners (`subscription_is_single === true` AND subscription active) can set this. Anyone else: ignore the field, rest of profile still saves.
+- On Solo → Business plan upgrade, affiliation is already meant to be cleared in `SubscriptionService::clearWorkingWithBusinessOnUpgrade()` via `supersedePreviousBusinessSubscriptions()`. Keep that, and EXTEND it (see Upgrade below).
+- `GET /api/businesses` is the active-business list used by the app picker. Affiliation target must be an existing **active** business, and must not be the Solo user’s own business.
+
+CHANGE THE PRODUCT RULE
+Do NOT instantly attach the Solo user to the host shop when they save a business id.
+`workingWithBusiness` now creates (or updates) an **affiliation request** in `pending` status.
+Customers must NOT see the affiliation (“working with”) until the host **approves**. Their work address is always their own saved location and is always editable.
+
+DATA MODEL
+Create a dedicated affiliation table (suggested: `business_affiliations`):
+- `id`
+- `solo_user_id` (the Solo owner user id)
+- `solo_business_id` (the Solo owner’s own business)
+- `host_business_id` (the shop they want to appear at)
+- `status`: `pending` | `approved` | `rejected` | `removed`
+- `requested_at`, `responded_at`, `responded_by_user_id` nullable
+- `removed_at`, `removed_by` enum: `host` | `upgrade` | `solo_cancel` | `solo_switch` nullable
+- unique: one **active** row per Solo business. Active = `pending` OR `approved`.
+Rules:
+- Only one pending OR approved affiliation per Solo business at a time.
+- If Solo already has `pending` and submits a different `host_business_id`, replace the pending request (cancel/supersede the old pending; notify the old host that the request was withdrawn; notify the new host of the new request). Location is unchanged (pending never copied location).
+- If Solo submits the **same** already-approved host id again: no-op (do not create a duplicate request).
+- If Solo submits `workingWithBusiness` empty while `pending`: cancel the pending request (`removed` / withdrawn, removed_by=solo_cancel), notify the host that the request was cancelled. Do NOT clear location (they never received host location).
+- If Solo submits empty while `approved`: do **not** let Solo unlink themselves this way (host must remove, or upgrade auto-clears). Return 422 like “Ask the shop to remove your affiliation.”
+- Host cannot be the Solo’s own business.
+- Host business must be `active = true`.
+- Rejected rows stay in history; Solo may send a new request later to the same or another host.
+
+SWITCHING TO A DIFFERENT SHOP (CRITICAL — client specified)
+If the Solo user is **already approved** with host A, then in Edit Profile they search, select a **different** host B, and tap Update:
+
+1. The old affiliation with A is **completely removed immediately** — do not wait for B to approve or reject.
+   - Old row status=`removed`, removed_by=`solo_switch`
+   - Do **not** wipe the Solo owner’s saved work address. Location stays under their control.
+   - Send `update_location` as a **reminder** to review/edit their workplace address (they may still have shop A’s address saved).
+2. Create a new `pending` request to B.
+3. Notifications for this switch (all in-app panel + push):
+   - Solo: old affiliation ended with A (they chose a different shop).
+   - Solo: `update_location` reminder — review or update your work address.
+   - Host A: this Solo is no longer affiliated with your shop.
+   - Host B: new affiliation request from this Solo.
+   - Solo: request sent to B (see “request sent” below). Wait for B to approve or reject.
+4. What happens later does **not** restore A:
+   - If B **approves**: attach B. Optionally **prefill** Solo location with B’s address if you still copy on approve (see Location). Solo can edit after. A stays gone.
+   - If B **rejects**: Solo stays unaffiliated. Keep whatever address they already have. Notify Solo rejected. Do **not** bring A back. A is gone in both cases.
+
+KEEP APP CONTRACT WHERE POSSIBLE
+Edit Profile already posts `workingWithBusiness` on `POST /api/user`. Keep that as the Solo entry point.
+- Field omitted: do not change affiliation state (same as today).
+- `workingWithBusiness = {id}`: create/replace pending request as above. Do **not** set `working_with_business_id` as approved until host approves.
+- `workingWithBusiness = ""`: cancel pending only (see above).
+
+SAME SHOP ON PROFILE-ONLY UPDATE (CRITICAL — do not re-fire requests)
+If the Solo user only changes name, phone, photo, etc. and the picker is still the **same shop as before**, do **not** treat it as a new affiliation request.
+
+“Same as before” means the posted `workingWithBusiness` id equals:
+- the current **approved** `host_business_id`, OR
+- the current **pending** request’s `host_business_id`
+
+In that case:
+- Backend: **no-op** on affiliation. Do not create a new row, do not reset `requested_at`, do not send any affiliation notifications to Solo or host, do not touch location. Save the rest of the profile normally (name etc.).
+- Frontend (put this in the frontend guide): only `formData.append("workingWithBusiness", …)` when the picker value **changed** from the value that was loaded on screen open (approved id OR pending host id). If they only edited name/phone/photo, **omit the field entirely** so the existing approved link or pending request stays untouched.
+
+Only when the posted id is **different** from the previous approved/pending host:
+- run the switch / replace-pending flow (old remove + notifications + new request), as specified above.
+
+If they already have approved A and they submit A again (same id): no-op. Same if they already have pending B and they submit B again: no-op.
+
+READING BACK (important for the app picker)
+On `GET /api/user/details` and `GET /api/business/details` (the Solo user’s own status):
+Add (snake_case):
+- `working_with_business_id` — only the **approved** host id, else null
+- `working_with_business` — only the **approved** host BusinessResource, else null
+- `working_with_business_request` — if a pending request exists:
+  `{ id, status: "pending", host_business_id, host_business: { id, title, logo_url, owner, address fields... }, requested_at }`
+  else null
+Customer-facing `GET /api/business/details?business_id={id}` — THIS IS THE MAIN CUSTOMER SCREEN API (home → open a salon):
+This is the same call the app uses when a customer taps a shop from Home (e.g. “Touseef salon”). If that business is Solo **and** has an **approved** affiliation, the response **must** include the affiliation data. Do not omit it. Pending = null.
+
+CUSTOMER-FACING AFFILIATION FIELDS (required — same names everywhere)
+If the business being viewed (or the appointment’s business) is a Solo account with an **approved** affiliation, include that host shop in the response so the app can show an info line like “Also affiliated with {title}” / “Works at {title}”. Display only. Pending requests must not appear.
+
+Use these exact snake_case keys (null when not affiliated / not Solo / pending only):
+
+- `working_with_business_id` (`number | null`) — approved host business id
+- `working_with_business` (`object | null`) — approved host, minimum:
+  - `id` (number)
+  - `title` (string)
+  - `logo_url` (string | null)
+  - `slug` (string, optional)
+  - `owner` (`{ id, name } | null`)
+  - `street_address`, `city`, `state`, `zip_code` (optional, for display)
+
+1) `GET /api/business/details?business_id=`  ← customer Home → business detail (required)
+When a customer opens a Solo shop by id, return affiliation on **`data` and on `data.business`**. Example: customer opens Touseef (Solo, approved with Fade Room):
+
+```
+GET /api/business/details?business_id=319
+
+data.subscription_plan_type = "Solo"
+data.working_with_business_id = 42
+data.working_with_business = { id: 42, title: "Fade Room", logo_url, owner, ... }
+data.business.id = 319
+data.business.title = "Touseef salon"
+data.business.working_with_business_id = 42
+data.business.working_with_business = { id: 42, title: "Fade Room", ... }
+```
+
+If Touseef is Solo but **not** affiliated (or only pending): both keys are `null`. Frontend only shows the affiliation line when these are non-null.
+
+If the backend also has `GET /api/businesses/{id}` or any other “get business by id” for the same screen, put the **same two keys** on that payload too. Do not ship business detail without them.
+
+2) `GET /api/appointments/{id}` (appointment / booking detail)
+If `appointment.business` (or equivalent) is that Solo shop, include the same two keys on the business object in the appointment payload:
+
+```
+data.business.working_with_business_id
+data.business.working_with_business
+```
+
+If you also return a top-level business summary, add them there too. Same null rules: only **approved**. Never leak `working_with_business_request` to customers or appointment detail.
+
+Frontend will use these to show info on business detail and appointment detail: this Solo business is affiliated with {working_with_business.title}.
+
+BUSINESS (HOST) APIs
+Auth: host business owner (or whoever can manage that business). Must own `host_business_id`.
+
+1) List requests
+GET /api/affiliation-requests
+Query: status=pending|approved|rejected|removed|all (default pending), page, per_page
+Response items:
+- id, status, requested_at, responded_at
+- solo_user: id, name, profile_image_url, phone optional
+- solo_business: id, title, logo_url, logo
+This is what the shop uses to approve/reject. The app will add a **new business-side screen** that lists these and lets the owner Approve / Reject / Remove.
+
+2) Approve
+POST /api/affiliation-requests/{id}/approve
+- Only host of that request, only if status=pending
+- Set status=approved, responded_at, responded_by
+- Previous approved affiliation with another host should already be gone if Solo switched (see Switching). Still defend: if any other approved row exists for this Solo, remove it (do not wipe Solo’s saved address).
+- **Prefill (optional convenience, one-time):** copy host location onto the Solo business location module **only as a starting point**, and only if you do this copy at all. Never lock the field. Solo can edit immediately after via the existing business-location API/screen.
+- Notify Solo: approved (in-app panel + push)
+
+3) Reject
+POST /api/affiliation-requests/{id}/reject
+- Only host, only pending
+- status=rejected
+- Do NOT copy location
+- Do NOT restore any previous host
+- Notify Solo: rejected (in-app + push)
+
+4) Remove an approved affiliation
+POST /api/affiliation-requests/{id}/remove
+(or DELETE)
+- Only host, only approved
+- status=removed, removed_by=host
+- Do **not** delete the Solo owner’s saved work address.
+- Notify Solo:
+  A) affiliation removed (in-app + push)
+  B) a second notification type **update_location**: reminder to review or manually update their work address
+- Customers keep seeing whatever address the Solo currently has saved until they edit it.
+
+LOCATION — SOLO ALWAYS CONTROLS THEIR WORK ADDRESS (client confirmed)
+Affiliation is **not** the only way a Solo address exists. The Solo owner can create and **manually edit** their workplace location at any time on the existing business-location screen (`business-location` module), including:
+- before any affiliation request
+- while a request is pending
+- after the host has approved
+- after affiliation is removed, rejected, switched, or they upgrade
+
+Never disable or 403 the location update API for Solo because they are affiliated.
+
+Customer-facing address (business details, booking, appointment) is always the Solo business’s **own saved location** — whatever they last saved. Do **not** overlay/replace it at read time with the host address (that would take control away from Solo).
+
+On affiliation **approve** (optional one-time prefill only):
+- You MAY copy the host shop’s address onto the Solo location record so customers initially see the shop they work at.
+- If you copy, treat it as a prefill. If Solo later updates location, that edit wins forever; do not overwrite their edit on later host profile changes.
+- Suggested flag: `location_source = affiliated_host` after copy, then `location_source = manual` after Solo PATCHes location. Never copy again while `manual`.
+
+When affiliation is **removed** (host remove OR upgrade OR solo_switch) or **rejected**:
+- Do **not** wipe street, city, state, zip, lat, long, complete_address.
+- Send `update_location` as a reminder to review/edit. They can keep the current address or change it.
+
+`update_location` notification still fires on remove / switch / upgrade so they are prompted to review the address. Copy should say they can update it themselves, not that it was deleted.
+
+NOTIFICATIONS (in-app panel AND FCM/push, same as the rest of the app)
+Use the existing notification system. Payload must include `type` (and `sub_type` / `subType` if you use it) so the mobile app can navigate.
+Use these types exactly:
+
+0) Solo sent a request (ALWAYS fire this when Solo saves a new/replaced pending request, including first request and switch)
+- type: `affiliation`
+- sub_type: `affiliation_request_sent`
+- model_id: affiliation request id
+- include host_business id/title
+- Title/body: “Request sent to {Host title}” / “Please wait. We’ll update you when they approve or decline.”
+This is for the Solo user’s notification panel AND push. Do not skip it.
+
+1) Host receives a new request
+- type: `affiliation`
+- sub_type: `affiliation_request`
+- model_id: affiliation request id
+- Also include solo_user id/name, solo_business id/title
+- Title/body example: “{Solo name} sent you an affiliation request” / “{Solo business title} wants to show they work at your shop.”
+
+2) Solo: approved
+- type: `affiliation`
+- sub_type: `affiliation_approved`
+- model_id: affiliation id
+- include host_business id/title
+- “{Host title} accepted your affiliation request.”
+
+3) Solo: rejected
+- type: `affiliation`
+- sub_type: `affiliation_rejected`
+- model_id: affiliation id
+- “{Host title} declined your affiliation request.”
+
+4) Host: Solo withdrew a pending request
+- type: `affiliation`
+- sub_type: `affiliation_request_cancelled`
+- model_id: affiliation id
+- “{Solo name} cancelled their affiliation request.”
+
+5) Solo: approved affiliation ended (host removed OR Solo switched to another shop)
+- type: `affiliation`
+- sub_type: `affiliation_removed`
+- model_id: affiliation id
+- Host removed: “{Host title} removed your affiliation.”
+- Solo switched: “Your affiliation with {Old host title} was removed because you requested a different shop.”
+
+6) Solo: please review / update location (do NOT imply the address was deleted)
+- type: `update_location`   ← required name, client specified this type
+- sub_type optional: `affiliation_removed` | `plan_upgraded` | `solo_switch`
+- model_id: solo business id
+- Title/body: “Please update your location” / “You can review or edit your work address anytime in business location settings.”
+Send this when: host removes them, they switch to a different shop, AND when they upgrade off Solo. Address is not auto-deleted.
+
+7) Host: Solo is no longer affiliated (upgrade OR Solo switched away)
+- type: `affiliation`
+- sub_type: `affiliation_removed`
+- body: “{Solo name} is no longer affiliated with your shop.”
+
+UPGRADE (Solo → Business plan)
+Already cleared on every purchase path. Extend that to:
+1. Any pending request: mark removed/withdrawn; notify the host it was cancelled (plan upgraded).
+2. Any approved affiliation: mark removed, removed_by=upgrade.
+3. Do **not** clear Solo location fields. They keep their saved work address and can edit it.
+4. Notify the upgrading user:
+   - affiliation removed (if they had one)
+   - **update_location**: “You can review or edit your work address.”
+5. Notify the former host that affiliation ended.
+Do this in all purchase paths (Stripe payment sheet, Stripe webhook, Apple IAP) — same place you already clear working_with.
+
+VALIDATION / ERRORS
+- Inactive or missing host id: 422 on workingWithBusiness as today.
+- Not Solo: ignore workingWithBusiness, save the rest of the profile.
+- Approve/reject/remove by non-host: 403.
+- Wrong status transitions: 422.
+Do not 500. Keep profile update success even if notification push fails (queue notifications; log failures).
+
+DISPLAY-ONLY REMINDER
+Affiliation never:
+- adds the Solo user as staff
+- changes availability, booking assignment, Stripe, subscriptions, or payouts
+- lets the host edit the Solo business
+It only: pending request → host decision → display of host identity on the Solo business for customers. Work address is owned by the Solo owner and is always manually editable.
+
+FRONTEND IN THIS REPO (READ MAIN BEFORE YOU WRITE THE FRONTEND GUIDE)
+The mobile app lives in this same product. Before you finish, inspect **current `main` branch** frontend (do not invent a parallel contract). Sample code to read:
+- `app/(main)/dashboard/(account)/(profile)/editProfile.tsx` — Solo picker, `workingWithBusiness` on `POST /api/user`, selected shop UI
+- `src/services/endpoints.ts` — `userEndpoints.update`, `businessEndpoints.businesses` / `businessSearch`, `businessEndpoints.businessDetails`, `notificationsEndpoints`
+- `src/state/slices/userSlice.ts` — `working_with_business_id`, `working_with_business`, `isSoloSubscription`
+- `app/(main)/businessDetail/index.tsx` — customer “Currently working with” from `working_with_business` / `working_with_business_id` on `GET /api/business/details`
+- `app/(main)/bookingDetailsById/index.tsx` — same two fields on `GET /api/appointments/{id}` `business` object, info-only
+- `src/services/notificationNavigation.ts` — existing `type` / `sub_type` navigation (appointment, subscription, business, etc.). Add `affiliation` and `update_location` here in the guide.
+- `app/(main)/dashboard/(account)/(businessProfileSettings)/` — where the new host Affiliation Requests screen should live (new stack screen, similar to team/location)
+- `app/(main)/dashboard/(account)/(businessProfileSettings)/location.tsx` — location module the `update_location` notification should open
+
+REQUIRED DELIVERABLE AFTER BACKEND: FRONTEND DEV GUIDE
+Write a complete frontend implementation guide (markdown is fine) covering every app change. Include:
+
+A) What changed vs current main
+- Instant save is gone. Update Profile with a shop id = pending request.
+- Picker must show: approved shop, OR pending shop (waiting), never treat pending as approved for customers.
+- Switching shops: after Update, UI should immediately drop the old approved shop. Show the new shop as pending. Do **not** expect the address to be wiped.
+- Location settings stay available for Solo at all times (before / during / after affiliation). `update_location` tap → existing location screen. They can always save a new address.
+- **Do not re-send the same shop.** On Edit Profile, remember the initial picker value (approved host id, or pending host id). On Update: append `workingWithBusiness` **only if that id changed**. Name/phone/photo-only save must omit the field so the existing affiliation or pending request is not sent again, and no extra notifications fire. Backend also no-ops if the same id is posted by mistake.
+
+B) Existing endpoints still used
+- `POST /api/user` with `workingWithBusiness`
+- `GET /api/user/details` — now also `working_with_business_request`
+- `GET /api/business/details` — `working_with_business_id` + `working_with_business` on `data` and `data.business` when approved
+- `GET /api/appointments/{id}` — same two keys on `data.business` when that appointment’s business is an affiliated Solo
+- existing business-location module — Solo can always GET/update work address
+- `GET /api/businesses?search=&page=&per_page=` — picker
+
+C) New APIs (exact paths, methods, query, body, response shapes, who can call)
+- `GET /api/affiliation-requests`
+- `POST /api/affiliation-requests/{id}/approve`
+- `POST /api/affiliation-requests/{id}/reject`
+- `POST /api/affiliation-requests/{id}/remove`
+Include example JSON for list item, approve, reject, remove, and error 403/422.
+
+D) New business-side screen
+- Add a screen in business account settings: Affiliation Requests.
+- Fetch pending (and optionally approved) via GET.
+- Each row: Solo name, Solo business name, photo, date, Approve / Reject.
+- Approved tab: Remove (ends affiliation; Solo gets affiliation_removed + update_location reminder; address is not deleted).
+- Open this screen from notification type `affiliation` + sub_type `affiliation_request` (and from settings menu).
+
+E) Notifications the app must handle
+| type | sub_type | who | tap goes to |
+| affiliation | affiliation_request | host | Affiliation Requests screen |
+| affiliation | affiliation_request_sent | solo | Edit Profile (pending state) |
+| affiliation | affiliation_approved | solo | Edit Profile / own business |
+| affiliation | affiliation_rejected | solo | Edit Profile |
+| affiliation | affiliation_request_cancelled | host | Affiliation Requests |
+| affiliation | affiliation_removed | solo or host | Edit Profile (solo) or Affiliation Requests (host) |
+| update_location | affiliation_removed / plan_upgraded / solo_switch | solo | Business location settings screen |
+
+F) Redux / details mapping
+- Persist approved `working_with_*` only.
+- Store pending in `working_with_business_request` so Edit Profile can show “Waiting for {shop} to approve”.
+
+G) Out of scope for frontend
+- Do not change booking assignment, staff, or payments. Customer-facing address is whatever the Solo business has saved on the location module. Keep the location screen fully editable for Solo even when affiliated.
+
+Please implement migrations, models, request validation, services, notifications, optional approve-prefill (never lock location), and API resources. Then return:
+1. Short summary of endpoints, payload examples, and status transitions.
+2. The complete frontend developer guide described above.

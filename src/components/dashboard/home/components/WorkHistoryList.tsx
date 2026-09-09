@@ -24,6 +24,7 @@ import { appointmentsEndpoints } from "@/src/services/endpoints";
 import { UserRole } from "@/src/state/slices/userSlice";
 import StackHeader from "@/src/components/StackHeader";
 import { Skeleton } from "@/src/components/skeletons";
+import EmptyState from "@/src/components/emptyState";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -63,16 +64,8 @@ const createStyles = (theme: Theme) =>
       height: 1,
       backgroundColor: theme.borderLight,
     },
-    emptyStateContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(40),
-    },
-    emptyStateText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+    emptyListContent: {
+      flexGrow: 1,
     },
     loadingContainer: {
       paddingVertical: moderateHeightScale(20),
@@ -279,11 +272,13 @@ export default function WorkHistoryList() {
       );
     }
     return (
-      <View style={styles.emptyStateContainer}>
-        <Text style={styles.emptyStateText}>{t("noWorkHistoryFound")}</Text>
-      </View>
+      <EmptyState
+        icon="history"
+        title={t("noWorkHistoryFound")}
+        subtitle={t("workHistoryEmptySubtitle")}
+      />
     );
-  }, [loading, styles]);
+  }, [loading, styles, t]);
 
   return (
     <View style={styles.container}>
@@ -292,7 +287,10 @@ export default function WorkHistoryList() {
         data={data}
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          data.length === 0 && styles.emptyListContent,
+        ]}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
         ListFooterComponent={renderFooter}

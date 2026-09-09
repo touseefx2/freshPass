@@ -15,6 +15,7 @@ import dayjs from "dayjs";
 import { SubscriptionTicketIcon, PersonIcon } from "@/assets/icons";
 import { useRouter } from "expo-router";
 import { Appointment } from "@/src/components/appointmentDetail";
+import EmptyState from "@/src/components/emptyState";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -122,15 +123,7 @@ const createStyles = (theme: Theme) =>
       color: theme.selectCard,
     },
     emptyStateContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(20),
-    },
-    emptyStateText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      paddingVertical: moderateHeightScale(4),
     },
   });
 
@@ -375,11 +368,13 @@ export default function AppointmentsSection({
               </View>
             </TouchableOpacity>
           ) : (
-            <View style={styles.emptyStateContainer}>
-              <Text style={styles.emptyStateText}>
-                {t("noAppointmentsToDisplay")}
-              </Text>
-            </View>
+            <EmptyState
+              compact
+              icon="event-note"
+              title={t("appointmentsEmptyTitle")}
+              subtitle={t("appointmentsEmptySubtitle")}
+              containerStyle={styles.emptyStateContainer}
+            />
           )}
         </>
       )}

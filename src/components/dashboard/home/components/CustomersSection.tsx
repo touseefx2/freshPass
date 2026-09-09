@@ -15,6 +15,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import { Skeleton } from "@/src/components/skeletons";
+import EmptyState from "@/src/components/emptyState";
 import { fetchBusinessCustomers } from "@/src/services/customersService";
 import type { BusinessCustomer } from "@/src/types/customers";
 import {
@@ -78,18 +79,11 @@ const createStyles = (theme: Theme) =>
       marginVertical: moderateHeightScale(4),
     },
     emptyStateContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(20),
-    },
-    emptyStateText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      paddingVertical: moderateHeightScale(4),
     },
     retryLink: {
-      marginTop: moderateHeightScale(8),
+      marginTop: moderateHeightScale(4),
+      alignSelf: "center",
     },
   });
 
@@ -186,10 +180,16 @@ export default function CustomersSection() {
           );
         })
       ) : (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>
-            {loadError ? t("failedToLoadCustomers") : t("noCustomersFound")}
-          </Text>
+        <View>
+          <EmptyState
+            compact
+            icon={loadError ? "cloud-off" : "people-outline"}
+            title={
+              loadError ? t("failedToLoadCustomers") : t("noCustomersYet")
+            }
+            subtitle={loadError ? undefined : t("customersEmptySubtitle")}
+            containerStyle={styles.emptyStateContainer}
+          />
           {loadError ? (
             <TouchableOpacity onPress={fetchCustomers} style={styles.retryLink}>
               <Text style={styles.sectionLink}>{t("retry")}</Text>

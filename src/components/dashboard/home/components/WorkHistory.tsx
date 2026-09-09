@@ -9,6 +9,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import { Skeleton } from "@/src/components/skeletons";
+import EmptyState from "@/src/components/emptyState";
 import dayjs from "dayjs";
 import { Appointment } from "@/src/components/appointmentDetail";
 import { useRouter } from "expo-router";
@@ -64,15 +65,7 @@ const createStyles = (theme: Theme) =>
       marginVertical: moderateHeightScale(12),
     },
     emptyStateContainer: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(20),
-    },
-    emptyStateText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      paddingVertical: moderateHeightScale(4),
     },
   });
 
@@ -180,9 +173,13 @@ export default function WorkHistory({
           </View>
         ))
       ) : (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>{t("noWorkHistoryFound")}</Text>
-        </View>
+        <EmptyState
+          compact
+          icon="history"
+          title={t("noWorkHistoryFound")}
+          subtitle={t("workHistoryEmptySubtitle")}
+          containerStyle={styles.emptyStateContainer}
+        />
       )}
     </View>
   );

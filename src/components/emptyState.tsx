@@ -8,6 +8,7 @@ import {
   widthScale,
   moderateWidthScale,
   moderateHeightScale,
+  iconScale,
 } from "@/src/theme/dimensions";
 import Button from "@/src/components/button";
 
@@ -18,6 +19,7 @@ type EmptyStateProps = {
   actionTitle?: string;
   onActionPress?: () => void;
   containerStyle?: ViewStyle;
+  compact?: boolean;
 };
 
 const createStyles = (theme: Theme) =>
@@ -29,6 +31,11 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(28),
       paddingVertical: moderateHeightScale(48),
     },
+    containerCompact: {
+      flexGrow: 0,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(18),
+    },
     iconWrap: {
       width: widthScale(112),
       height: widthScale(112),
@@ -39,6 +46,12 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(24),
       borderWidth: 1,
       borderColor: theme.lightGreen015,
+    },
+    iconWrapCompact: {
+      width: widthScale(52),
+      height: widthScale(52),
+      borderRadius: moderateWidthScale(26),
+      marginBottom: moderateHeightScale(10),
     },
     iconInner: {
       width: widthScale(72),
@@ -55,6 +68,10 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       marginBottom: moderateHeightScale(10),
     },
+    titleCompact: {
+      fontSize: fontSize.size14,
+      marginBottom: moderateHeightScale(4),
+    },
     subtitle: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
@@ -63,6 +80,12 @@ const createStyles = (theme: Theme) =>
       lineHeight: moderateHeightScale(22),
       marginBottom: moderateHeightScale(28),
       maxWidth: widthScale(280),
+    },
+    subtitleCompact: {
+      fontSize: fontSize.size12,
+      lineHeight: moderateHeightScale(18),
+      marginBottom: 0,
+      maxWidth: widthScale(240),
     },
     actionButton: {
       minWidth: widthScale(200),
@@ -77,24 +100,39 @@ export default function EmptyState({
   actionTitle,
   onActionPress,
   containerStyle,
+  compact = false,
 }: EmptyStateProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
   return (
-    <View style={[styles.container, containerStyle]}>
-      <View style={styles.iconWrap}>
-        <View style={styles.iconInner}>
+    <View
+      style={[styles.container, compact && styles.containerCompact, containerStyle]}
+    >
+      <View style={[styles.iconWrap, compact && styles.iconWrapCompact]}>
+        {compact ? (
           <MaterialIcons
             name={icon}
-            size={moderateWidthScale(34)}
+            size={iconScale(22)}
             color={theme.buttonBack}
           />
-        </View>
+        ) : (
+          <View style={styles.iconInner}>
+            <MaterialIcons
+              name={icon}
+              size={moderateWidthScale(34)}
+              color={theme.buttonBack}
+            />
+          </View>
+        )}
       </View>
-      <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      <Text style={[styles.title, compact && styles.titleCompact]}>{title}</Text>
+      {subtitle ? (
+        <Text style={[styles.subtitle, compact && styles.subtitleCompact]}>
+          {subtitle}
+        </Text>
+      ) : null}
       {actionTitle && onActionPress ? (
         <Button
           title={actionTitle}
