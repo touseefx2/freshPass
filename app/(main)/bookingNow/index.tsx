@@ -81,6 +81,14 @@ import FloatingInput from "@/src/components/floatingInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
@@ -88,6 +96,20 @@ import isoWeek from "dayjs/plugin/isoWeek";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
+
+const STAFF_CARD_WIDTH = widthScale(152);
+const STAFF_CARD_GAP = moderateWidthScale(22);
+const STAFF_LIST_PADDING = moderateWidthScale(20);
+const STAFF_SCREEN_WIDTH = Dimensions.get("window").width;
+
+type StaffCarouselItem = {
+  id: string;
+  name: string;
+  experience: string | number | null;
+  image: string | null;
+  active: boolean | null | undefined;
+  is_owner: boolean;
+};
 
 const getWeekDays = (date: dayjs.Dayjs) => {
   const startOfWeek = date.startOf("week");
@@ -437,12 +459,12 @@ const createStyles = (theme: Theme) => {
     },
     staffList: {
       flexDirection: "row",
-      gap: moderateWidthScale(22),
-      paddingHorizontal: moderateWidthScale(20),
+      gap: STAFF_CARD_GAP,
+      paddingHorizontal: STAFF_LIST_PADDING,
       paddingBottom: moderateHeightScale(6),
     },
     staffCard: {
-      width: widthScale(152),
+      width: STAFF_CARD_WIDTH,
       minHeight: heightScale(176),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(18),
@@ -1335,6 +1357,138 @@ const createStyles = (theme: Theme) => {
   });
 };
 
+type StaffFadeCardProps = {
+  staff: StaffCarouselItem;
+  cardOffset: number;
+  scrollX: SharedValue<number>;
+  isSelected: boolean;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+  ownerLabel: string;
+  onSelect: (id: string) => void;
+  onAnyoneInfoPress: () => void;
+};
+
+function StaffFadeCard({
+  staff,
+  cardOffset,
+  scrollX,
+  isSelected,
+  styles,
+  theme,
+  ownerLabel,
+  onSelect,
+  onAnyoneInfoPress,
+}: StaffFadeCardProps) {
+  const isAnyone = staff.id === "anyone";
+  const isActive = staff.active;
+
+  const fadeStyle = useAnimatedStyle(() => {
+    const x = STAFF_LIST_PADDING + cardOffset - scrollX.value;
+    const fadeZone = STAFF_CARD_WIDTH * 0.55;
+    const opacity = interpolate(
+      x,
+      [
+        -fadeZone,
+        0,
+        STAFF_LIST_PADDING,
+        STAFF_SCREEN_WIDTH - STAFF_CARD_WIDTH - STAFF_LIST_PADDING,
+        STAFF_SCREEN_WIDTH - STAFF_CARD_WIDTH,
+        STAFF_SCREEN_WIDTH + fadeZone,
+      ],
+      [0.35, 0.55, 1, 1, 0.55, 0.35],
+      Extrapolation.CLAMP,
+    );
+
+    return { opacity };
+  });
+
+  return (
+    <Animated.View style={fadeStyle}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={[
+          styles.staffCard,
+          styles.shadow,
+          isSelected && styles.staffCardSelected,
+        ]}
+        onPress={() => onSelect(staff.id)}
+      >
+        <View
+          style={[
+            styles.radioButton,
+            isSelected && styles.radioButtonSelected,
+          ]}
+        >
+          {isSelected && <View style={styles.radioButtonInner} />}
+        </View>
+
+        {isAnyone ? (
+          <View style={styles.staffImageWrapper}>
+            <View style={styles.staffAnyoneAvatar}>
+              <PeopleIcon
+                width={widthScale(34)}
+                height={heightScale(34)}
+                color={theme.darkGreen}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.staffImageWrapper}>
+            <Image
+              source={{ uri: staff.image || "" }}
+              style={styles.staffImage}
+            />
+            <View
+              style={[
+                styles.staffStatusDot,
+                isActive
+                  ? styles.staffStatusDotActive
+                  : styles.staffStatusDotInactive,
+              ]}
+            />
+          </View>
+        )}
+
+        <View style={styles.staffInfo}>
+          {isAnyone ? (
+            <>
+              <View style={styles.staffNameRow}>
+                <Text style={styles.staffNameAnyone}>Anyone</Text>
+                <TouchableOpacity
+                  style={styles.staffAnyoneInfoButton}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={onAnyoneInfoPress}
+                >
+                  <MaterialIcons
+                    name="info-outline"
+                    size={moderateWidthScale(14)}
+                    color={theme.lightGreen}
+                  />
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.staffExperience} numberOfLines={2}>
+                Any available staff
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.staffName}>
+                {staff.is_owner ? `${staff.name} · ${ownerLabel}` : staff.name}
+              </Text>
+              {staff.experience ? (
+                <Text style={styles.staffExperience} numberOfLines={2}>
+                  {staff.experience}
+                </Text>
+              ) : null}
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 export default function BookingNow() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -2200,6 +2354,21 @@ export default function BookingNow() {
 
     return showAnyone ? [anyoneItem, ...filteredStaff] : filteredStaff;
   }, [staffMembers, staffSearchQuery]);
+
+  const staffScrollX = useSharedValue(0);
+  const staffScrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      staffScrollX.value = event.contentOffset.x;
+    },
+  });
+  const staffCardOffsets = useMemo(() => {
+    return staffList.map((_, index) => index * (STAFF_CARD_WIDTH + STAFF_CARD_GAP));
+  }, [staffList]);
+
+  useEffect(() => {
+    staffScrollX.value = 0;
+  }, [staffSearchQuery, staffScrollX]);
+
   const totalPrice = selectedServices.reduce(
     (sum, service) => sum + service.price,
     0,
@@ -2373,120 +2542,29 @@ export default function BookingNow() {
             {staffList.length === 0 ? (
               <Text style={styles.staffEmptyText}>No staff members found</Text>
             ) : (
-              <ScrollView
+              <Animated.ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.staffList}
+                onScroll={staffScrollHandler}
+                scrollEventThrottle={16}
+                nestedScrollEnabled
               >
-                {staffList.map((staff) => {
-                  const isAnyone = staff.id === "anyone";
-                  const isSelected = selectedStaff === staff.id;
-                  const isActive = staff.active;
-
-                  return (
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      key={staff.id}
-                      style={[
-                        styles.staffCard,
-                        styles.shadow,
-                        isSelected && styles.staffCardSelected,
-                      ]}
-                      onPress={() => {
-                        dispatch(setSelectedStaff(staff.id));
-                      }}
-                    >
-                      <View
-                        style={[
-                          styles.radioButton,
-                          isSelected && styles.radioButtonSelected,
-                        ]}
-                      >
-                        {isSelected && (
-                          <View style={styles.radioButtonInner} />
-                        )}
-                      </View>
-
-                      {isAnyone ? (
-                        <View style={styles.staffImageWrapper}>
-                          <View style={styles.staffAnyoneAvatar}>
-                            <PeopleIcon
-                              width={widthScale(34)}
-                              height={heightScale(34)}
-                              color={theme.darkGreen}
-                            />
-                          </View>
-                        </View>
-                      ) : (
-                        <View style={styles.staffImageWrapper}>
-                          <Image
-                            source={{ uri: staff.image || "" }}
-                            style={styles.staffImage}
-                          />
-                          <View
-                            style={[
-                              styles.staffStatusDot,
-                              isActive
-                                ? styles.staffStatusDotActive
-                                : styles.staffStatusDotInactive,
-                            ]}
-                          />
-                        </View>
-                      )}
-
-                      <View style={styles.staffInfo}>
-                        {isAnyone ? (
-                          <>
-                            <View style={styles.staffNameRow}>
-                              <Text style={styles.staffNameAnyone}>
-                                Anyone
-                              </Text>
-                              <TouchableOpacity
-                                style={styles.staffAnyoneInfoButton}
-                                hitSlop={{
-                                  top: 8,
-                                  bottom: 8,
-                                  left: 8,
-                                  right: 8,
-                                }}
-                                onPress={() => setShowAnyoneHint(true)}
-                              >
-                                <MaterialIcons
-                                  name="info-outline"
-                                  size={moderateWidthScale(14)}
-                                  color={theme.lightGreen}
-                                />
-                              </TouchableOpacity>
-                            </View>
-                            <Text
-                              style={styles.staffExperience}
-                              numberOfLines={2}
-                            >
-                              Any available staff
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            <Text style={styles.staffName}>
-                              {staff.is_owner
-                                ? `${staff.name} · ${t("owner")}`
-                                : staff.name}
-                            </Text>
-                            {staff.experience ? (
-                              <Text
-                                style={styles.staffExperience}
-                                numberOfLines={2}
-                              >
-                                {staff.experience}
-                              </Text>
-                            ) : null}
-                          </>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+                {staffList.map((staff, index) => (
+                  <StaffFadeCard
+                    key={staff.id}
+                    staff={staff}
+                    cardOffset={staffCardOffsets[index] ?? 0}
+                    scrollX={staffScrollX}
+                    isSelected={selectedStaff === staff.id}
+                    styles={styles}
+                    theme={theme}
+                    ownerLabel={t("owner")}
+                    onSelect={(id) => dispatch(setSelectedStaff(id))}
+                    onAnyoneInfoPress={() => setShowAnyoneHint(true)}
+                  />
+                ))}
+              </Animated.ScrollView>
             )}
 
             <Modal
