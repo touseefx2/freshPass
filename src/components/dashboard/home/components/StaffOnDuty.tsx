@@ -3,12 +3,19 @@ import {
   StyleSheet,
   Text,
   View,
-  ScrollView,
   TouchableOpacity,
   Image,
   Alert,
   ActivityIndicator,
 } from "react-native";
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -18,6 +25,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
+  heightScale,
   iconScale,
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
@@ -40,104 +48,220 @@ import {
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 
+const STAFF_CARD_WIDTH = widthScale(128);
+const STAFF_CARD_GAP = moderateWidthScale(24);
+const STAFF_LIST_PADDING = moderateWidthScale(14);
+const STAFF_ITEM_SIZE = STAFF_CARD_WIDTH + STAFF_CARD_GAP;
+const STAFF_LIFT = moderateHeightScale(5);
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    staffContainer: {
+    outerContainer: {
       marginBottom: moderateHeightScale(18),
-      backgroundColor: theme.lightGreen1,
-      minHeight: moderateHeightScale(140),
-      gap: moderateHeightScale(12),
-      paddingVertical: 15,
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    staffContainer: {
+      backgroundColor: theme.lightBeige,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(10),
     },
     sectionHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(15),
-      width: "100%",
+      paddingHorizontal: moderateWidthScale(14),
+      marginBottom: moderateHeightScale(12),
+      gap: moderateWidthScale(8),
+    },
+    sectionTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      flexShrink: 1,
     },
     sectionTitle: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    countBadge: {
+      minWidth: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      paddingHorizontal: moderateWidthScale(6),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    countBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
     sectionRight: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(10),
+      flexShrink: 0,
     },
     ownerCtaText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      maxWidth: widthScale(160),
+      color: theme.selectCard,
+      textDecorationLine: "underline",
+      textDecorationColor: theme.selectCard,
+      maxWidth: widthScale(120),
       textAlign: "right",
     },
-    staffScrollView: { flex: 1 },
-    staffScrollContent: {
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    staffItemFirst: {
-      marginLeft: 0,
-    },
-    staffItem: {
-      alignItems: "center",
-      marginRight: moderateWidthScale(20),
-      gap: moderateHeightScale(5),
-    },
-    staffAvatar: {
-      width: widthScale(52),
-      height: widthScale(52),
-      borderRadius: widthScale(52 / 2),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      position: "relative",
-    },
-    staffAvatarImage: {
-      flex: 1,
-      borderRadius: widthScale(52 / 2),
-      overflow: "hidden",
-    },
-    statusDot: {
-      position: "absolute",
-      right: 3,
-      bottom: 2,
-      width: widthScale(9),
-      height: widthScale(9),
-      borderRadius: widthScale(9 / 2),
-      zIndex: 9999,
-    },
-    staffName: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      textAlign: "center",
-    },
-    ownerTag: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.primary,
-      textAlign: "center",
-    },
-    emptyStateContainer: {
-      flex: 1,
+    addStaffCircle: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.darkGreen,
       alignItems: "center",
       justifyContent: "center",
+    },
+    staffList: {
+      flexDirection: "row",
+      gap: STAFF_CARD_GAP,
+      paddingHorizontal: STAFF_LIST_PADDING,
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(16),
+    },
+    staffCardWrap: {
+      width: STAFF_CARD_WIDTH,
+    },
+    staffCard: {
+      width: STAFF_CARD_WIDTH,
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(10),
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      overflow: "hidden",
+    },
+    shadow: {
+      shadowColor: theme.shadow,
+      shadowOffset: {
+        width: 0,
+        height: 3,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 5,
+      elevation: 3,
+    },
+    staffImageWrapper: {
+      position: "relative",
+      width: widthScale(56),
+      height: widthScale(56),
+      justifyContent: "center",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(10),
+    },
+    staffImageClip: {
+      width: widthScale(56),
+      height: widthScale(56),
+      borderRadius: widthScale(56 / 2),
+      overflow: "hidden",
+    },
+    staffImage: {
+      width: widthScale(56),
+      height: widthScale(56),
+      borderRadius: widthScale(56 / 2),
+      backgroundColor: theme.emptyProfileImage,
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+    },
+    staffStatusDot: {
+      position: "absolute",
+      bottom: 1,
+      left: 1,
+      width: moderateWidthScale(11),
+      height: moderateWidthScale(11),
+      borderRadius: moderateWidthScale(11) / 2,
+      borderWidth: 2,
+      borderColor: theme.white,
+      zIndex: 2,
+    },
+    staffStatusDotActive: {
+      backgroundColor: theme.toggleActive,
+    },
+    staffStatusDotInactive: {
+      backgroundColor: theme.lightGreen5,
+    },
+    staffInfo: {
+      width: "100%",
+      alignItems: "center",
+      gap: moderateHeightScale(2),
+    },
+    staffName: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+      textTransform: "capitalize",
+      width: "100%",
+    },
+    ownerPill: {
+      position: "absolute",
+      bottom: -moderateHeightScale(1),
+      right: -moderateWidthScale(4),
+      backgroundColor: theme.selectCard,
+      paddingHorizontal: moderateWidthScale(4),
+      paddingVertical: moderateHeightScale(0.5),
+      borderRadius: moderateWidthScale(999),
+      borderWidth: 1,
+      borderColor: theme.white,
+      zIndex: 3,
+    },
+    ownerPillText: {
+      fontSize: fontSize.size8,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textAlign: "center",
+      lineHeight: moderateHeightScale(11),
+    },
+    staffExperience: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      width: "100%",
+    },
+    emptyStateContainer: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(28),
+      paddingHorizontal: moderateWidthScale(20),
     },
     emptyStateText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
-      paddingHorizontal: moderateWidthScale(20),
     },
-    addStaffCircle: {
-      width: moderateWidthScale(22),
-      height: moderateWidthScale(22),
-      borderRadius: moderateWidthScale(22 / 2),
-      backgroundColor: theme.darkGreen,
+    // Kept for Skeleton compatibility
+    staffItem: {
+      width: STAFF_CARD_WIDTH,
+      minHeight: heightScale(140),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(10),
       alignItems: "center",
-      justifyContent: "center",
+      marginRight: STAFF_CARD_GAP,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    staffItemFirst: {
+      marginLeft: 0,
     },
   });
 
@@ -175,6 +299,106 @@ interface StaffOnDutyProps {
   callApi: () => Promise<void>;
 }
 
+function getStaffImageUri(staff: StaffData) {
+  const profileImage = staff.user?.profile_image_url;
+  if (!profileImage) {
+    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  }
+  if (
+    profileImage.startsWith("http://") ||
+    profileImage.startsWith("https://")
+  ) {
+    return profileImage;
+  }
+  return process.env.EXPO_PUBLIC_API_BASE_URL + profileImage;
+}
+
+type StaffMotionCardProps = {
+  staff: StaffData;
+  index: number;
+  scrollX: SharedValue<number>;
+  styles: ReturnType<typeof createStyles>;
+  ownerLabel: string;
+  onPress: () => void;
+};
+
+function StaffMotionCard({
+  staff,
+  index,
+  scrollX,
+  styles,
+  ownerLabel,
+  onPress,
+}: StaffMotionCardProps) {
+  const isOwner =
+    staff.is_owner === true || staff.is_business_owner === true;
+  const isActive = staff.active === 1;
+  const experience = staff.description?.trim() || null;
+
+  const motionStyle = useAnimatedStyle(() => {
+    const inputRange = [
+      (index - 1) * STAFF_ITEM_SIZE,
+      index * STAFF_ITEM_SIZE,
+      (index + 1) * STAFF_ITEM_SIZE,
+    ];
+
+    // Simple lift only — same box size, no scale / tilt / flip
+    const translateY = interpolate(
+      scrollX.value,
+      inputRange,
+      [STAFF_LIFT, 0, STAFF_LIFT],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      transform: [{ translateY }],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.staffCardWrap, motionStyle]}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        style={[styles.staffCard, styles.shadow]}
+        onPress={onPress}
+      >
+        <View style={styles.staffImageWrapper}>
+          <View style={styles.staffImageClip}>
+            <Image
+              source={{ uri: getStaffImageUri(staff) }}
+              style={styles.staffImage}
+            />
+          </View>
+          <View
+            style={[
+              styles.staffStatusDot,
+              isActive
+                ? styles.staffStatusDotActive
+                : styles.staffStatusDotInactive,
+            ]}
+          />
+          {isOwner ? (
+            <View style={styles.ownerPill}>
+              <Text style={styles.ownerPillText}>{ownerLabel}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.staffInfo}>
+          <Text style={styles.staffName} numberOfLines={1}>
+            {staff.name ?? ""}
+          </Text>
+          {experience ? (
+            <Text style={styles.staffExperience} numberOfLines={2}>
+              {experience}
+            </Text>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -191,6 +415,15 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
+
+  const staffScrollX = useSharedValue(0);
+  const staffScrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      staffScrollX.value = event.contentOffset.x;
+    },
+  });
+
+  const staffCount = data?.length ?? 0;
 
   useEffect(() => {
     callApi();
@@ -303,98 +536,82 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     dispatch(setBusinessPlansModalVisible(true));
   };
 
-  const isOwnerStaff = (staff: StaffData) =>
-    staff.is_owner === true || staff.is_business_owner === true;
-
   return (
-    <View style={styles.staffContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
-        <View style={styles.sectionRight}>
-          {showOwnerCta && (
+    <View style={styles.outerContainer}>
+      <View style={styles.staffContainer}>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
+            {staffCount > 0 ? (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>{staffCount}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.sectionRight}>
+            {showOwnerCta && (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleOwnerCtaPress}
+                disabled={ownerBusy}
+              >
+                {ownerBusy ? (
+                  <ActivityIndicator size="small" color={theme.selectCard} />
+                ) : (
+                  <Text style={styles.ownerCtaText} numberOfLines={1}>
+                    {ownerEnabled
+                      ? t("removeYourself")
+                      : t("addYourselfAsStaff")}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={handleOwnerCtaPress}
-              disabled={ownerBusy}
+              onPress={handleAddStaffPress}
+              style={styles.addStaffCircle}
             >
-              {ownerBusy ? (
-                <ActivityIndicator size="small" color={theme.darkGreen} />
-              ) : (
-                <Text style={styles.ownerCtaText} numberOfLines={2}>
-                  {ownerEnabled ? t("removeYourself") : t("addYourselfAsStaff")}
-                </Text>
-              )}
+              <Feather name="plus" size={iconScale(15)} color={theme.white85} />
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleAddStaffPress}
-            style={styles.addStaffCircle}
+          </View>
+        </View>
+
+        {!data ? (
+          <Skeleton screenType="StaffOnDuty" styles={styles} />
+        ) : data.length === 0 ? (
+          <View style={styles.emptyStateContainer}>
+            <Text style={styles.emptyStateText}>{t("noStaffOnDuty")}</Text>
+          </View>
+        ) : (
+          <Animated.ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.staffList}
+            onScroll={staffScrollHandler}
+            scrollEventThrottle={16}
+            snapToInterval={STAFF_ITEM_SIZE}
+            decelerationRate="fast"
+            disableIntervalMomentum
           >
-            <Feather name="plus" size={iconScale(15)} color={theme.white85} />
-          </TouchableOpacity>
-        </View>
+            {data.map((staff, index) => (
+              <StaffMotionCard
+                key={staff.id}
+                staff={staff}
+                index={index}
+                scrollX={staffScrollX}
+                styles={styles}
+                ownerLabel={t("owner")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(main)/staffDetail",
+                    params: { id: String(staff.id) },
+                  })
+                }
+              />
+            ))}
+          </Animated.ScrollView>
+        )}
       </View>
-      {!data ? (
-        <Skeleton screenType="StaffOnDuty" styles={styles} />
-      ) : data.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>{t("noStaffOnDuty")}</Text>
-        </View>
-      ) : (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.staffScrollView}
-          contentContainerStyle={styles.staffScrollContent}
-        >
-          {data.map((staff, index) => (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() =>
-                router.push({
-                  pathname: "/(main)/staffDetail",
-                  params: { id: String(staff.id) },
-                })
-              }
-              key={staff.id}
-              style={[styles.staffItem, index === 0 && styles.staffItemFirst]}
-            >
-              <View style={styles.staffAvatar}>
-                <Image
-                  source={{
-                    uri: staff.user?.profile_image_url
-                      ? staff.user.profile_image_url.startsWith("http://") ||
-                        staff.user.profile_image_url.startsWith("https://")
-                        ? staff.user.profile_image_url
-                        : process.env.EXPO_PUBLIC_API_BASE_URL +
-                          staff.user.profile_image_url
-                      : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
-                  }}
-                  style={styles.staffAvatarImage}
-                />
-                <View
-                  style={[
-                    styles.statusDot,
-                    {
-                      backgroundColor:
-                        staff.active === 1
-                          ? theme.toggleActive
-                          : theme.lightGreen5,
-                    },
-                  ]}
-                />
-              </View>
-              <Text numberOfLines={1} style={styles.staffName}>
-                {staff?.name ?? ""}
-              </Text>
-              {isOwnerStaff(staff) ? (
-                <Text style={styles.ownerTag}>{t("owner")}</Text>
-              ) : null}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
 
       <BuyBusinessPlanModal
         visible={buyPlanModalVisible}

@@ -84,6 +84,13 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
       textTransform: "capitalize",
     },
+    ownerName: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.orangeBrown,
+      marginTop: moderateHeightScale(2),
+      textTransform: "capitalize",
+    },
     address: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
@@ -265,6 +272,11 @@ export default function FavouriteScreen() {
             <Text numberOfLines={1} style={styles.name}>
               {item.title}
             </Text>
+            {!!item.owner?.name?.trim() && (
+              <Text numberOfLines={1} style={styles.ownerName}>
+                {t("ownedBy", { name: item.owner.name.trim() })}
+              </Text>
+            )}
             <Text numberOfLines={1} style={styles.address}>
               {item.address || item.street_address}
             </Text>

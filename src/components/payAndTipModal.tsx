@@ -218,19 +218,33 @@ const createStyles = (theme: Theme) =>
       borderStyle: "dashed",
       backgroundColor: theme.white,
     },
-    noTipButtonSelected: {
-      borderStyle: "solid",
-      borderColor: theme.buttonBack,
-      backgroundColor: theme.lightGreen07,
-    },
     noTipText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
-    noTipTextSelected: {
+    noTipSelectedPanel: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(18),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen07,
+      borderWidth: 1.5,
+      borderColor: theme.buttonBack,
+      marginBottom: moderateHeightScale(12),
+      gap: moderateHeightScale(8),
+    },
+    noTipSelectedTitle: {
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    addTipAgainText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+      textDecorationLine: "underline",
     },
     breakdownCard: {
       borderRadius: moderateWidthScale(16),
@@ -419,6 +433,12 @@ export default function PayAndTipModal({
     setValidationError(null);
   };
 
+  const handleAddTipAgain = () => {
+    setNoTip(false);
+    setCustomAmount("");
+    setValidationError(null);
+  };
+
   const handleContinue = () => {
     if (noTip) {
       onContinue(null);
@@ -427,6 +447,14 @@ export default function PayAndTipModal({
 
     if (activeAmount == null || Number.isNaN(activeAmount)) {
       setValidationError("Enter a tip amount or select No tip, thanks.");
+      return;
+    }
+
+    // $0 (or negative) is not a tip — must tip above $0 or choose No tip
+    if (activeAmount <= 0) {
+      setValidationError(
+        "Enter a tip above $0, or select No tip, thanks.",
+      );
       return;
     }
 
@@ -524,49 +552,62 @@ export default function PayAndTipModal({
                 ) : null}
 
                 <Text style={styles.amountSectionTitle}>Amount</Text>
-                <View
-                  style={[
-                    styles.amountDisplay,
-                    hasAmount && !noTip && styles.amountDisplayActive,
-                  ]}
-                >
-                  <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
-                  <View style={styles.amountInputRow}>
-                    <Text style={styles.currencyPrefix}>$</Text>
-                    <TextInput
-                      style={styles.customAmountInput}
-                      value={customAmount}
-                      onChangeText={handleCustomAmountChange}
-                      keyboardType="decimal-pad"
-                      placeholder="0"
-                      placeholderTextColor={theme.lightGreen5}
-                      selectionColor={theme.orangeBrown}
-                    />
-                  </View>
-                </View>
 
-                <TouchableOpacity
-                  style={[
-                    styles.noTipButton,
-                    noTip && styles.noTipButtonSelected,
-                  ]}
-                  onPress={handleSelectNoTip}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={noTip ? "checkmark-circle" : "close-circle-outline"}
-                    size={moderateWidthScale(18)}
-                    color={noTip ? theme.buttonBack : theme.lightGreen}
-                  />
-                  <Text
-                    style={[
-                      styles.noTipText,
-                      noTip && styles.noTipTextSelected,
-                    ]}
-                  >
-                    No tip, thanks
-                  </Text>
-                </TouchableOpacity>
+                {noTip ? (
+                  <View style={styles.noTipSelectedPanel}>
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={moderateWidthScale(22)}
+                      color={theme.buttonBack}
+                    />
+                    <Text style={styles.noTipSelectedTitle}>No tip, thanks</Text>
+                    <TouchableOpacity
+                      onPress={handleAddTipAgain}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Text style={styles.addTipAgainText}>
+                        Changed your mind? Add a tip
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <>
+                    <View
+                      style={[
+                        styles.amountDisplay,
+                        hasAmount && styles.amountDisplayActive,
+                      ]}
+                    >
+                      <Text style={styles.amountPlaceholderLabel}>Your tip</Text>
+                      <View style={styles.amountInputRow}>
+                        <Text style={styles.currencyPrefix}>$</Text>
+                        <TextInput
+                          style={styles.customAmountInput}
+                          value={customAmount}
+                          onChangeText={handleCustomAmountChange}
+                          keyboardType="decimal-pad"
+                          placeholder="0"
+                          placeholderTextColor={theme.lightGreen5}
+                          selectionColor={theme.orangeBrown}
+                        />
+                      </View>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.noTipButton}
+                      onPress={handleSelectNoTip}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name="close-circle-outline"
+                        size={moderateWidthScale(18)}
+                        color={theme.lightGreen}
+                      />
+                      <Text style={styles.noTipText}>No tip, thanks</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
 
               {typeof serviceAmount === "number" &&

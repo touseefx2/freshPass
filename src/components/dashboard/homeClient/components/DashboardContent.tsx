@@ -1060,7 +1060,7 @@ export default function DashboardContent() {
             <Text style={styles.favoriteSectionTitle}>
               {t("favoriteBusinesses")}
             </Text>
-            {favoriteBusinesses.length > 1 && (
+            {favoriteBusinesses.length > 3 && (
               <Text
                 style={styles.sectionViewMore}
                 onPress={() =>

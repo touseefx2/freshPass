@@ -130,13 +130,20 @@ const createSkeletonStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
     },
     staffOnDutyAvatar: {
-      width: widthScale(52),
-      height: widthScale(52),
-      borderRadius: widthScale(52 / 2),
+      width: widthScale(56),
+      height: widthScale(56),
+      borderRadius: widthScale(56 / 2),
+      marginBottom: moderateHeightScale(10),
     },
     staffOnDutyName: {
-      height: moderateHeightScale(14),
-      width: moderateWidthScale(60),
+      height: moderateHeightScale(12),
+      width: moderateWidthScale(72),
+      borderRadius: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(4),
+    },
+    staffOnDutyExperience: {
+      height: moderateHeightScale(10),
+      width: moderateWidthScale(56),
       borderRadius: moderateWidthScale(4),
     },
     appointmentsSectionUpcomingCard: {
@@ -528,13 +535,14 @@ export const Skeleton = ({
 
   const staffOnDutySkeleton = styles ? (
     <View style={skeletonStyles.staffCon}>
-      {[...Array(5)].map((_, index) => (
+      {[...Array(3)].map((_, index) => (
         <View
           key={index}
           style={[styles.staffItem, index === 0 && styles.staffItemFirst]}
         >
           <View style={skeletonStyles.staffOnDutyAvatar} />
           <View style={skeletonStyles.staffOnDutyName} />
+          <View style={skeletonStyles.staffOnDutyExperience} />
         </View>
       ))}
     </View>
