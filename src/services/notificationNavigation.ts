@@ -57,6 +57,7 @@ function getNotificationSubType(
  * - type "subscription" (customer role) → Profile → Customer subscriptions
  * - type "subscription" (business role) → Profile → Subscription
  * - type "affiliation" (host) → Profile → Affiliation requests
+ * - type "affiliation" (solo) → Profile → Edit profile
  * - type "business" | "service" + model_id (customer role) → businessDetail
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
@@ -65,6 +66,8 @@ const AI_MEMORY_BACK_DELAY_MS = 50;
 
 const AFFILIATION_REQUESTS_PATH =
   "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests";
+const EDIT_PROFILE_PATH =
+  "/(main)/dashboard/(account)/(profile)/editProfile";
 
 function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
   router.push("/(main)/dashboard/(account)");
@@ -76,12 +79,29 @@ function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
   }, AI_MEMORY_CHAIN_STEP_MS);
 }
 
-/** Profile tab first, then Affiliation requests (back stack matches in-app path). */
-function navigateToAffiliationRequestsViaProfile(router: Router): void {
+/** Profile tab first, then nested destination (back stack matches in-app path). */
+function navigateViaProfile(router: Router, path: string): void {
   router.push("/(main)/dashboard/(account)");
   setTimeout(() => {
-    router.push(AFFILIATION_REQUESTS_PATH as any);
+    router.push(path as any);
   }, AI_MEMORY_CHAIN_STEP_MS);
+}
+
+function navigateViaProfileFromNotification(
+  router: Router,
+  path: string,
+  fromInAppList?: boolean,
+): void {
+  if (fromInAppList) {
+    if (router.canGoBack()) {
+      router.back();
+    }
+    setTimeout(() => {
+      navigateViaProfile(router, path);
+    }, AI_MEMORY_BACK_DELAY_MS);
+    return;
+  }
+  navigateViaProfile(router, path);
 }
 
 function navigateFromNotificationList(
@@ -143,16 +163,11 @@ export function navigateFromNotificationData(
       (subType === "affiliation_removed" && !isSolo);
 
     if (goToAffiliationRequests) {
-      if (options?.fromInAppList) {
-        if (router.canGoBack()) {
-          router.back();
-        }
-        setTimeout(() => {
-          navigateToAffiliationRequestsViaProfile(router);
-        }, AI_MEMORY_BACK_DELAY_MS);
-      } else {
-        navigateToAffiliationRequestsViaProfile(router);
-      }
+      navigateViaProfileFromNotification(
+        router,
+        AFFILIATION_REQUESTS_PATH,
+        options?.fromInAppList,
+      );
       Logger.log(
         "------>navigateFromNotificationData (affiliation) -> account -> affiliationRequests",
         {
@@ -163,15 +178,29 @@ export function navigateFromNotificationData(
       return;
     }
 
-    const target =
+    const goToEditProfile =
       soloSubTypes.includes(subType as NotificationSubType) ||
-      subType === "affiliation_removed"
-        ? "/(main)/dashboard/(account)/(profile)/editProfile"
-        : "/(main)/notification";
+      subType === "affiliation_removed";
+
+    if (goToEditProfile) {
+      navigateViaProfileFromNotification(
+        router,
+        EDIT_PROFILE_PATH,
+        options?.fromInAppList,
+      );
+      Logger.log(
+        "------>navigateFromNotificationData (affiliation) -> account -> editProfile",
+        {
+          subType,
+          fromInAppList: options?.fromInAppList ?? false,
+        },
+      );
+      return;
+    }
 
     navigateFromNotificationList(
       router,
-      target,
+      "/(main)/notification",
       options?.fromInAppList,
     );
     return;
