@@ -406,13 +406,26 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       marginBottom: moderateHeightScale(20),
+      gap: moderateWidthScale(8),
+    },
+    shopLocationInfo: {
+      flex: 1,
+      maxWidth: "75%",
     },
     shopLocationText: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      flex: 1,
-      maxWidth: "75%",
+    },
+    shopLocationAffiliation: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(3),
+    },
+    shopLocationAffiliationName: {
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
     mapIconContainer: {
       width: 50,
@@ -2405,7 +2418,17 @@ export default function BusinessDetailScreen() {
             {t("shopLocation")}
           </Text>
           <View style={styles.shopLocationRow}>
-            <Text style={styles.shopLocationText}>{businessAddress}</Text>
+            <View style={styles.shopLocationInfo}>
+              <Text style={styles.shopLocationText}>{businessAddress}</Text>
+              {!!workingWithBusiness?.title && (
+                <Text style={styles.shopLocationAffiliation} numberOfLines={1}>
+                  {t("affiliatedWith")}{" "}
+                  <Text style={styles.shopLocationAffiliationName}>
+                    {workingWithBusiness.title}
+                  </Text>
+                </Text>
+              )}
+            </View>
             <TouchableOpacity
               style={styles.mapIconContainer}
               onPress={handleLocationPress}
