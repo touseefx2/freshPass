@@ -64,6 +64,9 @@ export const fetchUserStatus = createAsyncThunk<
           active: response.data.active ?? response?.active ?? false,
           business_id: response.data.business?.id,
           business_name: response.data.business?.title,
+          working_with_business_id: null,
+          working_with_business: null,
+          working_with_business_request: null,
           owner_as_staff: DEFAULT_OWNER_AS_STAFF,
         };
         dispatch(setBusinessStatus(businessStatusData));
@@ -109,6 +112,12 @@ export const fetchUserStatus = createAsyncThunk<
             setUserDetails({
               business_id: response.data.business_id,
               business_name: response.data.business_name,
+              working_with_business_id:
+                response.data.working_with_business_id ?? null,
+              working_with_business:
+                response.data.working_with_business ?? null,
+              working_with_business_request:
+                response.data.working_with_business_request ?? null,
             }),
           );
         }

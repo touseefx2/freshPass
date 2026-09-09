@@ -77,6 +77,7 @@ import {
   type PaidTip,
   type PendingTip,
 } from "@/src/services/tipService";
+import type { AffiliatedBusiness } from "@/src/types/affiliation";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
@@ -136,6 +137,7 @@ interface BookingItem {
   businessLongitude?: string;
   businessLogoUrl?: string;
   businessAverageRating?: number;
+  workingWithBusiness?: AffiliatedBusiness | null;
   paymentMethod?: string;
   paidAmount?: string | null;
   /** Service payment is still outstanding. Keep using for existing pay UI. */
@@ -197,6 +199,14 @@ interface ApiBookingResponse {
   businessLongitude: string;
   businessLogoUrl: string | null;
   businessAverageRating: number;
+  business?: {
+    id: number;
+    title: string;
+    logo_url?: string | null;
+    complete_address?: string | null;
+    working_with_business_id?: number | null;
+    working_with_business?: AffiliatedBusiness | null;
+  } | null;
   userId: number;
   user: string;
   userProfilePic: string | null;
@@ -571,6 +581,16 @@ const createStyles = (theme: Theme) =>
     businessAddress: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    businessAffiliation: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(3),
+    },
+    businessAffiliationName: {
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     mapPinContainer: {
@@ -1221,6 +1241,8 @@ export default function bookingDetailsById() {
       businessLongitude: apiData.businessLongitude || undefined,
       businessLogoUrl: businessLogo,
       businessAverageRating: apiData.businessAverageRating || 0,
+      workingWithBusiness:
+        apiData.business?.working_with_business ?? null,
       paymentMethod: apiData.paymentMethod,
       paidAmount: apiData.paidAmount,
       owesPayment:
@@ -2116,6 +2138,14 @@ export default function bookingDetailsById() {
                 <Text style={styles.businessAddress}>
                   {booking.businessAddress}
                 </Text>
+                {!!booking.workingWithBusiness?.title && (
+                  <Text style={styles.businessAffiliation} numberOfLines={1}>
+                    {t("affiliatedWith")}{" "}
+                    <Text style={styles.businessAffiliationName}>
+                      {booking.workingWithBusiness.title}
+                    </Text>
+                  </Text>
+                )}
               </View>
             </TouchableOpacity>
             {businessLatitude && businessLongitude && (

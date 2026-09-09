@@ -25,7 +25,7 @@ import { Theme } from "@/src/theme/colors";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import {
-  exploreEndpoints,
+  businessEndpoints,
   staffEndpoints,
   userEndpoints,
 } from "@/src/services/endpoints";
@@ -73,6 +73,10 @@ import {
 } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import type {
+  AffiliatedBusiness,
+  UserAffiliationFields,
+} from "@/src/types/affiliation";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -345,6 +349,12 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(8),
     },
+    barbershopStatusText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(4),
+    },
     barbershopItem: {
       flexDirection: "row",
       alignItems: "center",
@@ -418,7 +428,7 @@ const createStyles = (theme: Theme) =>
 
 type BarbershopSearchItem = {
   id: number;
-  slug: string;
+  slug?: string;
   title: string;
   logo_url?: string | null;
   street_address?: string;
@@ -428,19 +438,40 @@ type BarbershopSearchItem = {
   owner?: { id: number; name: string } | null;
 };
 
-type ServiceBusinessListResponse = {
+type AffiliationSelectionState = "approved" | "pending" | "new" | "none";
+
+type BusinessesSearchResponse = {
   success: boolean;
   message: string;
-  data: {
-    service_templates: unknown[];
-    businesses: BarbershopSearchItem[];
-  };
+  data:
+    | BarbershopSearchItem[]
+    | {
+        data?: BarbershopSearchItem[];
+        businesses?: BarbershopSearchItem[];
+      };
 };
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
 const DEFAULT_BUSINESS_LOGO =
   process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
 const BARBERSHOP_SEARCH_DEBOUNCE_MS = 400;
+
+function toBarbershopItem(
+  business?: AffiliatedBusiness | null,
+): BarbershopSearchItem | null {
+  if (!business) return null;
+  return {
+    id: business.id,
+    slug: business.slug,
+    title: business.title,
+    logo_url: business.logo_url,
+    street_address: business.street_address ?? undefined,
+    city: business.city ?? undefined,
+    state: business.state ?? undefined,
+    zip_code: business.zip_code ?? undefined,
+    owner: business.owner,
+  };
+}
 
 function getBusinessLogoUrl(logo: string | null | undefined): string {
   if (logo == null || logo.trim() === "") {
@@ -784,8 +815,29 @@ export default function EditProfileScreen() {
   >([]);
   const [barbershopLoading, setBarbershopLoading] = useState(false);
   const [barbershopHasSearched, setBarbershopHasSearched] = useState(false);
+  const initialApprovedBusiness = toBarbershopItem(
+    user.working_with_business,
+  );
+  const initialPendingBusiness = toBarbershopItem(
+    user.working_with_business_request?.host_business,
+  );
   const [selectedBarbershop, setSelectedBarbershop] =
-    useState<BarbershopSearchItem | null>(null);
+    useState<BarbershopSearchItem | null>(
+      initialApprovedBusiness ?? initialPendingBusiness,
+    );
+  const [affiliationSelectionState, setAffiliationSelectionState] =
+    useState<AffiliationSelectionState>(
+      initialApprovedBusiness
+        ? "approved"
+        : initialPendingBusiness
+          ? "pending"
+          : "none",
+    );
+  const initialHostIdRef = useRef<number | null>(
+    user.working_with_business_id ??
+      user.working_with_business_request?.host_business_id ??
+      null,
+  );
 
   // Phone number state
   const [countryCode, setCountryCode] = useState(initialCountryCode);
@@ -814,6 +866,57 @@ export default function EditProfileScreen() {
   const dateFieldRef = useRef<View>(null);
   const monthFieldRef = useRef<View>(null);
   const yearFieldRef = useRef<View>(null);
+
+  const applyAffiliationFields = useCallback(
+    (fields: UserAffiliationFields) => {
+      const approved = toBarbershopItem(fields.working_with_business);
+      const pending = toBarbershopItem(
+        fields.working_with_business_request?.host_business,
+      );
+      const hostId =
+        fields.working_with_business_id ??
+        fields.working_with_business_request?.host_business_id ??
+        null;
+
+      initialHostIdRef.current = hostId;
+      setSelectedBarbershop(approved ?? pending);
+      setAffiliationSelectionState(
+        approved ? "approved" : pending ? "pending" : "none",
+      );
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!isSoloPlan) return;
+
+    let active = true;
+    ApiService.get<{
+      success: boolean;
+      data: UserAffiliationFields;
+    }>(userEndpoints.details)
+      .then((response) => {
+        if (!active || !response.success || !response.data) return;
+        dispatch(
+          setUserDetails({
+            working_with_business_id:
+              response.data.working_with_business_id ?? null,
+            working_with_business:
+              response.data.working_with_business ?? null,
+            working_with_business_request:
+              response.data.working_with_business_request ?? null,
+          }),
+        );
+        applyAffiliationFields(response.data);
+      })
+      .catch((error) => {
+        Logger.error("Failed to load affiliation details:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [applyAffiliationFields, dispatch, isSoloPlan]);
 
   // Validate phone number on mount if it exists
   useEffect(() => {
@@ -880,18 +983,15 @@ export default function EditProfileScreen() {
       setBarbershopLoading(true);
       setBarbershopHasSearched(true);
       try {
-        const url = exploreEndpoints.serviceBusinessList(trimmed, {
-          businesses_only: true,
-          exclude_business_id:
-            typeof excludeBusinessId === "number"
-              ? excludeBusinessId
-              : undefined,
-        });
-        const res = (await ApiService.get(
-          url,
-        )) as ServiceBusinessListResponse;
+        const url = businessEndpoints.businessSearch(trimmed);
+        const res = (await ApiService.get(url)) as BusinessesSearchResponse;
         if (res?.success && res?.data) {
-          setBarbershopResults(res.data.businesses ?? []);
+          const businesses = Array.isArray(res.data)
+            ? res.data
+            : (res.data.data ?? res.data.businesses ?? []);
+          setBarbershopResults(
+            businesses.filter((item) => item.id !== excludeBusinessId),
+          );
         } else {
           setBarbershopResults([]);
         }
@@ -921,6 +1021,7 @@ export default function EditProfileScreen() {
 
   const handleSelectBarbershop = useCallback((item: BarbershopSearchItem) => {
     setSelectedBarbershop(item);
+    setAffiliationSelectionState("new");
     setBarbershopSearchQuery("");
     setBarbershopResults([]);
     setBarbershopHasSearched(false);
@@ -933,8 +1034,10 @@ export default function EditProfileScreen() {
   }, []);
 
   const handleClearSelectedBarbershop = useCallback(() => {
+    if (affiliationSelectionState === "approved") return;
     setSelectedBarbershop(null);
-  }, []);
+    setAffiliationSelectionState("none");
+  }, [affiliationSelectionState]);
 
   const getBarbershopAddress = useCallback((item: BarbershopSearchItem) => {
     return [item.street_address, item.city, item.state, item.zip_code]
@@ -1330,6 +1433,14 @@ export default function EditProfileScreen() {
             formData.append("date_of_birth", "");
           }
         }
+
+        const selectedHostId = selectedBarbershop?.id ?? null;
+        if (isSoloPlan && selectedHostId !== initialHostIdRef.current) {
+          formData.append(
+            "workingWithBusiness",
+            selectedHostId === null ? "" : String(selectedHostId),
+          );
+        }
       }
 
       // Add profile image if it has changed
@@ -1382,6 +1493,9 @@ export default function EditProfileScreen() {
           profile_image_url?: string | null;
           description?: string | null;
           date_of_birth?: string | null;
+          working_with_business_id?: number | null;
+          working_with_business?: AffiliatedBusiness | null;
+          working_with_business_request?: UserAffiliationFields["working_with_business_request"];
           user?: {
             profile_image_url?: string | null;
           };
@@ -1417,8 +1531,17 @@ export default function EditProfileScreen() {
                   : response.data.profile_image_url,
               description: response.data.description ?? "",
               dateOfBirth: parsedDateOfBirth,
+              working_with_business_id:
+                response.data.working_with_business_id ?? null,
+              working_with_business:
+                response.data.working_with_business ?? null,
+              working_with_business_request:
+                response.data.working_with_business_request ?? null,
             }),
           );
+          if (isSoloPlan) {
+            applyAffiliationFields(response.data);
+          }
         }
 
         showBanner(
@@ -1730,7 +1853,11 @@ export default function EditProfileScreen() {
             {selectedBarbershop && (
               <>
                 <Text style={styles.barbershopSectionHeading}>
-                  {t("selectedBarbershop")}
+                  {affiliationSelectionState === "approved"
+                    ? t("affiliatedBarbershop")
+                    : affiliationSelectionState === "pending"
+                      ? t("pendingAffiliation")
+                      : t("selectedBarbershop")}
                 </Text>
                 <View
                   style={[styles.barbershopItem, styles.barbershopItemSelected]}
@@ -1759,13 +1886,27 @@ export default function EditProfileScreen() {
                         {getBarbershopAddress(selectedBarbershop)}
                       </Text>
                     )}
+                    {affiliationSelectionState === "approved" && (
+                      <Text style={styles.barbershopStatusText}>
+                        {t("onlyHostCanRemoveAffiliation")}
+                      </Text>
+                    )}
+                    {affiliationSelectionState === "pending" && (
+                      <Text style={styles.barbershopStatusText}>
+                        {t("waitingForAffiliationApproval", {
+                          name: selectedBarbershop.title,
+                        })}
+                      </Text>
+                    )}
                   </View>
-                  <Pressable
-                    onPress={handleClearSelectedBarbershop}
-                    hitSlop={moderateWidthScale(10)}
-                  >
-                    <CloseIcon color={theme.darkGreen} />
-                  </Pressable>
+                  {affiliationSelectionState !== "approved" && (
+                    <Pressable
+                      onPress={handleClearSelectedBarbershop}
+                      hitSlop={moderateWidthScale(10)}
+                    >
+                      <CloseIcon color={theme.darkGreen} />
+                    </Pressable>
+                  )}
                 </View>
               </>
             )}

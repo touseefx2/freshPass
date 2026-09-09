@@ -74,6 +74,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
+import type { AffiliatedBusiness } from "@/src/types/affiliation";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -293,6 +294,22 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.white80,
       flex: 1,
+    },
+    affiliationRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(8),
+      gap: moderateWidthScale(6),
+    },
+    affiliationText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white80,
+    },
+    affiliationName: {
+      fontFamily: fonts.fontBold,
+      color: theme.white,
     },
     staffRow: {
       flexDirection: "row",
@@ -1360,6 +1377,8 @@ export default function BusinessDetailScreen() {
   const [subscriptionStatus, setSubscriptionStatus] = useState<
     "active" | "inactive"
   >("inactive");
+  const [workingWithBusiness, setWorkingWithBusiness] =
+    useState<AffiliatedBusiness | null>(null);
 
   const [serviceTemplates, setServiceTemplates] = useState<
     Array<{
@@ -1402,6 +1421,8 @@ export default function BusinessDetailScreen() {
           business: any;
           subscription_plan_type?: "Solo" | "Business" | null;
           subscription_status?: "active" | "inactive";
+          working_with_business_id?: number | null;
+          working_with_business?: AffiliatedBusiness | null;
         };
       }>(businessEndpoints.businessDetails(params.business_id));
 
@@ -1415,6 +1436,11 @@ export default function BusinessDetailScreen() {
           response.data.subscription_status === "active"
             ? "active"
             : "inactive",
+        );
+        setWorkingWithBusiness(
+          response.data.working_with_business ??
+            response.data.business.working_with_business ??
+            null,
         );
         setIsFavorited(
           typeof response.data.business.is_favorited === "boolean"
@@ -3867,6 +3893,32 @@ export default function BusinessDetailScreen() {
                 )}
               </Text>
             </View>
+            {!!workingWithBusiness?.id && !!workingWithBusiness.title && (
+              <TouchableOpacity
+                style={styles.affiliationRow}
+                activeOpacity={0.7}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(main)/businessDetail",
+                    params: {
+                      business_id: workingWithBusiness.id.toString(),
+                    },
+                  })
+                }
+              >
+                <MaterialIcons
+                  name="storefront"
+                  size={moderateWidthScale(14)}
+                  color={theme.selectCard}
+                />
+                <Text style={styles.affiliationText} numberOfLines={1}>
+                  {t("affiliatedWith")}{" "}
+                  <Text style={styles.affiliationName}>
+                    {workingWithBusiness.title}
+                  </Text>
+                </Text>
+              </TouchableOpacity>
+            )}
             <View style={styles.staffRow}>
               <View style={styles.staffRowLeft}>
                 <PeopleIcon

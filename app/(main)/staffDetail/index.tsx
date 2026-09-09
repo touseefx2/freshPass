@@ -681,6 +681,8 @@ export default function StaffDetail() {
     data.is_owner === true ||
     data.is_business_owner === true ||
     (ownerStaffId != null && data.id === ownerStaffId);
+  // Business role viewing their own self-added staff profile → hide chat message row only
+  const hideSelfStaffMessage = isBusinessRole && isOwnerStaff;
   const showPendingInvite =
     !isOwnerStaff &&
     data.invitation_token != null &&
@@ -834,7 +836,7 @@ export default function StaffDetail() {
               </TouchableOpacity>
             </View>
           ) : null}
-          {data?.user?.id != null && !isOwnerStaff ? (
+          {data?.user?.id != null && !hideSelfStaffMessage ? (
             <TouchableOpacity
               style={styles.messageRow}
               onPress={handleChatPress}

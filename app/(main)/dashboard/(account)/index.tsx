@@ -275,6 +275,10 @@ export default function AccountScreen() {
         pathname: "/(main)/businessDetail",
         params: { business_id: businessId.toString() },
       } as any);
+    } else if (key === "affiliationRequests") {
+      router.push(
+        "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests",
+      );
     } else if (key === "logout") {
       handleLogout();
     } else if (key === "delete") {
@@ -299,6 +303,7 @@ export default function AccountScreen() {
       | "subscriptions"
       | "aiTools"
       | "viewBusiness"
+      | "affiliationRequests"
       | "logout"
       | "delete";
 
@@ -355,6 +360,18 @@ export default function AccountScreen() {
     },
     ...(userRole === "business" && !isGuest
       ? [{ key: "viewBusiness" as const, title: t("viewBusiness") }]
+      : []),
+    ...(userRole === "business" &&
+    !isGuest &&
+    businessStatus?.subscription_status === "active" &&
+    businessStatus?.subscription_is_single === false
+      ? [
+          {
+            key: "affiliationRequests" as const,
+            title: t("affiliationRequests"),
+            subtitle: t("affiliationRequestsSubtitle"),
+          },
+        ]
       : []),
     ...(isCustomer || (userRole === "business" && !showStripeBanner)
       ? [{ key: "subscriptions" as const, title: t("subscription") }]
@@ -442,6 +459,14 @@ export default function AccountScreen() {
         return (
           <MaterialIcons
             name="visibility"
+            size={iconSize}
+            color={theme.darkGreen}
+          />
+        );
+      case "affiliationRequests":
+        return (
+          <MaterialCommunityIcons
+            name="account-multiple-check"
             size={iconSize}
             color={theme.darkGreen}
           />

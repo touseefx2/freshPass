@@ -12,7 +12,15 @@ export type NotificationSubType =
   | "payment_request"
   | "review_request"
   | "tip_request"
-  | "subscription_usage";
+  | "subscription_usage"
+  | "affiliation_request"
+  | "affiliation_request_sent"
+  | "affiliation_approved"
+  | "affiliation_rejected"
+  | "affiliation_request_cancelled"
+  | "affiliation_removed"
+  | "plan_upgraded"
+  | "solo_switch";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -64,6 +72,23 @@ function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
   }, AI_MEMORY_CHAIN_STEP_MS);
 }
 
+function navigateFromNotificationList(
+  router: Router,
+  path: string,
+  fromInAppList?: boolean,
+): void {
+  if (fromInAppList) {
+    if (router.canGoBack()) {
+      router.back();
+    }
+    setTimeout(() => {
+      router.push(path as any);
+    }, AI_MEMORY_BACK_DELAY_MS);
+    return;
+  }
+  router.push(path as any);
+}
+
 export function navigateFromNotificationData(
   router: Router,
   data: NotificationNavigationData | undefined,
@@ -73,6 +98,51 @@ export function navigateFromNotificationData(
   Logger.log("------>navigateFromNotificationData", data);
 
   const type = data.type as string | undefined;
+  const subType = getNotificationSubType(data);
+
+  if (type === "update_location") {
+    navigateFromNotificationList(
+      router,
+      "/(main)/dashboard/(account)/(businessProfileSettings)/location",
+      options?.fromInAppList,
+    );
+    return;
+  }
+
+  if (type === "affiliation") {
+    const hostSubTypes: NotificationSubType[] = [
+      "affiliation_request",
+      "affiliation_request_cancelled",
+    ];
+    const soloSubTypes: NotificationSubType[] = [
+      "affiliation_request_sent",
+      "affiliation_approved",
+      "affiliation_rejected",
+    ];
+    const currentUser = store.getState().user;
+    const notificationSoloUserId =
+      typeof data.solo_user_id === "number" ? data.solo_user_id : null;
+    const isSolo =
+      notificationSoloUserId === currentUser.id ||
+      currentUser.businessStatus?.subscription_is_single === true;
+
+    const target =
+      hostSubTypes.includes(subType as NotificationSubType) ||
+      (subType === "affiliation_removed" && !isSolo)
+        ? "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests"
+        : soloSubTypes.includes(subType as NotificationSubType) ||
+            subType === "affiliation_removed"
+          ? "/(main)/dashboard/(account)/(profile)/editProfile"
+          : "/(main)/notification";
+
+    navigateFromNotificationList(
+      router,
+      target,
+      options?.fromInAppList,
+    );
+    return;
+  }
+
   if (type === "message") {
     const modelId = data.model_id as number | undefined;
     const sender = data.sender as
@@ -99,8 +169,6 @@ export function navigateFromNotificationData(
   if (type === "appointment") {
     const modelId = data.model_id as number | undefined;
     if (modelId != null) {
-      const subType = getNotificationSubType(data);
-
       switch (subType) {
         case "review_request":
           router.push({

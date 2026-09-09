@@ -51,6 +51,13 @@ export const businessEndpoints = {
   register: `/api/register`,
   login: `/api/login`,
   logout: `/api/logout`,
+  businessSearch: (search?: string, page = 1, perPage = 20) => {
+    const queryParams = new URLSearchParams();
+    if (search?.trim()) queryParams.append("search", search.trim());
+    queryParams.append("page", page.toString());
+    queryParams.append("per_page", perPage.toString());
+    return `/api/businesses?${queryParams.toString()}`;
+  },
   forgotPassword: `/api/forgot-password`,
   socialLogin: `/api/social-login`,
   categories: `/api/categories`,
@@ -405,6 +412,31 @@ export const notificationsEndpoints = {
     `/api/notifications/${notificationId}/read`,
   markAllAsRead: `/api/notifications/mark-all-read`,
   unreadCount: `/api/notifications/unread-count`,
+};
+
+/**
+ * Solo-owner affiliation requests managed by host businesses.
+ */
+export const affiliationEndpoints = {
+  list: (params?: {
+    status?: "pending" | "approved" | "rejected" | "removed" | "all";
+    page?: number;
+    per_page?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.per_page)
+      queryParams.append("per_page", params.per_page.toString());
+    const queryString = queryParams.toString();
+    return `/api/affiliation-requests${queryString ? `?${queryString}` : ""}`;
+  },
+  approve: (requestId: number) =>
+    `/api/affiliation-requests/${requestId}/approve`,
+  reject: (requestId: number) =>
+    `/api/affiliation-requests/${requestId}/reject`,
+  remove: (requestId: number) =>
+    `/api/affiliation-requests/${requestId}/remove`,
 };
 
 /**

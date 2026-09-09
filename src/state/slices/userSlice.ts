@@ -1,5 +1,9 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import Logger from "@/src/services/logger";
+import type {
+  AffiliatedBusiness,
+  WorkingWithBusinessRequest,
+} from "@/src/types/affiliation";
 
 export type UserRole = "business" | "customer" | "staff" | null;
 
@@ -46,6 +50,9 @@ export interface BusinessStatus {
   active: boolean;
   business_id?: number;
   business_name?: string;
+  working_with_business_id?: number | null;
+  working_with_business?: AffiliatedBusiness | null;
+  working_with_business_request?: WorkingWithBusinessRequest | null;
   /** Business-plan gate for putting the owner on their own team */
   owner_as_staff: OwnerAsStaffStatus;
 }
@@ -150,6 +157,9 @@ export interface UserState {
   countryName: string;
   business_id?: number;
   business_name?: string;
+  working_with_business_id: number | null;
+  working_with_business: AffiliatedBusiness | null;
+  working_with_business_request: WorkingWithBusinessRequest | null;
   ai_quota: number;
 }
 
@@ -187,6 +197,9 @@ const initialState: UserState = {
   countryName: "",
   business_id: undefined,
   business_name: undefined,
+  working_with_business_id: null,
+  working_with_business: null,
+  working_with_business_request: null,
   ai_quota: 0,
 };
 
@@ -270,6 +283,9 @@ const userSlice = createSlice({
         countryName?: string;
         business_id?: number;
         business_name?: string;
+        working_with_business_id?: number | null;
+        working_with_business?: AffiliatedBusiness | null;
+        working_with_business_request?: WorkingWithBusinessRequest | null;
         ai_quota?: number;
       }>,
     ) {
@@ -309,6 +325,17 @@ const userSlice = createSlice({
       }
       if (action.payload.business_name !== undefined) {
         state.business_name = action.payload.business_name;
+      }
+      if (action.payload.working_with_business_id !== undefined) {
+        state.working_with_business_id =
+          action.payload.working_with_business_id;
+      }
+      if (action.payload.working_with_business !== undefined) {
+        state.working_with_business = action.payload.working_with_business;
+      }
+      if (action.payload.working_with_business_request !== undefined) {
+        state.working_with_business_request =
+          action.payload.working_with_business_request;
       }
       if (action.payload.ai_quota !== undefined) {
         state.ai_quota = action.payload.ai_quota;

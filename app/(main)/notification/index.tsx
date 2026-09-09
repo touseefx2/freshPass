@@ -59,7 +59,8 @@ type NotificationIconType =
   | "review"
   | "completed"
   | "subscription"
-  | "schedule";
+  | "schedule"
+  | "affiliation";
 
 type NotificationItem = {
   id: string;
@@ -329,6 +330,12 @@ export default function NotificationsScreen() {
 
     if (type === "message") {
       return "message";
+    }
+    if (type === "affiliation") {
+      return "affiliation";
+    }
+    if (type === "update_location") {
+      return "schedule";
     }
     // Proposals carry no sub_type, so the title is still the only signal.
     if (title.toLowerCase().includes("proposal")) {
@@ -693,6 +700,10 @@ export default function NotificationsScreen() {
         );
       case "schedule":
         return <CalendarIcon width={24} height={24} color={theme.darkGreen} />;
+      case "affiliation":
+        return (
+          <CircleTickIcon width={24} height={24} color={theme.darkGreen} />
+        );
       default:
         return (
           <NotificationBellOutlineIcon

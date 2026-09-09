@@ -29,6 +29,7 @@ import {
 } from "@/src/services/endpoints";
 import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
 import { useFocusEffect } from "expo-router";
+import type { UserAffiliationFields } from "@/src/types/affiliation";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -227,7 +228,7 @@ export default function HomeScreen() {
             title: string;
           };
           ai_quota?: number;
-        };
+        } & UserAffiliationFields;
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
@@ -239,8 +240,14 @@ export default function HomeScreen() {
             country_code: response.data.country_code,
             email_notifications: response.data.email_notifications,
             profile_image_url: response.data.profile_image_url,
-            business_id: response.data.business.id ?? "",
-            business_name: response.data.business.title ?? "",
+            business_id: response.data.business?.id ?? undefined,
+            business_name: response.data.business?.title ?? undefined,
+            working_with_business_id:
+              response.data.working_with_business_id ?? null,
+            working_with_business:
+              response.data.working_with_business ?? null,
+            working_with_business_request:
+              response.data.working_with_business_request ?? null,
             ai_quota: response.data.ai_quota ?? 0,
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)

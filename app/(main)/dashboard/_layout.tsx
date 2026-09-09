@@ -35,6 +35,7 @@ import { userEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { getEcho } from "@/src/services/echo";
 import { fetchChatContactsApi } from "@/src/services/chatContacts";
 import { parseDateOfBirth } from "@/src/constant/functions";
+import type { UserAffiliationFields } from "@/src/types/affiliation";
 
 const CHAT_MESSAGE_SENT = ".message.sent";
 
@@ -152,7 +153,7 @@ export default function DashboardLayout() {
           business: { id: number; title: string };
           ai_quota?: number;
           date_of_birth: string | null;
-        };
+        } & UserAffiliationFields;
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
@@ -167,6 +168,12 @@ export default function DashboardLayout() {
             profile_image_url: response.data.profile_image_url,
             business_id: response.data.business?.id ?? undefined,
             business_name: response.data.business?.title ?? undefined,
+            working_with_business_id:
+              response.data.working_with_business_id ?? null,
+            working_with_business:
+              response.data.working_with_business ?? null,
+            working_with_business_request:
+              response.data.working_with_business_request ?? null,
             ai_quota: response.data.ai_quota ?? 0,
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)

@@ -88,6 +88,9 @@ const userPersistConfig = {
     "countryName",
     "business_id",
     "business_name",
+    "working_with_business_id",
+    "working_with_business",
+    "working_with_business_request",
     "ai_quota",
   ], // Only persist these fields (businessStatus excluded)
 };

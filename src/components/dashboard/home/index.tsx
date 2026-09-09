@@ -33,6 +33,7 @@ import {
   canShowStaffManagement,
 } from "@/src/state/slices/userSlice";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
+import type { UserAffiliationFields } from "@/src/types/affiliation";
 import Logger from "@/src/services/logger";
 import {
   userEndpoints,
@@ -156,7 +157,7 @@ export default function HomeScreen() {
           };
           ai_quota?: number;
           date_of_birth: string | null;
-        };
+        } & UserAffiliationFields;
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
@@ -168,8 +169,14 @@ export default function HomeScreen() {
             country_code: response.data.country_code,
             email_notifications: response.data.email_notifications,
             profile_image_url: response.data.profile_image_url,
-            business_id: response.data.business.id ?? "",
-            business_name: response.data.business.title ?? "",
+            business_id: response.data.business?.id ?? undefined,
+            business_name: response.data.business?.title ?? undefined,
+            working_with_business_id:
+              response.data.working_with_business_id ?? null,
+            working_with_business:
+              response.data.working_with_business ?? null,
+            working_with_business_request:
+              response.data.working_with_business_request ?? null,
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)
               : null,
