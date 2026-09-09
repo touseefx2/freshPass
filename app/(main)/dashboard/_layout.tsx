@@ -259,7 +259,7 @@ export default function DashboardLayout() {
     segments.includes("search");
   const isFavoritesScreen =
     Array.isArray(segments) &&
-    segments.includes("(account)") &&
+    segments.includes("(home)") &&
     segments.includes("favourite");
   const isCustomersScreen =
     Array.isArray(segments) && segments.includes("customers");

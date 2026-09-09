@@ -275,8 +275,6 @@ export default function AccountScreen() {
         pathname: "/(main)/businessDetail",
         params: { business_id: businessId.toString() },
       } as any);
-    } else if (key === "favorites") {
-      router.push("./favourite");
     } else if (key === "logout") {
       handleLogout();
     } else if (key === "delete") {
@@ -301,7 +299,6 @@ export default function AccountScreen() {
       | "subscriptions"
       | "aiTools"
       | "viewBusiness"
-      | "favorites"
       | "logout"
       | "delete";
 
@@ -367,10 +364,7 @@ export default function AccountScreen() {
       title: t("notificationSettings"),
     },
     ...(isCustomer
-      ? [
-          { key: "reviews" as const, title: t("reviews") },
-          { key: "favorites" as const, title: t("favorites") },
-        ]
+      ? [{ key: "reviews" as const, title: t("reviews") }]
       : []),
     ...(userRole === "business" || userRole === "customer"
       ? [{ key: "aiTools" as const, title: t("aiTools") }]
@@ -442,14 +436,6 @@ export default function AccountScreen() {
             name="star"
             size={iconSize}
             color={theme.orangeBrown}
-          />
-        );
-      case "favorites":
-        return (
-          <MaterialIcons
-            name="favorite"
-            size={iconSize}
-            color={theme.lightGreen}
           />
         );
       case "viewBusiness":

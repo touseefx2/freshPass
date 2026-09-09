@@ -1060,14 +1060,16 @@ export default function DashboardContent() {
             <Text style={styles.favoriteSectionTitle}>
               {t("favoriteBusinesses")}
             </Text>
-            <Text
-              style={styles.sectionViewMore}
-              onPress={() =>
-                router.push("/(main)/dashboard/(account)/favourite" as any)
-              }
-            >
-              {t("seeAll")}
-            </Text>
+            {favoriteBusinesses.length > 1 && (
+              <Text
+                style={styles.sectionViewMore}
+                onPress={() =>
+                  router.push("/(main)/dashboard/(home)/favourite" as any)
+                }
+              >
+                {t("seeAll")}
+              </Text>
+            )}
           </View>
           <ShowFavorites favorites={favoriteBusinesses} />
         </View>
