@@ -74,7 +74,7 @@ export type BusinessSearchItem = {
   phone: string;
   country_code: string;
   category: { id: number; name: string };
-  owner: { id: number; name: string };
+  owner?: { id: number; name: string } | null;
   createdAt: string;
 };
 
@@ -298,6 +298,13 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.text,
+      textTransform: "capitalize",
+    },
+    businessOwnerName: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
       textTransform: "capitalize",
     },
     businessAddress: {
@@ -753,6 +760,14 @@ export default function SearchScreen() {
                       <Text style={styles.businessTitle} numberOfLines={1}>
                         {item.title}
                       </Text>
+                      {!!item.owner?.name?.trim() && (
+                        <Text
+                          style={styles.businessOwnerName}
+                          numberOfLines={1}
+                        >
+                          {t("ownedBy", { name: item.owner.name.trim() })}
+                        </Text>
+                      )}
                       {address ? (
                         <Text style={styles.businessAddress} numberOfLines={1}>
                           {address}
