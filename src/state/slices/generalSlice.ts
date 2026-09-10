@@ -122,6 +122,8 @@ export interface ChatContactItem {
   timeLabel: string;
   createdAt: string;
   isHighlighted?: boolean;
+  /** Unread messages for this contact only (from contacts API unread_count) */
+  unreadCount?: number;
   image: string;
 }
 

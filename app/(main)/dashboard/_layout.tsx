@@ -20,20 +20,13 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
-import {
-  setUserDetails,
-  setTotalUnreadChat,
-} from "@/src/state/slices/userSlice";
-import {
-  setChatContacts,
-  setChatContactsMeta,
-  resetChatContacts,
-} from "@/src/state/slices/generalSlice";
+import { setUserDetails } from "@/src/state/slices/userSlice";
+import { resetChatContacts } from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
-import { userEndpoints, chatEndpoints } from "@/src/services/endpoints";
+import { userEndpoints } from "@/src/services/endpoints";
 import { getEcho } from "@/src/services/echo";
-import { fetchChatContactsApi } from "@/src/services/chatContacts";
+import { refreshChatInbox } from "@/src/state/thunks/chatThunks";
 import { parseDateOfBirth } from "@/src/constant/functions";
 import type { UserAffiliationFields } from "@/src/types/affiliation";
 
@@ -114,22 +107,7 @@ export default function DashboardLayout() {
     const channel = echo.private(channelName);
 
     channel.listen(CHAT_MESSAGE_SENT, () => {
-      ApiService.get<{ success: boolean; data?: { unread_count: number } }>(
-        chatEndpoints.unreadCount,
-      )
-        .then((res) => {
-          if (res?.success && res?.data != null)
-            dispatch(setTotalUnreadChat(res.data.unread_count));
-        })
-        .catch(() => {});
-      fetchChatContactsApi(1)
-        .then(({ list, current_page, last_page }) => {
-          dispatch(setChatContacts(list));
-          dispatch(
-            setChatContactsMeta({ page: current_page, lastPage: last_page }),
-          );
-        })
-        .catch(() => {});
+      dispatch(refreshChatInbox());
     });
 
     return () => {

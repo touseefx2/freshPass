@@ -162,10 +162,31 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
     },
+    unreadBadge: {
+      backgroundColor: theme.red,
+      borderRadius: moderateWidthScale(16 / 2),
+      minWidth: widthScale(16),
+      height: widthScale(16),
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(3),
+    },
+    unreadBadgeText: {
+      color: theme.white,
+      fontSize: fontSize.size8,
+      fontFamily: fonts.fontMedium,
+    },
     messageText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    rowBottom: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
     guestContainer: {
       flex: 1,
@@ -580,9 +601,20 @@ export default function ChatScreen() {
                   <Text style={styles.nameText}>{item.name}</Text>
                   <Text style={styles.timeText}>{item.timeLabel}</Text>
                 </View>
-                <Text style={styles.messageText} numberOfLines={1}>
-                  {item.message}
-                </Text>
+                <View style={styles.rowBottom}>
+                  <Text style={styles.messageText} numberOfLines={1}>
+                    {item.message}
+                  </Text>
+                  {(item.unreadCount ?? 0) > 0 && (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadBadgeText}>
+                        {(item.unreadCount ?? 0) > 9
+                          ? "9+"
+                          : String(item.unreadCount)}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </TouchableOpacity>
           )}

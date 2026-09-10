@@ -89,13 +89,15 @@ export function contactToChatItem(c: ApiContact): ChatContactItem {
     else if (c.latest_message.attachments?.length) message = "Attachment";
     else message = "No message";
   }
+  const unreadCount = c.unread_count ?? 0;
   return {
     id: String(c.id),
     name: c.name,
     message,
     timeLabel: formatTimeLabel(createdAt),
     createdAt,
-    isHighlighted: (c.unread_count ?? 0) > 0,
+    isHighlighted: unreadCount > 0,
+    unreadCount,
     image: getAvatarUrl(c.avatar),
   };
 }

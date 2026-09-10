@@ -5,8 +5,10 @@ import { useRouter } from "expo-router";
 import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
+import { refreshChatInbox } from "../state/thunks/chatThunks";
 import { useAppDispatch, useAppSelector } from "../hooks/hooks";
 import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
+import type { NotificationNavigationData } from "@/src/services/notificationNavigation";
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 
 /**
@@ -72,8 +74,17 @@ export default function ExpoNotificationHandler() {
           notification.request.content,
         );
 
-        if (accessToken) {
-          dispatch(fetchNotificationUnreadCount());
+        if (!accessToken) return;
+
+        dispatch(fetchNotificationUnreadCount());
+
+        // Only chat message pushes refresh inbox (badge + Recent list).
+        // Other types (appointment, affiliation, AI, …) must not hit chat APIs.
+        const data = notification.request.content.data as
+          | NotificationNavigationData
+          | undefined;
+        if (data?.type === "message") {
+          dispatch(refreshChatInbox());
         }
       },
     );
@@ -106,7 +117,7 @@ export default function ExpoNotificationHandler() {
         responseListenerRef.current = null;
       }
     };
-  }, [showBanner, router, accessToken]);
+  }, [showBanner, router, accessToken, dispatch]);
 
   return null;
 }
