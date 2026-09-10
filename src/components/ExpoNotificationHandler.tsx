@@ -5,10 +5,8 @@ import { useRouter } from "expo-router";
 import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
-import { refreshChatInbox } from "../state/thunks/chatThunks";
 import { useAppDispatch, useAppSelector } from "../hooks/hooks";
 import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
-import type { NotificationNavigationData } from "@/src/services/notificationNavigation";
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 
 /**
@@ -76,16 +74,8 @@ export default function ExpoNotificationHandler() {
 
         if (!accessToken) return;
 
+        // Notification tab badge only — chat badge/list refresh via socket (users.{id}).
         dispatch(fetchNotificationUnreadCount());
-
-        // Only chat message pushes refresh inbox (badge + Recent list).
-        // Other types (appointment, affiliation, AI, …) must not hit chat APIs.
-        const data = notification.request.content.data as
-          | NotificationNavigationData
-          | undefined;
-        if (data?.type === "message") {
-          dispatch(refreshChatInbox());
-        }
       },
     );
 

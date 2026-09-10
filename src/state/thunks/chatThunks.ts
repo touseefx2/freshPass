@@ -11,7 +11,7 @@ import { fetchChatContactsApi } from "@/src/services/chatContacts";
 
 /**
  * Refresh chat tab badge + Recent contacts list from API.
- * Used when a chat message push arrives, or when the users.{id} socket fires.
+ * Used when the users.{id} socket fires (.message.sent).
  * Guest / missing token: no-op (avoids 401 / session-expired).
  */
 export const refreshChatInbox = createAsyncThunk<

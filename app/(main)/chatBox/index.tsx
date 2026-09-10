@@ -2135,20 +2135,62 @@ export default function ChatBoxScreen() {
   // Real-time: subscribe to private chat channel (matches web: chat.id1.id2), messages, read receipts, typing
   // Cleanup only on unmount (navigate back). Background: socket stays connected. App kill: connection drops and server closes.
   useEffect(() => {
-    if (!userId || !accessToken || currentUserId == null) return;
+    if (!userId || !accessToken || currentUserId == null) {
+      if (__DEV__) {
+        console.log("[ChatSocket] skip subscribe", {
+          userId,
+          hasToken: Boolean(accessToken),
+          currentUserId,
+        });
+      }
+      return;
+    }
     const echo = getEcho(accessToken);
-    if (!echo) return;
+    if (!echo) {
+      if (__DEV__) console.log("[ChatSocket] getEcho returned null — no socket");
+      return;
+    }
     const channelName = getPrivateChatChannelName(currentUserId, userId);
+    if (__DEV__) {
+      console.log("[ChatSocket] subscribe", {
+        channelName,
+        currentUserId,
+        otherUserId: userId,
+      });
+    }
     const channel = echo.private(channelName);
     channelRef.current = channel;
     channelActiveRef.current = true;
 
+    if (__DEV__) {
+      const chAny = channel as unknown as {
+        subscribed?: (cb: () => void) => void;
+        error?: (cb: (err: unknown) => void) => void;
+      };
+      chAny.subscribed?.(() => {
+        console.log("[ChatSocket] subscribed OK", channelName);
+      });
+      chAny.error?.((err) => {
+        console.log("[ChatSocket] subscription ERROR", channelName, err);
+      });
+    }
+
     // New message: only add when sender is the other user (we add our own from API response)
     channel.listen(CHAT_MESSAGE_EVENT, (payload: unknown) => {
+      if (__DEV__) console.log("[ChatSocket] .message.sent RAW", payload);
       if (!channelActiveRef.current) return;
       const raw = (payload as { message?: ApiMessage })?.message ?? payload;
       const msg = raw as ApiMessage;
-      if (!msg?.id || !msg?.sender?.id || msg.created_at == null) return;
+      if (!msg?.id || !msg?.sender?.id || msg.created_at == null) {
+        if (__DEV__) {
+          console.log("[ChatSocket] ignored: bad payload shape", {
+            hasId: Boolean(msg?.id),
+            hasSenderId: Boolean(msg?.sender?.id),
+            created_at: msg?.created_at,
+          });
+        }
+        return;
+      }
       if (msg.sender.id === currentUserId) return; // skip own message from socket
       setIsTyping(false);
       // Mark that user's messages as read when we receive their message
@@ -2164,6 +2206,7 @@ export default function ChatBoxScreen() {
     channel.listen(
       CHAT_MESSAGES_READ_EVENT,
       (e: { senderId: number; receiverId: number }) => {
+        if (__DEV__) console.log("[ChatSocket] .messages.read", e);
         if (!channelActiveRef.current) return;
         if (e.receiverId === currentUserId && e.senderId === Number(userId)) {
           setMessages((prev) =>

@@ -102,9 +102,26 @@ export default function DashboardLayout() {
       return;
     }
     const echo = getEcho(user.accessToken);
-    if (!echo) return;
+    if (!echo) {
+      if (__DEV__) console.log("[InboxSocket] getEcho returned null — no socket");
+      return;
+    }
     const channelName = `users.${user.id}`;
+    if (__DEV__) console.log("[InboxSocket] subscribe", channelName);
     const channel = echo.private(channelName);
+
+    if (__DEV__) {
+      const chAny = channel as unknown as {
+        subscribed?: (cb: () => void) => void;
+        error?: (cb: (err: unknown) => void) => void;
+      };
+      chAny.subscribed?.(() => {
+        console.log("[InboxSocket] subscribed OK", channelName);
+      });
+      chAny.error?.((err) => {
+        console.log("[InboxSocket] subscription ERROR", channelName, err);
+      });
+    }
 
     channel.listen(CHAT_MESSAGE_SENT, () => {
       dispatch(refreshChatInbox());

@@ -13,26 +13,53 @@
  * same Reverb server, same key; we use EXPO_PUBLIC_* and auth with Bearer token for private channels.
  */
 
-import Echo from "laravel-echo";
-import Pusher from "pusher-js";
+import EchoImport from "laravel-echo";
+// React Native build — avoids Node WS/http deps that break Metro
+import PusherImport from "pusher-js/react-native";
+
+type EchoConstructor = typeof import("laravel-echo").default;
+type PusherConstructor = typeof import("pusher-js").default;
+
+/** Metro/CJS interop: default import may be module namespace, not the class. */
+function resolveConstructor<T>(mod: unknown, namedKey?: string): T {
+  if (typeof mod === "function") return mod as T;
+  if (mod && typeof mod === "object") {
+    const obj = mod as Record<string, unknown>;
+    if (typeof obj.default === "function") return obj.default as T;
+    if (namedKey && typeof obj[namedKey] === "function") {
+      return obj[namedKey] as T;
+    }
+  }
+  throw new TypeError(
+    `[Echo] Could not resolve constructor${namedKey ? ` (${namedKey})` : ""}`,
+  );
+}
+
+const Echo = resolveConstructor<EchoConstructor>(EchoImport);
+const Pusher = resolveConstructor<PusherConstructor>(PusherImport, "Pusher");
 
 declare global {
   interface Window {
-    Pusher?: typeof Pusher;
+    Pusher?: PusherConstructor;
   }
 }
 
 // Laravel Echo expects Pusher on window (web) or global (React Native)
 if (typeof global !== "undefined") {
-  (global as unknown as { Pusher: typeof Pusher }).Pusher = Pusher;
+  (global as unknown as { Pusher: PusherConstructor }).Pusher = Pusher;
 }
 if (typeof window !== "undefined") {
   window.Pusher = Pusher;
 }
 
 const REVERB_APP_KEY =
-  process.env.EXPO_PUBLIC_REVERB_APP_KEY || process.env.EXPO_PUBLIC_VITE_REVERB_APP_KEY || "";
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
+  process.env.EXPO_PUBLIC_REVERB_APP_KEY ||
+  process.env.EXPO_PUBLIC_VITE_REVERB_APP_KEY ||
+  "";
+const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL || "").replace(
+  /\/$/,
+  "",
+);
 
 function getWsHost(): string {
   const explicit = process.env.EXPO_PUBLIC_REVERB_WS_HOST;
@@ -62,12 +89,12 @@ function getForceTLS(): boolean {
 function getWsPorts(): { wsPort: number; wssPort: number } {
   const forceTLS = getForceTLS();
   const portEnv = process.env.EXPO_PUBLIC_REVERB_WS_PORT;
-  const port = portEnv ? parseInt(portEnv, 10) : (forceTLS ? 443 : 8080);
+  const port = portEnv ? parseInt(portEnv, 10) : forceTLS ? 443 : 8080;
   if (Number.isNaN(port)) return { wsPort: 8080, wssPort: 443 };
   return { wsPort: forceTLS ? 443 : port, wssPort: 443 };
 }
 
-let echoInstance: Echo<"reverb"> | null = null;
+let echoInstance: InstanceType<EchoConstructor> | null = null;
 let lastToken: string | null = null;
 
 export interface EchoConfig {
@@ -91,10 +118,27 @@ export interface EchoConfig {
  * Get Echo config for the given access token. Use this to build Echo instance.
  */
 export function getEchoConfig(accessToken: string | null): EchoConfig | null {
-  if (!REVERB_APP_KEY || !accessToken || !accessToken.trim()) return null;
+  if (!REVERB_APP_KEY || !accessToken || !accessToken.trim()) {
+    if (__DEV__) {
+      console.log("[Echo] getEchoConfig null:", {
+        hasKey: Boolean(REVERB_APP_KEY),
+        keyLength: REVERB_APP_KEY?.length ?? 0,
+        hasToken: Boolean(accessToken?.trim()),
+      });
+    }
+    return null;
+  }
   const wsHost = getWsHost();
   const authEndpoint = getAuthEndpoint();
-  if (!wsHost || !authEndpoint) return null;
+  if (!wsHost || !authEndpoint) {
+    if (__DEV__) {
+      console.log("[Echo] getEchoConfig null: missing host/auth", {
+        wsHost,
+        authEndpoint,
+      });
+    }
+    return null;
+  }
 
   const { wsPort, wssPort } = getWsPorts();
   return {
@@ -117,11 +161,17 @@ export function getEchoConfig(accessToken: string | null): EchoConfig | null {
  * Get or create Echo instance. Reuses same instance when token unchanged.
  * Pass null token to disconnect and clear.
  */
-export function getEcho(accessToken: string | null): Echo<"reverb"> | null {
+export function getEcho(
+  accessToken: string | null,
+): InstanceType<EchoConstructor> | null {
   if (!accessToken || !accessToken.trim()) {
     if (echoInstance) {
       try {
-        (echoInstance as unknown as { connector: { pusher?: { disconnect?: () => void } } }).connector?.pusher?.disconnect?.();
+        (
+          echoInstance as unknown as {
+            connector: { pusher?: { disconnect?: () => void } };
+          }
+        ).connector?.pusher?.disconnect?.();
       } catch {
         // ignore
       }
@@ -140,7 +190,11 @@ export function getEcho(accessToken: string | null): Echo<"reverb"> | null {
 
   if (echoInstance) {
     try {
-      (echoInstance as unknown as { connector: { pusher?: { disconnect?: () => void } } }).connector?.pusher?.disconnect?.();
+      (
+        echoInstance as unknown as {
+          connector: { pusher?: { disconnect?: () => void } };
+        }
+      ).connector?.pusher?.disconnect?.();
     } catch {
       // ignore
     }
@@ -148,6 +202,19 @@ export function getEcho(accessToken: string | null): Echo<"reverb"> | null {
   }
 
   try {
+    if (__DEV__) {
+      console.log("[Echo] config", {
+        key: config.key ? `${config.key.slice(0, 6)}…` : "(empty)",
+        keyLength: config.key?.length ?? 0,
+        wsHost: config.wsHost,
+        wsPort: config.wsPort,
+        wssPort: config.wssPort,
+        forceTLS: config.forceTLS,
+        authEndpoint: config.authEndpoint,
+      });
+      (Pusher as unknown as { logToConsole?: boolean }).logToConsole = true;
+    }
+
     echoInstance = new Echo({
       broadcaster: "reverb",
       key: config.key,
@@ -157,12 +224,15 @@ export function getEcho(accessToken: string | null): Echo<"reverb"> | null {
       forceTLS: config.forceTLS,
       authEndpoint: config.authEndpoint,
       auth: config.auth,
-      enabledTransports: ["ws", "wss"], // match web (Vite) config; use only ws/wss
-      Pusher, // so connector works in React Native when window.Pusher is missing
+      enabledTransports: ["ws", "wss"],
+      // Must be the Pusher class — module namespace causes "constructor is not callable"
+      Pusher,
     });
     lastToken = accessToken;
+    if (__DEV__) console.log("[Echo] instance created OK");
     return echoInstance;
   } catch (err) {
+    if (__DEV__) console.log("[Echo] new Echo() FAILED", err);
     return null;
   }
 }
