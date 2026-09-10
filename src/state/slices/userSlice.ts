@@ -67,15 +67,18 @@ export const isBusinessSubscriptionActive = (
   status?: BusinessStatus | null,
 ): boolean => status?.subscription_status === "active";
 
-export const canShowStaffManagement = (
+/** True when business has finished Stripe Connect onboarding. */
+export const isStripeOnboardingCompleted = (
   status?: BusinessStatus | null,
-): boolean => {
-  if (!status) return true;
-  if (status.stripe_onboarding_status !== "completed") return false;
-  // Show staff UI for all subscribed plans (including Solo).
-  // Solo still cannot add staff — that is gated by canAddStaffMembers.
-  return true;
-};
+): boolean => status?.stripe_onboarding_status === "completed";
+
+/**
+ * Whether to show staff management UI (dashboard section, Manage Team, etc.).
+ * Visible even before Stripe Connect — adding staff is gated separately.
+ */
+export const canShowStaffManagement = (
+  _status?: BusinessStatus | null,
+): boolean => true;
 
 export const isSoloSubscription = (
   status?: BusinessStatus | null,

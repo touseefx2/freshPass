@@ -27,11 +27,12 @@ import { Skeleton } from "@/src/components/skeletons";
 import {
   setStaffInvitationEmail,
 } from "@/src/state/slices/completeProfileSlice";
-import { setActionLoader, setBusinessPlansModalVisible, setBusinessPlansModalBusinessOnly } from "@/src/state/slices/generalSlice";
+import { setActionLoader, setBusinessPlansModalVisible, setBusinessPlansModalBusinessOnly, setStripeConnectModalVisible } from "@/src/state/slices/generalSlice";
 import {
   canAddStaffMembers,
   canUseOwnerAsStaff,
   isSoloSubscription,
+  isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -329,6 +330,11 @@ export default function ManageTeamScreen() {
   };
 
   const handleInvite = async () => {
+    if (!isStripeOnboardingCompleted(businessStatus)) {
+      dispatch(setStripeConnectModalVisible(true));
+      return;
+    }
+
     if (isSoloPlan) {
       setUpgradeModalVisible(true);
       return;
@@ -458,6 +464,10 @@ export default function ManageTeamScreen() {
 
   const handleOwnerCtaPress = () => {
     if (ownerBusy) return;
+    if (!isStripeOnboardingCompleted(businessStatus)) {
+      dispatch(setStripeConnectModalVisible(true));
+      return;
+    }
     if (!ownerEnabled) {
       void runOwnerEnable();
       return;
