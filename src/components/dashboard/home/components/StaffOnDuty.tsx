@@ -49,31 +49,22 @@ import {
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 
-const STAFF_CARD_WIDTH = widthScale(128);
-const STAFF_CARD_GAP = moderateWidthScale(24);
-const STAFF_LIST_PADDING = moderateWidthScale(14);
+const STAFF_CARD_WIDTH = widthScale(152);
+const STAFF_CARD_GAP = moderateWidthScale(18);
 const STAFF_ITEM_SIZE = STAFF_CARD_WIDTH + STAFF_CARD_GAP;
 const STAFF_LIFT = moderateHeightScale(5);
+const STAFF_AVATAR_SIZE = widthScale(76);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     outerContainer: {
       marginBottom: moderateHeightScale(18),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    staffContainer: {
-      backgroundColor: theme.lightBeige,
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      paddingTop: moderateHeightScale(14),
-      paddingBottom: moderateHeightScale(10),
     },
     sectionHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(20),
       marginBottom: moderateHeightScale(12),
       gap: moderateWidthScale(8),
     },
@@ -128,8 +119,9 @@ const createStyles = (theme: Theme) =>
     staffList: {
       flexDirection: "row",
       gap: STAFF_CARD_GAP,
-      paddingHorizontal: STAFF_LIST_PADDING,
-      paddingTop: moderateHeightScale(14),
+      paddingLeft: moderateWidthScale(20),
+      paddingRight: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(4),
       paddingBottom: moderateHeightScale(16),
     },
     staffCardWrap: {
@@ -159,22 +151,22 @@ const createStyles = (theme: Theme) =>
     },
     staffImageWrapper: {
       position: "relative",
-      width: widthScale(56),
-      height: widthScale(56),
+      width: STAFF_AVATAR_SIZE,
+      height: STAFF_AVATAR_SIZE,
       justifyContent: "center",
       alignItems: "center",
       marginBottom: moderateHeightScale(10),
     },
     staffImageClip: {
-      width: widthScale(56),
-      height: widthScale(56),
-      borderRadius: widthScale(56 / 2),
+      width: STAFF_AVATAR_SIZE,
+      height: STAFF_AVATAR_SIZE,
+      borderRadius: STAFF_AVATAR_SIZE / 2,
       overflow: "hidden",
     },
     staffImage: {
-      width: widthScale(56),
-      height: widthScale(56),
-      borderRadius: widthScale(56 / 2),
+      width: STAFF_AVATAR_SIZE,
+      height: STAFF_AVATAR_SIZE,
+      borderRadius: STAFF_AVATAR_SIZE / 2,
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 1.5,
       borderColor: theme.borderLight,
@@ -183,9 +175,9 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       bottom: 1,
       left: 1,
-      width: moderateWidthScale(11),
-      height: moderateWidthScale(11),
-      borderRadius: moderateWidthScale(11) / 2,
+      width: moderateWidthScale(13),
+      height: moderateWidthScale(13),
+      borderRadius: moderateWidthScale(13) / 2,
       borderWidth: 2,
       borderColor: theme.white,
       zIndex: 2,
@@ -202,7 +194,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(2),
     },
     staffName: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textAlign: "center",
@@ -229,7 +221,7 @@ const createStyles = (theme: Theme) =>
       lineHeight: moderateHeightScale(11),
     },
     staffExperience: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
@@ -237,11 +229,12 @@ const createStyles = (theme: Theme) =>
     },
     emptyStateContainer: {
       paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(20),
     },
     // Kept for Skeleton compatibility
     staffItem: {
       width: STAFF_CARD_WIDTH,
-      minHeight: heightScale(140),
+      minHeight: heightScale(168),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
       paddingTop: moderateHeightScale(14),
@@ -530,84 +523,82 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
 
   return (
     <View style={styles.outerContainer}>
-      <View style={styles.staffContainer}>
-        <View style={styles.sectionHeader}>
-          <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
-            {staffCount > 0 ? (
-              <View style={styles.countBadge}>
-                <Text style={styles.countBadgeText}>{staffCount}</Text>
-              </View>
-            ) : null}
-          </View>
-          <View style={styles.sectionRight}>
-            {showOwnerCta && (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleOwnerCtaPress}
-                disabled={ownerBusy}
-              >
-                {ownerBusy ? (
-                  <ActivityIndicator size="small" color={theme.selectCard} />
-                ) : (
-                  <Text style={styles.ownerCtaText} numberOfLines={1}>
-                    {ownerEnabled
-                      ? t("removeYourself")
-                      : t("addYourselfAsStaff")}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            )}
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
+          {staffCount > 0 ? (
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{staffCount}</Text>
+            </View>
+          ) : null}
+        </View>
+        <View style={styles.sectionRight}>
+          {showOwnerCta && (
             <TouchableOpacity
               activeOpacity={0.7}
-              onPress={handleAddStaffPress}
-              style={styles.addStaffCircle}
+              onPress={handleOwnerCtaPress}
+              disabled={ownerBusy}
             >
-              <Feather name="plus" size={iconScale(15)} color={theme.white85} />
+              {ownerBusy ? (
+                <ActivityIndicator size="small" color={theme.selectCard} />
+              ) : (
+                <Text style={styles.ownerCtaText} numberOfLines={1}>
+                  {ownerEnabled
+                    ? t("removeYourself")
+                    : t("addYourselfAsStaff")}
+                </Text>
+              )}
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {!data ? (
-          <Skeleton screenType="StaffOnDuty" styles={styles} />
-        ) : data.length === 0 ? (
-          <EmptyState
-            compact
-            icon="groups"
-            title={t("noStaffOnDuty")}
-            subtitle={t("staffEmptySubtitle")}
-            containerStyle={styles.emptyStateContainer}
-          />
-        ) : (
-          <Animated.ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.staffList}
-            onScroll={staffScrollHandler}
-            scrollEventThrottle={16}
-            snapToInterval={STAFF_ITEM_SIZE}
-            decelerationRate="fast"
-            disableIntervalMomentum
+          )}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleAddStaffPress}
+            style={styles.addStaffCircle}
           >
-            {data.map((staff, index) => (
-              <StaffMotionCard
-                key={staff.id}
-                staff={staff}
-                index={index}
-                scrollX={staffScrollX}
-                styles={styles}
-                ownerLabel={t("owner")}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(main)/staffDetail",
-                    params: { id: String(staff.id) },
-                  })
-                }
-              />
-            ))}
-          </Animated.ScrollView>
-        )}
+            <Feather name="plus" size={iconScale(15)} color={theme.white85} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {!data ? (
+        <Skeleton screenType="StaffOnDuty" styles={styles} />
+      ) : data.length === 0 ? (
+        <EmptyState
+          compact
+          icon="groups"
+          title={t("noStaffOnDuty")}
+          subtitle={t("staffEmptySubtitle")}
+          containerStyle={styles.emptyStateContainer}
+        />
+      ) : (
+        <Animated.ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.staffList}
+          onScroll={staffScrollHandler}
+          scrollEventThrottle={16}
+          snapToInterval={STAFF_ITEM_SIZE}
+          decelerationRate="fast"
+          disableIntervalMomentum
+        >
+          {data.map((staff, index) => (
+            <StaffMotionCard
+              key={staff.id}
+              staff={staff}
+              index={index}
+              scrollX={staffScrollX}
+              styles={styles}
+              ownerLabel={t("owner")}
+              onPress={() =>
+                router.push({
+                  pathname: "/(main)/staffDetail",
+                  params: { id: String(staff.id) },
+                })
+              }
+            />
+          ))}
+        </Animated.ScrollView>
+      )}
 
       <BuyBusinessPlanModal
         visible={buyPlanModalVisible}
