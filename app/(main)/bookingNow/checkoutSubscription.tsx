@@ -35,6 +35,7 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import SubscriptionPickerBottomSheet from "@/src/components/SubscriptionPickerBottomSheet";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
+import { resolveApiImageUrl } from "@/src/utils/media";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -546,18 +547,15 @@ function CheckoutSubscriptionContent() {
 
   // Get business logo URL
   const getBusinessLogoUrl = useMemo(() => {
-    // If coming from businessDetail with logo in params
-    if (params.businessLogo && params.businessLogo !== "") {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-      return `${baseUrl}${params.businessLogo}`;
-    }
-    // If coming from API
-    if (businessData?.logo_url) {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-      return `${baseUrl}${businessData.logo_url}`;
-    }
-    // Default image if no logo available
-    return "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
+    return (
+      resolveApiImageUrl(
+        params.businessLogo && params.businessLogo !== ""
+          ? params.businessLogo
+          : businessData?.logo_url,
+      ) ??
+      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
+      "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
+    );
   }, [businessData?.logo_url, params.businessLogo]);
 
   const handleSubscribe = async () => {

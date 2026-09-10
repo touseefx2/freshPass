@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  Image,
   Share,
   StatusBar,
   ScrollView,
@@ -20,6 +19,7 @@ import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
+import MediaImage from "@/src/components/mediaImage";
 import { ApiService } from "@/src/services/api";
 import { chatEndpoints } from "@/src/services/endpoints";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
@@ -29,6 +29,7 @@ import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
 } from "@/src/components/PotentialContactsModal";
+import { isLegacyAiMediaUrl } from "@/src/utils/media";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
@@ -46,6 +47,38 @@ function getItemUrl(item: MemoryItem): string {
 }
 
 function MemoryVideoCard({
+  videoUrl,
+  styles,
+  theme,
+}: {
+  videoUrl: string;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+}) {
+  if (isLegacyAiMediaUrl(videoUrl)) {
+    return (
+      <View style={styles.modalImageCardInner}>
+        <MediaImage
+          uri={videoUrl}
+          style={styles.modalResultImage}
+          resizeMode="cover"
+          placeholderIcon="videocam"
+          iconSize={moderateWidthScale(48)}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <MemoryVideoCardPlayer
+      videoUrl={videoUrl}
+      styles={styles}
+      theme={theme}
+    />
+  );
+}
+
+function MemoryVideoCardPlayer({
   videoUrl,
   styles,
   theme,
@@ -252,10 +285,25 @@ export default function ListMemories() {
     [],
   );
 
-  const openShareSheetForImage = useCallback((url: string) => {
-    setShareImageUrl(url);
-    setShareSheetVisible(true);
-  }, []);
+  const openShareSheetForImage = useCallback(
+    (url: string) => {
+      if (isLegacyAiMediaUrl(url)) {
+        showBanner(
+          t("error"),
+          t("legacyAiMediaUnavailable", {
+            defaultValue:
+              "This result is no longer available and cannot be shared.",
+          }),
+          "error",
+          4000,
+        );
+        return;
+      }
+      setShareImageUrl(url);
+      setShareSheetVisible(true);
+    },
+    [showBanner, t],
+  );
 
   const handleNativeShareImage = useCallback(async () => {
     if (!shareImageUrl) return;
@@ -440,10 +488,12 @@ export default function ListMemories() {
                               onPress={() => openFullImage(itemUrl, globalIndex)}
                               activeOpacity={0.9}
                             >
-                              <Image
-                                source={{ uri: itemUrl }}
+                              <MediaImage
+                                uri={itemUrl}
                                 style={styles.modalResultImage}
                                 resizeMode="cover"
+                                placeholderIcon="photo-library"
+                                iconSize={moderateWidthScale(36)}
                               />
                             </TouchableOpacity>
                           )}

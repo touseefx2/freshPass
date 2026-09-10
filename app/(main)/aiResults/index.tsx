@@ -9,7 +9,6 @@ import {
   View,
   Text,
   TextInput,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Clipboard,
@@ -49,6 +48,8 @@ import ShareOptionsBottomSheet from "@/src/components/ShareOptionsBottomSheet";
 import PotentialContactsModal, {
   type PotentialContact,
 } from "@/src/components/PotentialContactsModal";
+import MediaImage from "@/src/components/mediaImage";
+import { isLegacyAiMediaUrl } from "@/src/utils/media";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
@@ -552,8 +553,8 @@ function OriginalMediaCard({
           }
           activeOpacity={0.9}
         >
-          <Image
-            source={{ uri: item.url }}
+          <MediaImage
+            uri={item.url}
             style={styles.originalMediaCardImage}
             resizeMode="cover"
           />
@@ -563,15 +564,17 @@ function OriginalMediaCard({
         <View
           style={[StyleSheet.absoluteFill, { backgroundColor: theme.black }]}
         >
-          <Image
-            source={{ uri: item.url }}
+          <MediaImage
+            uri={item.url}
             style={[
               styles.originalMediaCardImage,
               StyleSheet.absoluteFillObject,
             ]}
             resizeMode="cover"
           />
-          <MiniVideoPlayer videoUrl={item.url} styles={styles} theme={theme} />
+          {!isLegacyAiMediaUrl(item.url) && (
+            <MiniVideoPlayer videoUrl={item.url} styles={styles} theme={theme} />
+          )}
         </View>
       )}
       {isAudio && (
@@ -1176,30 +1179,88 @@ export default function AiResults() {
 
   const openShareSheetForImage = useCallback(
     (url: string, labelKey: string, linkOnly?: boolean) => {
+      if (isLegacyAiMediaUrl(url)) {
+        showBanner(
+          t("error"),
+          t("legacyAiMediaUnavailable", {
+            defaultValue:
+              "This result is no longer available and cannot be shared.",
+          }),
+          "error",
+          4000,
+        );
+        return;
+      }
       setShareContext({ url, labelKey, linkOnly });
       setShareSheetVisible(true);
     },
-    [],
+    [showBanner, t],
   );
 
-  const openShareSheetForOriginalImage = useCallback((url: string) => {
-    setShareContext({ url, labelKey: "sourceImage", linkOnly: false });
-    setShareSheetVisible(true);
-  }, []);
+  const openShareSheetForOriginalImage = useCallback(
+    (url: string) => {
+      if (isLegacyAiMediaUrl(url)) {
+        showBanner(
+          t("error"),
+          t("legacyAiMediaUnavailable", {
+            defaultValue:
+              "This result is no longer available and cannot be shared.",
+          }),
+          "error",
+          4000,
+        );
+        return;
+      }
+      setShareContext({ url, labelKey: "sourceImage", linkOnly: false });
+      setShareSheetVisible(true);
+    },
+    [showBanner, t],
+  );
 
-  const openShareSheetForReelVideo = useCallback((videoUrl: string) => {
-    setShareContext({
-      url: videoUrl,
-      labelKey: "video",
-      simpleReelShare: true,
-    });
-    setShareSheetVisible(true);
-  }, []);
+  const openShareSheetForReelVideo = useCallback(
+    (videoUrl: string) => {
+      if (isLegacyAiMediaUrl(videoUrl)) {
+        showBanner(
+          t("error"),
+          t("legacyAiMediaUnavailable", {
+            defaultValue:
+              "This result is no longer available and cannot be shared.",
+          }),
+          "error",
+          4000,
+        );
+        return;
+      }
+      setShareContext({
+        url: videoUrl,
+        labelKey: "video",
+        simpleReelShare: true,
+      });
+      setShareSheetVisible(true);
+    },
+    [showBanner, t],
+  );
 
-  const openShareSheetForSection = useCallback((section: NormalizedSection) => {
-    setShareContext({ section });
-    setShareSheetVisible(true);
-  }, []);
+  const openShareSheetForSection = useCallback(
+    (section: NormalizedSection) => {
+      const hasLegacy = section.views.some((v) => isLegacyAiMediaUrl(v.url));
+      if (hasLegacy) {
+        showBanner(
+          t("error"),
+          t("legacyAiMediaUnavailable", {
+            defaultValue:
+              "This result is no longer available and cannot be shared.",
+          }),
+          "error",
+          4000,
+        );
+        return;
+      }
+      setShareContext({ section });
+      setShareSheetVisible(true);
+    },
+    [showBanner, t],
+  );
 
   const openShareToUserModal = useCallback(() => {
     setShareToUserModalVisible(true);
@@ -1597,8 +1658,8 @@ export default function AiResults() {
               }}
               activeOpacity={1}
             >
-              <Image
-                source={{ uri: sm.images.processed }}
+              <MediaImage
+                uri={sm.images.processed}
                 style={styles.singleImage}
                 resizeMode="cover"
               />
@@ -1689,8 +1750,8 @@ export default function AiResults() {
                       }
                       activeOpacity={1}
                     >
-                      <Image
-                        source={{ uri: url }}
+                      <MediaImage
+                        uri={url}
                         style={styles.singleImage}
                         resizeMode="cover"
                       />
@@ -1906,10 +1967,8 @@ export default function AiResults() {
                   }}
                   activeOpacity={1}
                 >
-                  <Image
-                    source={{
-                      uri: normalized.requestPayload!.originalImageUrl,
-                    }}
+                  <MediaImage
+                    uri={normalized.requestPayload!.originalImageUrl}
                     style={styles.originalImageSourceImage}
                     resizeMode="cover"
                   />
@@ -2027,8 +2086,8 @@ export default function AiResults() {
                       }
                       activeOpacity={1}
                     >
-                      <Image
-                        source={{ uri: url }}
+                      <MediaImage
+                        uri={url}
                         style={styles.resultImage}
                         resizeMode="cover"
                       />

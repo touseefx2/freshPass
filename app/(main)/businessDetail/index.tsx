@@ -66,6 +66,7 @@ import Logger from "@/src/services/logger";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
 import RetryButton from "@/src/components/retryButton";
 import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
+import { resolveApiImageUrl } from "@/src/utils/media";
 import ExploreSegmentToggle, {
   type ExploreSegmentValue,
 } from "../dashboard/(explore)/ExploreSegmentToggle";
@@ -1874,11 +1875,11 @@ export default function BusinessDetailScreen() {
 
   // Get business logo URL
   const getBusinessLogoUrl = () => {
-    if (businessData?.logo_url) {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-      return `${baseUrl}${businessData.logo_url}`;
-    }
-    return process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+    return (
+      resolveApiImageUrl(businessData?.logo_url) ??
+      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
+      ""
+    );
   };
 
   // Map portfolio photos from API or use defaults

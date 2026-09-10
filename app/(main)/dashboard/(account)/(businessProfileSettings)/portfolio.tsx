@@ -38,6 +38,7 @@ import { GalleryIcon, CameraIcon } from "@/assets/icons";
 import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
+import { resolveApiImageUrl } from "@/src/utils/media";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const PADDING = moderateWidthScale(20);
@@ -324,14 +325,13 @@ export default function ManagePortfolioPhotosScreen() {
   }, []);
 
   const gridData: GridItem[] = useMemo(() => {
-    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
     const items: GridItem[] = [
       { type: "gallery", id: "gallery" },
       { type: "camera", id: "camera" },
       ...existingPhotos.map((photo) => ({
         type: "photo" as const,
         id: `existing_${photo.id}`,
-        uri: photo.path ? `${baseUrl}${photo.path}` : photo.url || "",
+        uri: photo.url || resolveApiImageUrl(photo.path) || "",
         isExisting: true,
         backendId: photo.id,
       })),

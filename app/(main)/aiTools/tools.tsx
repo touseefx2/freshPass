@@ -247,7 +247,10 @@ export default function Tools() {
   }, []);
 
   const handleHairPipelineSeeStatus = () => {
-    router.push("/aiRequests");
+    router.push({
+      pathname: "/aiRequests",
+      params: { fromProcessingModal: "1" },
+    });
     closeHairPipelineModal();
   };
 

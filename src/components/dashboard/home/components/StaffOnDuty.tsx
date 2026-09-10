@@ -131,6 +131,7 @@ const createStyles = (theme: Theme) =>
     },
     staffCard: {
       width: STAFF_CARD_WIDTH,
+      minHeight: heightScale(168),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
       paddingTop: moderateHeightScale(14),
@@ -300,10 +301,13 @@ function getStaffImageUri(staff: StaffData) {
   return process.env.EXPO_PUBLIC_API_BASE_URL + profileImage;
 }
 
+const STAFF_MOTION_THRESHOLD = 4;
+
 type StaffMotionCardProps = {
   staff: StaffData;
   index: number;
   scrollX: SharedValue<number>;
+  enableMotion: boolean;
   styles: ReturnType<typeof createStyles>;
   ownerLabel: string;
   onPress: () => void;
@@ -313,6 +317,7 @@ function StaffMotionCard({
   staff,
   index,
   scrollX,
+  enableMotion,
   styles,
   ownerLabel,
   onPress,
@@ -323,6 +328,10 @@ function StaffMotionCard({
   const experience = staff.description?.trim() || null;
 
   const motionStyle = useAnimatedStyle(() => {
+    if (!enableMotion) {
+      return { transform: [{ translateY: 0 }] };
+    }
+
     const inputRange = [
       (index - 1) * STAFF_ITEM_SIZE,
       index * STAFF_ITEM_SIZE,
@@ -340,7 +349,7 @@ function StaffMotionCard({
     return {
       transform: [{ translateY }],
     };
-  });
+  }, [enableMotion, index]);
 
   return (
     <Animated.View style={[styles.staffCardWrap, motionStyle]}>
@@ -379,7 +388,11 @@ function StaffMotionCard({
             <Text style={styles.staffExperience} numberOfLines={2}>
               {experience}
             </Text>
-          ) : null}
+          ) : (
+            <Text style={styles.staffExperience} numberOfLines={1}>
+              {" "}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -411,6 +424,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   });
 
   const staffCount = data?.length ?? 0;
+  const enableStaffMotion = staffCount > STAFF_MOTION_THRESHOLD;
 
   useEffect(() => {
     callApi();
@@ -585,11 +599,11 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.staffList}
-          onScroll={staffScrollHandler}
-          scrollEventThrottle={16}
-          snapToInterval={STAFF_ITEM_SIZE}
-          decelerationRate="fast"
-          disableIntervalMomentum
+          onScroll={enableStaffMotion ? staffScrollHandler : undefined}
+          scrollEventThrottle={enableStaffMotion ? 16 : undefined}
+          snapToInterval={enableStaffMotion ? STAFF_ITEM_SIZE : undefined}
+          decelerationRate={enableStaffMotion ? "fast" : "normal"}
+          disableIntervalMomentum={enableStaffMotion}
         >
           {data.map((staff, index) => (
             <StaffMotionCard
@@ -597,6 +611,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
               staff={staff}
               index={index}
               scrollX={staffScrollX}
+              enableMotion={enableStaffMotion}
               styles={styles}
               ownerLabel={t("owner")}
               onPress={() =>

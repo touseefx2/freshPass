@@ -27,11 +27,11 @@ import {
   fetchTipDetails,
   formatTipAmount,
   getTipPromptLabel,
-  resolveApiImageUrl,
   type PaidTip,
   type TipDetails,
   type TipRecipient,
 } from "@/src/services/tipService";
+import { resolveApiImageUrl } from "@/src/utils/media";
 
 type TipSectionProps = {
   appointmentId: number;

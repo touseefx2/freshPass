@@ -73,10 +73,10 @@ import PayAndTipModal from "@/src/components/payAndTipModal";
 import {
   formatTipAmount,
   formatTipRecipientName,
-  resolveApiImageUrl,
   type PaidTip,
   type PendingTip,
 } from "@/src/services/tipService";
+import { resolveApiImageUrl } from "@/src/utils/media";
 import type { AffiliatedBusiness } from "@/src/types/affiliation";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";

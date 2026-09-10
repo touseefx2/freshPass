@@ -22,6 +22,7 @@ import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
+import { resolveApiImageUrl } from "@/src/utils/media";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -188,11 +189,11 @@ export default function BusinessProfileScreen() {
   };
 
   const getLogoUri = () => {
-    if (!profileData?.logo_url) {
-      return  "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
-    }
-    const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-    return `${baseUrl}${profileData.logo_url}`;
+    return (
+      resolveApiImageUrl(profileData?.logo_url) ??
+      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
+      "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
+    );
   };
 
   const renderSkeleton = () => (

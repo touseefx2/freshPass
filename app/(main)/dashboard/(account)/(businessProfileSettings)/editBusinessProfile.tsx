@@ -38,6 +38,7 @@ import {
 } from "react-native-safe-area-context";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
+import { resolveApiImageUrl } from "@/src/utils/media";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -363,11 +364,11 @@ export default function EditBusinessProfileScreen() {
   }>();
 
   const getInitialLogoUri = () => {
-    if (params.logo_url) {
-      const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-      return `${baseUrl}${params.logo_url}`;
-    }
-    return "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
+    return (
+      resolveApiImageUrl(params.logo_url) ??
+      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
+      "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
+    );
   };
 
   const originalLogoImageUri = getInitialLogoUri();

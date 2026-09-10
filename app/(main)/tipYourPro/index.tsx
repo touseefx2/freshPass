@@ -33,9 +33,9 @@ import {
   fetchTipDetails,
   formatTipAmount,
   getTipHeaderTitle,
-  resolveApiImageUrl,
   type TipDetails,
 } from "@/src/services/tipService";
+import { resolveApiImageUrl } from "@/src/utils/media";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({

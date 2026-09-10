@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
@@ -17,6 +16,7 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import EmptyState from "@/src/components/emptyState";
+import MediaImage from "@/src/components/mediaImage";
 import { ApiService } from "@/src/services/api";
 import { memoriesEndpoints } from "@/src/services/endpoints";
 
@@ -215,10 +215,12 @@ export default function AiMemories() {
         >
           <View style={styles.sectionCardImage}>
             {firstImageUrl ? (
-              <Image
-                source={{ uri: firstImageUrl }}
+              <MediaImage
+                uri={firstImageUrl}
                 style={styles.sectionCardImageInner}
                 resizeMode="cover"
+                placeholderIcon={hasOnlyVideos ? "videocam" : "photo-library"}
+                iconSize={moderateWidthScale(48)}
               />
             ) : (
               <View style={styles.sectionCardIconPlaceholder}>

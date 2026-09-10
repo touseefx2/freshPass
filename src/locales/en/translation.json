@@ -620,6 +620,7 @@
   "failedToSelectImageFromGallery": "Failed to select image from gallery. Please try again.",
   "failedToTakePhoto": "Failed to take photo. Please try again.",
   "failedToCopyToClipboard": "Failed to copy to clipboard",
+  "legacyAiMediaUnavailable": "This result is no longer available and cannot be shared.",
   "clearChat": "Clear Chat",
   "clearChatConfirm": "Are you sure you want to clear all messages? This will start a new conversation.",
   "failedToGetAiResponse": "Failed to get response from AI. Please try again.",
