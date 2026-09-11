@@ -7,6 +7,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Platform,
 } from "react-native";
 import Animated, {
   Extrapolation,
@@ -100,15 +101,28 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     ownerProfileCard: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(16),
       paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(16),
       paddingBottom: moderateHeightScale(14),
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(18),
       borderWidth: 1,
-      borderColor: theme.borderLight,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.lightGreen1,
+      borderBottomColor: theme.lightGreen1,
+      overflow: "hidden",
+    },
+    ownerCardShell: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor:
+        Platform.OS === "android" ? theme.lightGreen05 : theme.lightGreen1,
+      paddingBottom:
+        Platform.OS === "android"
+          ? moderateHeightScale(2)
+          : moderateHeightScale(3),
     },
     ownerProfileRow: {
       flexDirection: "row",
@@ -284,6 +298,16 @@ const createStyles = (theme: Theme) =>
     staffCardWrap: {
       width: STAFF_CARD_WIDTH,
     },
+    staffCardShell: {
+      width: STAFF_CARD_WIDTH,
+      borderRadius: moderateWidthScale(12),
+      backgroundColor:
+        Platform.OS === "android" ? theme.lightGreen05 : theme.lightGreen1,
+      paddingBottom:
+        Platform.OS === "android"
+          ? moderateHeightScale(2)
+          : moderateHeightScale(3),
+    },
     staffCard: {
       width: STAFF_CARD_WIDTH,
       minHeight: heightScale(168),
@@ -294,18 +318,37 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(10),
       alignItems: "center",
       borderWidth: 1,
-      borderColor: theme.borderLight,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.lightGreen1,
+      borderBottomColor: theme.lightGreen1,
       overflow: "hidden",
     },
     shadow: {
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 3,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 5,
-      elevation: 3,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(2),
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(3),
+        },
+        android: {
+          elevation: 1,
+          shadowColor: theme.lightGreen2,
+        },
+        default: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(2),
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(3),
+        },
+      }),
     },
     staffImageWrapper: {
       position: "relative",
@@ -508,45 +551,47 @@ function StaffMotionCard({
 
   return (
     <Animated.View style={[styles.staffCardWrap, motionStyle]}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={[styles.staffCard, styles.shadow]}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        delayLongPress={350}
-      >
-        <View style={styles.staffImageWrapper}>
-          <View style={styles.staffImageClip}>
-            <Image
-              source={{ uri: getStaffImageUri(staff) }}
-              style={styles.staffImage}
+      <View style={[styles.staffCardShell, styles.shadow]}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.staffCard}
+          onPress={onPress}
+          onLongPress={onLongPress}
+          delayLongPress={350}
+        >
+          <View style={styles.staffImageWrapper}>
+            <View style={styles.staffImageClip}>
+              <Image
+                source={{ uri: getStaffImageUri(staff) }}
+                style={styles.staffImage}
+              />
+            </View>
+            <View
+              style={[
+                styles.staffStatusDot,
+                isActive
+                  ? styles.staffStatusDotActive
+                  : styles.staffStatusDotInactive,
+              ]}
             />
           </View>
-          <View
-            style={[
-              styles.staffStatusDot,
-              isActive
-                ? styles.staffStatusDotActive
-                : styles.staffStatusDotInactive,
-            ]}
-          />
-        </View>
 
-        <View style={styles.staffInfo}>
-          <Text style={styles.staffName} numberOfLines={1}>
-            {staff.name ?? ""}
-          </Text>
-          {experience ? (
-            <Text style={styles.staffExperience} numberOfLines={2}>
-              {experience}
+          <View style={styles.staffInfo}>
+            <Text style={styles.staffName} numberOfLines={1}>
+              {staff.name ?? ""}
             </Text>
-          ) : (
-            <Text style={styles.staffExperience} numberOfLines={1}>
-              {" "}
-            </Text>
-          )}
-        </View>
-      </TouchableOpacity>
+            {experience ? (
+              <Text style={styles.staffExperience} numberOfLines={2}>
+                {experience}
+              </Text>
+            ) : (
+              <Text style={styles.staffExperience} numberOfLines={1}>
+                {" "}
+              </Text>
+            )}
+          </View>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -849,53 +894,55 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>{t("myBookingProfile")}</Text>
       </View>
-      <View style={[styles.ownerProfileCard, styles.shadow]}>
-        <View style={styles.ownerProfileRow}>
-          <View style={styles.ownerAvatarWrap}>
-            <View style={styles.ownerAvatarClip}>
-              <Image
-                source={{ uri: ownerImageUri }}
-                style={styles.ownerAvatar}
+      <View style={[styles.ownerCardShell, styles.shadow]}>
+        <View style={styles.ownerProfileCard}>
+          <View style={styles.ownerProfileRow}>
+            <View style={styles.ownerAvatarWrap}>
+              <View style={styles.ownerAvatarClip}>
+                <Image
+                  source={{ uri: ownerImageUri }}
+                  style={styles.ownerAvatar}
+                />
+              </View>
+              <View
+                style={[
+                  styles.ownerStatusDot,
+                  ownerIsActive
+                    ? styles.staffStatusDotActive
+                    : styles.staffStatusDotInactive,
+                ]}
               />
-            </View>
-            <View
-              style={[
-                styles.ownerStatusDot,
-                ownerIsActive
-                  ? styles.staffStatusDotActive
-                  : styles.staffStatusDotInactive,
-              ]}
-            />
-            <View style={styles.ownerBadge}>
-              <View style={styles.ownerBadgePill}>
-                <Text style={styles.ownerBadgeText}>{t("owner")}</Text>
+              <View style={styles.ownerBadge}>
+                <View style={styles.ownerBadgePill}>
+                  <Text style={styles.ownerBadgeText}>{t("owner")}</Text>
+                </View>
               </View>
             </View>
-          </View>
-          <Text style={styles.ownerProfileName} numberOfLines={1}>
-            {ownerName}
-          </Text>
-        </View>
-
-        <View style={styles.ownerProfileDivider} />
-
-        <View style={styles.acceptRow}>
-          <View style={styles.acceptCopy}>
-            <Text style={styles.acceptTitle}>{t("acceptAppointments")}</Text>
-            <Text style={styles.acceptSubtitle} numberOfLines={2}>
-              {t("acceptAppointmentsSubtitle")}
+            <Text style={styles.ownerProfileName} numberOfLines={1}>
+              {ownerName}
             </Text>
           </View>
-          {ownerBusy ? (
-            <ActivityIndicator size="small" color={theme.darkGreen} />
-          ) : (
-            <CustomToggle
-              value={ownerEnabled}
-              onValueChange={handleOwnerToggle}
-              activeTrackColor={theme.darkGreen}
-              inactiveTrackColor={theme.lightGreen2}
-            />
-          )}
+
+          <View style={styles.ownerProfileDivider} />
+
+          <View style={styles.acceptRow}>
+            <View style={styles.acceptCopy}>
+              <Text style={styles.acceptTitle}>{t("acceptAppointments")}</Text>
+              <Text style={styles.acceptSubtitle} numberOfLines={2}>
+                {t("acceptAppointmentsSubtitle")}
+              </Text>
+            </View>
+            {ownerBusy ? (
+              <ActivityIndicator size="small" color={theme.darkGreen} />
+            ) : (
+              <CustomToggle
+                value={ownerEnabled}
+                onValueChange={handleOwnerToggle}
+                activeTrackColor={theme.darkGreen}
+                inactiveTrackColor={theme.lightGreen2}
+              />
+            )}
+          </View>
         </View>
       </View>
     </>
