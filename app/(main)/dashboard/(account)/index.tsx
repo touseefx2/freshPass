@@ -4,7 +4,7 @@ import {
   Text,
   View,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   Alert,
   ActivityIndicator,
   Platform,
@@ -16,7 +16,6 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
 } from "@/src/theme/dimensions";
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -29,8 +28,119 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 
-const CARD_GAP = 0;
 const CARD_WIDTH_PERCENT = "48%";
+
+function Profile3DCard({
+  title,
+  icon,
+  onPress,
+  disabled,
+  isDelete,
+  loading,
+  theme,
+  styles,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  onPress: () => void;
+  disabled?: boolean;
+  isDelete?: boolean;
+  loading?: boolean;
+  theme: Theme;
+  styles: {
+    gridItem: object;
+    card: object;
+    cardHeader: object;
+    iconWrap: object;
+    cardContent: object;
+    cardTitle: object;
+    deleteCardTitle: object;
+  };
+}) {
+  const [pressed, setPressed] = useState(false);
+  const thickness = Platform.OS === "android"
+    ? moderateHeightScale(2)
+    : moderateHeightScale(3);
+  const faceRadius = moderateWidthScale(12);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={styles.gridItem}
+    >
+      <View
+        style={{
+          borderRadius: faceRadius,
+          backgroundColor:
+            Platform.OS === "android"
+              ? theme.lightGreen05
+              : theme.lightGreen1,
+          paddingBottom: pressed ? moderateHeightScale(1) : thickness,
+          transform: [
+            {
+              translateY: pressed ? thickness - moderateHeightScale(1) : 0,
+            },
+          ],
+          ...Platform.select({
+            ios: {
+              shadowColor: theme.shadow,
+              shadowOffset: {
+                width: 0,
+                height: moderateHeightScale(2),
+              },
+              shadowOpacity: pressed ? 0.06 : 0.1,
+              shadowRadius: moderateWidthScale(3),
+            },
+            android: {
+              elevation: pressed ? 0 : 1,
+              shadowColor: theme.lightGreen2,
+            },
+            default: {
+              shadowColor: theme.shadow,
+              shadowOffset: {
+                width: 0,
+                height: moderateHeightScale(2),
+              },
+              shadowOpacity: pressed ? 0.06 : 0.1,
+              shadowRadius: moderateWidthScale(3),
+            },
+          }),
+        }}
+      >
+        <View
+          style={[
+            styles.card,
+            {
+              borderRadius: faceRadius,
+              borderTopColor: theme.white,
+              borderLeftColor: theme.white,
+              borderRightColor: theme.lightGreen1,
+              borderBottomColor: theme.lightGreen1,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.iconWrap}>{icon}</View>
+            {loading ? (
+              <ActivityIndicator size="small" color={theme.red} />
+            ) : null}
+          </View>
+          <View style={styles.cardContent}>
+            <Text
+              style={[styles.cardTitle, isDelete && styles.deleteCardTitle]}
+              numberOfLines={2}
+            >
+              {title}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -61,31 +171,14 @@ const createStyles = (theme: Theme) =>
       width: CARD_WIDTH_PERCENT as any,
       marginTop: moderateHeightScale(12),
     },
-    shadow: {
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 3 },
-      shadowOpacity: 0.14,
-      shadowRadius: moderateWidthScale(8),
-      elevation: 5,
-    },
     card: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(10),
       height: moderateHeightScale(100),
       width: "100%",
-      ...Platform.select({
-        ios: {
-          shadowColor: theme.shadow,
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.14,
-          shadowRadius: moderateWidthScale(8),
-        },
-        android: {
-          elevation: 5,
-        },
-      }),
+      borderWidth: 1,
+      overflow: "hidden",
     },
     cardHeader: {
       flexDirection: "row",
@@ -94,18 +187,24 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(6),
     },
     iconWrap: {
-      width: moderateWidthScale(36),
-      height: moderateWidthScale(36),
-      borderRadius: moderateWidthScale(8),
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(10),
       backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
+      borderWidth: 1,
+      borderTopColor: theme.lightGreen1,
+      borderLeftColor: theme.lightGreen1,
+      borderRightColor: theme.white,
+      borderBottomColor: theme.white,
     },
     cardTitle: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(1),
+      lineHeight: fontSize.size16,
     },
     newBadge: {
       backgroundColor: theme.green,
@@ -121,6 +220,7 @@ const createStyles = (theme: Theme) =>
     },
     cardContent: {
       flex: 1,
+      justifyContent: "flex-end",
     },
     deleteCardTitle: {
       color: theme.red,
@@ -371,7 +471,7 @@ export default function AccountScreen() {
   ];
 
   const getIconForRow = (key: Row["key"]) => {
-    const iconSize = moderateWidthScale(20);
+    const iconSize = moderateWidthScale(22);
     const iconColor = theme.darkGreen;
     const redColor = theme.red;
     switch (key) {
@@ -487,37 +587,18 @@ export default function AccountScreen() {
         <View style={styles.gridContainer}>
           {rows.map((row) => {
             const isDelete = row.key === "delete";
-            const isLogout = row.key === "logout";
-            const showNewBadge = row.key === "subscriptions";
             return (
-              <View key={row.key} style={styles.gridItem}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => handleRowPress(row.key)}
-                  style={[styles.card, styles.shadow]}
-                  disabled={isDelete && deleteLoading}
-                >
-                  <View style={styles.cardHeader}>
-                    <View style={styles.iconWrap}>
-                      {getIconForRow(row.key)}
-                    </View>
-                    {isDelete && deleteLoading ? (
-                      <ActivityIndicator size="small" color={theme.red} />
-                    ) : null}
-                  </View>
-                  <View style={styles.cardContent}>
-                    <Text
-                      style={[
-                        styles.cardTitle,
-                        isDelete && styles.deleteCardTitle,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {row.title}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+              <Profile3DCard
+                key={row.key}
+                title={row.title}
+                icon={getIconForRow(row.key)}
+                onPress={() => handleRowPress(row.key)}
+                disabled={isDelete && deleteLoading}
+                isDelete={isDelete}
+                loading={isDelete && deleteLoading}
+                theme={theme}
+                styles={styles}
+              />
             );
           })}
         </View>
