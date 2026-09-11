@@ -20,7 +20,8 @@ export type NotificationSubType =
   | "affiliation_request_cancelled"
   | "affiliation_removed"
   | "plan_upgraded"
-  | "solo_switch";
+  | "solo_switch"
+  | "business_availability_sync";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -56,6 +57,8 @@ function getNotificationSubType(
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
  * - type "subscription" (customer role) → Profile → Customer subscriptions
  * - type "subscription" (business role) → Profile → Subscription
+ * - type "availability" (staff) → Profile → Staff availability
+ * - type "availability" (business) → Profile → Business setup availability
  * - type "affiliation" (host) → Profile → Affiliation requests
  * - type "affiliation" (solo) → Profile → Edit profile
  * - type "business" | "service" + model_id (customer role) → businessDetail
@@ -68,6 +71,10 @@ const AFFILIATION_REQUESTS_PATH =
   "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests";
 const EDIT_PROFILE_PATH =
   "/(main)/dashboard/(account)/(profile)/editProfile";
+const STAFF_AVAILABILITY_PATH =
+  "/(main)/dashboard/(account)/staffAvailability";
+const BUSINESS_AVAILABILITY_PATH =
+  "/(main)/dashboard/(account)/(businessProfileSettings)/setupAvailability";
 
 function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
   router.push("/(main)/dashboard/(account)");
@@ -374,6 +381,35 @@ export function navigateFromNotificationData(
         {
           model_id: data.model_id,
           event: data.event,
+          userRole,
+          fromInAppList: options?.fromInAppList ?? false,
+        },
+      );
+      return;
+    }
+  }
+
+  if (type === "availability") {
+    const userRole = store.getState().user.userRole;
+    const availabilityPath =
+      userRole === "staff"
+        ? STAFF_AVAILABILITY_PATH
+        : userRole === "business"
+          ? BUSINESS_AVAILABILITY_PATH
+          : null;
+
+    if (availabilityPath) {
+      navigateViaProfileFromNotification(
+        router,
+        availabilityPath,
+        options?.fromInAppList,
+      );
+      Logger.log(
+        `------>navigateFromNotificationData (availability) -> account -> ${
+          userRole === "staff" ? "staffAvailability" : "setupAvailability"
+        }`,
+        {
+          subType,
           userRole,
           fromInAppList: options?.fromInAppList ?? false,
         },

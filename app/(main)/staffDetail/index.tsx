@@ -11,7 +11,6 @@ import {
   Alert,
   Linking,
   Pressable,
-  Platform,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -146,61 +145,73 @@ function Staff3DActionButton({
       <View
         style={{
           borderRadius: faceRadius,
-          backgroundColor: theme.darkGreen,
+          backgroundColor: theme.black,
           paddingBottom: pressed
             ? moderateHeightScale(1)
-            : moderateHeightScale(4),
+            : moderateHeightScale(2),
           transform: [
             {
-              translateY: pressed ? moderateHeightScale(3) : 0,
+              translateY: pressed ? moderateHeightScale(6) : 0,
             },
           ],
           shadowColor: theme.shadow,
           shadowOffset: {
             width: 0,
-            height: moderateHeightScale(2),
+            height: pressed ? moderateHeightScale(1) : moderateHeightScale(4),
           },
-          shadowOpacity: pressed ? 0.1 : 0.18,
-          shadowRadius: moderateWidthScale(3),
-          elevation: pressed ? 1 : 4,
+          shadowOpacity: pressed ? 0.15 : 0.4,
+          shadowRadius: pressed
+            ? moderateWidthScale(2)
+            : moderateWidthScale(5),
+          elevation: pressed ? 2 : 9,
         }}
       >
         <View
           style={{
-            minHeight: heightScale(64),
             borderRadius: faceRadius,
-            backgroundColor: theme.buttonBack,
-            alignItems: "center",
-            justifyContent: "center",
-            paddingTop: moderateHeightScale(8),
-            paddingBottom: moderateHeightScale(8),
-            paddingHorizontal: moderateWidthScale(4),
-            borderWidth: 1,
-            borderTopColor: theme.darkGreenLight,
-            borderLeftColor: theme.darkGreenLight,
-            borderRightColor: theme.darkGreen,
-            borderBottomColor: theme.darkGreen,
+            backgroundColor: theme.black,
+            paddingBottom: pressed
+              ? moderateHeightScale(2)
+              : moderateHeightScale(5),
           }}
         >
-          <View style={{ marginBottom: moderateHeightScale(4) }}>
-            <Staff3DActionIcon
-              type={icon}
-              size={widthScale(24)}
-              color={cream}
-              shade={theme.darkGreen}
-            />
-          </View>
-          <Text
+          <View
             style={{
-              fontSize: fontSize.size11,
-              fontFamily: fonts.fontBold,
-              color: theme.white,
-              textAlign: "center",
-              textTransform: "capitalize",
+              minHeight: heightScale(58),
+              borderRadius: faceRadius,
+              backgroundColor: theme.buttonBack,
+              alignItems: "center",
+              justifyContent: "center",
+              paddingTop: moderateHeightScale(8),
+              paddingBottom: moderateHeightScale(7),
+              paddingHorizontal: moderateWidthScale(4),
+              borderWidth: 1.5,
+              borderTopColor: theme.darkGreenLight,
+              borderLeftColor: theme.darkGreenLight,
+              borderRightColor: theme.darkGreen,
+              borderBottomColor: theme.darkGreen,
             }}
           >
-            {label}
-          </Text>
+            <View style={{ marginBottom: moderateHeightScale(4) }}>
+              <Staff3DActionIcon
+                type={icon}
+                size={widthScale(26)}
+                color={cream}
+                shade={theme.darkGreen}
+              />
+            </View>
+            <Text
+              style={{
+                fontSize: fontSize.size11,
+                fontFamily: fonts.fontBold,
+                color: theme.white,
+                textAlign: "center",
+                textTransform: "capitalize",
+              }}
+            >
+              {label}
+            </Text>
+          </View>
         </View>
       </View>
     </Pressable>
@@ -240,26 +251,16 @@ const createStyles = (theme: Theme) =>
     heroWrap: {
       marginHorizontal: 0,
       marginBottom: moderateHeightScale(18),
+      width: "100%",
+      alignSelf: "stretch",
     },
     heroCard: {
       width: "100%",
+      alignSelf: "stretch",
       overflow: "hidden",
-      backgroundColor: theme.white,
-      borderBottomLeftRadius: moderateWidthScale(28),
-      borderBottomRightRadius: moderateWidthScale(28),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-      ...Platform.select({
-        ios: {
-          shadowColor: theme.darkGreen,
-          shadowOffset: { width: 0, height: moderateHeightScale(6) },
-          shadowOpacity: 0.12,
-          shadowRadius: moderateWidthScale(14),
-        },
-        android: {
-          elevation: 4,
-        },
-      }),
+      backgroundColor: theme.darkGreen,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: moderateWidthScale(56),
     },
     heroTop: {
       flexDirection: "row",
@@ -274,9 +275,9 @@ const createStyles = (theme: Theme) =>
       height: AVATAR_SIZE + moderateWidthScale(8),
       borderRadius: (AVATAR_SIZE + moderateWidthScale(8)) / 2,
       padding: moderateWidthScale(3),
-      backgroundColor: theme.apptMintBg,
+      backgroundColor: theme.white15,
       borderWidth: 2,
-      borderColor: theme.buttonBack,
+      borderColor: theme.white50,
     },
     avatar: {
       width: AVATAR_SIZE,
@@ -284,7 +285,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: AVATAR_SIZE / 2,
       overflow: "hidden",
       position: "relative",
-      backgroundColor: theme.lightGreen1,
+      backgroundColor: theme.darkGreenLight,
     },
     avatarImage: {
       width: "100%",
@@ -299,7 +300,7 @@ const createStyles = (theme: Theme) =>
       height: widthScale(15),
       borderRadius: widthScale(8),
       borderWidth: 2.5,
-      borderColor: theme.white,
+      borderColor: theme.darkGreen,
       zIndex: 2,
     },
     heroInfo: {
@@ -310,7 +311,7 @@ const createStyles = (theme: Theme) =>
     staffName: {
       fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     badgesRow: {
       flexDirection: "row",
@@ -325,10 +326,10 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.apptMintBg,
+      backgroundColor: theme.white15,
     },
     statusPillInactive: {
-      backgroundColor: theme.lightGreen1,
+      backgroundColor: theme.white15,
     },
     statusPillDot: {
       width: widthScale(7),
@@ -338,23 +339,23 @@ const createStyles = (theme: Theme) =>
     statusPillText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     ownerPill: {
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.apptPeachBg,
+      backgroundColor: theme.orangeBrown,
     },
     ownerPillText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
-      color: theme.apptPeachAccent,
+      color: theme.white,
     },
     description: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.white70,
       lineHeight: fontSize.size13 * 1.4,
     },
     heroStatsLine: {
@@ -367,21 +368,21 @@ const createStyles = (theme: Theme) =>
     heroStatText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
+      color: theme.white70,
     },
     heroStatValue: {
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     heroStatDivider: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen4,
+      color: theme.white50,
     },
     invitationStatus: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
+      color: theme.white70,
       marginTop: moderateHeightScale(2),
     },
     invitationStatusPending: {
@@ -390,17 +391,17 @@ const createStyles = (theme: Theme) =>
     reinviteLink: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.buttonBack,
+      color: theme.orangeBrown,
       textDecorationLine: "underline",
-      textDecorationColor: theme.buttonBack,
+      textDecorationColor: theme.orangeBrown,
     },
     actionsRow: {
       flexDirection: "row",
       alignItems: "stretch",
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(16),
-      paddingTop: moderateHeightScale(2),
-      paddingBottom: moderateHeightScale(14),
+      paddingTop: moderateHeightScale(4),
+      paddingBottom: moderateHeightScale(28),
       gap: moderateWidthScale(10),
     },
     sectionContainer: {
@@ -963,7 +964,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title={t("staffDetail")} />
+        <StackHeader title="" showLine={false} />
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -975,7 +976,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title={t("staffDetail")} />
+        <StackHeader title="" showLine={false} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <RetryButton onPress={fetchStaffDetails} loading={loading} />
@@ -988,7 +989,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title={t("staffDetail")} />
+        <StackHeader title="" showLine={false} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{t("staffProfileNotFound")}</Text>
           <RetryButton onPress={fetchStaffDetails} loading={loading} />
@@ -1081,7 +1082,8 @@ export default function StaffDetail() {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
       <StackHeader
-        title={t("staffDetail")}
+        title=""
+        showLine={false}
         rightIcon={
           isBusinessRole ? (
             <View style={styles.headerRightIcons}>

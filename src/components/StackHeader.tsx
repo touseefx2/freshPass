@@ -38,14 +38,16 @@ const createStyles = (theme: Theme) =>
       alignItems: "flex-start",
     },
     rightIconWrapper: {
-      width: widthScale(28),
+      minWidth: widthScale(28),
       alignItems: "flex-end",
       justifyContent: "center",
     },
     headerTitle: {
+      flex: 1,
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.white,
+      textAlign: "center",
     },
     line: {
       width: "100%",
