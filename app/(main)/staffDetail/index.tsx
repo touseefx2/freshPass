@@ -25,6 +25,7 @@ import {
   heightScale,
 } from "@/src/theme/dimensions";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
@@ -128,7 +129,7 @@ function Staff3DActionButton({
   theme: Theme;
 }) {
   const [pressed, setPressed] = useState(false);
-  const faceRadius = moderateWidthScale(14);
+  const faceRadius = moderateWidthScale(12);
   const cream = theme.background;
 
   return (
@@ -151,19 +152,19 @@ function Staff3DActionButton({
             : moderateHeightScale(2),
           transform: [
             {
-              translateY: pressed ? moderateHeightScale(6) : 0,
+              translateY: pressed ? moderateHeightScale(4) : 0,
             },
           ],
           shadowColor: theme.shadow,
           shadowOffset: {
             width: 0,
-            height: pressed ? moderateHeightScale(1) : moderateHeightScale(4),
+            height: pressed ? moderateHeightScale(1) : moderateHeightScale(3),
           },
-          shadowOpacity: pressed ? 0.15 : 0.4,
+          shadowOpacity: pressed ? 0.12 : 0.35,
           shadowRadius: pressed
             ? moderateWidthScale(2)
-            : moderateWidthScale(5),
-          elevation: pressed ? 2 : 9,
+            : moderateWidthScale(4),
+          elevation: pressed ? 2 : 7,
         }}
       >
         <View
@@ -171,19 +172,19 @@ function Staff3DActionButton({
             borderRadius: faceRadius,
             backgroundColor: theme.black,
             paddingBottom: pressed
-              ? moderateHeightScale(2)
-              : moderateHeightScale(5),
+              ? moderateHeightScale(1)
+              : moderateHeightScale(4),
           }}
         >
           <View
             style={{
-              minHeight: heightScale(58),
+              minHeight: heightScale(50),
               borderRadius: faceRadius,
               backgroundColor: theme.buttonBack,
               alignItems: "center",
               justifyContent: "center",
-              paddingTop: moderateHeightScale(8),
-              paddingBottom: moderateHeightScale(7),
+              paddingTop: moderateHeightScale(6),
+              paddingBottom: moderateHeightScale(6),
               paddingHorizontal: moderateWidthScale(4),
               borderWidth: 1.5,
               borderTopColor: theme.darkGreenLight,
@@ -192,17 +193,17 @@ function Staff3DActionButton({
               borderBottomColor: theme.darkGreen,
             }}
           >
-            <View style={{ marginBottom: moderateHeightScale(4) }}>
+            <View style={{ marginBottom: moderateHeightScale(3) }}>
               <Staff3DActionIcon
                 type={icon}
-                size={widthScale(26)}
+                size={widthScale(22)}
                 color={cream}
                 shade={theme.darkGreen}
               />
             </View>
             <Text
               style={{
-                fontSize: fontSize.size11,
+                fontSize: fontSize.size10,
                 fontFamily: fonts.fontBold,
                 color: theme.white,
                 textAlign: "center",
@@ -258,9 +259,8 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       alignSelf: "stretch",
       overflow: "hidden",
-      backgroundColor: theme.darkGreen,
-      borderBottomLeftRadius: 0,
-      borderBottomRightRadius: moderateWidthScale(56),
+      borderBottomLeftRadius: moderateWidthScale(56),
+      borderBottomRightRadius: 0,
     },
     heroTop: {
       flexDirection: "row",
@@ -964,7 +964,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title="" showLine={false} />
+        <StackHeader title="" showLine={false} useGradient />
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -976,7 +976,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title="" showLine={false} />
+        <StackHeader title="" showLine={false} useGradient />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <RetryButton onPress={fetchStaffDetails} loading={loading} />
@@ -989,7 +989,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title="" showLine={false} />
+        <StackHeader title="" showLine={false} useGradient />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{t("staffProfileNotFound")}</Text>
           <RetryButton onPress={fetchStaffDetails} loading={loading} />
@@ -1084,6 +1084,7 @@ export default function StaffDetail() {
       <StackHeader
         title=""
         showLine={false}
+        useGradient
         rightIcon={
           isBusinessRole ? (
             <View style={styles.headerRightIcons}>
@@ -1131,7 +1132,12 @@ export default function StaffDetail() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroWrap}>
-          <View style={styles.heroCard}>
+          <LinearGradient
+            colors={[theme.darkGreen, theme.darkGreenLight]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
             <View style={styles.heroTop}>
               <View style={styles.avatarRing}>
                 <View style={styles.avatar}>
@@ -1247,13 +1253,14 @@ export default function StaffDetail() {
                 />
               ) : null}
 
-              <Staff3DActionButton
-                label={t("call") || "Call"}
-                icon="call"
-                onPress={handleCallNow}
-                disabled={!staffPhone}
-                theme={theme}
-              />
+              {staffPhone ? (
+                <Staff3DActionButton
+                  label={t("call") || "Call"}
+                  icon="call"
+                  onPress={handleCallNow}
+                  theme={theme}
+                />
+              ) : null}
 
               <Staff3DActionButton
                 label={t("email") || "Email"}
@@ -1263,7 +1270,7 @@ export default function StaffDetail() {
                 theme={theme}
               />
             </View>
-          </View>
+          </LinearGradient>
         </View>
 
         <View style={styles.sectionContainer}>
