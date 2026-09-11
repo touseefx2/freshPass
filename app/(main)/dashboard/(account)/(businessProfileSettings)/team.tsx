@@ -6,7 +6,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  iconScale,
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
@@ -23,6 +23,7 @@ import StackHeader from "@/src/components/StackHeader";
 import FloatingInput from "@/src/components/floatingInput";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
+import RemoveOwnerAsStaffModal from "@/src/components/removeOwnerAsStaffModal";
 import { Skeleton } from "@/src/components/skeletons";
 import {
   setStaffInvitationEmail,
@@ -169,15 +170,86 @@ const createStyles = (theme: Theme) =>
       textTransform: "lowercase",
       opacity: 0.7,
     },
-    ownerCtaRow: {
+    ownerCtaCard: {
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.upcomingCard,
+      borderWidth: 1,
+      borderColor: theme.upcomingBorder,
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "flex-end",
-      marginTop: moderateHeightScale(4),
+      gap: moderateWidthScale(12),
     },
-    ownerCtaText: {
+    ownerCtaIconWrap: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    ownerCtaCopy: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    ownerCtaTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    ownerCtaSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    ownerCtaButton: {
+      backgroundColor: theme.buttonBack,
+      borderRadius: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: moderateWidthScale(88),
+    },
+    ownerCtaButtonText: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+    },
+    ownerStatusCard: {
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen05,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    ownerStatusIconWrap: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    ownerRemoveButton: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.borderMedium,
+      minWidth: moderateWidthScale(88),
+    },
+    ownerRemoveButtonText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     ownerTag: {
@@ -231,6 +303,7 @@ export default function ManageTeamScreen() {
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
+  const [removeModalVisible, setRemoveModalVisible] = useState(false);
 
   const canInvite = React.useMemo(() => {
     if (!staffInvitationEmail.trim()) {
@@ -433,6 +506,7 @@ export default function ManageTeamScreen() {
     try {
       const response = await disableOwnerAsStaff();
       if (response.success) {
+        setRemoveModalVisible(false);
         showBanner(
           t("success"),
           response.message || t("ownerRemovedAsStaffSuccess"),
@@ -472,16 +546,7 @@ export default function ManageTeamScreen() {
       void runOwnerEnable();
       return;
     }
-    Alert.alert(t("removeYourself"), t("removeYourselfConfirm"), [
-      { text: t("cancel"), style: "cancel" },
-      {
-        text: t("removeYourself"),
-        style: "destructive",
-        onPress: () => {
-          void runOwnerDisable();
-        },
-      },
-    ]);
+    setRemoveModalVisible(true);
   };
 
   const isOwnerMember = (member: TeamMember) =>
@@ -504,25 +569,73 @@ export default function ManageTeamScreen() {
               <Text style={styles.subtitle}>{t("inviteStaffSubtitle")}</Text>
             </View>
 
-            {showOwnerCta && (
-              <View style={styles.ownerCtaRow}>
+            {showOwnerCta && !ownerEnabled ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={handleOwnerCtaPress}
+                disabled={ownerBusy}
+                style={styles.ownerCtaCard}
+              >
+                <View style={styles.ownerCtaIconWrap}>
+                  <Feather
+                    name="user-plus"
+                    size={iconScale(18)}
+                    color={theme.selectCard}
+                  />
+                </View>
+                <View style={styles.ownerCtaCopy}>
+                  <Text style={styles.ownerCtaTitle} numberOfLines={1}>
+                    {t("ownerAsStaffTitle")}
+                  </Text>
+                  <Text style={styles.ownerCtaSubtitle} numberOfLines={2}>
+                    {t("ownerAsStaffSubtitle")}
+                  </Text>
+                </View>
+                <View style={styles.ownerCtaButton}>
+                  {ownerBusy ? (
+                    <ActivityIndicator size="small" color={theme.buttonText} />
+                  ) : (
+                    <Text style={styles.ownerCtaButtonText}>
+                      {t("addMeAsStaff")}
+                    </Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ) : null}
+
+            {showOwnerCta && ownerEnabled ? (
+              <View style={styles.ownerStatusCard}>
+                <View style={styles.ownerStatusIconWrap}>
+                  <Feather
+                    name="check-circle"
+                    size={iconScale(18)}
+                    color={theme.toggleActive}
+                  />
+                </View>
+                <View style={styles.ownerCtaCopy}>
+                  <Text style={styles.ownerCtaTitle} numberOfLines={1}>
+                    {t("ownerOnStaffTitle")}
+                  </Text>
+                  <Text style={styles.ownerCtaSubtitle} numberOfLines={2}>
+                    {t("ownerOnStaffSubtitle")}
+                  </Text>
+                </View>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={handleOwnerCtaPress}
                   disabled={ownerBusy}
+                  style={styles.ownerRemoveButton}
                 >
                   {ownerBusy ? (
                     <ActivityIndicator size="small" color={theme.darkGreen} />
                   ) : (
-                    <Text style={styles.ownerCtaText}>
-                      {ownerEnabled
-                        ? t("removeYourself")
-                        : t("addYourselfAsStaff")}
+                    <Text style={styles.ownerRemoveButtonText}>
+                      {t("removeFromStaff")}
                     </Text>
                   )}
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
 
             <View style={styles.inputSection}>
               <View style={styles.inputRowContainer}>
@@ -628,6 +741,17 @@ export default function ManageTeamScreen() {
           setUpgradeModalVisible(false);
           dispatch(setBusinessPlansModalBusinessOnly(true));
           dispatch(setBusinessPlansModalVisible(true));
+        }}
+      />
+
+      <RemoveOwnerAsStaffModal
+        visible={removeModalVisible}
+        loading={ownerBusy}
+        onClose={() => {
+          if (!ownerBusy) setRemoveModalVisible(false);
+        }}
+        onConfirm={() => {
+          void runOwnerDisable();
         }}
       />
     </SafeAreaView>

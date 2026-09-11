@@ -15,6 +15,10 @@ interface CustomToggleProps {
   value: boolean;
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
+  /** Active track color — defaults to theme.orangeBrown */
+  activeTrackColor?: string;
+  /** Inactive track color — defaults to theme.lightGreen2 */
+  inactiveTrackColor?: string;
 }
 
 const createStyles = (theme: Theme) =>
@@ -52,6 +56,8 @@ export default function CustomToggle({
   value,
   onValueChange,
   disabled = false,
+  activeTrackColor,
+  inactiveTrackColor,
 }: CustomToggleProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors as Theme);
@@ -93,7 +99,10 @@ export default function CustomToggle({
 
   const backgroundColor = trackColor.interpolate({
     inputRange: [0, 1],
-    outputRange: [theme.lightGreen2, theme.orangeBrown],
+    outputRange: [
+      inactiveTrackColor ?? theme.lightGreen2,
+      activeTrackColor ?? theme.orangeBrown,
+    ],
   });
 
   const handlePress = () => {

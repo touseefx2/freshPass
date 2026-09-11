@@ -5,7 +5,6 @@ import {
   View,
   TouchableOpacity,
   Image,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import Animated, {
@@ -28,9 +27,11 @@ import {
   heightScale,
   iconScale,
 } from "@/src/theme/dimensions";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Skeleton } from "@/src/components/skeletons";
-import EmptyState from "@/src/components/emptyState";
+import Button from "@/src/components/button";
+import CustomToggle from "@/src/components/customToggle";
+import RemoveOwnerAsStaffModal from "@/src/components/removeOwnerAsStaffModal";
 import {
   canAddStaffMembers,
   canUseOwnerAsStaff,
@@ -56,6 +57,7 @@ const STAFF_CARD_GAP = moderateWidthScale(18);
 const STAFF_ITEM_SIZE = STAFF_CARD_WIDTH + STAFF_CARD_GAP;
 const STAFF_LIFT = moderateHeightScale(5);
 const STAFF_AVATAR_SIZE = widthScale(76);
+const OWNER_AVATAR_SIZE = widthScale(58);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -70,53 +72,201 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(12),
       gap: moderateWidthScale(8),
     },
-    sectionTitleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      flexShrink: 1,
-    },
     sectionTitle: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    countBadge: {
-      minWidth: moderateWidthScale(22),
-      height: moderateWidthScale(22),
-      borderRadius: moderateWidthScale(11),
-      paddingHorizontal: moderateWidthScale(6),
-      backgroundColor: theme.darkGreen,
-      alignItems: "center",
-      justifyContent: "center",
+    employeesHeader: {
+      marginTop: moderateHeightScale(6),
     },
-    countBadgeText: {
-      fontSize: fontSize.size11,
+    addEmployeeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      gap: moderateWidthScale(6),
+    },
+    addEmployeeButtonText: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    sectionRight: {
+    ownerProfileCard: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(14),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    ownerProfileRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(10),
-      flexShrink: 0,
+      gap: moderateWidthScale(14),
     },
-    ownerCtaText: {
+    ownerAvatarWrap: {
+      position: "relative",
+      width: OWNER_AVATAR_SIZE,
+      height: OWNER_AVATAR_SIZE,
+      marginBottom: moderateHeightScale(4),
+    },
+    ownerAvatarClip: {
+      width: OWNER_AVATAR_SIZE,
+      height: OWNER_AVATAR_SIZE,
+      borderRadius: OWNER_AVATAR_SIZE / 2,
+      overflow: "hidden",
+    },
+    ownerAvatar: {
+      width: OWNER_AVATAR_SIZE,
+      height: OWNER_AVATAR_SIZE,
+      borderRadius: OWNER_AVATAR_SIZE / 2,
+      backgroundColor: theme.emptyProfileImage,
+    },
+    ownerStatusDot: {
+      position: "absolute",
+      bottom: moderateHeightScale(2),
+      left: moderateWidthScale(2),
+      width: moderateWidthScale(12),
+      height: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 2,
+      borderColor: theme.white,
+      zIndex: 2,
+    },
+    ownerProfileName: {
+      flex: 1,
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    ownerProfileDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.borderLight,
+      marginTop: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(12),
+    },
+    acceptRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    acceptCopy: {
+      flex: 1,
+      gap: moderateHeightScale(3),
+      paddingRight: moderateWidthScale(4),
+    },
+    acceptTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    acceptSubtitle: {
       fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.selectCard,
-      textDecorationLine: "underline",
-      textDecorationColor: theme.selectCard,
-      maxWidth: widthScale(120),
-      textAlign: "right",
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
-    addStaffCircle: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
+    ownerBadge: {
+      position: "absolute",
+      bottom: -moderateHeightScale(2),
+      alignSelf: "center",
+      left: 0,
+      right: 0,
+      alignItems: "center",
+      zIndex: 3,
+    },
+    ownerBadgePill: {
+      backgroundColor: theme.selectCard,
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(999),
+      borderWidth: 1.5,
+      borderColor: theme.white,
+    },
+    ownerBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textAlign: "center",
+      lineHeight: moderateHeightScale(13),
+    },
+    employeesEmptyBox: {
+      marginHorizontal: moderateWidthScale(20),
+      backgroundColor: theme.white,
       borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.darkGreen,
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
+      gap: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    employeesEmptyText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    emptyCardsWrap: {
+      paddingHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(10),
+      gap: moderateHeightScale(12),
+    },
+    emptyActionCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    emptyActionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
+    emptyActionCopy: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    emptyActionTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    emptyActionSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    emptyOutlineButton: {
+      width: "100%",
+      height: moderateHeightScale(44),
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1.5,
+      borderColor: theme.selectCard,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: moderateHeightScale(14),
+      backgroundColor: theme.white,
+    },
+    emptyOutlineButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.selectCard,
+    },
+    emptyFilledButton: {
+      width: "100%",
+      height: moderateHeightScale(44),
+      borderRadius: moderateWidthScale(10),
+      marginTop: moderateHeightScale(14),
     },
     staffList: {
       flexDirection: "row",
@@ -230,10 +380,6 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       width: "100%",
     },
-    emptyStateContainer: {
-      paddingVertical: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(20),
-    },
     // Kept for Skeleton compatibility
     staffItem: {
       width: STAFF_CARD_WIDTH,
@@ -287,8 +433,11 @@ interface StaffOnDutyProps {
   callApi: () => Promise<void>;
 }
 
-function getStaffImageUri(staff: StaffData) {
-  const profileImage = staff.user?.profile_image_url;
+function isOwnerMember(staff: StaffData) {
+  return staff.is_owner === true || staff.is_business_owner === true;
+}
+
+function getImageUri(profileImage: string | null | undefined) {
   if (!profileImage) {
     return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
   }
@@ -301,6 +450,10 @@ function getStaffImageUri(staff: StaffData) {
   return process.env.EXPO_PUBLIC_API_BASE_URL + profileImage;
 }
 
+function getStaffImageUri(staff: StaffData) {
+  return getImageUri(staff.user?.profile_image_url);
+}
+
 const STAFF_MOTION_THRESHOLD = 4;
 
 type StaffMotionCardProps = {
@@ -309,7 +462,6 @@ type StaffMotionCardProps = {
   scrollX: SharedValue<number>;
   enableMotion: boolean;
   styles: ReturnType<typeof createStyles>;
-  ownerLabel: string;
   onPress: () => void;
 };
 
@@ -319,11 +471,8 @@ function StaffMotionCard({
   scrollX,
   enableMotion,
   styles,
-  ownerLabel,
   onPress,
 }: StaffMotionCardProps) {
-  const isOwner =
-    staff.is_owner === true || staff.is_business_owner === true;
   const isActive = staff.active === 1;
   const experience = staff.description?.trim() || null;
 
@@ -338,7 +487,6 @@ function StaffMotionCard({
       (index + 1) * STAFF_ITEM_SIZE,
     ];
 
-    // Simple lift only — same box size, no scale / tilt / flip
     const translateY = interpolate(
       scrollX.value,
       inputRange,
@@ -373,11 +521,6 @@ function StaffMotionCard({
                 : styles.staffStatusDotInactive,
             ]}
           />
-          {isOwner ? (
-            <View style={styles.ownerPill}>
-              <Text style={styles.ownerPillText}>{ownerLabel}</Text>
-            </View>
-          ) : null}
         </View>
 
         <View style={styles.staffInfo}>
@@ -407,7 +550,8 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const { showBanner } = useNotificationContext();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
-  const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const user = useAppSelector((state) => state.user);
+  const businessStatus = user.businessStatus;
   const canAddStaff = canAddStaffMembers(businessStatus);
   const isSoloPlan = isSoloSubscription(businessStatus);
   const showOwnerCta = canUseOwnerAsStaff(businessStatus);
@@ -415,6 +559,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
+  const [removeModalVisible, setRemoveModalVisible] = useState(false);
 
   const staffScrollX = useSharedValue(0);
   const staffScrollHandler = useAnimatedScrollHandler({
@@ -423,8 +568,22 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     },
   });
 
-  const staffCount = data?.length ?? 0;
-  const enableStaffMotion = staffCount > STAFF_MOTION_THRESHOLD;
+  const ownerStaff = useMemo(
+    () => data?.find(isOwnerMember) ?? null,
+    [data],
+  );
+  const employees = useMemo(
+    () => (data ?? []).filter((staff) => !isOwnerMember(staff)),
+    [data],
+  );
+  const employeeCount = employees.length;
+  const enableStaffMotion = employeeCount > STAFF_MOTION_THRESHOLD;
+  const isFullyEmpty = !ownerEnabled && employeeCount === 0;
+  const ownerName = ownerStaff?.name || user.name || "";
+  const ownerImageUri = ownerStaff
+    ? getStaffImageUri(ownerStaff)
+    : getImageUri(user.profile_image_url);
+  const ownerIsActive = ownerStaff ? ownerStaff.active === 1 : ownerEnabled;
 
   useEffect(() => {
     callApi();
@@ -484,6 +643,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     try {
       const response = await disableOwnerAsStaff();
       if (response.success) {
+        setRemoveModalVisible(false);
         showBanner(
           t("success") || "Success",
           response.message || t("ownerRemovedAsStaffSuccess"),
@@ -512,26 +672,26 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     }
   };
 
-  const handleOwnerCtaPress = () => {
+  const handleOwnerEnablePress = () => {
     if (ownerBusy) return;
     if (!isStripeOnboardingCompleted(businessStatus)) {
       dispatch(setStripeConnectModalVisible(true));
       return;
     }
-    if (!ownerEnabled) {
-      void runOwnerEnable();
+    void runOwnerEnable();
+  };
+
+  const handleOwnerRemovePress = () => {
+    if (ownerBusy) return;
+    setRemoveModalVisible(true);
+  };
+
+  const handleOwnerToggle = (nextValue: boolean) => {
+    if (nextValue) {
+      handleOwnerEnablePress();
       return;
     }
-    Alert.alert(t("removeYourself"), t("removeYourselfConfirm"), [
-      { text: t("cancel") || "Cancel", style: "cancel" },
-      {
-        text: t("removeYourself"),
-        style: "destructive",
-        onPress: () => {
-          void runOwnerDisable();
-        },
-      },
-    ]);
+    handleOwnerRemovePress();
   };
 
   const handleViewPlans = () => {
@@ -545,55 +705,120 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     dispatch(setBusinessPlansModalVisible(true));
   };
 
-  return (
-    <View style={styles.outerContainer}>
-      <View style={styles.sectionHeader}>
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
-          {staffCount > 0 ? (
-            <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{staffCount}</Text>
-            </View>
-          ) : null}
+  const renderOwnerEnableCard = () =>
+    showOwnerCta ? (
+      <View style={[styles.emptyActionCard, styles.shadow]}>
+        <View style={styles.emptyActionHeader}>
+          <Feather name="user" size={iconScale(22)} color={theme.selectCard} />
+          <View style={styles.emptyActionCopy}>
+            <Text style={styles.emptyActionTitle} numberOfLines={1}>
+              {t("staffEmptyOwnerTitle")}
+            </Text>
+            <Text style={styles.emptyActionSubtitle} numberOfLines={2}>
+              {t("staffEmptyOwnerSubtitle")}
+            </Text>
+          </View>
         </View>
-        <View style={styles.sectionRight}>
-          {showOwnerCta && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={handleOwnerCtaPress}
-              disabled={ownerBusy}
-            >
-              {ownerBusy ? (
-                <ActivityIndicator size="small" color={theme.selectCard} />
-              ) : (
-                <Text style={styles.ownerCtaText} numberOfLines={1}>
-                  {ownerEnabled
-                    ? t("removeYourself")
-                    : t("addYourselfAsStaff")}
-                </Text>
-              )}
-            </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleOwnerEnablePress}
+          disabled={ownerBusy}
+          style={styles.emptyOutlineButton}
+        >
+          {ownerBusy ? (
+            <ActivityIndicator size="small" color={theme.selectCard} />
+          ) : (
+            <Text style={styles.emptyOutlineButtonText}>
+              {t("addMyselfAsBarber")}
+            </Text>
           )}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleAddStaffPress}
-            style={styles.addStaffCircle}
-          >
-            <Feather name="plus" size={iconScale(15)} color={theme.white85} />
-          </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
+    ) : null;
+
+  const renderOwnerProfile = () => (
+    <>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t("myBookingProfile")}</Text>
+      </View>
+      <View style={[styles.ownerProfileCard, styles.shadow]}>
+        <View style={styles.ownerProfileRow}>
+          <View style={styles.ownerAvatarWrap}>
+            <View style={styles.ownerAvatarClip}>
+              <Image
+                source={{ uri: ownerImageUri }}
+                style={styles.ownerAvatar}
+              />
+            </View>
+            <View
+              style={[
+                styles.ownerStatusDot,
+                ownerIsActive
+                  ? styles.staffStatusDotActive
+                  : styles.staffStatusDotInactive,
+              ]}
+            />
+            <View style={styles.ownerBadge}>
+              <View style={styles.ownerBadgePill}>
+                <Text style={styles.ownerBadgeText}>{t("owner")}</Text>
+              </View>
+            </View>
+          </View>
+          <Text style={styles.ownerProfileName} numberOfLines={1}>
+            {ownerName}
+          </Text>
+        </View>
+
+        <View style={styles.ownerProfileDivider} />
+
+        <View style={styles.acceptRow}>
+          <View style={styles.acceptCopy}>
+            <Text style={styles.acceptTitle}>{t("acceptAppointments")}</Text>
+            <Text style={styles.acceptSubtitle} numberOfLines={2}>
+              {t("acceptAppointmentsSubtitle")}
+            </Text>
+          </View>
+          {ownerBusy ? (
+            <ActivityIndicator size="small" color={theme.darkGreen} />
+          ) : (
+            <CustomToggle
+              value={ownerEnabled}
+              onValueChange={handleOwnerToggle}
+              activeTrackColor={theme.darkGreen}
+              inactiveTrackColor={theme.lightGreen2}
+            />
+          )}
         </View>
       </View>
+    </>
+  );
 
-      {!data ? (
-        <Skeleton screenType="StaffOnDuty" styles={styles} />
-      ) : data.length === 0 ? (
-        <EmptyState
-          compact
-          icon="groups"
-          title={t("noStaffOnDuty")}
-          subtitle={t("staffEmptySubtitle")}
-          containerStyle={styles.emptyStateContainer}
-        />
+  const renderEmployeesSection = () => (
+    <>
+      <View style={[styles.sectionHeader, styles.employeesHeader]}>
+        <Text style={styles.sectionTitle}>{t("employees")}</Text>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleAddStaffPress}
+          style={styles.addEmployeeButton}
+          accessibilityLabel={t("addEmployee")}
+        >
+          <Feather name="plus" size={iconScale(14)} color={theme.white} />
+          <Text style={styles.addEmployeeButtonText}>{t("addEmployee")}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {employeeCount === 0 ? (
+        <View style={styles.employeesEmptyBox}>
+          <Feather
+            name="users"
+            size={iconScale(16)}
+            color={theme.lightGreen}
+          />
+          <Text style={styles.employeesEmptyText}>
+            {t("noEmployeesAddedYet")}
+          </Text>
+        </View>
       ) : (
         <Animated.ScrollView
           horizontal
@@ -605,7 +830,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
           decelerationRate={enableStaffMotion ? "fast" : "normal"}
           disableIntervalMomentum={enableStaffMotion}
         >
-          {data.map((staff, index) => (
+          {employees.map((staff, index) => (
             <StaffMotionCard
               key={staff.id}
               staff={staff}
@@ -613,7 +838,6 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
               scrollX={staffScrollX}
               enableMotion={enableStaffMotion}
               styles={styles}
-              ownerLabel={t("owner")}
               onPress={() =>
                 router.push({
                   pathname: "/(main)/staffDetail",
@@ -623,6 +847,67 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
             />
           ))}
         </Animated.ScrollView>
+      )}
+    </>
+  );
+
+  return (
+    <View style={styles.outerContainer}>
+      {!data ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
+          </View>
+          <Skeleton screenType="StaffOnDuty" styles={styles} />
+        </>
+      ) : isFullyEmpty ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>{t("staffOnDuty")}</Text>
+          </View>
+          <View style={styles.emptyCardsWrap}>
+            {renderOwnerEnableCard()}
+            <View style={[styles.emptyActionCard, styles.shadow]}>
+              <View style={styles.emptyActionHeader}>
+                <MaterialCommunityIcons
+                  name="account-group"
+                  size={iconScale(26)}
+                  color={theme.darkGreen}
+                />
+                <View style={styles.emptyActionCopy}>
+                  <Text style={styles.emptyActionTitle} numberOfLines={1}>
+                    {t("staffEmptyTeamTitle")}
+                  </Text>
+                  <Text style={styles.emptyActionSubtitle} numberOfLines={2}>
+                    {t("staffEmptyTeamSubtitle")}
+                  </Text>
+                </View>
+              </View>
+              <Button
+                title={t("addBarber")}
+                onPress={handleAddStaffPress}
+                backgroundColor={theme.darkGreen}
+                containerStyle={[
+                  styles.emptyFilledButton,
+                  { backgroundColor: theme.darkGreen },
+                ]}
+              />
+            </View>
+          </View>
+        </>
+      ) : (
+        <>
+          {showOwnerCta && ownerEnabled
+            ? renderOwnerProfile()
+            : showOwnerCta
+              ? (
+                  <View style={styles.emptyCardsWrap}>
+                    {renderOwnerEnableCard()}
+                  </View>
+                )
+              : null}
+          {renderEmployeesSection()}
+        </>
       )}
 
       <BuyBusinessPlanModal
@@ -635,6 +920,17 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         visible={upgradeModalVisible}
         onClose={() => setUpgradeModalVisible(false)}
         onUpgradePlan={handleUpgradePlan}
+      />
+
+      <RemoveOwnerAsStaffModal
+        visible={removeModalVisible}
+        loading={ownerBusy}
+        onClose={() => {
+          if (!ownerBusy) setRemoveModalVisible(false);
+        }}
+        onConfirm={() => {
+          void runOwnerDisable();
+        }}
       />
     </View>
   );
