@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from "react";
+import React, { useMemo, useEffect, useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import Animated, {
   Extrapolation,
@@ -32,6 +33,7 @@ import { Skeleton } from "@/src/components/skeletons";
 import Button from "@/src/components/button";
 import CustomToggle from "@/src/components/customToggle";
 import RemoveOwnerAsStaffModal from "@/src/components/removeOwnerAsStaffModal";
+import StaffActionMenuModal from "@/src/components/staffActionMenuModal";
 import {
   canAddStaffMembers,
   canUseOwnerAsStaff,
@@ -39,6 +41,7 @@ import {
   isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
 import {
+  setActionLoader,
   setBusinessPlansModalVisible,
   setBusinessPlansModalBusinessOnly,
   setStripeConnectModalVisible,
@@ -51,6 +54,8 @@ import {
 } from "@/src/services/ownerAsStaffService";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
+import { ApiService } from "@/src/services/api";
+import { staffEndpoints } from "@/src/services/endpoints";
 
 const STAFF_CARD_WIDTH = widthScale(152);
 const STAFF_CARD_GAP = moderateWidthScale(18);
@@ -463,6 +468,7 @@ type StaffMotionCardProps = {
   enableMotion: boolean;
   styles: ReturnType<typeof createStyles>;
   onPress: () => void;
+  onLongPress: () => void;
 };
 
 function StaffMotionCard({
@@ -472,6 +478,7 @@ function StaffMotionCard({
   enableMotion,
   styles,
   onPress,
+  onLongPress,
 }: StaffMotionCardProps) {
   const isActive = staff.active === 1;
   const experience = staff.description?.trim() || null;
@@ -505,6 +512,8 @@ function StaffMotionCard({
         activeOpacity={0.7}
         style={[styles.staffCard, styles.shadow]}
         onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={350}
       >
         <View style={styles.staffImageWrapper}>
           <View style={styles.staffImageClip}>
@@ -560,6 +569,9 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
   const [removeModalVisible, setRemoveModalVisible] = useState(false);
+  const [actionMenuStaff, setActionMenuStaff] = useState<StaffData | null>(
+    null,
+  );
 
   const staffScrollX = useSharedValue(0);
   const staffScrollHandler = useAnimatedScrollHandler({
@@ -604,6 +616,102 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
     }
     router.push("/(main)/addStaff");
   };
+
+  const closeStaffActionMenu = useCallback(() => {
+    setActionMenuStaff(null);
+  }, []);
+
+  const handleStaffLongPress = useCallback((staff: StaffData) => {
+    setActionMenuStaff(staff);
+  }, []);
+
+  const handleEditStaff = useCallback(() => {
+    if (!actionMenuStaff) return;
+    const staff = actionMenuStaff;
+    setActionMenuStaff(null);
+
+    const editProfileImageUrl = staff.user?.profile_image_url
+      ? staff.user.profile_image_url.startsWith("http://") ||
+        staff.user.profile_image_url.startsWith("https://")
+        ? staff.user.profile_image_url
+        : (process.env.EXPO_PUBLIC_API_BASE_URL || "") +
+          staff.user.profile_image_url
+      : "";
+
+    router.push({
+      pathname: "/(main)/addStaff",
+      params: {
+        id: String(staff.id),
+        name: staff.name || "",
+        email: staff.email || "",
+        description: staff.description || "",
+        profile_image_url: editProfileImageUrl,
+        active: staff.active ? "1" : "0",
+        working_hours: JSON.stringify(staff.user?.working_hours ?? []),
+        ...(staff.invitation_token
+          ? { invitation_token: staff.invitation_token }
+          : {}),
+      },
+    });
+  }, [actionMenuStaff, router]);
+
+  const confirmDeleteStaff = useCallback(() => {
+    if (!actionMenuStaff) return;
+    const staffId = actionMenuStaff.id;
+    const staffName = actionMenuStaff.name;
+    setActionMenuStaff(null);
+
+    const runDelete = () => {
+      Alert.alert(
+        t("deleteStaff") || "Delete staff",
+        t("deleteStaffConfirm") ||
+          `Are you sure you want to delete "${staffName}"?`,
+        [
+          { text: t("cancel") || "Cancel", style: "cancel" },
+          {
+            text: t("delete") || "Delete",
+            style: "destructive",
+            onPress: () => {
+              void (async () => {
+                dispatch(setActionLoader(true));
+                try {
+                  await ApiService.delete<{
+                    success?: boolean;
+                    message?: string;
+                  }>(staffEndpoints.delete(staffId));
+                  showBanner(
+                    t("success") || "Success",
+                    t("staffDeletedSuccess") || "Staff deleted successfully",
+                    "success",
+                    3000,
+                  );
+                  await callApi();
+                } catch (err: any) {
+                  Logger.error("deleteStaff from home failed:", err);
+                  const errorMessage =
+                    err?.data?.message ||
+                    err?.message ||
+                    t("error") ||
+                    "Something went wrong";
+                  showBanner(
+                    t("error") || "Error",
+                    errorMessage,
+                    "error",
+                    3000,
+                  );
+                } finally {
+                  dispatch(setActionLoader(false));
+                }
+              })();
+            },
+          },
+        ],
+      );
+    };
+
+    // Let the action sheet dismiss before presenting the system alert
+    setTimeout(runDelete, 250);
+  }, [actionMenuStaff, callApi, dispatch, showBanner, t]);
 
   const runOwnerEnable = async () => {
     setOwnerBusy(true);
@@ -844,6 +952,7 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
                   params: { id: String(staff.id) },
                 })
               }
+              onLongPress={() => handleStaffLongPress(staff)}
             />
           ))}
         </Animated.ScrollView>
@@ -931,6 +1040,18 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         onConfirm={() => {
           void runOwnerDisable();
         }}
+      />
+
+      <StaffActionMenuModal
+        visible={actionMenuStaff != null}
+        staffName={actionMenuStaff?.name}
+        imageUri={
+          actionMenuStaff ? getStaffImageUri(actionMenuStaff) : undefined
+        }
+        isActive={actionMenuStaff?.active === 1}
+        onClose={closeStaffActionMenu}
+        onEdit={handleEditStaff}
+        onDelete={confirmDeleteStaff}
       />
     </View>
   );

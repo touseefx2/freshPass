@@ -410,6 +410,7 @@
   "delete": "Löschen",
   "deleteStaff": "Mitarbeiter löschen",
   "deleteStaffConfirm": "Möchten Sie diesen Mitarbeiter wirklich löschen?",
+  "manageStaffActions": "Wählen Sie eine Aktion für diesen Mitarbeiter",
   "staffDeletedSuccess": "Mitarbeiter erfolgreich gelöscht",
   "success": "Erfolg",
   "accountDeletedSuccessfully": "Konto erfolgreich gelöscht",

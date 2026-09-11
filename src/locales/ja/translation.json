@@ -410,6 +410,7 @@
   "delete": "削除",
   "deleteStaff": "スタッフを削除",
   "deleteStaffConfirm": "このスタッフを削除してもよろしいですか？",
+  "manageStaffActions": "この従業員の操作を選択してください",
   "staffDeletedSuccess": "スタッフを削除しました",
   "success": "成功",
   "accountDeletedSuccessfully": "アカウントが正常に削除されました",

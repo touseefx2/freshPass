@@ -410,6 +410,7 @@
   "delete": "حذف",
   "deleteStaff": "حذف الموظف",
   "deleteStaffConfirm": "هل أنت متأكد أنك تريد حذف هذا الموظف؟",
+  "manageStaffActions": "اختر إجراءً لهذا الموظف",
   "staffDeletedSuccess": "تم حذف الموظف بنجاح",
   "success": "نجاح",
   "accountDeletedSuccessfully": "تم حذف الحساب بنجاح",

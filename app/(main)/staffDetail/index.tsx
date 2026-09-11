@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
+  Pressable,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -23,17 +24,187 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
-import { MaterialIcons, Ionicons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { ChatIcon } from "@/assets/icons";
 import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
 import { disableOwnerAsStaff } from "@/src/services/ownerAsStaffService";
 import Logger from "@/src/services/logger";
+
+type ActionIconType = "message" | "call" | "email";
+
+/** Crisp cream icons — color matches staff-detail background */
+function Staff3DActionIcon({
+  type,
+  size,
+  color,
+  shade,
+}: {
+  type: ActionIconType;
+  size: number;
+  color: string;
+  shade: string;
+}) {
+  if (type === "message") {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 48 48">
+        <Path
+          d="M8 9h28a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22l-8 7v-7H8a6 6 0 0 1-6-6V15a6 6 0 0 1 6-6z"
+          fill={shade}
+          opacity={0.35}
+          transform="translate(1.2 1.8)"
+        />
+        <Path
+          d="M8 9h28a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22l-8 7v-7H8a6 6 0 0 1-6-6V15a6 6 0 0 1 6-6z"
+          fill={color}
+        />
+        <Circle cx="16" cy="22" r="2.4" fill={shade} opacity={0.55} />
+        <Circle cx="24" cy="22" r="2.4" fill={shade} opacity={0.55} />
+        <Circle cx="32" cy="22" r="2.4" fill={shade} opacity={0.55} />
+      </Svg>
+    );
+  }
+
+  if (type === "call") {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 48 48">
+        <Path
+          d="M14.8 8c1.9-1.9 5.1-1.6 6.6.8l3.2 5.2c1.2 2 .6 4.6-1.4 5.8l-2.4 1.4c1.7 3.5 4.4 6.3 7.9 8.1l1.5-2.3c1.2-2 4-2.5 6-1.2l5.1 3.1c2.3 1.4 2.8 4.5 1 6.4l-2.7 2.8c-1.5 1.5-3.7 2.1-5.8 1.6-7.5-1.8-14.6-7.8-19-15.8C3.6 17.2 4.4 12.6 7.6 9.8L14.8 8z"
+          fill={shade}
+          opacity={0.35}
+          transform="translate(1.2 1.8)"
+        />
+        <Path
+          d="M14.8 8c1.9-1.9 5.1-1.6 6.6.8l3.2 5.2c1.2 2 .6 4.6-1.4 5.8l-2.4 1.4c1.7 3.5 4.4 6.3 7.9 8.1l1.5-2.3c1.2-2 4-2.5 6-1.2l5.1 3.1c2.3 1.4 2.8 4.5 1 6.4l-2.7 2.8c-1.5 1.5-3.7 2.1-5.8 1.6-7.5-1.8-14.6-7.8-19-15.8C3.6 17.2 4.4 12.6 7.6 9.8L14.8 8z"
+          fill={color}
+        />
+      </Svg>
+    );
+  }
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Rect
+        x="6"
+        y="12"
+        width="34"
+        height="24"
+        rx="5"
+        fill={shade}
+        opacity={0.35}
+        transform="translate(1.2 1.8)"
+      />
+      <Rect x="6" y="12" width="34" height="24" rx="5" fill={color} />
+      <Path d="M8 14.5h30L23 26 8 14.5z" fill={shade} opacity={0.28} />
+      <Path
+        d="M8.5 15L23 25.5 37.5 15"
+        stroke={shade}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        opacity={0.45}
+      />
+    </Svg>
+  );
+}
+
+function Staff3DActionButton({
+  label,
+  icon,
+  onPress,
+  disabled,
+  theme,
+}: {
+  label: string;
+  icon: ActionIconType;
+  onPress: () => void;
+  disabled?: boolean;
+  theme: Theme;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const faceRadius = moderateWidthScale(18);
+  const cream = theme.background;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={{
+        flex: 1,
+        opacity: disabled ? 0.45 : 1,
+      }}
+    >
+      <View
+        style={{
+          borderRadius: faceRadius,
+          backgroundColor: theme.darkGreen,
+          paddingBottom: pressed
+            ? moderateHeightScale(1)
+            : moderateHeightScale(5),
+          transform: [
+            {
+              translateY: pressed ? moderateHeightScale(4) : 0,
+            },
+          ],
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(3),
+          },
+          shadowOpacity: pressed ? 0.12 : 0.22,
+          shadowRadius: moderateWidthScale(4),
+          elevation: pressed ? 2 : 6,
+        }}
+      >
+        <View
+          style={{
+            minHeight: heightScale(100),
+            borderRadius: faceRadius,
+            backgroundColor: theme.buttonBack,
+            alignItems: "center",
+            justifyContent: "center",
+            paddingTop: moderateHeightScale(14),
+            paddingBottom: moderateHeightScale(12),
+            paddingHorizontal: moderateWidthScale(6),
+            borderWidth: 1,
+            borderTopColor: theme.darkGreenLight,
+            borderLeftColor: theme.darkGreenLight,
+            borderRightColor: theme.darkGreen,
+            borderBottomColor: theme.darkGreen,
+          }}
+        >
+          <View style={{ marginBottom: moderateHeightScale(8) }}>
+            <Staff3DActionIcon
+              type={icon}
+              size={widthScale(36)}
+              color={cream}
+              shade={theme.darkGreen}
+            />
+          </View>
+          <Text
+            style={{
+              fontSize: fontSize.size13,
+              fontFamily: fonts.fontBold,
+              color: theme.white,
+              textAlign: "center",
+              textTransform: "capitalize",
+            }}
+          >
+            {label}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -64,28 +235,33 @@ const createStyles = (theme: Theme) =>
     },
     profileSection: {
       alignItems: "center",
-      paddingVertical: moderateHeightScale(24),
+      paddingTop: moderateHeightScale(20),
+      paddingBottom: moderateHeightScale(16),
       paddingHorizontal: moderateWidthScale(20),
     },
     avatar: {
-      width: widthScale(100),
-      height: widthScale(100),
-      borderRadius: widthScale(100 / 2),
-      borderWidth: 1,
+      width: widthScale(104),
+      height: widthScale(104),
+      borderRadius: widthScale(104 / 2),
+      borderWidth: 2,
       borderColor: theme.borderLight,
-      // overflow: "hidden",
-      marginBottom: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(14),
       position: "relative",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: moderateHeightScale(4) },
+      shadowOpacity: 0.12,
+      shadowRadius: moderateWidthScale(8),
+      elevation: 4,
     },
     avatarImage: {
       width: "100%",
       height: "100%",
-      borderRadius: widthScale(100 / 2),
+      borderRadius: widthScale(104 / 2),
     },
     staffName: {
-      fontSize: fontSize.size22,
+      fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
-      color: theme.text,
+      color: theme.darkGreen,
       marginBottom: moderateHeightScale(4),
     },
     description: {
@@ -93,13 +269,15 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
+      paddingHorizontal: moderateWidthScale(12),
     },
     card: {
       backgroundColor: theme.lightGreen1,
       marginHorizontal: moderateWidthScale(20),
       marginBottom: moderateHeightScale(16),
-      padding: moderateWidthScale(16),
-      borderRadius: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(18),
+      paddingVertical: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(16),
     },
     headerRightIcons: {
       flexDirection: "row",
@@ -108,63 +286,30 @@ const createStyles = (theme: Theme) =>
     headerEditIcon: {
       marginLeft: moderateWidthScale(10),
     },
-    messageRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(8),
-      paddingTop: moderateHeightScale(14),
-      marginTop: moderateHeightScale(10),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLine,
-    },
-    messageRowText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-    },
-    cardTitle: {
-      fontSize: fontSize.size14,
+    sectionTitle: {
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(8),
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(10),
     },
     row: {
       flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(6),
+      alignItems: "flex-start",
+      marginBottom: moderateHeightScale(10),
+    },
+    rowLast: {
+      marginBottom: 0,
     },
     label: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-      width: widthScale(100),
-      // backgroundColor: "blue",
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      width: widthScale(130),
+      paddingRight: moderateWidthScale(8),
     },
     value: {
       flex: 1,
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    workingDayRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingVertical: moderateHeightScale(8),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLine,
-    },
-    workingDayRowLast: {
-      borderBottomWidth: 0,
-    },
-    dayText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-    },
-    timeText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
@@ -176,18 +321,18 @@ const createStyles = (theme: Theme) =>
       fontStyle: "italic",
     },
     hoursScroll: {
-      marginTop: moderateHeightScale(8),
+      marginTop: moderateHeightScale(4),
     },
     hoursCardsContainer: {
       paddingVertical: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(2),
       gap: moderateWidthScale(12),
     },
     hoursCard: {
-      minWidth: widthScale(110),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(10),
+      minWidth: widthScale(118),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(12),
       backgroundColor: theme.background,
       borderWidth: 1,
       borderColor: theme.borderLine,
@@ -196,12 +341,12 @@ const createStyles = (theme: Theme) =>
     },
     hoursDay: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
       textTransform: "capitalize",
     },
     hoursTime: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
@@ -209,14 +354,14 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
-      marginTop: moderateHeightScale(4),
+      marginTop: moderateHeightScale(2),
     },
     leaveCard: {
       minWidth: widthScale(100),
       minHeight: heightScale(72),
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(12),
       backgroundColor: theme.background,
       borderWidth: 1,
       borderColor: theme.borderLine,
@@ -225,11 +370,13 @@ const createStyles = (theme: Theme) =>
     },
     statusDot: {
       position: "absolute",
-      right: 12,
-      bottom: 5,
-      width: widthScale(12),
-      height: widthScale(12),
-      borderRadius: widthScale(6),
+      right: moderateWidthScale(6),
+      bottom: moderateHeightScale(6),
+      width: widthScale(14),
+      height: widthScale(14),
+      borderRadius: widthScale(7),
+      borderWidth: 2,
+      borderColor: theme.background,
       zIndex: 9999,
     },
     invitationStatus: {
@@ -243,36 +390,21 @@ const createStyles = (theme: Theme) =>
     invitationStatusPending: {
       color: theme.orangeBrown,
     },
-
-    callNowButton: {
-      backgroundColor: theme.darkGreenLight,
-      width: widthScale(22),
-      height: widthScale(22),
-      borderRadius: widthScale(22 / 2),
-      alignItems: "center",
-      justifyContent: "center",
-      marginLeft: moderateWidthScale(12),
-    },
-    phoneRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    phoneLabel: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      width: widthScale(100),
-    },
-    phoneValueWrap: {
-      flex: 1,
-      justifyContent: "center",
-    },
     reinviteLink: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
       textDecorationLine: "underline",
       textDecorationColor: theme.lightGreen,
+    },
+    actionsRow: {
+      flexDirection: "row",
+      alignItems: "stretch",
+      justifyContent: "space-between",
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(24),
+      marginTop: moderateHeightScale(2),
+      gap: moderateWidthScale(14),
     },
   });
 
@@ -790,18 +922,9 @@ export default function StaffDetail() {
         </View>
 
         <View style={styles.card}>
-          <View style={styles.phoneRow}>
+          <View style={styles.row}>
             <Text style={styles.label}>{t("email")}</Text>
-            <View style={styles.phoneValueWrap}>
-              <Text style={styles.value}>{data.email}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.callNowButton}
-              onPress={handleEmailNow}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="mail" size={widthScale(12)} color={theme.white} />
-            </TouchableOpacity>
+            <Text style={styles.value}>{data.email}</Text>
           </View>
           {data.business ? (
             <View style={styles.row}>
@@ -813,116 +936,120 @@ export default function StaffDetail() {
             <Text style={styles.label}>{t("completedAppointmentsCount")}</Text>
             <Text style={styles.value}>{String(totalAppointments)}</Text>
           </View>
-          <View style={styles.row}>
+          <View style={[styles.row, !staffPhone ? styles.rowLast : null]}>
             <Text style={styles.label}>{t("status")}</Text>
             <Text style={styles.value}>{isActive ? "Active" : "Inactive"}</Text>
           </View>
           {staffPhone ? (
-            <View style={styles.phoneRow}>
-              <Text style={styles.phoneLabel}>{t("phone")}</Text>
-              <View style={styles.phoneValueWrap}>
-                <Text style={styles.value}>{staffPhone}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.callNowButton}
-                onPress={handleCallNow}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="call"
-                  size={widthScale(10)}
-                  color={theme.white}
-                />
-              </TouchableOpacity>
+            <View style={[styles.row, styles.rowLast]}>
+              <Text style={styles.label}>{t("phone")}</Text>
+              <Text style={styles.value}>{staffPhone}</Text>
             </View>
-          ) : null}
-          {data?.user?.id != null && !hideSelfStaffMessage ? (
-            <TouchableOpacity
-              style={styles.messageRow}
-              onPress={handleChatPress}
-              activeOpacity={0.7}
-            >
-              <ChatIcon
-                width={widthScale(18)}
-                height={heightScale(18)}
-                color={theme.darkGreen}
-              />
-              <Text style={styles.messageRowText}>
-                {t("message") || "Message"}
-              </Text>
-            </TouchableOpacity>
           ) : null}
         </View>
 
-        {sortedHours.length > 0 ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{t("workingHours")}</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.hoursScroll}
-              contentContainerStyle={styles.hoursCardsContainer}
-            >
-              {sortedHours.map((wh) => {
-                const breakHours = wh.break_hours || [];
-                const hasBreaks = breakHours.length > 0;
+        <View style={styles.actionsRow}>
+          {!hideSelfStaffMessage && data?.user?.id != null ? (
+            <Staff3DActionButton
+              label={t("message") || "Message"}
+              icon="message"
+              onPress={handleChatPress}
+              theme={theme}
+            />
+          ) : null}
 
-                return (
-                  <View key={wh.id} style={styles.hoursCard}>
-                    <Text style={styles.hoursDay}>{capitalizeDay(wh.day)}</Text>
-                    {wh.closed ? (
-                      <Text style={styles.closedText}>{t("closed")}</Text>
-                    ) : (
-                      <>
-                        <Text style={styles.hoursTime}>
-                          {formatTime(wh.opening_time)} –{" "}
-                          {formatTime(wh.closing_time)}
-                        </Text>
-                        {hasBreaks && (
-                          <Text style={styles.hoursBreak}>
-                            {`Break: ${formatTime(
-                              breakHours[0].start,
-                            )} – ${formatTime(breakHours[0].end)}${
-                              breakHours.length > 1
-                                ? ` (+${breakHours.length - 1} more)`
-                                : ""
-                            }`}
+          <Staff3DActionButton
+            label={t("call") || "Call"}
+            icon="call"
+            onPress={handleCallNow}
+            disabled={!staffPhone}
+            theme={theme}
+          />
+
+          <Staff3DActionButton
+            label={t("email") || "Email"}
+            icon="email"
+            onPress={handleEmailNow}
+            disabled={!data.email}
+            theme={theme}
+          />
+        </View>
+
+        {sortedHours.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>{t("workingHours")}</Text>
+            <View style={styles.card}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.hoursScroll}
+                contentContainerStyle={styles.hoursCardsContainer}
+              >
+                {sortedHours.map((wh) => {
+                  const breakHours = wh.break_hours || [];
+                  const hasBreaks = breakHours.length > 0;
+
+                  return (
+                    <View key={wh.id} style={styles.hoursCard}>
+                      <Text style={styles.hoursDay}>
+                        {capitalizeDay(wh.day)}
+                      </Text>
+                      {wh.closed ? (
+                        <Text style={styles.closedText}>{t("closed")}</Text>
+                      ) : (
+                        <>
+                          <Text style={styles.hoursTime}>
+                            {formatTime(wh.opening_time)} –{" "}
+                            {formatTime(wh.closing_time)}
                           </Text>
-                        )}
-                      </>
-                    )}
-                  </View>
-                );
-              })}
-            </ScrollView>
-          </View>
+                          {hasBreaks && (
+                            <Text style={styles.hoursBreak}>
+                              {`Break: ${formatTime(
+                                breakHours[0].start,
+                              )} – ${formatTime(breakHours[0].end)}${
+                                breakHours.length > 1
+                                  ? ` (+${breakHours.length - 1} more)`
+                                  : ""
+                              }`}
+                            </Text>
+                          )}
+                        </>
+                      )}
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          </>
         ) : null}
 
         {(data.leaves?.length ?? 0) > 0 ? (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>
+          <>
+            <Text style={styles.sectionTitle}>
               {t("closeBreak") || "Close/Break"}
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.hoursScroll}
-              contentContainerStyle={styles.hoursCardsContainer}
-            >
-              {data.leaves!.map((leave) => (
-                <View key={leave.id} style={styles.leaveCard}>
-                  <Text style={styles.hoursDay}>
-                    {leave.type === "break"
-                      ? t("break") || "Break"
-                      : t("close") || "Close"}
-                  </Text>
-                  <Text style={styles.hoursTime}>
-                    {formatLeaveRangeDisplay(leave)}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
+            <View style={styles.card}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.hoursScroll}
+                contentContainerStyle={styles.hoursCardsContainer}
+              >
+                {data.leaves!.map((leave) => (
+                  <View key={leave.id} style={styles.leaveCard}>
+                    <Text style={styles.hoursDay}>
+                      {leave.type === "break"
+                        ? t("break") || "Break"
+                        : t("close") || "Close"}
+                    </Text>
+                    <Text style={styles.hoursTime}>
+                      {formatLeaveRangeDisplay(leave)}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </>
         ) : null}
       </ScrollView>
     </View>

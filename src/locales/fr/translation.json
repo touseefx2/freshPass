@@ -410,6 +410,7 @@
   "delete": "Supprimer",
   "deleteStaff": "Supprimer le personnel",
   "deleteStaffConfirm": "Êtes-vous sûr de vouloir supprimer ce membre du personnel ?",
+  "manageStaffActions": "Choisissez une action pour cet employé",
   "staffDeletedSuccess": "Personnel supprimé avec succès",
   "success": "Succès",
   "accountDeletedSuccessfully": "Compte supprimé avec succès",

@@ -408,6 +408,7 @@
   "delete": "Delete",
   "deleteStaff": "Delete staff",
   "deleteStaffConfirm": "Are you sure you want to delete this staff member?",
+  "manageStaffActions": "Choose an action for this employee",
   "staffDeletedSuccess": "Staff deleted successfully",
   "success": "Success",
   "accountDeletedSuccessfully": "Account deleted successfully",
