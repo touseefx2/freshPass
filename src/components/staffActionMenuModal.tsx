@@ -46,7 +46,7 @@ const createStyles = (theme: Theme) =>
     dimOverlay: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: theme.black,
-      opacity: 0.45,
+      opacity: 0.2,
     },
     cardWrap: {
       width: "100%",
@@ -275,11 +275,15 @@ export default function StaffActionMenuModal({
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {Platform.OS === "ios" ? (
-          <BlurView intensity={28} tint="dark" style={styles.blurOverlay} />
-        ) : (
-          <View style={styles.dimOverlay} />
-        )}
+        <BlurView
+          intensity={14}
+          tint="dark"
+          style={styles.blurOverlay}
+          experimentalBlurMethod={
+            Platform.OS === "android" ? "dimezisBlurView" : "none"
+          }
+        />
+        <View style={styles.dimOverlay} />
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
         <Animated.View style={[styles.cardWrap, cardAnimStyle]}>
