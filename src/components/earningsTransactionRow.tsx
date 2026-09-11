@@ -162,7 +162,13 @@ export default function EarningsTransactionRow({
   };
 
   const attributionParts: string[] = [item.sourceLabel];
-  if (item.staffName) attributionParts.push(item.staffName);
+  if (item.staffName) {
+    attributionParts.push(
+      item.staffIsOwner === true
+        ? `${item.staffName} · ${t("owner")}`
+        : item.staffName,
+    );
+  }
   if (item.tipRecipientName && item.tipRecipientName !== item.staffName) {
     attributionParts.push(item.tipRecipientName);
   }

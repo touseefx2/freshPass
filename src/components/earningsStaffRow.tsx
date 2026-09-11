@@ -79,6 +79,17 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen6,
     },
+    badges: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexShrink: 0,
+      gap: moderateWidthScale(6),
+    },
+    ownerBadge: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.primary,
+    },
     removedBadge: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontMedium,
@@ -176,6 +187,7 @@ export default function EarningsStaffRow({
   const { t } = useTranslation();
 
   const revenueLine = compact ? "" : buildRevenueLine(item, currency, t);
+  const showOwner = item.isOwner === true && !item.isUnassigned;
   const content = (
     <>
       <View
@@ -208,8 +220,17 @@ export default function EarningsStaffRow({
           >
             {item.isUnassigned ? t("earningsUnassigned") : item.name}
           </Text>
-          {item.removed && (
-            <Text style={styles.removedBadge}>{t("earningsStaffRemoved")}</Text>
+          {(showOwner || item.removed) && (
+            <View style={styles.badges}>
+              {showOwner && (
+                <Text style={styles.ownerBadge}>{t("owner")}</Text>
+              )}
+              {item.removed && (
+                <Text style={styles.removedBadge}>
+                  {t("earningsStaffRemoved")}
+                </Text>
+              )}
+            </View>
           )}
         </View>
 

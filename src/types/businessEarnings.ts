@@ -54,6 +54,8 @@ export interface EarningsStaffRef {
   profileImage: string | null;
   active: boolean;
   removed: boolean;
+  /** Business owner working as staff. At most one row. */
+  isOwner?: boolean;
 }
 
 export interface EarningsSummary {
@@ -171,6 +173,8 @@ export interface StaffEarningsRow {
   profileImage: string | null;
   active: boolean | null;
   removed: boolean;
+  /** Business owner working as staff. Never true with isUnassigned. */
+  isOwner?: boolean;
   isUnassigned: boolean;
   grossEarnings: number;
   stripeFees: number;
@@ -225,6 +229,8 @@ export interface EarningsTransaction {
   tipRecipientName: string | null;
   staffId: number | null;
   staffName: string | null;
+  /** True when credited staff is the business owner-as-staff. */
+  staffIsOwner?: boolean;
 }
 
 export interface EarningsTransactionsMeta {

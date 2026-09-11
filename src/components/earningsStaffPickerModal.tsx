@@ -99,11 +99,22 @@ const createStyles = (theme: Theme) =>
     nameMuted: {
       color: theme.lightGreen6,
     },
+    badgeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(2),
+    },
+    ownerBadge: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.primary,
+    },
     hint: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
-      marginTop: moderateHeightScale(2),
     },
   });
 
@@ -180,6 +191,7 @@ export default function EarningsStaffPickerModal({
               const selected =
                 typeof selectedStaffId === "number" &&
                 selectedStaffId === row.staffId;
+              const showOwner = row.isOwner === true;
               return (
                 <TouchableOpacity
                   key={row.staffId ?? row.name}
@@ -210,10 +222,17 @@ export default function EarningsStaffPickerModal({
                     >
                       {row.name}
                     </Text>
-                    {row.removed && (
-                      <Text style={styles.hint}>
-                        {t("earningsStaffRemoved")}
-                      </Text>
+                    {(showOwner || row.removed) && (
+                      <View style={styles.badgeRow}>
+                        {showOwner && (
+                          <Text style={styles.ownerBadge}>{t("owner")}</Text>
+                        )}
+                        {row.removed && (
+                          <Text style={styles.hint}>
+                            {t("earningsStaffRemoved")}
+                          </Text>
+                        )}
+                      </View>
                     )}
                   </View>
                   {selected && (

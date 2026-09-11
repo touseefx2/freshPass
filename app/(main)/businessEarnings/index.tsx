@@ -140,14 +140,23 @@ export default function BusinessEarningsScreen() {
   const selectedStaffLabel = useMemo(() => {
     if (!staffFilterActive) return t("earningsAllStaff");
     if (report?.staff?.name) {
-      return report.staff.removed
-        ? `${report.staff.name} (${t("earningsStaffRemoved")})`
+      const tags: string[] = [];
+      if (report.staff.isOwner) tags.push(t("owner"));
+      if (report.staff.removed) tags.push(t("earningsStaffRemoved"));
+      return tags.length > 0
+        ? `${report.staff.name} (${tags.join(" · ")})`
         : report.staff.name;
     }
     const fromList = staffReport?.staff.find(
       (s) => s.staffId === selectedStaffId,
     );
-    return fromList?.name ?? t("earningsAllStaff");
+    if (!fromList?.name) return t("earningsAllStaff");
+    const tags: string[] = [];
+    if (fromList.isOwner) tags.push(t("owner"));
+    if (fromList.removed) tags.push(t("earningsStaffRemoved"));
+    return tags.length > 0
+      ? `${fromList.name} (${tags.join(" · ")})`
+      : fromList.name;
   }, [staffFilterActive, report, staffReport, selectedStaffId, t]);
 
   const staffPreviewRows = useMemo(() => {
