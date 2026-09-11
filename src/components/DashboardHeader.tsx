@@ -22,7 +22,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import CustomToggleInside from "@/src/components/customToggleInside";
+import StaffCustomerStatusControl from "@/src/components/staffCustomerStatusControl";
 import { updateBusinessActiveStatus } from "@/src/state/thunks/businessThunks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
@@ -268,7 +268,7 @@ function DashboardHeader({
             </View>
           ) : (
             <View style={styles.toggleContainer}>
-              <CustomToggleInside
+              <StaffCustomerStatusControl
                 value={isOnline}
                 onValueChange={handleToggleChange}
                 loading={toggleLoading}
