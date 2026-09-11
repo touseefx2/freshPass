@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   View,
@@ -251,16 +251,17 @@ const createStyles = (theme: Theme) =>
     },
     heroWrap: {
       marginHorizontal: 0,
-      marginBottom: moderateHeightScale(18),
+      marginBottom: moderateHeightScale(-15),
       width: "100%",
       alignSelf: "stretch",
+      zIndex: 1,
     },
     heroCard: {
       width: "100%",
       alignSelf: "stretch",
       overflow: "hidden",
-      borderBottomLeftRadius: moderateWidthScale(56),
-      borderBottomRightRadius: 0,
+      borderBottomLeftRadius: moderateWidthScale(28),
+      borderBottomRightRadius: moderateWidthScale(28),
     },
     heroTop: {
       flexDirection: "row",
@@ -406,40 +407,53 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(10),
     },
     sectionContainer: {
-      marginBottom: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(18),
       paddingHorizontal: moderateWidthScale(16),
+      zIndex: 2,
+    },
+    sectionContainerFlush: {
+      marginBottom: moderateHeightScale(18),
+      paddingHorizontal: 0,
+      zIndex: 2,
     },
     sectionHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(8),
+      justifyContent: "space-between",
       marginBottom: moderateHeightScale(12),
     },
-    sectionAccent: {
-      width: moderateWidthScale(4),
-      height: moderateHeightScale(16),
-      borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.buttonBack,
+    sectionHeaderPadded: {
+      paddingHorizontal: moderateWidthScale(16),
     },
     sectionTitle: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    sectionHint: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+    },
     contactPanel: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(22),
-      paddingVertical: moderateHeightScale(6),
-      paddingHorizontal: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(24),
+      paddingTop: moderateHeightScale(8),
+      paddingBottom: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(8),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      overflow: "hidden",
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(8) },
+      shadowOpacity: 0.12,
+      shadowRadius: moderateWidthScale(16),
+      elevation: 6,
     },
     contactRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(11),
+      paddingHorizontal: moderateWidthScale(8),
       gap: moderateWidthScale(12),
     },
     contactRowDivider: {
@@ -447,11 +461,12 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.borderLight,
     },
     contactIconWrap: {
-      width: moderateWidthScale(42),
-      height: moderateWidthScale(42),
-      borderRadius: moderateWidthScale(21),
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(14),
       alignItems: "center",
       justifyContent: "center",
+      backgroundColor: theme.darkGreen,
     },
     contactTextWrap: {
       flex: 1,
@@ -461,11 +476,9 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen5,
-      textTransform: "uppercase",
-      letterSpacing: 0.4,
     },
     contactValue: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -476,35 +489,32 @@ const createStyles = (theme: Theme) =>
     headerEditIcon: {
       marginLeft: moderateWidthScale(10),
     },
-    hoursPanel: {
-      backgroundColor: theme.apptMintBg,
-      borderRadius: moderateWidthScale(22),
-      paddingVertical: moderateHeightScale(14),
-      paddingLeft: moderateWidthScale(12),
+    hoursScroll: {
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    hoursCard: {
+      width: widthScale(156),
+      borderRadius: moderateWidthScale(20),
+      overflow: "hidden",
+      backgroundColor: theme.white,
       borderWidth: 1,
       borderColor: theme.borderLight,
     },
-    hoursScroll: {
-      gap: moderateWidthScale(10),
-      paddingRight: moderateWidthScale(12),
-    },
-    hoursCard: {
-      width: widthScale(142),
-      borderRadius: moderateWidthScale(18),
-      overflow: "hidden",
-      backgroundColor: theme.white,
-    },
     hoursCardToday: {
-      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    hoursCardClosed: {
+      opacity: 0.72,
     },
     hoursDayBand: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
       backgroundColor: theme.darkGreen,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      gap: moderateWidthScale(6),
+      gap: moderateWidthScale(8),
     },
     hoursDayBandToday: {
       backgroundColor: theme.buttonBack,
@@ -513,15 +523,15 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightGreen4,
     },
     hoursDay: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.white,
       textTransform: "capitalize",
       flex: 1,
     },
     hoursTodayTag: {
-      paddingHorizontal: moderateWidthScale(7),
-      paddingVertical: moderateHeightScale(2),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
       borderRadius: moderateWidthScale(999),
       backgroundColor: theme.orangeBrown,
     },
@@ -531,66 +541,56 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     hoursBody: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateHeightScale(6),
-      minHeight: heightScale(78),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      gap: moderateHeightScale(8),
+      minHeight: heightScale(88),
+    },
+    hoursTimeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
     },
     hoursTime: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      lineHeight: fontSize.size12 * 1.35,
-    },
-    hoursTimeToday: {
-      color: theme.white85,
+      color: theme.darkGreen,
+      flex: 1,
+      lineHeight: fontSize.size13 * 1.35,
     },
     hoursBreakChip: {
       alignSelf: "flex-start",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
       backgroundColor: theme.apptPeachBg,
-      borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(4),
-    },
-    hoursBreakChipToday: {
-      backgroundColor: theme.white15,
+      borderRadius: moderateWidthScale(999),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(5),
     },
     hoursBreak: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.apptPeachAccent,
     },
-    hoursBreakToday: {
-      color: theme.orangeBrown,
-    },
     closedText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen5,
       fontStyle: "italic",
     },
-    closedTextToday: {
-      color: theme.white70,
-    },
-    leavePanel: {
-      backgroundColor: theme.lightBeige,
-      borderRadius: moderateWidthScale(22),
-      paddingVertical: moderateHeightScale(14),
-      paddingLeft: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
     leaveScroll: {
-      gap: moderateWidthScale(10),
-      paddingRight: moderateWidthScale(12),
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
     },
     leaveCard: {
-      width: widthScale(188),
-      borderRadius: moderateWidthScale(18),
+      width: widthScale(200),
+      borderRadius: moderateWidthScale(20),
       overflow: "hidden",
       backgroundColor: theme.white,
       borderWidth: 1,
       borderColor: theme.borderLight,
+      minHeight: heightScale(128),
     },
     leaveCardBreak: {
       borderColor: theme.upcomingBorder,
@@ -599,11 +599,11 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.lightRedBorder,
     },
     leaveTopBand: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(8),
+      gap: moderateWidthScale(10),
     },
     leaveTopBandBreak: {
       backgroundColor: theme.apptPeachBg,
@@ -612,24 +612,24 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightRed,
     },
     leaveIconWrap: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
-      borderRadius: moderateWidthScale(9),
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(11),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.white,
     },
     leaveType: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       flex: 1,
     },
     leaveBody: {
-      paddingHorizontal: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(12),
       gap: moderateHeightScale(6),
-      minHeight: heightScale(72),
+      flex: 1,
     },
     leaveRange: {
       fontSize: fontSize.size12,
@@ -742,16 +742,29 @@ export default function StaffDetail() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StaffDetailData | null>(null);
   const [reinviting, setReinviting] = useState(false);
+  const dataRef = React.useRef<StaffDetailData | null>(null);
+  dataRef.current = data;
+
+  useEffect(() => {
+    setData(null);
+    setError(null);
+    setLoading(true);
+  }, [staffId]);
 
   const fetchStaffDetails = useCallback(async () => {
     if (!staffId) {
       setError(t("staffProfileNotFound"));
       setLoading(false);
+      setData(null);
       return;
     }
-    setLoading(true);
-    setError(null);
-    setData(null);
+
+    const hasExistingData = dataRef.current != null;
+    if (!hasExistingData) {
+      setLoading(true);
+      setError(null);
+    }
+
     try {
       const response = await ApiService.get<{
         success: boolean;
@@ -760,16 +773,20 @@ export default function StaffDetail() {
       }>(staffEndpoints.details(staffId));
 
       if (!response?.success || !response.data) {
-        setError(response?.message || t("staffProfileNotFound"));
-        setData(null);
+        if (!hasExistingData) {
+          setError(response?.message || t("staffProfileNotFound"));
+          setData(null);
+        }
       } else {
         setData(response.data);
         setError(null);
       }
     } catch (err: any) {
-      const apiMessage = err?.data?.message || err?.data?.error;
-      setError(apiMessage || err?.message || t("staffProfileNotFound"));
-      setData(null);
+      if (!hasExistingData) {
+        const apiMessage = err?.data?.message || err?.data?.error;
+        setError(apiMessage || err?.message || t("staffProfileNotFound"));
+        setData(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -778,7 +795,7 @@ export default function StaffDetail() {
   useFocusEffect(
     useCallback(() => {
       fetchStaffDetails();
-    }, []),
+    }, [fetchStaffDetails]),
   );
 
   const handleEditPress = () => {
@@ -1322,16 +1339,11 @@ export default function StaffDetail() {
                       : null,
                   ]}
                 >
-                  <View
-                    style={[
-                      styles.contactIconWrap,
-                      { backgroundColor: row.iconBg },
-                    ]}
-                  >
+                  <View style={styles.contactIconWrap}>
                     <MaterialIcons
                       name={row.icon}
                       size={moderateWidthScale(18)}
-                      color={row.accent}
+                      color={theme.white}
                     />
                   </View>
                   <View style={styles.contactTextWrap}>
@@ -1347,165 +1359,154 @@ export default function StaffDetail() {
         </View>
 
         {sortedHours.length > 0 ? (
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <View style={styles.sectionAccent} />
+          <View style={styles.sectionContainerFlush}>
+            <View
+              style={[styles.sectionHeaderRow, styles.sectionHeaderPadded]}
+            >
               <Text style={styles.sectionTitle}>{t("workingHours")}</Text>
+              <Text style={styles.sectionHint}>
+                {openDaysCount}/{sortedHours.length} open
+              </Text>
             </View>
-            <View style={styles.hoursPanel}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.hoursScroll}
-              >
-                {sortedHours.map((wh) => {
-                  const breakHours = wh.break_hours || [];
-                  const hasBreaks = breakHours.length > 0;
-                  const isToday = wh.day.toLowerCase() === todayDay;
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.hoursScroll}
+            >
+              {sortedHours.map((wh) => {
+                const breakHours = wh.break_hours || [];
+                const hasBreaks = breakHours.length > 0;
+                const isToday = wh.day.toLowerCase() === todayDay;
 
-                  return (
+                return (
+                  <View
+                    key={wh.id}
+                    style={[
+                      styles.hoursCard,
+                      wh.closed && styles.hoursCardClosed,
+                      isToday && styles.hoursCardToday,
+                    ]}
+                  >
                     <View
-                      key={wh.id}
                       style={[
-                        styles.hoursCard,
-                        isToday && styles.hoursCardToday,
+                        styles.hoursDayBand,
+                        wh.closed && styles.hoursDayBandClosed,
+                        isToday && styles.hoursDayBandToday,
                       ]}
                     >
-                      <View
-                        style={[
-                          styles.hoursDayBand,
-                          wh.closed && styles.hoursDayBandClosed,
-                          isToday && styles.hoursDayBandToday,
-                        ]}
-                      >
-                        <Text style={styles.hoursDay} numberOfLines={1}>
-                          {capitalizeDay(wh.day)}
-                        </Text>
-                        {isToday ? (
-                          <View style={styles.hoursTodayTag}>
-                            <Text style={styles.hoursTodayTagText}>Today</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <View style={styles.hoursBody}>
-                        {wh.closed ? (
-                          <Text
-                            style={[
-                              styles.closedText,
-                              isToday && styles.closedTextToday,
-                            ]}
-                          >
-                            {t("closed")}
-                          </Text>
-                        ) : (
-                          <>
-                            <Text
-                              style={[
-                                styles.hoursTime,
-                                isToday && styles.hoursTimeToday,
-                              ]}
-                            >
+                      <Text style={styles.hoursDay} numberOfLines={1}>
+                        {capitalizeDay(wh.day)}
+                      </Text>
+                      {isToday ? (
+                        <View style={styles.hoursTodayTag}>
+                          <Text style={styles.hoursTodayTagText}>Today</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.hoursBody}>
+                      {wh.closed ? (
+                        <Text style={styles.closedText}>{t("closed")}</Text>
+                      ) : (
+                        <>
+                          <View style={styles.hoursTimeRow}>
+                            <MaterialIcons
+                              name="schedule"
+                              size={moderateWidthScale(14)}
+                              color={theme.buttonBack}
+                            />
+                            <Text style={styles.hoursTime}>
                               {formatTime(wh.opening_time)} –{" "}
                               {formatTime(wh.closing_time)}
                             </Text>
-                            {hasBreaks ? (
-                              <View
-                                style={[
-                                  styles.hoursBreakChip,
-                                  isToday && styles.hoursBreakChipToday,
-                                ]}
-                              >
-                                <Text
-                                  style={[
-                                    styles.hoursBreak,
-                                    isToday && styles.hoursBreakToday,
-                                  ]}
-                                >
-                                  {`Break ${formatTime(
-                                    breakHours[0].start,
-                                  )} – ${formatTime(breakHours[0].end)}${
-                                    breakHours.length > 1
-                                      ? ` (+${breakHours.length - 1})`
-                                      : ""
-                                  }`}
-                                </Text>
-                              </View>
-                            ) : null}
-                          </>
-                        )}
-                      </View>
+                          </View>
+                          {hasBreaks ? (
+                            <View style={styles.hoursBreakChip}>
+                              <MaterialIcons
+                                name="free-breakfast"
+                                size={moderateWidthScale(12)}
+                                color={theme.apptPeachAccent}
+                              />
+                              <Text style={styles.hoursBreak}>
+                                {`${formatTime(breakHours[0].start)} – ${formatTime(
+                                  breakHours[0].end,
+                                )}${
+                                  breakHours.length > 1
+                                    ? ` (+${breakHours.length - 1})`
+                                    : ""
+                                }`}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </>
+                      )}
                     </View>
-                  );
-                })}
-              </ScrollView>
-            </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
         ) : null}
 
         {leaveCount > 0 ? (
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
-              <View style={styles.sectionAccent} />
+          <View style={styles.sectionContainerFlush}>
+            <View
+              style={[styles.sectionHeaderRow, styles.sectionHeaderPadded]}
+            >
               <Text style={styles.sectionTitle}>
                 {t("closeBreak") || "Close/Break"}
               </Text>
+              <Text style={styles.sectionHint}>{String(leaveCount)}</Text>
             </View>
-            <View style={styles.leavePanel}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.leaveScroll}
-              >
-                {data.leaves!.map((leave) => {
-                  const isBreak = leave.type === "break";
-                  return (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.leaveScroll}
+            >
+              {data.leaves!.map((leave) => {
+                const isBreak = leave.type === "break";
+                return (
+                  <View
+                    key={leave.id}
+                    style={[
+                      styles.leaveCard,
+                      isBreak ? styles.leaveCardBreak : styles.leaveCardClose,
+                    ]}
+                  >
                     <View
-                      key={leave.id}
                       style={[
-                        styles.leaveCard,
+                        styles.leaveTopBand,
                         isBreak
-                          ? styles.leaveCardBreak
-                          : styles.leaveCardClose,
+                          ? styles.leaveTopBandBreak
+                          : styles.leaveTopBandClose,
                       ]}
                     >
-                      <View
-                        style={[
-                          styles.leaveTopBand,
-                          isBreak
-                            ? styles.leaveTopBandBreak
-                            : styles.leaveTopBandClose,
-                        ]}
-                      >
-                        <View style={styles.leaveIconWrap}>
-                          <MaterialIcons
-                            name={isBreak ? "free-breakfast" : "event-busy"}
-                            size={moderateWidthScale(16)}
-                            color={
-                              isBreak ? theme.apptPeachAccent : theme.red
-                            }
-                          />
-                        </View>
-                        <Text style={styles.leaveType}>
-                          {isBreak
-                            ? t("break") || "Break"
-                            : t("close") || "Close"}
-                        </Text>
+                      <View style={styles.leaveIconWrap}>
+                        <MaterialIcons
+                          name={isBreak ? "free-breakfast" : "event-busy"}
+                          size={moderateWidthScale(16)}
+                          color={isBreak ? theme.apptPeachAccent : theme.red}
+                        />
                       </View>
-                      <View style={styles.leaveBody}>
-                        <Text style={styles.leaveRange}>
-                          {formatLeaveRangeDisplay(leave)}
-                        </Text>
-                        {leave.reason ? (
-                          <Text style={styles.leaveReason} numberOfLines={2}>
-                            {leave.reason}
-                          </Text>
-                        ) : null}
-                      </View>
+                      <Text style={styles.leaveType}>
+                        {isBreak
+                          ? t("break") || "Break"
+                          : t("close") || "Close"}
+                      </Text>
                     </View>
-                  );
-                })}
-              </ScrollView>
-            </View>
+                    <View style={styles.leaveBody}>
+                      <Text style={styles.leaveRange}>
+                        {formatLeaveRangeDisplay(leave)}
+                      </Text>
+                      {leave.reason ? (
+                        <Text style={styles.leaveReason} numberOfLines={2}>
+                          {leave.reason}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
         ) : null}
       </ScrollView>
