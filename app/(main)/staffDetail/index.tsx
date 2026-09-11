@@ -414,21 +414,46 @@ const createStyles = (theme: Theme) =>
       color: theme.white70,
       textAlign: "center",
     },
-    invitationStatus: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white70,
-      marginTop: moderateHeightScale(2),
+    inviteBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingVertical: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen05,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      gap: moderateWidthScale(10),
     },
-    invitationStatusPending: {
-      color: theme.orangeBrown,
+    inviteBannerLeft: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
     },
-    reinviteLink: {
-      fontSize: fontSize.size12,
+    inviteBannerText: {
+      flex: 1,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-      textDecorationLine: "underline",
-      textDecorationColor: theme.orangeBrown,
+      color: theme.darkGreen,
+    },
+    reinviteButton: {
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.selectCard,
+      minWidth: widthScale(78),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    reinviteButtonDisabled: {
+      opacity: 0.7,
+    },
+    reinviteButtonText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
     },
     actionsRow: {
       flexDirection: "row",
@@ -1263,29 +1288,6 @@ export default function StaffDetail() {
                     {data.description}
                   </Text>
                 ) : null}
-
-                {showPendingInvite ? (
-                  <>
-                    <Text
-                      style={[
-                        styles.invitationStatus,
-                        styles.invitationStatusPending,
-                      ]}
-                    >
-                      {t("staffInvitationPending")}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={handleReinvite}
-                      disabled={reinviting}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={styles.reinviteLink}>
-                        {reinviting ? t("sendingInvite") : t("reinvite")}
-                      </Text>
-                    </TouchableOpacity>
-                  </>
-                ) : null}
               </View>
             </View>
 
@@ -1335,6 +1337,40 @@ export default function StaffDetail() {
             </View>
           </View>
         </View>
+
+        {showPendingInvite ? (
+          <View style={styles.sectionContainer}>
+            <View style={styles.inviteBanner}>
+              <View style={styles.inviteBannerLeft}>
+                <MaterialIcons
+                  name="mail-outline"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+                <Text style={styles.inviteBannerText} numberOfLines={2}>
+                  {t("staffInvitationPending")}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[
+                  styles.reinviteButton,
+                  reinviting && styles.reinviteButtonDisabled,
+                ]}
+                onPress={handleReinvite}
+                disabled={reinviting}
+                activeOpacity={0.8}
+              >
+                {reinviting ? (
+                  <ActivityIndicator size="small" color={theme.white} />
+                ) : (
+                  <Text style={styles.reinviteButtonText}>
+                    {t("reinvite")}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
 
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeaderRow}>
