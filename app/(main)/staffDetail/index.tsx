@@ -312,6 +312,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
       color: theme.white,
+      textTransform: "capitalize",
     },
     badgesRow: {
       flexDirection: "row",
@@ -345,11 +346,11 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.orangeBrown,
+      backgroundColor: theme.selectCard,
     },
     ownerPillText: {
       fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontBold,
       color: theme.white,
     },
     description: {
@@ -405,45 +406,50 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(10),
     },
     sectionContainer: {
-      marginBottom: moderateHeightScale(18),
+      marginBottom: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(16),
     },
     sectionHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(10),
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(12),
+    },
+    sectionAccent: {
+      width: moderateWidthScale(4),
+      height: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.buttonBack,
     },
     sectionTitle: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    contactList: {
-      gap: moderateHeightScale(8),
-    },
-    contactCard: {
-      flexDirection: "row",
-      alignItems: "center",
+    contactPanel: {
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(13),
-      paddingRight: moderateWidthScale(14),
-      paddingLeft: moderateWidthScale(12),
-      gap: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(22),
+      paddingVertical: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(6),
       borderWidth: 1,
       borderColor: theme.borderLight,
+      overflow: "hidden",
     },
-    contactAccent: {
-      width: moderateWidthScale(4),
-      alignSelf: "stretch",
-      borderRadius: moderateWidthScale(999),
-      marginVertical: moderateHeightScale(2),
+    contactRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(10),
+      gap: moderateWidthScale(12),
+    },
+    contactRowDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
     },
     contactIconWrap: {
-      width: moderateWidthScale(38),
-      height: moderateWidthScale(38),
-      borderRadius: moderateWidthScale(12),
+      width: moderateWidthScale(42),
+      height: moderateWidthScale(42),
+      borderRadius: moderateWidthScale(21),
       alignItems: "center",
       justifyContent: "center",
     },
@@ -453,8 +459,10 @@ const createStyles = (theme: Theme) =>
     },
     contactLabel: {
       fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
     },
     contactValue: {
       fontSize: fontSize.size14,
@@ -468,58 +476,52 @@ const createStyles = (theme: Theme) =>
     headerEditIcon: {
       marginLeft: moderateWidthScale(10),
     },
+    hoursPanel: {
+      backgroundColor: theme.apptMintBg,
+      borderRadius: moderateWidthScale(22),
+      paddingVertical: moderateHeightScale(14),
+      paddingLeft: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
     hoursScroll: {
       gap: moderateWidthScale(10),
-      paddingBottom: moderateHeightScale(2),
-      paddingRight: moderateWidthScale(4),
+      paddingRight: moderateWidthScale(12),
     },
     hoursCard: {
-      width: widthScale(148),
-      backgroundColor: theme.white,
+      width: widthScale(142),
       borderRadius: moderateWidthScale(18),
-      borderWidth: 1.5,
-      borderColor: theme.borderNormal,
       overflow: "hidden",
+      backgroundColor: theme.white,
     },
     hoursCardToday: {
-      borderColor: theme.darkGreen,
       backgroundColor: theme.darkGreen,
     },
-    hoursAccent: {
-      height: moderateHeightScale(5),
-      backgroundColor: theme.buttonBack,
-    },
-    hoursAccentToday: {
-      backgroundColor: theme.orangeBrown,
-    },
-    hoursAccentClosed: {
-      backgroundColor: theme.lightGreen4,
-    },
-    hoursBody: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateHeightScale(6),
-      minHeight: heightScale(108),
-    },
-    hoursDayRow: {
+    hoursDayBand: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      backgroundColor: theme.darkGreen,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       gap: moderateWidthScale(6),
     },
+    hoursDayBandToday: {
+      backgroundColor: theme.buttonBack,
+    },
+    hoursDayBandClosed: {
+      backgroundColor: theme.lightGreen4,
+    },
     hoursDay: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
       textTransform: "capitalize",
       flex: 1,
     },
-    hoursDayToday: {
-      color: theme.white,
-    },
     hoursTodayTag: {
       paddingHorizontal: moderateWidthScale(7),
-      paddingVertical: moderateHeightScale(3),
+      paddingVertical: moderateHeightScale(2),
       borderRadius: moderateWidthScale(999),
       backgroundColor: theme.orangeBrown,
     },
@@ -527,6 +529,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size10,
       fontFamily: fonts.fontBold,
       color: theme.white,
+    },
+    hoursBody: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateHeightScale(6),
+      minHeight: heightScale(78),
     },
     hoursTime: {
       fontSize: fontSize.size12,
@@ -537,11 +545,20 @@ const createStyles = (theme: Theme) =>
     hoursTimeToday: {
       color: theme.white85,
     },
+    hoursBreakChip: {
+      alignSelf: "flex-start",
+      backgroundColor: theme.apptPeachBg,
+      borderRadius: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(4),
+    },
+    hoursBreakChipToday: {
+      backgroundColor: theme.white15,
+    },
     hoursBreak: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.apptPeachAccent,
-      marginTop: moderateHeightScale(2),
     },
     hoursBreakToday: {
       color: theme.orangeBrown,
@@ -555,45 +572,64 @@ const createStyles = (theme: Theme) =>
     closedTextToday: {
       color: theme.white70,
     },
+    leavePanel: {
+      backgroundColor: theme.lightBeige,
+      borderRadius: moderateWidthScale(22),
+      paddingVertical: moderateHeightScale(14),
+      paddingLeft: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
     leaveScroll: {
       gap: moderateWidthScale(10),
-      paddingRight: moderateWidthScale(4),
+      paddingRight: moderateWidthScale(12),
     },
     leaveCard: {
-      width: widthScale(180),
+      width: widthScale(188),
       borderRadius: moderateWidthScale(18),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      borderWidth: 1.5,
-      gap: moderateHeightScale(8),
-      minHeight: heightScale(118),
+      overflow: "hidden",
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     leaveCardBreak: {
-      backgroundColor: theme.apptPeachBg,
       borderColor: theme.upcomingBorder,
     },
     leaveCardClose: {
-      backgroundColor: theme.lightRed,
       borderColor: theme.lightRedBorder,
     },
-    leaveTypeRow: {
+    leaveTopBand: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
     },
+    leaveTopBandBreak: {
+      backgroundColor: theme.apptPeachBg,
+    },
+    leaveTopBandClose: {
+      backgroundColor: theme.lightRed,
+    },
     leaveIconWrap: {
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(32),
-      borderRadius: moderateWidthScale(10),
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(9),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.white85,
+      backgroundColor: theme.white,
     },
     leaveType: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       flex: 1,
+    },
+    leaveBody: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateHeightScale(6),
+      minHeight: heightScale(72),
     },
     leaveRange: {
       fontSize: fontSize.size12,
@@ -1275,15 +1311,17 @@ export default function StaffDetail() {
 
         <View style={styles.sectionContainer}>
           {contactRows.length > 0 ? (
-            <View style={styles.contactList}>
-              {contactRows.map((row) => (
-                <View key={row.key} style={styles.contactCard}>
-                  <View
-                    style={[
-                      styles.contactAccent,
-                      { backgroundColor: row.accent },
-                    ]}
-                  />
+            <View style={styles.contactPanel}>
+              {contactRows.map((row, index) => (
+                <View
+                  key={row.key}
+                  style={[
+                    styles.contactRow,
+                    index < contactRows.length - 1
+                      ? styles.contactRowDivider
+                      : null,
+                  ]}
+                >
                   <View
                     style={[
                       styles.contactIconWrap,
@@ -1311,42 +1349,36 @@ export default function StaffDetail() {
         {sortedHours.length > 0 ? (
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionAccent} />
               <Text style={styles.sectionTitle}>{t("workingHours")}</Text>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.hoursScroll}
-            >
-              {sortedHours.map((wh) => {
-                const breakHours = wh.break_hours || [];
-                const hasBreaks = breakHours.length > 0;
-                const isToday = wh.day.toLowerCase() === todayDay;
+            <View style={styles.hoursPanel}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.hoursScroll}
+              >
+                {sortedHours.map((wh) => {
+                  const breakHours = wh.break_hours || [];
+                  const hasBreaks = breakHours.length > 0;
+                  const isToday = wh.day.toLowerCase() === todayDay;
 
-                return (
-                  <View
-                    key={wh.id}
-                    style={[
-                      styles.hoursCard,
-                      isToday && styles.hoursCardToday,
-                    ]}
-                  >
+                  return (
                     <View
+                      key={wh.id}
                       style={[
-                        styles.hoursAccent,
-                        wh.closed && styles.hoursAccentClosed,
-                        isToday && styles.hoursAccentToday,
+                        styles.hoursCard,
+                        isToday && styles.hoursCardToday,
                       ]}
-                    />
-                    <View style={styles.hoursBody}>
-                      <View style={styles.hoursDayRow}>
-                        <Text
-                          style={[
-                            styles.hoursDay,
-                            isToday && styles.hoursDayToday,
-                          ]}
-                          numberOfLines={1}
-                        >
+                    >
+                      <View
+                        style={[
+                          styles.hoursDayBand,
+                          wh.closed && styles.hoursDayBandClosed,
+                          isToday && styles.hoursDayBandToday,
+                        ]}
+                      >
+                        <Text style={styles.hoursDay} numberOfLines={1}>
                           {capitalizeDay(wh.day)}
                         </Text>
                         {isToday ? (
@@ -1355,100 +1387,125 @@ export default function StaffDetail() {
                           </View>
                         ) : null}
                       </View>
-                      {wh.closed ? (
-                        <Text
-                          style={[
-                            styles.closedText,
-                            isToday && styles.closedTextToday,
-                          ]}
-                        >
-                          {t("closed")}
-                        </Text>
-                      ) : (
-                        <>
+                      <View style={styles.hoursBody}>
+                        {wh.closed ? (
                           <Text
                             style={[
-                              styles.hoursTime,
-                              isToday && styles.hoursTimeToday,
+                              styles.closedText,
+                              isToday && styles.closedTextToday,
                             ]}
                           >
-                            {formatTime(wh.opening_time)} –{" "}
-                            {formatTime(wh.closing_time)}
+                            {t("closed")}
                           </Text>
-                          {hasBreaks ? (
+                        ) : (
+                          <>
                             <Text
                               style={[
-                                styles.hoursBreak,
-                                isToday && styles.hoursBreakToday,
+                                styles.hoursTime,
+                                isToday && styles.hoursTimeToday,
                               ]}
                             >
-                              {`Break ${formatTime(
-                                breakHours[0].start,
-                              )} – ${formatTime(breakHours[0].end)}${
-                                breakHours.length > 1
-                                  ? ` (+${breakHours.length - 1})`
-                                  : ""
-                              }`}
+                              {formatTime(wh.opening_time)} –{" "}
+                              {formatTime(wh.closing_time)}
                             </Text>
-                          ) : null}
-                        </>
-                      )}
+                            {hasBreaks ? (
+                              <View
+                                style={[
+                                  styles.hoursBreakChip,
+                                  isToday && styles.hoursBreakChipToday,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.hoursBreak,
+                                    isToday && styles.hoursBreakToday,
+                                  ]}
+                                >
+                                  {`Break ${formatTime(
+                                    breakHours[0].start,
+                                  )} – ${formatTime(breakHours[0].end)}${
+                                    breakHours.length > 1
+                                      ? ` (+${breakHours.length - 1})`
+                                      : ""
+                                  }`}
+                                </Text>
+                              </View>
+                            ) : null}
+                          </>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </ScrollView>
+                  );
+                })}
+              </ScrollView>
+            </View>
           </View>
         ) : null}
 
         {leaveCount > 0 ? (
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeaderRow}>
+              <View style={styles.sectionAccent} />
               <Text style={styles.sectionTitle}>
                 {t("closeBreak") || "Close/Break"}
               </Text>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.leaveScroll}
-            >
-              {data.leaves!.map((leave) => {
-                const isBreak = leave.type === "break";
-                return (
-                  <View
-                    key={leave.id}
-                    style={[
-                      styles.leaveCard,
-                      isBreak ? styles.leaveCardBreak : styles.leaveCardClose,
-                    ]}
-                  >
-                    <View style={styles.leaveTypeRow}>
-                      <View style={styles.leaveIconWrap}>
-                        <MaterialIcons
-                          name={isBreak ? "free-breakfast" : "event-busy"}
-                          size={moderateWidthScale(18)}
-                          color={isBreak ? theme.apptPeachAccent : theme.red}
-                        />
+            <View style={styles.leavePanel}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.leaveScroll}
+              >
+                {data.leaves!.map((leave) => {
+                  const isBreak = leave.type === "break";
+                  return (
+                    <View
+                      key={leave.id}
+                      style={[
+                        styles.leaveCard,
+                        isBreak
+                          ? styles.leaveCardBreak
+                          : styles.leaveCardClose,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.leaveTopBand,
+                          isBreak
+                            ? styles.leaveTopBandBreak
+                            : styles.leaveTopBandClose,
+                        ]}
+                      >
+                        <View style={styles.leaveIconWrap}>
+                          <MaterialIcons
+                            name={isBreak ? "free-breakfast" : "event-busy"}
+                            size={moderateWidthScale(16)}
+                            color={
+                              isBreak ? theme.apptPeachAccent : theme.red
+                            }
+                          />
+                        </View>
+                        <Text style={styles.leaveType}>
+                          {isBreak
+                            ? t("break") || "Break"
+                            : t("close") || "Close"}
+                        </Text>
                       </View>
-                      <Text style={styles.leaveType}>
-                        {isBreak
-                          ? t("break") || "Break"
-                          : t("close") || "Close"}
-                      </Text>
+                      <View style={styles.leaveBody}>
+                        <Text style={styles.leaveRange}>
+                          {formatLeaveRangeDisplay(leave)}
+                        </Text>
+                        {leave.reason ? (
+                          <Text style={styles.leaveReason} numberOfLines={2}>
+                            {leave.reason}
+                          </Text>
+                        ) : null}
+                      </View>
                     </View>
-                    <Text style={styles.leaveRange}>
-                      {formatLeaveRangeDisplay(leave)}
-                    </Text>
-                    {leave.reason ? (
-                      <Text style={styles.leaveReason} numberOfLines={2}>
-                        {leave.reason}
-                      </Text>
-                    ) : null}
-                  </View>
-                );
-              })}
-            </ScrollView>
+                  );
+                })}
+              </ScrollView>
+            </View>
           </View>
         ) : null}
       </ScrollView>
