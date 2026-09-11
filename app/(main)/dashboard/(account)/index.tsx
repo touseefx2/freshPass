@@ -107,11 +107,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(1),
     },
-    cardSubtitle: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
     newBadge: {
       backgroundColor: theme.green,
       paddingHorizontal: moderateWidthScale(5),
@@ -150,19 +145,6 @@ export default function AccountScreen() {
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "pending";
-  const currentLanguage = useAppSelector((state) => state.general.language);
-  const countryName = user.countryName;
-
-  const getLanguageName = (code: string) => {
-    if (code === "en") return "English";
-    if (code === "fr") return "French";
-    if (code === "es") return "Spanish";
-    if (code === "de") return "German";
-    if (code === "ja") return "Japanese";
-    if (code === "ar") return "Arabic";
-    return "English";
-  };
-
   const handleLogout = async () => {
     if (isGuest) {
       await ApiService.logout();
@@ -308,7 +290,6 @@ export default function AccountScreen() {
       | "delete";
 
     title: string;
-    subtitle?: string;
   };
 
   const rows: Row[] = [
@@ -331,7 +312,6 @@ export default function AccountScreen() {
                 {
                   key: "customers" as const,
                   title: t("customers"),
-                  subtitle: t("customersSubtitle"),
                 },
               ]
             : []),
@@ -346,17 +326,12 @@ export default function AccountScreen() {
           {
             key: "country" as const,
             title: t("country"),
-            subtitle:
-              countryName && countryName.trim().length > 0
-                ? countryName
-                : t("setCountry"),
           },
         ]
       : []),
     {
       key: "language",
       title: t("language"),
-      subtitle: getLanguageName(currentLanguage),
     },
     ...(userRole === "business" && !isGuest
       ? [{ key: "viewBusiness" as const, title: t("viewBusiness") }]
@@ -369,7 +344,6 @@ export default function AccountScreen() {
           {
             key: "affiliationRequests" as const,
             title: t("affiliationRequests"),
-            subtitle: t("affiliationRequestsSubtitle"),
           },
         ]
       : []),
@@ -541,11 +515,6 @@ export default function AccountScreen() {
                     >
                       {row.title}
                     </Text>
-                    {row.subtitle ? (
-                      <Text style={styles.cardSubtitle} numberOfLines={2}>
-                        {row.subtitle}
-                      </Text>
-                    ) : null}
                   </View>
                 </TouchableOpacity>
               </View>

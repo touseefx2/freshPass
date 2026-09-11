@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import {
   ScrollView,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -18,9 +19,11 @@ import {
   iconScale,
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import FloatingInput from "@/src/components/floatingInput";
+import CustomToggle from "@/src/components/customToggle";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 import RemoveOwnerAsStaffModal from "@/src/components/removeOwnerAsStaffModal";
@@ -170,87 +173,166 @@ const createStyles = (theme: Theme) =>
       textTransform: "lowercase",
       opacity: 0.7,
     },
-    ownerCtaCard: {
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.upcomingCard,
+    // Home-matching owner add/remove cards
+    ownerSectionTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(12),
+    },
+    emptyActionCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
       borderWidth: 1,
-      borderColor: theme.upcomingBorder,
+      borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 5,
+      elevation: 3,
+    },
+    emptyActionHeader: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
     },
-    ownerCtaIconWrap: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.white,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    ownerCtaCopy: {
+    emptyActionCopy: {
       flex: 1,
       gap: moderateHeightScale(2),
     },
-    ownerCtaTitle: {
-      fontSize: fontSize.size14,
+    emptyActionTitle: {
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    ownerCtaSubtitle: {
+    emptyActionSubtitle: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    ownerCtaButton: {
-      backgroundColor: theme.buttonBack,
+    emptyOutlineButton: {
+      width: "100%",
+      height: moderateHeightScale(44),
       borderRadius: moderateWidthScale(10),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(10),
+      borderWidth: 1.5,
+      borderColor: theme.selectCard,
       alignItems: "center",
       justifyContent: "center",
-      minWidth: moderateWidthScale(88),
+      marginTop: moderateHeightScale(14),
+      backgroundColor: theme.white,
     },
-    ownerCtaButtonText: {
-      fontSize: fontSize.size13,
+    emptyOutlineButtonText: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
-      color: theme.buttonText,
+      color: theme.selectCard,
     },
-    ownerStatusCard: {
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.lightGreen05,
+    ownerProfileCard: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(14),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
       borderWidth: 1,
       borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.1,
+      shadowRadius: 5,
+      elevation: 3,
+    },
+    ownerProfileRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(14),
+    },
+    ownerAvatarWrap: {
+      position: "relative",
+      width: widthScale(58),
+      height: widthScale(58),
+      marginBottom: moderateHeightScale(4),
+    },
+    ownerAvatarClip: {
+      width: widthScale(58),
+      height: widthScale(58),
+      borderRadius: widthScale(58) / 2,
+      overflow: "hidden",
+    },
+    ownerAvatar: {
+      width: widthScale(58),
+      height: widthScale(58),
+      borderRadius: widthScale(58) / 2,
+      backgroundColor: theme.emptyProfileImage,
+    },
+    ownerStatusDot: {
+      position: "absolute",
+      bottom: moderateHeightScale(2),
+      left: moderateWidthScale(2),
+      width: moderateWidthScale(12),
+      height: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(6),
+      borderWidth: 2,
+      borderColor: theme.white,
+      zIndex: 2,
+      backgroundColor: theme.toggleActive,
+    },
+    ownerProfileName: {
+      flex: 1,
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    ownerBadge: {
+      position: "absolute",
+      bottom: -moderateHeightScale(2),
+      alignSelf: "center",
+      left: 0,
+      right: 0,
+      alignItems: "center",
+      zIndex: 3,
+    },
+    ownerBadgePill: {
+      backgroundColor: theme.selectCard,
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(999),
+      borderWidth: 1.5,
+      borderColor: theme.white,
+    },
+    ownerBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textAlign: "center",
+      lineHeight: moderateHeightScale(13),
+    },
+    ownerProfileDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.borderLight,
+      marginTop: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(12),
+    },
+    acceptRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
     },
-    ownerStatusIconWrap: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.white,
-      alignItems: "center",
-      justifyContent: "center",
+    acceptCopy: {
+      flex: 1,
+      gap: moderateHeightScale(3),
+      paddingRight: moderateWidthScale(4),
     },
-    ownerRemoveButton: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(10),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(10),
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.borderMedium,
-      minWidth: moderateWidthScale(88),
-    },
-    ownerRemoveButtonText: {
-      fontSize: fontSize.size13,
+    acceptTitle: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    acceptSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     ownerTag: {
       fontSize: fontSize.size11,
@@ -264,6 +346,19 @@ const createStyles = (theme: Theme) =>
       flexWrap: "wrap",
     },
   });
+
+function getImageUri(profileImage: string | null | undefined) {
+  if (!profileImage) {
+    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  }
+  if (
+    profileImage.startsWith("http://") ||
+    profileImage.startsWith("https://")
+  ) {
+    return profileImage;
+  }
+  return process.env.EXPO_PUBLIC_API_BASE_URL + profileImage;
+}
 
 interface TeamMember {
   id: number;
@@ -291,6 +386,11 @@ export default function ManageTeamScreen() {
   const { staffInvitationEmail } = useAppSelector(
     (state) => state.completeProfile,
   );
+  const userId = useAppSelector((state) => state.user.id);
+  const userName = useAppSelector((state) => state.user.name);
+  const userProfileImage = useAppSelector(
+    (state) => state.user.profile_image_url,
+  );
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const canAddStaff = canAddStaffMembers(businessStatus);
   const isSoloPlan = isSoloSubscription(businessStatus);
@@ -305,7 +405,7 @@ export default function ManageTeamScreen() {
   const [ownerBusy, setOwnerBusy] = useState(false);
   const [removeModalVisible, setRemoveModalVisible] = useState(false);
 
-  const canInvite = React.useMemo(() => {
+  const canInvite = useMemo(() => {
     if (!staffInvitationEmail.trim()) {
       return false;
     }
@@ -536,21 +636,47 @@ export default function ManageTeamScreen() {
     }
   };
 
-  const handleOwnerCtaPress = () => {
+  const handleOwnerEnablePress = () => {
     if (ownerBusy) return;
+
     if (!isStripeOnboardingCompleted(businessStatus)) {
       dispatch(setStripeConnectModalVisible(true));
       return;
     }
-    if (!ownerEnabled) {
-      void runOwnerEnable();
+    if (isSoloPlan) {
+      setUpgradeModalVisible(true);
       return;
     }
+    if (!canAddStaff) {
+      setBuyPlanModalVisible(true);
+      return;
+    }
+
+    void runOwnerEnable();
+  };
+
+  const handleOwnerRemovePress = () => {
+    if (ownerBusy) return;
     setRemoveModalVisible(true);
   };
 
+  const handleOwnerToggle = (nextValue: boolean) => {
+    if (nextValue) {
+      handleOwnerEnablePress();
+      return;
+    }
+    handleOwnerRemovePress();
+  };
+
   const isOwnerMember = (member: TeamMember) =>
-    member.is_owner === true || member.is_business_owner === true;
+    member.is_owner === true ||
+    member.is_business_owner === true ||
+    (ownerEnabled && userId != null && member.user_id === userId);
+
+  const ownerMember =
+    teamMembers.find((member) => isOwnerMember(member)) ?? null;
+  const ownerName = ownerMember?.name || userName || "";
+  const ownerImageUri = getImageUri(userProfileImage);
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -570,70 +696,88 @@ export default function ManageTeamScreen() {
             </View>
 
             {showOwnerCta && !ownerEnabled ? (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleOwnerCtaPress}
-                disabled={ownerBusy}
-                style={styles.ownerCtaCard}
-              >
-                <View style={styles.ownerCtaIconWrap}>
+              <View style={styles.emptyActionCard}>
+                <View style={styles.emptyActionHeader}>
                   <Feather
-                    name="user-plus"
-                    size={iconScale(18)}
+                    name="user"
+                    size={iconScale(22)}
                     color={theme.selectCard}
                   />
-                </View>
-                <View style={styles.ownerCtaCopy}>
-                  <Text style={styles.ownerCtaTitle} numberOfLines={1}>
-                    {t("ownerAsStaffTitle")}
-                  </Text>
-                  <Text style={styles.ownerCtaSubtitle} numberOfLines={2}>
-                    {t("ownerAsStaffSubtitle")}
-                  </Text>
-                </View>
-                <View style={styles.ownerCtaButton}>
-                  {ownerBusy ? (
-                    <ActivityIndicator size="small" color={theme.buttonText} />
-                  ) : (
-                    <Text style={styles.ownerCtaButtonText}>
-                      {t("addMeAsStaff")}
+                  <View style={styles.emptyActionCopy}>
+                    <Text style={styles.emptyActionTitle} numberOfLines={1}>
+                      {t("staffEmptyOwnerTitle")}
                     </Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            ) : null}
-
-            {showOwnerCta && ownerEnabled ? (
-              <View style={styles.ownerStatusCard}>
-                <View style={styles.ownerStatusIconWrap}>
-                  <Feather
-                    name="check-circle"
-                    size={iconScale(18)}
-                    color={theme.toggleActive}
-                  />
-                </View>
-                <View style={styles.ownerCtaCopy}>
-                  <Text style={styles.ownerCtaTitle} numberOfLines={1}>
-                    {t("ownerOnStaffTitle")}
-                  </Text>
-                  <Text style={styles.ownerCtaSubtitle} numberOfLines={2}>
-                    {t("ownerOnStaffSubtitle")}
-                  </Text>
+                    <Text style={styles.emptyActionSubtitle} numberOfLines={2}>
+                      {t("staffEmptyOwnerSubtitle")}
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={handleOwnerCtaPress}
+                  onPress={handleOwnerEnablePress}
                   disabled={ownerBusy}
-                  style={styles.ownerRemoveButton}
+                  style={styles.emptyOutlineButton}
                 >
                   {ownerBusy ? (
-                    <ActivityIndicator size="small" color={theme.darkGreen} />
+                    <ActivityIndicator size="small" color={theme.selectCard} />
                   ) : (
-                    <Text style={styles.ownerRemoveButtonText}>
-                      {t("removeFromStaff")}
+                    <Text style={styles.emptyOutlineButtonText}>
+                      {t("addMyselfAsBarber")}
                     </Text>
                   )}
                 </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {showOwnerCta && ownerEnabled ? (
+              <View>
+                <Text style={styles.ownerSectionTitle}>
+                  {t("myBookingProfile")}
+                </Text>
+                <View style={styles.ownerProfileCard}>
+                  <View style={styles.ownerProfileRow}>
+                    <View style={styles.ownerAvatarWrap}>
+                      <View style={styles.ownerAvatarClip}>
+                        <Image
+                          source={{ uri: ownerImageUri }}
+                          style={styles.ownerAvatar}
+                        />
+                      </View>
+                      <View style={styles.ownerStatusDot} />
+                      <View style={styles.ownerBadge}>
+                        <View style={styles.ownerBadgePill}>
+                          <Text style={styles.ownerBadgeText}>{t("owner")}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Text style={styles.ownerProfileName} numberOfLines={1}>
+                      {ownerName}
+                    </Text>
+                  </View>
+
+                  <View style={styles.ownerProfileDivider} />
+
+                  <View style={styles.acceptRow}>
+                    <View style={styles.acceptCopy}>
+                      <Text style={styles.acceptTitle}>
+                        {t("acceptAppointments")}
+                      </Text>
+                      <Text style={styles.acceptSubtitle} numberOfLines={2}>
+                        {t("acceptAppointmentsSubtitle")}
+                      </Text>
+                    </View>
+                    {ownerBusy ? (
+                      <ActivityIndicator size="small" color={theme.darkGreen} />
+                    ) : (
+                      <CustomToggle
+                        value={ownerEnabled}
+                        onValueChange={handleOwnerToggle}
+                        activeTrackColor={theme.darkGreen}
+                        inactiveTrackColor={theme.lightGreen2}
+                      />
+                    )}
+                  </View>
+                </View>
               </View>
             ) : null}
 
@@ -706,13 +850,13 @@ export default function ManageTeamScreen() {
                               </Text>
                             )}
                           </View>
-                          <Text style={styles.memberStatus}>
-                            {owner
-                              ? t("owner")
-                              : member.invitation_status === "accepted"
+                          {!owner ? (
+                            <Text style={styles.memberStatus}>
+                              {member.invitation_status === "accepted"
                                 ? "Invitation accepted"
                                 : "Invitation sent"}
-                          </Text>
+                            </Text>
+                          ) : null}
                         </View>
                       </View>
                       <View style={styles.divider} />
