@@ -24,8 +24,7 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
-import { MaterialIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
@@ -251,7 +250,7 @@ const createStyles = (theme: Theme) =>
     },
     heroWrap: {
       marginHorizontal: 0,
-      marginBottom: moderateHeightScale(-15),
+      marginBottom: moderateHeightScale(18),
       width: "100%",
       alignSelf: "stretch",
       zIndex: 1,
@@ -260,6 +259,7 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       alignSelf: "stretch",
       overflow: "hidden",
+      backgroundColor: theme.darkGreen,
       borderBottomLeftRadius: moderateWidthScale(28),
       borderBottomRightRadius: moderateWidthScale(28),
     },
@@ -381,6 +381,39 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white50,
     },
+    heroMetrics: {
+      flexDirection: "row",
+      marginHorizontal: moderateWidthScale(16),
+      marginBottom: moderateHeightScale(14),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.white15,
+      backgroundColor: theme.white15,
+      overflow: "hidden",
+    },
+    heroMetric: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(8),
+      gap: moderateHeightScale(2),
+    },
+    heroMetricDivider: {
+      borderRightWidth: 1,
+      borderRightColor: theme.white15,
+    },
+    heroMetricValue: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    heroMetricLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white70,
+      textAlign: "center",
+    },
     invitationStatus: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
@@ -402,8 +435,7 @@ const createStyles = (theme: Theme) =>
       alignItems: "stretch",
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(16),
-      paddingTop: moderateHeightScale(4),
-      paddingBottom: moderateHeightScale(28),
+      paddingBottom: moderateHeightScale(20),
       gap: moderateWidthScale(10),
     },
     sectionContainer: {
@@ -426,9 +458,11 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(16),
     },
     sectionTitle: {
-      fontSize: fontSize.size17,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.8,
     },
     sectionHint: {
       fontSize: fontSize.size11,
@@ -436,24 +470,17 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
     },
     contactPanel: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(24),
-      paddingTop: moderateHeightScale(8),
-      paddingBottom: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(18),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(8) },
-      shadowOpacity: 0.12,
-      shadowRadius: moderateWidthScale(16),
-      elevation: 6,
+      overflow: "hidden",
     },
     contactRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(11),
-      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(13),
+      paddingHorizontal: moderateWidthScale(14),
       gap: moderateWidthScale(12),
     },
     contactRowDivider: {
@@ -461,12 +488,12 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.borderLight,
     },
     contactIconWrap: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(14),
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(12),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.darkGreen,
+      backgroundColor: theme.darkGreenLight,
     },
     contactTextWrap: {
       flex: 1,
@@ -485,19 +512,25 @@ const createStyles = (theme: Theme) =>
     headerRightIcons: {
       flexDirection: "row",
       alignItems: "center",
+      gap: moderateWidthScale(6),
     },
-    headerEditIcon: {
-      marginLeft: moderateWidthScale(10),
+    headerIconButton: {
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      borderRadius: moderateWidthScale(10),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.white15,
     },
     hoursScroll: {
       gap: moderateWidthScale(12),
       paddingHorizontal: moderateWidthScale(16),
     },
     hoursCard: {
-      width: widthScale(156),
-      borderRadius: moderateWidthScale(20),
+      width: widthScale(144),
+      borderRadius: moderateWidthScale(16),
       overflow: "hidden",
-      backgroundColor: theme.white,
+      backgroundColor: theme.lightGreen05,
       borderWidth: 1,
       borderColor: theme.borderLight,
     },
@@ -508,9 +541,9 @@ const createStyles = (theme: Theme) =>
       opacity: 0.72,
     },
     hoursDayBand: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      backgroundColor: theme.darkGreen,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(9),
+      backgroundColor: theme.darkGreenLight,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
@@ -541,10 +574,10 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     hoursBody: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
       gap: moderateHeightScale(8),
-      minHeight: heightScale(88),
+      minHeight: heightScale(92),
     },
     hoursTimeRow: {
       flexDirection: "row",
@@ -579,42 +612,28 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       fontStyle: "italic",
     },
-    leaveScroll: {
-      gap: moderateWidthScale(12),
-      paddingHorizontal: moderateWidthScale(16),
-    },
-    leaveCard: {
-      width: widthScale(200),
-      borderRadius: moderateWidthScale(20),
-      overflow: "hidden",
-      backgroundColor: theme.white,
+    leavePanel: {
+      backgroundColor: theme.lightGreen05,
+      borderRadius: moderateWidthScale(18),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      minHeight: heightScale(128),
+      overflow: "hidden",
     },
-    leaveCardBreak: {
-      borderColor: theme.upcomingBorder,
-    },
-    leaveCardClose: {
-      borderColor: theme.lightRedBorder,
-    },
-    leaveTopBand: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
+    leaveRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(13),
+      gap: moderateWidthScale(12),
     },
-    leaveTopBandBreak: {
-      backgroundColor: theme.apptPeachBg,
-    },
-    leaveTopBandClose: {
-      backgroundColor: theme.lightRed,
+    leaveRowDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
     },
     leaveIconWrap: {
-      width: moderateWidthScale(34),
-      height: moderateWidthScale(34),
-      borderRadius: moderateWidthScale(11),
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(12),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.white,
@@ -626,10 +645,8 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     leaveBody: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      gap: moderateHeightScale(6),
       flex: 1,
+      gap: moderateHeightScale(3),
     },
     leaveRange: {
       fontSize: fontSize.size12,
@@ -1017,7 +1034,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title="" showLine={false} useGradient />
+        <StackHeader title="" showLine={false} />
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
@@ -1029,7 +1046,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title="" showLine={false} useGradient />
+        <StackHeader title="" showLine={false} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <RetryButton onPress={fetchStaffDetails} loading={loading} />
@@ -1042,7 +1059,7 @@ export default function StaffDetail() {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <StackHeader title="" showLine={false} useGradient />
+        <StackHeader title="" showLine={false} />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{t("staffProfileNotFound")}</Text>
           <RetryButton onPress={fetchStaffDetails} loading={loading} />
@@ -1137,7 +1154,6 @@ export default function StaffDetail() {
       <StackHeader
         title=""
         showLine={false}
-        useGradient
         rightIcon={
           isBusinessRole ? (
             <View style={styles.headerRightIcons}>
@@ -1145,10 +1161,11 @@ export default function StaffDetail() {
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={confirmRemoveYourself}
+                  style={styles.headerIconButton}
                 >
-                  <MaterialIcons
-                    name="person-remove"
-                    size={moderateWidthScale(20)}
+                  <Feather
+                    name="user-minus"
+                    size={moderateWidthScale(17)}
                     color={theme.white}
                   />
                 </TouchableOpacity>
@@ -1156,10 +1173,11 @@ export default function StaffDetail() {
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={confirmDeleteStaff}
+                  style={styles.headerIconButton}
                 >
-                  <MaterialIcons
-                    name="delete-outline"
-                    size={moderateWidthScale(20)}
+                  <Feather
+                    name="trash-2"
+                    size={moderateWidthScale(17)}
                     color={theme.white}
                   />
                 </TouchableOpacity>
@@ -1167,11 +1185,11 @@ export default function StaffDetail() {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handleEditPress}
-                style={styles.headerEditIcon}
+                style={styles.headerIconButton}
               >
-                <MaterialIcons
-                  name="edit"
-                  size={moderateWidthScale(20)}
+                <Feather
+                  name="edit-3"
+                  size={moderateWidthScale(17)}
                   color={theme.white}
                 />
               </TouchableOpacity>
@@ -1185,12 +1203,7 @@ export default function StaffDetail() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroWrap}>
-          <LinearGradient
-            colors={[theme.darkGreen, theme.darkGreenLight]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.heroCard}
-          >
+          <View style={styles.heroCard}>
             <View style={styles.heroTop}>
               <View style={styles.avatarRing}>
                 <View style={styles.avatar}>
@@ -1251,26 +1264,6 @@ export default function StaffDetail() {
                   </Text>
                 ) : null}
 
-                <View style={styles.heroStatsLine}>
-                  <Text style={styles.heroStatText}>
-                    <Text style={styles.heroStatValue}>
-                      {String(totalAppointments)}
-                    </Text>
-                    {` ${t("appointments")}`}
-                  </Text>
-                  {sortedHours.length > 0 ? (
-                    <>
-                      <Text style={styles.heroStatDivider}>|</Text>
-                      <Text style={styles.heroStatText}>
-                        <Text style={styles.heroStatValue}>
-                          {String(openDaysCount)}
-                        </Text>
-                        {` ${t("workingHours")}`}
-                      </Text>
-                    </>
-                  ) : null}
-                </View>
-
                 {showPendingInvite ? (
                   <>
                     <Text
@@ -1293,6 +1286,23 @@ export default function StaffDetail() {
                     </TouchableOpacity>
                   </>
                 ) : null}
+              </View>
+            </View>
+
+            <View style={styles.heroMetrics}>
+              <View
+                style={[styles.heroMetric, styles.heroMetricDivider]}
+              >
+                <Text style={styles.heroMetricValue}>
+                  {String(totalAppointments)}
+                </Text>
+                <Text style={styles.heroMetricLabel}>{t("appointments")}</Text>
+              </View>
+              <View style={styles.heroMetric}>
+                <Text style={styles.heroMetricValue}>
+                  {String(openDaysCount)}
+                </Text>
+                <Text style={styles.heroMetricLabel}>{t("workingHours")}</Text>
               </View>
             </View>
 
@@ -1323,10 +1333,13 @@ export default function StaffDetail() {
                 theme={theme}
               />
             </View>
-          </LinearGradient>
+          </View>
         </View>
 
         <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Contact info</Text>
+          </View>
           {contactRows.length > 0 ? (
             <View style={styles.contactPanel}>
               {contactRows.map((row, index) => (
@@ -1448,52 +1461,47 @@ export default function StaffDetail() {
         ) : null}
 
         {leaveCount > 0 ? (
-          <View style={styles.sectionContainerFlush}>
-            <View
-              style={[styles.sectionHeaderRow, styles.sectionHeaderPadded]}
-            >
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeaderRow}>
               <Text style={styles.sectionTitle}>
                 {t("closeBreak") || "Close/Break"}
               </Text>
-              <Text style={styles.sectionHint}>{String(leaveCount)}</Text>
             </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.leaveScroll}
-            >
-              {data.leaves!.map((leave) => {
+            <View style={styles.leavePanel}>
+              {data.leaves!.map((leave, index) => {
                 const isBreak = leave.type === "break";
                 return (
                   <View
                     key={leave.id}
                     style={[
-                      styles.leaveCard,
-                      isBreak ? styles.leaveCardBreak : styles.leaveCardClose,
+                      styles.leaveRow,
+                      index < leaveCount - 1
+                        ? styles.leaveRowDivider
+                        : null,
                     ]}
                   >
                     <View
                       style={[
-                        styles.leaveTopBand,
-                        isBreak
-                          ? styles.leaveTopBandBreak
-                          : styles.leaveTopBandClose,
+                        styles.leaveIconWrap,
+                        {
+                          backgroundColor: isBreak
+                            ? theme.apptPeachBg
+                            : theme.lightRed,
+                        },
                       ]}
                     >
-                      <View style={styles.leaveIconWrap}>
-                        <MaterialIcons
-                          name={isBreak ? "free-breakfast" : "event-busy"}
-                          size={moderateWidthScale(16)}
-                          color={isBreak ? theme.apptPeachAccent : theme.red}
-                        />
-                      </View>
+                      <MaterialIcons
+                        name={isBreak ? "free-breakfast" : "event-busy"}
+                        size={moderateWidthScale(18)}
+                        color={isBreak ? theme.apptPeachAccent : theme.red}
+                      />
+                    </View>
+                    <View style={styles.leaveBody}>
                       <Text style={styles.leaveType}>
                         {isBreak
                           ? t("break") || "Break"
                           : t("close") || "Close"}
                       </Text>
-                    </View>
-                    <View style={styles.leaveBody}>
                       <Text style={styles.leaveRange}>
                         {formatLeaveRangeDisplay(leave)}
                       </Text>
@@ -1506,7 +1514,7 @@ export default function StaffDetail() {
                   </View>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
         ) : null}
       </ScrollView>
