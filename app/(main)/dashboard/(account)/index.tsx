@@ -179,7 +179,7 @@ const createStyles = (theme: Theme) =>
     },
     contentContainer: {
       paddingTop: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(16),
       paddingBottom: moderateHeightScale(32),
     },
     headerBlock: {
@@ -216,41 +216,37 @@ const createStyles = (theme: Theme) =>
           shadowColor: theme.darkGreen,
           shadowOffset: {
             width: 0,
-            height: moderateHeightScale(4),
+            height: 0,
           },
-          shadowOpacity: 0.14,
-          shadowRadius: moderateWidthScale(7),
+          shadowOpacity: 0.18,
+          shadowRadius: moderateWidthScale(8),
         },
         android: {
-          elevation: 4,
+          elevation: 5,
           shadowColor: theme.darkGreen,
         },
         default: {
           shadowColor: theme.darkGreen,
           shadowOffset: {
             width: 0,
-            height: moderateHeightScale(4),
+            height: 0,
           },
-          shadowOpacity: 0.14,
-          shadowRadius: moderateWidthScale(7),
+          shadowOpacity: 0.18,
+          shadowRadius: moderateWidthScale(8),
         },
       }),
     },
     cardShadowWrapPressed: {
       ...Platform.select({
         ios: {
-          shadowOpacity: 0.07,
-          shadowRadius: moderateWidthScale(3),
-          shadowOffset: {
-            width: 0,
-            height: moderateHeightScale(1),
-          },
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(4),
         },
         android: {
-          elevation: 1,
+          elevation: 2,
         },
         default: {
-          shadowOpacity: 0.07,
+          shadowOpacity: 0.1,
         },
       }),
     },
@@ -267,10 +263,7 @@ const createStyles = (theme: Theme) =>
       minHeight: moderateHeightScale(90),
       gap: moderateWidthScale(10),
       borderWidth: 1,
-      borderTopColor: theme.white,
-      borderLeftColor: theme.white,
-      borderRightColor: theme.lightGreen1,
-      borderBottomColor: theme.lightGreen13,
+      borderColor: theme.lightGreen1,
     },
     iconWrap: {
       width: moderateWidthScale(48),
@@ -279,28 +272,29 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
+      overflow: "hidden",
       ...Platform.select({
         ios: {
           shadowColor: theme.shadow,
           shadowOffset: {
             width: 0,
-            height: moderateHeightScale(2),
+            height: 0,
           },
-          shadowOpacity: 0.22,
-          shadowRadius: moderateWidthScale(3),
+          shadowOpacity: 0.2,
+          shadowRadius: moderateWidthScale(4),
         },
+        // Android elevation on small colored boxes creates muddy black shade
         android: {
-          elevation: 3,
-          shadowColor: theme.shadow,
+          elevation: 0,
         },
         default: {
           shadowColor: theme.shadow,
           shadowOffset: {
             width: 0,
-            height: moderateHeightScale(2),
+            height: 0,
           },
-          shadowOpacity: 0.22,
-          shadowRadius: moderateWidthScale(3),
+          shadowOpacity: 0.2,
+          shadowRadius: moderateWidthScale(4),
         },
       }),
     },
@@ -312,7 +306,7 @@ const createStyles = (theme: Theme) =>
           shadowOpacity: 0.12,
         },
         android: {
-          elevation: 2,
+          elevation: 0,
         },
         default: {
           shadowOpacity: 0.12,
