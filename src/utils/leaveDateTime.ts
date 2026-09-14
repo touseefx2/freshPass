@@ -83,5 +83,8 @@ export const formatLeaveRangeDisplay = (leave: {
     }
     return `${formatLeaveDateDisplay(leave.start_date, true)} – ${formatLeaveDateDisplay(leave.end_date, true)}`;
   }
+  if (leave.start_date === leave.end_date) {
+    return `${formatLeaveDateTimeDisplay(leave.start_date, leave.start_time)} – ${formatLeaveTimeDisplay(leave.end_time)}`;
+  }
   return `${formatLeaveDateTimeDisplay(leave.start_date, leave.start_time)} – ${formatLeaveDateTimeDisplay(leave.end_date, leave.end_time)}`;
 };

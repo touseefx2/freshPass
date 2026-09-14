@@ -637,46 +637,51 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       fontStyle: "italic",
     },
-    leavePanel: {
+    leaveScroll: {
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    leaveCard: {
+      width: widthScale(168),
+      borderRadius: moderateWidthScale(16),
+      overflow: "hidden",
       backgroundColor: theme.lightGreen05,
-      borderRadius: moderateWidthScale(18),
       borderWidth: 1,
       borderColor: theme.borderLight,
-      overflow: "hidden",
     },
-    leaveRow: {
+    leaveTypeBand: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(9),
+      backgroundColor: theme.darkGreenLight,
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(13),
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(8),
     },
-    leaveRowDivider: {
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-    },
-    leaveIconWrap: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(12),
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.white,
+    leaveTypeBandBreak: {
+      backgroundColor: theme.orangeBrown,
     },
     leaveType: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
       flex: 1,
     },
     leaveBody: {
-      flex: 1,
-      gap: moderateHeightScale(3),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateHeightScale(8),
+      minHeight: heightScale(92),
+    },
+    leaveRangeRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(6),
     },
     leaveRange: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
+      color: theme.darkGreen,
+      flex: 1,
       lineHeight: fontSize.size12 * 1.4,
     },
     leaveReason: {
@@ -1497,50 +1502,54 @@ export default function StaffDetail() {
         ) : null}
 
         {leaveCount > 0 ? (
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionContainerFlush}>
+            <View
+              style={[styles.sectionHeaderRow, styles.sectionHeaderPadded]}
+            >
               <Text style={styles.sectionTitle}>
                 {t("closeBreak") || "Close/Break"}
               </Text>
+              <Text style={styles.sectionHint}>{leaveCount}</Text>
             </View>
-            <View style={styles.leavePanel}>
-              {data.leaves!.map((leave, index) => {
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.leaveScroll}
+            >
+              {data.leaves!.map((leave) => {
                 const isBreak = leave.type === "break";
                 return (
-                  <View
-                    key={leave.id}
-                    style={[
-                      styles.leaveRow,
-                      index < leaveCount - 1
-                        ? styles.leaveRowDivider
-                        : null,
-                    ]}
-                  >
+                  <View key={leave.id} style={styles.leaveCard}>
                     <View
                       style={[
-                        styles.leaveIconWrap,
-                        {
-                          backgroundColor: isBreak
-                            ? theme.apptPeachBg
-                            : theme.lightRed,
-                        },
+                        styles.leaveTypeBand,
+                        isBreak ? styles.leaveTypeBandBreak : null,
                       ]}
                     >
                       <MaterialIcons
                         name={isBreak ? "free-breakfast" : "event-busy"}
-                        size={moderateWidthScale(18)}
-                        color={isBreak ? theme.apptPeachAccent : theme.red}
+                        size={moderateWidthScale(16)}
+                        color={theme.white}
                       />
-                    </View>
-                    <View style={styles.leaveBody}>
-                      <Text style={styles.leaveType}>
+                      <Text style={styles.leaveType} numberOfLines={1}>
                         {isBreak
                           ? t("break") || "Break"
                           : t("close") || "Close"}
                       </Text>
-                      <Text style={styles.leaveRange}>
-                        {formatLeaveRangeDisplay(leave)}
-                      </Text>
+                    </View>
+                    <View style={styles.leaveBody}>
+                      <View style={styles.leaveRangeRow}>
+                        <MaterialIcons
+                          name="schedule"
+                          size={moderateWidthScale(14)}
+                          color={
+                            isBreak ? theme.apptPeachAccent : theme.buttonBack
+                          }
+                        />
+                        <Text style={styles.leaveRange}>
+                          {formatLeaveRangeDisplay(leave)}
+                        </Text>
+                      </View>
                       {leave.reason ? (
                         <Text style={styles.leaveReason} numberOfLines={2}>
                           {leave.reason}
@@ -1550,7 +1559,7 @@ export default function StaffDetail() {
                   </View>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         ) : null}
       </ScrollView>
