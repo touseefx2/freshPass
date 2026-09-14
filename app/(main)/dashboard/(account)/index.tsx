@@ -27,9 +27,10 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 
-const CARD_WIDTH_PERCENT = "48%";
+const CARD_WIDTH_PERCENT = "46.5%";
 
 type IconVariant = "dark" | "accent" | "cream";
+type IconFamily = "material" | "community";
 
 function getIconVariant(index: number): IconVariant {
   const variants: IconVariant[] = ["dark", "accent", "cream"];
@@ -39,7 +40,7 @@ function getIconVariant(index: number): IconVariant {
 function ProfileSettingCard({
   title,
   iconName,
-  iconFamily = "material",
+  iconFamily = "community",
   onPress,
   disabled,
   isDelete,
@@ -49,8 +50,8 @@ function ProfileSettingCard({
   iconVariant,
 }: {
   title: string;
-  iconName: React.ComponentProps<typeof MaterialIcons>["name"] | string;
-  iconFamily?: "material" | "community";
+  iconName: React.ComponentProps<typeof MaterialCommunityIcons>["name"] | string;
+  iconFamily?: IconFamily;
   onPress: () => void;
   disabled?: boolean;
   isDelete?: boolean;
@@ -60,7 +61,7 @@ function ProfileSettingCard({
   iconVariant: IconVariant;
 }) {
   const [pressed, setPressed] = useState(false);
-  const iconSize = moderateWidthScale(20);
+  const iconSize = moderateWidthScale(24);
   const thickness = moderateHeightScale(2.5);
   const radius = moderateWidthScale(18);
 
@@ -203,6 +204,7 @@ const createStyles = (theme: Theme) =>
       flexWrap: "wrap",
       justifyContent: "space-between",
       rowGap: moderateHeightScale(16),
+      columnGap: moderateWidthScale(10),
     },
     gridItem: {
       width: CARD_WIDTH_PERCENT as any,
@@ -261,8 +263,8 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       backgroundColor: theme.background,
       paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(14),
-      minHeight: moderateHeightScale(78),
+      paddingVertical: moderateHeightScale(18),
+      minHeight: moderateHeightScale(90),
       gap: moderateWidthScale(10),
       borderWidth: 1,
       borderTopColor: theme.white,
@@ -271,9 +273,9 @@ const createStyles = (theme: Theme) =>
       borderBottomColor: theme.lightGreen13,
     },
     iconWrap: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(12),
+      width: moderateWidthScale(48),
+      height: moderateWidthScale(48),
+      borderRadius: moderateWidthScale(13),
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -573,43 +575,45 @@ export default function AccountScreen() {
     key: Row["key"],
   ): {
     name: string;
-    family: "material" | "community";
+    family: IconFamily;
   } => {
+    // Closest matches to design mock icons (filled soft glyphs)
     switch (key) {
       case "personal":
-        return { name: "person", family: "material" };
+        return { name: "account", family: "community" };
       case "business":
-        return { name: "storefront", family: "material" };
+        return { name: "storefront", family: "community" };
       case "availability":
-        return { name: "event-available", family: "material" };
+        return { name: "calendar-clock", family: "community" };
       case "leaveRequest":
-        return { name: "event-busy", family: "material" };
+        return { name: "calendar-remove", family: "community" };
       case "customers":
-        return { name: "people", family: "material" };
+        return { name: "account-multiple", family: "community" };
       case "country":
-        return { name: "public", family: "material" };
+        return { name: "earth", family: "community" };
       case "language":
-        return { name: "language", family: "material" };
+        return { name: "earth", family: "community" };
       case "subscriptions":
         return { name: "crown", family: "community" };
       case "notifications":
-        return { name: "notifications", family: "material" };
+        return { name: "bell", family: "community" };
       case "reviews":
-        return { name: "star", family: "material" };
+        return { name: "star", family: "community" };
       case "viewBusiness":
-        return { name: "visibility", family: "material" };
+        return { name: "eye", family: "community" };
       case "affiliationRequests":
-        return { name: "handshake-outline", family: "community" };
+        return { name: "handshake", family: "community" };
       case "aiTools":
+        // Same icon as AI Requests / AI Results header (top-right)
         return { name: "smart-toy", family: "material" };
       case "rules":
-        return { name: "description", family: "material" };
+        return { name: "file-document-outline", family: "community" };
       case "logout":
-        return { name: "logout", family: "material" };
+        return { name: "logout", family: "community" };
       case "delete":
-        return { name: "delete-outline", family: "material" };
+        return { name: "trash-can-outline", family: "community" };
       default:
-        return { name: "settings", family: "material" };
+        return { name: "cog", family: "community" };
     }
   };
 
