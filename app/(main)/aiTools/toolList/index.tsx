@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState, useCallback } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   ScrollView,
   View,
@@ -180,59 +180,122 @@ export default function ToolList() {
       >
         <View style={styles.actionButtonsRow}>
           {isCustomer && (
+            <View style={styles.actionButtonShadow}>
+              <TouchableOpacity
+                style={styles.actionButtonCard}
+                onPress={() => router.push("/aiTransactions")}
+                activeOpacity={0.85}
+              >
+                <LinearGradient
+                  colors={[
+                    (colors as Theme).darkGreenLight,
+                    (colors as Theme).buttonBack,
+                    (colors as Theme).darkGreen,
+                  ]}
+                  locations={[0, 0.45, 1]}
+                  start={{ x: 0.15, y: 0 }}
+                  end={{ x: 0.85, y: 1 }}
+                  style={styles.actionButtonGradient}
+                >
+                  <LinearGradient
+                    colors={[(colors as Theme).white15, "transparent"]}
+                    start={{ x: 0.5, y: 0 }}
+                    end={{ x: 0.5, y: 1 }}
+                    style={styles.cardHighlight}
+                    pointerEvents="none"
+                  />
+                  <View style={styles.actionButtonIconWrap}>
+                    <MaterialIcons
+                      name="shopping-bag"
+                      size={moderateWidthScale(20)}
+                      color={(colors as Theme).white}
+                    />
+                  </View>
+                  <Text style={styles.actionButtonLabel} numberOfLines={1}>
+                    {t("myPurchases")}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
+          <View style={styles.actionButtonShadow}>
             <TouchableOpacity
               style={styles.actionButtonCard}
-              onPress={() => router.push("/aiTransactions")}
-              activeOpacity={0.8}
+              onPress={() => router.push("/aiRequests")}
+              activeOpacity={0.85}
             >
-              <View style={styles.actionButtonIconWrap}>
-                <MaterialIcons
-                  name="shopping-bag"
-                  size={moderateWidthScale(22)}
-                  color={(colors as Theme).white}
+              <LinearGradient
+                colors={[
+                  (colors as Theme).darkGreenLight,
+                  (colors as Theme).buttonBack,
+                  (colors as Theme).darkGreen,
+                ]}
+                locations={[0, 0.45, 1]}
+                start={{ x: 0.15, y: 0 }}
+                end={{ x: 0.85, y: 1 }}
+                style={styles.actionButtonGradient}
+              >
+                <LinearGradient
+                  colors={[(colors as Theme).white15, "transparent"]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.cardHighlight}
+                  pointerEvents="none"
                 />
-              </View>
-              <Text style={styles.actionButtonLabel} numberOfLines={1}>
-                {t("myPurchases")}
-              </Text>
+                <View style={styles.actionButtonIconWrap}>
+                  <MaterialIcons
+                    name="list-alt"
+                    size={moderateWidthScale(20)}
+                    color={(colors as Theme).white}
+                  />
+                </View>
+                <Text style={styles.actionButtonLabel} numberOfLines={1}>
+                  {t("aiRequests")}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={styles.actionButtonCard}
-            onPress={() => router.push("/aiRequests")}
-            activeOpacity={0.8}
-          >
-            <View style={styles.actionButtonIconWrap}>
-              <MaterialIcons
-                name="list-alt"
-                size={moderateWidthScale(22)}
-                color={(colors as Theme).white}
-              />
-            </View>
-            <Text style={styles.actionButtonLabel} numberOfLines={1}>
-              {t("aiRequests")}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.actionButtonCard}
-            onPress={() => router.push("/aiMemories")}
-            activeOpacity={0.8}
-          >
-            <View style={styles.actionButtonIconWrap}>
-              <MaterialIcons
-                name="psychology"
-                size={moderateWidthScale(22)}
-                color={(colors as Theme).white}
-              />
-            </View>
-            <Text style={styles.actionButtonLabel} numberOfLines={1}>
-              {t("memories")}
-            </Text>
-          </TouchableOpacity>
+          </View>
+          <View style={styles.actionButtonShadow}>
+            <TouchableOpacity
+              style={styles.actionButtonCard}
+              onPress={() => router.push("/aiMemories")}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={[
+                  (colors as Theme).darkGreenLight,
+                  (colors as Theme).buttonBack,
+                  (colors as Theme).darkGreen,
+                ]}
+                locations={[0, 0.45, 1]}
+                start={{ x: 0.15, y: 0 }}
+                end={{ x: 0.85, y: 1 }}
+                style={styles.actionButtonGradient}
+              >
+                <LinearGradient
+                  colors={[(colors as Theme).white15, "transparent"]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.cardHighlight}
+                  pointerEvents="none"
+                />
+                <View style={styles.actionButtonIconWrap}>
+                  <MaterialIcons
+                    name="psychology"
+                    size={moderateWidthScale(20)}
+                    color={(colors as Theme).white}
+                  />
+                </View>
+                <Text style={styles.actionButtonLabel} numberOfLines={1}>
+                  {t("memories")}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.featuresContainer}>
-          {features.map((feature, index) => {
+          {features.map((feature) => {
             const IconComponent = feature.icon;
             const openTutorial =
               "openTutorial" in feature && feature.openTutorial;
@@ -240,50 +303,67 @@ export default function ToolList() {
             const useLargeBox =
               userRole !== "business" &&
               (feature.id === "tutorial" || feature.id === "hairTryon");
+            const shadowStyle = useLargeBox
+              ? styles.featureShadowLarge
+              : styles.featureShadow;
             const boxStyle = useLargeBox
               ? styles.featureBoxLarge
               : styles.featureBox;
 
             if (isTutorial && tutorialVideoActive) {
               return (
-                <View key={feature.id} style={boxStyle}>
-                  <TutorialInlineVideo />
+                <View key={feature.id} style={shadowStyle}>
+                  <View style={boxStyle}>
+                    <TutorialInlineVideo />
+                  </View>
                 </View>
               );
             }
 
             return (
-              <TouchableOpacity
-                key={feature.id}
-                style={boxStyle}
-                onPress={() => {
-                  if (openTutorial) {
-                    setTutorialVideoActive(true);
-                  } else {
-                    handleFeaturePress(feature.paramTitle);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={[
-                    (colors as Theme).buttonBack,
-                    (colors as Theme).darkGreen,
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.gradientContainer}
+              <View key={feature.id} style={shadowStyle}>
+                <TouchableOpacity
+                  style={boxStyle}
+                  onPress={() => {
+                    if (openTutorial) {
+                      setTutorialVideoActive(true);
+                    } else {
+                      handleFeaturePress(feature.paramTitle);
+                    }
+                  }}
+                  activeOpacity={0.82}
                 >
-                  <View style={styles.iconContainer}>
-                    <IconComponent
-                      width={moderateWidthScale(32)}
-                      height={moderateWidthScale(32)}
-                      color={(colors as Theme).white}
+                  <LinearGradient
+                    colors={[
+                      (colors as Theme).darkGreenLight,
+                      (colors as Theme).buttonBack,
+                      (colors as Theme).darkGreen,
+                    ]}
+                    locations={[0, 0.4, 1]}
+                    start={{ x: 0.1, y: 0 }}
+                    end={{ x: 0.9, y: 1 }}
+                    style={styles.gradientContainer}
+                  >
+                    <LinearGradient
+                      colors={[(colors as Theme).white15, "transparent"]}
+                      start={{ x: 0.5, y: 0 }}
+                      end={{ x: 0.5, y: 1 }}
+                      style={styles.cardHighlight}
+                      pointerEvents="none"
                     />
-                  </View>
-                  <Text style={styles.featureTitle}>{t(feature.titleKey)}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                    <View style={styles.iconContainer}>
+                      <IconComponent
+                        width={moderateWidthScale(30)}
+                        height={moderateWidthScale(30)}
+                        color={(colors as Theme).white}
+                      />
+                    </View>
+                    <Text style={styles.featureTitle}>
+                      {t(feature.titleKey)}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             );
           })}
         </View>
