@@ -1666,7 +1666,7 @@ export default function BookingDetailsById() {
               >
                 <Ionicons
                   name="location-sharp"
-                  size={moderateWidthScale(13)}
+                  size={moderateWidthScale(12)}
                   color={theme.darkGreen}
                 />
                 <Text style={styles.getDirectionsText}>Get Directions</Text>
