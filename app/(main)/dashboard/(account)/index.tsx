@@ -61,7 +61,7 @@ function ProfileSettingCard({
   iconVariant: IconVariant;
 }) {
   const [pressed, setPressed] = useState(false);
-  const iconSize = moderateWidthScale(24);
+  const iconSize = moderateWidthScale(27);
   const thickness = moderateHeightScale(2.5);
   const radius = moderateWidthScale(18);
 
@@ -577,43 +577,43 @@ export default function AccountScreen() {
     name: string;
     family: IconFamily;
   } => {
-    // Closest matches to design mock icons (filled soft glyphs)
+    // Match client design image icons as closely as possible
     switch (key) {
       case "personal":
-        return { name: "account", family: "community" };
+        return { name: "person", family: "material" };
       case "business":
-        return { name: "storefront", family: "community" };
+        return { name: "storefront", family: "material" };
       case "availability":
-        return { name: "calendar-clock", family: "community" };
+        return { name: "event-available", family: "material" };
       case "leaveRequest":
-        return { name: "calendar-remove", family: "community" };
+        return { name: "event-busy", family: "material" };
       case "customers":
-        return { name: "account-multiple", family: "community" };
+        return { name: "people", family: "material" };
       case "country":
-        return { name: "earth", family: "community" };
+        return { name: "public", family: "material" };
       case "language":
-        return { name: "earth", family: "community" };
+        return { name: "language", family: "material" };
       case "subscriptions":
         return { name: "crown", family: "community" };
       case "notifications":
-        return { name: "bell", family: "community" };
+        return { name: "notifications", family: "material" };
       case "reviews":
-        return { name: "star", family: "community" };
+        return { name: "star", family: "material" };
       case "viewBusiness":
-        return { name: "eye", family: "community" };
+        return { name: "visibility", family: "material" };
       case "affiliationRequests":
         return { name: "handshake", family: "community" };
       case "aiTools":
-        // Same icon as AI Requests / AI Results header (top-right)
+        // Same robot icon as AI Requests / Results header
         return { name: "smart-toy", family: "material" };
       case "rules":
-        return { name: "file-document-outline", family: "community" };
+        return { name: "description", family: "material" };
       case "logout":
-        return { name: "logout", family: "community" };
+        return { name: "logout", family: "material" };
       case "delete":
-        return { name: "trash-can-outline", family: "community" };
+        return { name: "delete-outline", family: "material" };
       default:
-        return { name: "cog", family: "community" };
+        return { name: "settings", family: "material" };
     }
   };
 
