@@ -338,6 +338,8 @@ export const appointmentsEndpoints = {
   getById: (bookingId: string | number) => `/api/appointments/${bookingId}`,
   cancel: (bookingId: string | number) =>
     `/api/appointments/${bookingId}/cancel`,
+  complete: (bookingId: string | number) =>
+    `/api/appointments/${bookingId}/complete`,
   reschedule: (appointmentId: string | number) =>
     `/api/appointments/${appointmentId}/reschedule`,
   tipDetails: (appointmentId: string | number) =>

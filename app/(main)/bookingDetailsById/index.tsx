@@ -17,7 +17,6 @@ import {
   Alert,
   ActivityIndicator,
   Share,
-  Dimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -28,15 +27,8 @@ import {
   openFullImageModal,
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
-import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  heightScale,
-  moderateHeightScale,
-  moderateWidthScale,
-  widthScale,
-} from "@/src/theme/dimensions";
-import { fontSize, fonts } from "@/src/theme/fonts";
-import { SvgXml } from "react-native-svg";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
 import { Ionicons, Entypo, Feather } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet";
@@ -51,11 +43,9 @@ import {
 import { useStripe } from "@stripe/stripe-react-native";
 import {
   fetchAppointmentPaymentSheetParams,
-  useStripeAccount,
+  useStripeAccount as setStripeAccount,
 } from "@/src/services/stripeService";
 import {
-  PersonIcon,
-  MapPinIcon,
   CalendarIcon,
   ContactIcon,
   SupportIcon,
@@ -78,6 +68,7 @@ import {
 } from "@/src/services/tipService";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import type { AffiliatedBusiness } from "@/src/types/affiliation";
+import { createStyles } from "./styles";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
@@ -95,16 +86,6 @@ type SendMessageResponse = {
   data?: unknown;
 };
 
-// Back Arrow Icon SVG
-const backArrowIconSvg = `
-<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
-</svg>
-`;
-
-// Hours before appointment (current time must be at least this many hours behind appointment) to show Reschedule button
-const HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE = 1;
-
 // A tip only becomes available once the Stripe webhook settles the service
 // payment, which lands a moment after the payment sheet closes.
 const TIP_AVAILABILITY_POLL_DELAYS_MS = [0, 2000, 2000];
@@ -119,8 +100,12 @@ type BookingStatus =
 interface BookingItem {
   id: string;
   serviceName: string;
+  serviceDescription?: string | null;
+  serviceLabels?: string[];
+  serviceImageUrl?: string | null;
   membershipType?: string;
   planName?: string;
+  planDescription?: string | null;
   type?: "subscription" | "service";
   staffName: string;
   location?: string;
@@ -162,6 +147,7 @@ interface BookingItem {
   notes?: string | null;
   appointmentDate?: string;
   appointmentTime?: string;
+  createdAt?: string | null;
   userId?: number | null;
   userProfilePic?: string | null;
   staffId?: number | null;
@@ -221,6 +207,9 @@ interface ApiBookingResponse {
     id: number;
     name: string;
     description: string | null;
+    label?: string | null;
+    image?: string | null;
+    image_url?: string | null;
     price: string;
     duration: {
       hours: number;
@@ -268,665 +257,12 @@ interface ApiBookingResponse {
   pendingTip?: PendingTip | null;
 }
 
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    header: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(12),
-    },
-    headerLeft: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    backButton: {
-      width: widthScale(32),
-      height: heightScale(32),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: "rgba(255, 255, 255, 0.2)",
-      alignItems: "center",
-      justifyContent: "center",
-      marginRight: moderateWidthScale(8),
-    },
-    logoText: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    line: {
-      width: "100%",
-      height: 1.1,
-      backgroundColor: theme.borderLight,
-      alignSelf: "center",
-    },
-    scrollContent: {
-      paddingTop: moderateHeightScale(20),
-      paddingBottom: moderateHeightScale(30),
-    },
-    bottomButton: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(20),
-      paddingTop: moderateHeightScale(2),
-    },
-    bookingSection: {
-      marginBottom: moderateHeightScale(24),
-    },
-    statusBadge: {
-      alignSelf: "flex-start",
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(6),
-    },
-    badgesContainer: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
-    },
-    badgesLeft: {
-      flexDirection: "row",
-      gap: moderateWidthScale(8),
-      alignItems: "center",
-    },
-    rescheduleSmallButton: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.orangeBrown,
-      borderWidth: moderateWidthScale(1),
-      borderColor: theme.white,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.15,
-      shadowRadius: 3,
-      elevation: 3,
-    },
-    rescheduleSmallButtonText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-    },
-    statusOngoing: {
-      backgroundColor: theme.orangeBrown015,
-    },
-    statusActive: {
-      backgroundColor: "#E3F2FD",
-    },
-    statusComplete: {
-      backgroundColor: "#E8F5E9",
-    },
-    statusCancelled: {
-      backgroundColor: "#FFEBEE",
-    },
-    statusText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-    },
-    statusTextOngoing: {
-      color: theme.appointmentStatusText,
-    },
-    statusTextActive: {
-      color: "#1976D2",
-    },
-    statusTextComplete: {
-      color: "#388E3C",
-    },
-    statusTextCancelled: {
-      color: "#D32F2F",
-    },
-    serviceName: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    detailsRowContainer: {
-      marginTop: moderateHeightScale(16),
-    },
-    detailsRowTopLine: {
-      width: "100%",
-      height: 1,
-      backgroundColor: theme.borderLight,
-      marginBottom: moderateHeightScale(16),
-    },
-    detailsRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    detailColumn: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      position: "relative",
-      paddingHorizontal: moderateWidthScale(8),
-    },
-    detailColumnSeparator: {
-      position: "absolute",
-      right: 0,
-      top: 0,
-      bottom: 0,
-      width: 1,
-      backgroundColor: theme.borderLight,
-    },
-    detailIconContainer: {
-      marginRight: moderateWidthScale(8),
-      marginTop: moderateHeightScale(2),
-    },
-    detailTextContainer: {
-      flex: 1,
-    },
-    detailLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    detailValue: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    staffDetailValue: {
-      textTransform: "capitalize",
-    },
-    detailsRowBottomLine: {
-      width: "100%",
-      height: 1,
-      backgroundColor: theme.borderLight,
-      marginTop: moderateHeightScale(16),
-    },
-    assignedStaffRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: moderateHeightScale(14),
-      marginHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(8),
-      borderLeftWidth: moderateWidthScale(3),
-      borderLeftColor: theme.darkGreen,
-      gap: moderateWidthScale(10),
-    },
-    assignedStaffAvatar: {
-      width: widthScale(36),
-      height: widthScale(36),
-      borderRadius: widthScale(36 / 2),
-      backgroundColor: theme.lightGreen05,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-    },
-    assignedStaffAvatarImage: {
-      width: "100%",
-      height: "100%",
-    },
-    assignedStaffTextContainer: {
-      flex: 1,
-    },
-    assignedStaffLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(2),
-    },
-    assignedStaffName: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-    },
-    notesContainer: {
-      marginTop: moderateHeightScale(14),
-      marginHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(8),
-      borderLeftWidth: moderateWidthScale(3),
-      borderLeftColor: theme.darkGreen,
-    },
-    notesLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    notesText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      opacity: 0.85,
-      lineHeight: fontSize.size18,
-    },
-    businessCard: {
-      marginBottom: moderateHeightScale(24),
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    businessCardTouchable: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    businessImageContainer: {
-      marginRight: moderateWidthScale(12),
-      alignItems: "center",
-      justifyContent: "center",
-      position: "relative",
-    },
-    businessImage: {
-      width: widthScale(60),
-      height: widthScale(60),
-      borderRadius: widthScale(60 / 2),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
-      backgroundColor: theme.lightGreen05,
-    },
-    ratingBadge: {
-      position: "absolute",
-      bottom: 0,
-      left: moderateWidthScale(10),
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(4),
-      paddingHorizontal: moderateWidthScale(4),
-      paddingVertical: moderateHeightScale(2),
-      minWidth: moderateWidthScale(40),
-    },
-    sahdow: {
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
-
-      elevation: 2,
-    },
-    ratingStar: {
-      marginRight: moderateWidthScale(2),
-    },
-    ratingText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    businessInfo: {
-      flex: 1,
-    },
-    businessName: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-      textTransform: "capitalize",
-    },
-    businessAddress: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    businessAffiliation: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(3),
-    },
-    businessAffiliationName: {
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    mapPinContainer: {
-      width: 50,
-      height: 50,
-      borderRadius: 50 / 2,
-      borderWidth: moderateWidthScale(1),
-      borderColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-      marginLeft: moderateWidthScale(8),
-    },
-    actionButtonsContainer: {
-      flexDirection: "row",
-      justifyContent: "space-around",
-      alignItems: "flex-start",
-      marginVertical: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    actionButton: {
-      alignItems: "center",
-      width: widthScale(70),
-      justifyContent: "flex-start",
-    },
-    actionButtonCircle: {
-      width: widthScale(60),
-      height: heightScale(50),
-      borderRadius: 36,
-      backgroundColor: theme.orangeBrown,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    actionButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      textAlign: "center",
-    },
-    paymentSection: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      marginVertical: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    paymentIcon: {
-      marginRight: moderateWidthScale(12),
-      marginTop: moderateHeightScale(2),
-    },
-    paymentTextContainer: {
-      flex: 1,
-    },
-    paymentBreakdownCard: {
-      marginTop: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.lightGreen05,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      gap: moderateHeightScale(6),
-    },
-    paymentBreakdownRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-    paymentBreakdownLabel: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      flex: 1,
-      marginRight: moderateWidthScale(8),
-      textTransform: "capitalize",
-    },
-    paymentBreakdownValue: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    paymentBreakdownTotalLabel: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    paymentBreakdownTotalValue: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    paymentBreakdownDivider: {
-      height: 1,
-      backgroundColor: theme.borderLight,
-      marginVertical: moderateHeightScale(2),
-    },
-    paymentLabel: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(2),
-    },
-    paymentAmount: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    paymentAmountVal: {
-      fontFamily: fonts.fontMedium,
-    },
-    tipReceiptSection: {
-      paddingHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(8),
-    },
-    tipReceiptCard: {
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.lightGreen07,
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
-      padding: moderateWidthScale(16),
-      overflow: "hidden",
-    },
-    tipReceiptTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-    },
-    tipReceiptAvatarWrap: {
-      position: "relative",
-    },
-    tipReceiptAvatar: {
-      width: widthScale(52),
-      height: widthScale(52),
-      borderRadius: widthScale(26),
-      backgroundColor: theme.emptyProfileImage,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      borderWidth: 2,
-      borderColor: theme.orangeBrown,
-    },
-    tipReceiptAvatarImage: {
-      width: "100%",
-      height: "100%",
-    },
-    tipReceiptInitial: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    tipReceiptBadge: {
-      position: "absolute",
-      right: -moderateWidthScale(2),
-      bottom: -moderateHeightScale(2),
-      width: widthScale(20),
-      height: widthScale(20),
-      borderRadius: widthScale(10),
-      backgroundColor: theme.buttonBack,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 2,
-      borderColor: theme.white,
-    },
-    tipReceiptInfo: {
-      flex: 1,
-    },
-    tipReceiptEyebrow: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-      letterSpacing: 0.4,
-      marginBottom: moderateHeightScale(4),
-    },
-    tipReceiptTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-      marginBottom: moderateHeightScale(2),
-    },
-    tipReceiptSubtitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      lineHeight: fontSize.size18,
-    },
-    tipReceiptAmountPill: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(20),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
-      alignItems: "center",
-      justifyContent: "center",
-      minWidth: widthScale(64),
-    },
-    tipReceiptAmount: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonBack,
-    },
-    tipReceiptFooter: {
-      marginTop: moderateHeightScale(12),
-      paddingTop: moderateHeightScale(12),
-      borderTopWidth: 1,
-      borderTopColor: theme.lightGreen1,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    tipReceiptFooterText: {
-      flex: 1,
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      lineHeight: fontSize.size16,
-    },
-    payOnlineButtonContainer: {},
-    payOnlineButton: {
-      height: moderateHeightScale(36),
-      paddingHorizontal: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(8),
-    },
-    payOnlineButtonText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-    },
-    policyLink: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    policyText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    cancelButton: {
-      backgroundColor: theme.background,
-      borderWidth: moderateWidthScale(1),
-      borderColor: "#D32F2F",
-    },
-    cancelButtonText: {
-      color: "#D32F2F",
-    },
-    removeButton: {
-      backgroundColor: theme.darkGreenLight,
-    },
-    loaderContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    errorContainer: {
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    errorText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(16),
-    },
-    imagesSection: {
-      marginBottom: moderateHeightScale(24),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    imagesSectionTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(12),
-    },
-    imagesGrid: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(8),
-    },
-    imageCard: {
-      width:
-        (Dimensions.get("window").width -
-          moderateWidthScale(20) * 2 -
-          moderateWidthScale(8) * 2) /
-        3,
-      height:
-        (Dimensions.get("window").width -
-          moderateWidthScale(20) * 2 -
-          moderateWidthScale(8) * 2) /
-        3,
-      borderRadius: moderateWidthScale(10),
-      overflow: "hidden",
-      backgroundColor: theme.lightGreen2,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      position: "relative",
-    },
-    imageCardImage: {
-      width: "100%",
-      height: "100%",
-    },
-    imageShareIcon: {
-      position: "absolute",
-      top: moderateHeightScale(6),
-      left: moderateWidthScale(6),
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(32),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 2,
-    },
-    imageDownloadIcon: {
-      position: "absolute",
-      bottom: moderateHeightScale(6),
-      right: moderateWidthScale(6),
-      width: moderateWidthScale(32),
-      height: moderateWidthScale(32),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 2,
-    },
-  });
-
-export default function bookingDetailsById() {
+export default function BookingDetailsById() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
+  const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -972,27 +308,6 @@ export default function bookingDetailsById() {
     staffClientname = booking?.user ?? "User";
   }
 
-  const hasAssignedStaff =
-    userRole === "business" && booking?.staffId != null;
-
-  const assignedStaffDisplayName = useMemo(() => {
-    const name =
-      typeof booking?.staffName === "string" ? booking.staffName.trim() : "";
-    if (!name || name.toLowerCase() === "anyone") {
-      return null;
-    }
-    if (booking?.staffIsOwner) {
-      return `${name} · ${t("owner")}`;
-    }
-    return name;
-  }, [booking?.staffIsOwner, booking?.staffName, t]);
-
-  const assignedStaffImageUri = useMemo(() => {
-    const resolved = resolveApiImageUrl(booking?.staffImage);
-    const fallback = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE?.trim() ?? "";
-    return resolved || fallback || null;
-  }, [booking?.staffImage]);
-
   const handlePersonPress = useCallback(() => {
     if (!booking) {
       return;
@@ -1020,18 +335,6 @@ export default function bookingDetailsById() {
       });
     }
   }, [booking, router, staffClientname, userRole]);
-
-  const handleAssignedStaffPress = useCallback(() => {
-    const staffId = booking?.staffId;
-    if (staffId == null) {
-      return;
-    }
-
-    router.push({
-      pathname: "/(main)/staffDetail",
-      params: { id: String(staffId) },
-    });
-  }, [booking?.staffId, router]);
 
   const mapApiStatusToBookingStatus = (apiStatus: string): BookingStatus => {
     switch (apiStatus.toLowerCase()) {
@@ -1200,6 +503,20 @@ export default function bookingDetailsById() {
 
     const service_ids = allServices.map((s: any) => s.id);
 
+    const serviceDescription =
+      allServices.find((s: any) => s?.description)?.description ??
+      apiData.subscriptionPlanDescription ??
+      null;
+
+    const serviceLabels = allServices
+      .map((s: any) => (typeof s?.label === "string" ? s.label.trim() : ""))
+      .filter(Boolean);
+
+    const firstServiceImage =
+      allServices
+        .map((s: any) => s?.image_url || s?.image || null)
+        .find((uri: string | null) => !!uri) ?? null;
+
     const duration = formatDuration(services, apiData.subscriptionServices);
 
     const dateTime = formatAppointmentDateTime(
@@ -1208,7 +525,12 @@ export default function bookingDetailsById() {
     );
 
     const price = getPrice(apiData);
-    const planName = apiData.subscription || "---";
+    const planName =
+      typeof apiData.subscription === "string"
+        ? apiData.subscription
+        : apiData.subscription?.name ||
+          apiData.subscription?.title ||
+          "---";
 
     const businessLogo = apiData.businessLogoUrl
       ? apiData.businessLogoUrl.startsWith("http://") ||
@@ -1217,9 +539,19 @@ export default function bookingDetailsById() {
         : process.env.EXPO_PUBLIC_API_BASE_URL + apiData.businessLogoUrl
       : (process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "");
 
+    const resolvedServiceImage = firstServiceImage
+      ? firstServiceImage.startsWith("http://") ||
+        firstServiceImage.startsWith("https://")
+        ? firstServiceImage
+        : process.env.EXPO_PUBLIC_API_BASE_URL + firstServiceImage
+      : businessLogo;
+
     return {
       id: apiData.id.toString(),
       serviceName: serviceName || "---",
+      serviceDescription,
+      serviceLabels,
+      serviceImageUrl: resolvedServiceImage,
       membershipType: apiData.subscriptionPlanType || "---",
       staffName: apiData.staffName || "Anyone",
       location: apiData.businessAddress || "Business address",
@@ -1254,12 +586,15 @@ export default function bookingDetailsById() {
       paidAt: apiData.paidAt ?? null,
       subscriptionVisits: apiData.subscriptionVisits || null,
       planName,
+      planDescription: apiData.subscriptionPlanDescription ?? null,
       type: apiData.appointmentType,
       owner: apiData.owner,
       notes: apiData.notes ?? null,
       appointmentDate: apiData.appointmentDate,
       appointmentTime: apiData.appointmentTime,
+      createdAt: apiData.createdAt ?? null,
       userId: apiData.userId ?? null,
+      userProfilePic: apiData.userProfilePic ?? null,
       staffId: apiData.staffId ?? null,
       staffIsOwner: apiData.staffIsOwner === true,
       staffImage: apiData.staffImage ?? null,
@@ -1393,6 +728,22 @@ export default function bookingDetailsById() {
     }
   };
 
+  const getStatusDotStyle = (status: BookingStatus) => {
+    switch (status) {
+      case "ongoing":
+        return styles.statusDotOngoing;
+      case "active":
+        return styles.statusDotActive;
+      case "complete":
+        return styles.statusDotComplete;
+      case "cancelled":
+      case "expired":
+        return styles.statusDotCancelled;
+      default:
+        return styles.statusDotActive;
+    }
+  };
+
   const getStatusLabel = (status: BookingStatus, customerName?: string) => {
     switch (status) {
       case "ongoing":
@@ -1487,36 +838,135 @@ export default function bookingDetailsById() {
     }
   };
 
-  // Parse date and time from dateTime string
-  const dateTimeParts = booking?.dateTime?.split(" - ") ?? [];
-  const date = (dateTimeParts[0] || booking?.dateTime) ?? "";
-  const time = dateTimeParts[1] ?? "";
+  const monthsShort = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const daysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // True if status is ongoing and current time is at least HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE hours before appointment
-  const canShowReschedule = (() => {
-    if (
-      booking?.status !== "ongoing" ||
-      !booking?.appointmentDate ||
-      !booking?.appointmentTime
-    )
-      return false;
+  const formatAppointmentParts = () => {
+    if (!booking?.appointmentDate || !booking?.appointmentTime) {
+      return { dateLabel: booking?.dateTime ?? "---", timeLabel: "" };
+    }
     try {
       const [month, day, year] = booking.appointmentDate.split("/").map(Number);
       const [hours, minutes] = booking.appointmentTime.split(":").map(Number);
-      const appointmentMs = new Date(
-        year,
-        month - 1,
-        day,
-        hours,
-        minutes,
-      ).getTime();
-      const nowMs = Date.now();
-      const diffHours = (appointmentMs - nowMs) / (1000 * 60 * 60);
-      return diffHours >= HOURS_BEFORE_APPOINTMENT_TO_SHOW_RESCHEDULE;
+      const dateObj = new Date(year, month - 1, day, hours, minutes);
+      let hours12 = dateObj.getHours();
+      const ampm = hours12 >= 12 ? "PM" : "AM";
+      hours12 = hours12 % 12;
+      hours12 = hours12 ? hours12 : 12;
+      const minutesStr = dateObj.getMinutes().toString().padStart(2, "0");
+      return {
+        dateLabel: `${daysShort[dateObj.getDay()]}, ${monthsShort[dateObj.getMonth()]} ${day}`,
+        timeLabel: `${hours12}:${minutesStr} ${ampm}`,
+      };
     } catch {
-      return false;
+      return { dateLabel: booking.dateTime ?? "---", timeLabel: "" };
     }
+  };
+
+  const { dateLabel, timeLabel } = formatAppointmentParts();
+
+  const formatBookedOn = (createdAt?: string | null) => {
+    if (!createdAt) return null;
+    try {
+      const d = new Date(createdAt);
+      if (Number.isNaN(d.getTime())) return null;
+      return `Booked on ${monthsShort[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const bookedOnLabel = formatBookedOn(booking?.createdAt);
+
+  const isSubscription = booking?.type === "subscription";
+  const serviceCardTitle = isSubscription
+    ? booking?.planName || booking?.serviceName || "---"
+    : booking?.serviceName || "---";
+  const serviceCardSubtitle = (() => {
+    if (isSubscription) {
+      const parts: string[] = [];
+      if (booking?.membershipType && booking.membershipType !== "---") {
+        parts.push(booking.membershipType);
+      }
+      if (booking?.serviceName && booking.serviceName !== "---") {
+        parts.push(booking.serviceName);
+      }
+      return parts.length ? `(${parts.join(", ")})` : null;
+    }
+    if (booking?.serviceLabels && booking.serviceLabels.length > 0) {
+      return `(${booking.serviceLabels.join(", ")})`;
+    }
+    return null;
   })();
+  const serviceCardDescription =
+    (isSubscription
+      ? booking?.planDescription
+      : booking?.serviceDescription) || null;
+
+  const paymentHeadline = (() => {
+    if (!booking) return "";
+    if (isSubscription) {
+      return booking.planName || "Plan";
+    }
+    if (!booking.owesPayment && booking.paidAmount != null) {
+      return userRole === "customer" ? "You paid" : `${staffClientname} paid`;
+    }
+    return userRole === "customer" ? "I will pay" : "Customer will pay";
+  })();
+
+  const paymentSubline = (() => {
+    if (!booking || isSubscription) return null;
+    if (booking.paymentMethod === "pay_now" && !booking.owesPayment) {
+      return "Paid online";
+    }
+    return "In-person at the business";
+  })();
+
+  const handleReschedulePress = () => {
+    if (!booking) return;
+    const baseParams: Record<string, string> = {
+      business_id: booking.businessId?.toString() ?? "",
+      is_reschedule: "1",
+      booking_id: booking.id ?? "",
+      appointment_type:
+        booking.type === "subscription" ? "subscription" : "service",
+      notes: booking.notes ?? "",
+      appointment_date: booking.appointmentDate ?? "",
+      appointment_time: booking.appointmentTime ?? "",
+      staff_id: booking.staffId != null ? String(booking.staffId) : "anyone",
+    };
+    if (booking.type === "service" && booking.service_ids?.length) {
+      baseParams.service_ids = JSON.stringify(booking.service_ids);
+    }
+    if (booking.type === "subscription" && booking.subscription_id != null) {
+      baseParams.subscription_id = String(booking.subscription_id);
+    }
+    router.push({
+      pathname: "/(main)/bookingNow",
+      params: baseParams,
+    });
+  };
+
+  // True if status is ongoing
+  const canShowBottomCancel = !isCancelled && !isComplete;
+  const canShowBottomReschedule =
+    !isCancelled && !isComplete && booking?.status === "ongoing";
+  const canShowMarkComplete =
+    booking?.status === "ongoing" &&
+    (userRole === "business" || userRole === "staff");
 
   const businessName = booking?.businessName || booking?.location || "---";
   const businessLatitude = booking?.businessLatitude
@@ -1734,6 +1184,44 @@ export default function bookingDetailsById() {
     setCancelModalVisible(false);
   };
 
+  const handleCompleteBooking = async () => {
+    if (!bookingId) return;
+
+    dispatch(setActionLoader(true));
+    try {
+      const response = await ApiService.patch<{
+        success: boolean;
+        message: string;
+      }>(appointmentsEndpoints.complete(bookingId), {});
+
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || "Booking marked as completed.",
+          "success",
+          2500,
+        );
+        await fetchBookingDetails();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || "Unable to complete this booking.",
+          "error",
+          2500,
+        );
+      }
+    } catch (completeError: any) {
+      showBanner(
+        t("error"),
+        completeError?.message || "Unable to complete this booking.",
+        "error",
+        2500,
+      );
+    } finally {
+      dispatch(setActionLoader(false));
+    }
+  };
+
   const handleCancelBooking = async (reason: string) => {
     if (!bookingId) {
       showBanner(t("error"), t("bookingIdRequired"), "error", 2500);
@@ -1809,7 +1297,7 @@ export default function bookingDetailsById() {
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       try {
-        await useStripeAccount(connectedAccountId);
+        await setStripeAccount(connectedAccountId);
 
         const paymentConfig: any = {
           merchantDisplayName: "Fresh Pass",
@@ -1871,7 +1359,7 @@ export default function bookingDetailsById() {
         // the tip card can appear once the webhook settles the payment.
         void refreshUntilTipAvailable();
       } finally {
-        await useStripeAccount(null);
+        await setStripeAccount(null);
       }
     } catch (err: any) {
       let errorMessage = "Failed to process payment";
@@ -1961,145 +1449,171 @@ export default function bookingDetailsById() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Booking Section */}
-          <View style={styles.bookingSection}>
-            {/* Status and Membership Badges */}
-            <View style={styles.badgesContainer}>
-              <View style={styles.badgesLeft}>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    getStatusBadgeStyle(booking.status),
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      getStatusTextStyle(booking.status),
-                    ]}
-                  >
-                    {getStatusLabel(booking.status, booking.user)}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Service Name */}
-            <Text style={styles.serviceName}>{booking.serviceName}</Text>
-
-            {/* Details Row */}
-            <View style={styles.detailsRowContainer}>
-              <View style={styles.detailsRowTopLine} />
-              <View style={styles.detailsRow}>
-                <View style={styles.detailColumn}>
-                  <View style={styles.detailIconContainer}>
-                    <Ionicons
-                      name="time-outline"
-                      size={moderateWidthScale(17)}
-                      color={theme.darkGreen}
-                    />
-                  </View>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>{t("duration")}</Text>
-                    <Text style={styles.detailValue}>{booking.duration}</Text>
-                  </View>
-                  <View style={styles.detailColumnSeparator} />
-                </View>
-                <View style={styles.detailColumn}>
-                  <View style={styles.detailIconContainer}>
-                    <CalendarIcon
-                      width={moderateWidthScale(17)}
-                      height={moderateWidthScale(17)}
-                      color={theme.darkGreen}
-                    />
-                  </View>
-                  <View style={styles.detailTextContainer}>
-                    <Text style={styles.detailLabel}>{t("date")}</Text>
-                    <Text style={styles.detailValue}>
-                      {date}
-                      {time ? ` -` : ""}
-                    </Text>
-                    {time && <Text style={styles.detailValue}>{time}</Text>}
-                  </View>
-                  <View style={styles.detailColumnSeparator} />
-                </View>
-                <View style={[styles.detailColumn, { borderRightWidth: 0 }]}>
-                  <View style={styles.detailIconContainer}>
-                    <PersonIcon
-                      width={moderateWidthScale(17)}
-                      height={moderateWidthScale(17)}
-                      color={theme.darkGreen}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.detailTextContainer}
-                    activeOpacity={0.7}
-                    onPress={handlePersonPress}
-                  >
-                    <Text style={styles.detailLabel}>
-                      {userRole === "customer"
-                        ? t("myBarber")
-                        : t("myCustomer")}
-                    </Text>
-                    <Text
-                      style={[styles.detailValue, styles.staffDetailValue]}
-                      numberOfLines={2}
-                    >
-                      {staffClientname}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              <View style={styles.detailsRowBottomLine} />
-            </View>
-
-            {/* Notes - show when not empty */}
-            {booking.notes != null && String(booking.notes).trim() !== "" && (
-              <View style={styles.notesContainer}>
-                <Text style={styles.notesLabel}>{t("notes")}</Text>
-                <Text style={styles.notesText}>{booking.notes}</Text>
-              </View>
-            )}
-
-            {/* Assigned staff - business role only, when staff is assigned */}
-            {hasAssignedStaff && (
-              <TouchableOpacity
-                style={styles.assignedStaffRow}
-                activeOpacity={0.7}
-                onPress={handleAssignedStaffPress}
+          {/* Status + Booking ID */}
+          <View style={styles.statusIdRow}>
+            <View
+              style={[styles.statusBadge, getStatusBadgeStyle(booking.status)]}
+            >
+              <View
+                style={[styles.statusDot, getStatusDotStyle(booking.status)]}
+              />
+              <Text
+                style={[styles.statusText, getStatusTextStyle(booking.status)]}
               >
-                <View style={styles.assignedStaffAvatar}>
-                  {assignedStaffImageUri ? (
-                    <Image
-                      source={{ uri: assignedStaffImageUri }}
-                      style={styles.assignedStaffAvatarImage}
-                    />
-                  ) : (
-                    <PersonIcon
-                      width={moderateWidthScale(18)}
-                      height={moderateWidthScale(18)}
-                      color={theme.darkGreen}
-                    />
-                  )}
-                </View>
-                <View style={styles.assignedStaffTextContainer}>
-                  <Text style={styles.assignedStaffLabel}>
-                    {t("assignedStaff")}
-                  </Text>
-                  {assignedStaffDisplayName ? (
-                    <Text style={styles.assignedStaffName} numberOfLines={1}>
-                      {assignedStaffDisplayName}
-                    </Text>
-                  ) : null}
-                </View>
-              </TouchableOpacity>
-            )}
+                {getStatusLabel(booking.status, booking.user)}
+              </Text>
+            </View>
+            <View style={styles.bookingIdBlock}>
+              <Text style={styles.bookingIdText}>{`#FP${booking.id}`}</Text>
+              {bookedOnLabel ? (
+                <Text style={styles.bookedOnText}>{bookedOnLabel}</Text>
+              ) : null}
+            </View>
           </View>
 
-          {/* Business Information Card */}
-          <View style={styles.businessCard}>
+          {/* Service / Plan card */}
+          <View style={[styles.serviceCard, styles.cardShadow]}>
+            <View style={styles.serviceCardRow}>
+              <Image
+                source={{
+                  uri:
+                    booking.serviceImageUrl ||
+                    booking.businessLogoUrl ||
+                    process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ||
+                    "",
+                }}
+                style={styles.serviceImage}
+              />
+              <View style={styles.serviceInfo}>
+                <Text style={styles.serviceTitle} numberOfLines={2}>
+                  {serviceCardTitle}
+                </Text>
+                {serviceCardSubtitle ? (
+                  <Text style={styles.serviceSubtitle} numberOfLines={2}>
+                    {serviceCardSubtitle}
+                  </Text>
+                ) : null}
+                <View style={styles.tagsRow}>
+                  {isSubscription ? (
+                    <View style={styles.tagPill}>
+                      <Ionicons
+                        name="pricetag-outline"
+                        size={moderateWidthScale(11)}
+                        color={theme.darkGreen}
+                      />
+                      <Text style={styles.tagText}>Plan</Text>
+                    </View>
+                  ) : null}
+                  {booking.membershipType &&
+                  booking.membershipType !== "---" &&
+                  isSubscription ? (
+                    <View style={styles.tagPill}>
+                      <Ionicons
+                        name="sparkles"
+                        size={moderateWidthScale(11)}
+                        color={theme.darkGreen}
+                      />
+                      <Text style={styles.tagText}>
+                        {booking.membershipType}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {!isSubscription &&
+                    (booking.serviceLabels ?? []).slice(0, 2).map((label) => (
+                      <View key={label} style={styles.tagPill}>
+                        <Ionicons
+                          name="leaf-outline"
+                          size={moderateWidthScale(11)}
+                          color={theme.darkGreen}
+                        />
+                        <Text style={styles.tagText}>{label}</Text>
+                      </View>
+                    ))}
+                  <View style={styles.tagPill}>
+                    <Ionicons
+                      name="time-outline"
+                      size={moderateWidthScale(11)}
+                      color={theme.darkGreen}
+                    />
+                    <Text style={styles.tagText}>{booking.duration}</Text>
+                  </View>
+                </View>
+                {serviceCardDescription ? (
+                  <Text style={styles.serviceDescription} numberOfLines={3}>
+                    {serviceCardDescription}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.infoGrid}>
+            <View style={styles.infoColumn}>
+              <View style={styles.infoIconCircle}>
+                <Ionicons
+                  name="time"
+                  size={moderateWidthScale(12)}
+                  color={theme.white}
+                />
+              </View>
+              <View style={styles.infoTextCol}>
+                <Text style={styles.infoLabel} numberOfLines={1}>
+                  {t("duration")}
+                </Text>
+                <Text style={styles.infoValueDuration}>{booking.duration}</Text>
+              </View>
+            </View>
+
+            <View style={styles.infoColumn}>
+              <View style={styles.infoIconCircle}>
+                <Ionicons
+                  name="calendar"
+                  size={moderateWidthScale(12)}
+                  color={theme.white}
+                />
+              </View>
+              <View style={styles.infoTextCol}>
+                <Text style={styles.infoLabel} numberOfLines={1}>
+                  Date & Time
+                </Text>
+                <Text style={styles.infoValue}>{dateLabel}</Text>
+                {timeLabel ? (
+                  <Text style={styles.infoValueSecondary}>{timeLabel}</Text>
+                ) : null}
+              </View>
+            </View>
+
             <TouchableOpacity
-              style={styles.businessCardTouchable}
+              style={styles.infoColumnPressable}
+              activeOpacity={0.7}
+              onPress={handlePersonPress}
+            >
+              <View style={styles.infoIconCircle}>
+                <Ionicons
+                  name="person"
+                  size={moderateWidthScale(12)}
+                  color={theme.white}
+                />
+              </View>
+              <View style={styles.infoTextCol}>
+                <Text style={styles.infoLabel} numberOfLines={1}>
+                  {userRole === "customer" ? t("myBarber") : t("myCustomer")}
+                </Text>
+                <Text style={styles.infoValue}>{staffClientname}</Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={moderateWidthScale(11)}
+                color={theme.lightGreen4}
+                style={styles.infoChevron}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Location / Business */}
+          <View style={styles.locationCard}>
+            <TouchableOpacity
+              style={styles.locationTouchable}
               activeOpacity={0.7}
               onPress={() => {
                 if (booking.businessId != null) {
@@ -2111,64 +1625,141 @@ export default function bookingDetailsById() {
               }}
               disabled={booking.businessId == null}
             >
-              <View style={styles.businessImageContainer}>
-                <Image
-                  source={{
-                    uri: booking.businessLogoUrl,
-                  }}
-                  style={styles.businessImage}
-                />
-                {booking.businessAverageRating !== undefined &&
-                  booking.businessAverageRating > 0 && (
-                    <View style={[styles.ratingBadge, styles.sahdow]}>
-                      <Ionicons
-                        name="star"
-                        size={moderateWidthScale(10)}
-                        color={theme.selectCard}
-                        style={styles.ratingStar}
-                      />
-                      <Text style={styles.ratingText}>
-                        {booking.businessAverageRating.toFixed(1)}
-                      </Text>
-                    </View>
-                  )}
-              </View>
-              <View style={styles.businessInfo}>
-                <Text style={styles.businessName}>{booking.businessName}</Text>
-                <Text style={styles.businessAddress}>
-                  {booking.businessAddress}
+              <Image
+                source={{ uri: booking.businessLogoUrl }}
+                style={styles.locationAvatar}
+              />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationName} numberOfLines={1}>
+                  {booking.businessName}
                 </Text>
+                <View style={styles.locationAddressRow}>
+                  <Ionicons
+                    name="location-sharp"
+                    size={moderateWidthScale(12)}
+                    color={theme.lightGreen}
+                    style={styles.locationAddressPin}
+                  />
+                  <Text style={styles.locationAddress} numberOfLines={2}>
+                    {booking.businessAddress}
+                  </Text>
+                </View>
                 {!!booking.workingWithBusiness?.title && (
-                  <Text style={styles.businessAffiliation} numberOfLines={1}>
+                  <Text style={styles.locationAffiliation} numberOfLines={1}>
                     {t("affiliatedWith")}{" "}
-                    <Text style={styles.businessAffiliationName}>
+                    <Text style={styles.locationAffiliationName}>
                       {booking.workingWithBusiness.title}
                     </Text>
                   </Text>
                 )}
               </View>
             </TouchableOpacity>
-            {businessLatitude && businessLongitude && (
+            {businessLatitude && businessLongitude ? (
               <TouchableOpacity
-                style={styles.mapPinContainer}
+                style={styles.getDirectionsButton}
                 onPress={handleLocationPress}
+                activeOpacity={0.7}
               >
-                <MapPinIcon
-                  width={moderateWidthScale(18)}
-                  height={moderateWidthScale(18)}
-                  color={theme.primary}
+                <Ionicons
+                  name="location-sharp"
+                  size={moderateWidthScale(13)}
+                  color={theme.darkGreen}
                 />
+                <Text style={styles.getDirectionsText}>Get Directions</Text>
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
 
-          <View style={styles.line} />
+          {/* Chat + Support */}
+          <View style={styles.actionCardsRow}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[styles.actionCard, styles.actionCardPrimary]}
+              onPress={handleContactPress}
+            >
+              <ContactIcon
+                width={moderateWidthScale(22)}
+                height={moderateWidthScale(22)}
+                color={theme.white}
+              />
+              <View style={styles.actionCardTextWrap}>
+                <View style={styles.actionCardTitleRow}>
+                  <Text
+                    style={[
+                      styles.actionCardTitle,
+                      styles.actionCardTitlePrimary,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {userRole === "customer"
+                      ? "Business Chat"
+                      : "Customer Chat"}
+                  </Text>
+                  <Entypo
+                    name="chevron-small-right"
+                    size={moderateWidthScale(18)}
+                    color={theme.white}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.actionCardSubtitle,
+                    styles.actionCardSubtitlePrimary,
+                  ]}
+                  numberOfLines={2}
+                >
+                  {userRole === "customer"
+                    ? "Message the business"
+                    : "Message your customer"}
+                </Text>
+              </View>
+            </TouchableOpacity>
 
-          {/* Try-on Images Section */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={[styles.actionCard, styles.actionCardSecondary]}
+              onPress={handleSupportPress}
+            >
+              <SupportIcon
+                width={moderateWidthScale(22)}
+                height={moderateWidthScale(22)}
+                color={theme.darkGreen}
+              />
+              <View style={styles.actionCardTextWrap}>
+                <View style={styles.actionCardTitleRow}>
+                  <Text
+                    style={[
+                      styles.actionCardTitle,
+                      styles.actionCardTitleSecondary,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {t("support")}
+                  </Text>
+                  <Entypo
+                    name="chevron-small-right"
+                    size={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+                <Text
+                  style={[
+                    styles.actionCardSubtitle,
+                    styles.actionCardSubtitleSecondary,
+                  ]}
+                  numberOfLines={2}
+                >
+                  Get help from FreshPass
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Try-on Images */}
           {booking.images &&
             Array.isArray(booking.images) &&
             booking.images.length > 0 && (
-              <View style={styles.imagesSection}>
+              <View style={[styles.imagesSection, styles.cardShadow]}>
                 <Text style={styles.imagesSectionTitle}>
                   {t("tryOnImages") || "Try-on images"}
                 </Text>
@@ -2225,206 +1816,105 @@ export default function bookingDetailsById() {
               </View>
             )}
 
-          <View style={styles.line} />
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtonsContainer}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.actionButton}
-              onPress={handleContactPress}
-            >
-              <View style={styles.actionButtonCircle}>
-                <ContactIcon
-                  width={moderateWidthScale(22)}
-                  height={moderateWidthScale(22)}
+          {/* Payment */}
+          <View style={[styles.paymentCard, styles.cardShadow]}>
+            <View style={styles.paymentLeft}>
+              <View style={styles.paymentIconCircle}>
+                <WalletIcon
+                  width={moderateWidthScale(18)}
+                  height={moderateWidthScale(18)}
                   color={theme.darkGreen}
                 />
               </View>
-              <Text style={styles.actionButtonText}>
-                {userRole === "customer" ? t("contact") : t("contactC")}
-              </Text>
-            </TouchableOpacity>
-            {/* {isCancelled && (
-            <TouchableOpacity activeOpacity={0.7} style={styles.actionButton}>
-              <View style={styles.actionButtonCircle}>
-                <BookAgainIcon
-                  width={moderateWidthScale(22)}
-                  height={moderateWidthScale(22)}
-                  color={theme.darkGreen}
-                />
+              <View style={styles.paymentTextCol}>
+                <Text style={styles.paymentLabel}>{t("paymentMethod")}</Text>
+                <Text style={styles.paymentTitle}>{paymentHeadline}</Text>
+                {paymentSubline ? (
+                  <Text style={styles.paymentSubtitle}>{paymentSubline}</Text>
+                ) : null}
+                {!isCancelled &&
+                  userRole === "customer" &&
+                  booking.type === "service" &&
+                  booking.owesPayment && (
+                    <Button
+                      title={t("payOnline")}
+                      onPress={startPayOnlineFlow}
+                      containerStyle={styles.payOnlineButton}
+                      textStyle={styles.payOnlineButtonText}
+                    />
+                  )}
               </View>
-              <Text style={styles.actionButtonText}>{t("bookAgain")}</Text>
-            </TouchableOpacity>
-          )} */}
-            {canShowReschedule && userRole === "customer" && (
-              <TouchableOpacity
-                onPress={() => {
-                  const baseParams: Record<string, string> = {
-                    business_id: booking?.businessId?.toString() ?? "",
-                    is_reschedule: "1",
-                    booking_id: booking?.id ?? "",
-                    appointment_type:
-                      booking?.type === "subscription"
-                        ? "subscription"
-                        : "service",
-                    notes: booking?.notes ?? "",
-                    appointment_date: booking?.appointmentDate ?? "",
-                    appointment_time: booking?.appointmentTime ?? "",
-                    staff_id:
-                      booking?.staffId != null
-                        ? String(booking.staffId)
-                        : "anyone",
-                  };
-                  if (
-                    booking?.type === "service" &&
-                    booking?.service_ids?.length
-                  ) {
-                    baseParams.service_ids = JSON.stringify(
-                      booking.service_ids,
-                    );
-                  }
-                  if (
-                    booking?.type === "subscription" &&
-                    booking?.subscription_id != null
-                  ) {
-                    baseParams.subscription_id = String(
-                      booking.subscription_id,
-                    );
-                  }
-
-                  router.push({
-                    pathname: "/(main)/bookingNow",
-                    params: baseParams,
-                  });
-                }}
-                activeOpacity={0.7}
-                style={styles.actionButton}
-              >
-                <View style={styles.actionButtonCircle}>
-                  <CalendarIcon
-                    width={moderateWidthScale(22)}
-                    height={moderateWidthScale(22)}
-                    color={theme.darkGreen}
-                  />
-                </View>
-                <Text style={styles.actionButtonText}>{t("reschedule")}</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={styles.actionButton}
-              onPress={handleSupportPress}
-            >
-              <View style={styles.actionButtonCircle}>
-                <SupportIcon
-                  width={moderateWidthScale(22)}
-                  height={moderateWidthScale(22)}
-                  color={theme.darkGreen}
-                />
-              </View>
-              <Text style={styles.actionButtonText}>{t("support")}</Text>
-            </TouchableOpacity>
+            </View>
+            <View style={styles.paymentDivider} />
+            <View style={styles.paymentRight}>
+              <Text style={styles.paymentLabel}>Total Amount</Text>
+              {booking.type === "service" ? (
+                paidTipBreakdown &&
+                !booking.owesPayment &&
+                booking.paidAmount != null ? (
+                  <View style={styles.paymentBreakdownCard}>
+                    <View style={styles.paymentBreakdownRow}>
+                      <Text style={styles.paymentBreakdownLabel}>Service</Text>
+                      <Text style={styles.paymentBreakdownValue}>
+                        {formatPrice(paidTipBreakdown.serviceAmount)}
+                      </Text>
+                    </View>
+                    <View style={styles.paymentBreakdownRow}>
+                      <Text style={styles.paymentBreakdownLabel}>
+                        Tip for {paidTipBreakdown.recipientName}
+                      </Text>
+                      <Text style={styles.paymentBreakdownValue}>
+                        {formatTipAmount(
+                          paidTipBreakdown.tipAmount,
+                          paidTipBreakdown.currency,
+                        )}
+                      </Text>
+                    </View>
+                    <View style={styles.paymentBreakdownDivider} />
+                    <View style={styles.paymentBreakdownRow}>
+                      <Text style={styles.paymentBreakdownTotalLabel}>
+                        Total paid
+                      </Text>
+                      <Text style={styles.paymentBreakdownTotalValue}>
+                        {formatPrice(paidTipBreakdown.totalPaid)}
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <Text style={styles.paymentAmount}>
+                    {!booking.owesPayment && booking.paidAmount != null
+                      ? formatPrice(booking.paidAmount)
+                      : booking.price}
+                  </Text>
+                )
+              ) : (
+                <Text style={styles.paymentAmount}>
+                  {booking.subscriptionVisits
+                    ? `${booking.subscriptionVisits.remaining}/${booking.subscriptionVisits.total} left`
+                    : booking.price}
+                </Text>
+              )}
+            </View>
           </View>
 
-          <View style={styles.line} />
-
-          {/* Payment Information */}
-          {booking.type === "service" ? (
-            <View style={styles.paymentSection}>
-              <View style={styles.paymentIcon}>
-                <WalletIcon
-                  width={moderateWidthScale(22)}
-                  height={moderateWidthScale(22)}
-                  color={theme.orangeBrown}
+          {/* Notes */}
+          {booking.notes != null && String(booking.notes).trim() !== "" && (
+            <View style={[styles.notesCard, styles.cardShadow]}>
+              <View style={styles.paymentIconCircle}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
                 />
               </View>
-              <View style={styles.paymentTextContainer}>
-                {!booking.owesPayment &&
-                booking.paidAmount !== null &&
-                booking.paidAmount !== undefined ? (
-                  <>
-                    <Text style={styles.paymentLabel}>
-                      {userRole === "customer" ? "I" : staffClientname} paid
-                    </Text>
-                    {paidTipBreakdown ? (
-                      <View style={styles.paymentBreakdownCard}>
-                        <View style={styles.paymentBreakdownRow}>
-                          <Text style={styles.paymentBreakdownLabel}>
-                            Service
-                          </Text>
-                          <Text style={styles.paymentBreakdownValue}>
-                            {formatPrice(paidTipBreakdown.serviceAmount)}
-                          </Text>
-                        </View>
-                        <View style={styles.paymentBreakdownRow}>
-                          <Text style={styles.paymentBreakdownLabel}>
-                            Tip for {paidTipBreakdown.recipientName}
-                          </Text>
-                          <Text style={styles.paymentBreakdownValue}>
-                            {formatTipAmount(
-                              paidTipBreakdown.tipAmount,
-                              paidTipBreakdown.currency,
-                            )}
-                          </Text>
-                        </View>
-                        <View style={styles.paymentBreakdownDivider} />
-                        <View style={styles.paymentBreakdownRow}>
-                          <Text style={styles.paymentBreakdownTotalLabel}>
-                            Total paid
-                          </Text>
-                          <Text style={styles.paymentBreakdownTotalValue}>
-                            {formatPrice(paidTipBreakdown.totalPaid)}
-                          </Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <Text style={styles.paymentAmount}>
-                        <Text style={styles.paymentAmountVal}>
-                          {formatPrice(booking.paidAmount)}
-                        </Text>
-                      </Text>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Text style={styles.paymentLabel}>
-                      {userRole === "customer" ? "I" : staffClientname} will pay
-                    </Text>
-                    <Text style={styles.paymentAmount}>
-                      Total:{" "}
-                      <Text style={styles.paymentAmountVal}>
-                        {booking.price}
-                      </Text>
-                    </Text>
-                  </>
-                )}
-              </View>
-              {!isCancelled &&
-                userRole === "customer" &&
-                booking.owesPayment && (
-                  <Button
-                    title={t("payOnline")}
-                    onPress={startPayOnlineFlow}
-                    containerStyle={styles.payOnlineButton}
-                    textStyle={styles.payOnlineButtonText}
-                  />
-                )}
-            </View>
-          ) : (
-            <View style={styles.paymentSection}>
-              <View style={styles.paymentTextContainer}>
-                <Text style={styles.paymentAmount}>
-                  <Text style={styles.paymentAmountVal}>
-                    {booking.planName}
-                  </Text>
-                </Text>
+              <View style={styles.notesTextCol}>
+                <Text style={styles.notesLabel}>Customer Notes</Text>
+                <Text style={styles.notesText}>{booking.notes}</Text>
               </View>
             </View>
           )}
 
-          {/* Paid tip receipt — show for any paid tip (including tip-at-booking) */}
+          {/* Paid tip receipt */}
           {userRole === "customer" && booking.tip && paidTipBreakdown && (
             <View style={styles.tipReceiptSection}>
               <View style={styles.tipReceiptCard}>
@@ -2493,27 +1983,23 @@ export default function bookingDetailsById() {
             </View>
           )}
 
-          {/* Standalone tip after a paid visit — not for unpaid completed pay-later
-              (that tip is collected in the combined pay sheet instead).
-              tipDeclined: chose No Tip on pay-and-tip; never show the card again. */}
+          {/* Standalone tip */}
           {userRole === "customer" &&
             booking.canTip &&
             !(booking.tipDeclined ?? false) &&
             !booking.paymentDueNow && (
-            <TipSection
-              appointmentId={Number(booking.id)}
-              initialCanTip={booking.canTip}
-              initialTip={booking.tip}
-              fallbackRecipientName={booking.tipRecipientName}
-              fallbackRecipientType={booking.tipRecipientType}
-              fallbackRecipientImage={booking.staffImage}
-              onTipComplete={fetchBookingDetails}
-            />
-          )}
+              <TipSection
+                appointmentId={Number(booking.id)}
+                initialCanTip={booking.canTip}
+                initialTip={booking.tip}
+                fallbackRecipientName={booking.tipRecipientName}
+                fallbackRecipientType={booking.tipRecipientType}
+                fallbackRecipientImage={booking.staffImage}
+                onTipComplete={fetchBookingDetails}
+              />
+            )}
 
-          <View style={styles.line} />
-
-          {/* Policy Link (only for ongoing bookings) */}
+          {/* Policy Link */}
           {!isCancelled && !isComplete && userRole === "customer" && (
             <TouchableOpacity
               onPress={handleSupportPress}
@@ -2530,29 +2016,74 @@ export default function bookingDetailsById() {
           )}
         </ScrollView>
 
-        {/* Bottom Button */}
-
-        {!isCancelled && !isComplete && userRole === "customer" && (
-          <View style={styles.bottomButton}>
-            <Button
-              title={t("cancelThisBooking")}
-              onPress={() => {
-                handleOpenCancelModal();
-              }}
-              containerStyle={styles.cancelButton}
-              textColor={"#D32F2F"}
-            />
+        {(canShowMarkComplete ||
+          canShowBottomReschedule ||
+          canShowBottomCancel) && (
+          <View
+            style={[
+              styles.bottomActions,
+              { paddingBottom: Math.max(insets.bottom, moderateHeightScale(14)) },
+            ]}
+          >
+            {canShowMarkComplete ? (
+              <Button
+                title="Mark as Completed"
+                onPress={handleCompleteBooking}
+                containerStyle={styles.completeButton}
+                leftIcon={
+                  <View style={styles.completeIcon}>
+                    <Ionicons
+                      name="checkmark"
+                      size={moderateWidthScale(16)}
+                      color={theme.buttonBack}
+                    />
+                  </View>
+                }
+              />
+            ) : null}
+            <View style={styles.bottomButtonsRow}>
+              {canShowBottomReschedule ? (
+                <TouchableOpacity
+                  style={styles.bottomOutlineButton}
+                  activeOpacity={0.7}
+                  onPress={handleReschedulePress}
+                >
+                  <CalendarIcon
+                    width={moderateWidthScale(18)}
+                    height={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                  <Text style={styles.bottomOutlineButtonText}>
+                    {t("reschedule")}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {canShowBottomCancel ? (
+                <TouchableOpacity
+                  style={styles.bottomCancelButton}
+                  activeOpacity={0.7}
+                  onPress={handleOpenCancelModal}
+                >
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={moderateWidthScale(18)}
+                    color={theme.red}
+                  />
+                  <Text style={styles.bottomCancelButtonText}>
+                    Cancel Booking
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
         )}
 
-        {/* Cancel Booking Bottom Sheet */}
         <CancelBookingBottomSheet
           visible={cancelModalVisible}
           onClose={handleCloseCancelModal}
           onSubmit={handleCancelBooking}
         />
 
-        {/* Review prompt modal – shown when booking is complete (once per visit) */}
         <ReviewPromptModal
           visible={showReviewModal}
           onClose={() => setShowReviewModal(false)}
@@ -2573,7 +2104,6 @@ export default function bookingDetailsById() {
           businessName={businessName}
         />
 
-        {/* Share options bottom sheet – from try-on image share */}
         <ShareOptionsBottomSheet
           visible={shareSheetVisible}
           onClose={() => {
@@ -2583,7 +2113,6 @@ export default function bookingDetailsById() {
           onSelectNativeShare={handleNativeShare}
         />
 
-        {/* Contacts modal – send try-on image to user */}
         <PotentialContactsModal
           visible={shareToUserModalVisible}
           onClose={() => {
@@ -2600,7 +2129,6 @@ export default function bookingDetailsById() {
           sending={shareSending}
         />
 
-        {/* Combined service + tip pay for completed unpaid pay-later */}
         <PayAndTipModal
           visible={payAndTipModalVisible}
           appointmentId={Number(booking.id)}
@@ -2616,9 +2144,19 @@ export default function bookingDetailsById() {
   };
 
   return (
-    <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title={t("bookingDetail")} />
-      {renderContent()}
-    </SafeAreaView>
+    <View style={styles.screen}>
+      <StackHeader
+        title={t("bookingDetail")}
+        showLine={false}
+        rightIcon={
+          <Ionicons
+            name="ellipsis-horizontal"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        }
+      />
+      <View style={styles.sheet}>{renderContent()}</View>
+    </View>
   );
 }

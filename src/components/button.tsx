@@ -18,6 +18,7 @@ import {
 interface ButtonProps {
   title: string;
   onPress: () => void;
+  leftIcon?: React.ReactNode;
   disabled?: boolean;
   loading?: boolean;
   containerStyle?: ViewStyle;
@@ -54,6 +55,7 @@ const createStyles = (
 export default function Button({
   title,
   onPress,
+  leftIcon,
   disabled = false,
   loading = false,
   containerStyle,
@@ -88,7 +90,10 @@ export default function Button({
           color={textColor || (colors as Theme).buttonText}
         />
       ) : (
-        <Text style={[styles.buttonText, textStyle]}>{title}</Text>
+        <>
+          {leftIcon}
+          <Text style={[styles.buttonText, textStyle]}>{title}</Text>
+        </>
       )}
     </TouchableOpacity>
   );
