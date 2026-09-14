@@ -338,27 +338,27 @@ export const createStyles = (theme: Theme) =>
     },
     actionCard: {
       flex: 1,
-      borderRadius: moderateWidthScale(18),
+      borderRadius: moderateWidthScale(20),
       paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(14),
+      paddingVertical: moderateHeightScale(12),
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(10),
-      minHeight: heightScale(72),
+      gap: moderateWidthScale(6),
+      minHeight: heightScale(68),
     },
     actionCardPrimary: {
-      backgroundColor: theme.darkGreen,
+      backgroundColor: theme.buttonBack,
     },
     actionCardSecondary: {
-      backgroundColor: theme.lightGreen05,
+      backgroundColor: theme.lightGreen07,
     },
     actionCardTextWrap: {
       flex: 1,
       minWidth: 0,
-      gap: moderateHeightScale(2),
+      gap: moderateHeightScale(5),
     },
     actionCardTitle: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontBold,
     },
     actionCardTitlePrimary: {
@@ -368,9 +368,8 @@ export const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     actionCardSubtitle: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size8,
       fontFamily: fonts.fontRegular,
-      lineHeight: fontSize.size13,
     },
     actionCardSubtitlePrimary: {
       color: theme.white80,

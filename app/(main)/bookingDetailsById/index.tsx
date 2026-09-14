@@ -1682,8 +1682,8 @@ export default function BookingDetailsById() {
               onPress={handleContactPress}
             >
               <ContactIcon
-                width={moderateWidthScale(24)}
-                height={moderateWidthScale(24)}
+                width={moderateWidthScale(20)}
+                height={moderateWidthScale(20)}
                 color={theme.white}
               />
               <View style={styles.actionCardTextWrap}>
@@ -1712,7 +1712,7 @@ export default function BookingDetailsById() {
               </View>
               <Ionicons
                 name="chevron-forward"
-                size={moderateWidthScale(16)}
+                size={moderateWidthScale(14)}
                 color={theme.white}
                 style={styles.actionCardChevron}
               />
@@ -1724,9 +1724,9 @@ export default function BookingDetailsById() {
               onPress={handleSupportPress}
             >
               <SupportIcon
-                width={moderateWidthScale(24)}
-                height={moderateWidthScale(24)}
-                color={theme.darkGreen}
+                width={moderateWidthScale(20)}
+                height={moderateWidthScale(20)}
+                color={theme.buttonBack}
               />
               <View style={styles.actionCardTextWrap}>
                 <Text
@@ -1750,8 +1750,8 @@ export default function BookingDetailsById() {
               </View>
               <Ionicons
                 name="chevron-forward"
-                size={moderateWidthScale(16)}
-                color={theme.darkGreen}
+                size={moderateWidthScale(14)}
+                color={theme.buttonBack}
                 style={styles.actionCardChevron}
               />
             </TouchableOpacity>
