@@ -111,6 +111,7 @@
   "businessPlanStartTrial": "{{trialDays}}日間のトライアルを開始",
   "businessPlanSubscribe": "プランを購読",
   "accountSettings": "アカウント設定",
+  "manageAccountPreferences": "アカウントと設定を管理",
   "guestMode": "続行するにはログイン",
   "chatBox": "チャット",
   "noAnyChat": "チャットはまだありません",
