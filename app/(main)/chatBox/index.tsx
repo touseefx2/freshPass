@@ -1939,7 +1939,10 @@ const ChatContent = ({
         <TouchableOpacity
           style={[styles.attachmentButton, sending && { opacity: 0.5 }]}
           activeOpacity={0.8}
-          onPress={() => onAttachmentPress?.()}
+          onPress={() => {
+            Keyboard.dismiss();
+            onAttachmentPress?.();
+          }}
           disabled={sending}
         >
           <View style={styles.attachmentIconWrap}>

@@ -21,7 +21,7 @@ import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { canShowStaffManagement } from "@/src/state/slices/userSlice";
 
-const CARD_WIDTH_PERCENT = "48%";
+const CARD_WIDTH_PERCENT = "49%";
 
 type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
@@ -45,11 +45,13 @@ type SettingKey =
 type SettingItem = {
   key: SettingKey;
   title: string;
+  subtitle: string;
   fullWidth?: boolean;
 };
 
 function SettingCard({
   title,
+  subtitle,
   iconName,
   iconFamily = "material",
   onPress,
@@ -59,6 +61,7 @@ function SettingCard({
   fullWidth,
 }: {
   title: string;
+  subtitle: string;
   iconName: string;
   iconFamily?: IconFamily;
   onPress: () => void;
@@ -68,9 +71,9 @@ function SettingCard({
   fullWidth?: boolean;
 }) {
   const [pressed, setPressed] = useState(false);
-  const iconSize = moderateWidthScale(27);
+  const iconSize = moderateWidthScale(26);
   const thickness = moderateHeightScale(2.5);
-  const radius = moderateWidthScale(18);
+  const radius = moderateWidthScale(16);
 
   const iconBg =
     iconVariant === "dark"
@@ -142,9 +145,14 @@ function SettingCard({
               )}
             </View>
 
-            <Text style={styles.cardTitle} numberOfLines={3}>
-              {title}
-            </Text>
+            <View style={styles.cardTextBlock}>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {title}
+              </Text>
+              <Text style={styles.cardSubtitle} numberOfLines={3}>
+                {subtitle}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -163,7 +171,7 @@ const createStyles = (theme: Theme) =>
     },
     contentContainer: {
       paddingTop: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(12),
       paddingBottom: moderateHeightScale(32),
     },
     headerBlock: {
@@ -189,7 +197,7 @@ const createStyles = (theme: Theme) =>
       flexWrap: "wrap",
       justifyContent: "space-between",
       rowGap: moderateHeightScale(10),
-      columnGap: moderateWidthScale(8),
+      columnGap: moderateWidthScale(6),
     },
     gridItem: {
       width: CARD_WIDTH_PERCENT as any,
@@ -245,17 +253,17 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.background,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(18),
-      minHeight: moderateHeightScale(90),
-      gap: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(14),
+      minHeight: moderateHeightScale(92),
+      gap: moderateWidthScale(8),
       borderWidth: 1,
       borderColor: theme.lightGreen1,
     },
     iconWrap: {
       width: moderateWidthScale(48),
       height: moderateWidthScale(48),
-      borderRadius: moderateWidthScale(13),
+      borderRadius: moderateWidthScale(12),
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -270,7 +278,6 @@ const createStyles = (theme: Theme) =>
           shadowOpacity: 0.2,
           shadowRadius: moderateWidthScale(4),
         },
-        // Android elevation on small colored boxes creates muddy black shade
         android: {
           elevation: 0,
         },
@@ -300,12 +307,25 @@ const createStyles = (theme: Theme) =>
         },
       }),
     },
-    cardTitle: {
+    cardTextBlock: {
       flex: 1,
-      fontSize: fontSize.size13,
+      flexShrink: 1,
+      justifyContent: "center",
+      gap: moderateHeightScale(2),
+    },
+    cardTitle: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      lineHeight: fontSize.size17,
+      lineHeight: fontSize.size15,
+      textAlign: "left",
+    },
+    cardSubtitle: {
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen6,
+      lineHeight: fontSize.size12,
+      textAlign: "left",
     },
   });
 
@@ -343,19 +363,54 @@ export default function BusinessProfileSettingsScreen() {
   };
 
   const settings: SettingItem[] = [
-    { key: "businessProfile", title: t("businessProfile") },
-    { key: "businessLocation", title: t("yourBusinessLocation") },
-    { key: "description", title: t("description") },
-    { key: "availability", title: t("setAvailabilityTitle") },
-    { key: "services", title: t("manageServicesList") },
-    { key: "subscriptions", title: t("manageSubscriptionList") },
+    {
+      key: "businessProfile",
+      title: t("businessProfile"),
+      subtitle: t("businessProfileCardSubtitle"),
+    },
+    {
+      key: "businessLocation",
+      title: t("yourBusinessLocation"),
+      subtitle: t("businessLocationCardSubtitle"),
+    },
+    {
+      key: "description",
+      title: t("description"),
+      subtitle: t("descriptionCardSubtitle"),
+    },
+    {
+      key: "availability",
+      title: t("setAvailabilityTitle"),
+      subtitle: t("availabilityCardSubtitle"),
+    },
+    {
+      key: "services",
+      title: t("manageServicesList"),
+      subtitle: t("servicesCardSubtitle"),
+    },
+    {
+      key: "subscriptions",
+      title: t("manageSubscriptionList"),
+      subtitle: t("subscriptionListCardSubtitle"),
+    },
     ...(showManageTeam
-      ? [{ key: "team" as const, title: t("manageTeam") }]
+      ? [
+          {
+            key: "team" as const,
+            title: t("manageTeam"),
+            subtitle: t("teamCardSubtitle"),
+          },
+        ]
       : []),
-    { key: "socialMedia", title: t("yourSocialMedia") },
+    {
+      key: "socialMedia",
+      title: t("yourSocialMedia"),
+      subtitle: t("socialMediaCardSubtitle"),
+    },
     {
       key: "portfolio",
       title: t("managePortfolioPhotos"),
+      subtitle: t("portfolioCardSubtitle"),
       fullWidth: true,
     },
   ];
@@ -363,14 +418,14 @@ export default function BusinessProfileSettingsScreen() {
   const getIconMeta = (
     key: SettingKey,
   ): { name: string; family: IconFamily } => {
-    // Match client design image icons as closely as possible
+    // Closest matches to client design icons
     switch (key) {
       case "businessProfile":
         return { name: "storefront", family: "material" };
       case "businessLocation":
-        return { name: "location-on", family: "material" };
+        return { name: "place", family: "material" };
       case "description":
-        return { name: "edit-note", family: "material" };
+        return { name: "notebook-edit-outline", family: "community" };
       case "availability":
         return { name: "calendar-month", family: "material" };
       case "services":
@@ -378,11 +433,11 @@ export default function BusinessProfileSettingsScreen() {
       case "subscriptions":
         return { name: "crown", family: "community" };
       case "team":
-        return { name: "groups", family: "material" };
+        return { name: "account-group", family: "community" };
       case "socialMedia":
-        return { name: "share", family: "material" };
+        return { name: "share-variant", family: "community" };
       case "portfolio":
-        return { name: "image", family: "material" };
+        return { name: "image-outline", family: "community" };
       default:
         return { name: "settings", family: "material" };
     }
@@ -410,6 +465,7 @@ export default function BusinessProfileSettingsScreen() {
               <SettingCard
                 key={setting.key}
                 title={setting.title}
+                subtitle={setting.subtitle}
                 iconName={iconMeta.name}
                 iconFamily={iconMeta.family}
                 onPress={() => handleRowPress(setting.key)}
