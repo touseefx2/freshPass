@@ -27,7 +27,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 
-const CARD_WIDTH_PERCENT = "46.5%";
+const CARD_WIDTH_PERCENT = "48%";
 
 type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
@@ -203,8 +203,8 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
-      rowGap: moderateHeightScale(16),
-      columnGap: moderateWidthScale(10),
+      rowGap: moderateHeightScale(10),
+      columnGap: moderateWidthScale(8),
     },
     gridItem: {
       width: CARD_WIDTH_PERCENT as any,

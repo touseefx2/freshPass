@@ -21,7 +21,7 @@ import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { canShowStaffManagement } from "@/src/state/slices/userSlice";
 
-const CARD_WIDTH_PERCENT = "46.5%";
+const CARD_WIDTH_PERCENT = "48%";
 
 type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
@@ -188,8 +188,8 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       flexWrap: "wrap",
       justifyContent: "space-between",
-      rowGap: moderateHeightScale(16),
-      columnGap: moderateWidthScale(10),
+      rowGap: moderateHeightScale(10),
+      columnGap: moderateWidthScale(8),
     },
     gridItem: {
       width: CARD_WIDTH_PERCENT as any,
