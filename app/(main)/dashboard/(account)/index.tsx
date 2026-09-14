@@ -157,7 +157,7 @@ function ProfileSettingCard({
 
             <Text
               style={[styles.cardTitle, isDelete && styles.deleteCardTitle]}
-              numberOfLines={2}
+              numberOfLines={3}
             >
               {title}
             </Text>
