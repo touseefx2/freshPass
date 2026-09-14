@@ -1590,11 +1590,11 @@ export const ContactIcon: React.FC<ContactIconProps> = ({
   return <SvgXml xml={svgXml} />;
 };
 
-// Support Icon SVG (Help/Question)
+// Support Icon SVG (Headset with mic)
 const supportIconSvg = `
-<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M21.666 2.16602H4.33268C3.14102 2.16602 2.17685 3.14102 2.17685 4.33268L2.16602 23.8327L6.49935 19.4993H21.666C22.8577 19.4993 23.8327 18.5243 23.8327 17.3327V4.33268C23.8327 3.14102 22.8577 2.16602 21.666 2.16602ZM21.666 17.3327H5.60018L4.33268 18.6002V4.33268H21.666V17.3327Z" fill="{{COLOR}}"/>
-<path d="M12.25 14.4H13.75V16H12.25V14.4ZM13.75 13.2H12.25C12.25 10.6 14.5 10.8 14.5 9.2C14.5 8.32 13.825 7.6 13 7.6C12.175 7.6 11.5 8.32 11.5 9.2H10C10 7.432 11.3425 6 13 6C14.6575 6 16 7.432 16 9.2C16 11.2 13.75 11.4 13.75 13.2Z" fill="{{COLOR}}"/>
+<svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M12 1C7.03 1 3 5.03 3 10V17C3 18.66 4.34 20 6 20H9V12H5V10C5 6.13 8.13 3 12 3C15.87 3 19 6.13 19 10V12H15V20H18C19.66 20 21 18.66 21 17V10C21 5.03 16.97 1 12 1Z" fill="{{COLOR}}"/>
+<path d="M14 21H10V23H14C15.66 23 17 21.66 17 20H15C15 20.55 14.55 21 14 21Z" fill="{{COLOR}}"/>
 </svg>
 `;
 

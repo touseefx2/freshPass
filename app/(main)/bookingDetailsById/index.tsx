@@ -1547,67 +1547,71 @@ export default function BookingDetailsById() {
             </View>
           </View>
 
-          <View style={styles.infoGrid}>
-            <View style={styles.infoColumn}>
-              <View style={styles.infoIconCircle}>
-                <Ionicons
-                  name="time"
-                  size={moderateWidthScale(12)}
-                  color={theme.white}
-                />
+          <View style={styles.infoWrap}>
+            <View style={styles.infoGrid}>
+              <View style={styles.infoColumn}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="time"
+                    size={moderateWidthScale(12)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={styles.infoTextCol}>
+                  <Text style={styles.infoLabel} numberOfLines={1}>
+                    {t("duration")}
+                  </Text>
+                  <Text style={styles.infoValueDuration}>
+                    {booking.duration}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.infoTextCol}>
-                <Text style={styles.infoLabel} numberOfLines={1}>
-                  {t("duration")}
-                </Text>
-                <Text style={styles.infoValueDuration}>{booking.duration}</Text>
-              </View>
-            </View>
 
-            <View style={styles.infoColumn}>
-              <View style={styles.infoIconCircle}>
-                <Ionicons
-                  name="calendar"
-                  size={moderateWidthScale(12)}
-                  color={theme.white}
-                />
+              <View style={styles.infoColumn}>
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="calendar"
+                    size={moderateWidthScale(12)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={styles.infoTextCol}>
+                  <Text style={styles.infoLabel} numberOfLines={1}>
+                    Date & Time
+                  </Text>
+                  <Text style={styles.infoValue}>{dateLabel}</Text>
+                  {timeLabel ? (
+                    <Text style={styles.infoValueSecondary}>{timeLabel}</Text>
+                  ) : null}
+                </View>
               </View>
-              <View style={styles.infoTextCol}>
-                <Text style={styles.infoLabel} numberOfLines={1}>
-                  Date & Time
-                </Text>
-                <Text style={styles.infoValue}>{dateLabel}</Text>
-                {timeLabel ? (
-                  <Text style={styles.infoValueSecondary}>{timeLabel}</Text>
-                ) : null}
-              </View>
-            </View>
 
-            <TouchableOpacity
-              style={styles.infoColumnPressable}
-              activeOpacity={0.7}
-              onPress={handlePersonPress}
-            >
-              <View style={styles.infoIconCircle}>
+              <TouchableOpacity
+                style={styles.infoColumnPressable}
+                activeOpacity={0.7}
+                onPress={handlePersonPress}
+              >
+                <View style={styles.infoIconCircle}>
+                  <Ionicons
+                    name="person"
+                    size={moderateWidthScale(12)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={styles.infoTextCol}>
+                  <Text style={styles.infoLabel} numberOfLines={1}>
+                    {userRole === "customer" ? t("myBarber") : t("myCustomer")}
+                  </Text>
+                  <Text style={styles.infoValue}>{staffClientname}</Text>
+                </View>
                 <Ionicons
-                  name="person"
-                  size={moderateWidthScale(12)}
-                  color={theme.white}
+                  name="chevron-forward"
+                  size={moderateWidthScale(11)}
+                  color={theme.lightGreen4}
+                  style={styles.infoChevron}
                 />
-              </View>
-              <View style={styles.infoTextCol}>
-                <Text style={styles.infoLabel} numberOfLines={1}>
-                  {userRole === "customer" ? t("myBarber") : t("myCustomer")}
-                </Text>
-                <Text style={styles.infoValue}>{staffClientname}</Text>
-              </View>
-              <Ionicons
-                name="chevron-forward"
-                size={moderateWidthScale(11)}
-                color={theme.lightGreen4}
-                style={styles.infoChevron}
-              />
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Location / Business */}
@@ -1678,29 +1682,22 @@ export default function BookingDetailsById() {
               onPress={handleContactPress}
             >
               <ContactIcon
-                width={moderateWidthScale(22)}
-                height={moderateWidthScale(22)}
+                width={moderateWidthScale(24)}
+                height={moderateWidthScale(24)}
                 color={theme.white}
               />
               <View style={styles.actionCardTextWrap}>
-                <View style={styles.actionCardTitleRow}>
-                  <Text
-                    style={[
-                      styles.actionCardTitle,
-                      styles.actionCardTitlePrimary,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {userRole === "customer"
-                      ? "Business Chat"
-                      : "Customer Chat"}
-                  </Text>
-                  <Entypo
-                    name="chevron-small-right"
-                    size={moderateWidthScale(18)}
-                    color={theme.white}
-                  />
-                </View>
+                <Text
+                  style={[
+                    styles.actionCardTitle,
+                    styles.actionCardTitlePrimary,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {userRole === "customer"
+                    ? "Business Chat"
+                    : "Customer Chat"}
+                </Text>
                 <Text
                   style={[
                     styles.actionCardSubtitle,
@@ -1713,6 +1710,12 @@ export default function BookingDetailsById() {
                     : "Message your customer"}
                 </Text>
               </View>
+              <Ionicons
+                name="chevron-forward"
+                size={moderateWidthScale(16)}
+                color={theme.white}
+                style={styles.actionCardChevron}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1721,27 +1724,20 @@ export default function BookingDetailsById() {
               onPress={handleSupportPress}
             >
               <SupportIcon
-                width={moderateWidthScale(22)}
-                height={moderateWidthScale(22)}
+                width={moderateWidthScale(24)}
+                height={moderateWidthScale(24)}
                 color={theme.darkGreen}
               />
               <View style={styles.actionCardTextWrap}>
-                <View style={styles.actionCardTitleRow}>
-                  <Text
-                    style={[
-                      styles.actionCardTitle,
-                      styles.actionCardTitleSecondary,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {t("support")}
-                  </Text>
-                  <Entypo
-                    name="chevron-small-right"
-                    size={moderateWidthScale(18)}
-                    color={theme.darkGreen}
-                  />
-                </View>
+                <Text
+                  style={[
+                    styles.actionCardTitle,
+                    styles.actionCardTitleSecondary,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {t("support")}
+                </Text>
                 <Text
                   style={[
                     styles.actionCardSubtitle,
@@ -1752,6 +1748,12 @@ export default function BookingDetailsById() {
                   Get help from FreshPass
                 </Text>
               </View>
+              <Ionicons
+                name="chevron-forward"
+                size={moderateWidthScale(16)}
+                color={theme.darkGreen}
+                style={styles.actionCardChevron}
+              />
             </TouchableOpacity>
           </View>
 
