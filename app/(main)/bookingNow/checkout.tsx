@@ -2181,7 +2181,7 @@ function CheckoutContent() {
 
           {tryOnImageUrls.length > 0 && (
             <View style={styles.sectionCard}>
-              <Text style={styles.tryOnSectionLabel}>Try-on images</Text>
+              <Text style={styles.tryOnSectionLabel}>Attached images</Text>
               <View style={styles.tryOnImagesRow}>
                 {tryOnImageUrls.map((uri, index) => (
                   <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>

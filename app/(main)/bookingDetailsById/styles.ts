@@ -36,21 +36,21 @@ export const createStyles = (theme: Theme) =>
     },
     statusIdRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       gap: moderateWidthScale(12),
     },
     statusBadge: {
       flexDirection: "row",
       alignItems: "center",
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
       borderRadius: moderateWidthScale(20),
-      gap: moderateWidthScale(8),
+      gap: moderateWidthScale(6),
     },
     statusDot: {
-      width: moderateWidthScale(8),
-      height: moderateWidthScale(8),
+      width: moderateWidthScale(7),
+      height: moderateWidthScale(7),
       borderRadius: moderateWidthScale(4),
     },
     statusOngoing: {
@@ -66,7 +66,7 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightRed,
     },
     statusText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
     },
     statusTextOngoing: {
@@ -98,12 +98,12 @@ export const createStyles = (theme: Theme) =>
       flexShrink: 1,
     },
     bookingIdText: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     bookedOnText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       marginTop: moderateHeightScale(2),

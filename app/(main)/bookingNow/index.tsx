@@ -90,6 +90,7 @@ import Animated, {
   type SharedValue,
 } from "react-native-reanimated";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
+import ImagePickerModal from "@/src/components/imagePickerModal";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -1614,6 +1615,7 @@ export default function BookingNow() {
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [tryOnImageUrls, setTryOnImageUrls] = useState<string[]>([]);
+  const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const hasInitializedReschedulePreset = useRef(false);
   const hasScrolledToRescheduleSlot = useRef(false);
@@ -3015,10 +3017,7 @@ export default function BookingNow() {
                   size={moderateWidthScale(14)}
                   color={theme.darkGreen}
                 />
-                <Text style={styles.sectionTitleTryon}>
-                  Attach try-on image{" "}
-                  <Text style={styles.sectionSubTitleTryon}>(optional)</Text>
-                </Text>
+                <Text style={styles.sectionTitleTryon}>Attach image</Text>
               </View>
             </View>
 
@@ -3049,13 +3048,7 @@ export default function BookingNow() {
               ))}
               <TouchableOpacity
                 style={styles.tryOnPlusBox}
-                onPress={() => {
-                  dispatch(setBookingTryOnPreselectedUrls(tryOnImageUrls));
-                  router.push({
-                    pathname: "/aiRequests",
-                    params: { returnTo: "booking" },
-                  });
-                }}
+                onPress={() => setImagePickerVisible(true)}
                 activeOpacity={0.7}
               >
                 <Feather
@@ -3557,6 +3550,27 @@ export default function BookingNow() {
         services={allServices}
         selectedServiceIds={selectedServiceIds}
         onUpdateServices={handleUpdateSelectedServices}
+      />
+      <ImagePickerModal
+        visible={imagePickerVisible}
+        onClose={() => setImagePickerVisible(false)}
+        allowsMultipleSelection
+        showCameraOption={false}
+        showTryOnOption
+        onFromTryOnPress={() => {
+          setImagePickerVisible(false);
+          dispatch(setBookingTryOnPreselectedUrls(tryOnImageUrls));
+          router.push({
+            pathname: "/aiRequests",
+            params: { returnTo: "booking" },
+          });
+        }}
+        onImageSelected={(uri) => {
+          setTryOnImageUrls((prev) => [...prev, uri]);
+        }}
+        onImagesSelected={(uris) => {
+          setTryOnImageUrls((prev) => [...prev, ...uris]);
+        }}
       />
     </SafeAreaView>
   );

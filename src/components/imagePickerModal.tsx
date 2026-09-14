@@ -49,6 +49,8 @@ interface ImagePickerModalProps {
   /** When true, shows "From try-on image" option that calls onFromTryOnPress */
   showTryOnOption?: boolean;
   onFromTryOnPress?: () => void;
+  /** When false, hides the camera option. Defaults to true. */
+  showCameraOption?: boolean;
   /** When "social", label/icon show "Select from social media" (e.g. for business role); default "tryon" */
   attachmentOptionMode?: "tryon" | "social";
 }
@@ -82,6 +84,7 @@ export default function ImagePickerModal({
   quality = 0.8,
   showTryOnOption = false,
   onFromTryOnPress,
+  showCameraOption = true,
   attachmentOptionMode = "tryon",
 }: ImagePickerModalProps) {
   const { colors } = useTheme();
@@ -172,19 +175,21 @@ export default function ImagePickerModal({
         <Text style={styles.optionText}>{t("fromGallery")}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.optionItem}
-        onPress={handleTakePhoto}
-        activeOpacity={0.7}
-      >
-        <MaterialIcons
-          name="camera-alt"
-          size={iconScale(24)}
-          color={theme.darkGreen}
-          style={styles.optionIcon}
-        />
-        <Text style={styles.optionText}>{t("fromCamera")}</Text>
-      </TouchableOpacity>
+      {showCameraOption ? (
+        <TouchableOpacity
+          style={styles.optionItem}
+          onPress={handleTakePhoto}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons
+            name="camera-alt"
+            size={iconScale(24)}
+            color={theme.darkGreen}
+            style={styles.optionIcon}
+          />
+          <Text style={styles.optionText}>{t("fromCamera")}</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {showTryOnOption && onFromTryOnPress ? (
         <TouchableOpacity

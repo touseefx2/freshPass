@@ -881,7 +881,11 @@ export default function BookingDetailsById() {
   const formatBookedOn = (createdAt?: string | null) => {
     if (!createdAt) return null;
     try {
-      const d = new Date(createdAt);
+      let d = new Date(createdAt);
+      if (Number.isNaN(d.getTime()) && createdAt.includes("/")) {
+        const [month, day, year] = createdAt.split("/").map(Number);
+        d = new Date(year, month - 1, day);
+      }
       if (Number.isNaN(d.getTime())) return null;
       return `Booked on ${monthsShort[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
     } catch {
@@ -2147,17 +2151,7 @@ export default function BookingDetailsById() {
 
   return (
     <View style={styles.screen}>
-      <StackHeader
-        title={t("bookingDetail")}
-        showLine={false}
-        rightIcon={
-          <Ionicons
-            name="ellipsis-horizontal"
-            size={moderateWidthScale(22)}
-            color={theme.white}
-          />
-        }
-      />
+      <StackHeader title={t("bookingDetail")} showLine={false} />
       <View style={styles.sheet}>{renderContent()}</View>
     </View>
   );
