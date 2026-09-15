@@ -1615,6 +1615,7 @@ export default function BookingNow() {
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [tryOnImageUrls, setTryOnImageUrls] = useState<string[]>([]);
+  const [galleryImageUris, setGalleryImageUris] = useState<string[]>([]);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
   const hasInitializedReschedulePreset = useRef(false);
@@ -1638,7 +1639,9 @@ export default function BookingNow() {
   useFocusEffect(
     useCallback(() => {
       if (bookingTryOnFromRedux?.length) {
-        setTryOnImageUrls([...bookingTryOnFromRedux]);
+        setTryOnImageUrls(
+          bookingTryOnFromRedux.filter((u) => /^https?:\/\//i.test(u)),
+        );
         dispatch(clearBookingTryOnImageUrls());
       }
     }, [bookingTryOnFromRedux, dispatch]),
@@ -3023,7 +3026,7 @@ export default function BookingNow() {
 
             <View style={styles.tryOnImagesRow}>
               {tryOnImageUrls.map((uri, index) => (
-                <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
+                <View key={`tryon-${uri}-${index}`} style={styles.tryOnImageBox}>
                   <Image
                     source={{ uri }}
                     style={styles.tryOnImageThumb}
@@ -3033,6 +3036,33 @@ export default function BookingNow() {
                     style={styles.tryOnImageRemoveBtn}
                     onPress={() =>
                       setTryOnImageUrls((prev) =>
+                        prev.filter((_, i) => i !== index),
+                      )
+                    }
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name="x"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {galleryImageUris.map((uri, index) => (
+                <View
+                  key={`gallery-${uri}-${index}`}
+                  style={styles.tryOnImageBox}
+                >
+                  <Image
+                    source={{ uri }}
+                    style={styles.tryOnImageThumb}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={styles.tryOnImageRemoveBtn}
+                    onPress={() =>
+                      setGalleryImageUris((prev) =>
                         prev.filter((_, i) => i !== index),
                       )
                     }
@@ -3498,6 +3528,10 @@ export default function BookingNow() {
                       tryOnImageUrls.length > 0
                         ? JSON.stringify(tryOnImageUrls)
                         : "",
+                    gallery_image_uris:
+                      galleryImageUris.length > 0
+                        ? JSON.stringify(galleryImageUris)
+                        : "",
                     selected_subscription_service_ids: JSON.stringify(
                       selectedSubscriptionServiceIds,
                     ),
@@ -3535,6 +3569,10 @@ export default function BookingNow() {
                     tryOnImageUrls.length > 0
                       ? JSON.stringify(tryOnImageUrls)
                       : "",
+                  gallery_image_uris:
+                    galleryImageUris.length > 0
+                      ? JSON.stringify(galleryImageUris)
+                      : "",
                   subscription_plan_type: subscriptionPlanType ?? "",
                 },
               });
@@ -3566,10 +3604,10 @@ export default function BookingNow() {
           });
         }}
         onImageSelected={(uri) => {
-          setTryOnImageUrls((prev) => [...prev, uri]);
+          setGalleryImageUris((prev) => [...prev, uri]);
         }}
         onImagesSelected={(uris) => {
-          setTryOnImageUrls((prev) => [...prev, ...uris]);
+          setGalleryImageUris((prev) => [...prev, ...uris]);
         }}
       />
     </SafeAreaView>

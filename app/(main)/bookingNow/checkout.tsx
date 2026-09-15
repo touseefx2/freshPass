@@ -49,6 +49,61 @@ import {
   getCustomerSubscriptionPill,
 } from "@/src/utils/customerSubscriptionLifecycle";
 import { Feather } from "@expo/vector-icons";
+import {
+  prepareImagesForUpload,
+  type PreparedImageFile,
+} from "@/src/utils/prepareImageForUpload";
+
+const isWebUrl = (u?: string) => !!u && /^https?:\/\//i.test(u);
+
+const buildAppointmentFormData = (
+  body: Record<string, any>,
+  files: PreparedImageFile[],
+) => {
+  const formData = new FormData();
+
+  Object.entries(body).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => formData.append(`${key}[${i}]`, String(item)));
+    } else {
+      formData.append(key, String(value));
+    }
+  });
+
+  files.forEach((file, i) => formData.append(`images[${i}]`, file as any));
+
+  return formData;
+};
+
+const getAppointmentImageErrorMessage = (error: any): string => {
+  if (error?.status === 413) {
+    return "Photos are too large. Please remove some and try again.";
+  }
+  const errors = error?.data?.errors;
+  if (errors && typeof errors === "object") {
+    const firstKey = Object.keys(errors)[0];
+    if (firstKey) {
+      const msg = errors[firstKey];
+      if (Array.isArray(msg) && msg[0]) return String(msg[0]);
+      if (typeof msg === "string") return msg;
+    }
+  }
+  return (
+    error?.message || "Failed to book appointment. Please try again."
+  );
+};
+
+const parseStringArrayParam = (raw?: string): string[] => {
+  if (!raw || typeof raw !== "string" || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as string[];
+    return Array.isArray(parsed) ? parsed.filter((u) => typeof u === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
 const backArrowIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
@@ -1401,23 +1456,67 @@ function CheckoutContent() {
     business_id?: string;
     item?: string;
     try_on_image_urls?: string;
+    gallery_image_uris?: string;
     selected_subscription_service_ids?: string;
   }>();
 
   // Prefer try-on URLs from route params (passed from bookingNow) so they're always in sync
   const tryOnImageUrls = useMemo(() => {
-    const fromParams = params.try_on_image_urls;
-    if (fromParams && typeof fromParams === "string" && fromParams.trim()) {
-      try {
-        const parsed = JSON.parse(fromParams) as string[];
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch (_) {}
-    }
+    const fromParams = parseStringArrayParam(params.try_on_image_urls).filter(
+      isWebUrl,
+    );
+    if (fromParams.length > 0) return fromParams;
     return Array.isArray(bookingTryOnImageUrls) &&
       bookingTryOnImageUrls.length > 0
-      ? bookingTryOnImageUrls
+      ? bookingTryOnImageUrls.filter(isWebUrl)
       : [];
   }, [params.try_on_image_urls, bookingTryOnImageUrls]);
+
+  const galleryImageUris = useMemo(
+    () => parseStringArrayParam(params.gallery_image_uris),
+    [params.gallery_image_uris],
+  );
+
+  const attachedImageUris = useMemo(
+    () => [...tryOnImageUrls, ...galleryImageUris],
+    [tryOnImageUrls, galleryImageUris],
+  );
+
+  const postCreateAppointment = useCallback(
+    async (requestBody: Record<string, any>) => {
+      const imageUrls = (tryOnImageUrls ?? []).filter(isWebUrl);
+      const body: Record<string, any> = { ...requestBody };
+      if (imageUrls.length > 0) {
+        body.image_urls = imageUrls;
+      } else {
+        delete body.image_urls;
+      }
+
+      if (galleryImageUris.length > 0) {
+        const preparedImages = await prepareImagesForUpload(
+          galleryImageUris,
+          "appointment_image",
+        );
+        if (preparedImages.length !== galleryImageUris.length) {
+          showBanner(
+            "Error",
+            "Some photos could not be prepared. Please try again.",
+            "error",
+            3000,
+          );
+          return null;
+        }
+        return ApiService.post(
+          appointmentsEndpoints.create,
+          buildAppointmentFormData(body, preparedImages),
+          { headers: { "Content-Type": "multipart/form-data" } },
+        );
+      }
+
+      return ApiService.post(appointmentsEndpoints.create, body);
+    },
+    [galleryImageUris, showBanner, tryOnImageUrls],
+  );
 
   // Use Redux directly - no local state needed
   const selectedServices = reduxSelectedServices || [];
@@ -1615,16 +1714,10 @@ function CheckoutContent() {
       if (subscriptionId != null) {
         requestBody.subscription_id = subscriptionId;
       }
-      if (Array.isArray(tryOnImageUrls) && tryOnImageUrls.length > 0) {
-        requestBody.image_urls = tryOnImageUrls;
-      }
       Logger.log("requestBody (subscription)", requestBody);
       dispatch(setActionLoader(true));
       try {
-        const response = (await ApiService.post(
-          appointmentsEndpoints.create,
-          requestBody,
-        )) as {
+        const response = (await postCreateAppointment(requestBody)) as {
           success?: boolean;
           message?: string;
           data?: {
@@ -1632,7 +1725,11 @@ function CheckoutContent() {
             message: string;
             data: { id: number; appointmentDate?: string; [key: string]: any };
           };
-        };
+        } | null;
+        if (!response) {
+          dispatch(setActionLoader(false));
+          return;
+        }
         dispatch(setActionLoader(false));
         const isSuccess = response?.success || response?.data?.success;
         if (isSuccess) {
@@ -1690,7 +1787,7 @@ function CheckoutContent() {
         Logger.error("Appointment API Error:", error);
         showBanner(
           "Booking Failed",
-          error?.message || "Failed to book appointment. Please try again.",
+          getAppointmentImageErrorMessage(error),
           "error",
           4000,
         );
@@ -1762,20 +1859,13 @@ function CheckoutContent() {
       requestBody.subscription_id = subscriptionId;
     }
 
-    if (Array.isArray(tryOnImageUrls) && tryOnImageUrls.length > 0) {
-      requestBody.image_urls = tryOnImageUrls;
-    }
-
     Logger.log("requestBody", requestBody);
 
     // Show loader
     dispatch(setActionLoader(true));
 
     try {
-      const response = (await ApiService.post(
-        appointmentsEndpoints.create,
-        requestBody,
-      )) as {
+      const response = (await postCreateAppointment(requestBody)) as {
         success?: boolean;
         message?: string;
         data?: {
@@ -1786,7 +1876,12 @@ function CheckoutContent() {
             [key: string]: any;
           };
         };
-      };
+      } | null;
+
+      if (!response) {
+        dispatch(setActionLoader(false));
+        return;
+      }
 
       // Hide loader
       dispatch(setActionLoader(false));
@@ -2046,7 +2141,7 @@ function CheckoutContent() {
 
       showBanner(
         "Booking Failed",
-        error?.message || "Failed to book appointment. Please try again.",
+        getAppointmentImageErrorMessage(error),
         "error",
         4000,
       );
@@ -2179,11 +2274,11 @@ function CheckoutContent() {
             </View>
           )}
 
-          {tryOnImageUrls.length > 0 && (
+          {attachedImageUris.length > 0 && (
             <View style={styles.sectionCard}>
               <Text style={styles.tryOnSectionLabel}>Attached images</Text>
               <View style={styles.tryOnImagesRow}>
-                {tryOnImageUrls.map((uri, index) => (
+                {attachedImageUris.map((uri, index) => (
                   <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
                     <Image
                       source={{ uri }}
