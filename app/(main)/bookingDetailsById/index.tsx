@@ -1767,7 +1767,7 @@ export default function BookingDetailsById() {
             booking.images.length > 0 && (
               <View style={[styles.imagesSection, styles.cardShadow]}>
                 <Text style={styles.imagesSectionTitle}>
-                  {t("tryOnImages") || "Try-on images"}
+                  {t("attachedImages") || "Attached images"}
                 </Text>
                 <View style={styles.imagesGrid}>
                   {booking.images.map((img, index) => (
