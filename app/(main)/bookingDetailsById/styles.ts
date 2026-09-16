@@ -736,18 +736,6 @@ export const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       lineHeight: fontSize.size16,
     },
-    policyLink: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(4),
-    },
-    policyText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
     cancellationPolicyCard: {
       backgroundColor: theme.orangeBrown01,
       borderRadius: moderateWidthScale(14),

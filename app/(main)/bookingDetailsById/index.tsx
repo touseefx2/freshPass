@@ -29,7 +29,7 @@ import {
 import { Theme } from "@/src/theme/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { moderateHeightScale, moderateWidthScale, iconScale } from "@/src/theme/dimensions";
-import { Ionicons, Entypo, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet";
 import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
@@ -2245,7 +2245,9 @@ export default function BookingDetailsById() {
                 />
               </View>
               <View style={styles.paymentTextCol}>
-                <Text style={styles.paymentLabel}>{t("paymentMethod")}</Text>
+                <Text style={styles.paymentLabel}>
+                  {isSubscription ? t("planName") : t("paymentMethod")}
+                </Text>
                 <Text style={styles.paymentTitle}>{paymentHeadline}</Text>
                 {paymentSubline ? (
                   <Text style={styles.paymentSubtitle}>{paymentSubline}</Text>
@@ -2273,7 +2275,9 @@ export default function BookingDetailsById() {
             </View>
             <View style={styles.paymentDivider} />
             <View style={styles.paymentRight}>
-              <Text style={styles.paymentLabel}>Total Amount</Text>
+              <Text style={styles.paymentLabel}>
+                {isSubscription ? t("remaining") : t("totalAmount")}
+              </Text>
               {booking.type === "service" ? (
                 paidTipBreakdown &&
                 !booking.owesPayment &&
@@ -2547,22 +2551,6 @@ export default function BookingDetailsById() {
                 ) : null}
               </View>
             )}
-
-          {/* Policy Link */}
-          {!isCancelled && !isComplete && !isAwaitingOutcome && userRole === "customer" && (
-            <TouchableOpacity
-              onPress={handleSupportPress}
-              activeOpacity={0.7}
-              style={styles.policyLink}
-            >
-              <Text style={styles.policyText}>{t("bookingCancelPolicy")}</Text>
-              <Entypo
-                name="chevron-small-right"
-                size={moderateWidthScale(22)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-          )}
 
           {booking.outcomeSummary ? (
             <OutcomeSummaryCard

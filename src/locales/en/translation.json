@@ -1032,6 +1032,8 @@
   "trialPeriod": "Trial period",
   "cancelledOn": "Cancelled on",
   "paymentMethod": "Payment method",
+  "planName": "Plan name",
+  "totalAmount": "Total Amount",
   "all": "All",
   "trial": "Trial",
   "pending": "Pending",

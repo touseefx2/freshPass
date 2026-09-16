@@ -675,6 +675,8 @@
   "used": "مستخدم",
   "upcoming": "قادمة",
   "remaining": "متبقي",
+  "planName": "اسم الخطة",
+  "totalAmount": "المبلغ الإجمالي",
   "payment": "الدفع",
   "renewal": "تجديد",
   "leaveANoteOptional": "اترك ملاحظة (اختياري)",

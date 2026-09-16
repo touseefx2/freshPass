@@ -785,15 +785,6 @@ export default function BookingDetail() {
         {/* Policies */}
         <View style={styles.policySection}>
           <TouchableOpacity style={styles.policyRow} activeOpacity={0.7}>
-            <Text style={styles.policyText}>Booking cancel policy</Text>
-            <Feather
-              name="chevron-right"
-              size={moderateWidthScale(16)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-          <View style={styles.line} />
-          <TouchableOpacity style={styles.policyRow} activeOpacity={0.7}>
             <Text style={styles.policyText}>Payment return policy</Text>
             <Feather
               name="chevron-right"

@@ -176,6 +176,10 @@ const TIME_SLOT_CATEGORIES: TimeSlotCategory[] = [
   "night",
 ];
 
+const SLOT_MINUTE_OPTIONS = [5, 15, 30, 45] as const;
+type SlotMinutes = (typeof SLOT_MINUTE_OPTIONS)[number];
+const DEFAULT_SLOT_MINUTES: SlotMinutes = 30;
+
 const getSlotHour = (slot: string): number =>
   Number(slot.split(":")[0] ?? 0);
 
@@ -682,12 +686,66 @@ const createStyles = (theme: Theme) => {
     section: {
       marginTop: moderateHeightScale(16),
     },
+    sectionHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      gap: moderateWidthScale(12),
+    },
     sectionTitle: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
+    },
+    availabilityTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      flexShrink: 1,
+    },
+    slotMinutesSelector: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(20),
+      padding: moderateWidthScale(3),
+      gap: moderateWidthScale(2),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    slotMinutesOption: {
+      minWidth: widthScale(32),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(16),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    slotMinutesOptionSelected: {
+      backgroundColor: theme.orangeBrown30,
+    },
+    slotMinutesOptionText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    slotMinutesOptionTextSelected: {
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    slotMinutesUnit: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginLeft: moderateWidthScale(4),
+      marginRight: moderateWidthScale(4),
     },
     sectionTitleTryon: {
       fontSize: fontSize.size16,
@@ -1658,6 +1716,8 @@ export default function BookingNow() {
   );
   const [selectedCategory, setSelectedCategory] =
     useState<TimeSlotCategory>("morning");
+  const [slotMinutes, setSlotMinutes] =
+    useState<SlotMinutes>(DEFAULT_SLOT_MINUTES);
   const scrollViewRef = useRef<ScrollView>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [apiSlots, setApiSlots] = useState<AvailableSlot[]>([]);
@@ -2159,7 +2219,7 @@ export default function BookingNow() {
         business_id: parseInt(String(businessId), 10),
         date: dateStr,
         staff_id: staffId,
-        slot_minutes: 30,
+        slot_minutes: slotMinutes,
         // ...(excludeAppointmentId != null && !isNaN(excludeAppointmentId)
         //   ? { exclude_appointment_id: excludeAppointmentId }
         //   : {}),
@@ -2194,6 +2254,7 @@ export default function BookingNow() {
     params.booking_id,
     selectedStaff,
     isReschedule,
+    slotMinutes,
   ]);
 
   // Fetch available slots from API when date or staff changes
@@ -2642,7 +2703,44 @@ export default function BookingNow() {
 
         {/* Availability Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Availability</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.availabilityTitle}>Availability</Text>
+            <View style={styles.slotMinutesSelector}>
+              {SLOT_MINUTE_OPTIONS.map((minutes) => {
+                const isSelected = slotMinutes === minutes;
+                return (
+                  <TouchableOpacity
+                    key={minutes}
+                    style={[
+                      styles.slotMinutesOption,
+                      isSelected && styles.slotMinutesOptionSelected,
+                    ]}
+                    onPress={() => {
+                      if (minutes === slotMinutes) return;
+                      setSlotMinutes(minutes);
+                      setSelectedTimeSlotState(null);
+                      dispatch(setSelectedTimeSlot(null));
+                      dispatch(setAssignedStaffId(null));
+                    }}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`${minutes} minute slots`}
+                  >
+                    <Text
+                      style={[
+                        styles.slotMinutesOptionText,
+                        isSelected && styles.slotMinutesOptionTextSelected,
+                      ]}
+                    >
+                      {minutes}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <Text style={styles.slotMinutesUnit}>min</Text>
+            </View>
+          </View>
 
           <View style={styles.weekNavigation}>
             <TouchableOpacity

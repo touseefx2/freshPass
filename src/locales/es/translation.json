@@ -675,6 +675,8 @@
   "used": "Usado",
   "upcoming": "Próximo",
   "remaining": "Restante",
+  "planName": "Nombre del plan",
+  "totalAmount": "Importe total",
   "payment": "Pago",
   "renewal": "Renovación",
   "leaveANoteOptional": "Dejar nota (opcional)",

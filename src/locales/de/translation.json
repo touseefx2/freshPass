@@ -675,6 +675,8 @@
   "used": "Verwendet",
   "upcoming": "Kommend",
   "remaining": "Verbleibend",
+  "planName": "Planname",
+  "totalAmount": "Gesamtbetrag",
   "payment": "Zahlung",
   "renewal": "Verlängerung",
   "leaveANoteOptional": "Notiz hinterlassen (optional)",

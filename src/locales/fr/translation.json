@@ -675,6 +675,8 @@
   "used": "Utilisé",
   "upcoming": "À venir",
   "remaining": "Restant",
+  "planName": "Nom du forfait",
+  "totalAmount": "Montant total",
   "payment": "Paiement",
   "renewal": "Renouvellement",
   "leaveANoteOptional": "Laisser une note (optionnel)",

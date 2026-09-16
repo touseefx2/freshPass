@@ -675,6 +675,8 @@
   "used": "使用済み",
   "upcoming": "今後の",
   "remaining": "残り",
+  "planName": "プラン名",
+  "totalAmount": "合計金額",
   "payment": "支払い",
   "renewal": "更新",
   "leaveANoteOptional": "メモを残す（任意）",
