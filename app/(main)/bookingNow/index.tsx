@@ -19,6 +19,7 @@ import {
   Linking,
   Dimensions,
   Modal,
+  Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
@@ -74,13 +75,13 @@ import {
   EveningIcon,
   NightIcon,
   CloseIcon,
-  PeopleIcon,
 } from "@/assets/icons";
 import Button from "@/src/components/button";
 import FloatingInput from "@/src/components/floatingInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -98,10 +99,14 @@ import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
 
-const STAFF_CARD_WIDTH = widthScale(152);
-const STAFF_CARD_GAP = moderateWidthScale(22);
+const STAFF_CARD_WIDTH = widthScale(140);
+const STAFF_CARD_HEIGHT = heightScale(168);
+const STAFF_CARD_GAP = moderateWidthScale(14);
 const STAFF_LIST_PADDING = moderateWidthScale(20);
 const STAFF_SCREEN_WIDTH = Dimensions.get("window").width;
+const DEFAULT_AVATAR_URL = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+/** Dummy avatar from env for the "Anyone" staff option */
+const ANYONE_STAFF_IMAGE = DEFAULT_AVATAR_URL;
 
 type StaffCarouselItem = {
   id: string;
@@ -462,20 +467,57 @@ const createStyles = (theme: Theme) => {
       flexDirection: "row",
       gap: STAFF_CARD_GAP,
       paddingHorizontal: STAFF_LIST_PADDING,
-      paddingBottom: moderateHeightScale(6),
+      paddingBottom: moderateHeightScale(10),
+      paddingTop: moderateHeightScale(4),
+    },
+    staffCardWrap: {
+      width: STAFF_CARD_WIDTH,
+    },
+    staffCardShell: {
+      width: STAFF_CARD_WIDTH,
+      borderRadius: moderateWidthScale(14),
+      backgroundColor:
+        Platform.OS === "android" ? theme.lightGreen05 : theme.lightGreen1,
+      paddingBottom:
+        Platform.OS === "android"
+          ? moderateHeightScale(2)
+          : moderateHeightScale(3),
     },
     staffCard: {
       width: STAFF_CARD_WIDTH,
-      minHeight: heightScale(176),
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(18),
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(12),
-      alignItems: "center",
+      height: STAFF_CARD_HEIGHT,
+      backgroundColor: theme.emptyProfileImage,
+      borderRadius: moderateWidthScale(14),
+      overflow: "hidden",
       borderWidth: 1.5,
       borderColor: theme.borderLight,
       position: "relative",
+    },
+    staffCardShadow: {
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(2),
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(3),
+        },
+        android: {
+          elevation: 1,
+          shadowColor: theme.lightGreen2,
+        },
+        default: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(2),
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(3),
+        },
+      }),
     },
     shadow: {
       shadowColor: theme.shadow,
@@ -489,92 +531,90 @@ const createStyles = (theme: Theme) => {
     },
     staffCardSelected: {
       borderColor: theme.orangeBrown,
-      backgroundColor: theme.orangeBrown01,
-    },
-    staffImageWrapper: {
-      position: "relative",
-      width: widthScale(78),
-      height: widthScale(78),
-      justifyContent: "center",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(12),
+      borderWidth: 2,
     },
     staffImage: {
-      width: widthScale(78),
-      height: widthScale(78),
-      borderRadius: widthScale(78 / 2),
+      ...StyleSheet.absoluteFillObject,
+      width: "100%",
+      height: "100%",
       backgroundColor: theme.emptyProfileImage,
-      borderWidth: 2,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
     },
-    staffAnyoneAvatar: {
-      width: widthScale(78),
-      height: widthScale(78),
-      borderRadius: widthScale(78 / 2),
-      backgroundColor: theme.lightGreen07,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 2,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
-    },
-    staffStatusDot: {
+    staffRadio: {
       position: "absolute",
-      bottom: 2,
-      right: 2,
-      width: moderateWidthScale(12),
-      height: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(12) / 2,
+      top: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      width: moderateWidthScale(20),
+      height: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(10),
       borderWidth: 2,
       borderColor: theme.white,
-      zIndex: 9999,
-    },
-    staffStatusDotActive: {
-      backgroundColor: theme.toggleActive,
-    },
-    staffStatusDotInactive: {
-      backgroundColor: theme.lightGreen5,
-    },
-    staffInfo: {
-      width: "100%",
+      backgroundColor: theme.lightGreen22,
       alignItems: "center",
-      paddingHorizontal: moderateWidthScale(2),
+      justifyContent: "center",
+      zIndex: 2,
+    },
+    staffRadioSelected: {
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.white,
+    },
+    staffRadioInner: {
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(5),
+      backgroundColor: theme.orangeBrown,
+    },
+    staffInfoStrip: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingTop: moderateHeightScale(52),
+      paddingBottom: moderateHeightScale(10),
+      justifyContent: "flex-end",
+      gap: moderateHeightScale(2),
     },
     staffNameRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
       gap: moderateWidthScale(4),
-      marginBottom: moderateHeightScale(4),
+      width: "100%",
     },
     staffName: {
-      fontSize: fontSize.size15,
+      flexShrink: 1,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-      textAlign: "center",
+      color: theme.white,
       textTransform: "capitalize",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
     },
     staffNameAnyone: {
-      fontSize: fontSize.size15,
+      flexShrink: 1,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
+      color: theme.white,
       textTransform: "none",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
     },
     staffAnyoneInfoButton: {
-      width: moderateWidthScale(18),
-      height: moderateWidthScale(18),
-      borderRadius: moderateWidthScale(9),
+      width: moderateWidthScale(16),
+      height: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(8),
       alignItems: "center",
       justifyContent: "center",
     },
     staffExperience: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      color: theme.white,
+      width: "100%",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
     },
     staffEmptyText: {
       fontSize: fontSize.size14,
@@ -582,29 +622,6 @@ const createStyles = (theme: Theme) => {
       color: theme.lightGreen,
       paddingHorizontal: moderateWidthScale(20),
       paddingVertical: moderateHeightScale(8),
-    },
-    radioButton: {
-      position: "absolute",
-      top: moderateHeightScale(10),
-      right: moderateWidthScale(10),
-      width: moderateWidthScale(22),
-      height: moderateWidthScale(22),
-      borderRadius: moderateWidthScale(11),
-      borderWidth: 2,
-      borderColor: theme.lightGreen2,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.white,
-      zIndex: 2,
-    },
-    radioButtonSelected: {
-      borderColor: theme.orangeBrown,
-    },
-    radioButtonInner: {
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(5),
-      backgroundColor: theme.orangeBrown,
     },
     anyoneHintOverlay: {
       flex: 1,
@@ -1382,7 +1399,10 @@ function StaffFadeCard({
   onAnyoneInfoPress,
 }: StaffFadeCardProps) {
   const isAnyone = staff.id === "anyone";
-  const isActive = staff.active;
+  const imageUri =
+    staff.image ||
+    (isAnyone ? ANYONE_STAFF_IMAGE : DEFAULT_AVATAR_URL) ||
+    DEFAULT_AVATAR_URL;
 
   const fadeStyle = useAnimatedStyle(() => {
     const x = STAFF_LIST_PADDING + cardOffset - scrollX.value;
@@ -1405,87 +1425,78 @@ function StaffFadeCard({
   });
 
   return (
-    <Animated.View style={fadeStyle}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={[
-          styles.staffCard,
-          styles.shadow,
-          isSelected && styles.staffCardSelected,
-        ]}
-        onPress={() => onSelect(staff.id)}
-      >
-        <View
-          style={[
-            styles.radioButton,
-            isSelected && styles.radioButtonSelected,
-          ]}
+    <Animated.View style={[styles.staffCardWrap, fadeStyle]}>
+      <View style={[styles.staffCardShell, styles.staffCardShadow]}>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={[styles.staffCard, isSelected && styles.staffCardSelected]}
+          onPress={() => onSelect(staff.id)}
         >
-          {isSelected && <View style={styles.radioButtonInner} />}
-        </View>
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.staffImage}
+            resizeMode="cover"
+          />
 
-        {isAnyone ? (
-          <View style={styles.staffImageWrapper}>
-            <View style={styles.staffAnyoneAvatar}>
-              <PeopleIcon
-                width={widthScale(34)}
-                height={heightScale(34)}
-                color={theme.darkGreen}
-              />
-            </View>
+          <View
+            style={[
+              styles.staffRadio,
+              isSelected && styles.staffRadioSelected,
+            ]}
+          >
+            {isSelected ? <View style={styles.staffRadioInner} /> : null}
           </View>
-        ) : (
-          <View style={styles.staffImageWrapper}>
-            <Image
-              source={{ uri: staff.image || "" }}
-              style={styles.staffImage}
-            />
-            <View
-              style={[
-                styles.staffStatusDot,
-                isActive
-                  ? styles.staffStatusDotActive
-                  : styles.staffStatusDotInactive,
-              ]}
-            />
-          </View>
-        )}
 
-        <View style={styles.staffInfo}>
-          {isAnyone ? (
-            <>
-              <View style={styles.staffNameRow}>
-                <Text style={styles.staffNameAnyone}>Anyone</Text>
-                <TouchableOpacity
-                  style={styles.staffAnyoneInfoButton}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  onPress={onAnyoneInfoPress}
-                >
-                  <MaterialIcons
-                    name="info-outline"
-                    size={moderateWidthScale(14)}
-                    color={theme.lightGreen}
-                  />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.staffExperience} numberOfLines={2}>
-                Any available staff
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.staffName}>
-                {staff.is_owner ? `${staff.name} · ${ownerLabel}` : staff.name}
-              </Text>
-              {staff.experience ? (
-                <Text style={styles.staffExperience} numberOfLines={2}>
-                  {staff.experience}
+          <LinearGradient
+            colors={[
+              "transparent",
+              theme.lightGreen5,
+              theme.lightGreen,
+              theme.black,
+            ]}
+            locations={[0, 0.35, 0.7, 1]}
+            style={styles.staffInfoStrip}
+            pointerEvents="box-none"
+          >
+            {isAnyone ? (
+              <>
+                <View style={styles.staffNameRow}>
+                  <Text style={styles.staffNameAnyone} numberOfLines={1}>
+                    Anyone
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.staffAnyoneInfoButton}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={onAnyoneInfoPress}
+                  >
+                    <MaterialIcons
+                      name="info-outline"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.staffExperience} numberOfLines={1}>
+                  Any available staff
                 </Text>
-              ) : null}
-            </>
-          )}
-        </View>
-      </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Text style={styles.staffName} numberOfLines={1}>
+                  {staff.is_owner
+                    ? `${staff.name} · ${ownerLabel}`
+                    : staff.name}
+                </Text>
+                {staff.experience ? (
+                  <Text style={styles.staffExperience} numberOfLines={1}>
+                    {staff.experience}
+                  </Text>
+                ) : null}
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -1887,9 +1898,6 @@ export default function BookingNow() {
           .filter((staff: any) => staff.invitation_status === "accepted")
           .map((staff: any) => {
             // Construct image URL from API response
-            const DEFAULT_AVATAR_URL =
-              process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
-
             let image = DEFAULT_AVATAR_URL;
             if (staff.avatar) {
               const isAbsoluteUrl =
@@ -2333,7 +2341,7 @@ export default function BookingNow() {
       id: "anyone",
       name: "Anyone",
       experience: "Any available staff" as string | number | null,
-      image: null as string | null,
+      image: ANYONE_STAFF_IMAGE || DEFAULT_AVATAR_URL,
       active: null as boolean | null,
       is_owner: false,
     };

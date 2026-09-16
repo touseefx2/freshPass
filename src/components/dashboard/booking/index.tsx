@@ -38,7 +38,9 @@ type BookingStatus =
   | "cancelled"
   | "expired"
   | "without_scheduled"
-  | "pending";
+  | "pending"
+  | "awaiting_outcome"
+  | "no_show";
 
 interface BookingItem {
   id: string;
@@ -279,6 +281,12 @@ const createStyles = (theme: Theme) =>
     statusPending: {
       backgroundColor: theme.orangeBrown01,
     },
+    statusAwaitingOutcome: {
+      backgroundColor: theme.orangeBrown015,
+    },
+    statusNoShow: {
+      backgroundColor: theme.lightRed,
+    },
     statusText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
@@ -303,6 +311,12 @@ const createStyles = (theme: Theme) =>
     },
     statusTextPending: {
       color: theme.appointmentStatusText,
+    },
+    statusTextAwaitingOutcome: {
+      color: theme.appointmentStatusText,
+    },
+    statusTextNoShow: {
+      color: theme.red,
     },
     loadingContainer: {
       flex: 1,
@@ -351,6 +365,10 @@ export default function BookingScreen() {
         return styles.statusWithoutScheduled;
       case "pending":
         return styles.statusPending;
+      case "awaiting_outcome":
+        return styles.statusAwaitingOutcome;
+      case "no_show":
+        return styles.statusNoShow;
       default:
         return styles.statusActive;
     }
@@ -372,6 +390,10 @@ export default function BookingScreen() {
         return styles.statusTextWithoutScheduled;
       case "pending":
         return styles.statusTextPending;
+      case "awaiting_outcome":
+        return styles.statusTextAwaitingOutcome;
+      case "no_show":
+        return styles.statusTextNoShow;
       default:
         return styles.statusTextActive;
     }
@@ -393,6 +415,10 @@ export default function BookingScreen() {
         return "Without Scheduled";
       case "pending":
         return "Pending";
+      case "awaiting_outcome":
+        return t("statusAwaitingOutcome");
+      case "no_show":
+        return t("statusNoShow");
       default:
         return "Active";
     }
@@ -413,8 +439,10 @@ export default function BookingScreen() {
         return "expired";
       case "without_scheduled":
         return "without_scheduled";
-      case "pending":
-        return "pending";
+      case "awaiting_outcome":
+        return "awaiting_outcome";
+      case "no_show":
+        return "no_show";
       default:
         // Return the status as-is if it matches one of our BookingStatus types
         if (
@@ -426,6 +454,8 @@ export default function BookingScreen() {
             "expired",
             "without_scheduled",
             "pending",
+            "awaiting_outcome",
+            "no_show",
           ].includes(apiStatus.toLowerCase())
         ) {
           return apiStatus.toLowerCase() as BookingStatus;

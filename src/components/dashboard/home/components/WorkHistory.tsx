@@ -148,9 +148,9 @@ export default function WorkHistory({
               activeOpacity={0.7}
               onPress={() => {
                 router.push({
-                  pathname: "/(main)/dashboard/(home)/appointmentDetail",
+                  pathname: "/(main)/bookingDetailsById",
                   params: {
-                    appointment: JSON.stringify(item),
+                    bookingId: String(item.id),
                   },
                 });
               }}

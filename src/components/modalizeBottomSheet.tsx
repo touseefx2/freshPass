@@ -38,6 +38,7 @@ interface ModalizeBottomSheetProps {
   modalHeightPercent?: number;
   /** When false, renders inline instead of Portal (use inside React Native Modal). */
   usePortal?: boolean;
+  showsVerticalScrollIndicator?: boolean;
 }
 
 const createStyles = (theme: Theme) =>
@@ -106,6 +107,7 @@ export default function ModalizeBottomSheet({
   scrollViewStyle,
   modalHeightPercent,
   usePortal = true,
+  showsVerticalScrollIndicator = false,
 }: ModalizeBottomSheetProps) {
   const modalizeRef = useRef<Modalize>(null);
   const { colors } = useTheme();
@@ -113,9 +115,16 @@ export default function ModalizeBottomSheet({
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
   const screenHeight = Dimensions.get("window").height;
-  const maxContentHeight = modalHeightPercent
-    ? screenHeight * modalHeightPercent - 140
-    : screenHeight * 0.75;
+  // Keep sheet below status bar / Dynamic Island on iOS
+  const topSafeGap = insets.top + moderateHeightScale(12);
+  const maxModalHeight = screenHeight - topSafeGap;
+  const resolvedModalHeight =
+    modalHeightPercent != null
+      ? Math.min(screenHeight * modalHeightPercent, maxModalHeight)
+      : undefined;
+  const maxContentHeight = resolvedModalHeight
+    ? resolvedModalHeight - 140
+    : maxModalHeight * 0.75;
 
   useEffect(() => {
     if (visible) {
@@ -132,6 +141,7 @@ export default function ModalizeBottomSheet({
       ref={modalizeRef}
       onClosed={onClose}
       adjustToContentHeight={!modalHeightPercent}
+      modalHeight={resolvedModalHeight}
       handlePosition="inside"
       withOverlay
       closeOnOverlayTap
@@ -141,10 +151,7 @@ export default function ModalizeBottomSheet({
       modalStyle={[
         styles.bottomSheet,
         sheetContainerStyle,
-        { maxHeight: screenHeight * 0.9 },
-        modalHeightPercent != null && {
-          height: screenHeight * modalHeightPercent,
-        },
+        { maxHeight: maxModalHeight },
       ]}
       HeaderComponent={
         <View style={styles.header}>
@@ -187,7 +194,7 @@ export default function ModalizeBottomSheet({
           scrollViewStyle,
         ]}
         contentContainerStyle={[styles.scrollContent, contentStyle]}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       >
         {children}
       </ScrollView>

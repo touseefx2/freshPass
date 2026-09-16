@@ -15,7 +15,7 @@ import {
   Pressable,
   Image,
   GestureResponderEvent,
-  DimensionValue,
+  InteractionManager,
 } from "react-native";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -31,6 +31,7 @@ import {
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import TimePickerModal from "@/src/components/timePickerModal";
+import OverlappingAppointmentsSheet from "@/src/components/OverlappingAppointmentsSheet";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -151,11 +152,9 @@ interface StaffLeave {
 }
 
 interface PositionedAppointment {
-  appointment: CalendarAppointment;
+  appointments: CalendarAppointment[];
   top: number;
   height: number;
-  lane: number;
-  laneCount: number;
 }
 
 interface BreakBlock {
@@ -231,7 +230,7 @@ const resolveCustomerAvatar = (appointment: Appointment) => {
   return path ? `${base}/${path}` : fallback;
 };
 
-// Splits overlapping appointments of one day into side-by-side lanes
+// Groups overlapping appointments into one block (+N) instead of side-by-side lanes
 const layoutDayAppointments = (
   dayAppointments: CalendarAppointment[],
   startHour: number,
@@ -253,31 +252,19 @@ const layoutDayAppointments = (
   const flushCluster = () => {
     if (cluster.length === 0) return;
 
-    const laneEnds: number[] = [];
-    const laneOf = new Map<string, number>();
+    const startMinutes = Math.min(...cluster.map((item) => item.start_minutes));
+    const endMinutes = Math.max(
+      ...cluster.map((item) => item.start_minutes + blockMinutes(item)),
+    );
+    const offsetMinutes = startMinutes - startHour * 60;
 
-    cluster.forEach((appointment) => {
-      const end = appointment.start_minutes + blockMinutes(appointment);
-      let lane = laneEnds.findIndex(
-        (laneEnd) => laneEnd <= appointment.start_minutes,
-      );
-      if (lane === -1) lane = laneEnds.length;
-      laneEnds[lane] = end;
-      laneOf.set(appointment.id, lane);
-    });
-
-    cluster.forEach((appointment) => {
-      const offsetMinutes = appointment.start_minutes - startHour * 60;
-      positioned.push({
-        appointment,
-        top: (offsetMinutes / 60) * HOUR_HEIGHT,
-        height: Math.max(
-          (blockMinutes(appointment) / 60) * HOUR_HEIGHT,
-          minBlockHeight,
-        ),
-        lane: laneOf.get(appointment.id) ?? 0,
-        laneCount: laneEnds.length,
-      });
+    positioned.push({
+      appointments: [...cluster],
+      top: (offsetMinutes / 60) * HOUR_HEIGHT,
+      height: Math.max(
+        ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT,
+        minBlockHeight,
+      ),
     });
 
     cluster = [];
@@ -573,6 +560,34 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.emptyProfileImage,
       borderWidth: 1,
       borderColor: theme.white80,
+    },
+    stackOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(8),
+    },
+    stackBadge: {
+      position: "absolute",
+      top: moderateHeightScale(4),
+      right: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(4),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    stackBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+      textAlign: "center",
+    },
+    stackBadgeTextCompact: {
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+      textAlign: "center",
     },
     blockDetailed: {
       justifyContent: "center",
@@ -1042,6 +1057,12 @@ export default function CalendarScreen() {
   const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null);
   const [leaveDetailCancelling, setLeaveDetailCancelling] = useState(false);
   const [overlayAnchor, setOverlayAnchor] = useState(DEFAULT_OVERLAY_ANCHOR);
+  const [overlapSheetVisible, setOverlapSheetVisible] = useState(false);
+  const [overlapAppointments, setOverlapAppointments] = useState<
+    CalendarAppointment[]
+  >([]);
+  const [overlapSlotLabel, setOverlapSlotLabel] = useState("");
+  const pendingOverlapNavId = useRef<string | null>(null);
 
   const canManageLeaves = userRole === "staff" || userRole === "business";
   const currentDate = selectedDate.format("YYYY-MM-DD");
@@ -1321,7 +1342,11 @@ export default function CalendarScreen() {
       const statusLabel =
         appointment.status === "scheduled"
           ? "On-going apt."
-          : appointment.status;
+          : appointment.status === "awaiting_outcome"
+            ? "Awaiting outcome"
+            : appointment.status === "no_show"
+              ? "No-show"
+              : appointment.status;
 
       // Format client name (truncate if needed)
       const clientName =
@@ -1481,6 +1506,37 @@ export default function CalendarScreen() {
   const closeOverlays = () => {
     setApplyBoxVisible(false);
     setLeaveDetailBoxVisible(false);
+  };
+
+  const openOverlapSheet = (appointmentsList: CalendarAppointment[]) => {
+    closeOverlays();
+    const sorted = [...appointmentsList].sort(
+      (a, b) => a.start_minutes - b.start_minutes,
+    );
+    setOverlapAppointments(sorted);
+    setOverlapSlotLabel(formatMinutesLabel(sorted[0]?.start_minutes ?? 0));
+    setOverlapSheetVisible(true);
+  };
+
+  const closeOverlapSheet = () => {
+    setOverlapSheetVisible(false);
+    const pendingId = pendingOverlapNavId.current;
+    if (!pendingId) return;
+
+    // Navigate only after the sheet has fully closed (onClosed).
+    pendingOverlapNavId.current = null;
+    InteractionManager.runAfterInteractions(() => {
+      router.push({
+        pathname: "/(main)/bookingDetailsById",
+        params: { bookingId: pendingId },
+      });
+    });
+  };
+
+  const handleOverlapSelect = (appointmentId: string) => {
+    // Store id first, then close — navigation runs in closeOverlapSheet/onClosed.
+    pendingOverlapNavId.current = appointmentId;
+    setOverlapSheetVisible(false);
   };
 
   const setAnchorFromEvent = useCallback((event: GestureResponderEvent) => {
@@ -1894,13 +1950,98 @@ export default function CalendarScreen() {
     openApplyBox("break", snapped, day, event);
   };
 
-  const laneStyle = (lane: number, laneCount: number) => ({
-    left: `${(lane * 100) / laneCount}%` as DimensionValue,
-    width: `${100 / laneCount}%` as DimensionValue,
-  });
+  const renderStackBlock = (positioned: PositionedAppointment) => {
+    const { appointments: stackAppointments } = positioned;
+    const extraCount = stackAppointments.length - 1;
+    const first = stackAppointments[0];
+    const isCompact = viewMode !== "day";
+    const palette = getPalette(first.id);
+    const minHeight = isCompact
+      ? MIN_BLOCK_HEIGHT_COMPACT
+      : MIN_BLOCK_HEIGHT_DETAILED;
+    const blockMinutes = Math.max(
+      first.duration_minutes,
+      SLOT_INTERVAL_MINUTES,
+    );
+    const top =
+      ((first.start_minutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    const height = Math.max((blockMinutes / 60) * HOUR_HEIGHT, minHeight);
+    const reservedHeight =
+      BLOCK_LINE_HEIGHT * 2 + BLOCK_AVATAR_SIZE + moderateHeightScale(12);
+    const serviceLines = Math.max(
+      1,
+      Math.min(4, Math.floor((height - reservedHeight) / BLOCK_LINE_HEIGHT)),
+    );
 
-  const renderCompactBlock = (positioned: PositionedAppointment) => {
-    const { appointment, top, height, lane, laneCount } = positioned;
+    return (
+      <View
+        key={`stack-${first.id}-${extraCount}-${first.start_minutes}`}
+        style={[
+          styles.blockWrapper,
+          {
+            top,
+            height,
+            left: 0,
+            right: 0,
+            width: "100%",
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.block,
+            isCompact ? null : styles.blockDetailed,
+            { backgroundColor: palette.bg, borderLeftColor: palette.accent },
+          ]}
+          activeOpacity={0.85}
+          onPress={() => openOverlapSheet(stackAppointments)}
+        >
+          {isCompact ? (
+            <>
+              <Text
+                numberOfLines={1}
+                style={[styles.blockTime, { color: palette.accent }]}
+              >
+                {formatShortTimeLabel(first.start_minutes)}
+              </Text>
+              <Text numberOfLines={1} style={styles.blockClient}>
+                {first.client_name}
+              </Text>
+              <Text numberOfLines={serviceLines} style={styles.blockService}>
+                {first.title}
+              </Text>
+              <Image
+                source={{ uri: first.avatar_url }}
+                style={styles.blockAvatar}
+                resizeMode="cover"
+              />
+            </>
+          ) : (
+            renderDetailCardContent(first)
+          )}
+          <View style={styles.stackOverlay} pointerEvents="none">
+            <View style={styles.stackBadge}>
+              <Text
+                style={
+                  isCompact
+                    ? styles.stackBadgeTextCompact
+                    : styles.stackBadgeText
+                }
+              >
+                {t("moreAppointments", { count: extraCount })}
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderCompactBlock = (
+    appointment: CalendarAppointment,
+    top: number,
+    height: number,
+  ) => {
     const palette = getPalette(appointment.id);
     // Time + client + avatar + padding are always shown, the rest of the box is
     // filled with as many service lines as fit.
@@ -1915,8 +2056,7 @@ export default function CalendarScreen() {
         key={appointment.id}
         style={[
           styles.blockWrapper,
-          { top, height },
-          laneStyle(lane, laneCount),
+          { top, height, left: 0, right: 0, width: "100%" },
         ]}
       >
         <TouchableOpacity
@@ -1973,16 +2113,18 @@ export default function CalendarScreen() {
     </View>
   );
 
-  const renderDetailBlock = (positioned: PositionedAppointment) => {
-    const { appointment, top, height, lane, laneCount } = positioned;
+  const renderDetailBlock = (
+    appointment: CalendarAppointment,
+    top: number,
+    height: number,
+  ) => {
     const palette = getPalette(appointment.id);
     return (
       <View
         key={appointment.id}
         style={[
           styles.blockWrapper,
-          { top, height },
-          laneStyle(lane, laneCount),
+          { top, height, left: 0, right: 0, width: "100%" },
         ]}
       >
         <TouchableOpacity
@@ -1998,6 +2140,16 @@ export default function CalendarScreen() {
         </TouchableOpacity>
       </View>
     );
+  };
+
+  const renderPositionedBlock = (positioned: PositionedAppointment) => {
+    if (positioned.appointments.length > 1) {
+      return renderStackBlock(positioned);
+    }
+    const appointment = positioned.appointments[0];
+    return viewMode === "day"
+      ? renderDetailBlock(appointment, positioned.top, positioned.height)
+      : renderCompactBlock(appointment, positioned.top, positioned.height);
   };
 
   const renderListCard = (appointment: CalendarAppointment) => {
@@ -2062,11 +2214,7 @@ export default function CalendarScreen() {
           );
         })}
 
-        {positionedList.map((positioned) =>
-          viewMode === "day"
-            ? renderDetailBlock(positioned)
-            : renderCompactBlock(positioned),
-        )}
+        {positionedList.map((positioned) => renderPositionedBlock(positioned))}
 
         {showClosedOverlay && dayLeave ? (
           <>
@@ -2710,6 +2858,27 @@ export default function CalendarScreen() {
           setApplyBoxTimePickerVisible(false);
           setApplyBoxTimePickerTarget(null);
         }}
+      />
+
+      <OverlappingAppointmentsSheet
+        visible={overlapSheetVisible}
+        onClose={closeOverlapSheet}
+        slotLabel={overlapSlotLabel}
+        appointments={overlapAppointments.map((appointment) => {
+          const palette = getPalette(appointment.id);
+          return {
+            id: appointment.id,
+            title: appointment.title,
+            clientName: appointment.originalAppointment.user,
+            avatarUrl: appointment.avatar_url,
+            timeLabel: formatMinutesLabel(appointment.start_minutes),
+            duration: appointment.duration,
+            statusLabel: appointment.status_label,
+            accent: palette.accent,
+            background: palette.bg,
+          };
+        })}
+        onSelect={handleOverlapSelect}
       />
     </View>
   );

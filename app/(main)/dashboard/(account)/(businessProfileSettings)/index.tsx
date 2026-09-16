@@ -37,6 +37,7 @@ type SettingKey =
   | "description"
   | "availability"
   | "services"
+  | "cancellationPolicy"
   | "subscriptions"
   | "team"
   | "socialMedia"
@@ -46,7 +47,6 @@ type SettingItem = {
   key: SettingKey;
   title: string;
   subtitle: string;
-  fullWidth?: boolean;
 };
 
 function SettingCard({
@@ -58,7 +58,6 @@ function SettingCard({
   theme,
   styles,
   iconVariant,
-  fullWidth,
 }: {
   title: string;
   subtitle: string;
@@ -68,7 +67,6 @@ function SettingCard({
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
   iconVariant: IconVariant;
-  fullWidth?: boolean;
 }) {
   const [pressed, setPressed] = useState(false);
   const iconSize = moderateWidthScale(26);
@@ -90,7 +88,7 @@ function SettingCard({
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      style={[styles.gridItem, fullWidth && styles.gridItemFull]}
+      style={styles.gridItem}
     >
       <View
         style={[
@@ -201,9 +199,6 @@ const createStyles = (theme: Theme) =>
     },
     gridItem: {
       width: CARD_WIDTH_PERCENT as any,
-    },
-    gridItemFull: {
-      width: "100%",
     },
     cardShadowWrap: {
       borderRadius: moderateWidthScale(18),
@@ -336,7 +331,9 @@ export default function BusinessProfileSettingsScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
+  const userRole = useAppSelector((state) => state.user.userRole);
   const showManageTeam = canShowStaffManagement(businessStatus);
+  const isBusinessOwner = userRole === "business";
 
   const handleRowPress = (key: string) => {
     if (key === "businessProfile") {
@@ -345,6 +342,8 @@ export default function BusinessProfileSettingsScreen() {
       router.push("./description");
     } else if (key === "services") {
       router.push("./services");
+    } else if (key === "cancellationPolicy") {
+      router.push("./cancellationPolicy");
     } else if (key === "socialMedia") {
       router.push("./socialMedia");
     } else if (key === "availability") {
@@ -388,6 +387,15 @@ export default function BusinessProfileSettingsScreen() {
       title: t("manageServicesList"),
       subtitle: t("servicesCardSubtitle"),
     },
+    ...(isBusinessOwner
+      ? [
+          {
+            key: "cancellationPolicy" as const,
+            title: t("cancellationPolicy"),
+            subtitle: t("cancellationPolicyCardSubtitle"),
+          },
+        ]
+      : []),
     {
       key: "subscriptions",
       title: t("manageSubscriptionList"),
@@ -411,7 +419,6 @@ export default function BusinessProfileSettingsScreen() {
       key: "portfolio",
       title: t("managePortfolioPhotos"),
       subtitle: t("portfolioCardSubtitle"),
-      fullWidth: true,
     },
   ];
 
@@ -430,6 +437,8 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "calendar-month", family: "material" };
       case "services":
         return { name: "content-cut", family: "material" };
+      case "cancellationPolicy":
+        return { name: "policy", family: "material" };
       case "subscriptions":
         return { name: "crown", family: "community" };
       case "team":
@@ -472,7 +481,6 @@ export default function BusinessProfileSettingsScreen() {
                 theme={theme}
                 styles={styles}
                 iconVariant={getIconVariant(index)}
-                fullWidth={setting.fullWidth}
               />
             );
           })}

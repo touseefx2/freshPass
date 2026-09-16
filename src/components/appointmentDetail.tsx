@@ -478,7 +478,11 @@ export default function AppointmentDetail({
                 <Text style={styles.statusText} numberOfLines={1}>
                   {appointment.status === "scheduled"
                     ? "On-going apt."
-                    : appointment.status}
+                    : appointment.status === "awaiting_outcome"
+                      ? "Awaiting outcome"
+                      : appointment.status === "no_show"
+                        ? "No-show"
+                        : appointment.status}
                 </Text>
               </View>
             </View>

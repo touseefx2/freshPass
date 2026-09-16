@@ -21,12 +21,13 @@ import {
   setGuestModeModalVisible,
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import ApiService from "@/src/services/api";
+import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { appointmentsEndpoints, resolveAppointmentStaffId } from "@/src/services/endpoints";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
   fetchAppointmentPaymentSheetParams,
+  getStripeModeHeaders,
   useStripeAccount,
 } from "@/src/services/stripeService";
 import { Theme } from "@/src/theme/colors";
@@ -39,6 +40,7 @@ import {
 } from "@/src/theme/dimensions";
 import { SvgXml } from "react-native-svg";
 import Button from "@/src/components/button";
+import CancellationPolicySheet from "@/src/components/CancellationPolicySheet";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import {
@@ -53,6 +55,10 @@ import {
   prepareImagesForUpload,
   type PreparedImageFile,
 } from "@/src/utils/prepareImageForUpload";
+import type {
+  CancellationPolicyQuote,
+  CardSetupResponse,
+} from "@/src/types/cancellationPolicy";
 
 const isWebUrl = (u?: string) => !!u && /^https?:\/\//i.test(u);
 
@@ -1527,6 +1533,10 @@ function CheckoutContent() {
   const [selectedStaffMember, setSelectedStaffMember] =
     useState<StaffMember | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [policySheetVisible, setPolicySheetVisible] = useState(false);
+  const [policyQuote, setPolicyQuote] =
+    useState<CancellationPolicyQuote | null>(null);
+  const [policyConfirming, setPolicyConfirming] = useState(false);
 
   const handleBackNavigation = useCallback(() => {
     router.back();
@@ -1819,6 +1829,50 @@ function CheckoutContent() {
       return;
     }
 
+    dispatch(setActionLoader(true));
+    try {
+      const quoteResponse = await ApiService.get<{
+        success: boolean;
+        message?: string;
+        data: CancellationPolicyQuote;
+      }>(
+        appointmentsEndpoints.cancellationPolicyQuote({
+          business_id: parseInt(businessId || "0", 10),
+          appointment_date: reduxSelectedDate || "",
+          appointment_time: reduxSelectedTimeSlot || "",
+          service_ids: selectedServices.map((service) => service.id),
+        }),
+      );
+
+      if (!quoteResponse?.success || !quoteResponse.data) {
+        showBanner(
+          "Error",
+          quoteResponse?.message ||
+            "Could not load the cancellation policy. Please try again.",
+          "error",
+          4000,
+        );
+        return;
+      }
+
+      setPolicyQuote(quoteResponse.data);
+      setPolicySheetVisible(true);
+    } catch (error: any) {
+      Logger.error("Cancellation policy quote error:", error);
+      showBanner(
+        "Error",
+        error?.response?.data?.message ||
+          error?.message ||
+          "Could not load the cancellation policy. Please try again.",
+        "error",
+        4000,
+      );
+    } finally {
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  const completeServiceBooking = async (setupIntentId?: string) => {
     const resolvedStaffId = resolveAppointmentStaffId({
       selectedStaff: selectedStaffId,
       assignedStaffId,
@@ -1836,16 +1890,18 @@ function CheckoutContent() {
       staff_id?: number;
       subscription_id?: number;
       image_urls?: string[];
+      policy_accepted: boolean;
+      setup_intent_id?: string;
     } = {
       business_id: parseInt(businessId || "0", 10),
-      appointment_type: subscriptionId ? "subscription" : "service",
+      appointment_type: "service",
       payment_method: paymentMethod === "payNow" ? "pay_now" : "pay_later",
       service_ids: selectedServices.map((service) => service.id),
       appointment_date: reduxSelectedDate || "",
       appointment_time: reduxSelectedTimeSlot || "",
+      policy_accepted: true,
     };
 
-    // Add notes only if it exists
     if (note && note.trim()) {
       requestBody.notes = note.trim();
     }
@@ -1854,14 +1910,12 @@ function CheckoutContent() {
       requestBody.staff_id = resolvedStaffId;
     }
 
-    // Add subscription_id only if it exists
-    if (subscriptionId) {
-      requestBody.subscription_id = subscriptionId;
+    if (setupIntentId) {
+      requestBody.setup_intent_id = setupIntentId;
     }
 
     Logger.log("requestBody", requestBody);
 
-    // Show loader
     dispatch(setActionLoader(true));
 
     try {
@@ -1883,25 +1937,18 @@ function CheckoutContent() {
         return;
       }
 
-      // Hide loader
       dispatch(setActionLoader(false));
 
-      // Console log response
       Logger.log(
         "Appointment API Response:",
         JSON.stringify(response, null, 2),
       );
 
-      // Check success - ApiService.post returns response.data, so structure is:
-      // { success: true, message: "...", data: { id: ... } }
-      // But terminal shows nested structure, so check both
       const isSuccess = response?.success || response?.data?.success;
 
       Logger.log("isSuccess:", isSuccess, "response:", response);
 
       if (isSuccess) {
-        // Extract appointment ID and date from response
-        // Response structure: response.data.id and response.data.appointmentDate
         const appointmentId =
           (response?.data as any)?.id ||
           (response?.data as any)?.data?.id ||
@@ -1944,7 +1991,6 @@ function CheckoutContent() {
             try {
               await useStripeAccount(connectedAccountId);
 
-              // Step 2: Initialize payment sheet
               const paymentConfig: any = {
                 merchantDisplayName: "Fresh Pass",
                 customerId: customer,
@@ -1956,7 +2002,6 @@ function CheckoutContent() {
                 customFlow: false,
               };
 
-              // Use CustomerSession (newer approach) if available, otherwise fall back to EphemeralKey
               if (customerSessionClientSecret) {
                 paymentConfig.customerSessionClientSecret =
                   customerSessionClientSecret;
@@ -1968,7 +2013,6 @@ function CheckoutContent() {
                 );
               }
 
-              // Use paymentIntent for subscription payment, or setupIntent as fallback
               if (paymentIntent && paymentIntent.trim() !== "") {
                 paymentConfig.paymentIntentClientSecret = paymentIntent;
               } else if (setupIntent && setupIntent.trim() !== "") {
@@ -1987,11 +2031,9 @@ function CheckoutContent() {
                 );
               }
 
-              // Step 3: Present payment sheet to user
               const { error: presentError } = await presentPaymentSheet();
 
               if (presentError) {
-                // Payment was cancelled or failed
                 if (!presentError.code?.includes("Canceled")) {
                   showBanner(
                     "Payment Failed",
@@ -2000,14 +2042,11 @@ function CheckoutContent() {
                     4000,
                   );
                 }
-                // If user canceled, don't show error (silent cancel)
                 return;
               }
 
-              // Show processing loader
               setProcessingPayment(true);
 
-              // Wait 2 seconds before showing success and navigating
               setTimeout(() => {
                 setProcessingPayment(false);
                 showBanner(
@@ -2017,10 +2056,8 @@ function CheckoutContent() {
                   3000,
                 );
 
-                // Create bookingId: appointmentDate (YYYYMMDD format) + appointmentId
                 let dateFormatted = "";
                 if (appointmentDate) {
-                  // Parse date from "MM/DD/YYYY" format and convert to "YYYYMMDD"
                   const dateParts = appointmentDate.split("/");
                   if (dateParts.length === 3) {
                     const [month, day, year] = dateParts;
@@ -2035,7 +2072,6 @@ function CheckoutContent() {
                     ? `${dateFormatted}${appointmentId}`
                     : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
 
-                // Navigate to booking detail page
                 router.push({
                   pathname: "/(main)/bookingDetail",
                   params: {
@@ -2064,16 +2100,13 @@ function CheckoutContent() {
               await useStripeAccount(null);
             }
           } catch (err: any) {
-            // Extract clean error message
             let errorMessage = "Failed to process payment";
 
-            // Check error response data first (from API)
             if (err.data?.message) {
               errorMessage = err.data.message;
             } else if (err.data?.error) {
               errorMessage = err.data.error;
             } else if (err.message) {
-              // Use error message directly (API service already extracts clean message)
               errorMessage = err.message;
             }
 
@@ -2083,11 +2116,8 @@ function CheckoutContent() {
         }
 
         if (paymentMethod === "payLater") {
-          // Create bookingId: appointmentDate (YYYYMMDD format) + appointmentId
-          // Example: "01/08/2026" -> "20260108" + "54" = "2026010854"
           let dateFormatted = "";
           if (appointmentDate) {
-            // Parse date from "MM/DD/YYYY" format and convert to "YYYYMMDD"
             const dateParts = appointmentDate.split("/");
             if (dateParts.length === 3) {
               const [month, day, year] = dateParts;
@@ -2101,6 +2131,8 @@ function CheckoutContent() {
             appointmentId && dateFormatted
               ? `${dateFormatted}${appointmentId}`
               : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
+
+          showBanner("Success", "Your booking is confirmed.", "success", 3000);
 
           router.push({
             pathname: "/(main)/bookingDetail",
@@ -2133,10 +2165,8 @@ function CheckoutContent() {
         );
       }
     } catch (error: any) {
-      // Hide loader
       dispatch(setActionLoader(false));
 
-      // Console log error
       Logger.error("Appointment API Error:", error);
 
       showBanner(
@@ -2145,6 +2175,116 @@ function CheckoutContent() {
         "error",
         4000,
       );
+    }
+  };
+
+  const handlePolicyConfirm = async () => {
+    if (policyConfirming) return;
+    setPolicyConfirming(true);
+
+    try {
+      if (paymentMethod === "payLater") {
+        dispatch(setActionLoader(true));
+        let setupIntentId: string | undefined;
+        try {
+          const stripeHeaders = await getStripeModeHeaders();
+          const setupResponse = await ApiService.post<{
+            success: boolean;
+            message?: string;
+            data: CardSetupResponse;
+          }>(
+            appointmentsEndpoints.cardSetup,
+            { business_id: parseInt(businessId || "0", 10) },
+            { headers: stripeHeaders },
+          );
+
+          if (!setupResponse?.success || !setupResponse.data) {
+            showBanner(
+              "Error",
+              setupResponse?.message ||
+                "This business is not set up to accept online payments yet.",
+              "error",
+              4000,
+            );
+            return;
+          }
+
+          const {
+            customer,
+            setupIntent,
+            setupIntentId: intentId,
+            customerSessionClientSecret,
+            ephemeralKey,
+            connectedAccountId,
+          } = setupResponse.data;
+
+          setupIntentId = intentId;
+
+          await useStripeAccount(connectedAccountId);
+          try {
+            const paymentConfig: any = {
+              merchantDisplayName: "Fresh Pass",
+              customerId: customer,
+              setupIntentClientSecret: setupIntent,
+              defaultBillingDetails: {
+                name: user.name || undefined,
+                email: user.email || undefined,
+              },
+            };
+
+            if (customerSessionClientSecret) {
+              paymentConfig.customerSessionClientSecret =
+                customerSessionClientSecret;
+            } else if (ephemeralKey) {
+              paymentConfig.customerEphemeralKeySecret = ephemeralKey;
+            }
+
+            const { error: initError } = await initPaymentSheet(paymentConfig);
+            if (initError) {
+              throw new Error(
+                initError.message || "Failed to initialize card setup",
+              );
+            }
+
+            const { error: presentError } = await presentPaymentSheet();
+            if (presentError) {
+              if (!presentError.code?.includes("Canceled")) {
+                showBanner(
+                  "Card Setup Failed",
+                  presentError.message || "Could not save your card.",
+                  "error",
+                  4000,
+                );
+              }
+              return;
+            }
+          } finally {
+            await useStripeAccount(null);
+          }
+        } catch (error: any) {
+          Logger.error("Card setup error:", error);
+          showBanner(
+            "Error",
+            error?.response?.data?.message ||
+              error?.message ||
+              "Could not save your card. Please try again.",
+            "error",
+            4000,
+          );
+          return;
+        } finally {
+          dispatch(setActionLoader(false));
+        }
+
+        setPolicySheetVisible(false);
+        await completeServiceBooking(setupIntentId);
+        return;
+      }
+
+      setPolicySheetVisible(false);
+      await completeServiceBooking();
+    } finally {
+      setPolicyConfirming(false);
     }
   };
 
@@ -2501,6 +2641,19 @@ function CheckoutContent() {
           </View>
         </View>
       )}
+
+      <CancellationPolicySheet
+        visible={policySheetVisible}
+        onClose={() => {
+          if (!policyConfirming) {
+            setPolicySheetVisible(false);
+          }
+        }}
+        onConfirm={handlePolicyConfirm}
+        quote={policyQuote}
+        isPayLater={paymentMethod === "payLater"}
+        confirming={policyConfirming}
+      />
     </SafeAreaView>
   );
 }

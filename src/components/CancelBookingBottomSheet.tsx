@@ -32,6 +32,7 @@ interface CancelBookingBottomSheetProps {
   visible: boolean;
   onClose: () => void;
   onSubmit: (reason: string) => void;
+  feeNotice?: string | null;
 }
 
 const cancellationReasons = [
@@ -75,12 +76,28 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
+    feeNoticeBox: {
+      backgroundColor: theme.orangeBrown01,
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(12),
+    },
+    feeNoticeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+    },
   });
 
 export default function CancelBookingBottomSheet({
   visible,
   onClose,
   onSubmit,
+  feeNotice,
 }: CancelBookingBottomSheetProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -117,6 +134,11 @@ export default function CancelBookingBottomSheet({
       onFooterButtonPress={handleSubmit}
       footerButtonDisabled={!selectedReason}
     >
+      {feeNotice ? (
+        <View style={styles.feeNoticeBox}>
+          <Text style={styles.feeNoticeText}>{feeNotice}</Text>
+        </View>
+      ) : null}
       {cancellationReasons.map((reason, index) => (
         <TouchableOpacity
           key={index}

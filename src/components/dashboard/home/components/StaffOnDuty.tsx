@@ -26,10 +26,10 @@ import {
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
-  heightScale,
   iconScale,
 } from "@/src/theme/dimensions";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { Skeleton } from "@/src/components/skeletons";
 import Button from "@/src/components/button";
 import CustomToggle from "@/src/components/customToggle";
@@ -58,11 +58,10 @@ import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
 
-const STAFF_CARD_WIDTH = widthScale(152);
-const STAFF_CARD_GAP = moderateWidthScale(18);
+const STAFF_CARD_WIDTH = widthScale(140);
+const STAFF_CARD_GAP = moderateWidthScale(14);
 const STAFF_ITEM_SIZE = STAFF_CARD_WIDTH + STAFF_CARD_GAP;
 const STAFF_LIFT = moderateHeightScale(5);
-const STAFF_AVATAR_SIZE = widthScale(76);
 const OWNER_AVATAR_SIZE = widthScale(58);
 
 const createStyles = (theme: Theme) =>
@@ -300,7 +299,7 @@ const createStyles = (theme: Theme) =>
     },
     staffCardShell: {
       width: STAFF_CARD_WIDTH,
-      borderRadius: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
       backgroundColor:
         Platform.OS === "android" ? theme.lightGreen05 : theme.lightGreen1,
       paddingBottom:
@@ -310,19 +309,12 @@ const createStyles = (theme: Theme) =>
     },
     staffCard: {
       width: STAFF_CARD_WIDTH,
-      minHeight: heightScale(168),
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      paddingTop: moderateHeightScale(14),
-      paddingBottom: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(10),
-      alignItems: "center",
-      borderWidth: 1,
-      borderTopColor: theme.white,
-      borderLeftColor: theme.white,
-      borderRightColor: theme.lightGreen1,
-      borderBottomColor: theme.lightGreen1,
+      height: STAFF_CARD_WIDTH,
+      backgroundColor: theme.emptyProfileImage,
+      borderRadius: moderateWidthScale(14),
       overflow: "hidden",
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     shadow: {
       ...Platform.select({
@@ -350,36 +342,20 @@ const createStyles = (theme: Theme) =>
         },
       }),
     },
-    staffImageWrapper: {
-      position: "relative",
-      width: STAFF_AVATAR_SIZE,
-      height: STAFF_AVATAR_SIZE,
-      justifyContent: "center",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(10),
-    },
-    staffImageClip: {
-      width: STAFF_AVATAR_SIZE,
-      height: STAFF_AVATAR_SIZE,
-      borderRadius: STAFF_AVATAR_SIZE / 2,
-      overflow: "hidden",
-    },
     staffImage: {
-      width: STAFF_AVATAR_SIZE,
-      height: STAFF_AVATAR_SIZE,
-      borderRadius: STAFF_AVATAR_SIZE / 2,
+      ...StyleSheet.absoluteFillObject,
+      width: "100%",
+      height: "100%",
       backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1.5,
-      borderColor: theme.borderLight,
     },
     staffStatusDot: {
       position: "absolute",
-      bottom: 1,
-      left: 1,
-      width: moderateWidthScale(13),
-      height: moderateWidthScale(13),
-      borderRadius: moderateWidthScale(13) / 2,
-      borderWidth: 2,
+      top: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      width: moderateWidthScale(10),
+      height: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(5),
+      borderWidth: 1.5,
       borderColor: theme.white,
       zIndex: 2,
     },
@@ -389,18 +365,26 @@ const createStyles = (theme: Theme) =>
     staffStatusDotInactive: {
       backgroundColor: theme.lightGreen5,
     },
-    staffInfo: {
-      width: "100%",
-      alignItems: "center",
+    staffInfoStrip: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingTop: moderateHeightScale(36),
+      paddingBottom: moderateHeightScale(10),
+      justifyContent: "flex-end",
       gap: moderateHeightScale(2),
     },
     staffName: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
+      color: theme.white,
       textTransform: "capitalize",
       width: "100%",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
     ownerPill: {
       position: "absolute",
@@ -422,23 +406,22 @@ const createStyles = (theme: Theme) =>
       lineHeight: moderateHeightScale(11),
     },
     staffExperience: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      color: theme.white85,
       width: "100%",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
     // Kept for Skeleton compatibility
     staffItem: {
       width: STAFF_CARD_WIDTH,
-      minHeight: heightScale(168),
+      height: STAFF_CARD_WIDTH,
       backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      paddingTop: moderateHeightScale(14),
-      paddingBottom: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(10),
-      alignItems: "center",
+      borderRadius: moderateWidthScale(14),
       marginRight: STAFF_CARD_GAP,
+      overflow: "hidden",
       borderWidth: 1,
       borderColor: theme.borderLight,
     },
@@ -523,6 +506,8 @@ function StaffMotionCard({
   onPress,
   onLongPress,
 }: StaffMotionCardProps) {
+  const { colors } = useTheme();
+  const theme = colors as Theme;
   const isActive = staff.active === 1;
   const experience = staff.description?.trim() || null;
 
@@ -559,37 +544,34 @@ function StaffMotionCard({
           onLongPress={onLongPress}
           delayLongPress={350}
         >
-          <View style={styles.staffImageWrapper}>
-            <View style={styles.staffImageClip}>
-              <Image
-                source={{ uri: getStaffImageUri(staff) }}
-                style={styles.staffImage}
-              />
-            </View>
-            <View
-              style={[
-                styles.staffStatusDot,
-                isActive
-                  ? styles.staffStatusDotActive
-                  : styles.staffStatusDotInactive,
-              ]}
-            />
-          </View>
-
-          <View style={styles.staffInfo}>
+          <Image
+            source={{ uri: getStaffImageUri(staff) }}
+            style={styles.staffImage}
+            resizeMode="cover"
+          />
+          <View
+            style={[
+              styles.staffStatusDot,
+              isActive
+                ? styles.staffStatusDotActive
+                : styles.staffStatusDotInactive,
+            ]}
+          />
+          <LinearGradient
+            colors={["transparent", theme.lightGreen2, theme.lightGreen]}
+            locations={[0, 0.4, 1]}
+            style={styles.staffInfoStrip}
+            pointerEvents="none"
+          >
             <Text style={styles.staffName} numberOfLines={1}>
               {staff.name ?? ""}
             </Text>
             {experience ? (
-              <Text style={styles.staffExperience} numberOfLines={2}>
+              <Text style={styles.staffExperience} numberOfLines={1}>
                 {experience}
               </Text>
-            ) : (
-              <Text style={styles.staffExperience} numberOfLines={1}>
-                {" "}
-              </Text>
-            )}
-          </View>
+            ) : null}
+          </LinearGradient>
         </TouchableOpacity>
       </View>
     </Animated.View>

@@ -546,11 +546,7 @@ export const Skeleton = ({
         <View
           key={index}
           style={[styles.staffItem, index === 0 && styles.staffItemFirst]}
-        >
-          <View style={skeletonStyles.staffOnDutyCardAvatar} />
-          <View style={skeletonStyles.staffOnDutyName} />
-          <View style={skeletonStyles.staffOnDutyExperience} />
-        </View>
+        />
       ))}
     </View>
   ) : null;
@@ -597,30 +593,30 @@ export const Skeleton = ({
   ) : null;
 
   const customersSkeleton = (
-    <>
-      {[...Array(5)].map((_, index) => (
+    <View style={{ gap: moderateHeightScale(8) }}>
+      {[...Array(2)].map((_, index) => (
         <View
           key={index}
           style={{
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
-            paddingVertical: moderateHeightScale(14),
-            borderBottomWidth: 1,
-            borderBottomColor: (colors as Theme).borderLight,
+            paddingVertical: moderateHeightScale(12),
+            paddingHorizontal: moderateWidthScale(12),
+            backgroundColor: (colors as Theme).white,
+            borderRadius: moderateWidthScale(14),
+            borderWidth: 1,
+            borderColor: (colors as Theme).borderLight,
           }}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-            <View style={skeletonStyles.staffOnDutyAvatar} />
-            <View style={{ flex: 1, marginLeft: moderateWidthScale(12) }}>
-              <View style={skeletonStyles.workHistoryServiceSkeleton} />
-              <View
-                style={[
-                  skeletonStyles.workHistoryDateSkeleton,
-                  { marginTop: moderateHeightScale(4) },
-                ]}
-              />
-            </View>
+          <View style={skeletonStyles.staffOnDutyAvatar} />
+          <View style={{ flex: 1, marginLeft: moderateWidthScale(12) }}>
+            <View style={skeletonStyles.workHistoryServiceSkeleton} />
+            <View
+              style={[
+                skeletonStyles.workHistoryDateSkeleton,
+                { marginTop: moderateHeightScale(4) },
+              ]}
+            />
           </View>
           <View
             style={[
@@ -630,7 +626,7 @@ export const Skeleton = ({
           />
         </View>
       ))}
-    </>
+    </View>
   );
 
   const reviewsSkeleton = styles ? (

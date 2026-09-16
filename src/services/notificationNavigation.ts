@@ -9,6 +9,12 @@ export type NotificationSubType =
   | "appointment_cancelled_refunded"
   | "appointment_reminder"
   | "appointment_completed"
+  | "appointment_outcome_needed"
+  | "appointment_outcome_summary"
+  | "appointment_no_show"
+  | "appointment_outcome_corrected"
+  | "appointment_fee_charge_failed"
+  | "appointment_cancelled_fee_charged"
   | "payment_request"
   | "review_request"
   | "tip_request"
@@ -236,6 +242,15 @@ export function navigateFromNotificationData(
     }
   }
 
+  if (type === "appointment_outcomes") {
+    router.push("/(main)/dashboard/(home)");
+    Logger.log(
+      "------>navigateFromNotificationData (appointment_outcomes) -> home",
+      { modelId: data.model_id, count: data.count },
+    );
+    return;
+  }
+
   if (type === "appointment") {
     const modelId = data.model_id as number | undefined;
     if (modelId != null) {
@@ -269,6 +284,20 @@ export function navigateFromNotificationData(
           });
           Logger.log(
             "------>navigateFromNotificationData (payment_request) -> bookingDetailsById",
+            { bookingId: modelId },
+          );
+          return;
+
+        case "appointment_outcome_needed":
+          router.push({
+            pathname: "/(main)/bookingDetailsById",
+            params: {
+              bookingId: String(modelId),
+              openOutcome: "1",
+            },
+          });
+          Logger.log(
+            "------>navigateFromNotificationData (appointment_outcome_needed) -> bookingDetailsById",
             { bookingId: modelId },
           );
           return;

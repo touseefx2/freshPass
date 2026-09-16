@@ -109,6 +109,7 @@ export const businessEndpoints = {
     `/api/businesses/${businessId}/favorite`,
   generateSubscription: `/api/subscription/generate`,
   stripeConnectCongratsSeen: `/api/business/stripe-connect-congrats/seen`,
+  cancellationPolicy: `/api/business/cancellation-policy`,
 };
 
 /**
@@ -346,6 +347,40 @@ export const appointmentsEndpoints = {
     `/api/appointments/${appointmentId}/tip`,
   tipPaymentSheet: (appointmentId: string | number) =>
     `/api/appointments/${appointmentId}/tip/payment-sheet`,
+  cancellationPolicyQuote: (params: {
+    business_id: number;
+    appointment_date: string;
+    appointment_time: string;
+    service_ids: number[];
+  }) => {
+    const q = new URLSearchParams({
+      business_id: String(params.business_id),
+      appointment_date: params.appointment_date,
+      appointment_time: params.appointment_time,
+    });
+    params.service_ids.forEach((id) => q.append("service_ids[]", String(id)));
+    return `/api/appointments/cancellation-policy?${q.toString()}`;
+  },
+  cardSetup: `/api/appointments/card-setup`,
+  cancellationPreview: (id: string | number) =>
+    `/api/appointments/${id}/cancellation-preview`,
+  awaitingOutcome: (params?: { per_page?: number; page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.per_page != null)
+      q.append("per_page", String(params.per_page));
+    if (params?.page != null) q.append("page", String(params.page));
+    const query = q.toString();
+    return `/api/appointments/awaiting-outcome${query ? `?${query}` : ""}`;
+  },
+  outcomePreview: (
+    id: string | number,
+    outcome: "completed" | "no_show",
+  ) => `/api/appointments/${id}/outcome-preview?outcome=${outcome}`,
+  markOutcome: (id: string | number) => `/api/appointments/${id}/outcome`,
+  correctionPreview: (id: string | number) =>
+    `/api/appointments/${id}/outcome-correction-preview`,
+  correctOutcome: (id: string | number) =>
+    `/api/appointments/${id}/outcome/correct`,
   availableSlots: (params: {
     business_id: number;
     date: string;

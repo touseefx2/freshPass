@@ -28,10 +28,11 @@ import {
 } from "@/src/state/slices/generalSlice";
 import { Theme } from "@/src/theme/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
-import { Ionicons, Entypo, Feather } from "@expo/vector-icons";
+import { moderateHeightScale, moderateWidthScale, iconScale } from "@/src/theme/dimensions";
+import { Ionicons, Entypo, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet";
+import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -43,6 +44,7 @@ import {
 import { useStripe } from "@stripe/stripe-react-native";
 import {
   fetchAppointmentPaymentSheetParams,
+  getStripeModeHeaders,
   useStripeAccount as setStripeAccount,
 } from "@/src/services/stripeService";
 import {
@@ -68,10 +70,43 @@ import {
 } from "@/src/services/tipService";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import type { AffiliatedBusiness } from "@/src/types/affiliation";
+import type {
+  AppointmentCancellationPolicy,
+  OutcomeCorrectionPreview,
+  OutcomePreview,
+  OutcomeSummary,
+} from "@/src/types/cancellationPolicy";
+import OutcomeSummaryCard from "@/src/components/OutcomeSummaryCard";
 import { createStyles } from "./styles";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
+function formatPolicyDateTime(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function getFreeCancellationLabel(
+  policy: AppointmentCancellationPolicy,
+  translate: (key: string, options?: Record<string, string>) => string,
+): string {
+  if (policy.cancellationFeePercent === 0) {
+    return translate("freeCancellationAnyTime");
+  }
+  const formatted = formatPolicyDateTime(policy.freeCancellationUntil);
+  if (formatted) {
+    return translate("freeCancellationUntil", { date: formatted });
+  }
+  return translate("freeCancellationNotAvailable");
+}
 type PotentialContactsResponse = {
   success: boolean;
   data: {
@@ -95,7 +130,9 @@ type BookingStatus =
   | "active"
   | "complete"
   | "cancelled"
-  | "expired";
+  | "expired"
+  | "awaiting_outcome"
+  | "no_show";
 
 interface BookingItem {
   id: string;
@@ -169,6 +206,13 @@ interface BookingItem {
     mime_type?: string | null;
     size?: number | null;
   }>;
+  cancellationPolicy?: AppointmentCancellationPolicy | null;
+  hasSavedCard?: boolean;
+  outcomeMarkedAt?: string | null;
+  outcomeMarkedById?: number | null;
+  canMarkOutcome?: boolean;
+  canCorrectOutcome?: boolean;
+  outcomeSummary?: OutcomeSummary | null;
 }
 
 interface ApiBookingResponse {
@@ -255,6 +299,13 @@ interface ApiBookingResponse {
   tipDeclined?: boolean;
   tip?: PaidTip | null;
   pendingTip?: PendingTip | null;
+  cancellationPolicy?: AppointmentCancellationPolicy | null;
+  hasSavedCard?: boolean;
+  outcomeMarkedAt?: string | null;
+  outcomeMarkedById?: number | null;
+  canMarkOutcome?: boolean;
+  canCorrectOutcome?: boolean;
+  outcomeSummary?: OutcomeSummary | null;
 }
 
 export default function BookingDetailsById() {
@@ -271,6 +322,20 @@ export default function BookingDetailsById() {
   const user = useAppSelector((state: any) => state.user);
   const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
+  const [cancelFeeNotice, setCancelFeeNotice] = useState<string | null>(null);
+  const [outcomeSheetVisible, setOutcomeSheetVisible] = useState(false);
+  const [outcomeConfirming, setOutcomeConfirming] = useState(false);
+  const [outcomePreviewLoading, setOutcomePreviewLoading] = useState(false);
+  const [pendingOutcome, setPendingOutcome] = useState<
+    "completed" | "no_show" | null
+  >(null);
+  const [outcomePreview, setOutcomePreview] = useState<OutcomePreview | null>(
+    null,
+  );
+  const [correctionSheetVisible, setCorrectionSheetVisible] = useState(false);
+  const [correctionConfirming, setCorrectionConfirming] = useState(false);
+  const [correctionPreview, setCorrectionPreview] =
+    useState<OutcomeCorrectionPreview | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const hasShownReviewPromptForVisit = useRef(false);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
@@ -348,6 +413,10 @@ export default function BookingDetailsById() {
         return "cancelled";
       case "expired":
         return "expired";
+      case "awaiting_outcome":
+        return "awaiting_outcome";
+      case "no_show":
+        return "no_show";
       default:
         return "active";
     }
@@ -606,6 +675,13 @@ export default function BookingDetailsById() {
       tipDeclined: apiData.tipDeclined ?? false,
       tip: apiData.tip ?? null,
       pendingTip: apiData.pendingTip ?? null,
+      cancellationPolicy: apiData.cancellationPolicy ?? null,
+      hasSavedCard: apiData.hasSavedCard ?? false,
+      outcomeMarkedAt: apiData.outcomeMarkedAt ?? null,
+      outcomeMarkedById: apiData.outcomeMarkedById ?? null,
+      canMarkOutcome: apiData.canMarkOutcome ?? false,
+      canCorrectOutcome: apiData.canCorrectOutcome ?? false,
+      outcomeSummary: apiData.outcomeSummary ?? null,
       images:
         Array.isArray(apiData.images) && apiData.images.length > 0
           ? apiData.images.map((img: any) => ({
@@ -704,8 +780,11 @@ export default function BookingDetailsById() {
         return styles.statusActive;
       case "complete":
         return styles.statusComplete;
+      case "awaiting_outcome":
+        return styles.statusAwaitingOutcome;
       case "cancelled":
       case "expired":
+      case "no_show":
         return styles.statusCancelled;
       default:
         return styles.statusActive;
@@ -720,8 +799,11 @@ export default function BookingDetailsById() {
         return styles.statusTextActive;
       case "complete":
         return styles.statusTextComplete;
+      case "awaiting_outcome":
+        return styles.statusTextAwaitingOutcome;
       case "cancelled":
       case "expired":
+      case "no_show":
         return styles.statusTextCancelled;
       default:
         return styles.statusTextActive;
@@ -736,8 +818,11 @@ export default function BookingDetailsById() {
         return styles.statusDotActive;
       case "complete":
         return styles.statusDotComplete;
+      case "awaiting_outcome":
+        return styles.statusDotAwaitingOutcome;
       case "cancelled":
       case "expired":
+      case "no_show":
         return styles.statusDotCancelled;
       default:
         return styles.statusDotActive;
@@ -752,6 +837,10 @@ export default function BookingDetailsById() {
         return "Active";
       case "complete":
         return "Complete";
+      case "awaiting_outcome":
+        return t("statusAwaitingOutcome");
+      case "no_show":
+        return t("statusNoShow");
       case "cancelled":
         if (userRole === "staff" || userRole === "business") {
           return `${customerName || "Customer"} canceled`;
@@ -765,8 +854,11 @@ export default function BookingDetailsById() {
   };
 
   const isCancelled =
-    booking?.status === "cancelled" || booking?.status === "expired";
+    booking?.status === "cancelled" ||
+    booking?.status === "expired" ||
+    booking?.status === "no_show";
   const isComplete = booking?.status === "complete";
+  const isAwaitingOutcome = booking?.status === "awaiting_outcome";
 
   const paidTipBreakdown = useMemo(() => {
     if (!booking?.tip) return null;
@@ -964,13 +1056,28 @@ export default function BookingDetailsById() {
     });
   };
 
-  // True if status is ongoing
-  const canShowBottomCancel = !isCancelled && !isComplete;
+  // Cancel: customer, owner, and assigned staff (MD §6.3). Hidden after
+  // outcome / cancel / complete.
+  const canShowBottomCancel =
+    !isCancelled && !isComplete && !isAwaitingOutcome;
+  // Reschedule is customer-only (business/staff manage time via cancel + rebook).
   const canShowBottomReschedule =
-    !isCancelled && !isComplete && booking?.status === "ongoing";
+    userRole === "customer" &&
+    !isCancelled &&
+    !isComplete &&
+    !isAwaitingOutcome &&
+    booking?.status === "ongoing";
+  // Memberships are outside the outcome flow — keep the old complete action.
+  // One-time services use Mark Completed / Mark No-Show via canMarkOutcome.
   const canShowMarkComplete =
+    booking?.type === "subscription" &&
+    !booking?.canMarkOutcome &&
     booking?.status === "ongoing" &&
     (userRole === "business" || userRole === "staff");
+  const canShowOutcomeActions = !!booking?.canMarkOutcome;
+  const canShowCorrectOutcome = !!booking?.canCorrectOutcome;
+  const canShowBottomButtonRow =
+    canShowBottomReschedule || canShowBottomCancel;
 
   const businessName = booking?.businessName || booking?.location || "---";
   const businessLatitude = booking?.businessLatitude
@@ -1180,12 +1287,201 @@ export default function BookingDetailsById() {
   }, []);
 
   // Handle cancel booking modal
-  const handleOpenCancelModal = () => {
-    setCancelModalVisible(true);
+  const handleOpenCancelModal = async () => {
+    if (!bookingId) return;
+
+    dispatch(setActionLoader(true));
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message?: string;
+        data?: { message?: string };
+      }>(appointmentsEndpoints.cancellationPreview(bookingId));
+
+      setCancelFeeNotice(
+        response?.data?.message || response?.message || null,
+      );
+      setCancelModalVisible(true);
+    } catch (error: any) {
+      Logger.error("Cancellation preview error:", error);
+      setCancelFeeNotice(null);
+      setCancelModalVisible(true);
+      if (error?.message) {
+        showBanner(t("error"), error.message, "warning", 2500);
+      }
+    } finally {
+      dispatch(setActionLoader(false));
+    }
   };
 
   const handleCloseCancelModal = () => {
     setCancelModalVisible(false);
+    setCancelFeeNotice(null);
+  };
+
+  const openOutcomePreview = async (outcome: "completed" | "no_show") => {
+    if (!bookingId) return;
+    setPendingOutcome(outcome);
+    setOutcomePreview(null);
+    setOutcomePreviewLoading(true);
+    setOutcomeSheetVisible(true);
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message?: string;
+        data: OutcomePreview;
+      }>(appointmentsEndpoints.outcomePreview(bookingId, outcome));
+      if (response.success && response.data) {
+        setOutcomePreview(response.data);
+      } else {
+        setOutcomeSheetVisible(false);
+        showBanner(
+          t("error"),
+          response.message || "Could not load outcome preview.",
+          "error",
+          2500,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("Outcome preview error:", error);
+      setOutcomeSheetVisible(false);
+      showBanner(
+        t("error"),
+        error?.response?.data?.message ||
+          error?.message ||
+          "Could not load outcome preview.",
+        "error",
+        2500,
+      );
+    } finally {
+      setOutcomePreviewLoading(false);
+    }
+  };
+
+  const handleConfirmOutcome = async () => {
+    if (!bookingId || !pendingOutcome || outcomeConfirming) return;
+    setOutcomeConfirming(true);
+    try {
+      const stripeHeaders = await getStripeModeHeaders();
+      const response = await ApiService.post<{
+        success: boolean;
+        message?: string;
+      }>(
+        appointmentsEndpoints.markOutcome(bookingId),
+        { outcome: pendingOutcome },
+        { headers: stripeHeaders },
+      );
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || "Outcome marked successfully.",
+          "success",
+          2500,
+        );
+        setOutcomeSheetVisible(false);
+        setOutcomePreview(null);
+        await fetchBookingDetails();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || "Unable to mark outcome.",
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("Mark outcome error:", error);
+      showBanner(
+        t("error"),
+        error?.response?.data?.message ||
+          error?.message ||
+          "Unable to mark outcome.",
+        "error",
+        3000,
+      );
+    } finally {
+      setOutcomeConfirming(false);
+    }
+  };
+
+  const openCorrectionPreview = async () => {
+    if (!bookingId) return;
+    setCorrectionPreview(null);
+    dispatch(setActionLoader(true));
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message?: string;
+        data: OutcomeCorrectionPreview;
+      }>(appointmentsEndpoints.correctionPreview(bookingId));
+      if (response.success && response.data) {
+        setCorrectionPreview(response.data);
+        setCorrectionSheetVisible(true);
+      } else {
+        showBanner(
+          t("error"),
+          response.message || "Could not load correction preview.",
+          "error",
+          2500,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("Correction preview error:", error);
+      showBanner(
+        t("error"),
+        error?.response?.data?.message ||
+          error?.message ||
+          "Could not load correction preview.",
+        "error",
+        2500,
+      );
+    } finally {
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  const handleConfirmCorrection = async () => {
+    if (!bookingId || correctionConfirming) return;
+    setCorrectionConfirming(true);
+    try {
+      const stripeHeaders = await getStripeModeHeaders();
+      const response = await ApiService.post<{
+        success: boolean;
+        message?: string;
+      }>(appointmentsEndpoints.correctOutcome(bookingId), {}, {
+        headers: stripeHeaders,
+      });
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || "Appointment corrected to completed.",
+          "success",
+          2500,
+        );
+        setCorrectionSheetVisible(false);
+        setCorrectionPreview(null);
+        await fetchBookingDetails();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || "Unable to correct outcome.",
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("Correct outcome error:", error);
+      showBanner(
+        t("error"),
+        error?.response?.data?.message ||
+          error?.message ||
+          "Unable to correct outcome.",
+        "error",
+        3000,
+      );
+    } finally {
+      setCorrectionConfirming(false);
+    }
   };
 
   const handleCompleteBooking = async () => {
@@ -2005,8 +2301,56 @@ export default function BookingDetailsById() {
               />
             )}
 
+          {/* Agreed cancellation policy */}
+          {userRole === "customer" &&
+            booking.cancellationPolicy &&
+            (booking.status === "ongoing" || booking.status === "active") && (
+              <View style={styles.cancellationPolicyCard}>
+                <View style={styles.cancellationPolicyAccent} />
+                <View style={styles.cancellationPolicyHeader}>
+                  <View style={styles.cancellationPolicyIconWrap}>
+                    <MaterialCommunityIcons
+                      name="shield-check-outline"
+                      size={iconScale(18)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <Text style={styles.cancellationPolicyTitle}>
+                    {t("cancellationPolicy")}
+                  </Text>
+                </View>
+
+                <View style={styles.cancellationPolicyRow}>
+                  <Text style={styles.cancellationPolicyRowLabel}>
+                    {t("freeCancellation")}
+                  </Text>
+                  <Text style={styles.cancellationPolicyRowValue}>
+                    {getFreeCancellationLabel(booking.cancellationPolicy, t)}
+                  </Text>
+                </View>
+
+                <View style={styles.cancellationPolicyRow}>
+                  <Text style={styles.cancellationPolicyRowLabel}>
+                    {t("lateCancellationFee")}
+                  </Text>
+                  <Text style={styles.cancellationPolicyRowValue}>
+                    {`${booking.cancellationPolicy.cancellationFeePercent}%`}
+                  </Text>
+                </View>
+
+                <View style={styles.cancellationPolicyRow}>
+                  <Text style={styles.cancellationPolicyRowLabel}>
+                    {t("noShowFee")}
+                  </Text>
+                  <Text style={styles.cancellationPolicyRowValue}>
+                    {`${booking.cancellationPolicy.noShowFeePercent}%`}
+                  </Text>
+                </View>
+              </View>
+            )}
+
           {/* Policy Link */}
-          {!isCancelled && !isComplete && userRole === "customer" && (
+          {!isCancelled && !isComplete && !isAwaitingOutcome && userRole === "customer" && (
             <TouchableOpacity
               onPress={handleSupportPress}
               activeOpacity={0.7}
@@ -2020,9 +2364,20 @@ export default function BookingDetailsById() {
               />
             </TouchableOpacity>
           )}
+
+          {booking.outcomeSummary ? (
+            <OutcomeSummaryCard
+              summary={booking.outcomeSummary}
+              isBusinessView={
+                userRole === "business" || userRole === "staff"
+              }
+            />
+          ) : null}
         </ScrollView>
 
         {(canShowMarkComplete ||
+          canShowOutcomeActions ||
+          canShowCorrectOutcome ||
           canShowBottomReschedule ||
           canShowBottomCancel) && (
           <View
@@ -2047,40 +2402,71 @@ export default function BookingDetailsById() {
                 }
               />
             ) : null}
-            <View style={styles.bottomButtonsRow}>
-              {canShowBottomReschedule ? (
+            {canShowOutcomeActions ? (
+              <View style={styles.outcomeActionsRow}>
                 <TouchableOpacity
-                  style={styles.bottomOutlineButton}
+                  style={[styles.outcomeActionButton, styles.outcomeCompletedButton]}
                   activeOpacity={0.7}
-                  onPress={handleReschedulePress}
+                  onPress={() => openOutcomePreview("completed")}
                 >
-                  <CalendarIcon
-                    width={moderateWidthScale(18)}
-                    height={moderateWidthScale(18)}
-                    color={theme.darkGreen}
-                  />
-                  <Text style={styles.bottomOutlineButtonText}>
-                    {t("reschedule")}
+                  <Text style={styles.outcomeCompletedButtonText}>
+                    {t("markCompleted")}
                   </Text>
                 </TouchableOpacity>
-              ) : null}
-              {canShowBottomCancel ? (
                 <TouchableOpacity
-                  style={styles.bottomCancelButton}
+                  style={[styles.outcomeActionButton, styles.outcomeNoShowButton]}
                   activeOpacity={0.7}
-                  onPress={handleOpenCancelModal}
+                  onPress={() => openOutcomePreview("no_show")}
                 >
-                  <Ionicons
-                    name="close-circle-outline"
-                    size={moderateWidthScale(18)}
-                    color={theme.red}
-                  />
-                  <Text style={styles.bottomCancelButtonText}>
-                    Cancel Booking
+                  <Text style={styles.outcomeNoShowButtonText}>
+                    {t("markNoShow")}
                   </Text>
                 </TouchableOpacity>
-              ) : null}
-            </View>
+              </View>
+            ) : null}
+            {canShowCorrectOutcome ? (
+              <Button
+                title={t("correctToCompleted")}
+                onPress={openCorrectionPreview}
+                containerStyle={styles.completeButton}
+              />
+            ) : null}
+            {canShowBottomButtonRow ? (
+              <View style={styles.bottomButtonsRow}>
+                {canShowBottomReschedule ? (
+                  <TouchableOpacity
+                    style={styles.bottomOutlineButton}
+                    activeOpacity={0.7}
+                    onPress={handleReschedulePress}
+                  >
+                    <CalendarIcon
+                      width={moderateWidthScale(18)}
+                      height={moderateWidthScale(18)}
+                      color={theme.darkGreen}
+                    />
+                    <Text style={styles.bottomOutlineButtonText}>
+                      {t("reschedule")}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                {canShowBottomCancel ? (
+                  <TouchableOpacity
+                    style={styles.bottomCancelButton}
+                    activeOpacity={0.7}
+                    onPress={handleOpenCancelModal}
+                  >
+                    <Ionicons
+                      name="close-circle-outline"
+                      size={moderateWidthScale(18)}
+                      color={theme.red}
+                    />
+                    <Text style={styles.bottomCancelButtonText}>
+                      Cancel Booking
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ) : null}
           </View>
         )}
 
@@ -2088,6 +2474,58 @@ export default function BookingDetailsById() {
           visible={cancelModalVisible}
           onClose={handleCloseCancelModal}
           onSubmit={handleCancelBooking}
+          feeNotice={cancelFeeNotice}
+        />
+
+        <OutcomeConfirmSheet
+          visible={outcomeSheetVisible}
+          onClose={() => {
+            if (!outcomeConfirming) {
+              setOutcomeSheetVisible(false);
+              setOutcomePreview(null);
+            }
+          }}
+          onConfirm={handleConfirmOutcome}
+          title={
+            outcomePreview?.title ||
+            (pendingOutcome === "no_show"
+              ? t("confirmNoShow")
+              : t("markCompleted"))
+          }
+          question={
+            outcomePreview?.question ||
+            (outcomePreviewLoading ? "Loading..." : "")
+          }
+          message={outcomePreview?.message || ""}
+          confirmLabel={
+            pendingOutcome === "no_show"
+              ? t("confirmNoShow")
+              : t("markCompleted")
+          }
+          confirmDestructive={pendingOutcome === "no_show"}
+          showNoSavedCardWarning={
+            !!outcomePreview &&
+            pendingOutcome === "no_show" &&
+            !outcomePreview.hasSavedCard &&
+            !outcomePreview.paid
+          }
+          confirming={outcomeConfirming || outcomePreviewLoading}
+        />
+
+        <OutcomeConfirmSheet
+          visible={correctionSheetVisible}
+          onClose={() => {
+            if (!correctionConfirming) {
+              setCorrectionSheetVisible(false);
+              setCorrectionPreview(null);
+            }
+          }}
+          onConfirm={handleConfirmCorrection}
+          title={t("correctNoShowTitle")}
+          question={t("correctNoShowQuestion")}
+          message={correctionPreview?.message || ""}
+          confirmLabel={t("changeToCompleted")}
+          confirming={correctionConfirming}
         />
 
         <ReviewPromptModal

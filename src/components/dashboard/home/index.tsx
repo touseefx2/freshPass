@@ -19,6 +19,9 @@ import {
 import SummaryStats from "./components/SummaryStats";
 import StaffOnDuty from "./components/StaffOnDuty";
 import AppointmentsSection from "./components/AppointmentsSection";
+import AwaitingOutcomeSection, {
+  type AwaitingOutcomeAppointment,
+} from "./components/AwaitingOutcomeSection";
 import WorkHistory from "./components/WorkHistory";
 import CustomersSection from "./components/CustomersSection";
 import WelcomeSection from "./components/WelcomeSection";
@@ -122,6 +125,10 @@ export default function HomeScreen() {
     null,
   );
   const [workHistoryTotalCount, setWorkHistoryTotalCount] = useState(0);
+  const [awaitingOutcomeData, setAwaitingOutcomeData] = useState<
+    AwaitingOutcomeAppointment[] | null
+  >(null);
+  const [awaitingOutcomeLoading, setAwaitingOutcomeLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleFetchUserStatus = async (): Promise<boolean> => {
@@ -402,6 +409,37 @@ export default function HomeScreen() {
     }
   };
 
+  const handleFetchAwaitingOutcome = async () => {
+    if (userRole !== "business" && userRole !== "staff") return;
+    setAwaitingOutcomeLoading(true);
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message?: string;
+        data: {
+          data: AwaitingOutcomeAppointment[];
+          count?: number;
+        };
+      }>(appointmentsEndpoints.awaitingOutcome({ per_page: 20, page: 1 }));
+
+      if (response.success && response.data) {
+        const list = Array.isArray(response.data.data)
+          ? response.data.data
+          : Array.isArray(response.data)
+            ? (response.data as unknown as AwaitingOutcomeAppointment[])
+            : [];
+        setAwaitingOutcomeData(list);
+      } else {
+        setAwaitingOutcomeData([]);
+      }
+    } catch (error: any) {
+      Logger.error("Awaiting outcome fetch error:", error);
+      setAwaitingOutcomeData([]);
+    } finally {
+      setAwaitingOutcomeLoading(false);
+    }
+  };
+
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
 
@@ -438,6 +476,7 @@ export default function HomeScreen() {
       if (userRole === "business") {
         handleFetchStaff();
       }
+      handleFetchAwaitingOutcome();
       handleFetchAppointments();
       handleFetchWorkHistory();
     }
@@ -525,13 +564,20 @@ export default function HomeScreen() {
             <StaffOnDuty data={staffData} callApi={() => handleFetchStaff()} />
           )}
 
-          {/* Appointments - All roles */}
+          {/* Appointments + Awaiting outcome */}
           <View style={styles.appointmentsContainer}>
             <AppointmentsSection
               data={appointmentsData}
               totalCount={appointmentsTotalCount}
               callApi={handleFetchAppointments}
             />
+            {(userRole === "business" || userRole === "staff") && (
+              <AwaitingOutcomeSection
+                data={awaitingOutcomeData}
+                loading={awaitingOutcomeLoading}
+                onRefresh={handleFetchAwaitingOutcome}
+              />
+            )}
           </View>
 
           <View style={styles.line} />

@@ -62,6 +62,9 @@ export const createStyles = (theme: Theme) =>
     statusComplete: {
       backgroundColor: theme.apptMintBg,
     },
+    statusAwaitingOutcome: {
+      backgroundColor: theme.orangeBrown015,
+    },
     statusCancelled: {
       backgroundColor: theme.lightRed,
     },
@@ -78,6 +81,9 @@ export const createStyles = (theme: Theme) =>
     statusTextComplete: {
       color: theme.apptMintAccent,
     },
+    statusTextAwaitingOutcome: {
+      color: theme.appointmentStatusText,
+    },
     statusTextCancelled: {
       color: theme.red,
     },
@@ -89,6 +95,9 @@ export const createStyles = (theme: Theme) =>
     },
     statusDotComplete: {
       backgroundColor: theme.apptMintAccent,
+    },
+    statusDotAwaitingOutcome: {
+      backgroundColor: theme.appointmentStatusText,
     },
     statusDotCancelled: {
       backgroundColor: theme.red,
@@ -739,6 +748,71 @@ export const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
+    cancellationPolicyCard: {
+      backgroundColor: theme.orangeBrown01,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.orangeBrown30,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(12),
+      overflow: "hidden",
+    },
+    cancellationPolicyAccent: {
+      position: "absolute",
+      left: 0,
+      top: 0,
+      bottom: 0,
+      width: moderateWidthScale(4),
+      backgroundColor: theme.selectCard,
+    },
+    cancellationPolicyHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(12),
+      paddingLeft: moderateWidthScale(4),
+    },
+    cancellationPolicyIconWrap: {
+      width: widthScale(36),
+      height: widthScale(36),
+      borderRadius: moderateWidthScale(36 / 2),
+      backgroundColor: theme.selectCard,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    cancellationPolicyTitle: {
+      flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    cancellationPolicyRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      paddingVertical: moderateHeightScale(8),
+      borderTopWidth: 1,
+      borderTopColor: theme.orangeBrown30,
+      gap: moderateWidthScale(10),
+      paddingLeft: moderateWidthScale(4),
+    },
+    cancellationPolicyRowLabel: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size17,
+    },
+    cancellationPolicyRowValue: {
+      flex: 1.2,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      textAlign: "right",
+      lineHeight: fontSize.size17,
+    },
     bottomActions: {
       paddingHorizontal: moderateWidthScale(16),
       paddingBottom: moderateHeightScale(14),
@@ -759,6 +833,37 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
+    },
+    outcomeActionsRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+    },
+    outcomeActionButton: {
+      flex: 1,
+      height: heightScale(52),
+      borderRadius: moderateWidthScale(14),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    outcomeCompletedButton: {
+      backgroundColor: theme.apptMintBg,
+      borderWidth: 1,
+      borderColor: theme.apptMintAccent,
+    },
+    outcomeNoShowButton: {
+      backgroundColor: theme.lightRed,
+      borderWidth: 1,
+      borderColor: theme.lightRedBorder,
+    },
+    outcomeCompletedButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.apptMintAccent,
+    },
+    outcomeNoShowButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.red,
     },
     bottomButtonsRow: {
       flexDirection: "row",

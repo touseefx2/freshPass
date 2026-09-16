@@ -356,7 +356,11 @@ export default function AppointmentsSection({
                     <Text style={styles.appointmentStatusText}>
                       {firstAppointment.status === "scheduled"
                         ? t("onGoingApt")
-                        : firstAppointment.status}
+                        : firstAppointment.status === "awaiting_outcome"
+                          ? t("statusAwaitingOutcome")
+                          : firstAppointment.status === "no_show"
+                            ? t("statusNoShow")
+                            : firstAppointment.status}
                     </Text>
                   </View>
                   <Entypo
