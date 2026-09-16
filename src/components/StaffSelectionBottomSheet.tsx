@@ -11,6 +11,7 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
+import { IMAGES } from "@/src/constant/images";
 
 interface StaffMember {
   id: number;
@@ -203,7 +204,13 @@ export default function StaffSelectionBottomSheet({
                 {isSelected && <View style={styles.radioButtonInner} />}
               </View>
               <View style={styles.staffImageWrapper}>
-                {staff.image ? (
+                {staff.id === "anyone" ? (
+                  <Image
+                    source={IMAGES.anyoneStaff}
+                    style={styles.staffImage}
+                    resizeMode="cover"
+                  />
+                ) : staff.image ? (
                   <Image
                     source={{ uri: staff.image }}
                     style={styles.staffImage}

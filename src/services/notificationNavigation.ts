@@ -58,6 +58,7 @@ function getNotificationSubType(
  * and pendingNotificationNavigation (cold start after splash).
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
+ * - type "appointment_outcomes" + model_id → bookingDetailsById (else home)
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
@@ -243,10 +244,22 @@ export function navigateFromNotificationData(
   }
 
   if (type === "appointment_outcomes") {
+    const modelId = data.model_id as number | undefined;
+    if (modelId != null) {
+      router.push({
+        pathname: "/(main)/bookingDetailsById",
+        params: { bookingId: String(modelId) },
+      });
+      Logger.log(
+        "------>navigateFromNotificationData (appointment_outcomes) -> bookingDetailsById",
+        { bookingId: modelId, subType, count: data.count },
+      );
+      return;
+    }
     router.push("/(main)/dashboard/(home)");
     Logger.log(
       "------>navigateFromNotificationData (appointment_outcomes) -> home",
-      { modelId: data.model_id, count: data.count },
+      { count: data.count },
     );
     return;
   }

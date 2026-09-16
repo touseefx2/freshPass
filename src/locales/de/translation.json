@@ -1117,6 +1117,7 @@
   "noSavedCardWarning": "No card is saved, so the fee may not be collected.",
   "paidLabel": "Paid",
   "payLaterLabel": "Pay later",
+  "savedCardLastFour": "Gespeicherte Karte · •••• {{lastFour}}",
   "cancellationPolicyCardSubtitle": "Manage cutoff and fees for one-time services",
   "saveCancellationPolicy": "Save policy",
   "cancellationPolicySaved": "Cancellation policy saved.",

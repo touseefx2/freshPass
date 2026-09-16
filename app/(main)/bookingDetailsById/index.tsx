@@ -94,6 +94,13 @@ function formatPolicyDateTime(iso: string | null): string | null {
   });
 }
 
+function normalizeCardLastFour(value: unknown): string | null {
+  if (value == null) return null;
+  const digits = String(value).replace(/\D/g, "");
+  if (digits.length < 4) return null;
+  return digits.slice(-4);
+}
+
 function getFreeCancellationLabel(
   policy: AppointmentCancellationPolicy,
   translate: (key: string, options?: Record<string, string>) => string,
@@ -208,6 +215,7 @@ interface BookingItem {
   }>;
   cancellationPolicy?: AppointmentCancellationPolicy | null;
   hasSavedCard?: boolean;
+  cardLastFour?: string | null;
   outcomeMarkedAt?: string | null;
   outcomeMarkedById?: number | null;
   canMarkOutcome?: boolean;
@@ -301,6 +309,8 @@ interface ApiBookingResponse {
   pendingTip?: PendingTip | null;
   cancellationPolicy?: AppointmentCancellationPolicy | null;
   hasSavedCard?: boolean;
+  cardLastFour?: string | null;
+  card_last_four?: string | null;
   outcomeMarkedAt?: string | null;
   outcomeMarkedById?: number | null;
   canMarkOutcome?: boolean;
@@ -677,6 +687,9 @@ export default function BookingDetailsById() {
       pendingTip: apiData.pendingTip ?? null,
       cancellationPolicy: apiData.cancellationPolicy ?? null,
       hasSavedCard: apiData.hasSavedCard ?? false,
+      cardLastFour: normalizeCardLastFour(
+        apiData.cardLastFour ?? apiData.card_last_four,
+      ),
       outcomeMarkedAt: apiData.outcomeMarkedAt ?? null,
       outcomeMarkedById: apiData.outcomeMarkedById ?? null,
       canMarkOutcome: apiData.canMarkOutcome ?? false,
@@ -1030,6 +1043,11 @@ export default function BookingDetailsById() {
     }
     return "In-person at the business";
   })();
+
+  const savedCardLabel =
+    !isSubscription && booking?.cardLastFour
+      ? t("savedCardLastFour", { lastFour: booking.cardLastFour })
+      : null;
 
   const handleReschedulePress = () => {
     if (!booking) return;
@@ -2133,6 +2151,14 @@ export default function BookingDetailsById() {
                 <Text style={styles.paymentTitle}>{paymentHeadline}</Text>
                 {paymentSubline ? (
                   <Text style={styles.paymentSubtitle}>{paymentSubline}</Text>
+                ) : null}
+                {savedCardLabel ? (
+                  <Text
+                    style={styles.paymentSubtitle}
+                    numberOfLines={1}
+                  >
+                    {savedCardLabel}
+                  </Text>
                 ) : null}
                 {!isCancelled &&
                   userRole === "customer" &&

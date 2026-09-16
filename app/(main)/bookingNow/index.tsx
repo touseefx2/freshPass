@@ -83,15 +83,14 @@ import { MaterialIcons, Octicons } from "@expo/vector-icons";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
-  Extrapolation,
   interpolate,
-  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  type SharedValue,
+  withSpring,
 } from "react-native-reanimated";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
 import ImagePickerModal from "@/src/components/imagePickerModal";
+import { IMAGES } from "@/src/constant/images";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -103,10 +102,7 @@ const STAFF_CARD_WIDTH = widthScale(140);
 const STAFF_CARD_HEIGHT = heightScale(168);
 const STAFF_CARD_GAP = moderateWidthScale(14);
 const STAFF_LIST_PADDING = moderateWidthScale(20);
-const STAFF_SCREEN_WIDTH = Dimensions.get("window").width;
 const DEFAULT_AVATAR_URL = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
-/** Dummy avatar from env for the "Anyone" staff option */
-const ANYONE_STAFF_IMAGE = DEFAULT_AVATAR_URL;
 
 type StaffCarouselItem = {
   id: string;
@@ -532,6 +528,32 @@ const createStyles = (theme: Theme) => {
     staffCardSelected: {
       borderColor: theme.orangeBrown,
       borderWidth: 2,
+    },
+    staffCardSelectedShadow: {
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.orangeBrown,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(4),
+          },
+          shadowOpacity: 0.28,
+          shadowRadius: moderateWidthScale(8),
+        },
+        android: {
+          elevation: 4,
+          shadowColor: theme.orangeBrown,
+        },
+        default: {
+          shadowColor: theme.orangeBrown,
+          shadowOffset: {
+            width: 0,
+            height: moderateHeightScale(4),
+          },
+          shadowOpacity: 0.28,
+          shadowRadius: moderateWidthScale(8),
+        },
+      }),
     },
     staffImage: {
       ...StyleSheet.absoluteFillObject,
@@ -1375,10 +1397,8 @@ const createStyles = (theme: Theme) => {
   });
 };
 
-type StaffFadeCardProps = {
+type StaffCardProps = {
   staff: StaffCarouselItem;
-  cardOffset: number;
-  scrollX: SharedValue<number>;
   isSelected: boolean;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
@@ -1387,53 +1407,71 @@ type StaffFadeCardProps = {
   onAnyoneInfoPress: () => void;
 };
 
-function StaffFadeCard({
+function StaffCard({
   staff,
-  cardOffset,
-  scrollX,
   isSelected,
   styles,
   theme,
   ownerLabel,
   onSelect,
   onAnyoneInfoPress,
-}: StaffFadeCardProps) {
+}: StaffCardProps) {
   const isAnyone = staff.id === "anyone";
-  const imageUri =
-    staff.image ||
-    (isAnyone ? ANYONE_STAFF_IMAGE : DEFAULT_AVATAR_URL) ||
-    DEFAULT_AVATAR_URL;
+  const imageUri = staff.image || DEFAULT_AVATAR_URL;
+  const selectProgress = useSharedValue(isSelected ? 1 : 0);
+  const pressScale = useSharedValue(1);
 
-  const fadeStyle = useAnimatedStyle(() => {
-    const x = STAFF_LIST_PADDING + cardOffset - scrollX.value;
-    const fadeZone = STAFF_CARD_WIDTH * 0.55;
-    const opacity = interpolate(
-      x,
-      [
-        -fadeZone,
-        0,
-        STAFF_LIST_PADDING,
-        STAFF_SCREEN_WIDTH - STAFF_CARD_WIDTH - STAFF_LIST_PADDING,
-        STAFF_SCREEN_WIDTH - STAFF_CARD_WIDTH,
-        STAFF_SCREEN_WIDTH + fadeZone,
-      ],
-      [0.35, 0.55, 1, 1, 0.55, 0.35],
-      Extrapolation.CLAMP,
-    );
+  useEffect(() => {
+    selectProgress.value = withSpring(isSelected ? 1 : 0, {
+      damping: 16,
+      stiffness: 220,
+      mass: 0.7,
+    });
+  }, [isSelected, selectProgress]);
 
-    return { opacity };
-  });
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pressScale.value }],
+  }));
+
+  const radioInnerStyle = useAnimatedStyle(() => ({
+    opacity: selectProgress.value,
+    transform: [
+      {
+        scale: interpolate(selectProgress.value, [0, 1], [0.4, 1]),
+      },
+    ],
+  }));
+
+  const handlePressIn = () => {
+    pressScale.value = withSpring(0.97, {
+      damping: 18,
+      stiffness: 320,
+    });
+  };
+
+  const handlePressOut = () => {
+    pressScale.value = withSpring(1, {
+      damping: 14,
+      stiffness: 260,
+    });
+  };
 
   return (
-    <Animated.View style={[styles.staffCardWrap, fadeStyle]}>
-      <View style={[styles.staffCardShell, styles.staffCardShadow]}>
-        <TouchableOpacity
-          activeOpacity={0.7}
+    <Animated.View style={[styles.staffCardWrap, pressStyle]}>
+      <View
+        style={[
+          styles.staffCardShell,
+          isSelected ? styles.staffCardSelectedShadow : styles.staffCardShadow,
+        ]}
+      >
+        <Pressable
           style={[styles.staffCard, isSelected && styles.staffCardSelected]}
           onPress={() => onSelect(staff.id)}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
         >
           <Image
-            source={{ uri: imageUri }}
+            source={isAnyone ? IMAGES.anyoneStaff : { uri: imageUri }}
             style={styles.staffImage}
             resizeMode="cover"
           />
@@ -1444,7 +1482,7 @@ function StaffFadeCard({
               isSelected && styles.staffRadioSelected,
             ]}
           >
-            {isSelected ? <View style={styles.staffRadioInner} /> : null}
+            <Animated.View style={[styles.staffRadioInner, radioInnerStyle]} />
           </View>
 
           <LinearGradient
@@ -1495,7 +1533,7 @@ function StaffFadeCard({
               </>
             )}
           </LinearGradient>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     </Animated.View>
   );
@@ -2341,7 +2379,7 @@ export default function BookingNow() {
       id: "anyone",
       name: "Anyone",
       experience: "Any available staff" as string | number | null,
-      image: ANYONE_STAFF_IMAGE || DEFAULT_AVATAR_URL,
+      image: null,
       active: null as boolean | null,
       is_owner: false,
     };
@@ -2367,20 +2405,6 @@ export default function BookingNow() {
 
     return showAnyone ? [anyoneItem, ...filteredStaff] : filteredStaff;
   }, [staffMembers, staffSearchQuery]);
-
-  const staffScrollX = useSharedValue(0);
-  const staffScrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      staffScrollX.value = event.contentOffset.x;
-    },
-  });
-  const staffCardOffsets = useMemo(() => {
-    return staffList.map((_, index) => index * (STAFF_CARD_WIDTH + STAFF_CARD_GAP));
-  }, [staffList]);
-
-  useEffect(() => {
-    staffScrollX.value = 0;
-  }, [staffSearchQuery, staffScrollX]);
 
   const totalPrice = selectedServices.reduce(
     (sum, service) => sum + service.price,
@@ -2555,20 +2579,17 @@ export default function BookingNow() {
             {staffList.length === 0 ? (
               <Text style={styles.staffEmptyText}>No staff members found</Text>
             ) : (
-              <Animated.ScrollView
+              <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.staffList}
-                onScroll={staffScrollHandler}
-                scrollEventThrottle={16}
                 nestedScrollEnabled
+                decelerationRate="fast"
               >
-                {staffList.map((staff, index) => (
-                  <StaffFadeCard
+                {staffList.map((staff) => (
+                  <StaffCard
                     key={staff.id}
                     staff={staff}
-                    cardOffset={staffCardOffsets[index] ?? 0}
-                    scrollX={staffScrollX}
                     isSelected={selectedStaff === staff.id}
                     styles={styles}
                     theme={theme}
@@ -2577,7 +2598,7 @@ export default function BookingNow() {
                     onAnyoneInfoPress={() => setShowAnyoneHint(true)}
                   />
                 ))}
-              </Animated.ScrollView>
+              </ScrollView>
             )}
 
             <Modal
