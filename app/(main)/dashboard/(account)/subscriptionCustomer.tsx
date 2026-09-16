@@ -79,7 +79,8 @@ interface SubscriptionData {
   subscriptionPlanDescription: string;
   userId: number;
   user: string;
-  businessId: number;
+  businessId: number | null;
+  business_id?: number | null;
   business: string;
   subscriber: string;
   status: string;
@@ -112,6 +113,22 @@ interface SubscriptionResponse {
     };
   };
 }
+
+const resolveBusinessIdParam = (
+  ...candidates: Array<string | number | null | undefined>
+): string => {
+  for (const candidate of candidates) {
+    if (candidate == null || candidate === "") continue;
+    const raw = String(candidate).trim();
+    if (!raw || raw === "null" || raw === "undefined" || raw === "NaN") {
+      continue;
+    }
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || numeric <= 0) continue;
+    return String(Math.trunc(numeric));
+  }
+  return "";
+};
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -908,10 +925,23 @@ export default function subscriptionCustomer() {
   }, [loadingMore, currentPage, totalPages, fetchSubscriptions]);
 
   const handleBookAppointment = (subscription: SubscriptionData) => {
+    const businessId = resolveBusinessIdParam(
+      subscription.businessId,
+      subscription.business_id,
+    );
+    if (!businessId) {
+      showBanner(
+        t("error"),
+        "Business ID is missing for this subscription. Please try again later.",
+        "error",
+        4000,
+      );
+      return;
+    }
     router.push({
       pathname: "/(main)/bookingNow",
       params: {
-        business_id: subscription.businessId.toString(),
+        business_id: businessId,
         subscription_id: subscription.id.toString(),
         item: JSON.stringify(subscription),
       },

@@ -159,7 +159,11 @@ const allTimeSlots = [
   "22:00",
 ];
 
+const isValidTimeSlot = (slot: unknown): slot is string =>
+  typeof slot === "string" && /^\d{1,2}:\d{2}/.test(slot);
+
 const convertTo12Hour = (time24: string): string => {
+  if (!isValidTimeSlot(time24)) return "";
   const [hours, minutes] = time24.split(":").map(Number);
   const hour12 =
     hours === 0 ? 12 : hours > 12 ? hours - 12 : hours === 12 ? 12 : hours;
@@ -180,15 +184,68 @@ const SLOT_MINUTE_OPTIONS = [5, 15, 30, 45] as const;
 type SlotMinutes = (typeof SLOT_MINUTE_OPTIONS)[number];
 const DEFAULT_SLOT_MINUTES: SlotMinutes = 30;
 
-const getSlotHour = (slot: string): number =>
-  Number(slot.split(":")[0] ?? 0);
+const getSlotHour = (slot: string): number => {
+  if (!isValidTimeSlot(slot)) return 0;
+  return Number(slot.split(":")[0] ?? 0);
+};
 
 const sortTimeSlots = (slots: string[]): string[] =>
-  [...slots].sort((a, b) => {
+  [...slots].filter(isValidTimeSlot).sort((a, b) => {
     const [ah, am] = a.split(":").map(Number);
     const [bh, bm] = b.split(":").map(Number);
     return ah * 60 + am - (bh * 60 + bm);
   });
+
+/** Normalize available-slots API payloads (string | start | start_time). */
+const normalizeAvailableSlots = (raw: unknown): AvailableSlot[] => {
+  if (!Array.isArray(raw)) return [];
+  const slots: AvailableSlot[] = [];
+  for (const item of raw) {
+    if (typeof item === "string" && isValidTimeSlot(item)) {
+      slots.push({ start: item, end: item });
+      continue;
+    }
+    if (!item || typeof item !== "object") continue;
+    const row = item as Record<string, unknown>;
+    const startRaw = row.start ?? row.start_time;
+    const endRaw = row.end ?? row.end_time ?? startRaw;
+    if (!isValidTimeSlot(startRaw)) continue;
+    const availableStaff = Array.isArray(row.available_staff)
+      ? (row.available_staff as AvailableSlot["available_staff"])
+      : Array.isArray(row.availableStaff)
+        ? (row.availableStaff as AvailableSlot["available_staff"])
+        : undefined;
+    slots.push({
+      start: startRaw,
+      end: isValidTimeSlot(endRaw) ? endRaw : startRaw,
+      available_staff: availableStaff,
+    });
+  }
+  return slots;
+};
+
+const resolveRouteParam = (
+  value: string | string[] | undefined | null,
+): string => {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+};
+
+const resolveBusinessIdParam = (
+  ...candidates: Array<string | number | null | undefined>
+): string => {
+  for (const candidate of candidates) {
+    if (candidate == null || candidate === "") continue;
+    const raw = String(candidate).trim();
+    if (!raw || raw === "null" || raw === "undefined" || raw === "NaN") {
+      continue;
+    }
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || numeric <= 0) continue;
+    return String(Math.trunc(numeric));
+  }
+  return "";
+};
 
 /** Canonical section for a slot hour (null = before morning, e.g. 12 AM – 4:59 AM). */
 const getSlotCategoryFromHour = (
@@ -1811,8 +1868,18 @@ export default function BookingNow() {
   // Always fetch business data - API call happens in both cases
   const fetchBusinessDetails = useCallback(async () => {
     // Get business_id from params or from Redux (when coming from businessDetail)
-    const businessId = params.business_id || reduxBusinessId;
+    const businessId = resolveBusinessIdParam(
+      resolveRouteParam(params.business_id),
+      reduxBusinessId,
+    );
     if (!businessId) {
+      setError("Business ID is missing. Please go back and try again.");
+      showBanner(
+        t("error"),
+        "Business ID is missing. Please go back and try again.",
+        "error",
+        4000,
+      );
       return;
     }
 
@@ -2131,8 +2198,15 @@ export default function BookingNow() {
   // Fetch data on mount - check both params and Redux for business_id
   useEffect(() => {
     // Call API when we have business_id from params (including subscription) or from Redux
-    if (params.business_id || reduxBusinessId) {
+    if (
+      resolveBusinessIdParam(
+        resolveRouteParam(params.business_id),
+        reduxBusinessId,
+      )
+    ) {
       fetchBusinessDetails();
+    } else {
+      setError("Business ID is missing. Please go back and try again.");
     }
 
     return () => {
@@ -2190,7 +2264,10 @@ export default function BookingNow() {
   }, [selectedDate, dispatch]);
 
   const fetchAvailableSlots = useCallback(() => {
-    const businessId = reduxBusinessId || params.business_id;
+    const businessId = resolveBusinessIdParam(
+      reduxBusinessId,
+      resolveRouteParam(params.business_id),
+    );
     if (!businessId || !selectedDate) {
       setApiSlots([]);
       setSlotsError(null);
@@ -2213,10 +2290,10 @@ export default function BookingNow() {
     ApiService.get<{
       success?: boolean;
       message?: string;
-      data?: AvailableSlot[];
+      data?: AvailableSlot[] | { slots?: AvailableSlot[] } | unknown;
     }>(
       appointmentsEndpoints.availableSlots({
-        business_id: parseInt(String(businessId), 10),
+        business_id: parseInt(businessId, 10),
         date: dateStr,
         staff_id: staffId,
         slot_minutes: slotMinutes,
@@ -2233,8 +2310,12 @@ export default function BookingNow() {
           setSlotsError(res.message || "Failed to load available slots.");
           return;
         }
-        const list = res?.data && Array.isArray(res.data) ? res.data : [];
-        setApiSlots(list);
+        const rawList = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray((res?.data as { slots?: unknown })?.slots)
+            ? (res.data as { slots: unknown[] }).slots
+            : [];
+        setApiSlots(normalizeAvailableSlots(rawList));
       })
       .catch((err: any) => {
         setApiSlots([]);
@@ -2263,7 +2344,10 @@ export default function BookingNow() {
   }, [fetchAvailableSlots]);
 
   const availableTimeSlots = useMemo(
-    () => apiSlots.map((s) => s.start),
+    () =>
+      apiSlots
+        .map((s) => s.start)
+        .filter((start): start is string => isValidTimeSlot(start)),
     [apiSlots],
   );
 
@@ -2308,6 +2392,8 @@ export default function BookingNow() {
   }, [isReschedule, selectedTimeSlot, apiSlots.length, sortedTimeSlots]);
 
   const handleScroll = (event: any) => {
+    const allSlots = sortedTimeSlots;
+    if (allSlots.length === 0) return;
     const scrollX = event.nativeEvent.contentOffset.x;
     const slotWidth = widthScale(90);
     const gap = moderateWidthScale(12);
@@ -2315,17 +2401,18 @@ export default function BookingNow() {
     const visibleIndex = Math.round(
       (scrollX - paddingHorizontal + slotWidth / 2) / (slotWidth + gap),
     );
-    const allSlots = sortedTimeSlots;
     const clampedIndex = Math.max(
       0,
       Math.min(visibleIndex, allSlots.length - 1),
     );
     const visibleSlot = allSlots[clampedIndex];
+    if (!isValidTimeSlot(visibleSlot)) return;
     const category = getSlotCategory(visibleSlot);
     if (category !== selectedCategory) setSelectedCategory(category);
   };
 
   const isSlotDisabled = (slot: string): boolean => {
+    if (!isValidTimeSlot(slot)) return true;
     const today = dayjs().startOf("day");
     const selectedDay = selectedDate.startOf("day");
     if (!selectedDay.isSame(today, "day")) return false;
@@ -3622,6 +3709,19 @@ export default function BookingNow() {
           <Button
             title={t("continue")}
             onPress={() => {
+              const businessIdForCheckout = resolveBusinessIdParam(
+                resolveRouteParam(params.business_id),
+                reduxBusinessId,
+              );
+              if (!businessIdForCheckout) {
+                showBanner(
+                  t("error"),
+                  "Business ID is missing. Please go back and try again.",
+                  "error",
+                  4000,
+                );
+                return;
+              }
               if (isSubscriptionBooking) {
                 if (selectedSubscriptionServiceIds.length === 0) {
                   showBanner(
@@ -3649,7 +3749,7 @@ export default function BookingNow() {
                   pathname: "/(main)/bookingNow/checkout",
                   params: {
                     subscription_id: params.subscription_id || "",
-                    business_id: params.business_id || "",
+                    business_id: businessIdForCheckout,
                     item: params.item || "",
                     try_on_image_urls:
                       tryOnImageUrls.length > 0

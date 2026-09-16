@@ -842,14 +842,6 @@ export const createStyles = (theme: Theme) =>
       height: heightScale(54),
       borderRadius: moderateWidthScale(14),
     },
-    completeIcon: {
-      width: widthScale(24),
-      height: widthScale(24),
-      borderRadius: widthScale(12),
-      backgroundColor: theme.white,
-      alignItems: "center",
-      justifyContent: "center",
-    },
     outcomeActionsRow: {
       flexDirection: "row",
       gap: moderateWidthScale(8),

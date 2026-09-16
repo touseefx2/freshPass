@@ -110,6 +110,29 @@ const parseStringArrayParam = (raw?: string): string[] => {
   }
 };
 
+const resolveRouteParam = (
+  value: string | string[] | undefined | null,
+): string => {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+};
+
+const resolveBusinessIdParam = (
+  ...candidates: Array<string | number | null | undefined>
+): string => {
+  for (const candidate of candidates) {
+    if (candidate == null || candidate === "") continue;
+    const raw = String(candidate).trim();
+    if (!raw || raw === "null" || raw === "undefined" || raw === "NaN") {
+      continue;
+    }
+    const numeric = Number(raw);
+    if (!Number.isFinite(numeric) || numeric <= 0) continue;
+    return String(Math.trunc(numeric));
+  }
+  return "";
+};
+
 const backArrowIconSvg = `
 <svg width="{{WIDTH}}" height="{{HEIGHT}}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z" fill="{{COLOR}}"/>
@@ -198,6 +221,7 @@ interface SubscriptionData {
 }
 
 const formatSlotTo12h = (time24: string): string => {
+  if (typeof time24 !== "string" || !/^\d{1,2}:\d{2}/.test(time24)) return "";
   const [h, m] = time24.split(":").map(Number);
   const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h === 12 ? 12 : h;
   return `${h12}:${m.toString().padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
@@ -1602,24 +1626,31 @@ function CheckoutContent() {
     }
   }, [selectedStaffId, assignedStaffId, staffMembers]);
 
-  const subscriptionId = params.subscription_id
-    ? parseInt(params.subscription_id, 10)
+  const subscriptionIdRaw = resolveRouteParam(params.subscription_id);
+  const subscriptionId = subscriptionIdRaw
+    ? parseInt(subscriptionIdRaw, 10)
     : undefined;
   const subscriptionData: SubscriptionData | null = useMemo(() => {
-    if (params.item) {
+    const itemRaw = resolveRouteParam(params.item);
+    if (itemRaw) {
       try {
-        return JSON.parse(params.item);
+        return JSON.parse(itemRaw);
       } catch (e) {
         return null;
       }
     }
     return null;
   }, [params.item]);
+  const resolvedCheckoutBusinessId = resolveBusinessIdParam(
+    resolveRouteParam(params.business_id),
+    businessId,
+    subscriptionData?.businessId,
+  );
   const isSubscriptionMode = Boolean(
     subscriptionId != null && subscriptionData,
   );
   const selectedSubscriptionServiceIds = useMemo(() => {
-    const raw = params.selected_subscription_service_ids;
+    const raw = resolveRouteParam(params.selected_subscription_service_ids);
     if (!raw || typeof raw !== "string") {
       return [] as number[];
     }
@@ -1661,6 +1692,15 @@ function CheckoutContent() {
   );
 
   const completeSubscriptionBooking = async () => {
+    if (!resolvedCheckoutBusinessId) {
+      showBanner(
+        "Booking Failed",
+        "Business ID is missing. Please go back and try again.",
+        "error",
+        4000,
+      );
+      return;
+    }
     const resolvedStaffId = resolveAppointmentStaffId({
       selectedStaff: selectedStaffId,
       assignedStaffId,
@@ -1678,7 +1718,7 @@ function CheckoutContent() {
       image_urls?: string[];
       policy_accepted: boolean;
     } = {
-      business_id: parseInt(params.business_id || businessId || "0", 10),
+      business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "subscription",
       appointment_date: reduxSelectedDate || "",
       appointment_time: reduxSelectedTimeSlot || "",
@@ -1745,8 +1785,8 @@ function CheckoutContent() {
               : "",
             selectedDate: reduxSelectedDate || "",
             selectedTimeSlot: reduxSelectedTimeSlot || "",
-            businessId: params.business_id || businessId || "",
-            business_id: params.business_id || businessId || "",
+            businessId: resolvedCheckoutBusinessId,
+            business_id: resolvedCheckoutBusinessId,
             subscriptionId:
               subscriptionId != null ? String(subscriptionId) : "",
             note: note || "",
@@ -1775,6 +1815,15 @@ function CheckoutContent() {
   };
 
   const handleBookNow = async () => {
+    if (!resolvedCheckoutBusinessId) {
+      showBanner(
+        "Booking Failed",
+        "Business ID is missing. Please go back and try again.",
+        "error",
+        4000,
+      );
+      return;
+    }
     if (isSubscriptionMode) {
       if (!reduxSelectedTimeSlot) {
         showBanner(
@@ -1816,10 +1865,7 @@ function CheckoutContent() {
           data: CancellationPolicyQuote;
         }>(
           appointmentsEndpoints.cancellationPolicyQuote({
-            business_id: parseInt(
-              params.business_id || businessId || "0",
-              10,
-            ),
+            business_id: parseInt(resolvedCheckoutBusinessId, 10),
             appointment_date: reduxSelectedDate || "",
             appointment_time: reduxSelectedTimeSlot || "",
             appointment_type: "subscription",
@@ -1891,7 +1937,7 @@ function CheckoutContent() {
         data: CancellationPolicyQuote;
       }>(
         appointmentsEndpoints.cancellationPolicyQuote({
-          business_id: parseInt(businessId || "0", 10),
+          business_id: parseInt(resolvedCheckoutBusinessId, 10),
           appointment_date: reduxSelectedDate || "",
           appointment_time: reduxSelectedTimeSlot || "",
           service_ids: selectedServices.map((service) => service.id),
@@ -1927,6 +1973,15 @@ function CheckoutContent() {
   };
 
   const completeServiceBooking = async (setupIntentId?: string) => {
+    if (!resolvedCheckoutBusinessId) {
+      showBanner(
+        "Booking Failed",
+        "Business ID is missing. Please go back and try again.",
+        "error",
+        4000,
+      );
+      return;
+    }
     const resolvedStaffId = resolveAppointmentStaffId({
       selectedStaff: selectedStaffId,
       assignedStaffId,
@@ -1947,7 +2002,7 @@ function CheckoutContent() {
       policy_accepted: boolean;
       setup_intent_id?: string;
     } = {
-      business_id: parseInt(businessId || "0", 10),
+      business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "service",
       payment_method: paymentMethod === "payNow" ? "pay_now" : "pay_later",
       service_ids: selectedServices.map((service) => service.id),
@@ -2144,8 +2199,8 @@ function CheckoutContent() {
                     totalPrice: chargedService.toFixed(2),
                     tax: tax.toFixed(2),
                     estimatedTotal: chargedTotal.toFixed(2),
-                    businessId: businessId || "",
-                    business_id: businessId || "",
+                    businessId: resolvedCheckoutBusinessId,
+                    business_id: resolvedCheckoutBusinessId,
                     note: note || "",
                   },
                 });
@@ -2204,8 +2259,8 @@ function CheckoutContent() {
               totalPrice: totalPrice.toFixed(2),
               tax: tax.toFixed(2),
               estimatedTotal: estimatedTotal.toFixed(2),
-              businessId: businessId || "",
-              business_id: businessId || "",
+              businessId: resolvedCheckoutBusinessId,
+              business_id: resolvedCheckoutBusinessId,
               note: note || "",
             },
           });
@@ -2254,7 +2309,7 @@ function CheckoutContent() {
             data: CardSetupResponse;
           }>(
             appointmentsEndpoints.cardSetup,
-            { business_id: parseInt(businessId || "0", 10) },
+            { business_id: parseInt(resolvedCheckoutBusinessId, 10) },
             { headers: stripeHeaders },
           );
 

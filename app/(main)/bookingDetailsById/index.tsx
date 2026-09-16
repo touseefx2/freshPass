@@ -485,7 +485,15 @@ export default function BookingDetailsById() {
     return resolved || fallback || null;
   }, [booking?.staffImage]);
 
+  // Business can open staff detail, except when assigned staff is the owner.
+  const canOpenAssignedStaff =
+    userRole === "business" && booking?.staffIsOwner !== true;
+
   const handleAssignedStaffPress = useCallback(() => {
+    if (!canOpenAssignedStaff) {
+      return;
+    }
+
     const staffId = booking?.staffId;
     if (staffId == null) {
       return;
@@ -495,7 +503,7 @@ export default function BookingDetailsById() {
       pathname: "/(main)/staffDetail",
       params: { id: String(staffId) },
     });
-  }, [booking?.staffId, router]);
+  }, [booking?.staffId, canOpenAssignedStaff, router]);
 
   const mapApiStatusToBookingStatus = (apiStatus: string): BookingStatus => {
     switch (apiStatus.toLowerCase()) {
@@ -1210,13 +1218,7 @@ export default function BookingDetailsById() {
     !isAwaitingOutcome &&
     booking?.status === "ongoing" &&
     isBeforeRescheduleCutoff;
-  // Memberships are outside the outcome flow — keep the old complete action.
-  // One-time services use Mark Completed / Mark No-Show via canMarkOutcome.
-  const canShowMarkComplete =
-    booking?.type === "subscription" &&
-    !booking?.canMarkOutcome &&
-    booking?.status === "ongoing" &&
-    (userRole === "business" || userRole === "staff");
+  // Mark Completed / Mark No-Show only when backend allows (canMarkOutcome).
   const canShowOutcomeActions = !!booking?.canMarkOutcome;
   const canShowCorrectOutcome = !!booking?.canCorrectOutcome;
   const canShowRestoreVisit = !!booking?.canRestoreVisit;
@@ -1670,44 +1672,6 @@ export default function BookingDetailsById() {
     }
   };
 
-  const handleCompleteBooking = async () => {
-    if (!bookingId) return;
-
-    dispatch(setActionLoader(true));
-    try {
-      const response = await ApiService.patch<{
-        success: boolean;
-        message: string;
-      }>(appointmentsEndpoints.complete(bookingId), {});
-
-      if (response.success) {
-        showBanner(
-          t("success"),
-          response.message || "Booking marked as completed.",
-          "success",
-          2500,
-        );
-        await fetchBookingDetails();
-      } else {
-        showBanner(
-          t("error"),
-          response.message || "Unable to complete this booking.",
-          "error",
-          2500,
-        );
-      }
-    } catch (completeError: any) {
-      showBanner(
-        t("error"),
-        completeError?.message || "Unable to complete this booking.",
-        "error",
-        2500,
-      );
-    } finally {
-      dispatch(setActionLoader(false));
-    }
-  };
-
   const handleCancelBooking = async (reason: string) => {
     if (!bookingId) {
       showBanner(t("error"), t("bookingIdRequired"), "error", 2500);
@@ -2101,15 +2065,15 @@ export default function BookingDetailsById() {
           </View>
 
           {/* Assigned staff — business & staff roles, when a staff member is assigned.
-              Business can open staff detail; staff role is view-only. */}
+              Business can open staff detail (except owner); staff role is view-only. */}
           {hasAssignedStaff && (
             <TouchableOpacity
               style={[styles.assignedStaffRow, styles.cardShadow]}
-              activeOpacity={userRole === "business" ? 0.7 : 1}
+              activeOpacity={canOpenAssignedStaff ? 0.7 : 1}
               onPress={
-                userRole === "business" ? handleAssignedStaffPress : undefined
+                canOpenAssignedStaff ? handleAssignedStaffPress : undefined
               }
-              disabled={userRole !== "business"}
+              disabled={!canOpenAssignedStaff}
             >
               <View style={styles.assignedStaffAvatar}>
                 {assignedStaffImageUri ? (
@@ -2135,7 +2099,7 @@ export default function BookingDetailsById() {
                   </Text>
                 ) : null}
               </View>
-              {userRole === "business" ? (
+              {canOpenAssignedStaff ? (
                 <Ionicons
                   name="chevron-forward"
                   size={moderateWidthScale(14)}
@@ -2677,8 +2641,7 @@ export default function BookingDetailsById() {
           ) : null}
         </ScrollView>
 
-        {(canShowMarkComplete ||
-          canShowOutcomeActions ||
+        {(canShowOutcomeActions ||
           canShowCorrectOutcome ||
           canShowRestoreVisit ||
           canShowBottomReschedule ||
@@ -2689,22 +2652,6 @@ export default function BookingDetailsById() {
               { paddingBottom: Math.max(insets.bottom, moderateHeightScale(14)) },
             ]}
           >
-            {canShowMarkComplete ? (
-              <Button
-                title="Mark as Completed"
-                onPress={handleCompleteBooking}
-                containerStyle={styles.completeButton}
-                leftIcon={
-                  <View style={styles.completeIcon}>
-                    <Ionicons
-                      name="checkmark"
-                      size={moderateWidthScale(16)}
-                      color={theme.buttonBack}
-                    />
-                  </View>
-                }
-              />
-            ) : null}
             {canShowOutcomeActions ? (
               <View style={styles.outcomeActionsRow}>
                 <TouchableOpacity
