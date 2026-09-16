@@ -252,6 +252,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
+    bookingIdText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textAlign: "right",
+    },
     statusBadge: {
       backgroundColor: theme.orangeBrown30,
       paddingHorizontal: moderateWidthScale(8),
@@ -797,6 +803,9 @@ export default function BookingScreen() {
             color={theme.darkGreen}
           />
         </View>
+        {!!item.id && (
+          <Text style={styles.bookingIdText}>{`#FP${item.id}`}</Text>
+        )}
       </View>
     </TouchableOpacity>
   );

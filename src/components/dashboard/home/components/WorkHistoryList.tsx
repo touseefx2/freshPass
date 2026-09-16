@@ -54,6 +54,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    bookingIdText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      marginTop: moderateHeightScale(2),
+    },
     workHistoryPrice: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
@@ -241,6 +247,9 @@ export default function WorkHistoryList() {
                 <Text style={styles.workHistoryDate}>
                   {formatDateTime(item.appointmentDate, item.appointmentTime)}
                 </Text>
+                {!!item.id && (
+                  <Text style={styles.bookingIdText}>{`#FP${item.id}`}</Text>
+                )}
               </View>
               <Text style={styles.workHistoryPrice}>
                 {formatPrice(item.paidAmount ?? item.totalPrice)}
