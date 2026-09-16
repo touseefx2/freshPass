@@ -1,4 +1,4 @@
-/** Shared types for cancellation / no-show fee flows (one-time services). */
+/** Shared types for cancellation / no-show / membership visit flows. */
 
 export type CancellationCutoffOption = "12" | "24" | "48" | "always";
 
@@ -9,6 +9,8 @@ export interface BusinessCancellationPolicy {
   cancellation_fee_percent: number;
   no_show_fee_percent: number;
   cutoff_options: CancellationCutoffOption[] | string[];
+  membership_late_cancel_forfeits_visit?: boolean;
+  membership_no_show_forfeits_visit?: boolean;
 }
 
 export interface AppointmentCancellationPolicy {
@@ -21,33 +23,49 @@ export interface AppointmentCancellationPolicy {
   acceptedAt?: string | null;
 }
 
-export interface CancellationPolicyQuote {
+export interface MembershipPolicy {
   cutoffHours: number | null;
-  alwaysCharge: boolean;
-  cancellationFeePercent: number;
-  noShowFeePercent: number;
-  servicePrice: number;
-  cancellationFeeAmount: number;
-  noShowFeeAmount: number;
+  alwaysLate: boolean;
+  lateCancelForfeitsVisit: boolean;
+  noShowForfeitsVisit: boolean;
   freeCancellationUntil: string | null;
-  currency: string;
+  text: string;
+  acceptedAt?: string | null;
+}
+
+export interface CancellationPolicyQuote {
+  appointmentType?: "service" | "subscription" | string;
+  cutoffHours: number | null;
+  alwaysCharge?: boolean;
+  alwaysLate?: boolean;
+  cancellationFeePercent?: number;
+  noShowFeePercent?: number;
+  servicePrice?: number;
+  cancellationFeeAmount?: number;
+  noShowFeeAmount?: number;
+  lateCancelForfeitsVisit?: boolean;
+  noShowForfeitsVisit?: boolean;
+  freeCancellationUntil: string | null;
+  currency?: string;
   policyText: string;
 }
 
 export interface CancellationPreview {
   type: string;
-  paid: boolean;
+  appointmentType?: "service" | "subscription" | string;
+  paid?: boolean;
   byCustomer: boolean;
   isLate: boolean;
-  cutoffHours: number | null;
-  feePercent: number;
-  servicePrice: number;
-  feeAmount: number;
-  refundAmount: number;
-  chargeAmount: number;
-  hasSavedCard: boolean;
-  freeCancellationUntil: string | null;
-  currency: string;
+  cutoffHours?: number | null;
+  feePercent?: number;
+  servicePrice?: number;
+  feeAmount?: number;
+  refundAmount?: number;
+  chargeAmount?: number;
+  hasSavedCard?: boolean;
+  forfeitsVisit?: boolean;
+  freeCancellationUntil?: string | null;
+  currency?: string;
   message: string;
 }
 
@@ -56,15 +74,18 @@ export interface OutcomePreview {
   title: string;
   question: string;
   message: string;
-  paid: boolean;
-  servicePrice: number;
-  feePercent: number;
-  feeAmount: number;
-  chargeAmount: number;
-  refundAmount: number;
-  hasSavedCard: boolean;
-  policyApplies: boolean;
-  currency: string;
+  type?: string;
+  appointmentType?: "service" | "subscription" | string;
+  paid?: boolean;
+  servicePrice?: number;
+  feePercent?: number;
+  feeAmount?: number;
+  chargeAmount?: number;
+  refundAmount?: number;
+  hasSavedCard?: boolean;
+  policyApplies?: boolean;
+  forfeitsVisit?: boolean;
+  currency?: string;
 }
 
 export interface OutcomeCorrectionPreview {
@@ -106,6 +127,13 @@ export type OutcomePaymentStatus =
   | "charge_failed"
   | "no_charge"
   | "membership";
+
+export type AppointmentVisitStatus =
+  | "reserved"
+  | "used"
+  | "forfeited"
+  | "returned"
+  | "restored";
 
 export type OutcomeVisitStatus =
   | "used"

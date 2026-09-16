@@ -1660,6 +1660,120 @@ function CheckoutContent() {
     [],
   );
 
+  const completeSubscriptionBooking = async () => {
+    const resolvedStaffId = resolveAppointmentStaffId({
+      selectedStaff: selectedStaffId,
+      assignedStaffId,
+      selectedTimeSlot: reduxSelectedTimeSlot,
+    });
+    const requestBody: {
+      business_id: number;
+      appointment_type: string;
+      appointment_date: string;
+      appointment_time: string;
+      notes?: string;
+      staff_id?: number;
+      subscription_id?: number;
+      service_ids: number[];
+      image_urls?: string[];
+      policy_accepted: boolean;
+    } = {
+      business_id: parseInt(params.business_id || businessId || "0", 10),
+      appointment_type: "subscription",
+      appointment_date: reduxSelectedDate || "",
+      appointment_time: reduxSelectedTimeSlot || "",
+      service_ids: selectedSubscriptionServiceIds,
+      policy_accepted: true,
+    };
+    if (note && note.trim()) {
+      requestBody.notes = note.trim();
+    }
+    if (resolvedStaffId != null) {
+      requestBody.staff_id = resolvedStaffId;
+    }
+    if (subscriptionId != null) {
+      requestBody.subscription_id = subscriptionId;
+    }
+    Logger.log("requestBody (subscription)", requestBody);
+    dispatch(setActionLoader(true));
+    try {
+      const response = (await postCreateAppointment(requestBody)) as {
+        success?: boolean;
+        message?: string;
+        data?: {
+          success: boolean;
+          message: string;
+          data: { id: number; appointmentDate?: string; [key: string]: any };
+        };
+      } | null;
+      if (!response) {
+        dispatch(setActionLoader(false));
+        return;
+      }
+      dispatch(setActionLoader(false));
+      const isSuccess = response?.success || response?.data?.success;
+      if (isSuccess) {
+        const appointmentId =
+          (response?.data as any)?.id ||
+          (response?.data as any)?.data?.id ||
+          null;
+        const appointmentDate =
+          (response?.data as any)?.appointmentDate ||
+          (response?.data as any)?.data?.appointmentDate ||
+          null;
+        let dateFormatted = "";
+        if (appointmentDate) {
+          const dateParts = String(appointmentDate).split("/");
+          if (dateParts.length === 3) {
+            const [month, day, year] = dateParts;
+            dateFormatted = `${year}${month.padStart(2, "0")}${day.padStart(2, "0")}`;
+          }
+        }
+        const bookingId =
+          appointmentId && dateFormatted
+            ? `${dateFormatted}${appointmentId}`
+            : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
+        showBanner("Success", "Your booking is confirmed.", "success", 3000);
+        router.push({
+          pathname: "/(main)/bookingDetail",
+          params: {
+            appointmentId: appointmentId ? String(appointmentId) : "",
+            bookingId: bookingId,
+            selectedStaff: selectedStaffId,
+            selectedStaffMember: selectedStaffMember
+              ? JSON.stringify(selectedStaffMember)
+              : "",
+            selectedDate: reduxSelectedDate || "",
+            selectedTimeSlot: reduxSelectedTimeSlot || "",
+            businessId: params.business_id || businessId || "",
+            business_id: params.business_id || businessId || "",
+            subscriptionId:
+              subscriptionId != null ? String(subscriptionId) : "",
+            note: note || "",
+            fromCheckoutBooking: "true",
+          },
+        });
+      } else {
+        showBanner(
+          "Booking Failed",
+          response?.message ||
+            "Failed to book appointment. Please try again.",
+          "error",
+          4000,
+        );
+      }
+    } catch (error: any) {
+      dispatch(setActionLoader(false));
+      Logger.error("Appointment API Error:", error);
+      showBanner(
+        "Booking Failed",
+        getAppointmentImageErrorMessage(error),
+        "error",
+        4000,
+      );
+    }
+  };
+
   const handleBookNow = async () => {
     if (isSubscriptionMode) {
       if (!reduxSelectedTimeSlot) {
@@ -1693,114 +1807,54 @@ function CheckoutContent() {
         dispatch(setGuestModeModalVisible(true));
         return;
       }
-      const resolvedStaffId = resolveAppointmentStaffId({
-        selectedStaff: selectedStaffId,
-        assignedStaffId,
-        selectedTimeSlot: reduxSelectedTimeSlot,
-      });
-      const requestBody: {
-        business_id: number;
-        appointment_type: string;
-        appointment_date: string;
-        appointment_time: string;
-        notes?: string;
-        staff_id?: number;
-        subscription_id?: number;
-        service_ids: number[];
-        image_urls?: string[];
-      } = {
-        business_id: parseInt(params.business_id || businessId || "0", 10),
-        appointment_type: "subscription",
-        appointment_date: reduxSelectedDate || "",
-        appointment_time: reduxSelectedTimeSlot || "",
-        service_ids: selectedSubscriptionServiceIds,
-      };
-      if (note && note.trim()) {
-        requestBody.notes = note.trim();
-      }
-      if (resolvedStaffId != null) {
-        requestBody.staff_id = resolvedStaffId;
-      }
-      if (subscriptionId != null) {
-        requestBody.subscription_id = subscriptionId;
-      }
-      Logger.log("requestBody (subscription)", requestBody);
+
       dispatch(setActionLoader(true));
       try {
-        const response = (await postCreateAppointment(requestBody)) as {
-          success?: boolean;
+        const quoteResponse = await ApiService.get<{
+          success: boolean;
           message?: string;
-          data?: {
-            success: boolean;
-            message: string;
-            data: { id: number; appointmentDate?: string; [key: string]: any };
-          };
-        } | null;
-        if (!response) {
-          dispatch(setActionLoader(false));
-          return;
-        }
-        dispatch(setActionLoader(false));
-        const isSuccess = response?.success || response?.data?.success;
-        if (isSuccess) {
-          const appointmentId =
-            (response?.data as any)?.id ||
-            (response?.data as any)?.data?.id ||
-            null;
-          const appointmentDate =
-            (response?.data as any)?.appointmentDate ||
-            (response?.data as any)?.data?.appointmentDate ||
-            null;
-          let dateFormatted = "";
-          if (appointmentDate) {
-            const dateParts = String(appointmentDate).split("/");
-            if (dateParts.length === 3) {
-              const [month, day, year] = dateParts;
-              dateFormatted = `${year}${month.padStart(2, "0")}${day.padStart(2, "0")}`;
-            }
-          }
-          const bookingId =
-            appointmentId && dateFormatted
-              ? `${dateFormatted}${appointmentId}`
-              : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
-          showBanner("Success", "Your booking is confirmed.", "success", 3000);
-          router.push({
-            pathname: "/(main)/bookingDetail",
-            params: {
-              appointmentId: appointmentId ? String(appointmentId) : "",
-              bookingId: bookingId,
-              selectedStaff: selectedStaffId,
-              selectedStaffMember: selectedStaffMember
-                ? JSON.stringify(selectedStaffMember)
-                : "",
-              selectedDate: reduxSelectedDate || "",
-              selectedTimeSlot: reduxSelectedTimeSlot || "",
-              businessId: params.business_id || businessId || "",
-              business_id: params.business_id || businessId || "",
-              subscriptionId:
-                subscriptionId != null ? String(subscriptionId) : "",
-              note: note || "",
-              fromCheckoutBooking: "true",
-            },
-          });
-        } else {
+          data: CancellationPolicyQuote;
+        }>(
+          appointmentsEndpoints.cancellationPolicyQuote({
+            business_id: parseInt(
+              params.business_id || businessId || "0",
+              10,
+            ),
+            appointment_date: reduxSelectedDate || "",
+            appointment_time: reduxSelectedTimeSlot || "",
+            appointment_type: "subscription",
+          }),
+        );
+
+        if (!quoteResponse?.success || !quoteResponse.data) {
           showBanner(
-            "Booking Failed",
-            response?.message ||
-              "Failed to book appointment. Please try again.",
+            "Error",
+            quoteResponse?.message ||
+              "Could not load the cancellation policy. Please try again.",
             "error",
             4000,
           );
+          return;
         }
+
+        setPolicyQuote({
+          ...quoteResponse.data,
+          appointmentType:
+            quoteResponse.data.appointmentType || "subscription",
+        });
+        setPolicySheetVisible(true);
       } catch (error: any) {
-        dispatch(setActionLoader(false));
-        Logger.error("Appointment API Error:", error);
+        Logger.error("Membership cancellation policy quote error:", error);
         showBanner(
-          "Booking Failed",
-          getAppointmentImageErrorMessage(error),
+          "Error",
+          error?.response?.data?.message ||
+            error?.message ||
+            "Could not load the cancellation policy. Please try again.",
           "error",
           4000,
         );
+      } finally {
+        dispatch(setActionLoader(false));
       }
       return;
     }
@@ -2183,6 +2237,12 @@ function CheckoutContent() {
     setPolicyConfirming(true);
 
     try {
+      if (isSubscriptionMode) {
+        setPolicySheetVisible(false);
+        await completeSubscriptionBooking();
+        return;
+      }
+
       if (paymentMethod === "payLater") {
         dispatch(setActionLoader(true));
         let setupIntentId: string | undefined;
@@ -2651,7 +2711,7 @@ function CheckoutContent() {
         }}
         onConfirm={handlePolicyConfirm}
         quote={policyQuote}
-        isPayLater={paymentMethod === "payLater"}
+        isPayLater={!isSubscriptionMode && paymentMethod === "payLater"}
         confirming={policyConfirming}
       />
     </SafeAreaView>

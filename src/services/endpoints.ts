@@ -34,6 +34,19 @@ export const staffEndpoints = {
   },
   leaveCancel: (id: number) => `/api/leaves/${id}`,
   breaks: `/api/breaks`,
+  workImages: `/api/staff/work-images`,
+  workImage: (imageId: number | string) =>
+    `/api/staff/work-images/${imageId}`,
+  images: (
+    staffId: number | string,
+    page = 1,
+    perPage = 20,
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("page", page.toString());
+    queryParams.append("per_page", perPage.toString());
+    return `/api/staff/${staffId}/images?${queryParams.toString()}`;
+  },
 };
 
 /**
@@ -351,14 +364,20 @@ export const appointmentsEndpoints = {
     business_id: number;
     appointment_date: string;
     appointment_time: string;
-    service_ids: number[];
+    service_ids?: number[];
+    appointment_type?: "service" | "subscription";
   }) => {
     const q = new URLSearchParams({
       business_id: String(params.business_id),
       appointment_date: params.appointment_date,
       appointment_time: params.appointment_time,
     });
-    params.service_ids.forEach((id) => q.append("service_ids[]", String(id)));
+    if (params.appointment_type) {
+      q.append("appointment_type", params.appointment_type);
+    }
+    (params.service_ids ?? []).forEach((id) =>
+      q.append("service_ids[]", String(id)),
+    );
     return `/api/appointments/cancellation-policy?${q.toString()}`;
   },
   cardSetup: `/api/appointments/card-setup`,
@@ -381,6 +400,8 @@ export const appointmentsEndpoints = {
     `/api/appointments/${id}/outcome-correction-preview`,
   correctOutcome: (id: string | number) =>
     `/api/appointments/${id}/outcome/correct`,
+  restoreVisit: (id: string | number) =>
+    `/api/appointments/${id}/restore-visit`,
   availableSlots: (params: {
     business_id: number;
     date: string;

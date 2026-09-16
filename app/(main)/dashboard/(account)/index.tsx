@@ -434,6 +434,8 @@ export default function AccountScreen() {
       router.push("./(businessProfileSettings)");
     } else if (key === "availability") {
       router.push("./staffAvailability");
+    } else if (key === "uploadWork") {
+      router.push("./staffWorkImages");
     } else if (key === "leaveRequest") {
       router.push("/(main)/leaveList");
     } else if (key === "customers") {
@@ -476,6 +478,7 @@ export default function AccountScreen() {
       | "personal"
       | "business"
       | "availability"
+      | "uploadWork"
       | "leaveRequest"
       | "customers"
       | "language"
@@ -509,7 +512,10 @@ export default function AccountScreen() {
         ]
       : []),
     ...(userRole === "staff" && !isGuest
-      ? [{ key: "availability" as const, title: t("setAvailability") }]
+      ? [
+          { key: "availability" as const, title: t("setAvailability") },
+          { key: "uploadWork" as const, title: t("uploadYourWork") },
+        ]
       : []),
     ...(userRole === "business" || userRole === "customer"
       ? [{ key: "aiTools" as const, title: t("aiTools") }]
@@ -579,6 +585,8 @@ export default function AccountScreen() {
         return { name: "storefront", family: "material" };
       case "availability":
         return { name: "event-available", family: "material" };
+      case "uploadWork":
+        return { name: "photo-library", family: "material" };
       case "leaveRequest":
         return { name: "event-busy", family: "material" };
       case "customers":

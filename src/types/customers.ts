@@ -25,6 +25,8 @@ export type BusinessCustomerVisits = {
   used: number;
   upcoming: number;
   remaining: number;
+  /** Visits that can still be booked (excludes reserved). Prefer over remaining. */
+  bookable?: number;
 };
 
 export type BusinessCustomerAppointmentService = {

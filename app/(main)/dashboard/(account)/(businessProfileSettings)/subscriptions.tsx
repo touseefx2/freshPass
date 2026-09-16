@@ -969,11 +969,22 @@ export default function ManageSubscriptionsScreen() {
     currency: string;
     serviceIds: string[];
     serviceCounts?: Record<string, number>;
+    servicesPerMonth?: number;
   }) => {
     if (!requireStripeToCreate()) return;
     setCustomSuggestions((prev) => [
       ...prev,
-      { ...subscription, servicesPerMonth: 0 },
+      {
+        ...subscription,
+        servicesPerMonth:
+          typeof subscription.servicesPerMonth === "number" &&
+          subscription.servicesPerMonth >= 1
+            ? subscription.servicesPerMonth
+            : Object.values(subscription.serviceCounts || {}).reduce(
+                (sum, qty) => sum + (qty || 0),
+                0,
+              ) || 1,
+      },
     ]);
   };
 
@@ -1010,6 +1021,7 @@ export default function ManageSubscriptionsScreen() {
           name: subscription.packageName,
           description: subscription.description ?? subscription.packageName,
           price: subscription.price,
+          visits_included: Math.max(1, subscription.servicesPerMonth || 1),
           plan_services: planServices,
           service_quantities: serviceQuantities,
         };

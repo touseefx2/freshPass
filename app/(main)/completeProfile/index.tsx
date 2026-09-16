@@ -282,6 +282,7 @@ export default function CompleteProfile() {
           name: subscription.packageName,
           description: subscription.description ?? subscription.packageName,
           price: subscription.price,
+          visits_included: Math.max(1, subscription.servicesPerMonth || 1),
           plan_services: planServices,
           service_quantities: serviceQuantities,
         };

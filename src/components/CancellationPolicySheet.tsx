@@ -174,6 +174,8 @@ export default function CancellationPolicySheet({
   const [agreed, setAgreed] = useState(false);
   const prevVisibleRef = useRef(false);
 
+  const isMembership = quote?.appointmentType === "subscription";
+
   useEffect(() => {
     if (visible && !prevVisibleRef.current) {
       setAgreed(false);
@@ -183,29 +185,46 @@ export default function CancellationPolicySheet({
 
   const freeCancellationValue = (() => {
     if (!quote) return "—";
-    if (quote.cancellationFeePercent === 0) {
+    if (
+      !isMembership &&
+      quote.cancellationFeePercent === 0 &&
+      !quote.alwaysCharge
+    ) {
       return t("freeCancellationAnyTime");
     }
     const formatted = formatLocalDateTime(quote.freeCancellationUntil);
     if (formatted) {
       return t("freeCancellationUntil", { date: formatted });
     }
+    if (isMembership) {
+      return t("visitReturned");
+    }
+    if (quote.cancellationFeePercent === 0) {
+      return t("freeCancellationAnyTime");
+    }
     return t("freeCancellationNotAvailable");
   })();
 
   const lateFeeValue = quote
-    ? `${quote.cancellationFeePercent}% (${formatCurrencyAmount(
-        quote.cancellationFeeAmount,
+    ? `${quote.cancellationFeePercent ?? 0}% (${formatCurrencyAmount(
+        quote.cancellationFeeAmount ?? 0,
         quote.currency,
       )})`
     : "—";
 
   const noShowFeeValue = quote
-    ? `${quote.noShowFeePercent}% (${formatCurrencyAmount(
-        quote.noShowFeeAmount,
+    ? `${quote.noShowFeePercent ?? 0}% (${formatCurrencyAmount(
+        quote.noShowFeeAmount ?? 0,
         quote.currency,
       )})`
     : "—";
+
+  const lateVisitValue = quote?.lateCancelForfeitsVisit
+    ? t("usesOneVisit")
+    : t("visitReturned");
+  const noShowVisitValue = quote?.noShowForfeitsVisit
+    ? t("usesOneVisit")
+    : t("visitReturned");
 
   return (
     <ModalizeBottomSheet
@@ -213,7 +232,9 @@ export default function CancellationPolicySheet({
       onClose={onClose}
       title={t("cancellationPolicy")}
       footerButtonTitle={
-        isPayLater ? t("agreeAndAddCard") : t("agreeAndContinue")
+        isPayLater && !isMembership
+          ? t("agreeAndAddCard")
+          : t("agreeAndContinue")
       }
       onFooterButtonPress={onConfirm}
       footerButtonDisabled={!agreed || confirming || !quote}
@@ -223,19 +244,27 @@ export default function CancellationPolicySheet({
         <Text style={styles.rowValue}>{freeCancellationValue}</Text>
       </View>
       <View style={styles.row}>
-        <Text style={styles.rowLabel}>{t("lateCancellationFee")}</Text>
-        <Text style={styles.rowValue}>{lateFeeValue}</Text>
+        <Text style={styles.rowLabel}>
+          {isMembership ? t("lateCancellation") : t("lateCancellationFee")}
+        </Text>
+        <Text style={styles.rowValue}>
+          {isMembership ? lateVisitValue : lateFeeValue}
+        </Text>
       </View>
       <View style={styles.row}>
-        <Text style={styles.rowLabel}>{t("noShowFee")}</Text>
-        <Text style={styles.rowValue}>{noShowFeeValue}</Text>
+        <Text style={styles.rowLabel}>
+          {isMembership ? t("statusNoShow") : t("noShowFee")}
+        </Text>
+        <Text style={styles.rowValue}>
+          {isMembership ? noShowVisitValue : noShowFeeValue}
+        </Text>
       </View>
 
       {quote?.policyText ? (
         <Text style={styles.policyText}>{quote.policyText}</Text>
       ) : null}
 
-      {isPayLater ? (
+      {isPayLater && !isMembership ? (
         <View style={styles.payLaterCard}>
           <View style={styles.payLaterAccent} />
           <View style={styles.payLaterIconWrap}>

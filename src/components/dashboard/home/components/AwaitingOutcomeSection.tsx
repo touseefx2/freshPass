@@ -34,11 +34,14 @@ export interface AwaitingOutcomeAppointment {
   staffName?: string | null;
   appointmentDate: string;
   appointmentTime: string;
+  appointmentType?: "service" | "subscription" | string;
   paymentMethod?: string;
   paidAt?: string | null;
   canMarkOutcome?: boolean;
   hasSavedCard?: boolean;
   services?: Array<{ id: number; name: string }>;
+  subscriptionServices?: Array<{ id: number; name: string }>;
+  subscription?: string | null;
   serviceName?: string;
 }
 
@@ -124,6 +127,9 @@ const createStyles = (theme: Theme) =>
     chipPaid: {
       backgroundColor: theme.apptMintBg,
     },
+    chipMembership: {
+      backgroundColor: theme.lightBeige,
+    },
     chipText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
@@ -131,6 +137,9 @@ const createStyles = (theme: Theme) =>
     },
     chipTextPaid: {
       color: theme.apptMintAccent,
+    },
+    chipTextMembership: {
+      color: theme.darkGreen,
     },
     statusRow: {
       flexDirection: "row",
@@ -184,6 +193,13 @@ const createStyles = (theme: Theme) =>
   });
 
 function formatServiceLabel(item: AwaitingOutcomeAppointment): string {
+  if (item.appointmentType === "subscription") {
+    const services = item.subscriptionServices || item.services || [];
+    if (item.serviceName) return item.serviceName;
+    if (services.length === 0) return item.subscription || "—";
+    if (services.length === 1) return services[0].name;
+    return `${services[0].name} +${services.length - 1} more`;
+  }
   if (item.serviceName) return item.serviceName;
   const services = item.services || [];
   if (services.length === 0) return "—";
@@ -339,8 +355,16 @@ export default function AwaitingOutcomeSection({
         </View>
       ) : (
         items.map((item) => {
+          const isMembership = item.appointmentType === "subscription";
           const isPayLater =
-            item.paymentMethod === "pay_later" && !item.paidAt;
+            !isMembership &&
+            item.paymentMethod === "pay_later" &&
+            !item.paidAt;
+          const chipLabel = isMembership
+            ? item.subscription || t("membershipsSection")
+            : isPayLater
+              ? t("payLaterLabel")
+              : t("paidLabel");
           return (
             <TouchableOpacity
               key={item.id}
@@ -379,14 +403,24 @@ export default function AwaitingOutcomeSection({
 
                 <View style={styles.cardRight}>
                   <View style={styles.statusRow}>
-                    <View style={[styles.chip, !isPayLater && styles.chipPaid]}>
+                    <View
+                      style={[
+                        styles.chip,
+                        isMembership
+                          ? styles.chipMembership
+                          : !isPayLater && styles.chipPaid,
+                      ]}
+                    >
                       <Text
                         style={[
                           styles.chipText,
-                          !isPayLater && styles.chipTextPaid,
+                          isMembership
+                            ? styles.chipTextMembership
+                            : !isPayLater && styles.chipTextPaid,
                         ]}
+                        numberOfLines={1}
                       >
-                        {isPayLater ? t("payLaterLabel") : t("paidLabel")}
+                        {chipLabel}
                       </Text>
                     </View>
                     <Entypo
@@ -451,6 +485,7 @@ export default function AwaitingOutcomeSection({
         confirmDestructive={activeOutcome === "no_show"}
         showNoSavedCardWarning={
           !!preview &&
+          preview.appointmentType !== "subscription" &&
           activeOutcome === "no_show" &&
           !preview.hasSavedCard &&
           !preview.paid

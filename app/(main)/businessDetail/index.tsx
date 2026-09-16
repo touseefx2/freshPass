@@ -24,6 +24,7 @@ import {
   TextInput,
 } from "react-native";
 import { MaterialIcons, FontAwesome5, Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import dayjs from "dayjs";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -785,16 +786,17 @@ const createStyles = (theme: Theme) =>
     staffGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(12),
+      gap: moderateWidthScale(10),
     },
     staffCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(12),
-      flexDirection: "row",
-      alignItems: "center",
-      width: (SCREEN_WIDTH - moderateWidthScale(52)) / 2,
-      gap: moderateWidthScale(12),
+      width: (SCREEN_WIDTH - moderateWidthScale(60)) / 3,
+      height: heightScale(132),
+      backgroundColor: theme.emptyProfileImage,
+      borderRadius: moderateWidthScale(14),
+      overflow: "hidden",
+      borderWidth: 1.5,
+      borderColor: theme.borderLight,
+      position: "relative",
     },
     shadow: {
       shadowColor: theme.shadow,
@@ -806,31 +808,22 @@ const createStyles = (theme: Theme) =>
       shadowRadius: 1.0,
       elevation: 1,
     },
-    staffImageWrapper: {
-      position: "relative",
-      width: widthScale(35),
-      height: widthScale(35),
-      justifyContent: "center",
-      alignItems: "center",
-    },
     staffProfileImage: {
-      width: widthScale(35),
-      height: widthScale(35),
-      borderRadius: widthScale(35) / 2,
+      ...StyleSheet.absoluteFillObject,
+      width: "100%",
+      height: "100%",
       backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
     },
     staffStatusDot: {
       position: "absolute",
-      bottom: moderateHeightScale(-2),
-      right: moderateWidthScale(-2),
+      top: moderateHeightScale(8),
+      right: moderateWidthScale(8),
       width: moderateWidthScale(10),
       height: moderateWidthScale(10),
       borderRadius: moderateWidthScale(10) / 2,
-      borderWidth: 1,
+      borderWidth: 2,
       borderColor: theme.white,
+      zIndex: 2,
     },
     staffStatusDotActive: {
       backgroundColor: theme.toggleActive,
@@ -838,20 +831,33 @@ const createStyles = (theme: Theme) =>
     staffStatusDotInactive: {
       backgroundColor: theme.lightGreen5,
     },
-    staffInfo: {
-      flex: 1,
+    staffInfoStrip: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: moderateWidthScale(8),
+      paddingTop: moderateHeightScale(36),
+      paddingBottom: moderateHeightScale(8),
+      justifyContent: "flex-end",
+      gap: moderateHeightScale(2),
     },
     staffName: {
       fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(2),
+      fontFamily: fonts.fontBold,
+      color: theme.white,
       textTransform: "capitalize",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
     },
     staffExperience: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      color: theme.white,
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
     },
     loadMoreButton: {
       alignItems: "center",
@@ -3367,7 +3373,7 @@ export default function BusinessDetailScreen() {
             {displayedStaff.map((staff: any) => (
               <TouchableOpacity
                 key={staff.id}
-                style={[styles.staffCard, styles.shadow]}
+                style={styles.staffCard}
                 activeOpacity={0.7}
                 onPress={() =>
                   router.push({
@@ -3376,34 +3382,41 @@ export default function BusinessDetailScreen() {
                   })
                 }
               >
-                <View style={styles.staffImageWrapper}>
-                  <Image
-                    source={{ uri: staff.image }}
-                    style={styles.staffProfileImage}
-                  />
-                  <View
-                    style={[
-                      styles.staffStatusDot,
-                      staff.active
-                        ? styles.staffStatusDotActive
-                        : styles.staffStatusDotInactive,
-                    ]}
-                  />
-                </View>
-                <View style={styles.staffInfo}>
+                <Image
+                  source={{ uri: staff.image }}
+                  style={styles.staffProfileImage}
+                  resizeMode="cover"
+                />
+                <View
+                  style={[
+                    styles.staffStatusDot,
+                    staff.active
+                      ? styles.staffStatusDotActive
+                      : styles.staffStatusDotInactive,
+                  ]}
+                />
+                <LinearGradient
+                  colors={[
+                    "transparent",
+                    theme.lightGreen5,
+                    theme.lightGreen,
+                    theme.black,
+                  ]}
+                  locations={[0, 0.35, 0.7, 1]}
+                  style={styles.staffInfoStrip}
+                  pointerEvents="none"
+                >
                   <Text style={styles.staffName} numberOfLines={1}>
-                    {staff.name}
+                    {staff.is_owner
+                      ? `${staff.name} · ${t("owner")}`
+                      : staff.name}
                   </Text>
-                  {staff.is_owner ? (
-                    <Text numberOfLines={1} style={styles.staffExperience}>
-                      {t("owner")}
-                    </Text>
-                  ) : staff.experience ? (
+                  {staff.experience ? (
                     <Text numberOfLines={1} style={styles.staffExperience}>
                       {staff.experience}
                     </Text>
                   ) : null}
-                </View>
+                </LinearGradient>
               </TouchableOpacity>
             ))}
           </View>

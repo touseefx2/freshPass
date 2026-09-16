@@ -33,6 +33,7 @@ import { Ionicons, Entypo, Feather, MaterialCommunityIcons } from "@expo/vector-
 import Button from "@/src/components/button";
 import CancelBookingBottomSheet from "@/src/components/CancelBookingBottomSheet";
 import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
+import RestoreVisitSheet from "@/src/components/RestoreVisitSheet";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
@@ -72,6 +73,8 @@ import { resolveApiImageUrl } from "@/src/utils/media";
 import type { AffiliatedBusiness } from "@/src/types/affiliation";
 import type {
   AppointmentCancellationPolicy,
+  AppointmentVisitStatus,
+  MembershipPolicy,
   OutcomeCorrectionPreview,
   OutcomePreview,
   OutcomeSummary,
@@ -113,6 +116,41 @@ function getFreeCancellationLabel(
     return translate("freeCancellationUntil", { date: formatted });
   }
   return translate("freeCancellationNotAvailable");
+}
+
+function getMembershipFreeCancellationLabel(
+  policy: MembershipPolicy,
+  translate: (key: string, options?: Record<string, string>) => string,
+): string {
+  const formatted = formatPolicyDateTime(policy.freeCancellationUntil);
+  if (formatted) {
+    return translate("freeCancellationUntil", { date: formatted });
+  }
+  if (!policy.lateCancelForfeitsVisit) {
+    return translate("visitReturned");
+  }
+  return translate("freeCancellationNotAvailable");
+}
+
+function getVisitStatusLabel(
+  visitStatus: AppointmentVisitStatus | string | null | undefined,
+  translate: (key: string) => string,
+): string | null {
+  if (!visitStatus) return null;
+  switch (visitStatus) {
+    case "forfeited":
+      return translate("visitStatusForfeited");
+    case "returned":
+      return translate("visitStatusReturned");
+    case "restored":
+      return translate("visitStatusRestored");
+    case "used":
+      return translate("outcomeVisitUsed");
+    case "reserved":
+      return translate("visitStatusReserved");
+    default:
+      return String(visitStatus);
+  }
 }
 type PotentialContactsResponse = {
   success: boolean;
@@ -182,6 +220,7 @@ interface BookingItem {
     upcoming: number;
     total: number;
     remaining: number;
+    bookable?: number;
   } | null;
   owner?: {
     id: number;
@@ -214,12 +253,16 @@ interface BookingItem {
     size?: number | null;
   }>;
   cancellationPolicy?: AppointmentCancellationPolicy | null;
+  membershipPolicy?: MembershipPolicy | null;
+  visitStatus?: AppointmentVisitStatus | string | null;
+  visitRestoreReason?: string | null;
   hasSavedCard?: boolean;
   cardLastFour?: string | null;
   outcomeMarkedAt?: string | null;
   outcomeMarkedById?: number | null;
   canMarkOutcome?: boolean;
   canCorrectOutcome?: boolean;
+  canRestoreVisit?: boolean;
   outcomeSummary?: OutcomeSummary | null;
 }
 
@@ -275,6 +318,7 @@ interface ApiBookingResponse {
     upcoming: number;
     total: number;
     remaining: number;
+    bookable?: number;
   } | null;
   staffId: number | null;
   staffName: string | null;
@@ -308,6 +352,9 @@ interface ApiBookingResponse {
   tip?: PaidTip | null;
   pendingTip?: PendingTip | null;
   cancellationPolicy?: AppointmentCancellationPolicy | null;
+  membershipPolicy?: MembershipPolicy | null;
+  visitStatus?: AppointmentVisitStatus | string | null;
+  visitRestoreReason?: string | null;
   hasSavedCard?: boolean;
   cardLastFour?: string | null;
   card_last_four?: string | null;
@@ -315,6 +362,7 @@ interface ApiBookingResponse {
   outcomeMarkedById?: number | null;
   canMarkOutcome?: boolean;
   canCorrectOutcome?: boolean;
+  canRestoreVisit?: boolean;
   outcomeSummary?: OutcomeSummary | null;
 }
 
@@ -346,6 +394,9 @@ export default function BookingDetailsById() {
   const [correctionConfirming, setCorrectionConfirming] = useState(false);
   const [correctionPreview, setCorrectionPreview] =
     useState<OutcomeCorrectionPreview | null>(null);
+  const [restoreVisitSheetVisible, setRestoreVisitSheetVisible] =
+    useState(false);
+  const [restoreVisitSubmitting, setRestoreVisitSubmitting] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const hasShownReviewPromptForVisit = useRef(false);
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
@@ -686,6 +737,9 @@ export default function BookingDetailsById() {
       tip: apiData.tip ?? null,
       pendingTip: apiData.pendingTip ?? null,
       cancellationPolicy: apiData.cancellationPolicy ?? null,
+      membershipPolicy: apiData.membershipPolicy ?? null,
+      visitStatus: apiData.visitStatus ?? null,
+      visitRestoreReason: apiData.visitRestoreReason ?? null,
       hasSavedCard: apiData.hasSavedCard ?? false,
       cardLastFour: normalizeCardLastFour(
         apiData.cardLastFour ?? apiData.card_last_four,
@@ -694,6 +748,7 @@ export default function BookingDetailsById() {
       outcomeMarkedById: apiData.outcomeMarkedById ?? null,
       canMarkOutcome: apiData.canMarkOutcome ?? false,
       canCorrectOutcome: apiData.canCorrectOutcome ?? false,
+      canRestoreVisit: apiData.canRestoreVisit ?? false,
       outcomeSummary: apiData.outcomeSummary ?? null,
       images:
         Array.isArray(apiData.images) && apiData.images.length > 0
@@ -1094,8 +1149,11 @@ export default function BookingDetailsById() {
     (userRole === "business" || userRole === "staff");
   const canShowOutcomeActions = !!booking?.canMarkOutcome;
   const canShowCorrectOutcome = !!booking?.canCorrectOutcome;
+  const canShowRestoreVisit = !!booking?.canRestoreVisit;
   const canShowBottomButtonRow =
     canShowBottomReschedule || canShowBottomCancel;
+
+  const visitStatusLabel = getVisitStatusLabel(booking?.visitStatus, t);
 
   const businessName = booking?.businessName || booking?.location || "---";
   const businessLatitude = booking?.businessLatitude
@@ -1499,6 +1557,46 @@ export default function BookingDetailsById() {
       );
     } finally {
       setCorrectionConfirming(false);
+    }
+  };
+
+  const handleRestoreVisit = async (reason: string) => {
+    if (!bookingId || restoreVisitSubmitting) return;
+    setRestoreVisitSubmitting(true);
+    try {
+      const response = await ApiService.post<{
+        success: boolean;
+        message?: string;
+      }>(appointmentsEndpoints.restoreVisit(bookingId), { reason });
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || t("restoreVisitSuccess"),
+          "success",
+          2500,
+        );
+        setRestoreVisitSheetVisible(false);
+        await fetchBookingDetails();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || t("restoreVisitFailed"),
+          "error",
+          3000,
+        );
+      }
+    } catch (error: any) {
+      Logger.error("Restore visit error:", error);
+      showBanner(
+        t("error"),
+        error?.response?.data?.message ||
+          error?.message ||
+          t("restoreVisitFailed"),
+        "error",
+        3000,
+      );
+    } finally {
+      setRestoreVisitSubmitting(false);
     }
   };
 
@@ -2218,7 +2316,7 @@ export default function BookingDetailsById() {
               ) : (
                 <Text style={styles.paymentAmount}>
                   {booking.subscriptionVisits
-                    ? `${booking.subscriptionVisits.remaining}/${booking.subscriptionVisits.total} left`
+                    ? `${booking.subscriptionVisits.bookable ?? booking.subscriptionVisits.remaining}/${booking.subscriptionVisits.total} left`
                     : booking.price}
                 </Text>
               )}
@@ -2327,9 +2425,10 @@ export default function BookingDetailsById() {
               />
             )}
 
-          {/* Agreed cancellation policy */}
+          {/* Agreed cancellation / membership policy */}
           {userRole === "customer" &&
             booking.cancellationPolicy &&
+            booking.type !== "subscription" &&
             (booking.status === "ongoing" || booking.status === "active") && (
               <View style={styles.cancellationPolicyCard}>
                 <View style={styles.cancellationPolicyAccent} />
@@ -2375,6 +2474,80 @@ export default function BookingDetailsById() {
               </View>
             )}
 
+          {userRole === "customer" &&
+            booking.membershipPolicy &&
+            booking.type === "subscription" &&
+            (booking.status === "ongoing" || booking.status === "active") && (
+              <View style={styles.cancellationPolicyCard}>
+                <View style={styles.cancellationPolicyAccent} />
+                <View style={styles.cancellationPolicyHeader}>
+                  <View style={styles.cancellationPolicyIconWrap}>
+                    <MaterialCommunityIcons
+                      name="shield-check-outline"
+                      size={iconScale(18)}
+                      color={theme.white}
+                    />
+                  </View>
+                  <Text style={styles.cancellationPolicyTitle}>
+                    {t("cancellationPolicy")}
+                  </Text>
+                </View>
+
+                <View style={styles.cancellationPolicyRow}>
+                  <Text style={styles.cancellationPolicyRowLabel}>
+                    {t("freeCancellation")}
+                  </Text>
+                  <Text style={styles.cancellationPolicyRowValue}>
+                    {getMembershipFreeCancellationLabel(
+                      booking.membershipPolicy,
+                      t,
+                    )}
+                  </Text>
+                </View>
+
+                <View style={styles.cancellationPolicyRow}>
+                  <Text style={styles.cancellationPolicyRowLabel}>
+                    {t("lateCancellation")}
+                  </Text>
+                  <Text style={styles.cancellationPolicyRowValue}>
+                    {booking.membershipPolicy.lateCancelForfeitsVisit
+                      ? t("usesOneVisit")
+                      : t("visitReturned")}
+                  </Text>
+                </View>
+
+                <View style={styles.cancellationPolicyRow}>
+                  <Text style={styles.cancellationPolicyRowLabel}>
+                    {t("statusNoShow")}
+                  </Text>
+                  <Text style={styles.cancellationPolicyRowValue}>
+                    {booking.membershipPolicy.noShowForfeitsVisit
+                      ? t("usesOneVisit")
+                      : t("visitReturned")}
+                  </Text>
+                </View>
+
+                {booking.membershipPolicy.text ? (
+                  <Text style={styles.cancellationPolicyBodyText}>
+                    {booking.membershipPolicy.text}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
+          {visitStatusLabel &&
+            (isCancelled || isComplete) &&
+            booking.type === "subscription" && (
+              <View style={styles.visitStatusCard}>
+                <Text style={styles.visitStatusLabel}>{visitStatusLabel}</Text>
+                {booking.visitRestoreReason ? (
+                  <Text style={styles.visitStatusReason}>
+                    {booking.visitRestoreReason}
+                  </Text>
+                ) : null}
+              </View>
+            )}
+
           {/* Policy Link */}
           {!isCancelled && !isComplete && !isAwaitingOutcome && userRole === "customer" && (
             <TouchableOpacity
@@ -2404,6 +2577,7 @@ export default function BookingDetailsById() {
         {(canShowMarkComplete ||
           canShowOutcomeActions ||
           canShowCorrectOutcome ||
+          canShowRestoreVisit ||
           canShowBottomReschedule ||
           canShowBottomCancel) && (
           <View
@@ -2457,6 +2631,13 @@ export default function BookingDetailsById() {
                 containerStyle={styles.completeButton}
               />
             ) : null}
+            {canShowRestoreVisit ? (
+              <Button
+                title={t("restoreVisit")}
+                onPress={() => setRestoreVisitSheetVisible(true)}
+                containerStyle={styles.completeButton}
+              />
+            ) : null}
             {canShowBottomButtonRow ? (
               <View style={styles.bottomButtonsRow}>
                 {canShowBottomReschedule ? (
@@ -2501,6 +2682,17 @@ export default function BookingDetailsById() {
           onClose={handleCloseCancelModal}
           onSubmit={handleCancelBooking}
           feeNotice={cancelFeeNotice}
+        />
+
+        <RestoreVisitSheet
+          visible={restoreVisitSheetVisible}
+          onClose={() => {
+            if (!restoreVisitSubmitting) {
+              setRestoreVisitSheetVisible(false);
+            }
+          }}
+          onSubmit={handleRestoreVisit}
+          submitting={restoreVisitSubmitting}
         />
 
         <OutcomeConfirmSheet

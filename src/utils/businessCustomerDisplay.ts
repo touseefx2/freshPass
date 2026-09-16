@@ -239,7 +239,8 @@ export function getStaffDisplayName(
 }
 
 export function formatVisitsSummary(visits: BusinessCustomerVisits): string {
-  return `${visits.remaining} of ${visits.total} visits left`;
+  const left = visits.bookable ?? visits.remaining;
+  return `${left} of ${visits.total} visits left`;
 }
 
 export function getServiceRemainingLabel(

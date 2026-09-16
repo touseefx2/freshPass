@@ -235,6 +235,10 @@ export default function DashboardLayout() {
     Array.isArray(segments) &&
     segments.includes("(account)") &&
     segments.includes("staffAvailability");
+  const isStaffWorkImagesScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("staffWorkImages");
   const isBusinessListScreen =
     Array.isArray(segments) &&
     segments.includes("(home)") &&
@@ -283,6 +287,7 @@ export default function DashboardLayout() {
     isChatBoxScreen ||
     isWorkHistoryScreen ||
     isStaffAvailabilityScreen ||
+    isStaffWorkImagesScreen ||
     isBusinessListScreen ||
     isBusinessDetailScreen ||
     isSubscriptionScreen ||

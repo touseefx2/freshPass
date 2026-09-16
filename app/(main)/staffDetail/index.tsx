@@ -30,11 +30,18 @@ import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
-import { setActionLoader } from "@/src/state/slices/generalSlice";
+import {
+  openFullImageModal,
+  setActionLoader,
+} from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
 import { disableOwnerAsStaff } from "@/src/services/ownerAsStaffService";
 import Logger from "@/src/services/logger";
+import type {
+  StaffWorkImage,
+  StaffWorkImagePage,
+} from "@/src/types/staffWorkImages";
 
 type ActionIconType = "message" | "call" | "email";
 
@@ -494,6 +501,45 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen5,
     },
+    seeAllText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+    },
+    seeAllRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(2),
+    },
+    workPhotosScroll: {
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingBottom: moderateHeightScale(4),
+    },
+    workPhotoCardShadow: {
+      width: widthScale(120),
+      height: widthScale(120),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.background,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.18,
+      shadowRadius: 5,
+      elevation: 4,
+    },
+    workPhotoCard: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(16),
+      overflow: "hidden",
+      backgroundColor: theme.grey15,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    workPhotoImage: {
+      width: "100%",
+      height: "100%",
+    },
     contactPanel: {
       backgroundColor: theme.lightGreen05,
       borderRadius: moderateWidthScale(18),
@@ -789,6 +835,8 @@ export default function StaffDetail() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<StaffDetailData | null>(null);
   const [reinviting, setReinviting] = useState(false);
+  const [workImages, setWorkImages] = useState<StaffWorkImage[]>([]);
+  const [workImagesTotal, setWorkImagesTotal] = useState(0);
   const dataRef = React.useRef<StaffDetailData | null>(null);
   dataRef.current = data;
 
@@ -796,6 +844,8 @@ export default function StaffDetail() {
     setData(null);
     setError(null);
     setLoading(true);
+    setWorkImages([]);
+    setWorkImagesTotal(0);
   }, [staffId]);
 
   const fetchStaffDetails = useCallback(async () => {
@@ -839,11 +889,61 @@ export default function StaffDetail() {
     }
   }, [staffId, t]);
 
+  const fetchWorkImages = useCallback(async () => {
+    if (!staffId) {
+      setWorkImages([]);
+      setWorkImagesTotal(0);
+      return;
+    }
+
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: StaffWorkImagePage;
+      }>(staffEndpoints.images(staffId, 1, 7));
+
+      const pageData = response.data;
+      setWorkImages(pageData?.data ?? []);
+      setWorkImagesTotal(pageData?.meta?.total ?? 0);
+    } catch (err) {
+      Logger.error("Failed to fetch staff work images preview:", err);
+      setWorkImages([]);
+      setWorkImagesTotal(0);
+    }
+  }, [staffId]);
+
   useFocusEffect(
     useCallback(() => {
       fetchStaffDetails();
-    }, [fetchStaffDetails]),
+      fetchWorkImages();
+    }, [fetchStaffDetails, fetchWorkImages]),
   );
+
+  const handleOpenWorkImage = useCallback(
+    (index: number) => {
+      const urls = workImages.map((img) => img.url).filter(Boolean);
+      if (!urls.length) return;
+      dispatch(
+        openFullImageModal({
+          images: urls,
+          initialIndex: index,
+        }),
+      );
+    },
+    [dispatch, workImages],
+  );
+
+  const handleSeeAllWorkImages = useCallback(() => {
+    if (!staffId) return;
+    router.push({
+      pathname: "/(main)/staffWorkImagesGallery",
+      params: {
+        staffId: String(staffId),
+        name: data?.name || "",
+      },
+    } as any);
+  }, [data?.name, router, staffId]);
 
   const handleEditPress = () => {
     if (!data) return;
@@ -1411,6 +1511,51 @@ export default function StaffDetail() {
             </View>
           ) : null}
         </View>
+
+        {workImages.length > 0 ? (
+          <View style={styles.sectionContainerFlush}>
+            <View
+              style={[styles.sectionHeaderRow, styles.sectionHeaderPadded]}
+            >
+              <Text style={styles.sectionTitle}>{t("workPhotosTitle")}</Text>
+              {workImagesTotal > 5 ? (
+                <TouchableOpacity
+                  onPress={handleSeeAllWorkImages}
+                  activeOpacity={0.7}
+                  style={styles.seeAllRow}
+                >
+                  <Text style={styles.seeAllText}>{t("seeAll")}</Text>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={moderateWidthScale(18)}
+                    color={theme.buttonBack}
+                  />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.workPhotosScroll}
+            >
+              {workImages.map((image, index) => (
+                <TouchableOpacity
+                  key={image.id}
+                  activeOpacity={0.85}
+                  onPress={() => handleOpenWorkImage(index)}
+                  style={styles.workPhotoCardShadow}
+                >
+                  <View style={styles.workPhotoCard}>
+                    <Image
+                      source={{ uri: image.url }}
+                      style={styles.workPhotoImage}
+                    />
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         {sortedHours.length > 0 ? (
           <View style={styles.sectionContainerFlush}>

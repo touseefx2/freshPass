@@ -4,6 +4,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -58,7 +59,14 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      marginBottom: moderateHeightScale(8),
+    },
+    sectionHint: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
       marginBottom: moderateHeightScale(12),
+      lineHeight: fontSize.size18,
     },
     optionRow: {
       flexDirection: "row",
@@ -134,6 +142,29 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(20),
       lineHeight: fontSize.size18,
     },
+    membershipSection: {
+      marginTop: moderateHeightScale(28),
+    },
+    switchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(10),
+    },
+    switchLabel: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+    },
     footer: {
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(24),
@@ -178,6 +209,8 @@ export default function CancellationPolicyScreen() {
   ]);
   const [cancellationFee, setCancellationFee] = useState("50");
   const [noShowFee, setNoShowFee] = useState("70");
+  const [lateCancelUsesVisit, setLateCancelUsesVisit] = useState(true);
+  const [noShowUsesVisit, setNoShowUsesVisit] = useState(true);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const loadPolicy = useCallback(async () => {
@@ -195,6 +228,10 @@ export default function CancellationPolicyScreen() {
         setCutoff(String(data.cancellation_cutoff ?? "24"));
         setCancellationFee(String(data.cancellation_fee_percent ?? 0));
         setNoShowFee(String(data.no_show_fee_percent ?? 0));
+        setLateCancelUsesVisit(
+          data.membership_late_cancel_forfeits_visit ?? true,
+        );
+        setNoShowUsesVisit(data.membership_no_show_forfeits_visit ?? true);
         if (Array.isArray(data.cutoff_options) && data.cutoff_options.length) {
           setCutoffOptions(data.cutoff_options.map(String));
         }
@@ -243,6 +280,8 @@ export default function CancellationPolicyScreen() {
         cancellation_cutoff: cutoff,
         cancellation_fee_percent: parseInt(cancellationFee || "0", 10) || 0,
         no_show_fee_percent: parseInt(noShowFee || "0", 10) || 0,
+        membership_late_cancel_forfeits_visit: lateCancelUsesVisit,
+        membership_no_show_forfeits_visit: noShowUsesVisit,
       });
 
       if (response.success) {
@@ -259,6 +298,13 @@ export default function CancellationPolicyScreen() {
           );
           setNoShowFee(
             String(response.data.no_show_fee_percent ?? noShowFee),
+          );
+          setLateCancelUsesVisit(
+            response.data.membership_late_cancel_forfeits_visit ??
+              lateCancelUsesVisit,
+          );
+          setNoShowUsesVisit(
+            response.data.membership_no_show_forfeits_visit ?? noShowUsesVisit,
           );
         }
       } else {
@@ -317,6 +363,9 @@ export default function CancellationPolicyScreen() {
 
             <Text style={styles.sectionLabel}>
               {t("freeCancellationCutoff")}
+            </Text>
+            <Text style={styles.sectionHint}>
+              {t("cancellationPolicyCutoffHelp")}
             </Text>
             {cutoffOptions.map((option) => {
               const selected = cutoff === option;
@@ -394,6 +443,43 @@ export default function CancellationPolicyScreen() {
                 noShowAmount,
               })}
             </Text>
+
+            <View style={styles.membershipSection}>
+              <Text style={styles.sectionLabel}>{t("membershipsSection")}</Text>
+              <Text style={styles.sectionHint}>
+                {t("membershipPolicyHelp")}
+              </Text>
+
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>
+                  {t("membershipLateCancelUsesVisit")}
+                </Text>
+                <Switch
+                  value={lateCancelUsesVisit}
+                  onValueChange={setLateCancelUsesVisit}
+                  trackColor={{
+                    false: theme.borderLight,
+                    true: theme.buttonBack,
+                  }}
+                  thumbColor={theme.white}
+                />
+              </View>
+
+              <View style={styles.switchRow}>
+                <Text style={styles.switchLabel}>
+                  {t("membershipNoShowUsesVisit")}
+                </Text>
+                <Switch
+                  value={noShowUsesVisit}
+                  onValueChange={setNoShowUsesVisit}
+                  trackColor={{
+                    false: theme.borderLight,
+                    true: theme.buttonBack,
+                  }}
+                  thumbColor={theme.white}
+                />
+              </View>
+            </View>
           </ScrollView>
 
           <View style={styles.footer}>

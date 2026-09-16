@@ -15,6 +15,8 @@ export type NotificationSubType =
   | "appointment_outcome_corrected"
   | "appointment_fee_charge_failed"
   | "appointment_cancelled_fee_charged"
+  | "appointment_cancelled_visit_forfeited"
+  | "membership_visit_restored"
   | "payment_request"
   | "review_request"
   | "tip_request"
@@ -27,7 +29,8 @@ export type NotificationSubType =
   | "affiliation_removed"
   | "plan_upgraded"
   | "solo_switch"
-  | "business_availability_sync";
+  | "business_availability_sync"
+  | "customer_subscription_purchased";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -62,6 +65,7 @@ function getNotificationSubType(
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
+ * - type "customer_subscription" + model_id (business role) → Profile → Customers → businessCustomerDetail
  * - type "subscription" (customer role) → Profile → Customer subscriptions
  * - type "subscription" (business role) → Profile → Subscription
  * - type "availability" (staff) → Profile → Staff availability
@@ -82,6 +86,7 @@ const STAFF_AVAILABILITY_PATH =
   "/(main)/dashboard/(account)/staffAvailability";
 const BUSINESS_AVAILABILITY_PATH =
   "/(main)/dashboard/(account)/(businessProfileSettings)/setupAvailability";
+const CUSTOMERS_PATH = "/(main)/dashboard/(account)/customers";
 
 function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
   router.push("/(main)/dashboard/(account)");
@@ -89,6 +94,23 @@ function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
     router.push("/(main)/aiTools/toolList");
     setTimeout(() => {
       router.push("/(main)/aiMemories");
+    }, AI_MEMORY_CHAIN_STEP_MS);
+  }, AI_MEMORY_CHAIN_STEP_MS);
+}
+
+/** Profile → Customers → Customer detail (back stack matches in-app path). */
+function navigateToCustomerDetailViaProfileAndCustomers(
+  router: Router,
+  customerId: number,
+): void {
+  router.push("/(main)/dashboard/(account)");
+  setTimeout(() => {
+    router.push(CUSTOMERS_PATH as any);
+    setTimeout(() => {
+      router.push({
+        pathname: "/(main)/businessCustomerDetail",
+        params: { id: String(customerId) },
+      } as any);
     }, AI_MEMORY_CHAIN_STEP_MS);
   }, AI_MEMORY_CHAIN_STEP_MS);
 }
@@ -386,6 +408,31 @@ export function navigateFromNotificationData(
       "------>navigateFromNotificationData (manageSubscriptionList) -> skipped (no navigation)",
     );
     return;
+  }
+
+  if (type === "customer_subscription") {
+    const modelId = data.model_id as number | undefined;
+    const userRole = store.getState().user.userRole;
+    if (userRole === "business" && modelId != null) {
+      if (options?.fromInAppList) {
+        if (router.canGoBack()) {
+          router.back();
+        }
+        setTimeout(() => {
+          navigateToCustomerDetailViaProfileAndCustomers(router, modelId);
+        }, AI_MEMORY_BACK_DELAY_MS);
+      } else {
+        navigateToCustomerDetailViaProfileAndCustomers(router, modelId);
+      }
+      Logger.log(
+        "------>navigateFromNotificationData (customer_subscription) -> account -> customers -> businessCustomerDetail",
+        {
+          customer_id: modelId,
+          fromInAppList: options?.fromInAppList ?? false,
+        },
+      );
+      return;
+    }
   }
 
   if (type === "subscription") {

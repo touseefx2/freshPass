@@ -63,6 +63,7 @@ interface AdditionalService {
 interface SubscriptionVisits {
   remaining: number;
   total: number;
+  bookable?: number;
 }
 
 interface SubscriptionData {
@@ -1003,8 +1004,11 @@ export default function subscriptionCustomer() {
       const canCancel = canCancelCustomerSubscription(item);
       const showCancelledBanner = pill.label === "Cancelled" && canBook;
       const visits = resolveVisits(item);
-      const hasBookableService = visits
-        ? visits.remaining > 0
+      const visitsLeft = visits
+        ? (visits.bookable ?? visits.remaining)
+        : null;
+      const hasBookableService = visitsLeft != null
+        ? visitsLeft > 0
         : (item.subscriptionPlanServices?.some(
             (svc) => (svc.quantity ?? 1) > 0,
           ) ?? false);
@@ -1098,7 +1102,8 @@ export default function subscriptionCustomer() {
             {visits && (
               <View style={styles.visitsBanner}>
                 <Text style={styles.visitsBannerText}>
-                  Visits remaining: {visits.remaining} of {visits.total}
+                  Visits remaining: {visits.bookable ?? visits.remaining} of{" "}
+                  {visits.total}
                 </Text>
               </View>
             )}

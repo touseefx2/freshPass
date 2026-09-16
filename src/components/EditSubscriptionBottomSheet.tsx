@@ -7,6 +7,7 @@ import {
   View,
 } from "react-native";
 import { AntDesign, Feather } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -37,6 +38,7 @@ interface EditSubscriptionBottomSheetProps {
     currency: string;
     serviceIds: string[];
     serviceCounts?: Record<string, number>;
+    servicesPerMonth?: number;
   }) => void;
 }
 
@@ -53,6 +55,9 @@ const buildDefaultServiceCounts = (
     return acc;
   }, {});
 };
+
+const sumServiceQuantities = (counts: Record<string, number>): number =>
+  Object.values(counts).reduce((sum, qty) => sum + (qty || 0), 0);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -87,6 +92,28 @@ const createStyles = (theme: Theme) =>
       minHeight: heightScale(48),
       flex: 1,
       textAlignVertical: "top",
+    },
+    visitsWrapper: {
+      gap: moderateHeightScale(2),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      paddingHorizontal: moderateWidthScale(15),
+      paddingVertical: moderateHeightScale(10),
+    },
+    visitsInput: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      paddingVertical: 0,
+    },
+    warningText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.orangeBrown,
+      marginTop: moderateHeightScale(4),
+      lineHeight: fontSize.size16,
     },
     inputLabel: {
       fontSize: fontSize.size12,
@@ -280,6 +307,7 @@ export default function EditSubscriptionBottomSheet({
   subscriptionId,
   onAddCustomSuggestion,
 }: EditSubscriptionBottomSheetProps) {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
@@ -312,6 +340,7 @@ export default function EditSubscriptionBottomSheet({
     subscription?.description ?? "",
   );
   const [price, setPrice] = useState("");
+  const [visitsTotal, setVisitsTotal] = useState("");
   const [currency] = useState(subscription?.currency || "USD");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
     subscription?.serviceIds || [],
@@ -329,7 +358,13 @@ export default function EditSubscriptionBottomSheet({
     packageName?: string;
     price?: string;
     services?: string;
+    visits?: string;
   }>({});
+
+  const serviceQtySum = useMemo(
+    () => sumServiceQuantities(selectedServiceCounts),
+    [selectedServiceCounts],
+  );
 
   useEffect(() => {
     if (visible) {
@@ -338,22 +373,38 @@ export default function EditSubscriptionBottomSheet({
         setDescription(subscription.description ?? "");
         setPrice(subscription.price.toString());
         setSelectedServiceIds(subscription.serviceIds);
-        setSelectedServiceCounts(
-          buildDefaultServiceCounts(
-            subscription.serviceIds,
-            subscription.serviceCounts,
-          ),
+        const counts = buildDefaultServiceCounts(
+          subscription.serviceIds,
+          subscription.serviceCounts,
         );
+        setSelectedServiceCounts(counts);
+        const existingVisits = subscription.servicesPerMonth;
+        if (typeof existingVisits === "number" && existingVisits >= 1) {
+          setVisitsTotal(String(existingVisits));
+        } else {
+          const sum = sumServiceQuantities(counts);
+          setVisitsTotal(sum >= 1 ? String(sum) : "1");
+        }
       } else {
         setPackageName("");
         setDescription("");
         setPrice("10.00");
+        setVisitsTotal("");
         setSelectedServiceIds([]);
         setSelectedServiceCounts({});
       }
       setErrors({});
     }
   }, [visible, subscription, services]);
+
+  // Prefill visit total from service quantities when empty / zero
+  useEffect(() => {
+    if (!visible) return;
+    const parsed = parseInt(visitsTotal || "0", 10);
+    if ((!visitsTotal || !parsed || parsed < 1) && serviceQtySum >= 1) {
+      setVisitsTotal(String(serviceQtySum));
+    }
+  }, [serviceQtySum, visible]);
 
   const handleIncrementPrice = () => {
     const currentPrice = parseFloat(price) || 0;
@@ -438,6 +489,11 @@ export default function EditSubscriptionBottomSheet({
       newErrors.services = "Add at least one service";
     }
 
+    const visitsValue = parseInt(visitsTotal || "0", 10);
+    if (!Number.isFinite(visitsValue) || visitsValue < 1) {
+      newErrors.visits = t("planVisitsMinError");
+    }
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -451,7 +507,7 @@ export default function EditSubscriptionBottomSheet({
           id: subscriptionId,
           packageName: packageName.trim(),
           description: descriptionValue,
-          servicesPerMonth: subscription.servicesPerMonth ?? 0,
+          servicesPerMonth: visitsValue,
           price: priceValue,
           currency,
           serviceIds: selectedServiceIds,
@@ -464,7 +520,7 @@ export default function EditSubscriptionBottomSheet({
         id: newId,
         packageName: packageName.trim(),
         description: descriptionValue,
-        servicesPerMonth: 0,
+        servicesPerMonth: visitsValue,
         price: priceValue,
         currency,
         serviceIds: selectedServiceIds,
@@ -482,6 +538,12 @@ export default function EditSubscriptionBottomSheet({
   };
 
   const hasAtLeastOneService = selectedServiceIds.length > 0;
+  const visitsParsed = parseInt(visitsTotal || "0", 10);
+  const showVisitsOverage =
+    Number.isFinite(visitsParsed) &&
+    visitsParsed >= 1 &&
+    serviceQtySum >= 1 &&
+    visitsParsed > serviceQtySum;
 
   return (
     <ModalizeBottomSheet
@@ -517,6 +579,36 @@ export default function EditSubscriptionBottomSheet({
           placeholderTextColor={theme.lightGreen2}
           multiline
         />
+      </View>
+
+      <View style={styles.visitsWrapper}>
+        <Text style={styles.inputLabel}>Visits per month</Text>
+        <TextInput
+          style={styles.visitsInput}
+          value={visitsTotal}
+          onChangeText={(text) => {
+            const cleaned = text.replace(/[^0-9]/g, "");
+            setVisitsTotal(cleaned);
+            if (errors.visits) {
+              setErrors((prev) => ({ ...prev, visits: undefined }));
+            }
+          }}
+          keyboardType="number-pad"
+          placeholder="1"
+          placeholderTextColor={theme.lightGreen2}
+          maxLength={3}
+        />
+        {errors.visits ? (
+          <Text style={styles.errorText}>{errors.visits}</Text>
+        ) : null}
+        {showVisitsOverage ? (
+          <Text style={styles.warningText}>
+            {t("planVisitsOverageWarning", {
+              total: visitsParsed,
+              serviceTotal: serviceQtySum,
+            })}
+          </Text>
+        ) : null}
       </View>
 
       <View

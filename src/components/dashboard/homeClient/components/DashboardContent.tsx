@@ -471,6 +471,7 @@ interface Appointment {
     upcoming: number;
     total: number;
     remaining: number;
+    bookable?: number;
   } | null;
   staffId: number | null;
   staffName: string | null;
@@ -872,10 +873,12 @@ export default function DashboardContent() {
   const formatMembershipInfo = (appointment: Appointment): string => {
     if (appointment.appointmentType === "subscription") {
       if (appointment.subscriptionVisits) {
-        const { remaining } = appointment.subscriptionVisits;
+        const left =
+          appointment.subscriptionVisits.bookable ??
+          appointment.subscriptionVisits.remaining;
         const subscriptionName = "Subscription";
-        return `${subscriptionName} • ${remaining} visit${
-          remaining !== 1 ? "s" : ""
+        return `${subscriptionName} • ${left} visit${
+          left !== 1 ? "s" : ""
         } left`;
       }
       return appointment.subscription || "Subscription";
