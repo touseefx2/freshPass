@@ -1129,17 +1129,52 @@ export default function BookingDetailsById() {
     });
   };
 
+  const getAppointmentStartDate = (): Date | null => {
+    if (!booking?.appointmentDate || !booking?.appointmentTime) return null;
+    try {
+      const [month, day, year] = booking.appointmentDate.split("/").map(Number);
+      const [hours, minutes] = booking.appointmentTime.split(":").map(Number);
+      if (
+        !month ||
+        !day ||
+        !year ||
+        Number.isNaN(hours) ||
+        Number.isNaN(minutes)
+      ) {
+        return null;
+      }
+      const dateObj = new Date(year, month - 1, day, hours, minutes);
+      return Number.isNaN(dateObj.getTime()) ? null : dateObj;
+    } catch {
+      return null;
+    }
+  };
+
+  const appointmentStart = getAppointmentStartDate();
+  const now = new Date();
+  const RESCHEDULE_CUTOFF_MS = 30 * 60 * 1000; // 30 minutes before start
+  const isBeforeAppointmentStart =
+    !appointmentStart || now.getTime() < appointmentStart.getTime();
+  const isBeforeRescheduleCutoff =
+    !appointmentStart ||
+    now.getTime() < appointmentStart.getTime() - RESCHEDULE_CUTOFF_MS;
+
   // Cancel: customer, owner, and assigned staff (MD §6.3). Hidden after
-  // outcome / cancel / complete.
+  // appointment start, and after outcome / cancel / complete.
   const canShowBottomCancel =
-    !isCancelled && !isComplete && !isAwaitingOutcome;
+    !isCancelled &&
+    !isComplete &&
+    !isAwaitingOutcome &&
+    isBeforeAppointmentStart;
   // Reschedule is customer-only (business/staff manage time via cancel + rebook).
+  // Hidden within 30 minutes of appointment start.
   const canShowBottomReschedule =
     userRole === "customer" &&
     !isCancelled &&
     !isComplete &&
     !isAwaitingOutcome &&
-    booking?.status === "ongoing";
+    booking?.status === "ongoing" &&
+    isBeforeRescheduleCutoff;
   // Memberships are outside the outcome flow — keep the old complete action.
   // One-time services use Mark Completed / Mark No-Show via canMarkOutcome.
   const canShowMarkComplete =
