@@ -1394,6 +1394,9 @@ export default function BusinessDetailScreen() {
   const [subscriptionPlanType, setSubscriptionPlanType] = useState<
     "Solo" | "Business" | null
   >(null);
+  const isSoloPlan =
+    typeof subscriptionPlanType === "string" &&
+    subscriptionPlanType.toLowerCase() === "solo";
   const [subscriptionStatus, setSubscriptionStatus] = useState<
     "active" | "inactive"
   >("inactive");
@@ -2210,6 +2213,7 @@ export default function BusinessDetailScreen() {
   const textWrapLength = 115;
 
   const handleTabPress = (tab: "Details" | "Service" | "Ratings" | "Staff") => {
+    if (isSoloPlan && tab === "Staff") return;
     setActiveTab(tab);
     const sectionKey = tab.toLowerCase();
     const position = sectionPositions.current[sectionKey];
@@ -2220,6 +2224,12 @@ export default function BusinessDetailScreen() {
       });
     }
   };
+
+  useEffect(() => {
+    if (isSoloPlan && activeTab === "Staff") {
+      setActiveTab("Service");
+    }
+  }, [isSoloPlan, activeTab]);
 
   const measureSectionPosition = (
     sectionRef: React.RefObject<View | null>,
@@ -3956,74 +3966,81 @@ export default function BusinessDetailScreen() {
                 </Text>
               </TouchableOpacity>
             )}
-            <View style={styles.staffRow}>
-              <View style={styles.staffRowLeft}>
-                <PeopleIcon
-                  width={widthScale(12)}
-                  height={heightScale(12)}
-                  color={theme.selectCard}
-                />
-                <Text style={styles.staffText}>
-                  {t("staffMembersCount", {
-                    count: businessData?.staffCount || staffMembers.length,
-                  })}
-                </Text>
+            {(!!businessData?.social_media_links?.facebook ||
+              !!businessData?.social_media_links?.instagram ||
+              !!businessData?.social_media_links?.tiktok ||
+              !isSoloPlan) && (
+              <View style={styles.staffRow}>
+                {!isSoloPlan && (
+                  <View style={styles.staffRowLeft}>
+                    <PeopleIcon
+                      width={widthScale(12)}
+                      height={heightScale(12)}
+                      color={theme.selectCard}
+                    />
+                    <Text style={styles.staffText}>
+                      {t("staffMembersCount", {
+                        count: businessData?.staffCount || staffMembers.length,
+                      })}
+                    </Text>
+                  </View>
+                )}
+                {(businessData?.social_media_links?.facebook ||
+                  businessData?.social_media_links?.instagram ||
+                  businessData?.social_media_links?.tiktok) && (
+                  <View style={styles.staffRowSocialIcons}>
+                    {businessData?.social_media_links?.facebook ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          Linking.openURL(
+                            businessData.social_media_links!.facebook!,
+                          ).catch(() => {})
+                        }
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <FontAwesome5
+                          name="facebook"
+                          size={widthScale(16)}
+                          color={theme.orangeBrown}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                    {businessData?.social_media_links?.instagram ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          Linking.openURL(
+                            businessData.social_media_links!.instagram!,
+                          ).catch(() => {})
+                        }
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <FontAwesome5
+                          name="instagram"
+                          size={widthScale(16)}
+                          color={theme.orangeBrown}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                    {businessData?.social_media_links?.tiktok ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          Linking.openURL(
+                            businessData.social_media_links!.tiktok!,
+                          ).catch(() => {})
+                        }
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <FontAwesome5
+                          name="tiktok"
+                          size={widthScale(16)}
+                          color={theme.orangeBrown}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                )}
               </View>
-              {(businessData?.social_media_links?.facebook ||
-                businessData?.social_media_links?.instagram ||
-                businessData?.social_media_links?.tiktok) && (
-                <View style={styles.staffRowSocialIcons}>
-                  {businessData?.social_media_links?.facebook ? (
-                    <TouchableOpacity
-                      onPress={() =>
-                        Linking.openURL(
-                          businessData.social_media_links!.facebook!,
-                        ).catch(() => {})
-                      }
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <FontAwesome5
-                        name="facebook"
-                        size={widthScale(16)}
-                        color={theme.orangeBrown}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                  {businessData?.social_media_links?.instagram ? (
-                    <TouchableOpacity
-                      onPress={() =>
-                        Linking.openURL(
-                          businessData.social_media_links!.instagram!,
-                        ).catch(() => {})
-                      }
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <FontAwesome5
-                        name="instagram"
-                        size={widthScale(16)}
-                        color={theme.orangeBrown}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                  {businessData?.social_media_links?.tiktok ? (
-                    <TouchableOpacity
-                      onPress={() =>
-                        Linking.openURL(
-                          businessData.social_media_links!.tiktok!,
-                        ).catch(() => {})
-                      }
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <FontAwesome5
-                        name="tiktok"
-                        size={widthScale(16)}
-                        color={theme.orangeBrown}
-                      />
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              )}
-            </View>
+            )}
           </View>
 
           {/* Tabs */}
@@ -4035,7 +4052,9 @@ export default function BusinessDetailScreen() {
                 ["Staff", t("tabStaff")],
                 ["Ratings", t("tabRatings")],
               ] as const
-            ).map(([tab, label]) => (
+            )
+              .filter(([tab]) => !(isSoloPlan && tab === "Staff"))
+              .map(([tab, label]) => (
               <TouchableOpacity
                 key={tab}
                 style={styles.tab}
@@ -4059,8 +4078,12 @@ export default function BusinessDetailScreen() {
           <View style={styles.divider} />
           {renderDetailsContent()}
           <View style={styles.divider} />
-          {renderStaffContent()}
-          <View style={styles.divider} />
+          {!isSoloPlan && (
+            <>
+              {renderStaffContent()}
+              <View style={styles.divider} />
+            </>
+          )}
           {renderRatingsContent()}
         </View>
       </ScrollView>
