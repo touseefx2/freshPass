@@ -1114,8 +1114,7 @@ export default function subscriptionCustomer() {
                     <View key={svc.id} style={styles.serviceItem}>
                       <View style={styles.serviceNameContainer}>
                         <Text style={styles.serviceName}>
-                          {svc.name}
-                          {!visits ? ` x ${svc.quantity ?? 1}` : ""}
+                          {svc.name} x {svc.quantity ?? 1}
                         </Text>
                         {(svc.durationHours > 0 ||
                           svc.durationMinutes > 0) && (

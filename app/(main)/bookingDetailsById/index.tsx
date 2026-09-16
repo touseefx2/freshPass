@@ -51,6 +51,7 @@ import {
 import {
   CalendarIcon,
   ContactIcon,
+  PersonIcon,
   SupportIcon,
   WalletIcon,
 } from "@/assets/icons";
@@ -461,6 +462,40 @@ export default function BookingDetailsById() {
       });
     }
   }, [booking, router, staffClientname, userRole]);
+
+  const hasAssignedStaff =
+    (userRole === "business" || userRole === "staff") &&
+    booking?.staffId != null;
+
+  const assignedStaffDisplayName = useMemo(() => {
+    const name =
+      typeof booking?.staffName === "string" ? booking.staffName.trim() : "";
+    if (!name || name.toLowerCase() === "anyone") {
+      return null;
+    }
+    if (booking?.staffIsOwner) {
+      return `${name} · ${t("owner")}`;
+    }
+    return name;
+  }, [booking?.staffIsOwner, booking?.staffName, t]);
+
+  const assignedStaffImageUri = useMemo(() => {
+    const resolved = resolveApiImageUrl(booking?.staffImage);
+    const fallback = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE?.trim() ?? "";
+    return resolved || fallback || null;
+  }, [booking?.staffImage]);
+
+  const handleAssignedStaffPress = useCallback(() => {
+    const staffId = booking?.staffId;
+    if (staffId == null) {
+      return;
+    }
+
+    router.push({
+      pathname: "/(main)/staffDetail",
+      params: { id: String(staffId) },
+    });
+  }, [booking?.staffId, router]);
 
   const mapApiStatusToBookingStatus = (apiStatus: string): BookingStatus => {
     switch (apiStatus.toLowerCase()) {
@@ -2064,6 +2099,51 @@ export default function BookingDetailsById() {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Assigned staff — business & staff roles, when a staff member is assigned.
+              Business can open staff detail; staff role is view-only. */}
+          {hasAssignedStaff && (
+            <TouchableOpacity
+              style={[styles.assignedStaffRow, styles.cardShadow]}
+              activeOpacity={userRole === "business" ? 0.7 : 1}
+              onPress={
+                userRole === "business" ? handleAssignedStaffPress : undefined
+              }
+              disabled={userRole !== "business"}
+            >
+              <View style={styles.assignedStaffAvatar}>
+                {assignedStaffImageUri ? (
+                  <Image
+                    source={{ uri: assignedStaffImageUri }}
+                    style={styles.assignedStaffAvatarImage}
+                  />
+                ) : (
+                  <PersonIcon
+                    width={moderateWidthScale(18)}
+                    height={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                )}
+              </View>
+              <View style={styles.assignedStaffTextContainer}>
+                <Text style={styles.assignedStaffLabel}>
+                  {t("assignedStaff")}
+                </Text>
+                {assignedStaffDisplayName ? (
+                  <Text style={styles.assignedStaffName} numberOfLines={1}>
+                    {assignedStaffDisplayName}
+                  </Text>
+                ) : null}
+              </View>
+              {userRole === "business" ? (
+                <Ionicons
+                  name="chevron-forward"
+                  size={moderateWidthScale(14)}
+                  color={theme.lightGreen4}
+                />
+              ) : null}
+            </TouchableOpacity>
+          )}
 
           {/* Location / Business */}
           <View style={styles.locationCard}>
