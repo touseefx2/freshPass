@@ -36,6 +36,8 @@ interface ModalizeBottomSheetProps {
   scrollViewStyle?: ViewStyle;
   /** Fixed height as fraction of screen (e.g. 0.85 = 85%). When set, sheet uses this height instead of adjusting to content. */
   modalHeightPercent?: number;
+  /** Cap sheet height as fraction of screen (e.g. 0.88). Sheet still shrinks to content below this; content scrolls above it. */
+  maxHeightPercent?: number;
   /** When false, renders inline instead of Portal (use inside React Native Modal). */
   usePortal?: boolean;
   showsVerticalScrollIndicator?: boolean;
@@ -106,6 +108,7 @@ export default function ModalizeBottomSheet({
   contentStyle,
   scrollViewStyle,
   modalHeightPercent,
+  maxHeightPercent,
   usePortal = true,
   showsVerticalScrollIndicator = false,
 }: ModalizeBottomSheetProps) {
@@ -117,14 +120,20 @@ export default function ModalizeBottomSheet({
   const screenHeight = Dimensions.get("window").height;
   // Keep sheet below status bar / Dynamic Island on iOS
   const topSafeGap = insets.top + moderateHeightScale(12);
-  const maxModalHeight = screenHeight - topSafeGap;
+  const safeMaxModalHeight = screenHeight - topSafeGap;
+  const cappedMaxModalHeight =
+    maxHeightPercent != null
+      ? Math.min(screenHeight * maxHeightPercent, safeMaxModalHeight)
+      : safeMaxModalHeight;
   const resolvedModalHeight =
     modalHeightPercent != null
-      ? Math.min(screenHeight * modalHeightPercent, maxModalHeight)
+      ? Math.min(screenHeight * modalHeightPercent, cappedMaxModalHeight)
       : undefined;
+  // Header + footer + handle roughly occupy ~150–170px; keep scroll area under the cap.
+  const chromeHeight = moderateHeightScale(160) + insets.bottom;
   const maxContentHeight = resolvedModalHeight
-    ? resolvedModalHeight - 140
-    : maxModalHeight * 0.75;
+    ? resolvedModalHeight - chromeHeight
+    : cappedMaxModalHeight - chromeHeight;
 
   useEffect(() => {
     if (visible) {
@@ -151,7 +160,7 @@ export default function ModalizeBottomSheet({
       modalStyle={[
         styles.bottomSheet,
         sheetContainerStyle,
-        { maxHeight: maxModalHeight },
+        { maxHeight: cappedMaxModalHeight },
       ]}
       HeaderComponent={
         <View style={styles.header}>

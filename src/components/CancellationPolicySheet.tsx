@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -25,57 +29,44 @@ interface CancellationPolicySheetProps {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    row: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      paddingVertical: moderateHeightScale(10),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-    },
-    rowLabel: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      flex: 1,
-      paddingRight: moderateWidthScale(12),
-    },
-    rowValue: {
-      fontSize: fontSize.size14,
+    subtitle: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      flex: 1,
-      textAlign: "right",
-    },
-    policyText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
+      color: theme.lightGreen,
       lineHeight: fontSize.size20,
-      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(18),
     },
-    payLaterCard: {
+    cardsStack: {
+      gap: moderateHeightScale(12),
+    },
+    infoCard: {
       flexDirection: "row",
       alignItems: "flex-start",
       gap: moderateWidthScale(12),
-      marginTop: moderateHeightScale(14),
-      backgroundColor: theme.orangeBrown01,
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.orangeBrown30,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      overflow: "hidden",
+      backgroundColor: theme.lightBeige,
+      borderRadius: moderateWidthScale(18),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(16),
     },
-    payLaterAccent: {
-      position: "absolute",
-      left: 0,
-      top: 0,
-      bottom: 0,
-      width: moderateWidthScale(4),
-      backgroundColor: theme.selectCard,
+    warningCard: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+      backgroundColor: theme.upcomingCard,
+      borderRadius: moderateWidthScale(18),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(16),
     },
-    payLaterIconWrap: {
+    iconWrap: {
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: moderateWidthScale(40 / 2),
+      backgroundColor: theme.apptPeachBg,
+      alignItems: "center",
+      justifyContent: "center",
+      flexShrink: 0,
+    },
+    solidIconWrap: {
       width: widthScale(40),
       height: widthScale(40),
       borderRadius: moderateWidthScale(40 / 2),
@@ -83,54 +74,79 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
-      marginLeft: moderateWidthScale(4),
     },
-    payLaterTextBlock: {
+    cardBody: {
       flex: 1,
-      gap: moderateHeightScale(2),
-      paddingRight: moderateWidthScale(2),
+      minWidth: 0,
     },
-    payLaterTitle: {
+    cardTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(6),
+    },
+    cardTitle: {
+      flexShrink: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+    },
+    cardTitleSpaced: {
+      marginBottom: moderateHeightScale(6),
+    },
+    cardValue: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      lineHeight: fontSize.size18,
+      lineHeight: fontSize.size20,
+      flexShrink: 0,
+      textAlign: "right",
     },
-    payLaterBody: {
-      fontSize: fontSize.size12,
+    cardDesc: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      lineHeight: fontSize.size16,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size19,
+    },
+    warningTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
+      marginBottom: moderateHeightScale(6),
+    },
+    warningBody: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size19,
     },
     checkboxRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       marginTop: moderateHeightScale(20),
       gap: moderateWidthScale(12),
     },
-    checkboxIconWrapper: {
-      width: widthScale(46),
-      height: widthScale(46),
-      borderRadius: moderateWidthScale(46 / 2),
-      backgroundColor: theme.lightBeige,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
     checkbox: {
-      width: moderateWidthScale(24),
-      height: moderateWidthScale(24),
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
       borderRadius: moderateWidthScale(5),
       borderWidth: 1.5,
       borderColor: theme.black,
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
+      marginTop: moderateHeightScale(2),
+      flexShrink: 0,
     },
     checkboxLabel: {
       flex: 1,
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
+      lineHeight: fontSize.size20,
     },
   });
 
@@ -144,19 +160,6 @@ function formatCurrencyAmount(amount: number, currency?: string): string {
   } catch {
     return `$${amount.toFixed(2)}`;
   }
-}
-
-function formatLocalDateTime(iso: string | null): string | null {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 export default function CancellationPolicySheet({
@@ -175,6 +178,8 @@ export default function CancellationPolicySheet({
   const prevVisibleRef = useRef(false);
 
   const isMembership = quote?.appointmentType === "subscription";
+  const cutoffHours = quote?.cutoffHours ?? null;
+  const alwaysCharge = !!(quote?.alwaysCharge || quote?.alwaysLate);
 
   useEffect(() => {
     if (visible && !prevVisibleRef.current) {
@@ -182,28 +187,6 @@ export default function CancellationPolicySheet({
     }
     prevVisibleRef.current = visible;
   }, [visible]);
-
-  const freeCancellationValue = (() => {
-    if (!quote) return "—";
-    if (
-      !isMembership &&
-      quote.cancellationFeePercent === 0 &&
-      !quote.alwaysCharge
-    ) {
-      return t("freeCancellationAnyTime");
-    }
-    const formatted = formatLocalDateTime(quote.freeCancellationUntil);
-    if (formatted) {
-      return t("freeCancellationUntil", { date: formatted });
-    }
-    if (isMembership) {
-      return t("visitReturned");
-    }
-    if (quote.cancellationFeePercent === 0) {
-      return t("freeCancellationAnyTime");
-    }
-    return t("freeCancellationNotAvailable");
-  })();
 
   const lateFeeValue = quote
     ? `${quote.cancellationFeePercent ?? 0}% (${formatCurrencyAmount(
@@ -226,6 +209,68 @@ export default function CancellationPolicySheet({
     ? t("usesOneVisit")
     : t("visitReturned");
 
+  const isWithinCutoffWindow = (() => {
+    if (!quote) return false;
+    if (alwaysCharge) return true;
+    if (quote.freeCancellationUntil) {
+      const until = new Date(quote.freeCancellationUntil).getTime();
+      return !Number.isNaN(until) && until <= Date.now();
+    }
+    return (
+      (quote.cancellationFeePercent ?? 0) > 0 ||
+      (quote.noShowFeePercent ?? 0) > 0
+    );
+  })();
+
+  const cancelPercent = quote?.cancellationFeePercent ?? 0;
+  const noShowPercent = quote?.noShowFeePercent ?? 0;
+  const cancelAmountLabel = formatCurrencyAmount(
+    quote?.cancellationFeeAmount ?? 0,
+    quote?.currency,
+  );
+  const noShowAmountLabel = formatCurrencyAmount(
+    quote?.noShowFeeAmount ?? 0,
+    quote?.currency,
+  );
+
+  const cancellationDesc = (() => {
+    if (isMembership) {
+      if (alwaysCharge || !cutoffHours) {
+        return t("lateCancelVisitCardDescAlways");
+      }
+      return t("lateCancelVisitCardDesc", { hours: cutoffHours });
+    }
+    if (alwaysCharge || !cutoffHours) {
+      return t("cancellationFeeCardDescAlways", { percent: cancelPercent });
+    }
+    return t("cancellationFeeCardDesc", {
+      percent: cancelPercent,
+      hours: cutoffHours,
+    });
+  })();
+
+  const noShowDesc = isMembership
+    ? t("noShowVisitCardDesc")
+    : t("noShowFeeCardDesc", { percent: noShowPercent });
+
+  const warningTitle =
+    alwaysCharge || !cutoffHours
+      ? t("withinCutoffWarningTitleAlways")
+      : t("withinCutoffWarningTitle", { hours: cutoffHours });
+
+  const warningBody = isMembership
+    ? t("withinCutoffWarningBodyMembership", {
+        hours: cutoffHours ?? 24,
+        lateAction: lateVisitValue,
+        noShowAction: noShowVisitValue,
+      })
+    : t("withinCutoffWarningBody", {
+        cancelAmount: cancelAmountLabel,
+        cancelPercent,
+        noShowAmount: noShowAmountLabel,
+        noShowPercent,
+      });
+
   return (
     <ModalizeBottomSheet
       visible={visible}
@@ -238,64 +283,104 @@ export default function CancellationPolicySheet({
       }
       onFooterButtonPress={onConfirm}
       footerButtonDisabled={!agreed || confirming || !quote}
+      maxHeightPercent={0.94}
+      showsVerticalScrollIndicator
     >
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>{t("freeCancellation")}</Text>
-        <Text style={styles.rowValue}>{freeCancellationValue}</Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>
-          {isMembership ? t("lateCancellation") : t("lateCancellationFee")}
-        </Text>
-        <Text style={styles.rowValue}>
-          {isMembership ? lateVisitValue : lateFeeValue}
-        </Text>
-      </View>
-      <View style={styles.row}>
-        <Text style={styles.rowLabel}>
-          {isMembership ? t("statusNoShow") : t("noShowFee")}
-        </Text>
-        <Text style={styles.rowValue}>
-          {isMembership ? noShowVisitValue : noShowFeeValue}
-        </Text>
-      </View>
+      <Text style={styles.subtitle}>
+        {t("cancellationPolicyReviewSubtitle")}
+      </Text>
 
-      {quote?.policyText ? (
-        <Text style={styles.policyText}>{quote.policyText}</Text>
-      ) : null}
-
-      {isPayLater && !isMembership ? (
-        <View style={styles.payLaterCard}>
-          <View style={styles.payLaterAccent} />
-          <View style={styles.payLaterIconWrap}>
-            <MaterialCommunityIcons
-              name="credit-card-outline"
+      <View style={styles.cardsStack}>
+        <View style={styles.infoCard}>
+          <View style={styles.iconWrap}>
+            <Ionicons
+              name="calendar-outline"
               size={iconScale(20)}
-              color={theme.white}
+              color={theme.darkGreen}
             />
           </View>
-          <View style={styles.payLaterTextBlock}>
-            <Text style={styles.payLaterTitle}>{t("payLaterNoteTitle")}</Text>
-            <Text style={styles.payLaterBody}>{t("payLaterCardNote")}</Text>
+          <View style={styles.cardBody}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle} numberOfLines={1}>
+                {isMembership ? t("lateCancellation") : t("cancellationFee")}
+              </Text>
+              <Text style={styles.cardValue} numberOfLines={1}>
+                {isMembership ? lateVisitValue : lateFeeValue}
+              </Text>
+            </View>
+            <Text style={styles.cardDesc}>{cancellationDesc}</Text>
           </View>
         </View>
-      ) : null}
+
+        <View style={styles.infoCard}>
+          <View style={styles.iconWrap}>
+            <Ionicons
+              name="person-outline"
+              size={iconScale(20)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <View style={styles.cardBody}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle} numberOfLines={1}>
+                {isMembership ? t("statusNoShow") : t("noShowFee")}
+              </Text>
+              <Text style={styles.cardValue} numberOfLines={1}>
+                {isMembership ? noShowVisitValue : noShowFeeValue}
+              </Text>
+            </View>
+            <Text style={styles.cardDesc}>{noShowDesc}</Text>
+          </View>
+        </View>
+
+        {isWithinCutoffWindow ? (
+          <View style={styles.warningCard}>
+            <View style={styles.solidIconWrap}>
+              <FontAwesome5
+                name="exclamation"
+                size={iconScale(14)}
+                color={theme.white}
+              />
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={styles.warningTitle}>{warningTitle}</Text>
+              <Text style={styles.warningBody}>{warningBody}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {isPayLater && !isMembership ? (
+          <View style={styles.infoCard}>
+            <View style={styles.solidIconWrap}>
+              <MaterialCommunityIcons
+                name="credit-card-outline"
+                size={iconScale(20)}
+                color={theme.white}
+              />
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={[styles.cardTitle, styles.cardTitleSpaced]}>
+                {t("payLaterNoteTitle")}
+              </Text>
+              <Text style={styles.cardDesc}>{t("payLaterCardNote")}</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
 
       <Pressable
         style={styles.checkboxRow}
         onPress={() => setAgreed((prev) => !prev)}
         hitSlop={moderateWidthScale(8)}
       >
-        <View style={styles.checkboxIconWrapper}>
-          <View style={styles.checkbox}>
-            {agreed ? (
-              <FontAwesome5
-                name="check"
-                size={moderateWidthScale(14)}
-                color={theme.orangeBrown}
-              />
-            ) : null}
-          </View>
+        <View style={styles.checkbox}>
+          {agreed ? (
+            <FontAwesome5
+              name="check"
+              size={moderateWidthScale(12)}
+              color={theme.orangeBrown}
+            />
+          ) : null}
         </View>
         <Text style={styles.checkboxLabel}>{t("agreeToPolicy")}</Text>
       </Pressable>
