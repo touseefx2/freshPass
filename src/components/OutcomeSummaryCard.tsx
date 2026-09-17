@@ -75,12 +75,43 @@ const createStyles = (theme: Theme) =>
     chipTextFee: {
       color: theme.selectCard,
     },
+    tagsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(10),
+    },
+    lateTag: {
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.orangeBrown01,
+    },
+    lateTagText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.selectCard,
+    },
     message: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen6,
       lineHeight: fontSize.size19,
       marginBottom: moderateHeightScale(14),
+    },
+    messageBeforeReason: {
+      marginBottom: moderateHeightScale(8),
+    },
+    cancelReason: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      lineHeight: fontSize.size18,
+      marginBottom: moderateHeightScale(14),
+    },
+    cancelReasonLabel: {
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen4,
     },
     businessLabel: {
       fontSize: fontSize.size11,
@@ -182,6 +213,10 @@ export default function OutcomeSummaryCard({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
+  const isCancelled = summary.outcome === "cancelled";
+  const feeLabel =
+    isCancelled ? t("cancellationFee") : t("noShowFee");
+
   const feeStatusLabel = (() => {
     switch (summary.feeStatus) {
       case "none":
@@ -212,7 +247,9 @@ export default function OutcomeSummaryCard({
       case "refunded":
         return t("outcomePaymentRefunded");
       case "fee_charged":
-        return t("outcomePaymentFeeCharged");
+        return isCancelled
+          ? t("outcomePaymentCancellationFeeCharged")
+          : t("outcomePaymentFeeCharged");
       case "charge_failed":
         return t("outcomePaymentChargeFailed");
       case "no_charge":
@@ -242,6 +279,10 @@ export default function OutcomeSummaryCard({
   const isMembership = summary.paymentStatus === "membership";
   const markedAtLabel = formatMarkedAt(summary.markedAt);
   const refundedAtLabel = formatMarkedAt(summary.refundedAt);
+  const showLateTag =
+    isCancelled &&
+    summary.isLate === true &&
+    summary.cancelledBy === "customer";
 
   const chipStyle =
     summary.paymentStatus === "paid" ||
@@ -270,7 +311,22 @@ export default function OutcomeSummaryCard({
             : styles.chipText;
 
   const footerParts: string[] = [];
-  if (summary.markedByName) {
+  if (isCancelled) {
+    if (
+      !isBusinessView &&
+      summary.cancelledBy === "business"
+    ) {
+      footerParts.push(t("outcomeCancelledByBusiness"));
+    } else if (summary.markedByName) {
+      footerParts.push(
+        t("outcomeCancelledBy", { name: summary.markedByName }),
+      );
+    } else if (summary.cancelledBy === "customer") {
+      footerParts.push(t("outcomeCancelledByCustomer"));
+    } else if (summary.cancelledBy === "business") {
+      footerParts.push(t("outcomeCancelledByBusiness"));
+    }
+  } else if (summary.markedByName) {
     footerParts.push(t("outcomeMarkedBy", { name: summary.markedByName }));
   }
   if (markedAtLabel) {
@@ -297,7 +353,7 @@ export default function OutcomeSummaryCard({
   if (!isMembership && (summary.feeAmount > 0 || summary.feeStatus !== "none")) {
     rows.push({
       key: "fee",
-      label: t("noShowFee"),
+      label: feeLabel,
       value: `${formatMoney(summary.feeAmount, summary.currency)}${
         summary.feePercent > 0 ? ` (${summary.feePercent}%)` : ""
       } · ${feeStatusLabel}`,
@@ -305,7 +361,7 @@ export default function OutcomeSummaryCard({
   } else if (!isMembership) {
     rows.push({
       key: "fee-none",
-      label: t("noShowFee"),
+      label: feeLabel,
       value: feeStatusLabel,
     });
   }
@@ -350,6 +406,14 @@ export default function OutcomeSummaryCard({
         </View>
       </View>
 
+      {showLateTag ? (
+        <View style={styles.tagsRow}>
+          <View style={styles.lateTag}>
+            <Text style={styles.lateTagText}>{t("lateCancellation")}</Text>
+          </View>
+        </View>
+      ) : null}
+
       {summary.message ? (
         <>
           {isBusinessView ? (
@@ -357,8 +421,24 @@ export default function OutcomeSummaryCard({
               {t("outcomeWhatCustomerSees")}
             </Text>
           ) : null}
-          <Text style={styles.message}>{summary.message}</Text>
+          <Text
+            style={[
+              styles.message,
+              isCancelled && summary.cancelReason
+                ? styles.messageBeforeReason
+                : null,
+            ]}
+          >
+            {summary.message}
+          </Text>
         </>
+      ) : null}
+
+      {isCancelled && summary.cancelReason ? (
+        <Text style={styles.cancelReason}>
+          <Text style={styles.cancelReasonLabel}>{t("reason")}: </Text>
+          {summary.cancelReason}
+        </Text>
       ) : null}
 
       {rows.map((row) =>

@@ -108,7 +108,13 @@ export interface CardSetupResponse {
   connectedAccountId: string;
 }
 
-export type OutcomeSummaryOutcome = "completed" | "no_show" | "corrected";
+export type OutcomeSummaryOutcome =
+  | "completed"
+  | "no_show"
+  | "corrected"
+  | "cancelled";
+
+export type OutcomeCancelledBy = "customer" | "business";
 
 export type OutcomeFeeStatus =
   | "none"
@@ -145,6 +151,14 @@ export interface OutcomeSummary {
   outcome: OutcomeSummaryOutcome | string;
   markedAt: string | null;
   markedByName: string | null;
+  /** Cancellations only. Who cancelled. Null for other outcomes. */
+  cancelledBy?: OutcomeCancelledBy | string | null;
+  /** Cancellations only. True when after free-cancel deadline. */
+  isLate?: boolean | null;
+  /** Cancellations only. Cutoff hours that applied (12/24/48). */
+  cutoffHours?: number | null;
+  /** Cancellations only. Reason typed when cancelling. */
+  cancelReason?: string | null;
   servicePrice: number | null;
   feePercent: number;
   feeAmount: number;

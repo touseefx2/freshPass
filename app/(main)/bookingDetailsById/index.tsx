@@ -1691,8 +1691,12 @@ export default function BookingDetailsById() {
 
       if (response.success) {
         showBanner(t("success"), t("bookingCancelledSuccess"), "success", 2500);
-        // Fetch booking details again to update the UI
-        await fetchBookingDetails();
+        // Prefer cancel response (includes outcomeSummary) so the card shows immediately.
+        if (response.data) {
+          setBooking(mapApiResponseToBookingItem(response.data));
+        } else {
+          await fetchBookingDetails();
+        }
       } else {
         showBanner(
           t("error"),
@@ -1920,6 +1924,15 @@ export default function BookingDetailsById() {
               ) : null}
             </View>
           </View>
+
+          {booking.outcomeSummary ? (
+            <OutcomeSummaryCard
+              summary={booking.outcomeSummary}
+              isBusinessView={
+                userRole === "business" || userRole === "staff"
+              }
+            />
+          ) : null}
 
           {/* Service / Plan card */}
           <View style={[styles.serviceCard, styles.cardShadow]}>
@@ -2631,14 +2644,6 @@ export default function BookingDetailsById() {
               </View>
             )}
 
-          {booking.outcomeSummary ? (
-            <OutcomeSummaryCard
-              summary={booking.outcomeSummary}
-              isBusinessView={
-                userRole === "business" || userRole === "staff"
-              }
-            />
-          ) : null}
         </ScrollView>
 
         {(canShowOutcomeActions ||
