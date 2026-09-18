@@ -153,8 +153,11 @@ export default function PublishReelScreen() {
   const fromEditor = !!localVideoUri && !mediaAssetIdParam;
 
   const [loading, setLoading] = useState(isEdit);
-  const [saving, setSaving] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [unpublishing, setUnpublishing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const isSubmitting = savingDraft || publishing || unpublishing;
   const [resolvedMediaAssetId, setResolvedMediaAssetId] = useState<
     number | null
   >(mediaAssetIdParam);
@@ -316,8 +319,8 @@ export default function PublishReelScreen() {
   });
 
   const handleSaveDraft = async () => {
-    if (!validate() || saving) return;
-    setSaving(true);
+    if (!validate() || isSubmitting) return;
+    setSavingDraft(true);
     setUploadProgress(0);
     try {
       if (isEdit && reelId) {
@@ -347,14 +350,14 @@ export default function PublishReelScreen() {
         t("failedToSaveReel");
       showBanner(t("error"), msg, "error", 3500);
     } finally {
-      setSaving(false);
+      setSavingDraft(false);
       setUploadProgress(0);
     }
   };
 
   const handlePublish = async () => {
-    if (!validate() || saving) return;
-    setSaving(true);
+    if (!validate() || isSubmitting) return;
+    setPublishing(true);
     setUploadProgress(0);
     try {
       if (isEdit && reelId) {
@@ -386,14 +389,14 @@ export default function PublishReelScreen() {
         t("failedToPublishReel");
       showBanner(t("error"), msg, "error", 3500);
     } finally {
-      setSaving(false);
+      setPublishing(false);
       setUploadProgress(0);
     }
   };
 
   const handleUnpublish = async () => {
-    if (!reelId || saving) return;
-    setSaving(true);
+    if (!reelId || isSubmitting) return;
+    setUnpublishing(true);
     try {
       await unpublishReel(reelId);
       showBanner(t("success"), t("reelUnpublished"), "success", 2500);
@@ -406,7 +409,7 @@ export default function PublishReelScreen() {
         3000,
       );
     } finally {
-      setSaving(false);
+      setUnpublishing(false);
     }
   };
 
@@ -536,7 +539,7 @@ export default function PublishReelScreen() {
         </View>
 
         <View style={styles.buttons}>
-          {saving && fromEditor && uploadProgress > 0 ? (
+          {isSubmitting && fromEditor && uploadProgress > 0 ? (
             <Text style={styles.progressText}>
               {`${t("uploadingVideo")} ${uploadProgress}%`}
             </Text>
@@ -544,21 +547,21 @@ export default function PublishReelScreen() {
           <Button
             title={isEdit ? t("saveChanges") : t("saveDraft")}
             onPress={handleSaveDraft}
-            loading={saving}
-            disabled={saving}
+            loading={savingDraft}
+            disabled={isSubmitting}
           />
           <Button
             title={t("publish")}
             onPress={handlePublish}
-            loading={saving}
-            disabled={saving || existing?.status === "removed"}
+            loading={publishing}
+            disabled={isSubmitting || existing?.status === "removed"}
           />
           {isEdit && existing?.status === "published" && (
             <Button
               title={t("unpublish")}
               onPress={handleUnpublish}
-              loading={saving}
-              disabled={saving}
+              loading={unpublishing}
+              disabled={isSubmitting}
               backgroundColor={theme.lightGreen4}
               textColor={theme.white}
             />
