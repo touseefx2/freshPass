@@ -26,7 +26,6 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import Button from "@/src/components/button";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
@@ -239,6 +238,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
+    },
+    retryIconBtn: {
+      marginTop: moderateHeightScale(14),
+      padding: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
     },
     centerLoader: {
       flex: 1,
@@ -625,9 +630,18 @@ export default function MediaLibraryMyReelsTab() {
               />
               <Text style={styles.emptyTitle}>{t("noReelsYet")}</Text>
               <Text style={styles.emptySubtitle}>{t("noReelsSubtitle")}</Text>
-              <View style={{ marginTop: moderateHeightScale(16), width: "100%" }}>
-                <Button title={t("refresh")} onPress={refresh} />
-              </View>
+              <TouchableOpacity
+                style={styles.retryIconBtn}
+                onPress={refresh}
+                hitSlop={12}
+                accessibilityLabel={t("refresh")}
+              >
+                <MaterialIcons
+                  name="refresh"
+                  size={moderateWidthScale(28)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
             </View>
           }
           ListFooterComponent={
