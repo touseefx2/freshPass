@@ -1332,5 +1332,13 @@
   "uploadOriginal": "Subir original",
   "done": "Listo",
   "undo": "Deshacer",
-  "videoPreviewFallback": "Vista previa en el reproductor simple. Aún puedes recortar y subir."
+  "videoPreviewFallback": "Vista previa en el reproductor simple. Aún puedes recortar y subir.",
+  "dragTextHint": "Arrastra el texto en el video para colocarlo.",
+  "textColor": "Color",
+  "textSize": "Tamaño",
+  "textStyle": "Estilo",
+  "textBold": "Negrita",
+  "textItalic": "Cursiva",
+  "textMono": "Mono",
+  "textBackground": "Fondo"
 }

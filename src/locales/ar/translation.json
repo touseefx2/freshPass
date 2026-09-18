@@ -1332,5 +1332,13 @@
   "uploadOriginal": "رفع الأصل",
   "done": "تم",
   "undo": "تراجع",
-  "videoPreviewFallback": "تم التبديل إلى المشغل البسيط. يمكنك القص والرفع كما هو."
+  "videoPreviewFallback": "تم التبديل إلى المشغل البسيط. يمكنك القص والرفع كما هو.",
+  "dragTextHint": "اسحب النص على الفيديو لوضعه في أي مكان.",
+  "textColor": "اللون",
+  "textSize": "الحجم",
+  "textStyle": "النمط",
+  "textBold": "عريض",
+  "textItalic": "مائل",
+  "textMono": "أحادي",
+  "textBackground": "خلفية"
 }

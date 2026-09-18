@@ -1379,5 +1379,13 @@
   "planVisitsMinError": "Visit total must be at least 1.",
   "planVisitsOverageWarning": "This plan has {{total}} visits but only {{serviceTotal}} service visits in total. Customers can book at most {{serviceTotal}} visits a month.",
   "undo": "Undo",
-  "videoPreviewFallback": "Preview switched to simple player. You can still trim and upload."
+  "videoPreviewFallback": "Preview switched to simple player. You can still trim and upload.",
+  "dragTextHint": "Drag the text on the video to place it anywhere.",
+  "textColor": "Color",
+  "textSize": "Size",
+  "textStyle": "Style",
+  "textBold": "Bold",
+  "textItalic": "Italic",
+  "textMono": "Mono",
+  "textBackground": "Background"
 }

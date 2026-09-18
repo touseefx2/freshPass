@@ -1332,5 +1332,13 @@
   "uploadOriginal": "Importer l'original",
   "done": "Terminé",
   "undo": "Annuler",
-  "videoPreviewFallback": "Aperçu basculé sur le lecteur simple. Vous pouvez toujours découper et importer."
+  "videoPreviewFallback": "Aperçu basculé sur le lecteur simple. Vous pouvez toujours découper et importer.",
+  "dragTextHint": "Faites glisser le texte sur la vidéo pour le placer.",
+  "textColor": "Couleur",
+  "textSize": "Taille",
+  "textStyle": "Style",
+  "textBold": "Gras",
+  "textItalic": "Italique",
+  "textMono": "Mono",
+  "textBackground": "Fond"
 }

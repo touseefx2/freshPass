@@ -1332,5 +1332,13 @@
   "uploadOriginal": "Original hochladen",
   "done": "Fertig",
   "undo": "Rückgängig",
-  "videoPreviewFallback": "Vorschau nutzt den einfachen Player. Du kannst weiterhin schneiden und hochladen."
+  "videoPreviewFallback": "Vorschau nutzt den einfachen Player. Du kannst weiterhin schneiden und hochladen.",
+  "dragTextHint": "Ziehe den Text auf dem Video an die gewünschte Stelle.",
+  "textColor": "Farbe",
+  "textSize": "Größe",
+  "textStyle": "Stil",
+  "textBold": "Fett",
+  "textItalic": "Kursiv",
+  "textMono": "Mono",
+  "textBackground": "Hintergrund"
 }

@@ -19,6 +19,12 @@ import * as DocumentPicker from "expo-document-picker";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 import {
   addProgressListener,
   createProject,
@@ -46,6 +52,16 @@ import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 
 type AspectPreset = "portrait" | "square" | "landscape";
 type EditorTool = "trim" | "crop" | "music" | "text" | null;
+type OverlaySize = "S" | "M" | "L";
+type OverlayColorKey =
+  | "white"
+  | "selectCard"
+  | "orangeBrown"
+  | "bookNowButton"
+  | "green"
+  | "link"
+  | "darkGreen"
+  | "black";
 
 type EditorSnapshot = {
   trimStartMs: number;
@@ -56,6 +72,37 @@ type EditorSnapshot = {
   musicName: string | null;
   musicVolume: number;
   overlayText: string;
+  overlayX: number;
+  overlayY: number;
+  overlayColorKey: OverlayColorKey;
+  overlaySize: OverlaySize;
+  overlayBold: boolean;
+  overlayItalic: boolean;
+  overlayMono: boolean;
+  overlayBg: boolean;
+};
+
+const OVERLAY_COLOR_KEYS: OverlayColorKey[] = [
+  "white",
+  "selectCard",
+  "orangeBrown",
+  "bookNowButton",
+  "green",
+  "link",
+  "darkGreen",
+  "black",
+];
+
+const OVERLAY_EXPORT_FONT: Record<OverlaySize, number> = {
+  S: 28,
+  M: 42,
+  L: 64,
+};
+
+const OVERLAY_PREVIEW_FONT: Record<OverlaySize, number> = {
+  S: 16,
+  M: 22,
+  L: 30,
 };
 
 const ASPECT_SIZES: Record<AspectPreset, { width: number; height: number }> = {
@@ -176,6 +223,7 @@ const createStyles = (theme: Theme) =>
       ...StyleSheet.absoluteFillObject,
       alignItems: "center",
       justifyContent: "center",
+      zIndex: 2,
     },
     playCircle: {
       width: widthScale(68),
@@ -187,20 +235,44 @@ const createStyles = (theme: Theme) =>
     },
     textOverlay: {
       position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: "10%",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(16),
+      maxWidth: "90%",
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      zIndex: 10,
+    },
+    textOverlayBg: {
+      backgroundColor: theme.borderDark,
+      borderRadius: moderateWidthScale(10),
     },
     textOverlayLabel: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
       textAlign: "center",
       textShadowColor: theme.black,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 4,
+    },
+    textOverlayActive: {
+      borderWidth: 1,
+      borderColor: theme.selectCard,
+      borderStyle: "dashed",
+      borderRadius: moderateWidthScale(10),
+    },
+    textHitExpand: {
+      // Larger hit area so drag is easy to grab
+      minWidth: widthScale(80),
+      minHeight: heightScale(44),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    colorDot: {
+      width: widthScale(28),
+      height: heightScale(28),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 2,
+      borderColor: theme.white15,
+    },
+    colorDotActive: {
+      borderColor: theme.selectCard,
+      borderWidth: 3,
     },
     timeBadge: {
       position: "absolute",
@@ -400,6 +472,17 @@ export default function EditVideoScreen() {
   const [musicName, setMusicName] = useState<string | null>(null);
   const [musicVolume, setMusicVolume] = useState(0.8);
   const [overlayText, setOverlayText] = useState("");
+  const [overlayX, setOverlayX] = useState(0.5);
+  const [overlayY, setOverlayY] = useState(0.82);
+  const [overlayColorKey, setOverlayColorKey] =
+    useState<OverlayColorKey>("white");
+  const [overlaySize, setOverlaySize] = useState<OverlaySize>("M");
+  const [overlayBold, setOverlayBold] = useState(true);
+  const [overlayItalic, setOverlayItalic] = useState(false);
+  const [overlayMono, setOverlayMono] = useState(false);
+  const [overlayBg, setOverlayBg] = useState(false);
+  const [draggingText, setDraggingText] = useState(false);
+  const [textBoxSize, setTextBoxSize] = useState({ width: 120, height: 36 });
   const [playing, setPlaying] = useState(false);
   const [previewReady, setPreviewReady] = useState(false);
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
@@ -430,6 +513,11 @@ export default function EditVideoScreen() {
     p.timeUpdateEventInterval = 0.1;
   });
 
+  const resolveOverlayColor = useCallback(
+    (key: OverlayColorKey) => theme[key] as string,
+    [theme],
+  );
+
   const currentSnapshot = useCallback(
     (): EditorSnapshot => ({
       trimStartMs,
@@ -440,6 +528,14 @@ export default function EditVideoScreen() {
       musicName,
       musicVolume,
       overlayText,
+      overlayX,
+      overlayY,
+      overlayColorKey,
+      overlaySize,
+      overlayBold,
+      overlayItalic,
+      overlayMono,
+      overlayBg,
     }),
     [
       aspect,
@@ -447,7 +543,15 @@ export default function EditVideoScreen() {
       musicUri,
       musicVolume,
       muteOriginal,
+      overlayBg,
+      overlayBold,
+      overlayColorKey,
+      overlayItalic,
+      overlayMono,
+      overlaySize,
       overlayText,
+      overlayX,
+      overlayY,
       trimEndMs,
       trimStartMs,
     ],
@@ -466,7 +570,15 @@ export default function EditVideoScreen() {
         last.musicUri === snap.musicUri &&
         last.musicName === snap.musicName &&
         last.musicVolume === snap.musicVolume &&
-        last.overlayText === snap.overlayText
+        last.overlayText === snap.overlayText &&
+        last.overlayX === snap.overlayX &&
+        last.overlayY === snap.overlayY &&
+        last.overlayColorKey === snap.overlayColorKey &&
+        last.overlaySize === snap.overlaySize &&
+        last.overlayBold === snap.overlayBold &&
+        last.overlayItalic === snap.overlayItalic &&
+        last.overlayMono === snap.overlayMono &&
+        last.overlayBg === snap.overlayBg
       ) {
         return prev;
       }
@@ -494,6 +606,14 @@ export default function EditVideoScreen() {
       setMusicName(snap.musicName);
       setMusicVolume(snap.musicVolume);
       setOverlayText(snap.overlayText);
+      setOverlayX(snap.overlayX);
+      setOverlayY(snap.overlayY);
+      setOverlayColorKey(snap.overlayColorKey);
+      setOverlaySize(snap.overlaySize);
+      setOverlayBold(snap.overlayBold);
+      setOverlayItalic(snap.overlayItalic);
+      setOverlayMono(snap.overlayMono);
+      setOverlayBg(snap.overlayBg);
       return next;
     });
   }, []);
@@ -682,15 +802,19 @@ export default function EditVideoScreen() {
             id: STABLE_CLIP_IDS.text,
             kind: "text",
             content: overlayText.trim(),
-            x: 0.5,
-            y: 0.88,
+            x: overlayX,
+            y: overlayY,
             anchor: "center",
             textAlign: "center",
-            paddingX: 16,
-            paddingY: 8,
-            fontSize: 42,
-            color: theme.white,
-            fontWeight: "bold",
+            paddingX: overlayBg ? 18 : 10,
+            paddingY: overlayBg ? 10 : 6,
+            fontSize: OVERLAY_EXPORT_FONT[overlaySize],
+            color: resolveOverlayColor(overlayColorKey),
+            fontWeight: overlayBold ? "bold" : "normal",
+            fontStyle: overlayItalic ? "italic" : "normal",
+            fontFamily: overlayMono ? "monospace" : "system",
+            backgroundColor: overlayBg ? theme.borderDark : undefined,
+            cornerRadius: overlayBg ? 12 : undefined,
             shadowColor: theme.black,
             shadowRadius: 4,
             shadowOpacity: 0.6,
@@ -709,10 +833,19 @@ export default function EditVideoScreen() {
     musicUri,
     musicVolume,
     muteOriginal,
+    overlayBg,
+    overlayBold,
+    overlayColorKey,
+    overlayItalic,
+    overlayMono,
+    overlaySize,
     overlayText,
+    overlayX,
+    overlayY,
+    resolveOverlayColor,
     sourceUri,
     theme.black,
-    theme.white,
+    theme.borderDark,
     trimEndMs,
     trimStartMs,
   ]);
@@ -864,6 +997,88 @@ export default function EditVideoScreen() {
     [aspect, previewSize.height, previewSize.width],
   );
 
+  const posX = useSharedValue(overlayX);
+  const posY = useSharedValue(overlayY);
+  const dragOriginX = useSharedValue(overlayX);
+  const dragOriginY = useSharedValue(overlayY);
+  const frameW = useSharedValue(Math.max(1, frameSize.width));
+  const frameH = useSharedValue(Math.max(1, frameSize.height));
+  const boxW = useSharedValue(Math.max(1, textBoxSize.width));
+  const boxH = useSharedValue(Math.max(1, textBoxSize.height));
+
+  useEffect(() => {
+    posX.value = overlayX;
+    posY.value = overlayY;
+  }, [overlayX, overlayY, posX, posY]);
+
+  useEffect(() => {
+    frameW.value = Math.max(1, frameSize.width);
+    frameH.value = Math.max(1, frameSize.height);
+  }, [frameSize.height, frameSize.width, frameH, frameW]);
+
+  useEffect(() => {
+    boxW.value = Math.max(1, textBoxSize.width);
+    boxH.value = Math.max(1, textBoxSize.height);
+  }, [boxH, boxW, textBoxSize.height, textBoxSize.width]);
+
+  const commitOverlayPos = useCallback((x: number, y: number) => {
+    setOverlayX(x);
+    setOverlayY(y);
+  }, []);
+
+  const beginTextDrag = useCallback(() => {
+    dismissKeyboard();
+    pushHistory();
+    setDraggingText(true);
+  }, [dismissKeyboard, pushHistory]);
+
+  const endTextDrag = useCallback(() => {
+    setDraggingText(false);
+  }, []);
+
+  const textDragGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .minDistance(1)
+        .onBegin(() => {
+          dragOriginX.value = posX.value;
+          dragOriginY.value = posY.value;
+          runOnJS(beginTextDrag)();
+        })
+        .onUpdate((e) => {
+          const nextX = Math.min(
+            0.92,
+            Math.max(0.08, dragOriginX.value + e.translationX / frameW.value),
+          );
+          const nextY = Math.min(
+            0.92,
+            Math.max(0.08, dragOriginY.value + e.translationY / frameH.value),
+          );
+          posX.value = nextX;
+          posY.value = nextY;
+        })
+        .onFinalize(() => {
+          runOnJS(commitOverlayPos)(posX.value, posY.value);
+          runOnJS(endTextDrag)();
+        }),
+    [
+      beginTextDrag,
+      commitOverlayPos,
+      dragOriginX,
+      dragOriginY,
+      endTextDrag,
+      frameH,
+      frameW,
+      posX,
+      posY,
+    ],
+  );
+
+  const textAnimatedStyle = useAnimatedStyle(() => ({
+    left: posX.value * frameW.value - boxW.value / 2,
+    top: posY.value * frameH.value - boxH.value / 2,
+  }));
+
   const busy = exporting || uploading;
   const canUndo = history.length > 0;
   const tools: {
@@ -953,11 +1168,7 @@ export default function EditVideoScreen() {
           </TouchableOpacity>
         </View>
 
-        <Pressable
-          style={styles.previewArea}
-          onLayout={onPreviewLayout}
-          onPress={dismissKeyboard}
-        >
+        <View style={styles.previewArea} onLayout={onPreviewLayout}>
           {frameSize.width > 0 ? (
             <View
               style={[
@@ -970,35 +1181,71 @@ export default function EditVideoScreen() {
                 style={styles.video}
                 contentFit="cover"
                 nativeControls={false}
+                pointerEvents="none"
               />
 
-              {overlayText.trim() ? (
-                <View style={styles.textOverlay} pointerEvents="none">
-                  <Text style={styles.textOverlayLabel}>
-                    {overlayText.trim()}
-                  </Text>
-                </View>
-              ) : null}
+              <View style={styles.playOverlay} pointerEvents="box-none">
+                <TouchableOpacity
+                  style={styles.playCircle}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    dismissKeyboard();
+                    if (busy || !previewReady) return;
+                    setPlaying((p) => !p);
+                  }}
+                  hitSlop={12}
+                >
+                  <MaterialIcons
+                    name={playing ? "pause" : "play-arrow"}
+                    size={moderateWidthScale(36)}
+                    color={theme.white}
+                  />
+                </TouchableOpacity>
+              </View>
 
-              <TouchableOpacity
-                style={styles.playOverlay}
-                activeOpacity={1}
-                onPress={() => {
-                  dismissKeyboard();
-                  if (busy || !previewReady) return;
-                  setPlaying((p) => !p);
-                }}
-              >
-                {!playing ? (
-                  <View style={styles.playCircle}>
-                    <MaterialIcons
-                      name="play-arrow"
-                      size={moderateWidthScale(36)}
-                      color={theme.white}
-                    />
-                  </View>
-                ) : null}
-              </TouchableOpacity>
+              {overlayText.trim() ? (
+                <GestureDetector gesture={textDragGesture}>
+                  <Animated.View
+                    onLayout={(e) => {
+                      const { width, height } = e.nativeEvent.layout;
+                      if (width > 0 && height > 0) {
+                        setTextBoxSize({ width, height });
+                      }
+                    }}
+                    style={[
+                      styles.textOverlay,
+                      styles.textHitExpand,
+                      overlayBg && styles.textOverlayBg,
+                      (activeTool === "text" || draggingText) &&
+                        styles.textOverlayActive,
+                      textAnimatedStyle,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.textOverlayLabel,
+                        {
+                          color: resolveOverlayColor(overlayColorKey),
+                          fontSize:
+                            overlaySize === "S"
+                              ? fontSize.size16
+                              : overlaySize === "L"
+                                ? fontSize.size28
+                                : fontSize.size22,
+                          fontFamily: overlayMono
+                            ? fonts.fontRegular
+                            : overlayBold
+                              ? fonts.fontBold
+                              : fonts.fontMedium,
+                          fontStyle: overlayItalic ? "italic" : "normal",
+                        },
+                      ]}
+                    >
+                      {overlayText.trim()}
+                    </Text>
+                  </Animated.View>
+                </GestureDetector>
+              ) : null}
 
               <View style={styles.timeBadge} pointerEvents="none">
                 <Text style={styles.timeText}>
@@ -1010,7 +1257,7 @@ export default function EditVideoScreen() {
           ) : (
             <ActivityIndicator color={theme.white} />
           )}
-        </Pressable>
+        </View>
 
         <View
           style={[
@@ -1199,6 +1446,7 @@ export default function EditVideoScreen() {
                 <>
                   <Pressable onPress={dismissKeyboard}>
                     <Text style={styles.panelTitle}>{t("overlayText")}</Text>
+                    <Text style={styles.panelHint}>{t("dragTextHint")}</Text>
                   </Pressable>
                   <TextInput
                     ref={textInputRef}
@@ -1222,6 +1470,120 @@ export default function EditVideoScreen() {
                     editable={!busy}
                     maxLength={80}
                   />
+
+                  <Text style={[styles.label, { marginTop: moderateHeightScale(10) }]}>
+                    {t("textColor")}
+                  </Text>
+                  <View style={styles.chipRow}>
+                    {OVERLAY_COLOR_KEYS.map((key) => (
+                      <TouchableOpacity
+                        key={key}
+                        style={[
+                          styles.colorDot,
+                          { backgroundColor: theme[key] as string },
+                          overlayColorKey === key && styles.colorDotActive,
+                        ]}
+                        onPress={() => {
+                          if (overlayColorKey === key) return;
+                          pushHistory();
+                          setOverlayColorKey(key);
+                        }}
+                        disabled={busy}
+                      />
+                    ))}
+                  </View>
+
+                  <Text style={[styles.label, { marginTop: moderateHeightScale(10) }]}>
+                    {t("textSize")}
+                  </Text>
+                  <View style={styles.chipRow}>
+                    {(["S", "M", "L"] as OverlaySize[]).map((size) => (
+                      <TouchableOpacity
+                        key={size}
+                        style={[
+                          styles.chip,
+                          overlaySize === size && styles.chipActive,
+                        ]}
+                        onPress={() => {
+                          if (overlaySize === size) return;
+                          pushHistory();
+                          setOverlaySize(size);
+                        }}
+                        disabled={busy}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            overlaySize === size && styles.chipTextActive,
+                          ]}
+                        >
+                          {size}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={[styles.label, { marginTop: moderateHeightScale(10) }]}>
+                    {t("textStyle")}
+                  </Text>
+                  <View style={styles.chipRow}>
+                    {(
+                      [
+                        {
+                          key: "bold",
+                          label: t("textBold"),
+                          active: overlayBold,
+                          onPress: () => {
+                            pushHistory();
+                            setOverlayBold((v) => !v);
+                          },
+                        },
+                        {
+                          key: "italic",
+                          label: t("textItalic"),
+                          active: overlayItalic,
+                          onPress: () => {
+                            pushHistory();
+                            setOverlayItalic((v) => !v);
+                          },
+                        },
+                        {
+                          key: "mono",
+                          label: t("textMono"),
+                          active: overlayMono,
+                          onPress: () => {
+                            pushHistory();
+                            setOverlayMono((v) => !v);
+                          },
+                        },
+                        {
+                          key: "bg",
+                          label: t("textBackground"),
+                          active: overlayBg,
+                          onPress: () => {
+                            pushHistory();
+                            setOverlayBg((v) => !v);
+                          },
+                        },
+                      ] as const
+                    ).map((item) => (
+                      <TouchableOpacity
+                        key={item.key}
+                        style={[styles.chip, item.active && styles.chipActive]}
+                        onPress={item.onPress}
+                        disabled={busy}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            item.active && styles.chipTextActive,
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </>
               ) : null}
 

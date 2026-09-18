@@ -1332,5 +1332,13 @@
   "uploadOriginal": "そのままアップロード",
   "done": "完了",
   "undo": "元に戻す",
-  "videoPreviewFallback": "シンプルなプレーヤーでプレビューします。トリミングとアップロードは可能です。"
+  "videoPreviewFallback": "シンプルなプレーヤーでプレビューします。トリミングとアップロードは可能です。",
+  "dragTextHint": "動画上のテキストをドラッグして好きな位置に置けます。",
+  "textColor": "カラー",
+  "textSize": "サイズ",
+  "textStyle": "スタイル",
+  "textBold": "太字",
+  "textItalic": "斜体",
+  "textMono": "等幅",
+  "textBackground": "背景"
 }
