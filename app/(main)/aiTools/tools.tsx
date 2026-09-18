@@ -50,14 +50,22 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
+import { getMediaLimits } from "@/src/services/mediaLibraryService";
 import { businessEndpoints, userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
+import type { MediaLimits } from "@/src/types/media";
+import {
+  estimateReelSeconds,
+  formatReelLimitMessage,
+  itemsToRemoveHint,
+} from "@/src/utils/reelLimits";
 
 interface MediaFile {
   id: string;
   uri: string;
   type: "image" | "video";
   thumbnailUri?: string; // For video thumbnails
+  durationMs?: number;
 }
 
 interface AudioFile {
@@ -94,7 +102,14 @@ export default function Tools() {
       if (user.isGuest || user.userRole === "customer") {
         void fetchCustomerAiServices();
       }
-    }, [user.isGuest, user.userRole]),
+      if (toolType === "Generate Reel") {
+        void getMediaLimits()
+          .then(setMediaLimits)
+          .catch((error) => {
+            Logger.error("Failed to load media limits for Generate Reel:", error);
+          });
+      }
+    }, [user.isGuest, user.userRole, toolType]),
   );
 
   const fetchQuota = async () => {
@@ -136,10 +151,39 @@ export default function Tools() {
   // State for Collage (2-6 images)
   const [collageImages, setCollageImages] = useState<MediaFile[]>([]);
 
-  // State for Reel (3-15 media files + optional audio)
+  // State for Reel (3–ai_max_images media files + optional audio)
   const [reelMedia, setReelMedia] = useState<MediaFile[]>([]);
   const [backgroundMusic, setBackgroundMusic] = useState<AudioFile | null>(
     null,
+  );
+  const [mediaLimits, setMediaLimits] = useState<MediaLimits | null>(null);
+
+  const reelAiMaxItems = mediaLimits?.ai_max_images ?? 6;
+  const reelMaxSeconds = mediaLimits?.max_seconds ?? 15;
+  const reelEstimateSeconds = useMemo(() => {
+    if (!mediaLimits || reelMedia.length === 0) return 0;
+    return estimateReelSeconds(
+      reelMedia.map((m) => ({
+        type: m.type,
+        durationMs: m.durationMs,
+      })),
+      mediaLimits,
+    );
+  }, [mediaLimits, reelMedia]);
+  const reelOverLimit =
+    Boolean(mediaLimits) &&
+    reelMedia.length > 0 &&
+    reelEstimateSeconds > reelMaxSeconds;
+  const reelRemoveHint = reelOverLimit
+    ? itemsToRemoveHint(
+        reelEstimateSeconds,
+        reelMaxSeconds,
+        mediaLimits?.ai_seconds_per_image ?? 3,
+      )
+    : 0;
+  const reelLimitBanner = useMemo(
+    () => (mediaLimits ? formatReelLimitMessage(mediaLimits, t) : null),
+    [mediaLimits, t],
   );
 
   // State for Hair Tryon (source image + prompt)
@@ -316,26 +360,33 @@ export default function Tools() {
             .filter((asset) => asset.uri)
             .map((asset) => {
               const isVideo = asset.type === "video";
+              const durationMs =
+                typeof asset.duration === "number" && asset.duration > 0
+                  ? asset.duration
+                  : undefined;
               return {
                 id: generateId(),
                 uri: asset.uri,
-                type: isVideo ? "video" : "image",
+                type: (isVideo ? "video" : "image") as "image" | "video",
                 thumbnailUri: isVideo
                   ? (asset as any).thumbnailUri || asset.uri
                   : undefined,
+                durationMs,
               };
             });
 
           const totalMedia = reelMedia.length + newMedia.length;
-          if (totalMedia > 15) {
+          if (totalMedia > reelAiMaxItems) {
             showBanner(
               t("limitExceeded"),
-              t("reelLimitMessage"),
+              t("reelLimitMessageDynamic", { max: reelAiMaxItems }),
               "warning",
               3000,
             );
-            const remaining = 15 - reelMedia.length;
-            setReelMedia([...reelMedia, ...newMedia.slice(0, remaining)]);
+            const remaining = reelAiMaxItems - reelMedia.length;
+            if (remaining > 0) {
+              setReelMedia([...reelMedia, ...newMedia.slice(0, remaining)]);
+            }
           } else {
             setReelMedia([...reelMedia, ...newMedia]);
           }
@@ -345,7 +396,7 @@ export default function Tools() {
       Logger.error("Error selecting media:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [toolType, collageImages, reelMedia, t]);
+  }, [toolType, collageImages, reelMedia, reelAiMaxItems, showBanner, t]);
 
   const handleTakePhoto = useCallback(async () => {
     setImagePickerVisible(false);
@@ -393,16 +444,20 @@ export default function Tools() {
             },
           ]);
         } else if (toolType === "Generate Reel") {
-          if (reelMedia.length >= 15) {
+          if (reelMedia.length >= reelAiMaxItems) {
             showBanner(
               t("limitExceeded"),
-              t("reelMax15Files"),
+              t("reelMaxFilesDynamic", { max: reelAiMaxItems }),
               "warning",
               3000,
             );
             return;
           }
           const isVideo = asset.type === "video";
+          const durationMs =
+            typeof asset.duration === "number" && asset.duration > 0
+              ? asset.duration
+              : undefined;
           setReelMedia([
             ...reelMedia,
             {
@@ -412,6 +467,7 @@ export default function Tools() {
               thumbnailUri: isVideo
                 ? (asset as any).thumbnailUri || asset.uri
                 : undefined,
+              durationMs,
             },
           ]);
         }
@@ -420,7 +476,7 @@ export default function Tools() {
       Logger.error("Error taking photo:", error);
       showBanner(t("error"), t("failedToTakePhoto"), "error", 3000);
     }
-  }, [toolType, collageImages, reelMedia, t]);
+  }, [toolType, collageImages, reelMedia, reelAiMaxItems, showBanner, t]);
 
   const handleDeleteImage = useCallback(
     (id: string) => {
@@ -665,12 +721,25 @@ export default function Tools() {
       }
       // File types are normalized to JPEG at upload time (prepareImageForUpload)
     } else if (toolType === "Generate Reel") {
-      if (reelMedia.length < 3 || reelMedia.length > 15) {
+      if (reelMedia.length < 3 || reelMedia.length > reelAiMaxItems) {
         showBanner(
           t("validationError"),
-          t("pleaseSelect3To15Media"),
+          t("pleaseSelect3ToMaxMedia", { max: reelAiMaxItems }),
           "warning",
           3000,
+        );
+        return;
+      }
+      if (reelOverLimit) {
+        showBanner(
+          t("validationError"),
+          t("reelEstimateOverLimit", {
+            estimate: reelEstimateSeconds,
+            max_seconds: reelMaxSeconds,
+            remove: Math.max(1, reelRemoveHint),
+          }),
+          "warning",
+          3500,
         );
         return;
       }
@@ -897,8 +966,12 @@ export default function Tools() {
   const renderReelContent = () => (
     <>
       <View style={styles.fieldContainer}>
+        {reelLimitBanner ? (
+          <Text style={styles.hintText}>{reelLimitBanner}</Text>
+        ) : null}
         <Text style={styles.label}>
-          {t("mediaFiles3To15")} <Text style={styles.required}>*</Text>
+          {t("mediaFiles3ToMax", { max: reelAiMaxItems })}{" "}
+          <Text style={styles.required}>*</Text>
         </Text>
         <TouchableOpacity
           style={styles.fileInput}
@@ -971,6 +1044,17 @@ export default function Tools() {
             {t("reelMediaOrderHint")}
           </Text>
         )}
+        {reelMedia.length > 0 && mediaLimits ? (
+          <Text style={styles.hintText}>
+            {reelOverLimit
+              ? t("reelEstimateOverLimit", {
+                  estimate: reelEstimateSeconds,
+                  max_seconds: reelMaxSeconds,
+                  remove: Math.max(1, reelRemoveHint),
+                })
+              : t("reelEstimateOk", { estimate: reelEstimateSeconds })}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.fieldContainer}>
@@ -1269,7 +1353,11 @@ export default function Tools() {
               onPress={handleGenerate}
               disabled={
                 isGenerating ||
-                (toolType === "Hair Tryon" ? !hairTryonSelectedType : false)
+                (toolType === "Hair Tryon" ? !hairTryonSelectedType : false) ||
+                (toolType === "Generate Reel" &&
+                  (reelMedia.length < 3 ||
+                    reelMedia.length > reelAiMaxItems ||
+                    reelOverLimit))
               }
             />
           </>

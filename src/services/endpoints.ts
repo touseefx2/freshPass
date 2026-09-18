@@ -695,6 +695,7 @@ export const mediaEndpoints = {
   upload: `/api/media`,
   deleteOne: (id: number | string) => `/api/media/${id}`,
   deleteBulk: `/api/media`,
+  limits: `/api/media/limits`,
 };
 
 /**

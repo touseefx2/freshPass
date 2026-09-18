@@ -20,18 +20,14 @@ import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useTheme } from "@/src/hooks/hooks";
-import { Theme } from "@/src/theme/colors";
-import { fontSize, fonts } from "@/src/theme/fonts";
-import {
-  moderateHeightScale,
-  moderateWidthScale,
-} from "@/src/theme/dimensions";
+import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import Button from "@/src/components/button";
 import MediaLibraryVideoTile from "@/src/components/mediaLibraryVideoTile";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import {
   deleteVideo,
+  getMediaLimits,
   getVideo,
   listVideos,
   MEDIA_VIDEOS_PER_PAGE,
@@ -41,7 +37,23 @@ import {
   handleMediaLibraryPermission,
 } from "@/src/services/mediaPermissionService";
 import Logger from "@/src/services/logger";
-import type { MediaUploadSourceType, MediaVideo } from "@/src/types/media";
+import {
+  setBusinessPlansModalVisible,
+  setStripeConnectModalVisible,
+} from "@/src/state/slices/generalSlice";
+import { Theme } from "@/src/theme/colors";
+import { fontSize, fonts } from "@/src/theme/fonts";
+import {
+  moderateHeightScale,
+  moderateWidthScale,
+} from "@/src/theme/dimensions";
+import type {
+  MediaLimits,
+  MediaUploadSourceType,
+  MediaVideo,
+} from "@/src/types/media";
+import { formatReelLimitMessage } from "@/src/utils/reelLimits";
+import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const PADDING = moderateWidthScale(20);
@@ -69,6 +81,21 @@ const createStyles = (theme: Theme) =>
     },
     actionButton: {
       flex: 1,
+    },
+    limitCard: {
+      marginHorizontal: PADDING,
+      marginBottom: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    limitText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     listContent: {
       paddingHorizontal: PADDING,
@@ -118,6 +145,10 @@ export default function MediaLibraryVideosTab() {
   const { t } = useTranslation();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
+  const dispatch = useAppDispatch();
+  const businessStatus = useAppSelector(
+    (state) => state.user.businessStatus,
+  );
 
   const itemWidth = useMemo(() => calculateItemWidth(), []);
 
@@ -126,6 +157,8 @@ export default function MediaLibraryVideosTab() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [limits, setLimits] = useState<MediaLimits | null>(null);
+  const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
 
   const pollTimersRef = useRef<Map<number, ReturnType<typeof setInterval>>>(
     new Map(),
@@ -234,6 +267,11 @@ export default function MediaLibraryVideosTab() {
     useCallback(() => {
       const hasCache = videosRef.current.length > 0;
       fetchPage(1, false, hasCache);
+      void getMediaLimits()
+        .then(setLimits)
+        .catch((error) => {
+          Logger.error("Failed to load media limits:", error);
+        });
     }, [fetchPage]),
   );
 
@@ -242,10 +280,35 @@ export default function MediaLibraryVideosTab() {
     fetchPage(page + 1, true);
   }, [fetchPage, hasMore, loadingMore, loading, page]);
 
+  const maxSeconds = limits?.max_seconds ?? 15;
+  const limitMessage = useMemo(
+    () => (limits ? formatReelLimitMessage(limits, t) : null),
+    [limits, t],
+  );
+
+  const ensureCanUploadReel = useCallback((): boolean => {
+    const gate = getReelUploadGate(businessStatus);
+    if (gate === "stripe") {
+      dispatch(setStripeConnectModalVisible(true));
+      return false;
+    }
+    if (gate === "plan") {
+      setBuyPlanModalVisible(true);
+      return false;
+    }
+    return true;
+  }, [businessStatus, dispatch]);
+
+  const handleViewPlans = useCallback(() => {
+    setBuyPlanModalVisible(false);
+    dispatch(setBusinessPlansModalVisible(true));
+  }, [dispatch]);
+
   const openEditor = useCallback(
     (
       asset: ImagePicker.ImagePickerAsset,
       sourceType: MediaUploadSourceType,
+      seconds: number,
     ) => {
       if (!asset.uri) return;
       router.push({
@@ -255,6 +318,7 @@ export default function MediaLibraryVideosTab() {
           mimeType: asset.mimeType || "video/mp4",
           fileName: asset.fileName || "video.mp4",
           sourceType,
+          maxSeconds: String(seconds),
         },
       });
     },
@@ -265,21 +329,32 @@ export default function MediaLibraryVideosTab() {
     (
       asset: ImagePicker.ImagePickerAsset,
       sourceType: MediaUploadSourceType,
+      seconds: number,
     ) => {
-      openEditor(asset, sourceType);
+      openEditor(asset, sourceType, seconds);
     },
     [openEditor],
   );
 
   const handleRecord = useCallback(async () => {
+    if (!ensureCanUploadReel()) return;
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) return;
+
+    let seconds = maxSeconds;
+    try {
+      const data = await getMediaLimits();
+      setLimits(data);
+      seconds = data.max_seconds;
+    } catch {
+      // keep last known / default
+    }
 
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["videos"],
         quality: 1,
-        videoMaxDuration: 180,
+        videoMaxDuration: seconds,
         ...(Platform.OS === "ios" && {
           preferredAssetRepresentationMode:
             ImagePicker.UIImagePickerPreferredAssetRepresentationMode
@@ -287,17 +362,27 @@ export default function MediaLibraryVideosTab() {
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        afterPick(result.assets[0], "camera");
+        afterPick(result.assets[0], "camera", seconds);
       }
     } catch (error) {
       Logger.error("Error recording video:", error);
       showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
     }
-  }, [afterPick, showBanner, t]);
+  }, [afterPick, ensureCanUploadReel, maxSeconds, showBanner, t]);
 
   const handleUpload = useCallback(async () => {
+    if (!ensureCanUploadReel()) return;
     const hasPermission = await handleMediaLibraryPermission();
     if (!hasPermission) return;
+
+    let seconds = maxSeconds;
+    try {
+      const data = await getMediaLimits();
+      setLimits(data);
+      seconds = data.max_seconds;
+    } catch {
+      // keep last known / default
+    }
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -311,13 +396,13 @@ export default function MediaLibraryVideosTab() {
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        afterPick(result.assets[0], "device");
+        afterPick(result.assets[0], "device", seconds);
       }
     } catch (error) {
       Logger.error("Error selecting video:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [afterPick, showBanner, t]);
+  }, [afterPick, ensureCanUploadReel, maxSeconds, showBanner, t]);
 
   const confirmDelete = useCallback(
     (video: MediaVideo) => {
@@ -436,6 +521,11 @@ export default function MediaLibraryVideosTab() {
 
   return (
     <View style={styles.root}>
+      {limitMessage ? (
+        <View style={styles.limitCard}>
+          <Text style={styles.limitText}>{limitMessage}</Text>
+        </View>
+      ) : null}
       <View style={styles.actionsRow}>
         <View style={styles.actionButton}>
           <Button
@@ -500,6 +590,12 @@ export default function MediaLibraryVideosTab() {
           }
         />
       )}
+
+      <BuyBusinessPlanModal
+        visible={buyPlanModalVisible}
+        onClose={() => setBuyPlanModalVisible(false)}
+        onViewPlans={handleViewPlans}
+      />
     </View>
   );
 }

@@ -17,7 +17,8 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CloseIcon } from "@/assets/icons";
-import { useTheme } from "@/src/hooks/hooks";
+import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -28,6 +29,7 @@ import {
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
+import { getMediaLimits } from "@/src/services/mediaLibraryService";
 import {
   handleCameraPermission,
   handleMediaLibraryPermission,
@@ -40,9 +42,15 @@ import {
   REELS_MINE_PER_PAGE,
   unpublishReel,
 } from "@/src/services/reelsService";
-import type { MediaUploadSourceType } from "@/src/types/media";
+import {
+  setBusinessPlansModalVisible,
+  setStripeConnectModalVisible,
+} from "@/src/state/slices/generalSlice";
+import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel, ReelPerformanceStats } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import { formatReelLimitMessage } from "@/src/utils/reelLimits";
+import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
 const FAB_SIZE = 56;
 const FAB_BOTTOM_EXTRA = 56;
@@ -67,6 +75,21 @@ const createStyles = (theme: Theme) =>
     },
     headerMeta: {
       marginTop: moderateHeightScale(4),
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    limitCard: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    limitText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
@@ -264,6 +287,10 @@ export default function MediaLibraryMyReelsTab() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
+  const dispatch = useAppDispatch();
+  const businessStatus = useAppSelector(
+    (state) => state.user.businessStatus,
+  );
 
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [reels, setReels] = useState<OwnerReel[]>([]);
@@ -273,6 +300,8 @@ export default function MediaLibraryMyReelsTab() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [summary, setSummary] = useState<ReelPerformanceStats | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
+  const [limits, setLimits] = useState<MediaLimits | null>(null);
+  const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
 
   const fabBottom =
     Math.max(insets.bottom, moderateHeightScale(12)) +
@@ -325,12 +354,47 @@ export default function MediaLibraryMyReelsTab() {
     [filter, showBanner, t],
   );
 
+  const fetchLimits = useCallback(async () => {
+    try {
+      const data = await getMediaLimits();
+      setLimits(data);
+    } catch (error) {
+      Logger.error("Failed to load media limits:", error);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       fetchSummary();
       fetchPage(1, false);
-    }, [fetchPage, fetchSummary]),
+      void fetchLimits();
+    }, [fetchPage, fetchSummary, fetchLimits]),
   );
+
+  const ensureCanUploadReel = useCallback((): boolean => {
+    const gate = getReelUploadGate(businessStatus);
+    if (gate === "stripe") {
+      dispatch(setStripeConnectModalVisible(true));
+      return false;
+    }
+    if (gate === "plan") {
+      setBuyPlanModalVisible(true);
+      return false;
+    }
+    return true;
+  }, [businessStatus, dispatch]);
+
+  const handleViewPlans = useCallback(() => {
+    setBuyPlanModalVisible(false);
+    dispatch(setBusinessPlansModalVisible(true));
+  }, [dispatch]);
+
+  const limitMessage = useMemo(
+    () => (limits ? formatReelLimitMessage(limits, t) : null),
+    [limits, t],
+  );
+
+  const maxSeconds = limits?.max_seconds ?? 15;
 
   const handleLoadMore = useCallback(() => {
     if (!hasMore || loadingMore || loading) return;
@@ -346,6 +410,7 @@ export default function MediaLibraryMyReelsTab() {
     (
       asset: ImagePicker.ImagePickerAsset,
       sourceType: MediaUploadSourceType,
+      seconds: number,
     ) => {
       if (!asset.uri) return;
       router.push({
@@ -355,6 +420,7 @@ export default function MediaLibraryMyReelsTab() {
           mimeType: asset.mimeType || "video/mp4",
           fileName: asset.fileName || "video.mp4",
           sourceType,
+          maxSeconds: String(seconds),
         },
       });
     },
@@ -362,14 +428,24 @@ export default function MediaLibraryMyReelsTab() {
   );
 
   const handleRecord = useCallback(async () => {
+    if (!ensureCanUploadReel()) return;
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) return;
+
+    let seconds = maxSeconds;
+    try {
+      const data = await getMediaLimits();
+      setLimits(data);
+      seconds = data.max_seconds;
+    } catch {
+      // keep last known / default
+    }
 
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["videos"],
         quality: 1,
-        videoMaxDuration: 180,
+        videoMaxDuration: seconds,
         ...(Platform.OS === "ios" && {
           preferredAssetRepresentationMode:
             ImagePicker.UIImagePickerPreferredAssetRepresentationMode
@@ -377,17 +453,27 @@ export default function MediaLibraryMyReelsTab() {
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        openEditor(result.assets[0], "camera");
+        openEditor(result.assets[0], "camera", seconds);
       }
     } catch (error) {
       Logger.error("Error recording video:", error);
       showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
     }
-  }, [openEditor, showBanner, t]);
+  }, [ensureCanUploadReel, maxSeconds, openEditor, showBanner, t]);
 
   const handleUpload = useCallback(async () => {
+    if (!ensureCanUploadReel()) return;
     const hasPermission = await handleMediaLibraryPermission();
     if (!hasPermission) return;
+
+    let seconds = maxSeconds;
+    try {
+      const data = await getMediaLimits();
+      setLimits(data);
+      seconds = data.max_seconds;
+    } catch {
+      // keep last known / default
+    }
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -401,17 +487,18 @@ export default function MediaLibraryMyReelsTab() {
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        openEditor(result.assets[0], "device");
+        openEditor(result.assets[0], "device", seconds);
       }
     } catch (error) {
       Logger.error("Error selecting video:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [openEditor, showBanner, t]);
+  }, [ensureCanUploadReel, maxSeconds, openEditor, showBanner, t]);
 
   const openAddMenu = useCallback(() => {
+    if (!fabOpen && !ensureCanUploadReel()) return;
     setFabOpen((open) => !open);
-  }, []);
+  }, [ensureCanUploadReel, fabOpen]);
 
   const closeFabMenu = useCallback(() => {
     setFabOpen(false);
@@ -617,6 +704,12 @@ export default function MediaLibraryMyReelsTab() {
         </Text>
       </TouchableOpacity>
 
+      {limitMessage ? (
+        <View style={styles.limitCard}>
+          <Text style={styles.limitText}>{limitMessage}</Text>
+        </View>
+      ) : null}
+
       <View style={styles.chipsRow}>
         {filters.map((key) => (
           <TouchableOpacity
@@ -756,6 +849,12 @@ export default function MediaLibraryMyReelsTab() {
           )}
         </View>
       </TouchableOpacity>
+
+      <BuyBusinessPlanModal
+        visible={buyPlanModalVisible}
+        onClose={() => setBuyPlanModalVisible(false)}
+        onViewPlans={handleViewPlans}
+      />
     </View>
   );
 }

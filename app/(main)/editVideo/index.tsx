@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   Platform,
   Pressable,
@@ -46,6 +47,10 @@ import {
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
+import {
+  getCachedMediaLimits,
+  getMediaLimits,
+} from "@/src/services/mediaLibraryService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 
@@ -684,15 +689,22 @@ export default function EditVideoScreen() {
     mimeType?: string;
     fileName?: string;
     sourceType?: string;
+    maxSeconds?: string;
   }>();
 
   const paramUri = params.uri ? decodeURIComponent(params.uri) : "";
   const sourceType = (
     params.sourceType === "camera" ? "camera" : "device"
   ) as MediaUploadSourceType;
+  const paramMaxSeconds = Number(params.maxSeconds);
+  const initialMaxSeconds =
+    Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
+      ? paramMaxSeconds
+      : getCachedMediaLimits()?.max_seconds ?? 15;
 
   const [sourceUri, setSourceUri] = useState("");
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const [maxSeconds, setMaxSeconds] = useState(initialMaxSeconds);
   const [durationMs, setDurationMs] = useState(5000);
   const [trimStartMs, setTrimStartMs] = useState(0);
   const [trimEndMs, setTrimEndMs] = useState(5000);
@@ -869,6 +881,29 @@ export default function EditVideoScreen() {
     });
   }, []);
 
+  const maxClipMs = Math.max(500, Math.round(maxSeconds * 1000));
+
+  useEffect(() => {
+    let cancelled = false;
+    if (
+      Number.isFinite(paramMaxSeconds) &&
+      paramMaxSeconds > 0
+    ) {
+      setMaxSeconds(paramMaxSeconds);
+      return;
+    }
+    void getMediaLimits()
+      .then((limits) => {
+        if (!cancelled) setMaxSeconds(limits.max_seconds);
+      })
+      .catch((error) => {
+        Logger.error("Failed to load media limits for editor:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [paramMaxSeconds]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -887,9 +922,17 @@ export default function EditVideoScreen() {
         const info = await getVideoInfo(localUri);
         if (cancelled) return;
         const dur = Math.max(500, info.durationMs || 5000);
+        const clipCap = Math.max(
+          500,
+          Math.round(
+            (Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
+              ? paramMaxSeconds
+              : getCachedMediaLimits()?.max_seconds ?? 15) * 1000,
+          ),
+        );
         setDurationMs(dur);
         setTrimStartMs(0);
-        setTrimEndMs(dur);
+        setTrimEndMs(Math.min(dur, clipCap));
         setVideoSize({
           width: Math.max(0, info.width || 0),
           height: Math.max(0, info.height || 0),
@@ -911,7 +954,39 @@ export default function EditVideoScreen() {
     return () => {
       cancelled = true;
     };
-  }, [paramUri, params.fileName, player, showBanner, t]);
+  }, [paramUri, params.fileName, paramMaxSeconds, player, showBanner, t]);
+
+  useEffect(() => {
+    setTrimEndMs((end) => {
+      const start = trimStartRef.current;
+      if (end - start <= maxClipMs) return end;
+      return Math.min(durationMs, start + maxClipMs);
+    });
+  }, [durationMs, maxClipMs]);
+
+  const onTrimStartChange = useCallback(
+    (value: number) => {
+      const minStart = Math.max(0, trimEndRef.current - maxClipMs);
+      const next = Math.min(
+        Math.max(value, minStart),
+        Math.max(0, trimEndRef.current - 500),
+      );
+      setTrimStartMs(next);
+    },
+    [maxClipMs],
+  );
+
+  const onTrimEndChange = useCallback(
+    (value: number) => {
+      const maxEnd = Math.min(durationMs, trimStartRef.current + maxClipMs);
+      const next = Math.max(
+        Math.min(value, maxEnd),
+        Math.min(durationMs, trimStartRef.current + 500),
+      );
+      setTrimEndMs(next);
+    },
+    [durationMs, maxClipMs],
+  );
 
   // Play / pause + mute
   useEffect(() => {
@@ -1138,6 +1213,20 @@ export default function EditVideoScreen() {
 
   const handleNextToPublish = useCallback(async () => {
     if (!project || exporting || !sourceUri) return;
+
+    const clipSeconds = (trimEndMs - trimStartMs) / 1000;
+    if (clipSeconds > maxSeconds + 0.05) {
+      Alert.alert(
+        t("reelTrimRequiredTitle"),
+        t("reelTrimRequiredMessage", {
+          max_seconds: maxSeconds,
+          clip_seconds: Math.round(clipSeconds),
+        }),
+      );
+      setActiveTool("trim");
+      return;
+    }
+
     dismissKeyboard();
     setPlaying(false);
     try {
@@ -1218,6 +1307,7 @@ export default function EditVideoScreen() {
     dismissKeyboard,
     durationMs,
     exporting,
+    maxSeconds,
     musicUri,
     muteOriginal,
     overlayText,
@@ -1620,9 +1710,12 @@ export default function EditVideoScreen() {
                       end: formatMs(trimEndMs),
                     })}
                   </Text>
+                  <Text style={styles.panelHint}>
+                    {t("reelTrimMaxHint", { max_seconds: maxSeconds })}
+                  </Text>
                   <Text style={styles.label}>{t("trimStart")}</Text>
                   <Slider
-                    minimumValue={0}
+                    minimumValue={Math.max(0, trimEndMs - maxClipMs)}
                     maximumValue={Math.max(0, trimEndMs - 500)}
                     value={trimStartMs}
                     onSlidingStart={() => {
@@ -1633,7 +1726,7 @@ export default function EditVideoScreen() {
                       }
                       setPlaying(false);
                     }}
-                    onValueChange={setTrimStartMs}
+                    onValueChange={onTrimStartChange}
                     onSlidingComplete={() => {
                       trimHistoryPushedRef.current = false;
                       setPlaying(true);
@@ -1646,7 +1739,7 @@ export default function EditVideoScreen() {
                   <Text style={styles.label}>{t("trimEnd")}</Text>
                   <Slider
                     minimumValue={Math.min(durationMs, trimStartMs + 500)}
-                    maximumValue={durationMs}
+                    maximumValue={Math.min(durationMs, trimStartMs + maxClipMs)}
                     value={trimEndMs}
                     onSlidingStart={() => {
                       dismissKeyboard();
@@ -1655,7 +1748,8 @@ export default function EditVideoScreen() {
                         trimHistoryPushedRef.current = true;
                       }
                       setPlaying(false);
-                    }}                    onValueChange={setTrimEndMs}
+                    }}
+                    onValueChange={onTrimEndChange}
                     onSlidingComplete={() => {
                       trimHistoryPushedRef.current = false;
                       setPlaying(true);

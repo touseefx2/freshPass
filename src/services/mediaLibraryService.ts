@@ -5,6 +5,8 @@ import { store } from "@/src/state/store";
 import type {
   MediaDeleteResponse,
   MediaItemResponse,
+  MediaLimits,
+  MediaLimitsResponse,
   MediaListMeta,
   MediaListResponse,
   MediaUploadSourceType,
@@ -70,6 +72,43 @@ export async function getVideo(id: number | string): Promise<MediaVideo> {
     throw new Error(response?.message || "Video not found");
   }
   return response.data;
+}
+
+let cachedMediaLimits: MediaLimits | null = null;
+let mediaLimitsInflight: Promise<MediaLimits> | null = null;
+
+/**
+ * Follower-based reel length + AI caps. Cached for the session so record /
+ * upload / edit / Generate Reel share one fetch.
+ */
+export async function getMediaLimits(
+  options?: { force?: boolean },
+): Promise<MediaLimits> {
+  if (!options?.force && cachedMediaLimits) {
+    return cachedMediaLimits;
+  }
+  if (!options?.force && mediaLimitsInflight) {
+    return mediaLimitsInflight;
+  }
+  mediaLimitsInflight = (async () => {
+    const response = await ApiService.get<MediaLimitsResponse>(
+      mediaEndpoints.limits,
+    );
+    if (!response?.data) {
+      throw new Error(response?.message || "Media limits not found");
+    }
+    cachedMediaLimits = response.data;
+    return response.data;
+  })();
+  try {
+    return await mediaLimitsInflight;
+  } finally {
+    mediaLimitsInflight = null;
+  }
+}
+
+export function getCachedMediaLimits(): MediaLimits | null {
+  return cachedMediaLimits;
 }
 
 /**
