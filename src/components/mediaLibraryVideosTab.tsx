@@ -19,7 +19,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -192,9 +192,9 @@ export default function MediaLibraryVideosTab() {
   }, [stopAllPolling]);
 
   const fetchPage = useCallback(
-    async (pageToLoad: number, append: boolean) => {
+    async (pageToLoad: number, append: boolean, silent = false) => {
       if (append) setLoadingMore(true);
-      else setLoading(true);
+      else if (!silent) setLoading(true);
 
       try {
         const { videos: pageVideos, meta } = await listVideos(
@@ -230,9 +230,12 @@ export default function MediaLibraryVideosTab() {
     [showBanner, t],
   );
 
-  useEffect(() => {
-    fetchPage(1, false);
-  }, [fetchPage]);
+  useFocusEffect(
+    useCallback(() => {
+      const hasCache = videosRef.current.length > 0;
+      fetchPage(1, false, hasCache);
+    }, [fetchPage]),
+  );
 
   const handleLoadMore = useCallback(() => {
     if (!hasMore || loadingMore || loading) return;

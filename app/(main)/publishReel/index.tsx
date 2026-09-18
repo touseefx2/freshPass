@@ -31,6 +31,8 @@ import {
   unpublishReel,
   updateReel,
 } from "@/src/services/reelsService";
+import { uploadVideo } from "@/src/services/mediaLibraryService";
+import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel } from "@/src/types/reels";
 
 type CategoryOption = { id: number; name: string };
@@ -105,6 +107,13 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(24),
       gap: moderateHeightScale(12),
     },
+    progressText: {
+      marginTop: moderateHeightScale(10),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
     center: {
       flex: 1,
       alignItems: "center",
@@ -124,15 +133,31 @@ export default function PublishReelScreen() {
   const params = useLocalSearchParams<{
     mediaAssetId?: string;
     reelId?: string;
+    videoUri?: string;
+    mimeType?: string;
+    fileName?: string;
+    sourceType?: string;
   }>();
-  const mediaAssetId = params.mediaAssetId
+  const mediaAssetIdParam = params.mediaAssetId
     ? Number(params.mediaAssetId)
     : null;
+  const localVideoUri = params.videoUri
+    ? decodeURIComponent(params.videoUri)
+    : "";
+  const localMimeType = params.mimeType || "video/mp4";
+  const localFileName = params.fileName || "video.mp4";
+  const localSourceType: MediaUploadSourceType =
+    params.sourceType === "camera" ? "camera" : "device";
   const reelId = params.reelId ? Number(params.reelId) : null;
   const isEdit = !!reelId;
+  const fromEditor = !!localVideoUri && !mediaAssetIdParam;
 
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [resolvedMediaAssetId, setResolvedMediaAssetId] = useState<
+    number | null
+  >(mediaAssetIdParam);
   const [caption, setCaption] = useState("");
   const [lookTag, setLookTag] = useState("");
   const [promotionText, setPromotionText] = useState("");
@@ -220,15 +245,66 @@ export default function PublishReelScreen() {
       showBanner(t("error"), t("categoryRequired"), "error", 2500);
       return false;
     }
-    if (!isEdit && !mediaAssetId) {
+    if (!isEdit && !resolvedMediaAssetId && !localVideoUri) {
       showBanner(t("error"), t("videoRequired"), "error", 2500);
       return false;
     }
     return true;
-  }, [caption, categoryId, isEdit, mediaAssetId, showBanner, t]);
+  }, [
+    caption,
+    categoryId,
+    isEdit,
+    localVideoUri,
+    resolvedMediaAssetId,
+    showBanner,
+    t,
+  ]);
 
-  const buildCreatePayload = (publish: boolean) => ({
-    media_asset_id: mediaAssetId!,
+  const ensureMediaAssetId = useCallback(async (): Promise<number> => {
+    if (resolvedMediaAssetId) return resolvedMediaAssetId;
+    if (!localVideoUri) {
+      throw new Error(t("videoRequired"));
+    }
+    setUploadProgress(0);
+    const uploaded = await uploadVideo(
+      {
+        uri: localVideoUri,
+        mimeType: localMimeType,
+        fileName: localFileName,
+        sourceType: localSourceType,
+      },
+      setUploadProgress,
+    );
+    setResolvedMediaAssetId(uploaded.id);
+    return uploaded.id;
+  }, [
+    localFileName,
+    localMimeType,
+    localSourceType,
+    localVideoUri,
+    resolvedMediaAssetId,
+    t,
+  ]);
+
+  const leaveAfterSuccess = useCallback(() => {
+    if (fromEditor) {
+      if (typeof router.dismiss === "function") {
+        try {
+          router.dismiss(2);
+          return;
+        } catch {}
+      }
+      router.back();
+      setTimeout(() => {
+        if (router.canGoBack()) router.back();
+      }, 50);
+      return;
+    }
+    router.back();
+  }, [fromEditor, router]);
+
+  const buildCreatePayload = (publish: boolean, mediaId: number) => ({
+    media_asset_id: mediaId,
     category_id: categoryId!,
     caption: caption.trim(),
     ...(serviceId ? { service_id: serviceId } : {}),
@@ -242,6 +318,7 @@ export default function PublishReelScreen() {
   const handleSaveDraft = async () => {
     if (!validate() || saving) return;
     setSaving(true);
+    setUploadProgress(0);
     try {
       if (isEdit && reelId) {
         await updateReel(reelId, {
@@ -255,10 +332,11 @@ export default function PublishReelScreen() {
         });
         showBanner(t("success"), t("reelSaved"), "success", 2500);
       } else {
-        await createReel(buildCreatePayload(false));
+        const mediaId = await ensureMediaAssetId();
+        await createReel(buildCreatePayload(false, mediaId));
         showBanner(t("success"), t("reelSavedAsDraft"), "success", 2500);
       }
-      router.back();
+      leaveAfterSuccess();
     } catch (error: any) {
       const msg =
         error?.response?.data?.errors?.caption?.[0] ||
@@ -270,12 +348,14 @@ export default function PublishReelScreen() {
       showBanner(t("error"), msg, "error", 3500);
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
   };
 
   const handlePublish = async () => {
     if (!validate() || saving) return;
     setSaving(true);
+    setUploadProgress(0);
     try {
       if (isEdit && reelId) {
         await updateReel(reelId, {
@@ -292,10 +372,11 @@ export default function PublishReelScreen() {
         }
         showBanner(t("success"), t("reelPublished"), "success", 2500);
       } else {
-        await createReel(buildCreatePayload(true));
+        const mediaId = await ensureMediaAssetId();
+        await createReel(buildCreatePayload(true, mediaId));
         showBanner(t("success"), t("reelPublished"), "success", 2500);
       }
-      router.back();
+      leaveAfterSuccess();
     } catch (error: any) {
       const msg =
         error?.response?.data?.errors?.media_asset_id?.[0] ||
@@ -306,6 +387,7 @@ export default function PublishReelScreen() {
       showBanner(t("error"), msg, "error", 3500);
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -454,6 +536,11 @@ export default function PublishReelScreen() {
         </View>
 
         <View style={styles.buttons}>
+          {saving && fromEditor && uploadProgress > 0 ? (
+            <Text style={styles.progressText}>
+              {`${t("uploadingVideo")} ${uploadProgress}%`}
+            </Text>
+          ) : null}
           <Button
             title={isEdit ? t("saveChanges") : t("saveDraft")}
             onPress={handleSaveDraft}

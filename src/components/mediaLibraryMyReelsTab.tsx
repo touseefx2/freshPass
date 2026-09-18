@@ -4,18 +4,24 @@ import {
   Alert,
   FlatList,
   Image,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CloseIcon } from "@/assets/icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -24,6 +30,10 @@ import Button from "@/src/components/button";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
+  handleCameraPermission,
+  handleMediaLibraryPermission,
+} from "@/src/services/mediaPermissionService";
+import {
   deleteReel,
   getBusinessReelStats,
   listMyReels,
@@ -31,8 +41,12 @@ import {
   REELS_MINE_PER_PAGE,
   unpublishReel,
 } from "@/src/services/reelsService";
+import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel, ReelPerformanceStats } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
+
+const FAB_SIZE = 56;
+const FAB_BOTTOM_EXTRA = 56;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -87,8 +101,78 @@ const createStyles = (theme: Theme) =>
     },
     listContent: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(32),
+      paddingBottom: moderateHeightScale(120),
       flexGrow: 1,
+    },
+    fabBackdrop: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 18,
+    },
+    fabMenu: {
+      position: "absolute",
+      right: moderateWidthScale(20),
+      alignItems: "flex-end",
+      gap: moderateHeightScale(10),
+      zIndex: 19,
+    },
+    fabMenuOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      backgroundColor: theme.darkGreenLight,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 3,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.orangeBrown,
+      borderBottomColor: theme.orangeBrown,
+      minWidth: widthScale(140),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: moderateHeightScale(4) },
+      shadowOpacity: 0.38,
+      shadowRadius: moderateWidthScale(6),
+      elevation: 8,
+    },
+    fabMenuOptionIcon: {
+      width: widthScale(24),
+      height: widthScale(24),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    fabMenuOptionLabel: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    fab: {
+      position: "absolute",
+      right: moderateWidthScale(20),
+      width: widthScale(FAB_SIZE),
+      height: heightScale(FAB_SIZE),
+      borderRadius: moderateWidthScale(FAB_SIZE / 2),
+      backgroundColor: theme.darkGreenLight,
+      padding: moderateWidthScale(2),
+      borderWidth: 3,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.orangeBrown,
+      borderBottomColor: theme.orangeBrown,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
+      elevation: 6,
+      zIndex: 20,
+    },
+    fabInner: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(FAB_SIZE / 2),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
     },
     card: {
       flexDirection: "row",
@@ -173,6 +257,7 @@ export default function MediaLibraryMyReelsTab() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
 
   const [filter, setFilter] = useState<StatusFilter>("all");
@@ -182,6 +267,11 @@ export default function MediaLibraryMyReelsTab() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [summary, setSummary] = useState<ReelPerformanceStats | null>(null);
+  const [fabOpen, setFabOpen] = useState(false);
+
+  const fabBottom =
+    Math.max(insets.bottom, moderateHeightScale(12)) +
+    moderateHeightScale(FAB_BOTTOM_EXTRA);
 
   const fetchSummary = useCallback(async () => {
     try {
@@ -246,6 +336,91 @@ export default function MediaLibraryMyReelsTab() {
     fetchSummary();
     fetchPage(1, false);
   }, [fetchPage, fetchSummary]);
+
+  const openEditor = useCallback(
+    (
+      asset: ImagePicker.ImagePickerAsset,
+      sourceType: MediaUploadSourceType,
+    ) => {
+      if (!asset.uri) return;
+      router.push({
+        pathname: "/(main)/editVideo" as any,
+        params: {
+          uri: encodeURIComponent(asset.uri),
+          mimeType: asset.mimeType || "video/mp4",
+          fileName: asset.fileName || "video.mp4",
+          sourceType,
+        },
+      });
+    },
+    [router],
+  );
+
+  const handleRecord = useCallback(async () => {
+    const hasPermission = await handleCameraPermission();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["videos"],
+        quality: 1,
+        videoMaxDuration: 180,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        openEditor(result.assets[0], "camera");
+      }
+    } catch (error) {
+      Logger.error("Error recording video:", error);
+      showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
+    }
+  }, [openEditor, showBanner, t]);
+
+  const handleUpload = useCallback(async () => {
+    const hasPermission = await handleMediaLibraryPermission();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        allowsMultipleSelection: false,
+        quality: 1,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        openEditor(result.assets[0], "device");
+      }
+    } catch (error) {
+      Logger.error("Error selecting video:", error);
+      showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
+    }
+  }, [openEditor, showBanner, t]);
+
+  const openAddMenu = useCallback(() => {
+    setFabOpen((open) => !open);
+  }, []);
+
+  const closeFabMenu = useCallback(() => {
+    setFabOpen(false);
+  }, []);
+
+  const onRecordPress = useCallback(() => {
+    setFabOpen(false);
+    void handleRecord();
+  }, [handleRecord]);
+
+  const onUploadPress = useCallback(() => {
+    setFabOpen(false);
+    void handleUpload();
+  }, [handleUpload]);
 
   const confirmDelete = useCallback(
     (reel: OwnerReel) => {
@@ -464,6 +639,74 @@ export default function MediaLibraryMyReelsTab() {
           }
         />
       )}
+
+      {fabOpen ? (
+        <TouchableWithoutFeedback onPress={closeFabMenu}>
+          <View style={styles.fabBackdrop} />
+        </TouchableWithoutFeedback>
+      ) : null}
+
+      {fabOpen ? (
+        <View
+          style={[
+            styles.fabMenu,
+            {
+              bottom:
+                fabBottom +
+                heightScale(FAB_SIZE) +
+                moderateHeightScale(12),
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.fabMenuOption}
+            onPress={onRecordPress}
+            activeOpacity={0.9}
+          >
+            <View style={styles.fabMenuOptionIcon}>
+              <MaterialIcons
+                name="videocam"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </View>
+            <Text style={styles.fabMenuOptionLabel}>{t("recordVideo")}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.fabMenuOption}
+            onPress={onUploadPress}
+            activeOpacity={0.9}
+          >
+            <View style={styles.fabMenuOptionIcon}>
+              <MaterialIcons
+                name="file-upload"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </View>
+            <Text style={styles.fabMenuOptionLabel}>{t("uploadVideo")}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <TouchableOpacity
+        style={[styles.fab, { bottom: fabBottom }]}
+        onPress={openAddMenu}
+        activeOpacity={0.9}
+        accessibilityLabel={t("uploadVideo")}
+      >
+        <View style={styles.fabInner}>
+          {fabOpen ? (
+            <CloseIcon width={22} height={22} color={theme.white} opacity={1} />
+          ) : (
+            <MaterialIcons
+              name="add"
+              size={moderateWidthScale(30)}
+              color={theme.buttonText}
+            />
+          )}
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }

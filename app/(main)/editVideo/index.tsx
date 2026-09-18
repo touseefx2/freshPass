@@ -46,7 +46,6 @@ import {
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
-import { uploadVideo } from "@/src/services/mediaLibraryService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 
@@ -677,8 +676,6 @@ export default function EditVideoScreen() {
   const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const trimHistoryPushedRef = useRef(false);
@@ -1082,59 +1079,80 @@ export default function EditVideoScreen() {
     }
   }, [pushHistory, showBanner, t]);
 
-  const handleExportAndUpload = useCallback(async () => {
-    if (!project || exporting || uploading) return;
+  const handleNextToPublish = useCallback(async () => {
+    if (!project || exporting || !sourceUri) return;
     setPlaying(false);
-    setExporting(true);
-    setExportProgress(0);
-    const sub = addProgressListener(({ progress }) => {
-      setExportProgress(Math.round((progress || 0) * 100));
-    });
-    try {
-      const outputUri = await exportProject(project, undefined, {
-        quality: "high",
-      });
-      sub.remove();
-      setExporting(false);
-      setUploading(true);
-      setUploadProgress(0);
-      await uploadVideo(
-        {
-          uri: outputUri,
-          mimeType: "video/mp4",
-          fileName: params.fileName || "edited-video.mp4",
-          sourceType,
-        },
-        setUploadProgress,
-      );
-      showBanner(t("success"), t("videoUploaded"), "success", 2500);
-      router.replace("/(main)/aiTools/toolList" as any);
-    } catch (error: any) {
-      Logger.error("Export/upload failed:", error);
-      showBanner(
-        t("error"),
-        error?.message || t("failedToExportVideo"),
-        "error",
-        3500,
-      );
-    } finally {
-      try {
-        sub.remove();
-      } catch {}
-      setExporting(false);
-      setUploading(false);
+    dismissKeyboard();
+
+    const hasEdits =
+      aspect !== "original" ||
+      !!musicUri ||
+      muteOriginal ||
+      !!overlayText.trim() ||
+      trimStartMs > 0 ||
+      trimEndMs < durationMs;
+
+    let videoUri = sourceUri;
+    let fileName = params.fileName || "video.mp4";
+    let mimeType = params.mimeType || "video/mp4";
+
+    if (hasEdits) {
+      setExporting(true);
       setExportProgress(0);
-      setUploadProgress(0);
+      const sub = addProgressListener(({ progress }) => {
+        setExportProgress(Math.round((progress || 0) * 100));
+      });
+      try {
+        videoUri = await exportProject(project, undefined, {
+          quality: "high",
+        });
+        fileName = params.fileName || "edited-video.mp4";
+        mimeType = "video/mp4";
+      } catch (error: any) {
+        Logger.error("Export for publish failed:", error);
+        showBanner(
+          t("error"),
+          error?.message || t("failedToExportVideo"),
+          "error",
+          3500,
+        );
+        return;
+      } finally {
+        try {
+          sub.remove();
+        } catch {}
+        setExporting(false);
+        setExportProgress(0);
+      }
     }
+
+    router.push({
+      pathname: "/(main)/publishReel" as any,
+      params: {
+        videoUri: encodeURIComponent(videoUri),
+        mimeType,
+        fileName,
+        sourceType,
+      },
+    });
   }, [
+    aspect,
+    dismissKeyboard,
+    durationMs,
     exporting,
+    musicUri,
+    muteOriginal,
+    overlayText,
     params.fileName,
+    params.mimeType,
     project,
     router,
     showBanner,
     sourceType,
+    sourceUri,
     t,
-    uploading,
+    trimEndMs,
+    trimStartMs,
   ]);
 
   const toggleTool = useCallback(
@@ -1249,7 +1267,7 @@ export default function EditVideoScreen() {
     top: posY.value * frameH.value - boxH.value / 2,
   }));
 
-  const busy = exporting || uploading;
+  const busy = exporting;
   const canUndo = history.length > 0;
   const tools: {
     key: Exclude<EditorTool, null>;
@@ -1440,7 +1458,7 @@ export default function EditVideoScreen() {
           style={styles.nextBtn}
           onPress={() => {
             dismissKeyboard();
-            void handleExportAndUpload();
+            void handleNextToPublish();
           }}
           disabled={busy || !project}
           activeOpacity={0.85}
@@ -1915,9 +1933,7 @@ export default function EditVideoScreen() {
         <View style={styles.busyOverlay}>
           <ActivityIndicator size="large" color={theme.white} />
           <Text style={styles.progressText}>
-            {exporting
-              ? `${t("exportingVideo")} ${exportProgress}%`
-              : `${t("uploadingVideo")} ${uploadProgress}%`}
+            {`${t("exportingVideo")} ${exportProgress}%`}
           </Text>
         </View>
       ) : null}

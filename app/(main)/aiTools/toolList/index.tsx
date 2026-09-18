@@ -14,7 +14,6 @@ import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
-import MediaLibraryVideosTab from "@/src/components/mediaLibraryVideosTab";
 import MediaLibraryMyReelsTab from "@/src/components/mediaLibraryMyReelsTab";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -31,8 +30,6 @@ import { setUserDetails } from "@/src/state/slices/userSlice";
 
 const TUTORIAL_VIDEO_URI =
   process.env.EXPO_PUBLIC_TUTORIAL_VIDEO_TRYON_URI || "";
-
-type BusinessMediaTab = "videos" | "myReels";
 
 interface TutorialInlineVideoProps {}
 
@@ -97,11 +94,7 @@ export default function ToolList() {
   const showAiTools =
     !isBusiness || params.mode === "aiTools" || isCustomer;
 
-  const initialTab: BusinessMediaTab =
-    params.tab === "myReels" ? "myReels" : "videos";
-
   const [tutorialVideoActive, setTutorialVideoActive] = useState(false);
-  const [activeTab, setActiveTab] = useState<BusinessMediaTab>(initialTab);
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -160,14 +153,6 @@ export default function ToolList() {
     fetchQuota();
   }, []);
 
-  useEffect(() => {
-    if (params.tab === "myReels") {
-      setActiveTab("myReels");
-    } else if (params.tab === "videos") {
-      setActiveTab("videos");
-    }
-  }, [params.tab]);
-
   const fetchQuota = async () => {
     try {
       const response = await ApiService.get<{
@@ -186,11 +171,6 @@ export default function ToolList() {
       params: { toolType: paramTitle },
     });
   };
-
-  const businessTabs: { key: BusinessMediaTab; labelKey: string }[] = [
-    { key: "videos", labelKey: "videos" },
-    { key: "myReels", labelKey: "myReels" },
-  ];
 
   const renderShortcutsAndFeatures = (includeCustomerPurchases: boolean) => (
     <>
@@ -392,31 +372,7 @@ export default function ToolList() {
     <View style={styles.safeArea}>
       <StackHeader title={headerTitle} />
 
-      {isBusiness && !showAiTools && (
-        <View style={styles.tabsContainer}>
-          {businessTabs.map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={styles.tab}
-              onPress={() => setActiveTab(tab.key)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={
-                  activeTab === tab.key ? styles.tabTextActive : styles.tabText
-                }
-              >
-                {t(tab.labelKey)}
-              </Text>
-              {activeTab === tab.key && <View style={styles.tabUnderline} />}
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {isBusiness && !showAiTools && activeTab === "videos" ? (
-        <MediaLibraryVideosTab />
-      ) : isBusiness && !showAiTools && activeTab === "myReels" ? (
+      {isBusiness && !showAiTools ? (
         <MediaLibraryMyReelsTab />
       ) : (
         <ScrollView
