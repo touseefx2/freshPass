@@ -12,6 +12,9 @@ import {
   Dimensions,
   FlatList,
   Image,
+  LayoutChangeEvent,
+  PanResponder,
+  Platform,
   Pressable,
   Share,
   StyleSheet,
@@ -20,7 +23,6 @@ import {
   View,
   ViewToken,
 } from "react-native";
-import Slider from "@react-native-community/slider";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -128,7 +130,6 @@ const createStyles = (theme: Theme) =>
     sideActions: {
       position: "absolute",
       right: moderateWidthScale(12),
-      bottom: moderateHeightScale(140),
       alignItems: "center",
       gap: moderateHeightScale(16),
       zIndex: 5,
@@ -144,7 +145,6 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       left: moderateWidthScale(14),
       right: moderateWidthScale(72),
-      bottom: moderateHeightScale(56),
       zIndex: 5,
     },
     seekBarWrap: {
@@ -152,23 +152,44 @@ const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
       bottom: 0,
-      paddingHorizontal: moderateWidthScale(12),
       zIndex: 6,
     },
     seekTimeRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: moderateHeightScale(2),
+      paddingHorizontal: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(4),
     },
     seekTimeText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
-      color: theme.white70,
+      color: theme.white,
     },
-    seekSlider: {
+    seekHitArea: {
       width: "100%",
-      height: heightScale(28),
+      height: heightScale(18),
+      justifyContent: "flex-end",
+      paddingBottom: moderateHeightScale(2),
+    },
+    seekTrack: {
+      width: "100%",
+      height: moderateHeightScale(2),
+      backgroundColor: theme.white15,
+      overflow: "visible",
+    },
+    seekFill: {
+      height: "100%",
+      backgroundColor: theme.white,
+    },
+    seekThumb: {
+      position: "absolute",
+      top: -moderateHeightScale(5),
+      width: moderateWidthScale(12),
+      height: moderateWidthScale(12),
+      marginLeft: -moderateWidthScale(6),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.white,
     },
     businessRow: {
       flexDirection: "row",
@@ -317,6 +338,22 @@ function ReelFeedItemBase({
   );
   const wasPlayingBeforeScrubRef = useRef(false);
   const isScrubbingRef = useRef(false);
+  const isActiveRef = useRef(isActive);
+  const isPausedRef = useRef(isPaused);
+  const seekTrackWidthRef = useRef(0);
+  const durationRef = useRef(duration);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  useEffect(() => {
+    isPausedRef.current = isPaused;
+  }, [isPaused]);
+
+  useEffect(() => {
+    durationRef.current = duration;
+  }, [duration]);
 
   const player = useVideoPlayer(playbackUrl, (p) => {
     p.loop = true;
@@ -338,10 +375,10 @@ function ReelFeedItemBase({
     }
   }, [centerIconOpacity, isActive]);
 
-  useEffect(() => {
+  const syncPlayback = useCallback(() => {
     if (!player) return;
-    if (isScrubbing) return;
-    if (isActive && !isPaused) {
+    if (isScrubbingRef.current) return;
+    if (isActiveRef.current && !isPausedRef.current) {
       try {
         player.play();
       } catch {}
@@ -350,13 +387,19 @@ function ReelFeedItemBase({
         player.pause();
       } catch {}
     }
-  }, [isActive, isPaused, isScrubbing, player]);
+  }, [player]);
+
+  useEffect(() => {
+    syncPlayback();
+  }, [isActive, isPaused, isScrubbing, syncPlayback]);
 
   useEffect(() => {
     if (!player) return;
     const statusSub = player.addListener("statusChange", ({ status }) => {
-      if (status === "readyToPlay" && player.duration > 0) {
-        setDuration(player.duration);
+      if (status === "readyToPlay") {
+        if (player.duration > 0) setDuration(player.duration);
+        // Android often ignores play() called before the player is ready.
+        syncPlayback();
       }
     });
     const timeSub = player.addListener("timeUpdate", ({ currentTime: tSec }) => {
@@ -374,7 +417,7 @@ function ReelFeedItemBase({
       statusSub.remove();
       timeSub.remove();
     };
-  }, [player]);
+  }, [player, syncPlayback]);
 
   useEffect(() => {
     return () => {
@@ -441,22 +484,41 @@ function ReelFeedItemBase({
     player,
   ]);
 
-  const handleSeekStart = useCallback(() => {
-    wasPlayingBeforeScrubRef.current = isActive && !isPaused;
-    isScrubbingRef.current = true;
-    setIsScrubbing(true);
-    try {
-      player.pause();
-    } catch {}
-  }, [isActive, isPaused, player]);
-
-  const handleSeekChange = useCallback((value: number) => {
-    setCurrentTime(value);
+  const timeFromSeekX = useCallback((x: number) => {
+    const width = seekTrackWidthRef.current;
+    const dur = durationRef.current;
+    if (width <= 0 || dur <= 0) return 0;
+    const ratio = Math.max(0, Math.min(1, x / width));
+    return ratio * dur;
   }, []);
 
-  const handleSeekComplete = useCallback(
-    (value: number) => {
-      const clamped = Math.max(0, Math.min(value, duration || value));
+  const beginSeek = useCallback(
+    (x: number) => {
+      if (!playbackUrl || durationRef.current <= 0) return;
+      wasPlayingBeforeScrubRef.current =
+        isActiveRef.current && !isPausedRef.current;
+      isScrubbingRef.current = true;
+      setIsScrubbing(true);
+      try {
+        player.pause();
+      } catch {}
+      setCurrentTime(timeFromSeekX(x));
+    },
+    [playbackUrl, player, timeFromSeekX],
+  );
+
+  const moveSeek = useCallback(
+    (x: number) => {
+      if (!isScrubbingRef.current) return;
+      setCurrentTime(timeFromSeekX(x));
+    },
+    [timeFromSeekX],
+  );
+
+  const endSeek = useCallback(
+    (x: number) => {
+      if (!isScrubbingRef.current) return;
+      const clamped = timeFromSeekX(x);
       try {
         player.currentTime = clamped;
       } catch {}
@@ -470,7 +532,33 @@ function ReelFeedItemBase({
         } catch {}
       }
     },
-    [duration, player],
+    [player, timeFromSeekX],
+  );
+
+  const onSeekTrackLayout = useCallback((e: LayoutChangeEvent) => {
+    seekTrackWidthRef.current = e.nativeEvent.layout.width;
+  }, []);
+
+  const seekPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () =>
+          !!playbackUrl && durationRef.current > 0,
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: (evt) => {
+          beginSeek(evt.nativeEvent.locationX);
+        },
+        onPanResponderMove: (evt) => {
+          moveSeek(evt.nativeEvent.locationX);
+        },
+        onPanResponderRelease: (evt) => {
+          endSeek(evt.nativeEvent.locationX);
+        },
+        onPanResponderTerminate: (evt) => {
+          endSeek(evt.nativeEvent.locationX);
+        },
+      }),
+    [beginSeek, endSeek, moveSeek, playbackUrl],
   );
 
   const cityState = [reel.business?.city, reel.business?.state]
@@ -480,7 +568,8 @@ function ReelFeedItemBase({
     reel.distance_km != null
       ? `${reel.distance_km.toFixed(1)} km`
       : null;
-  const seekMax = duration > 0 ? duration : Math.max(currentTime, 0.1);
+  const seekProgress =
+    duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0;
 
   return (
     <View style={styles.item}>
@@ -490,6 +579,10 @@ function ReelFeedItemBase({
           style={styles.video}
           contentFit="cover"
           nativeControls={false}
+          // SurfaceView + overlays often freeze playback on Android.
+          {...(Platform.OS === "android"
+            ? { surfaceType: "textureView" as const }
+            : null)}
           onFirstFrameRender={() => setShowPoster(false)}
         />
       ) : null}
@@ -529,7 +622,17 @@ function ReelFeedItemBase({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.sideActions}>
+      <View
+        style={[
+          styles.sideActions,
+          {
+            bottom:
+              Math.max(bottomInset, moderateHeightScale(6)) +
+              heightScale(22) +
+              moderateHeightScale(100),
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.sideBtn} onPress={() => onLike(reel)}>
           <MaterialIcons
             name={reel.viewer?.liked ? "favorite" : "favorite-border"}
@@ -586,7 +689,17 @@ function ReelFeedItemBase({
         ) : null}
       </View>
 
-      <View style={styles.bottomMeta}>
+      <View
+        style={[
+          styles.bottomMeta,
+          {
+            // Keep CTAs / caption clear of the fixed bottom seek strip.
+            bottom:
+              Math.max(bottomInset, moderateHeightScale(6)) +
+              heightScale(22),
+          },
+        ]}
+      >
         <View style={styles.businessRow}>
           {isOwnReel ? (
             <>
@@ -712,27 +825,36 @@ function ReelFeedItemBase({
         style={[
           styles.seekBarWrap,
           {
-            paddingBottom: Math.max(bottomInset, moderateHeightScale(6)),
+            paddingBottom: Math.max(bottomInset, moderateHeightScale(4)),
           },
         ]}
       >
-        <View style={styles.seekTimeRow}>
-          <Text style={styles.seekTimeText}>{formatReelTime(currentTime)}</Text>
-          <Text style={styles.seekTimeText}>{formatReelTime(duration)}</Text>
+        {isScrubbing ? (
+          <View style={styles.seekTimeRow}>
+            <Text style={styles.seekTimeText}>
+              {formatReelTime(currentTime)}
+            </Text>
+            <Text style={styles.seekTimeText}>
+              {formatReelTime(duration)}
+            </Text>
+          </View>
+        ) : null}
+        <View
+          style={styles.seekHitArea}
+          onLayout={onSeekTrackLayout}
+          {...seekPanResponder.panHandlers}
+        >
+          <View style={styles.seekTrack}>
+            <View
+              style={[styles.seekFill, { width: `${seekProgress * 100}%` }]}
+            />
+            {isScrubbing ? (
+              <View
+                style={[styles.seekThumb, { left: `${seekProgress * 100}%` }]}
+              />
+            ) : null}
+          </View>
         </View>
-        <Slider
-          style={styles.seekSlider}
-          minimumValue={0}
-          maximumValue={seekMax}
-          value={Math.min(currentTime, seekMax)}
-          onSlidingStart={handleSeekStart}
-          onValueChange={handleSeekChange}
-          onSlidingComplete={handleSeekComplete}
-          minimumTrackTintColor={theme.white}
-          maximumTrackTintColor={theme.white15}
-          thumbTintColor={theme.white}
-          disabled={!playbackUrl || duration <= 0}
-        />
       </View>
     </View>
   );
@@ -1201,6 +1323,10 @@ export default function ReelsFeedScreen() {
         showsVerticalScrollIndicator={false}
         snapToInterval={SCREEN_HEIGHT}
         decelerationRate="fast"
+        windowSize={3}
+        maxToRenderPerBatch={2}
+        initialNumToRender={1}
+        removeClippedSubviews={false}
         getItemLayout={(_, index) => ({
           length: SCREEN_HEIGHT,
           offset: SCREEN_HEIGHT * index,
