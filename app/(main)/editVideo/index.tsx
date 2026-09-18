@@ -161,6 +161,13 @@ const STABLE_CLIP_IDS = {
   text: "clip-text",
 } as const;
 
+const OVERLAY_POS_MIN = 0.16;
+const OVERLAY_POS_MAX = 0.88;
+
+function clampOverlayPos(n: number): number {
+  return Math.min(OVERLAY_POS_MAX, Math.max(OVERLAY_POS_MIN, n));
+}
+
 function formatMs(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
   const m = Math.floor(total / 60);
@@ -286,6 +293,13 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(8),
       zIndex: 10,
+    },
+    textLayer: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 25,
     },
     textOverlayBg: {
       borderRadius: moderateWidthScale(10),
@@ -1190,6 +1204,8 @@ export default function EditVideoScreen() {
   const dragOriginY = useSharedValue(overlayY);
   const frameW = useSharedValue(Math.max(1, frameSize.width));
   const frameH = useSharedValue(Math.max(1, frameSize.height));
+  const frameLeft = useSharedValue(0);
+  const frameTop = useSharedValue(0);
   const boxW = useSharedValue(Math.max(1, textBoxSize.width));
   const boxH = useSharedValue(Math.max(1, textBoxSize.height));
 
@@ -1201,16 +1217,35 @@ export default function EditVideoScreen() {
   useEffect(() => {
     frameW.value = Math.max(1, frameSize.width);
     frameH.value = Math.max(1, frameSize.height);
-  }, [frameSize.height, frameSize.width, frameH, frameW]);
+    const left = Math.max(0, (previewSize.width - frameSize.width) / 2);
+    const top = Math.max(0, (previewSize.height - frameSize.height) / 2);
+    frameLeft.value = left;
+    frameTop.value = top;
+  }, [
+    frameH,
+    frameLeft,
+    frameSize.height,
+    frameSize.width,
+    frameTop,
+    frameW,
+    previewSize.height,
+    previewSize.width,
+  ]);
 
   useEffect(() => {
     boxW.value = Math.max(1, textBoxSize.width);
     boxH.value = Math.max(1, textBoxSize.height);
   }, [boxH, boxW, textBoxSize.height, textBoxSize.width]);
 
+  // Keep overlay inside a draggable safe zone when crop ratio changes
+  useEffect(() => {
+    setOverlayX((x) => clampOverlayPos(x));
+    setOverlayY((y) => clampOverlayPos(y));
+  }, [aspect]);
+
   const commitOverlayPos = useCallback((x: number, y: number) => {
-    setOverlayX(x);
-    setOverlayY(y);
+    setOverlayX(clampOverlayPos(x));
+    setOverlayY(clampOverlayPos(y));
   }, []);
 
   const beginTextDrag = useCallback(() => {
@@ -1227,7 +1262,7 @@ export default function EditVideoScreen() {
     () =>
       Gesture.Pan()
         .minDistance(2)
-        .hitSlop(20)
+        .hitSlop(28)
         .onBegin(() => {
           dragOriginX.value = posX.value;
           dragOriginY.value = posY.value;
@@ -1235,12 +1270,18 @@ export default function EditVideoScreen() {
         })
         .onUpdate((e) => {
           const nextX = Math.min(
-            0.92,
-            Math.max(0.08, dragOriginX.value + e.translationX / frameW.value),
+            OVERLAY_POS_MAX,
+            Math.max(
+              OVERLAY_POS_MIN,
+              dragOriginX.value + e.translationX / frameW.value,
+            ),
           );
           const nextY = Math.min(
-            0.92,
-            Math.max(0.08, dragOriginY.value + e.translationY / frameH.value),
+            OVERLAY_POS_MAX,
+            Math.max(
+              OVERLAY_POS_MIN,
+              dragOriginY.value + e.translationY / frameH.value,
+            ),
           );
           posX.value = nextX;
           posY.value = nextY;
@@ -1263,8 +1304,8 @@ export default function EditVideoScreen() {
   );
 
   const textAnimatedStyle = useAnimatedStyle(() => ({
-    left: posX.value * frameW.value - boxW.value / 2,
-    top: posY.value * frameH.value - boxH.value / 2,
+    left: frameLeft.value + posX.value * frameW.value - boxW.value / 2,
+    top: frameTop.value + posY.value * frameH.value - boxH.value / 2,
   }));
 
   const busy = exporting;
@@ -1345,58 +1386,6 @@ export default function EditVideoScreen() {
               </TouchableOpacity>
             </View>
 
-            {overlayText.trim() ? (
-              <GestureDetector gesture={textDragGesture}>
-                <Animated.View
-                  onLayout={(e) => {
-                    const { width, height } = e.nativeEvent.layout;
-                    if (width > 0 && height > 0) {
-                      setTextBoxSize({ width, height });
-                    }
-                  }}
-                  style={[
-                    styles.textOverlay,
-                    styles.textHitExpand,
-                    overlayBgColorKey
-                      ? [
-                          styles.textOverlayBg,
-                          {
-                            backgroundColor:
-                              resolveOverlayColor(overlayBgColorKey),
-                          },
-                        ]
-                      : null,
-                    (activeTool === "text" || draggingText) &&
-                      styles.textOverlayActive,
-                    textAnimatedStyle,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.textOverlayLabel,
-                      {
-                        color: resolveOverlayColor(overlayColorKey),
-                        fontSize:
-                          overlaySize === "S"
-                            ? fontSize.size16
-                            : overlaySize === "L"
-                              ? fontSize.size28
-                              : fontSize.size22,
-                        fontFamily: overlayMono
-                          ? fonts.fontRegular
-                          : overlayBold
-                            ? fonts.fontBold
-                            : fonts.fontMedium,
-                        fontStyle: overlayItalic ? "italic" : "normal",
-                      },
-                    ]}
-                  >
-                    {overlayText.trim()}
-                  </Text>
-                </Animated.View>
-              </GestureDetector>
-            ) : null}
-
             <View style={styles.timeBadge} pointerEvents="none">
               <Text style={styles.timeText}>
                 {formatMs(previewTimeMs)} /{" "}
@@ -1421,6 +1410,7 @@ export default function EditVideoScreen() {
           styles.topBar,
           { paddingTop: insets.top + moderateHeightScale(4) },
         ]}
+        pointerEvents="box-none"
       >
         <View style={styles.topLeftRow}>
           <TouchableOpacity
@@ -1466,6 +1456,68 @@ export default function EditVideoScreen() {
           <Text style={styles.nextText}>{t("exportAndUpload")}</Text>
         </TouchableOpacity>
       </View>
+
+      {overlayText.trim() ? (
+        <View
+          style={[
+            styles.textLayer,
+            {
+              bottom: Math.max(dockHeight, 0) + keyboardHeight,
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          <GestureDetector gesture={textDragGesture}>
+            <Animated.View
+              onLayout={(e) => {
+                const { width, height } = e.nativeEvent.layout;
+                if (width > 0 && height > 0) {
+                  setTextBoxSize({ width, height });
+                }
+              }}
+              style={[
+                styles.textOverlay,
+                styles.textHitExpand,
+                overlayBgColorKey
+                  ? [
+                      styles.textOverlayBg,
+                      {
+                        backgroundColor:
+                          resolveOverlayColor(overlayBgColorKey),
+                      },
+                    ]
+                  : null,
+                (activeTool === "text" || draggingText) &&
+                  styles.textOverlayActive,
+                textAnimatedStyle,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.textOverlayLabel,
+                  {
+                    color: resolveOverlayColor(overlayColorKey),
+                    fontSize:
+                      overlaySize === "S"
+                        ? fontSize.size16
+                        : overlaySize === "L"
+                          ? fontSize.size28
+                          : fontSize.size22,
+                    fontFamily: overlayMono
+                      ? fonts.fontRegular
+                      : overlayBold
+                        ? fonts.fontBold
+                        : fonts.fontMedium,
+                    fontStyle: overlayItalic ? "italic" : "normal",
+                  },
+                ]}
+              >
+                {overlayText.trim()}
+              </Text>
+            </Animated.View>
+          </GestureDetector>
+        </View>
+      ) : null}
 
       <View
         style={[
