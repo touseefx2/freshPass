@@ -264,6 +264,7 @@ const createStyles = (theme: Theme) =>
 type ReelItemProps = {
   reel: FeedReel;
   isActive: boolean;
+  isOwnReel: boolean;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   topInset: number;
@@ -282,6 +283,7 @@ type ReelItemProps = {
 function ReelFeedItemBase({
   reel,
   isActive,
+  isOwnReel,
   styles,
   theme,
   topInset,
@@ -561,66 +563,101 @@ function ReelFeedItemBase({
             {formatCount(reel.stats?.shares ?? 0)}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sideBtn} onPress={() => onSave(reel)}>
-          <MaterialIcons
-            name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
-            size={moderateWidthScale(28)}
-            color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
-          />
-          <Text style={styles.sideCount}>
-            {formatCount(reel.stats?.saves ?? 0)}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.sideBtn} onPress={() => onMore(reel)}>
-          <MaterialIcons
-            name="more-vert"
-            size={moderateWidthScale(28)}
-            color={theme.white}
-          />
-        </TouchableOpacity>
+        {!isOwnReel ? (
+          <TouchableOpacity style={styles.sideBtn} onPress={() => onSave(reel)}>
+            <MaterialIcons
+              name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
+              size={moderateWidthScale(28)}
+              color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
+            />
+            <Text style={styles.sideCount}>
+              {formatCount(reel.stats?.saves ?? 0)}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {!isOwnReel ? (
+          <TouchableOpacity style={styles.sideBtn} onPress={() => onMore(reel)}>
+            <MaterialIcons
+              name="more-vert"
+              size={moderateWidthScale(28)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={styles.bottomMeta}>
         <View style={styles.businessRow}>
-          <TouchableOpacity onPress={() => onProfile(reel)}>
-            {resolveApiImageUrl(reel.business?.image_url) ? (
-              <Image
-                source={{
-                  uri: resolveApiImageUrl(reel.business?.image_url)!,
-                }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View
-                style={[
-                  styles.avatar,
-                  { alignItems: "center", justifyContent: "center" },
-                ]}
-              >
-                <MaterialIcons
-                  name="storefront"
-                  size={moderateWidthScale(20)}
-                  color={theme.lightGreen}
+          {isOwnReel ? (
+            <>
+              {resolveApiImageUrl(reel.business?.image_url) ? (
+                <Image
+                  source={{
+                    uri: resolveApiImageUrl(reel.business?.image_url)!,
+                  }}
+                  style={styles.avatar}
                 />
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={{ flexShrink: 1 }}
-            onPress={() => onProfile(reel)}
-          >
-            <Text style={styles.businessName} numberOfLines={1}>
-              {reel.business?.title || ""}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.followBtn}
-            onPress={() => onFollow(reel)}
-          >
-            <Text style={styles.followText}>
-              {reel.viewer?.following ? t("following") : t("follow")}
-            </Text>
-          </TouchableOpacity>
+              ) : (
+                <View
+                  style={[
+                    styles.avatar,
+                    { alignItems: "center", justifyContent: "center" },
+                  ]}
+                >
+                  <MaterialIcons
+                    name="storefront"
+                    size={moderateWidthScale(20)}
+                    color={theme.lightGreen}
+                  />
+                </View>
+              )}
+              <Text style={styles.businessName} numberOfLines={1}>
+                {reel.business?.title || ""}
+              </Text>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity onPress={() => onProfile(reel)}>
+                {resolveApiImageUrl(reel.business?.image_url) ? (
+                  <Image
+                    source={{
+                      uri: resolveApiImageUrl(reel.business?.image_url)!,
+                    }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View
+                    style={[
+                      styles.avatar,
+                      { alignItems: "center", justifyContent: "center" },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="storefront"
+                      size={moderateWidthScale(20)}
+                      color={theme.lightGreen}
+                    />
+                  </View>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flexShrink: 1 }}
+                onPress={() => onProfile(reel)}
+              >
+                <Text style={styles.businessName} numberOfLines={1}>
+                  {reel.business?.title || ""}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.followBtn}
+                onPress={() => onFollow(reel)}
+              >
+                <Text style={styles.followText}>
+                  {reel.viewer?.following ? t("following") : t("follow")}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {(cityState || distance) && (
@@ -653,20 +690,22 @@ function ReelFeedItemBase({
           )}
         </View>
 
-        <View style={styles.ctaRow}>
-          <TouchableOpacity
-            style={styles.cta}
-            onPress={() => onWantLook(reel)}
-          >
-            <Text style={styles.ctaText}>{t("iWantThisLook")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.cta, styles.ctaSecondary]}
-            onPress={() => onProfile(reel)}
-          >
-            <Text style={styles.ctaText}>{t("viewProfile")}</Text>
-          </TouchableOpacity>
-        </View>
+        {!isOwnReel ? (
+          <View style={styles.ctaRow}>
+            <TouchableOpacity
+              style={styles.cta}
+              onPress={() => onWantLook(reel)}
+            >
+              <Text style={styles.ctaText}>{t("iWantThisLook")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.cta, styles.ctaSecondary]}
+              onPress={() => onProfile(reel)}
+            >
+              <Text style={styles.ctaText}>{t("viewProfile")}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
 
       <View
@@ -716,6 +755,7 @@ export default function ReelsFeedScreen() {
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((s) => s.user);
   const isGuest = user.isGuest;
+  const ownerBusinessId = user.business_id ?? null;
 
   const params = useLocalSearchParams<{
     category_id?: string;
@@ -1174,6 +1214,11 @@ export default function ReelsFeedScreen() {
           <ReelFeedItem
             reel={item}
             isActive={item.id === activeId}
+            isOwnReel={
+              ownerBusinessId != null &&
+              item.business?.id != null &&
+              Number(item.business.id) === Number(ownerBusinessId)
+            }
             styles={styles}
             theme={theme}
             topInset={insets.top}

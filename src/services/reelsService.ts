@@ -301,31 +301,37 @@ export async function listReelComments(
   params?: { cursor?: string; per_page?: number },
 ): Promise<{ comments: ReelComment[]; meta: PageMeta }> {
   const perPage = params?.per_page ?? REELS_COMMENTS_PER_PAGE;
-  const response = await ApiService.get<
-    Envelope<{ data: ReelComment[]; meta: PageMeta }>
-  >(reelsEndpoints.comments(id, { cursor: params?.cursor, per_page: perPage }));
-  return {
-    comments: response?.data?.data ?? [],
-    meta: response?.data?.meta ?? {
+  const response = await ApiService.get<any>(
+    reelsEndpoints.comments(id, { cursor: params?.cursor, per_page: perPage }),
+  );
+  // Backend may return either { data: { data, meta } } or { data: [], meta }.
+  const root = response?.data;
+  const comments: ReelComment[] = Array.isArray(root)
+    ? root
+    : Array.isArray(root?.data)
+      ? root.data
+      : [];
+  const meta: PageMeta =
+    (Array.isArray(root) ? response?.meta : root?.meta) ?? {
       per_page: perPage,
       has_more: false,
       next_cursor: null,
-    },
-  };
+    };
+  return { comments, meta };
 }
 
 export async function postReelComment(
   id: number | string,
   body: string,
 ): Promise<ReelComment> {
-  const response = await ApiService.post<Envelope<ReelComment>>(
-    reelsEndpoints.comments(id),
-    { body },
-  );
-  if (!response?.data) {
+  const response = await ApiService.post<any>(reelsEndpoints.comments(id), {
+    body,
+  });
+  const created = response?.data?.data ?? response?.data;
+  if (!created || typeof created !== "object" || !("id" in created)) {
     throw new Error(response?.message || "Failed to post comment");
   }
-  return response.data;
+  return created as ReelComment;
 }
 
 export async function deleteReelComment(

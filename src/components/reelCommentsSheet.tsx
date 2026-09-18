@@ -552,6 +552,7 @@ export default function ReelCommentsSheet({
       }
       flatListProps={{
         data: comments,
+        extraData: comments,
         keyExtractor: (item: ReelComment) => String(item.id),
         renderItem,
         contentContainerStyle: styles.listContent,

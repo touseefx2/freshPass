@@ -17,6 +17,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import ReelCommentsSheet from "@/src/components/reelCommentsSheet";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
@@ -113,6 +114,19 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
+    linkBtn: {
+      marginTop: moderateHeightScale(8),
+      alignSelf: "flex-start",
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen07,
+    },
+    linkBtnText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
     topReel: {
       paddingVertical: moderateHeightScale(10),
       borderBottomWidth: 1,
@@ -153,6 +167,7 @@ export default function ReelStatsScreen() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ReelPerformanceStats | null>(null);
   const [windowKey, setWindowKey] = useState<WindowKey>("all_time");
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -252,6 +267,40 @@ export default function ReelStatsScreen() {
           </View>
         ))}
 
+        <Text style={styles.sectionTitle}>{t("engagement")}</Text>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>{t("likes")}</Text>
+          <Text style={styles.rowValue}>
+            {stats?.engagement?.likes?.toLocaleString() ?? 0}
+          </Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>{t("comments")}</Text>
+          <Text style={styles.rowValue}>
+            {stats?.engagement?.comments?.toLocaleString() ?? 0}
+          </Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>{t("shares")}</Text>
+          <Text style={styles.rowValue}>
+            {stats?.engagement?.shares?.toLocaleString() ?? 0}
+          </Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>{t("saves")}</Text>
+          <Text style={styles.rowValue}>
+            {stats?.engagement?.saves?.toLocaleString() ?? 0}
+          </Text>
+        </View>
+        {reelId != null && (
+          <TouchableOpacity
+            style={styles.linkBtn}
+            onPress={() => setCommentsOpen(true)}
+          >
+            <Text style={styles.linkBtnText}>{t("viewComments")}</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.sectionTitle}>{t("bookings")}</Text>
         <View style={styles.row}>
           <Text style={styles.rowLabel}>{t("total")}</Text>
@@ -315,6 +364,15 @@ export default function ReelStatsScreen() {
           </>
         )}
       </ScrollView>
+
+      {reelId != null ? (
+        <ReelCommentsSheet
+          visible={commentsOpen}
+          reelId={commentsOpen ? reelId : null}
+          initialCount={stats?.engagement?.comments ?? 0}
+          onClose={() => setCommentsOpen(false)}
+        />
+      ) : null}
     </View>
   );
 }

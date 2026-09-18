@@ -494,25 +494,55 @@ export default function MediaLibraryMyReelsTab() {
         resolveApiImageUrl(
           (item.video as any)?.thumbnail_url ?? null,
         ) || null;
+      const openPreview = () => {
+        if (item.status !== "published") {
+          showBanner(
+            t("draft"),
+            t("publishToPreviewReel"),
+            "warning",
+            3000,
+          );
+          return;
+        }
+        router.push({
+          pathname: "/(main)/reelsFeed" as any,
+          params: {
+            first_reel_id: String(item.id),
+            ...(item.category?.id != null
+              ? { category_id: String(item.category.id) }
+              : {}),
+          },
+        });
+      };
       return (
         <View style={styles.card}>
-          {thumb ? (
-            <Image source={{ uri: thumb }} style={styles.thumb} />
-          ) : (
-            <View style={[styles.thumb, { alignItems: "center", justifyContent: "center" }]}>
-              <MaterialIcons
-                name="videocam"
-                size={moderateWidthScale(24)}
-                color={theme.lightGreen}
-              />
-            </View>
-          )}
+          <TouchableOpacity onPress={openPreview} activeOpacity={0.85}>
+            {thumb ? (
+              <Image source={{ uri: thumb }} style={styles.thumb} />
+            ) : (
+              <View
+                style={[
+                  styles.thumb,
+                  { alignItems: "center", justifyContent: "center" },
+                ]}
+              >
+                <MaterialIcons
+                  name="videocam"
+                  size={moderateWidthScale(24)}
+                  color={theme.lightGreen}
+                />
+              </View>
+            )}
+          </TouchableOpacity>
           <View style={styles.cardBody}>
             <Text style={styles.caption} numberOfLines={2}>
               {item.caption || t("untitledReel")}
             </Text>
             <Text style={styles.status}>{item.status}</Text>
             <View style={styles.actionsRow}>
+              <TouchableOpacity style={styles.actionBtn} onPress={openPreview}>
+                <Text style={styles.actionBtnText}>{t("viewReel")}</Text>
+              </TouchableOpacity>
               {item.status !== "removed" && (
                 <TouchableOpacity
                   style={styles.actionBtn}
@@ -560,7 +590,7 @@ export default function MediaLibraryMyReelsTab() {
         </View>
       );
     },
-    [confirmDelete, handlePublishToggle, router, styles, t, theme],
+    [confirmDelete, handlePublishToggle, router, showBanner, styles, t, theme],
   );
 
   return (
