@@ -24,6 +24,7 @@ import {
   ViewToken,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -35,6 +36,7 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -131,15 +133,42 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       right: moderateWidthScale(12),
       alignItems: "center",
-      gap: moderateHeightScale(16),
+      gap: moderateHeightScale(14),
       zIndex: 5,
     },
+    sideShade: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      width: widthScale(96),
+      zIndex: 3,
+    },
     sideBtn: { alignItems: "center" },
+    sideIconWrap: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: `${theme.black}59`,
+    },
     sideCount: {
-      marginTop: moderateHeightScale(4),
+      marginTop: moderateHeightScale(2),
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white,
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
+    },
+    bottomShade: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: heightScale(250),
+      zIndex: 3,
     },
     bottomMeta: {
       position: "absolute",
@@ -208,6 +237,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
       flexShrink: 1,
+      textShadowColor: `${theme.black}CC`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 5,
     },
     followBtn: {
       paddingHorizontal: moderateWidthScale(10),
@@ -221,16 +253,23 @@ const createStyles = (theme: Theme) =>
       color: theme.buttonText,
     },
     location: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.white85,
       marginBottom: moderateHeightScale(6),
+      textShadowColor: `${theme.black}CC`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 5,
     },
     caption: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
       color: theme.white,
       marginBottom: moderateHeightScale(8),
+      lineHeight: moderateHeightScale(20),
+      textShadowColor: `${theme.black}E6`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 6,
     },
     badgesRow: {
       flexDirection: "row",
@@ -341,6 +380,9 @@ function ReelFeedItemBase({
   const isActiveRef = useRef(isActive);
   const isPausedRef = useRef(isPaused);
   const seekTrackWidthRef = useRef(0);
+  const seekTrackPageXRef = useRef(0);
+  const lastSeekXRef = useRef(0);
+  const seekHitRef = useRef<View>(null);
   const durationRef = useRef(duration);
 
   useEffect(() => {
@@ -492,9 +534,25 @@ function ReelFeedItemBase({
     return ratio * dur;
   }, []);
 
+  const seekXFromPageX = useCallback((pageX: number) => {
+    return pageX - seekTrackPageXRef.current;
+  }, []);
+
+  const measureSeekTrack = useCallback(() => {
+    seekHitRef.current?.measureInWindow((x, _y, width) => {
+      if (width > 0) {
+        seekTrackPageXRef.current = x;
+        seekTrackWidthRef.current = width;
+      }
+    });
+  }, []);
+
   const beginSeek = useCallback(
     (x: number) => {
       if (!playbackUrl || durationRef.current <= 0) return;
+      measureSeekTrack();
+      const clampedX = Math.max(0, Math.min(x, seekTrackWidthRef.current || x));
+      lastSeekXRef.current = clampedX;
       wasPlayingBeforeScrubRef.current =
         isActiveRef.current && !isPausedRef.current;
       isScrubbingRef.current = true;
@@ -502,15 +560,17 @@ function ReelFeedItemBase({
       try {
         player.pause();
       } catch {}
-      setCurrentTime(timeFromSeekX(x));
+      setCurrentTime(timeFromSeekX(clampedX));
     },
-    [playbackUrl, player, timeFromSeekX],
+    [measureSeekTrack, playbackUrl, player, timeFromSeekX],
   );
 
   const moveSeek = useCallback(
     (x: number) => {
       if (!isScrubbingRef.current) return;
-      setCurrentTime(timeFromSeekX(x));
+      const clampedX = Math.max(0, Math.min(x, seekTrackWidthRef.current || x));
+      lastSeekXRef.current = clampedX;
+      setCurrentTime(timeFromSeekX(clampedX));
     },
     [timeFromSeekX],
   );
@@ -518,7 +578,11 @@ function ReelFeedItemBase({
   const endSeek = useCallback(
     (x: number) => {
       if (!isScrubbingRef.current) return;
-      const clamped = timeFromSeekX(x);
+      const width = seekTrackWidthRef.current;
+      // Android can report a bad locationX (often 0) on release — keep last good x.
+      const safeX =
+        width > 0 && x >= 0 && x <= width + 1 ? x : lastSeekXRef.current;
+      const clamped = timeFromSeekX(safeX);
       try {
         player.currentTime = clamped;
       } catch {}
@@ -535,9 +599,13 @@ function ReelFeedItemBase({
     [player, timeFromSeekX],
   );
 
-  const onSeekTrackLayout = useCallback((e: LayoutChangeEvent) => {
-    seekTrackWidthRef.current = e.nativeEvent.layout.width;
-  }, []);
+  const onSeekTrackLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      seekTrackWidthRef.current = e.nativeEvent.layout.width;
+      measureSeekTrack();
+    },
+    [measureSeekTrack],
+  );
 
   const seekPanResponder = useMemo(
     () =>
@@ -546,19 +614,20 @@ function ReelFeedItemBase({
           !!playbackUrl && durationRef.current > 0,
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: (evt) => {
-          beginSeek(evt.nativeEvent.locationX);
+          measureSeekTrack();
+          beginSeek(seekXFromPageX(evt.nativeEvent.pageX));
         },
         onPanResponderMove: (evt) => {
-          moveSeek(evt.nativeEvent.locationX);
+          moveSeek(seekXFromPageX(evt.nativeEvent.pageX));
         },
         onPanResponderRelease: (evt) => {
-          endSeek(evt.nativeEvent.locationX);
+          endSeek(seekXFromPageX(evt.nativeEvent.pageX));
         },
         onPanResponderTerminate: (evt) => {
-          endSeek(evt.nativeEvent.locationX);
+          endSeek(seekXFromPageX(evt.nativeEvent.pageX));
         },
       }),
-    [beginSeek, endSeek, moveSeek, playbackUrl],
+    [beginSeek, endSeek, measureSeekTrack, moveSeek, playbackUrl, seekXFromPageX],
   );
 
   const cityState = [reel.business?.city, reel.business?.state]
@@ -622,6 +691,25 @@ function ReelFeedItemBase({
         </TouchableOpacity>
       </View>
 
+      <LinearGradient
+        pointerEvents="none"
+        colors={[
+          `${theme.black}00`,
+          `${theme.black}73`,
+          `${theme.black}BF`,
+        ]}
+        locations={[0, 0.45, 1]}
+        style={styles.bottomShade}
+      />
+
+      <LinearGradient
+        pointerEvents="none"
+        colors={[`${theme.black}00`, `${theme.black}66`]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={styles.sideShade}
+      />
+
       <View
         style={[
           styles.sideActions,
@@ -634,11 +722,13 @@ function ReelFeedItemBase({
         ]}
       >
         <TouchableOpacity style={styles.sideBtn} onPress={() => onLike(reel)}>
-          <MaterialIcons
-            name={reel.viewer?.liked ? "favorite" : "favorite-border"}
-            size={moderateWidthScale(30)}
-            color={reel.viewer?.liked ? theme.red : theme.white}
-          />
+          <View style={styles.sideIconWrap}>
+            <MaterialIcons
+              name={reel.viewer?.liked ? "favorite" : "favorite-border"}
+              size={moderateWidthScale(26)}
+              color={reel.viewer?.liked ? theme.red : theme.white}
+            />
+          </View>
           <Text style={styles.sideCount}>
             {formatCount(reel.stats?.likes ?? 0)}
           </Text>
@@ -647,32 +737,38 @@ function ReelFeedItemBase({
           style={styles.sideBtn}
           onPress={() => onComment(reel)}
         >
-          <MaterialIcons
-            name="chat-bubble-outline"
-            size={moderateWidthScale(28)}
-            color={theme.white}
-          />
+          <View style={styles.sideIconWrap}>
+            <MaterialIcons
+              name="chat-bubble-outline"
+              size={moderateWidthScale(24)}
+              color={theme.white}
+            />
+          </View>
           <Text style={styles.sideCount}>
             {formatCount(reel.stats?.comments ?? 0)}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.sideBtn} onPress={() => onShare(reel)}>
-          <MaterialIcons
-            name="share"
-            size={moderateWidthScale(28)}
-            color={theme.white}
-          />
+          <View style={styles.sideIconWrap}>
+            <MaterialIcons
+              name="share"
+              size={moderateWidthScale(24)}
+              color={theme.white}
+            />
+          </View>
           <Text style={styles.sideCount}>
             {formatCount(reel.stats?.shares ?? 0)}
           </Text>
         </TouchableOpacity>
         {!isOwnReel ? (
           <TouchableOpacity style={styles.sideBtn} onPress={() => onSave(reel)}>
-            <MaterialIcons
-              name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
-              size={moderateWidthScale(28)}
-              color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
-            />
+            <View style={styles.sideIconWrap}>
+              <MaterialIcons
+                name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
+                size={moderateWidthScale(24)}
+                color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
+              />
+            </View>
             <Text style={styles.sideCount}>
               {formatCount(reel.stats?.saves ?? 0)}
             </Text>
@@ -680,11 +776,13 @@ function ReelFeedItemBase({
         ) : null}
         {!isOwnReel ? (
           <TouchableOpacity style={styles.sideBtn} onPress={() => onMore(reel)}>
-            <MaterialIcons
-              name="more-vert"
-              size={moderateWidthScale(28)}
-              color={theme.white}
-            />
+            <View style={styles.sideIconWrap}>
+              <MaterialIcons
+                name="more-vert"
+                size={moderateWidthScale(24)}
+                color={theme.white}
+              />
+            </View>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -840,16 +938,19 @@ function ReelFeedItemBase({
           </View>
         ) : null}
         <View
+          ref={seekHitRef}
           style={styles.seekHitArea}
           onLayout={onSeekTrackLayout}
           {...seekPanResponder.panHandlers}
         >
-          <View style={styles.seekTrack}>
+          <View style={styles.seekTrack} pointerEvents="none">
             <View
+              pointerEvents="none"
               style={[styles.seekFill, { width: `${seekProgress * 100}%` }]}
             />
             {isScrubbing ? (
               <View
+                pointerEvents="none"
                 style={[styles.seekThumb, { left: `${seekProgress * 100}%` }]}
               />
             ) : null}
