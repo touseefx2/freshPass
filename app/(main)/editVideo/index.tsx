@@ -1,37 +1,31 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  type LayoutChangeEvent,
 } from "react-native";
+import type { TextInput as TextInputType } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import Slider from "@react-native-community/slider";
+import { Audio } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
 import {
-  MediaPreview as MediaPreviewNative,
   addProgressListener,
   createProject,
   exportProject,
   getVideoInfo,
-  makeClipId,
   type Project,
 } from "expo-media-edit";
-
-const MediaPreview = MediaPreviewNative as React.ComponentType<{
-  project: Project;
-  time?: number;
-  playing?: boolean;
-  renderScale?: number;
-  onTime?: (event: { nativeEvent: { ms: number } }) => void;
-  onReady?: (event: { nativeEvent: { durationMs: number } }) => void;
-  style?: object;
-}>;
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -48,15 +42,39 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import { uploadVideo } from "@/src/services/mediaLibraryService";
 import type { MediaUploadSourceType } from "@/src/types/media";
+import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 
 type AspectPreset = "portrait" | "square" | "landscape";
 type EditorTool = "trim" | "crop" | "music" | "text" | null;
+
+type EditorSnapshot = {
+  trimStartMs: number;
+  trimEndMs: number;
+  aspect: AspectPreset;
+  muteOriginal: boolean;
+  musicUri: string | null;
+  musicName: string | null;
+  musicVolume: number;
+  overlayText: string;
+};
 
 const ASPECT_SIZES: Record<AspectPreset, { width: number; height: number }> = {
   portrait: { width: 1080, height: 1920 },
   square: { width: 1080, height: 1080 },
   landscape: { width: 1920, height: 1080 },
 };
+
+const ASPECT_RATIO: Record<AspectPreset, number> = {
+  portrait: 9 / 16,
+  square: 1,
+  landscape: 16 / 9,
+};
+
+const STABLE_CLIP_IDS = {
+  video: "clip-video",
+  music: "clip-music",
+  text: "clip-text",
+} as const;
 
 function formatMs(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
@@ -65,12 +83,26 @@ function formatMs(ms: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function fitFrame(
+  containerW: number,
+  containerH: number,
+  ratio: number,
+): { width: number; height: number } {
+  if (containerW <= 0 || containerH <= 0) {
+    return { width: 0, height: 0 };
+  }
+  const containerRatio = containerW / containerH;
+  if (containerRatio > ratio) {
+    const height = containerH;
+    return { width: height * ratio, height };
+  }
+  const width = containerW;
+  return { width, height: width / ratio };
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    root: {
-      flex: 1,
-      backgroundColor: theme.black,
-    },
+    root: { flex: 1, backgroundColor: theme.black },
     center: {
       flex: 1,
       alignItems: "center",
@@ -97,6 +129,11 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(12),
       paddingBottom: moderateHeightScale(10),
     },
+    topLeftRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+    },
     topBtn: {
       width: widthScale(40),
       height: heightScale(40),
@@ -105,6 +142,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       backgroundColor: theme.borderDark,
     },
+    topBtnDisabled: { opacity: 0.35 },
     nextBtn: {
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(8),
@@ -120,13 +158,19 @@ const createStyles = (theme: Theme) =>
     },
     previewArea: {
       flex: 1,
+      backgroundColor: theme.black,
       alignItems: "center",
       justifyContent: "center",
     },
-    preview: {
+    cropFrame: {
+      overflow: "hidden",
+      backgroundColor: theme.black,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    video: {
       width: "100%",
       height: "100%",
-      backgroundColor: theme.black,
     },
     playOverlay: {
       ...StyleSheet.absoluteFillObject,
@@ -134,12 +178,29 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     playCircle: {
-      width: widthScale(64),
-      height: heightScale(64),
-      borderRadius: moderateWidthScale(32),
+      width: widthScale(68),
+      height: heightScale(68),
+      borderRadius: moderateWidthScale(34),
       backgroundColor: theme.borderDark,
       alignItems: "center",
       justifyContent: "center",
+    },
+    textOverlay: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: "10%",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    textOverlayLabel: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textAlign: "center",
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
     },
     timeBadge: {
       position: "absolute",
@@ -233,9 +294,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
-    chipTextActive: {
-      color: theme.buttonText,
-    },
+    chipTextActive: { color: theme.buttonText },
     musicRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -325,11 +384,12 @@ export default function EditVideoScreen() {
     sourceType?: string;
   }>();
 
-  const sourceUri = params.uri ? decodeURIComponent(params.uri) : "";
+  const paramUri = params.uri ? decodeURIComponent(params.uri) : "";
   const sourceType = (
     params.sourceType === "camera" ? "camera" : "device"
   ) as MediaUploadSourceType;
 
+  const [sourceUri, setSourceUri] = useState("");
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [durationMs, setDurationMs] = useState(5000);
   const [trimStartMs, setTrimStartMs] = useState(0);
@@ -340,23 +400,120 @@ export default function EditVideoScreen() {
   const [musicName, setMusicName] = useState<string | null>(null);
   const [musicVolume, setMusicVolume] = useState(0.8);
   const [overlayText, setOverlayText] = useState("");
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [activeTool, setActiveTool] = useState<EditorTool>(null);
+  const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+  const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
+  const trimHistoryPushedRef = useRef(false);
+  const textHistoryPushedRef = useRef(false);
+  const textInputRef = useRef<TextInputType>(null);
+  const musicSoundRef = useRef<Audio.Sound | null>(null);
+  const trimStartRef = useRef(trimStartMs);
+  const trimEndRef = useRef(trimEndMs);
+  trimStartRef.current = trimStartMs;
+  trimEndRef.current = trimEndMs;
+
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+    textInputRef.current?.blur();
+  }, []);
+
+  const player = useVideoPlayer(paramUri || "", (p) => {
+    p.loop = false;
+    p.timeUpdateEventInterval = 0.1;
+  });
+
+  const currentSnapshot = useCallback(
+    (): EditorSnapshot => ({
+      trimStartMs,
+      trimEndMs,
+      aspect,
+      muteOriginal,
+      musicUri,
+      musicName,
+      musicVolume,
+      overlayText,
+    }),
+    [
+      aspect,
+      musicName,
+      musicUri,
+      musicVolume,
+      muteOriginal,
+      overlayText,
+      trimEndMs,
+      trimStartMs,
+    ],
+  );
+
+  const pushHistory = useCallback(() => {
+    const snap = currentSnapshot();
+    setHistory((prev) => {
+      const last = prev[prev.length - 1];
+      if (
+        last &&
+        last.trimStartMs === snap.trimStartMs &&
+        last.trimEndMs === snap.trimEndMs &&
+        last.aspect === snap.aspect &&
+        last.muteOriginal === snap.muteOriginal &&
+        last.musicUri === snap.musicUri &&
+        last.musicName === snap.musicName &&
+        last.musicVolume === snap.musicVolume &&
+        last.overlayText === snap.overlayText
+      ) {
+        return prev;
+      }
+      return [...prev.slice(-29), snap];
+    });
+  }, [currentSnapshot]);
+
+  const seekToTrimStart = useCallback(() => {
+    try {
+      player.currentTime = Math.max(0, trimStartRef.current / 1000);
+      setPreviewTimeMs(0);
+    } catch {}
+  }, [player]);
+
+  const handleUndo = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.length === 0) return prev;
+      const next = [...prev];
+      const snap = next.pop()!;
+      setTrimStartMs(snap.trimStartMs);
+      setTrimEndMs(snap.trimEndMs);
+      setAspect(snap.aspect);
+      setMuteOriginal(snap.muteOriginal);
+      setMusicUri(snap.musicUri);
+      setMusicName(snap.musicName);
+      setMusicVolume(snap.musicVolume);
+      setOverlayText(snap.overlayText);
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!sourceUri) {
+      if (!paramUri) {
         setLoadingInfo(false);
         return;
       }
       try {
-        const info = await getVideoInfo(sourceUri);
+        const localUri = await ensureLocalMediaFileUri(
+          paramUri,
+          (params.fileName || "video.mp4").split(".").pop() || "mp4",
+        );
+        if (cancelled) return;
+        setSourceUri(localUri);
+        await player.replaceAsync(localUri);
+        const info = await getVideoInfo(localUri);
         if (cancelled) return;
         const dur = Math.max(500, info.durationMs || 5000);
         setDurationMs(dur);
@@ -365,8 +522,14 @@ export default function EditVideoScreen() {
         if (info.width > info.height) setAspect("landscape");
         else if (Math.abs(info.width - info.height) < 40) setAspect("square");
         else setAspect("portrait");
+        setPreviewReady(true);
+        setPlaying(true);
       } catch (error) {
-        Logger.error("getVideoInfo failed:", error);
+        Logger.error("prepare video for edit failed:", error);
+        if (!cancelled) {
+          setSourceUri(paramUri);
+          setPreviewReady(true);
+        }
         showBanner(t("error"), t("failedToLoadVideoForEdit"), "error", 3000);
       } finally {
         if (!cancelled) setLoadingInfo(false);
@@ -375,7 +538,103 @@ export default function EditVideoScreen() {
     return () => {
       cancelled = true;
     };
-  }, [showBanner, sourceUri, t]);
+  }, [paramUri, params.fileName, player, showBanner, t]);
+
+  // Play / pause + mute
+  useEffect(() => {
+    try {
+      player.muted = muteOriginal;
+      if (playing) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    } catch {}
+  }, [muteOriginal, player, playing]);
+
+  // Live trim window: loop inside [start, end]
+  useEffect(() => {
+    const sub = player.addListener("timeUpdate", ({ currentTime }) => {
+      const ms = Math.max(0, currentTime * 1000);
+      const start = trimStartRef.current;
+      const end = trimEndRef.current;
+      if (ms < start - 40) {
+        try {
+          player.currentTime = start / 1000;
+        } catch {}
+        setPreviewTimeMs(0);
+        return;
+      }
+      if (ms >= end - 40) {
+        try {
+          player.currentTime = start / 1000;
+        } catch {}
+        setPreviewTimeMs(0);
+        return;
+      }
+      setPreviewTimeMs(ms - start);
+    });
+    return () => sub.remove();
+  }, [player]);
+
+  // When trim handles change, jump playhead into the new window
+  useEffect(() => {
+    seekToTrimStart();
+  }, [seekToTrimStart, trimStartMs, trimEndMs]);
+
+  // Background music preview (live)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (musicSoundRef.current) {
+        try {
+          await musicSoundRef.current.unloadAsync();
+        } catch {}
+        musicSoundRef.current = null;
+      }
+      if (!musicUri) return;
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: musicUri },
+          {
+            shouldPlay: playing,
+            isLooping: true,
+            volume: musicVolume,
+          },
+        );
+        if (cancelled) {
+          await sound.unloadAsync();
+          return;
+        }
+        musicSoundRef.current = sound;
+      } catch (error) {
+        Logger.error("Music preview failed:", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (musicSoundRef.current) {
+        void musicSoundRef.current.unloadAsync();
+        musicSoundRef.current = null;
+      }
+    };
+  }, [musicUri]);
+
+  useEffect(() => {
+    const sound = musicSoundRef.current;
+    if (!sound) return;
+    void (async () => {
+      try {
+        await sound.setVolumeAsync(musicVolume);
+        if (playing) await sound.playAsync();
+        else await sound.pauseAsync();
+      } catch {}
+    })();
+  }, [musicVolume, playing]);
 
   const project: Project | null = useMemo(() => {
     if (!sourceUri || trimEndMs <= trimStartMs) return null;
@@ -387,7 +646,7 @@ export default function EditVideoScreen() {
         id: "v",
         clips: [
           {
-            id: makeClipId("c"),
+            id: STABLE_CLIP_IDS.video,
             sourceUri,
             sourceRange: { startMs: trimStartMs, endMs: trimEndMs },
             timelineRange: { startMs: 0, endMs: clipDuration },
@@ -403,7 +662,7 @@ export default function EditVideoScreen() {
         id: "a",
         clips: [
           {
-            id: makeClipId("m"),
+            id: STABLE_CLIP_IDS.music,
             sourceUri: musicUri,
             sourceRange: { startMs: 0, endMs: clipDuration },
             timelineRange: { startMs: 0, endMs: clipDuration },
@@ -420,7 +679,7 @@ export default function EditVideoScreen() {
         id: "o",
         items: [
           {
-            id: makeClipId("t"),
+            id: STABLE_CLIP_IDS.text,
             kind: "text",
             content: overlayText.trim(),
             x: 0.5,
@@ -441,6 +700,7 @@ export default function EditVideoScreen() {
     }
 
     return createProject({
+      id: "freshpass-edit-session",
       canvasSize: canvas,
       tracks,
     });
@@ -459,6 +719,7 @@ export default function EditVideoScreen() {
 
   const pickMusic = useCallback(async () => {
     try {
+      pushHistory();
       const result = await DocumentPicker.getDocumentAsync({
         type: ["audio/*"],
         copyToCacheDirectory: true,
@@ -466,13 +727,18 @@ export default function EditVideoScreen() {
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
-      setMusicUri(asset.uri);
+      const localMusic = await ensureLocalMediaFileUri(
+        asset.uri,
+        (asset.name || "music.mp3").split(".").pop() || "mp3",
+      );
+      setMusicUri(localMusic);
       setMusicName(asset.name || t("backgroundMusic"));
+      setPlaying(true);
     } catch (error) {
       Logger.error("Music pick failed:", error);
       showBanner(t("error"), t("failedToSelectMusic"), "error", 2500);
     }
-  }, [showBanner, t]);
+  }, [pushHistory, showBanner, t]);
 
   const handleExportAndUpload = useCallback(async () => {
     if (!project || exporting || uploading) return;
@@ -569,11 +835,37 @@ export default function EditVideoScreen() {
     uploading,
   ]);
 
-  const toggleTool = useCallback((tool: EditorTool) => {
-    setActiveTool((prev) => (prev === tool ? null : tool));
+  const toggleTool = useCallback(
+    (tool: EditorTool) => {
+      dismissKeyboard();
+      setActiveTool((prev) => (prev === tool ? null : tool));
+    },
+    [dismissKeyboard],
+  );
+
+  const onPreviewLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    if (width > 0 && height > 0) {
+      setPreviewSize((prev) =>
+        prev.width === Math.round(width) && prev.height === Math.round(height)
+          ? prev
+          : { width: Math.round(width), height: Math.round(height) },
+      );
+    }
   }, []);
 
+  const frameSize = useMemo(
+    () =>
+      fitFrame(
+        previewSize.width,
+        previewSize.height,
+        ASPECT_RATIO[aspect],
+      ),
+    [aspect, previewSize.height, previewSize.width],
+  );
+
   const busy = exporting || uploading;
+  const canUndo = history.length > 0;
   const tools: {
     key: Exclude<EditorTool, null>;
     icon: keyof typeof MaterialIcons.glyphMap;
@@ -585,7 +877,7 @@ export default function EditVideoScreen() {
     { key: "text", icon: "text-fields", label: t("overlayText") },
   ];
 
-  if (!sourceUri) {
+  if (!paramUri) {
     return (
       <View style={styles.center}>
         <Text style={styles.centerLabel}>{t("noVideoToEdit")}</Text>
@@ -616,21 +908,44 @@ export default function EditVideoScreen() {
             { paddingTop: insets.top + moderateHeightScale(4) },
           ]}
         >
-          <TouchableOpacity
-            style={styles.topBtn}
-            onPress={() => router.back()}
-            disabled={busy}
-            hitSlop={8}
-          >
-            <MaterialIcons
-              name="close"
-              size={moderateWidthScale(22)}
-              color={theme.white}
-            />
-          </TouchableOpacity>
+          <View style={styles.topLeftRow}>
+            <TouchableOpacity
+              style={styles.topBtn}
+              onPress={() => {
+                dismissKeyboard();
+                router.back();
+              }}
+              disabled={busy}
+              hitSlop={8}
+            >
+              <MaterialIcons
+                name="close"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.topBtn, !canUndo && styles.topBtnDisabled]}
+              onPress={() => {
+                dismissKeyboard();
+                handleUndo();
+              }}
+              disabled={busy || !canUndo}
+              hitSlop={8}
+            >
+              <MaterialIcons
+                name="undo"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={styles.nextBtn}
-            onPress={handleExportAndUpload}
+            onPress={() => {
+              dismissKeyboard();
+              void handleExportAndUpload();
+            }}
             disabled={busy || !project}
             activeOpacity={0.85}
           >
@@ -638,45 +953,64 @@ export default function EditVideoScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
+        <Pressable
           style={styles.previewArea}
-          activeOpacity={1}
-          onPress={() => !busy && setPlaying((p) => !p)}
+          onLayout={onPreviewLayout}
+          onPress={dismissKeyboard}
         >
-          {project ? (
-            <MediaPreview
-              project={project}
-              time={previewTimeMs}
-              playing={playing}
-              onTime={({ nativeEvent }) =>
-                setPreviewTimeMs(nativeEvent.ms ?? 0)
-              }
-              style={styles.preview}
-            />
-          ) : (
-            <View style={[styles.preview, styles.center]}>
-              <ActivityIndicator color={theme.white} />
-            </View>
-          )}
+          {frameSize.width > 0 ? (
+            <View
+              style={[
+                styles.cropFrame,
+                { width: frameSize.width, height: frameSize.height },
+              ]}
+            >
+              <VideoView
+                player={player}
+                style={styles.video}
+                contentFit="cover"
+                nativeControls={false}
+              />
 
-          {!playing && !busy ? (
-            <View style={styles.playOverlay} pointerEvents="none">
-              <View style={styles.playCircle}>
-                <MaterialIcons
-                  name="play-arrow"
-                  size={moderateWidthScale(36)}
-                  color={theme.white}
-                />
+              {overlayText.trim() ? (
+                <View style={styles.textOverlay} pointerEvents="none">
+                  <Text style={styles.textOverlayLabel}>
+                    {overlayText.trim()}
+                  </Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.playOverlay}
+                activeOpacity={1}
+                onPress={() => {
+                  dismissKeyboard();
+                  if (busy || !previewReady) return;
+                  setPlaying((p) => !p);
+                }}
+              >
+                {!playing ? (
+                  <View style={styles.playCircle}>
+                    <MaterialIcons
+                      name="play-arrow"
+                      size={moderateWidthScale(36)}
+                      color={theme.white}
+                    />
+                  </View>
+                ) : null}
+              </TouchableOpacity>
+
+              <View style={styles.timeBadge} pointerEvents="none">
+                <Text style={styles.timeText}>
+                  {formatMs(previewTimeMs)} /{" "}
+                  {formatMs(Math.max(0, trimEndMs - trimStartMs))}
+                </Text>
               </View>
             </View>
-          ) : null}
-
-          <View style={styles.timeBadge} pointerEvents="none">
-            <Text style={styles.timeText}>
-              {formatMs(previewTimeMs)} / {formatMs(trimEndMs - trimStartMs)}
-            </Text>
-          </View>
-        </TouchableOpacity>
+          ) : (
+            <ActivityIndicator color={theme.white} />
+          )}
+        </Pressable>
 
         <View
           style={[
@@ -700,10 +1034,18 @@ export default function EditVideoScreen() {
                     minimumValue={0}
                     maximumValue={Math.max(0, trimEndMs - 500)}
                     value={trimStartMs}
-                    onValueChange={(v) => {
-                      setTrimStartMs(v);
-                      setPreviewTimeMs(0);
+                    onSlidingStart={() => {
+                      dismissKeyboard();
+                      if (!trimHistoryPushedRef.current) {
+                        pushHistory();
+                        trimHistoryPushedRef.current = true;
+                      }
                       setPlaying(false);
+                    }}
+                    onValueChange={setTrimStartMs}
+                    onSlidingComplete={() => {
+                      trimHistoryPushedRef.current = false;
+                      setPlaying(true);
                     }}
                     minimumTrackTintColor={theme.selectCard}
                     maximumTrackTintColor={theme.white15}
@@ -715,10 +1057,17 @@ export default function EditVideoScreen() {
                     minimumValue={Math.min(durationMs, trimStartMs + 500)}
                     maximumValue={durationMs}
                     value={trimEndMs}
-                    onValueChange={(v) => {
-                      setTrimEndMs(v);
-                      setPreviewTimeMs(0);
+                    onSlidingStart={() => {
+                      dismissKeyboard();
+                      if (!trimHistoryPushedRef.current) {
+                        pushHistory();
+                        trimHistoryPushedRef.current = true;
+                      }
                       setPlaying(false);
+                    }}                    onValueChange={setTrimEndMs}
+                    onSlidingComplete={() => {
+                      trimHistoryPushedRef.current = false;
+                      setPlaying(true);
                     }}
                     minimumTrackTintColor={theme.selectCard}
                     maximumTrackTintColor={theme.white15}
@@ -746,7 +1095,11 @@ export default function EditVideoScreen() {
                           styles.chip,
                           aspect === key && styles.chipActive,
                         ]}
-                        onPress={() => setAspect(key)}
+                        onPress={() => {
+                          if (aspect === key) return;
+                          pushHistory();
+                          setAspect(key);
+                        }}
                         disabled={busy}
                       >
                         <Text
@@ -785,6 +1138,7 @@ export default function EditVideoScreen() {
                     {musicUri ? (
                       <TouchableOpacity
                         onPress={() => {
+                          pushHistory();
                           setMusicUri(null);
                           setMusicName(null);
                         }}
@@ -813,6 +1167,7 @@ export default function EditVideoScreen() {
                         minimumValue={0}
                         maximumValue={1}
                         value={musicVolume}
+                        onSlidingStart={() => pushHistory()}
                         onValueChange={setMusicVolume}
                         minimumTrackTintColor={theme.selectCard}
                         maximumTrackTintColor={theme.white15}
@@ -825,7 +1180,10 @@ export default function EditVideoScreen() {
                     <Text style={styles.label}>{t("muteOriginalAudio")}</Text>
                     <Switch
                       value={muteOriginal}
-                      onValueChange={setMuteOriginal}
+                      onValueChange={(v) => {
+                        pushHistory();
+                        setMuteOriginal(v);
+                      }}
                       disabled={busy}
                       trackColor={{
                         false: theme.white15,
@@ -839,11 +1197,26 @@ export default function EditVideoScreen() {
 
               {activeTool === "text" ? (
                 <>
-                  <Text style={styles.panelTitle}>{t("overlayText")}</Text>
+                  <Pressable onPress={dismissKeyboard}>
+                    <Text style={styles.panelTitle}>{t("overlayText")}</Text>
+                  </Pressable>
                   <TextInput
+                    ref={textInputRef}
                     style={styles.input}
                     value={overlayText}
+                    onFocus={() => {
+                      if (!textHistoryPushedRef.current) {
+                        pushHistory();
+                        textHistoryPushedRef.current = true;
+                      }
+                    }}
+                    onBlur={() => {
+                      textHistoryPushedRef.current = false;
+                    }}
                     onChangeText={setOverlayText}
+                    onSubmitEditing={dismissKeyboard}
+                    returnKeyType="done"
+                    blurOnSubmit
                     placeholder={t("overlayTextPlaceholder")}
                     placeholderTextColor={theme.white15}
                     editable={!busy}
@@ -854,7 +1227,10 @@ export default function EditVideoScreen() {
 
               <TouchableOpacity
                 style={styles.ghostBtn}
-                onPress={handleUploadOriginal}
+                onPress={() => {
+                  dismissKeyboard();
+                  void handleUploadOriginal();
+                }}
                 disabled={busy}
               >
                 <Text style={styles.ghostText}>{t("uploadOriginal")}</Text>
@@ -863,7 +1239,10 @@ export default function EditVideoScreen() {
           ) : (
             <TouchableOpacity
               style={styles.ghostBtn}
-              onPress={handleUploadOriginal}
+              onPress={() => {
+                dismissKeyboard();
+                void handleUploadOriginal();
+              }}
               disabled={busy}
             >
               <Text style={styles.ghostText}>{t("uploadOriginal")}</Text>

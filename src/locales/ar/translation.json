@@ -1330,5 +1330,7 @@
   "pause": "Pause",
   "goBack": "Go back",
   "uploadOriginal": "رفع الأصل",
-  "done": "تم"
+  "done": "تم",
+  "undo": "تراجع",
+  "videoPreviewFallback": "تم التبديل إلى المشغل البسيط. يمكنك القص والرفع كما هو."
 }

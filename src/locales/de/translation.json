@@ -1330,5 +1330,7 @@
   "pause": "Pause",
   "goBack": "Go back",
   "uploadOriginal": "Original hochladen",
-  "done": "Fertig"
+  "done": "Fertig",
+  "undo": "Rückgängig",
+  "videoPreviewFallback": "Vorschau nutzt den einfachen Player. Du kannst weiterhin schneiden und hochladen."
 }

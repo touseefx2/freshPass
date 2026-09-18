@@ -1330,5 +1330,7 @@
   "pause": "Pause",
   "goBack": "Go back",
   "uploadOriginal": "そのままアップロード",
-  "done": "完了"
+  "done": "完了",
+  "undo": "元に戻す",
+  "videoPreviewFallback": "シンプルなプレーヤーでプレビューします。トリミングとアップロードは可能です。"
 }

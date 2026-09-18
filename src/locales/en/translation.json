@@ -1377,5 +1377,7 @@
   "restoreVisitSuccess": "Visit restored successfully.",
   "restoreVisitFailed": "Couldn't restore this visit.",
   "planVisitsMinError": "Visit total must be at least 1.",
-  "planVisitsOverageWarning": "This plan has {{total}} visits but only {{serviceTotal}} service visits in total. Customers can book at most {{serviceTotal}} visits a month."
+  "planVisitsOverageWarning": "This plan has {{total}} visits but only {{serviceTotal}} service visits in total. Customers can book at most {{serviceTotal}} visits a month.",
+  "undo": "Undo",
+  "videoPreviewFallback": "Preview switched to simple player. You can still trim and upload."
 }

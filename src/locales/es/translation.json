@@ -1330,5 +1330,7 @@
   "pause": "Pause",
   "goBack": "Go back",
   "uploadOriginal": "Subir original",
-  "done": "Listo"
+  "done": "Listo",
+  "undo": "Deshacer",
+  "videoPreviewFallback": "Vista previa en el reproductor simple. Aún puedes recortar y subir."
 }
