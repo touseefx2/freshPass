@@ -24,6 +24,7 @@ import {
   ViewToken,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -43,7 +44,9 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
   fetchReelFeed,
+  getMyReel,
   likeReel,
+  publishReel,
   recordReelView,
   saveReel,
   shareReel,
@@ -55,7 +58,7 @@ import ReelCommentsSheet from "@/src/components/reelCommentsSheet";
 import ReelReportSheet, {
   type ReportTarget,
 } from "@/src/components/reelReportSheet";
-import type { FeedReel } from "@/src/types/reels";
+import type { FeedReel, OwnerReel } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -68,6 +71,45 @@ function formatCount(n: number): string {
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
+
+function mapOwnerReelToFeedReel(
+  owner: OwnerReel,
+  business: { id: number; title: string; image_url?: string | null },
+): FeedReel {
+  const video: any = owner.video || {};
+  return {
+    id: owner.id,
+    caption: owner.caption,
+    look_tag: owner.look_tag,
+    promotion_text: owner.promotion_text,
+    product_tag: owner.product_tag,
+    available_now: owner.available_now,
+    published_at: owner.published_at,
+    video: {
+      playback_url: video.playback_url || video.url || "",
+      thumbnail_url: video.thumbnail_url ?? null,
+      duration_seconds: video.duration_seconds ?? null,
+      width: video.width ?? null,
+      height: video.height ?? null,
+    },
+    category: owner.category,
+    service: owner.service,
+    business: {
+      id: business.id,
+      title: business.title,
+      image_url: business.image_url ?? null,
+    },
+    stats: owner.stats ?? {
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
+    },
+    viewer: { liked: false, saved: false, following: false },
+  };
+}
+
 
 function formatReelTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -118,6 +160,7 @@ const createStyles = (theme: Theme) =>
       right: 0,
       flexDirection: "row",
       alignItems: "center",
+      justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(12),
       zIndex: 5,
     },
@@ -319,12 +362,69 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       paddingHorizontal: moderateWidthScale(24),
     },
+    viewModeBanner: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 8,
+      overflow: "hidden",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingBottom: moderateHeightScale(6),
+    },
+    viewModeBannerBlur: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    viewModeBannerOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.lightGreen5,
+    },
+    viewModeBannerContent: {
+      minHeight: moderateHeightScale(28),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+    },
+    viewModeBannerText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    viewModeExitText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.green,
+    },
+    previewPublishBtn: {
+      marginLeft: "auto" as const,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: widthScale(72),
+      minHeight: moderateHeightScale(32),
+    },
+    previewPublishBtnDisabled: {
+      opacity: 0.7,
+    },
+    previewPublishText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+    },
   });
 
 type ReelItemProps = {
   reel: FeedReel;
   isActive: boolean;
   isOwnReel: boolean;
+  isPreview?: boolean;
+  canPublish?: boolean;
+  publishing?: boolean;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   topInset: number;
@@ -338,12 +438,16 @@ type ReelItemProps = {
   onFollow: (reel: FeedReel) => void;
   onProfile: (reel: FeedReel) => void;
   onWantLook: (reel: FeedReel) => void;
+  onPublish?: () => void;
 };
 
 function ReelFeedItemBase({
   reel,
   isActive,
   isOwnReel,
+  isPreview = false,
+  canPublish = false,
+  publishing = false,
   styles,
   theme,
   topInset,
@@ -357,7 +461,12 @@ function ReelFeedItemBase({
   onFollow,
   onProfile,
   onWantLook,
+  onPublish,
 }: ReelItemProps) {
+  // Preview looks like customer feed, but social actions are display-only.
+  const showAsOwner = isOwnReel && !isPreview;
+  const showAsCustomer = !showAsOwner;
+  const socialLocked = isPreview;
   const { t } = useTranslation();
   const playbackUrl = resolveApiImageUrl(reel.video?.playback_url) || "";
   const posterUrl = resolveApiImageUrl(reel.video?.thumbnail_url);
@@ -639,6 +748,12 @@ function ReelFeedItemBase({
       : null;
   const seekProgress =
     duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0;
+  const videoW = reel.video?.width ?? 0;
+  const videoH = reel.video?.height ?? 0;
+  // Landscape / square crops (e.g. 16:9) should letterbox — cover would
+  // re-crop them on a portrait phone and hide the editor crop.
+  const contentFit =
+    videoW > 0 && videoH > 0 && videoW / videoH > 0.85 ? "contain" : "cover";
 
   return (
     <View style={styles.item}>
@@ -646,7 +761,7 @@ function ReelFeedItemBase({
         <VideoView
           player={player}
           style={styles.video}
-          contentFit="cover"
+          contentFit={contentFit}
           nativeControls={false}
           // SurfaceView + overlays often freeze playback on Android.
           {...(Platform.OS === "android"
@@ -656,7 +771,11 @@ function ReelFeedItemBase({
         />
       ) : null}
       {showPoster && posterUrl ? (
-        <Image source={{ uri: posterUrl }} style={styles.poster} />
+        <Image
+          source={{ uri: posterUrl }}
+          style={styles.poster}
+          resizeMode={contentFit}
+        />
       ) : null}
 
       <Pressable
@@ -681,7 +800,47 @@ function ReelFeedItemBase({
         </Animated.View>
       ) : null}
 
-      <View style={[styles.topBar, { top: topInset + moderateHeightScale(8) }]}>
+      {isPreview ? (
+        <View
+          style={[
+            styles.viewModeBanner,
+            { paddingTop: topInset + moderateHeightScale(2) },
+          ]}
+          pointerEvents="box-none"
+        >
+          {Platform.OS === "ios" ? (
+            <BlurView
+              intensity={18}
+              tint="dark"
+              style={styles.viewModeBannerBlur}
+            />
+          ) : null}
+          <View style={styles.viewModeBannerOverlay} />
+          <View style={styles.viewModeBannerContent}>
+            <Text style={styles.viewModeBannerText} numberOfLines={1}>
+              {t("viewingAsViewer")}
+            </Text>
+            <TouchableOpacity
+              onPress={onBack}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.viewModeExitText}>{t("exitViewAs")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
+      <View
+        style={[
+          styles.topBar,
+          {
+            top:
+              topInset +
+              moderateHeightScale(8) +
+              (isPreview ? moderateHeightScale(28) : 0),
+          },
+        ]}
+      >
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
           <MaterialIcons
             name="arrow-back"
@@ -689,6 +848,23 @@ function ReelFeedItemBase({
             color={theme.white}
           />
         </TouchableOpacity>
+        {canPublish && onPublish ? (
+          <TouchableOpacity
+            style={[
+              styles.previewPublishBtn,
+              publishing && styles.previewPublishBtnDisabled,
+            ]}
+            onPress={onPublish}
+            disabled={publishing}
+            activeOpacity={0.85}
+          >
+            {publishing ? (
+              <ActivityIndicator size="small" color={theme.buttonText} />
+            ) : (
+              <Text style={styles.previewPublishText}>{t("publish")}</Text>
+            )}
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <LinearGradient
@@ -720,6 +896,7 @@ function ReelFeedItemBase({
               moderateHeightScale(100),
           },
         ]}
+        pointerEvents={socialLocked ? "none" : "auto"}
       >
         <TouchableOpacity style={styles.sideBtn} onPress={() => onLike(reel)}>
           <View style={styles.sideIconWrap}>
@@ -760,7 +937,7 @@ function ReelFeedItemBase({
             {formatCount(reel.stats?.shares ?? 0)}
           </Text>
         </TouchableOpacity>
-        {!isOwnReel ? (
+        {showAsCustomer ? (
           <TouchableOpacity style={styles.sideBtn} onPress={() => onSave(reel)}>
             <View style={styles.sideIconWrap}>
               <MaterialIcons
@@ -774,7 +951,7 @@ function ReelFeedItemBase({
             </Text>
           </TouchableOpacity>
         ) : null}
-        {!isOwnReel ? (
+        {showAsCustomer ? (
           <TouchableOpacity style={styles.sideBtn} onPress={() => onMore(reel)}>
             <View style={styles.sideIconWrap}>
               <MaterialIcons
@@ -797,9 +974,11 @@ function ReelFeedItemBase({
               heightScale(22),
           },
         ]}
+      
+        pointerEvents={socialLocked ? "none" : "auto"}
       >
         <View style={styles.businessRow}>
-          {isOwnReel ? (
+          {showAsOwner ? (
             <>
               {resolveApiImageUrl(reel.business?.image_url) ? (
                 <Image
@@ -901,7 +1080,7 @@ function ReelFeedItemBase({
           )}
         </View>
 
-        {!isOwnReel ? (
+        {showAsCustomer ? (
           <View style={styles.ctaRow}>
             <TouchableOpacity
               style={styles.cta}
@@ -918,6 +1097,7 @@ function ReelFeedItemBase({
           </View>
         ) : null}
       </View>
+
 
       <View
         style={[
@@ -983,9 +1163,11 @@ export default function ReelsFeedScreen() {
   const params = useLocalSearchParams<{
     category_id?: string;
     first_reel_id?: string;
+    mode?: string;
   }>();
   const categoryId = params.category_id;
   const firstReelId = params.first_reel_id;
+  const isPreviewMode = params.mode === "preview";
 
   const [reels, setReels] = useState<FeedReel[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -999,6 +1181,8 @@ export default function ReelsFeedScreen() {
     count: number;
   } | null>(null);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [previewStatus, setPreviewStatus] = useState<string | null>(null);
   const viewedIdsRef = useRef<Set<number>>(new Set());
   const likeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLikeRef = useRef<{
@@ -1017,6 +1201,20 @@ export default function ReelsFeedScreen() {
     async (nextCursor?: string | null, append = false) => {
       if (!append) setLoading(true);
       try {
+        if (isPreviewMode && firstReelId && !append) {
+          const owner = await getMyReel(firstReelId);
+          const mapped = mapOwnerReelToFeedReel(owner, {
+            id: Number(owner.business_id || ownerBusinessId || 0),
+            title: user.business_name || "",
+            image_url: user.profile_image_url,
+          });
+          setReels([mapped]);
+          setCursor(null);
+          setHasMore(false);
+          setPreviewStatus(owner.status);
+          setActiveId(mapped.id);
+          return;
+        }
         const { reels: pageReels, meta } = await fetchReelFeed({
           category_id: categoryId,
           first_reel_id: firstReelId,
@@ -1034,6 +1232,7 @@ export default function ReelsFeedScreen() {
         );
         setCursor(meta.next_cursor ?? null);
         setHasMore(Boolean(meta.has_more));
+        setPreviewStatus(null);
         if (!append && pageReels[0] && !activeId) {
           setActiveId(pageReels[0].id);
         }
@@ -1049,7 +1248,18 @@ export default function ReelsFeedScreen() {
         setLoading(false);
       }
     },
-    [activeId, categoryId, coords, firstReelId, showBanner, t],
+    [
+      activeId,
+      categoryId,
+      coords,
+      firstReelId,
+      isPreviewMode,
+      ownerBusinessId,
+      showBanner,
+      t,
+      user.business_name,
+      user.profile_image_url,
+    ],
   );
 
   useEffect(() => {
@@ -1057,6 +1267,7 @@ export default function ReelsFeedScreen() {
   }, []);
 
   useEffect(() => {
+    if (isPreviewMode) return;
     if (activeId == null) return;
     if (viewedIdsRef.current.has(activeId)) return;
     viewedIdsRef.current.add(activeId);
@@ -1070,7 +1281,7 @@ export default function ReelsFeedScreen() {
         ),
       );
     });
-  }, [activeId]);
+  }, [activeId, isPreviewMode]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -1086,9 +1297,10 @@ export default function ReelsFeedScreen() {
   }).current;
 
   const handleEndReached = useCallback(() => {
+    if (isPreviewMode) return;
     if (!hasMore || !cursor || loading) return;
     loadPage(cursor, true);
-  }, [cursor, hasMore, loadPage, loading]);
+  }, [cursor, hasMore, isPreviewMode, loadPage, loading]);
 
   const flushLike = useCallback(async () => {
     const pending = pendingLikeRef.current;
@@ -1362,6 +1574,27 @@ export default function ReelsFeedScreen() {
 
   const goBack = useCallback(() => router.back(), [router]);
 
+  const handlePublishPreview = useCallback(async () => {
+    if (!firstReelId || publishing) return;
+    setPublishing(true);
+    try {
+      await publishReel(firstReelId);
+      setPreviewStatus("published");
+      showBanner(t("success"), t("reelPublished"), "success", 2500);
+      router.back();
+    } catch (error: any) {
+      Logger.error("Failed to publish reel from preview:", error);
+      showBanner(
+        t("error"),
+        error?.message || t("failedToUpdateReel"),
+        "error",
+        3000,
+      );
+    } finally {
+      setPublishing(false);
+    }
+  }, [firstReelId, publishing, router, showBanner, t]);
+
   const openProfile = useCallback(
     (reel: FeedReel) => {
       router.push({
@@ -1446,6 +1679,9 @@ export default function ReelsFeedScreen() {
               item.business?.id != null &&
               Number(item.business.id) === Number(ownerBusinessId)
             }
+            isPreview={isPreviewMode}
+            canPublish={isPreviewMode && previewStatus === "draft"}
+            publishing={publishing}
             styles={styles}
             theme={theme}
             topInset={insets.top}
@@ -1459,6 +1695,7 @@ export default function ReelsFeedScreen() {
             onFollow={handleFollow}
             onProfile={openProfile}
             onWantLook={wantLook}
+            onPublish={handlePublishPreview}
           />
         )}
       />

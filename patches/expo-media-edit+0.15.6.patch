@@ -1,3 +1,118 @@
+diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
+index 68cad71..22a0fa2 100644
+--- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
++++ b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
+@@ -4,11 +4,13 @@ import android.content.Context
+ import android.graphics.Bitmap
+ import android.graphics.Canvas
+ import android.net.Uri
++import androidx.media3.common.Effect
+ import androidx.media3.common.MediaItem
+ import androidx.media3.common.util.UnstableApi
+ import androidx.media3.effect.BitmapOverlay
+ import androidx.media3.effect.OverlayEffect
+ import androidx.media3.effect.OverlaySettings
++import androidx.media3.effect.Presentation
+ import androidx.media3.effect.TextureOverlay
+ import androidx.media3.transformer.Composition
+ import androidx.media3.transformer.EditedMediaItem
+@@ -80,7 +82,7 @@ object ProjectCompiler {
+     // a chain of `gap, clip, gap, clip, …` so absolute positions
+     // align across lanes.
+     val numLanes = (placed.maxOfOrNull { it.laneIndex } ?: 0) + 1
+-    val sequences = (0 until numLanes).map { lane -> buildLaneSequence(placed, lane) }
++    val sequences = (0 until numLanes).map { lane -> buildLaneSequence(placed, lane, renderW, renderH) }
+ 
+     // Audio sequences (one per audio clip).
+     val audioSequences = project.audioClips().mapNotNull { buildAudioSequence(it, project) }
+@@ -175,7 +177,12 @@ object ProjectCompiler {
+ 
+   // MARK: - Lane → EditedMediaItemSequence
+ 
+-  private fun buildLaneSequence(placed: List<PlacedClip>, laneIndex: Int): EditedMediaItemSequence {
++  private fun buildLaneSequence(
++    placed: List<PlacedClip>,
++    laneIndex: Int,
++    renderW: Int,
++    renderH: Int,
++  ): EditedMediaItemSequence {
+     val builder = EditedMediaItemSequence.Builder()
+     var laneCursor = 0L
+     for (pc in placed) {
+@@ -192,7 +199,7 @@ object ProjectCompiler {
+           // visible content at these timestamps in crossfade scenarios).
+         }
+       }
+-      val item = buildEditedMediaItem(pc)
++      val item = buildEditedMediaItem(pc, renderW, renderH)
+       builder.addItem(item)
+       laneCursor = pc.timelineEndMs
+     }
+@@ -201,7 +208,7 @@ object ProjectCompiler {
+ 
+   // MARK: - per-clip EditedMediaItem with optional alpha effects
+ 
+-  private fun buildEditedMediaItem(pc: PlacedClip): EditedMediaItem {
++  private fun buildEditedMediaItem(pc: PlacedClip, renderW: Int, renderH: Int): EditedMediaItem {
+     val clip = pc.clip
+     val mediaItem = if (clip.isImage) {
+       MediaItem.Builder().setUri(clip.sourceUri).build()
+@@ -226,6 +233,16 @@ object ProjectCompiler {
+       builder.setRemoveAudio(true)
+     }
+ 
++    // Aspect-FILL into canvasSize so crop (16:9 / 1:1 / 9:16) matches
++    // the editor preview's contentFit="cover".
++    val videoEffects = mutableListOf<Effect>(
++      Presentation.createForWidthAndHeight(
++        renderW,
++        renderH,
++        Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP,
++      )
++    )
++
+     // If this clip is in a crossfade (fade-in head and/or fade-out tail),
+     // attach an AlphaScaleEffect whose alphaFor is computed in absolute-
+     // timeline-time, then mapped to clip-local time inside the lambda.
+@@ -249,8 +266,9 @@ object ProjectCompiler {
+         }
+         a
+       }
+-      builder.setEffects(Effects(emptyList(), listOf(AlphaScaleEffect(alphaFn))))
++      videoEffects += AlphaScaleEffect(alphaFn)
+     }
++    builder.setEffects(Effects(emptyList(), videoEffects))
+     return builder.build()
+   }
+ 
+@@ -279,6 +297,11 @@ object ProjectCompiler {
+   // MARK: - render-size resolution
+ 
+   private fun resolveRenderSize(context: Context, clips: List<ProjectVideoClip>, project: Project): Pair<Int, Int> {
++    fun even(n: Int) = maxOf(2, n / 2 * 2)
++    // Prefer canvasSize from JS so 16:9 / square / portrait crops bake in.
++    if (project.canvasWidth >= 2 && project.canvasHeight >= 2) {
++      return Pair(even(project.canvasWidth), even(project.canvasHeight))
++    }
+     for (clip in clips) {
+       if (clip.isImage) continue
+       val retriever = android.media.MediaMetadataRetriever()
+@@ -288,13 +311,13 @@ object ProjectCompiler {
+         var h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt() ?: 0
+         val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toInt() ?: 0
+         if (rotation == 90 || rotation == 270) { val t = w; w = h; h = t }
+-        if (w > 0 && h > 0) return Pair(w, h)
++        if (w > 0 && h > 0) return Pair(even(w), even(h))
+       } catch (_: Exception) {
+       } finally {
+         try { retriever.release() } catch (_: Exception) {}
+       }
+     }
+-    return Pair(project.canvasWidth, project.canvasHeight)
++    return Pair(even(project.canvasWidth.coerceAtLeast(1080)), even(project.canvasHeight.coerceAtLeast(1920)))
+   }
+ }
+ 
 diff --git a/node_modules/expo-media-edit/ios/OverlayRenderer.swift b/node_modules/expo-media-edit/ios/OverlayRenderer.swift
 index 329ec6b..a305c31 100644
 --- a/node_modules/expo-media-edit/ios/OverlayRenderer.swift
@@ -216,3 +331,105 @@ index 329ec6b..a305c31 100644
 +    self.init(red: clamp(r), green: clamp(g), blue: clamp(b), alpha: clamp(a))
    }
  }
+diff --git a/node_modules/expo-media-edit/ios/ProjectCompiler.swift b/node_modules/expo-media-edit/ios/ProjectCompiler.swift
+index 1265e69..1c73379 100644
+--- a/node_modules/expo-media-edit/ios/ProjectCompiler.swift
++++ b/node_modules/expo-media-edit/ios/ProjectCompiler.swift
+@@ -44,9 +44,10 @@ public class ProjectCompiler {
+     let composition = AVMutableComposition()
+     var cleanupURLs: [URL] = []
+ 
+-    // Pre-compute render size from first video clip so image clips
+-    // scale into the same frame.
+-    let renderSize = try resolveRenderSize(clips: videoTracks)
++    // Prefer project.canvasSize (crop / aspect) so export matches the
++    // editor frame. Fall back to first clip natural size when canvas
++    // is missing or degenerate.
++    let renderSize = try resolveRenderSize(project: project, clips: videoTracks)
+ 
+     // Two alternating tracks for cross-dissolve / fadeToBlack /
+     // (former slide) transitions — same shape as the legacy
+@@ -73,18 +74,17 @@ public class ProjectCompiler {
+     }()
+     let previewScaleTx = CGAffineTransform(scaleX: previewScale, y: previewScale)
+ 
+-    // `fitTransform` returns the transform that maps the source's
+-    // rendered (post-preferredTransform) rectangle into the FULL
+-    // renderSize, aspect-fit + centered. The preview-scale multiply
+-    // happens at the use site (every setTransform call) so the
+-    // composition reads cleanly: fit → preview-scale.
+-    func fitTransform(_ srcTrack: AVAssetTrack) -> CGAffineTransform {
++    // `fillTransform` maps the source's rendered (post-preferredTransform)
++    // rectangle into renderSize with aspect-FILL (center crop) — matches
++    // the editor preview's contentFit="cover". Preview-scale multiply
++    // happens at the use site (every setTransform call).
++    func fillTransform(_ srcTrack: AVAssetTrack) -> CGAffineTransform {
+       let pt = srcTrack.preferredTransform
+       let rendered = srcTrack.naturalSize.applying(pt)
+       let rW = abs(rendered.width); let rH = abs(rendered.height)
+       guard rW > 0, rH > 0 else { return pt }
+       if abs(rW - renderSize.width) < 0.5 && abs(rH - renderSize.height) < 0.5 { return pt }
+-      let scale = min(renderSize.width / rW, renderSize.height / rH)
++      let scale = max(renderSize.width / rW, renderSize.height / rH)
+       let scaledW = rW * scale; let scaledH = rH * scale
+       let dx = (renderSize.width - scaledW) / 2
+       let dy = (renderSize.height - scaledH) / 2
+@@ -141,7 +141,7 @@ public class ProjectCompiler {
+         throw CompileError.sourceLoadFailed("clip \(clip.id) has no video track")
+       }
+ 
+-      let srcTx = fitTransform(srcTrack)
++      let srcTx = fillTransform(srcTrack)
+       let currTrack = i % 2 == 0 ? track1 : track2
+       let prevTrack = i % 2 == 0 ? track2 : track1
+       let itemDuration = assetRange.duration
+@@ -243,8 +243,13 @@ public class ProjectCompiler {
+       height: renderSize.height * previewScale,
+     )
+     let videoComposition = AVMutableVideoComposition()
+-    videoComposition.renderSize = finalRenderSize
+-    videoComposition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(project.fps))
++    // Even pixel sizes avoid VideoToolbox / H.264 black-frame exports.
++    videoComposition.renderSize = CGSize(
++      width: max(2, (finalRenderSize.width / 2).rounded(.down) * 2),
++      height: max(2, (finalRenderSize.height / 2).rounded(.down) * 2)
++    )
++    let fps = max(1, project.fps)
++    videoComposition.frameDuration = CMTime(value: 1, timescale: CMTimeScale(fps))
+     videoComposition.instructions = instructions
+ 
+     // Attach overlays from any overlay tracks
+@@ -291,16 +296,29 @@ public class ProjectCompiler {
+ 
+   // MARK: - Render-size resolution
+ 
+-  private static func resolveRenderSize(clips: [ProjectVideoClip]) throws -> CGSize {
+-    // First non-image video clip determines render size; falls back to
+-    // 1080x1920 portrait if everything is image-only.
++  private static func resolveRenderSize(project: Project, clips: [ProjectVideoClip]) throws -> CGSize {
++    // Honor canvasSize from JS (16:9 / 1:1 / 9:16 crop targets).
++    let cw = project.canvasSize.width
++    let ch = project.canvasSize.height
++    if cw >= 2, ch >= 2 {
++      return CGSize(
++        width: max(2, (cw / 2).rounded(.down) * 2),
++        height: max(2, (ch / 2).rounded(.down) * 2)
++      )
++    }
++    // Fallback: first non-image clip natural size; else 1080x1920.
+     for clip in clips where !clip.isImage {
+       guard let url = URL(string: clip.sourceUri) else { continue }
+       let asset = AVAsset(url: url)
+       if let t = asset.tracks(withMediaType: .video).first {
+         let nat = t.naturalSize.applying(t.preferredTransform)
+         let w = abs(nat.width); let h = abs(nat.height)
+-        if w > 0, h > 0 { return CGSize(width: w, height: h) }
++        if w > 0, h > 0 {
++          return CGSize(
++            width: max(2, (w / 2).rounded(.down) * 2),
++            height: max(2, (h / 2).rounded(.down) * 2)
++          )
++        }
+       }
+     }
+     return CGSize(width: 1080, height: 1920)

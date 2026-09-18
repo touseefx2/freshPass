@@ -495,7 +495,7 @@ export default function MediaLibraryMyReelsTab() {
           (item.video as any)?.thumbnail_url ?? null,
         ) || null;
       const openPreview = () => {
-        if (item.status !== "published") {
+        if (item.status === "removed") {
           showBanner(
             t("draft"),
             t("publishToPreviewReel"),
@@ -508,6 +508,7 @@ export default function MediaLibraryMyReelsTab() {
           pathname: "/(main)/reelsFeed" as any,
           params: {
             first_reel_id: String(item.id),
+            ...(item.status !== "published" ? { mode: "preview" } : {}),
             ...(item.category?.id != null
               ? { category_id: String(item.category.id) }
               : {}),
@@ -568,17 +569,21 @@ export default function MediaLibraryMyReelsTab() {
                   </Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(main)/reelStats" as any,
-                    params: { id: String(item.id) },
-                  })
-                }
-              >
-                <Text style={styles.actionBtnText}>{t("viewPerformance")}</Text>
-              </TouchableOpacity>
+              {item.status === "published" && (
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(main)/reelStats" as any,
+                      params: { id: String(item.id) },
+                    })
+                  }
+                >
+                  <Text style={styles.actionBtnText}>
+                    {t("viewPerformance")}
+                  </Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.actionBtn}
                 onPress={() => confirmDelete(item)}

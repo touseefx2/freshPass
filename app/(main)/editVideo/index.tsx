@@ -138,11 +138,14 @@ function getCanvasSize(
   videoWidth: number,
   videoHeight: number,
 ): { width: number; height: number } {
-  if (aspect !== "original") return ASPECT_SIZES[aspect];
+  const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
+  if (aspect !== "original") {
+    const size = ASPECT_SIZES[aspect];
+    return { width: even(size.width), height: even(size.height) };
+  }
   const w = Math.max(2, Math.round(videoWidth) || 1080);
   const h = Math.max(2, Math.round(videoHeight) || 1920);
   const maxSide = 1080;
-  const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
   if (w >= h) {
     return {
       width: maxSide,
@@ -1084,6 +1087,8 @@ export default function EditVideoScreen() {
     return createProject({
       id: "freshpass-edit-session",
       canvasSize: canvas,
+      // Explicit fps avoids undefined → native 0 timescale black exports.
+      fps: 30,
       tracks,
     });
   }, [
@@ -1167,8 +1172,9 @@ export default function EditVideoScreen() {
         setExportProgress(Math.round((progress || 0) * 100));
       });
       try {
+        // high + baked canvasSize (native patch) avoids black / uncropped exports
         videoUri = await exportProject(project, undefined, {
-          quality: "medium",
+          quality: "high",
         });
         fileName = params.fileName || "edited-video.mp4";
         mimeType = "video/mp4";
