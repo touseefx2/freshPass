@@ -1233,6 +1233,7 @@
   "videoUsedByReel": "This video is used by a reel. Delete the reel first.",
   "openMyReels": "Open My Reels",
   "videoNotReadyToPublish": "Wait until the video is ready before publishing.",
+  "videoProcessingForPublish": "Finishing video processing… hang tight.",
   "captionRequired": "Caption is required.",
   "categoryRequired": "Please select a category.",
   "videoRequired": "A video is required.",

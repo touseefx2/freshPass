@@ -31,7 +31,7 @@ import {
   unpublishReel,
   updateReel,
 } from "@/src/services/reelsService";
-import { uploadVideo } from "@/src/services/mediaLibraryService";
+import { uploadVideo, waitForMediaReady } from "@/src/services/mediaLibraryService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel } from "@/src/types/reels";
 
@@ -157,6 +157,7 @@ export default function PublishReelScreen() {
   const [publishing, setPublishing] = useState(false);
   const [unpublishing, setUnpublishing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [waitingForReady, setWaitingForReady] = useState(false);
   const isSubmitting = savingDraft || publishing || unpublishing;
   const [resolvedMediaAssetId, setResolvedMediaAssetId] = useState<
     number | null
@@ -289,6 +290,20 @@ export default function PublishReelScreen() {
     t,
   ]);
 
+  /** Publish requires media `ready` (R-02 / R-03) — poll after upload if needed. */
+  const ensureMediaReadyForPublish = useCallback(
+    async (mediaId: number): Promise<number> => {
+      setWaitingForReady(true);
+      try {
+        await waitForMediaReady(mediaId);
+        return mediaId;
+      } finally {
+        setWaitingForReady(false);
+      }
+    },
+    [],
+  );
+
   const leaveAfterSuccess = useCallback(() => {
     if (fromEditor) {
       if (typeof router.dismiss === "function") {
@@ -359,6 +374,7 @@ export default function PublishReelScreen() {
     if (!validate() || isSubmitting) return;
     setPublishing(true);
     setUploadProgress(0);
+    setWaitingForReady(false);
     try {
       if (isEdit && reelId) {
         await updateReel(reelId, {
@@ -376,6 +392,8 @@ export default function PublishReelScreen() {
         showBanner(t("success"), t("reelPublished"), "success", 2500);
       } else {
         const mediaId = await ensureMediaAssetId();
+        // Server rejects publish while media is still compressing/thumbnailing.
+        await ensureMediaReadyForPublish(mediaId);
         await createReel(buildCreatePayload(true, mediaId));
         showBanner(t("success"), t("reelPublished"), "success", 2500);
       }
@@ -391,6 +409,7 @@ export default function PublishReelScreen() {
     } finally {
       setPublishing(false);
       setUploadProgress(0);
+      setWaitingForReady(false);
     }
   };
 
@@ -539,10 +558,13 @@ export default function PublishReelScreen() {
         </View>
 
         <View style={styles.buttons}>
-          {isSubmitting && fromEditor && uploadProgress > 0 ? (
+          {isSubmitting && fromEditor && uploadProgress > 0 && !waitingForReady ? (
             <Text style={styles.progressText}>
               {`${t("uploadingVideo")} ${uploadProgress}%`}
             </Text>
+          ) : null}
+          {isSubmitting && waitingForReady ? (
+            <Text style={styles.progressText}>{t("videoProcessingForPublish")}</Text>
           ) : null}
           <Button
             title={isEdit ? t("saveChanges") : t("saveDraft")}

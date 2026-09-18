@@ -72,6 +72,45 @@ export async function getVideo(id: number | string): Promise<MediaVideo> {
   return response.data;
 }
 
+/**
+ * R-02: uploads arrive as `processing`. Publish requires `ready` — poll until
+ * the worker finishes (or fails / times out).
+ */
+export async function waitForMediaReady(
+  id: number | string,
+  options?: {
+    intervalMs?: number;
+    timeoutMs?: number;
+    onStatus?: (video: MediaVideo) => void;
+  },
+): Promise<MediaVideo> {
+  const intervalMs = options?.intervalMs ?? 4000;
+  const timeoutMs = options?.timeoutMs ?? 5 * 60 * 1000;
+  const startedAt = Date.now();
+
+  let latest = await getVideo(id);
+  options?.onStatus?.(latest);
+
+  while (latest.status === "processing") {
+    if (Date.now() - startedAt > timeoutMs) {
+      const error = new Error(
+        "This video is still processing. Try publishing once it is ready.",
+      );
+      (error as any).isProcessingTimeout = true;
+      throw error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    latest = await getVideo(id);
+    options?.onStatus?.(latest);
+  }
+
+  if (latest.status === "failed") {
+    throw new Error("Video processing failed. Please upload again.");
+  }
+
+  return latest;
+}
+
 export async function deleteVideo(id: number | string): Promise<MediaDeleteResponse> {
   return ApiService.delete<MediaDeleteResponse>(mediaEndpoints.deleteOne(id));
 }
