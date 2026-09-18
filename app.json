@@ -58,7 +58,7 @@
       "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png",
       "bundler": "metro",
       "viewport": "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover"

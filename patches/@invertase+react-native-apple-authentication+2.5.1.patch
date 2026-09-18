@@ -1,0 +1,28 @@
+diff --git a/node_modules/@invertase/react-native-apple-authentication/lib/AppleButton.web.js b/node_modules/@invertase/react-native-apple-authentication/lib/AppleButton.web.js
+new file mode 100644
+index 0000000..89a63a5
+--- /dev/null
++++ b/node_modules/@invertase/react-native-apple-authentication/lib/AppleButton.web.js
+@@ -0,0 +1,22 @@
++/**
++ * Web stub — package only ships AppleButton.ios/android/macos.
++ */
++import React from 'react';
++
++export default function AppleButton() {
++  return null;
++}
++
++AppleButton.Type = {
++  DEFAULT: 'default',
++  SIGN_IN: 'signIn',
++  CONTINUE: 'continue',
++  SIGN_UP: 'signUp',
++};
++
++AppleButton.Style = {
++  DEFAULT: 'default',
++  WHITE: 'white',
++  WHITE_OUTLINE: 'whiteOutline',
++  BLACK: 'black',
++};

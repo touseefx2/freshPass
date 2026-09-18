@@ -1,0 +1,218 @@
+diff --git a/node_modules/expo-media-edit/ios/OverlayRenderer.swift b/node_modules/expo-media-edit/ios/OverlayRenderer.swift
+index 329ec6b..a305c31 100644
+--- a/node_modules/expo-media-edit/ios/OverlayRenderer.swift
++++ b/node_modules/expo-media-edit/ios/OverlayRenderer.swift
+@@ -213,9 +213,13 @@ public class OverlayRenderer {
+     duration: CMTime,
+     coordOrigin: OverlayCoordOrigin
+   ) -> CALayer {
+-    let fontSize = CGFloat(opts.fontSize) * videoSize.height / 1080.0
+-    let maxWidth = videoSize.width * 0.9
+-    let scale = videoSize.height / 1080.0
++    // Guard against zero/degenerate sizes which produce invalid fonts
++    // and crash AVVideoCompositionCoreAnimationTool mid-export.
++    let safeVideoH = max(videoSize.height, 1)
++    let safeVideoW = max(videoSize.width, 1)
++    let fontSize = max(1, CGFloat(opts.fontSize) * safeVideoH / 1080.0)
++    let maxWidth = max(1, safeVideoW * 0.9)
++    let scale = safeVideoH / 1080.0
+     let padH: CGFloat = CGFloat(opts.paddingX) * scale
+     let padV: CGFloat = CGFloat(opts.paddingY) * scale
+ 
+@@ -225,9 +229,19 @@ public class OverlayRenderer {
+     )
+     let fgColor = UIColor(hexString: opts.color) ?? .white
+ 
++    let paragraph = NSMutableParagraphStyle()
++    switch opts.textAlign {
++    case "left":  paragraph.alignment = .left
++    case "right": paragraph.alignment = .right
++    default:      paragraph.alignment = .center
++    }
++
++    var attrs = textAttributes(font: uiFont, color: fgColor, opts: opts)
++    attrs[.paragraphStyle] = paragraph
++
+     let attributed = NSMutableAttributedString(
+       string: opts.content,
+-      attributes: textAttributes(font: uiFont, color: fgColor, opts: opts)
++      attributes: attrs
+     )
+     if let hlColorStr = opts.highlightColor,
+        let hlColor = UIColor(hexString: hlColorStr),
+@@ -246,58 +260,84 @@ public class OverlayRenderer {
+       options: [.usesLineFragmentOrigin, .usesFontLeading],
+       context: nil
+     )
+-    let layerWidth = ceil(measured.width) + padH * 2
+-    let layerHeight = ceil(measured.height) + padV * 2
++    // Even pixel sizes avoid CoreAnimation / VideoToolbox bit-alignment crashes.
++    let layerWidth = max(2, ceil(measured.width) + padH * 2)
++    let layerHeight = max(2, ceil(measured.height) + padV * 2)
++    let evenWidth = ceil(layerWidth / 2) * 2
++    let evenHeight = ceil(layerHeight / 2) * 2
++    let corner = opts.cornerRadius > 0 ? CGFloat(opts.cornerRadius) * scale : 0
++
++    // IMPORTANT: Do NOT use CATextLayer with AVVideoCompositionCoreAnimationTool.
++    // On recent iOS / Simulator builds that path triggers EXC_BREAKPOINT /
++    // _xpc_api_misuse and "verify_image_parameters" during export.
++    // Rasterize the attributed string into a VideoToolbox-safe BGRA bitmap.
++    let format = UIGraphicsImageRendererFormat()
++    format.opaque = false
++    format.scale = 1
++    format.preferredRange = .standard
++    let renderer = UIGraphicsImageRenderer(
++      size: CGSize(width: evenWidth, height: evenHeight),
++      format: format
++    )
++    let image = renderer.image { _ in
++      UIColor.clear.setFill()
++      UIRectFill(CGRect(x: 0, y: 0, width: evenWidth, height: evenHeight))
++      if let bgColorStr = opts.backgroundColor,
++         let bgColor = UIColor(hexString: bgColorStr) {
++        bgColor.setFill()
++        let rect = CGRect(x: 0, y: 0, width: evenWidth, height: evenHeight)
++        if corner > 0 {
++          UIBezierPath(roundedRect: rect, cornerRadius: corner).fill()
++        } else {
++          UIBezierPath(rect: rect).fill()
++        }
++      }
++      let textRect = CGRect(
++        x: padH,
++        y: padV,
++        width: max(1, evenWidth - padH * 2),
++        height: max(1, evenHeight - padV * 2)
++      )
++      attributed.draw(
++        with: textRect,
++        options: [.usesLineFragmentOrigin, .usesFontLeading],
++        context: nil
++      )
++    }
+ 
+     let xPos: CGFloat
+     if opts.anchor == "topLeft" {
+-      xPos = CGFloat(opts.x) * videoSize.width
++      xPos = CGFloat(opts.x) * safeVideoW
+     } else {
+-      xPos = CGFloat(opts.x) * videoSize.width - layerWidth / 2
++      xPos = CGFloat(opts.x) * safeVideoW - evenWidth / 2
+     }
+     let yPos = computeYPos(
+-      y: opts.y, layerHeight: layerHeight,
+-      videoHeight: videoSize.height, anchor: opts.anchor,
++      y: opts.y, layerHeight: evenHeight,
++      videoHeight: safeVideoH, anchor: opts.anchor,
+       coordOrigin: coordOrigin
+     )
+ 
+-    let alignment: CATextLayerAlignmentMode
+-    switch opts.textAlign {
+-    case "left":  alignment = .left
+-    case "right": alignment = .right
+-    default:      alignment = .center
+-    }
+-
+-    let textLayer = CATextLayer()
+-    textLayer.string = attributed
+-    textLayer.alignmentMode = alignment
+-    textLayer.isWrapped = true
+-    textLayer.contentsScale = UIScreen.main.scale
+-    textLayer.frame = CGRect(x: xPos, y: yPos, width: layerWidth, height: layerHeight)
+-
+-    if let bgColorStr = opts.backgroundColor,
+-       let bgColor = UIColor(hexString: bgColorStr) {
+-      textLayer.backgroundColor = bgColor.cgColor
+-    }
+-    if opts.cornerRadius > 0 {
+-      textLayer.cornerRadius = CGFloat(opts.cornerRadius) * scale
+-      textLayer.masksToBounds = true
+-    }
++    let imageLayer = CALayer()
++    imageLayer.contents = videoSafeCGImage(from: image)
++    imageLayer.contentsGravity = .resize
++    imageLayer.isOpaque = false
++    imageLayer.drawsAsynchronously = false
++    imageLayer.frame = CGRect(x: xPos, y: yPos, width: evenWidth, height: evenHeight)
+ 
+-    applyTimingAnimation(to: textLayer, timelineRange: opts.timelineRange, duration: duration)
++    applyTimingAnimation(to: imageLayer, timelineRange: opts.timelineRange, duration: duration)
+ 
+     if opts.rotation != 0 {
+       let radians = CGFloat(opts.rotation) * .pi / 180
+       let container = CALayer()
+-      container.frame = textLayer.frame
+-      textLayer.frame = CGRect(origin: .zero, size: textLayer.frame.size)
+-      container.addSublayer(textLayer)
++      container.frame = imageLayer.frame
++      imageLayer.frame = CGRect(origin: .zero, size: imageLayer.frame.size)
++      container.addSublayer(imageLayer)
+       container.transform = CATransform3DMakeRotation(radians, 0, 0, 1)
+       applyTimingAnimation(to: container, timelineRange: opts.timelineRange, duration: duration)
+       return container
+     }
+ 
+-    return textLayer
++    return imageLayer
+   }
+ 
+   private static func buildImageLayer(
+@@ -325,9 +365,10 @@ public class OverlayRenderer {
+     )
+ 
+     let imageLayer = CALayer()
+-    imageLayer.contents = image.cgImage
++    imageLayer.contents = videoSafeCGImage(from: image)
+     imageLayer.contentsGravity = .resizeAspect
+     imageLayer.opacity = Float(opts.opacity)
++    imageLayer.isOpaque = false
+     imageLayer.frame = CGRect(x: xPos, y: yPos, width: layerWidth, height: layerHeight)
+ 
+     applyTimingAnimation(to: imageLayer, timelineRange: opts.timelineRange, duration: duration)
+@@ -346,6 +387,35 @@ public class OverlayRenderer {
+     return imageLayer
+   }
+ 
++  /// Copy into 32-bit BGRA with 16-byte-aligned rows — VideoToolbox /
++  /// AVVideoCompositionCoreAnimationTool rejects odd bpp / stride.
++  private static func videoSafeCGImage(from image: UIImage) -> CGImage? {
++    guard let input = image.cgImage else { return nil }
++    let width = max(2, input.width - (input.width % 2))
++    let height = max(2, input.height - (input.height % 2))
++    let bytesPerPixel = 4
++    let bytesPerRow = ((width * bytesPerPixel + 15) / 16) * 16
++    let colorSpace = CGColorSpaceCreateDeviceRGB()
++    let bitmapInfo =
++      CGBitmapInfo.byteOrder32Little.rawValue |
++      CGImageAlphaInfo.premultipliedFirst.rawValue
++    guard let ctx = CGContext(
++      data: nil,
++      width: width,
++      height: height,
++      bitsPerComponent: 8,
++      bytesPerRow: bytesPerRow,
++      space: colorSpace,
++      bitmapInfo: bitmapInfo
++    ) else {
++      return input
++    }
++    ctx.clear(CGRect(x: 0, y: 0, width: width, height: height))
++    ctx.interpolationQuality = .high
++    ctx.draw(input, in: CGRect(x: 0, y: 0, width: width, height: height))
++    return ctx.makeImage() ?? input
++  }
++
+   private static func applyTimingAnimation(
+     to layer: CALayer,
+     timelineRange: ProjectTimeRange?,
+@@ -398,6 +468,8 @@ extension UIColor {
+     default:
+       return nil
+     }
+-    self.init(red: r, green: g, blue: b, alpha: a)
++    // Clamp — prevents UIColorBreakForOutOfRangeColorComponents / export crashes
++    let clamp: (CGFloat) -> CGFloat = { max(0, min(1, $0)) }
++    self.init(red: clamp(r), green: clamp(g), blue: clamp(b), alpha: clamp(a))
+   }
+ }

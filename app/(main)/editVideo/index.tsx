@@ -168,6 +168,39 @@ function clampOverlayPos(n: number): number {
   return Math.min(OVERLAY_POS_MAX, Math.max(OVERLAY_POS_MIN, n));
 }
 
+/** Native iOS export only accepts clean #RRGGBB — invalid colors can crash. */
+function toExportHexColor(input: string | undefined | null): string {
+  const raw = String(input || "").trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw.toUpperCase();
+  if (/^#[0-9a-fA-F]{3}$/.test(raw)) {
+    const r = raw[1];
+    const g = raw[2];
+    const b = raw[3];
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+  }
+  if (/^#[0-9a-fA-F]{8}$/.test(raw)) {
+    return `#${raw.slice(1, 7)}`.toUpperCase();
+  }
+  const rgba = raw.match(
+    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i,
+  );
+  if (rgba) {
+    const clampByte = (n: number) =>
+      Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0");
+    return `#${clampByte(+rgba[1])}${clampByte(+rgba[2])}${clampByte(+rgba[3])}`.toUpperCase();
+  }
+  return "#FFFFFF";
+}
+
+function sanitizeOverlayText(text: string): string {
+  return text
+    .replace(/[\u2018\u2019\u2032]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, "...")
+    .replace(/\u00A0/g, " ")
+    .trim();
+}
+
 function formatMs(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
   const m = Math.floor(total / 60);
@@ -1011,35 +1044,41 @@ export default function EditVideoScreen() {
     }
 
     if (overlayText.trim()) {
-      tracks.push({
-        kind: "overlay",
-        id: "o",
-        items: [
-          {
-            id: STABLE_CLIP_IDS.text,
-            kind: "text",
-            content: overlayText.trim(),
-            x: overlayX,
-            y: overlayY,
-            anchor: "center",
-            textAlign: "center",
-            paddingX: overlayBgColorKey ? 18 : 10,
-            paddingY: overlayBgColorKey ? 10 : 6,
-            fontSize: OVERLAY_EXPORT_FONT[overlaySize],
-            color: resolveOverlayColor(overlayColorKey),
-            fontWeight: overlayBold ? "bold" : "normal",
-            fontStyle: overlayItalic ? "italic" : "normal",
-            fontFamily: overlayMono ? "monospace" : "system",
-            backgroundColor: overlayBgColorKey
-              ? resolveOverlayColor(overlayBgColorKey)
-              : undefined,
-            cornerRadius: overlayBgColorKey ? 12 : undefined,
-            shadowColor: theme.black,
-            shadowRadius: 4,
-            shadowOpacity: 0.6,
-          },
-        ],
-      });
+      const exportText = sanitizeOverlayText(overlayText);
+      if (exportText) {
+        const hasBg = !!overlayBgColorKey;
+        tracks.push({
+          kind: "overlay",
+          id: "o",
+          items: [
+            {
+              id: STABLE_CLIP_IDS.text,
+              kind: "text",
+              content: exportText,
+              x: overlayX,
+              y: overlayY,
+              anchor: "center",
+              textAlign: "center",
+              paddingX: hasBg ? 18 : 10,
+              paddingY: hasBg ? 10 : 6,
+              fontSize: OVERLAY_EXPORT_FONT[overlaySize],
+              color: toExportHexColor(resolveOverlayColor(overlayColorKey)),
+              fontWeight: overlayBold ? "bold" : "normal",
+              fontStyle: overlayItalic ? "italic" : "normal",
+              fontFamily: overlayMono ? "monospace" : "system",
+              ...(hasBg
+                ? {
+                    backgroundColor: toExportHexColor(
+                      resolveOverlayColor(overlayBgColorKey),
+                    ),
+                    cornerRadius: 12,
+                  }
+                : {}),
+              // Avoid CATextLayer shadow + masksToBounds combo — crashes some iOS builds
+            },
+          ],
+        });
+      }
     }
 
     return createProject({
@@ -1063,7 +1102,6 @@ export default function EditVideoScreen() {
     overlayY,
     resolveOverlayColor,
     sourceUri,
-    theme.black,
     trimEndMs,
     trimStartMs,
     videoSize.height,
@@ -1095,8 +1133,18 @@ export default function EditVideoScreen() {
 
   const handleNextToPublish = useCallback(async () => {
     if (!project || exporting || !sourceUri) return;
-    setPlaying(false);
     dismissKeyboard();
+    setPlaying(false);
+    try {
+      player.pause();
+    } catch {}
+    try {
+      // Release the AVPlayer item so export can open the same file safely on iOS
+      await player.replaceAsync(null);
+    } catch {}
+    try {
+      await musicSoundRef.current?.pauseAsync();
+    } catch {}
 
     const hasEdits =
       aspect !== "original" ||
@@ -1113,12 +1161,14 @@ export default function EditVideoScreen() {
     if (hasEdits) {
       setExporting(true);
       setExportProgress(0);
+      // Let AVPlayer fully release the source before AVAssetExportSession opens it
+      await new Promise<void>((resolve) => setTimeout(resolve, 700));
       const sub = addProgressListener(({ progress }) => {
         setExportProgress(Math.round((progress || 0) * 100));
       });
       try {
         videoUri = await exportProject(project, undefined, {
-          quality: "high",
+          quality: "medium",
         });
         fileName = params.fileName || "edited-video.mp4";
         mimeType = "video/mp4";
@@ -1130,6 +1180,10 @@ export default function EditVideoScreen() {
           "error",
           3500,
         );
+        // Restore preview source after failed export
+        try {
+          if (sourceUri) await player.replaceAsync(sourceUri);
+        } catch {}
         return;
       } finally {
         try {
@@ -1138,6 +1192,10 @@ export default function EditVideoScreen() {
         setExporting(false);
         setExportProgress(0);
       }
+    } else {
+      try {
+        if (sourceUri) await player.replaceAsync(sourceUri);
+      } catch {}
     }
 
     router.push({
@@ -1159,6 +1217,7 @@ export default function EditVideoScreen() {
     overlayText,
     params.fileName,
     params.mimeType,
+    player,
     project,
     router,
     showBanner,

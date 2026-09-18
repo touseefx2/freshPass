@@ -9,7 +9,7 @@ import {
 import {
   appleAuth,
   appleAuthAndroid,
-} from "@invertase/react-native-apple-authentication";
+} from "@/src/shims/appleAuthentication";
 import { LoginManager, AccessToken } from "react-native-fbsdk-next";
 import { useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
