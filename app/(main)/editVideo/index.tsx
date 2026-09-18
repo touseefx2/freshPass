@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -50,7 +49,7 @@ import { uploadVideo } from "@/src/services/mediaLibraryService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 
-type AspectPreset = "portrait" | "square" | "landscape";
+type AspectPreset = "original" | "portrait" | "square" | "landscape";
 type EditorTool = "trim" | "crop" | "music" | "text" | null;
 type OverlaySize = "S" | "M" | "L";
 type OverlayColorKey =
@@ -105,17 +104,54 @@ const OVERLAY_PREVIEW_FONT: Record<OverlaySize, number> = {
   L: 30,
 };
 
-const ASPECT_SIZES: Record<AspectPreset, { width: number; height: number }> = {
+const ASPECT_SIZES: Record<
+  Exclude<AspectPreset, "original">,
+  { width: number; height: number }
+> = {
   portrait: { width: 1080, height: 1920 },
   square: { width: 1080, height: 1080 },
   landscape: { width: 1920, height: 1080 },
 };
 
-const ASPECT_RATIO: Record<AspectPreset, number> = {
+const ASPECT_RATIO: Record<Exclude<AspectPreset, "original">, number> = {
   portrait: 9 / 16,
   square: 1,
   landscape: 16 / 9,
 };
+
+function getAspectRatio(
+  aspect: AspectPreset,
+  videoWidth: number,
+  videoHeight: number,
+): number {
+  if (aspect === "original") {
+    if (videoWidth > 0 && videoHeight > 0) return videoWidth / videoHeight;
+    return 9 / 16;
+  }
+  return ASPECT_RATIO[aspect];
+}
+
+function getCanvasSize(
+  aspect: AspectPreset,
+  videoWidth: number,
+  videoHeight: number,
+): { width: number; height: number } {
+  if (aspect !== "original") return ASPECT_SIZES[aspect];
+  const w = Math.max(2, Math.round(videoWidth) || 1080);
+  const h = Math.max(2, Math.round(videoHeight) || 1920);
+  const maxSide = 1080;
+  const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
+  if (w >= h) {
+    return {
+      width: maxSide,
+      height: even((maxSide * h) / w),
+    };
+  }
+  return {
+    width: even((maxSide * w) / h),
+    height: maxSide,
+  };
+}
 
 const STABLE_CLIP_IDS = {
   video: "clip-video",
@@ -204,10 +240,11 @@ const createStyles = (theme: Theme) =>
       color: theme.buttonText,
     },
     previewArea: {
-      flex: 1,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: theme.black,
       alignItems: "center",
       justifyContent: "center",
+      zIndex: 1,
     },
     cropFrame: {
       overflow: "hidden",
@@ -224,6 +261,10 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       zIndex: 2,
+    },
+    keyboardDismissOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 5,
     },
     playCircle: {
       width: widthScale(68),
@@ -257,7 +298,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(10),
     },
     textHitExpand: {
-      // Larger hit area so drag is easy to grab
       minWidth: widthScale(80),
       minHeight: heightScale(44),
       alignItems: "center",
@@ -289,10 +329,20 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     bottomDock: {
-      backgroundColor: theme.black,
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      zIndex: 20,
+      backgroundColor: theme.borderDark,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.white15,
       paddingTop: moderateHeightScale(8),
+    },
+    bottomDockKeyboard: {
+      backgroundColor: theme.black,
+      borderTopWidth: 0,
+      paddingTop: moderateHeightScale(4),
     },
     toolRow: {
       flexDirection: "row",
@@ -323,7 +373,9 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(8),
       paddingBottom: moderateHeightScale(12),
-      minHeight: heightScale(140),
+    },
+    panelCompact: {
+      paddingBottom: moderateHeightScale(6),
     },
     panelTitle: {
       fontSize: fontSize.size13,
@@ -426,18 +478,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
-    ghostBtn: {
-      marginTop: moderateHeightScale(8),
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(6),
-    },
-    ghostText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-      opacity: 0.55,
-      textDecorationLine: "underline",
-    },
   });
 
 export default function EditVideoScreen() {
@@ -466,7 +506,8 @@ export default function EditVideoScreen() {
   const [durationMs, setDurationMs] = useState(5000);
   const [trimStartMs, setTrimStartMs] = useState(0);
   const [trimEndMs, setTrimEndMs] = useState(5000);
-  const [aspect, setAspect] = useState<AspectPreset>("portrait");
+  const [aspect, setAspect] = useState<AspectPreset>("original");
+  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const [muteOriginal, setMuteOriginal] = useState(false);
   const [musicUri, setMusicUri] = useState<string | null>(null);
   const [musicName, setMusicName] = useState<string | null>(null);
@@ -493,6 +534,7 @@ export default function EditVideoScreen() {
   const [exportProgress, setExportProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const trimHistoryPushedRef = useRef(false);
   const textHistoryPushedRef = useRef(false);
@@ -506,6 +548,23 @@ export default function EditVideoScreen() {
   const dismissKeyboard = useCallback(() => {
     Keyboard.dismiss();
     textInputRef.current?.blur();
+  }, []);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const onShow = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
   }, []);
 
   const player = useVideoPlayer(paramUri || "", (p) => {
@@ -639,9 +698,11 @@ export default function EditVideoScreen() {
         setDurationMs(dur);
         setTrimStartMs(0);
         setTrimEndMs(dur);
-        if (info.width > info.height) setAspect("landscape");
-        else if (Math.abs(info.width - info.height) < 40) setAspect("square");
-        else setAspect("portrait");
+        setVideoSize({
+          width: Math.max(0, info.width || 0),
+          height: Math.max(0, info.height || 0),
+        });
+        setAspect("original");
         setPreviewReady(true);
         setPlaying(true);
       } catch (error) {
@@ -759,7 +820,7 @@ export default function EditVideoScreen() {
   const project: Project | null = useMemo(() => {
     if (!sourceUri || trimEndMs <= trimStartMs) return null;
     const clipDuration = trimEndMs - trimStartMs;
-    const canvas = ASPECT_SIZES[aspect];
+    const canvas = getCanvasSize(aspect, videoSize.width, videoSize.height);
     const tracks: Project["tracks"] = [
       {
         kind: "video",
@@ -848,6 +909,8 @@ export default function EditVideoScreen() {
     theme.borderDark,
     trimEndMs,
     trimStartMs,
+    videoSize.height,
+    videoSize.width,
   ]);
 
   const pickMusic = useCallback(async () => {
@@ -928,46 +991,6 @@ export default function EditVideoScreen() {
     uploading,
   ]);
 
-  const handleUploadOriginal = useCallback(async () => {
-    if (exporting || uploading || !sourceUri) return;
-    setPlaying(false);
-    setUploading(true);
-    setUploadProgress(0);
-    try {
-      await uploadVideo(
-        {
-          uri: sourceUri,
-          mimeType: params.mimeType || "video/mp4",
-          fileName: params.fileName || "video.mp4",
-          sourceType,
-        },
-        setUploadProgress,
-      );
-      showBanner(t("success"), t("videoUploaded"), "success", 2500);
-      router.replace("/(main)/aiTools/toolList" as any);
-    } catch (error: any) {
-      showBanner(
-        t("error"),
-        error?.message || t("failedToUploadVideo"),
-        "error",
-        3000,
-      );
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-    }
-  }, [
-    exporting,
-    params.fileName,
-    params.mimeType,
-    router,
-    showBanner,
-    sourceType,
-    sourceUri,
-    t,
-    uploading,
-  ]);
-
   const toggleTool = useCallback(
     (tool: EditorTool) => {
       dismissKeyboard();
@@ -992,9 +1015,9 @@ export default function EditVideoScreen() {
       fitFrame(
         previewSize.width,
         previewSize.height,
-        ASPECT_RATIO[aspect],
+        getAspectRatio(aspect, videoSize.width, videoSize.height),
       ),
-    [aspect, previewSize.height, previewSize.width],
+    [aspect, previewSize.height, previewSize.width, videoSize.height, videoSize.width],
   );
 
   const posX = useSharedValue(overlayX);
@@ -1113,160 +1136,177 @@ export default function EditVideoScreen() {
 
   return (
     <View style={styles.root}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View
-          style={[
-            styles.topBar,
-            { paddingTop: insets.top + moderateHeightScale(4) },
-          ]}
-        >
-          <View style={styles.topLeftRow}>
-            <TouchableOpacity
-              style={styles.topBtn}
-              onPress={() => {
-                dismissKeyboard();
-                router.back();
-              }}
-              disabled={busy}
-              hitSlop={8}
-            >
-              <MaterialIcons
-                name="close"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.topBtn, !canUndo && styles.topBtnDisabled]}
-              onPress={() => {
-                dismissKeyboard();
-                handleUndo();
-              }}
-              disabled={busy || !canUndo}
-              hitSlop={8}
-            >
-              <MaterialIcons
-                name="undo"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={styles.nextBtn}
-            onPress={() => {
-              dismissKeyboard();
-              void handleExportAndUpload();
-            }}
-            disabled={busy || !project}
-            activeOpacity={0.85}
+      {/* Full-screen video layer — never shrinks when keyboard opens */}
+      <View style={styles.previewArea} onLayout={onPreviewLayout}>
+        {frameSize.width > 0 ? (
+          <View
+            style={[
+              styles.cropFrame,
+              { width: frameSize.width, height: frameSize.height },
+            ]}
           >
-            <Text style={styles.nextText}>{t("exportAndUpload")}</Text>
-          </TouchableOpacity>
-        </View>
+            <VideoView
+              player={player}
+              style={styles.video}
+              contentFit={aspect === "original" ? "contain" : "cover"}
+              nativeControls={false}
+              pointerEvents="none"
+            />
 
-        <View style={styles.previewArea} onLayout={onPreviewLayout}>
-          {frameSize.width > 0 ? (
-            <View
-              style={[
-                styles.cropFrame,
-                { width: frameSize.width, height: frameSize.height },
-              ]}
-            >
-              <VideoView
-                player={player}
-                style={styles.video}
-                contentFit="cover"
-                nativeControls={false}
-                pointerEvents="none"
-              />
+            <View style={styles.playOverlay} pointerEvents="box-none">
+              <TouchableOpacity
+                style={styles.playCircle}
+                activeOpacity={0.85}
+                onPress={() => {
+                  dismissKeyboard();
+                  if (busy || !previewReady) return;
+                  setPlaying((p) => !p);
+                }}
+                hitSlop={12}
+              >
+                <MaterialIcons
+                  name={playing ? "pause" : "play-arrow"}
+                  size={moderateWidthScale(36)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            </View>
 
-              <View style={styles.playOverlay} pointerEvents="box-none">
-                <TouchableOpacity
-                  style={styles.playCircle}
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    dismissKeyboard();
-                    if (busy || !previewReady) return;
-                    setPlaying((p) => !p);
+            {overlayText.trim() ? (
+              <GestureDetector gesture={textDragGesture}>
+                <Animated.View
+                  onLayout={(e) => {
+                    const { width, height } = e.nativeEvent.layout;
+                    if (width > 0 && height > 0) {
+                      setTextBoxSize({ width, height });
+                    }
                   }}
-                  hitSlop={12}
+                  style={[
+                    styles.textOverlay,
+                    styles.textHitExpand,
+                    overlayBg && styles.textOverlayBg,
+                    (activeTool === "text" || draggingText) &&
+                      styles.textOverlayActive,
+                    textAnimatedStyle,
+                  ]}
                 >
-                  <MaterialIcons
-                    name={playing ? "pause" : "play-arrow"}
-                    size={moderateWidthScale(36)}
-                    color={theme.white}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {overlayText.trim() ? (
-                <GestureDetector gesture={textDragGesture}>
-                  <Animated.View
-                    onLayout={(e) => {
-                      const { width, height } = e.nativeEvent.layout;
-                      if (width > 0 && height > 0) {
-                        setTextBoxSize({ width, height });
-                      }
-                    }}
+                  <Text
                     style={[
-                      styles.textOverlay,
-                      styles.textHitExpand,
-                      overlayBg && styles.textOverlayBg,
-                      (activeTool === "text" || draggingText) &&
-                        styles.textOverlayActive,
-                      textAnimatedStyle,
+                      styles.textOverlayLabel,
+                      {
+                        color: resolveOverlayColor(overlayColorKey),
+                        fontSize:
+                          overlaySize === "S"
+                            ? fontSize.size16
+                            : overlaySize === "L"
+                              ? fontSize.size28
+                              : fontSize.size22,
+                        fontFamily: overlayMono
+                          ? fonts.fontRegular
+                          : overlayBold
+                            ? fonts.fontBold
+                            : fonts.fontMedium,
+                        fontStyle: overlayItalic ? "italic" : "normal",
+                      },
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.textOverlayLabel,
-                        {
-                          color: resolveOverlayColor(overlayColorKey),
-                          fontSize:
-                            overlaySize === "S"
-                              ? fontSize.size16
-                              : overlaySize === "L"
-                                ? fontSize.size28
-                                : fontSize.size22,
-                          fontFamily: overlayMono
-                            ? fonts.fontRegular
-                            : overlayBold
-                              ? fonts.fontBold
-                              : fonts.fontMedium,
-                          fontStyle: overlayItalic ? "italic" : "normal",
-                        },
-                      ]}
-                    >
-                      {overlayText.trim()}
-                    </Text>
-                  </Animated.View>
-                </GestureDetector>
-              ) : null}
+                    {overlayText.trim()}
+                  </Text>
+                </Animated.View>
+              </GestureDetector>
+            ) : null}
 
-              <View style={styles.timeBadge} pointerEvents="none">
-                <Text style={styles.timeText}>
-                  {formatMs(previewTimeMs)} /{" "}
-                  {formatMs(Math.max(0, trimEndMs - trimStartMs))}
-                </Text>
-              </View>
+            <View style={styles.timeBadge} pointerEvents="none">
+              <Text style={styles.timeText}>
+                {formatMs(previewTimeMs)} /{" "}
+                {formatMs(Math.max(0, trimEndMs - trimStartMs))}
+              </Text>
             </View>
-          ) : (
-            <ActivityIndicator color={theme.white} />
-          )}
-        </View>
+          </View>
+        ) : (
+          <ActivityIndicator color={theme.white} />
+        )}
 
-        <View
-          style={[
-            styles.bottomDock,
-            { paddingBottom: Math.max(insets.bottom, moderateHeightScale(8)) },
-          ]}
+        {keyboardHeight > 0 ? (
+          <Pressable
+            style={styles.keyboardDismissOverlay}
+            onPress={dismissKeyboard}
+          />
+        ) : null}
+      </View>
+
+      <View
+        style={[
+          styles.topBar,
+          { paddingTop: insets.top + moderateHeightScale(4) },
+        ]}
+      >
+        <View style={styles.topLeftRow}>
+          <TouchableOpacity
+            style={styles.topBtn}
+            onPress={() => {
+              dismissKeyboard();
+              router.back();
+            }}
+            disabled={busy}
+            hitSlop={8}
+          >
+            <MaterialIcons
+              name="close"
+              size={moderateWidthScale(22)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.topBtn, !canUndo && styles.topBtnDisabled]}
+            onPress={() => {
+              dismissKeyboard();
+              handleUndo();
+            }}
+            disabled={busy || !canUndo}
+            hitSlop={8}
+          >
+            <MaterialIcons
+              name="undo"
+              size={moderateWidthScale(22)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={styles.nextBtn}
+          onPress={() => {
+            dismissKeyboard();
+            void handleExportAndUpload();
+          }}
+          disabled={busy || !project}
+          activeOpacity={0.85}
         >
+          <Text style={styles.nextText}>{t("exportAndUpload")}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View
+        style={[
+          styles.bottomDock,
+          keyboardHeight > 0 && styles.bottomDockKeyboard,
+          {
+            bottom: keyboardHeight,
+            paddingBottom:
+              keyboardHeight > 0
+                ? moderateHeightScale(8)
+                : Math.max(insets.bottom, moderateHeightScale(8)),
+          },
+        ]}
+      >
           {activeTool ? (
-            <View style={styles.panel}>
+            <Pressable
+              style={[
+                styles.panel,
+                keyboardHeight > 0 && styles.panelCompact,
+              ]}
+              onPress={dismissKeyboard}
+            >
               {activeTool === "trim" ? (
                 <>
                   <Text style={styles.panelTitle}>{t("trimVideo")}</Text>
@@ -1331,6 +1371,7 @@ export default function EditVideoScreen() {
                   <View style={styles.chipRow}>
                     {(
                       [
+                        ["original", "aspectOriginal"],
                         ["portrait", "aspectPortrait"],
                         ["square", "aspectSquare"],
                         ["landscape", "aspectLandscape"],
@@ -1444,10 +1485,12 @@ export default function EditVideoScreen() {
 
               {activeTool === "text" ? (
                 <>
-                  <Pressable onPress={dismissKeyboard}>
-                    <Text style={styles.panelTitle}>{t("overlayText")}</Text>
-                    <Text style={styles.panelHint}>{t("dragTextHint")}</Text>
-                  </Pressable>
+                  {keyboardHeight === 0 ? (
+                    <Pressable onPress={dismissKeyboard}>
+                      <Text style={styles.panelTitle}>{t("overlayText")}</Text>
+                      <Text style={styles.panelHint}>{t("dragTextHint")}</Text>
+                    </Pressable>
+                  ) : null}
                   <TextInput
                     ref={textInputRef}
                     style={styles.input}
@@ -1471,9 +1514,6 @@ export default function EditVideoScreen() {
                     maxLength={80}
                   />
 
-                  <Text style={[styles.label, { marginTop: moderateHeightScale(10) }]}>
-                    {t("textColor")}
-                  </Text>
                   <View style={styles.chipRow}>
                     {OVERLAY_COLOR_KEYS.map((key) => (
                       <TouchableOpacity
@@ -1493,6 +1533,8 @@ export default function EditVideoScreen() {
                     ))}
                   </View>
 
+                  {keyboardHeight === 0 ? (
+                    <>
                   <Text style={[styles.label, { marginTop: moderateHeightScale(10) }]}>
                     {t("textSize")}
                   </Text>
@@ -1584,63 +1626,44 @@ export default function EditVideoScreen() {
                       </TouchableOpacity>
                     ))}
                   </View>
+                    </>
+                  ) : null}
                 </>
               ) : null}
+            </Pressable>
+          ) : null}
 
-              <TouchableOpacity
-                style={styles.ghostBtn}
-                onPress={() => {
-                  dismissKeyboard();
-                  void handleUploadOriginal();
-                }}
-                disabled={busy}
-              >
-                <Text style={styles.ghostText}>{t("uploadOriginal")}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.ghostBtn}
-              onPress={() => {
-                dismissKeyboard();
-                void handleUploadOriginal();
-              }}
-              disabled={busy}
-            >
-              <Text style={styles.ghostText}>{t("uploadOriginal")}</Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.toolRow}>
-            {tools.map((tool) => {
-              const active = activeTool === tool.key;
-              return (
-                <TouchableOpacity
-                  key={tool.key}
-                  style={styles.toolBtn}
-                  onPress={() => toggleTool(tool.key)}
-                  disabled={busy}
-                  activeOpacity={0.8}
-                >
-                  <MaterialIcons
-                    name={tool.icon}
-                    size={moderateWidthScale(24)}
-                    color={active ? theme.selectCard : theme.white}
-                  />
-                  <Text
-                    style={[
-                      styles.toolLabel,
-                      active && styles.toolLabelActive,
-                    ]}
+          {keyboardHeight === 0 ? (
+            <View style={styles.toolRow}>
+              {tools.map((tool) => {
+                const active = activeTool === tool.key;
+                return (
+                  <TouchableOpacity
+                    key={tool.key}
+                    style={styles.toolBtn}
+                    onPress={() => toggleTool(tool.key)}
+                    disabled={busy}
+                    activeOpacity={0.8}
                   >
-                    {tool.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </KeyboardAvoidingView>
+                    <MaterialIcons
+                      name={tool.icon}
+                      size={moderateWidthScale(24)}
+                      color={active ? theme.selectCard : theme.white}
+                    />
+                    <Text
+                      style={[
+                        styles.toolLabel,
+                        active && styles.toolLabelActive,
+                      ]}
+                    >
+                      {tool.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : null}
+      </View>
 
       {busy ? (
         <View style={styles.busyOverlay}>

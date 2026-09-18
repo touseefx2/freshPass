@@ -1310,6 +1310,7 @@
   "trimRangeHint": "{{start}} – {{end}}",
   "aspectRatio": "トリミング",
   "aspectRatioHint": "Chooses the output frame (portrait crops sides on landscape clips).",
+  "aspectOriginal": "Original",
   "aspectPortrait": "9:16",
   "aspectSquare": "1:1",
   "aspectLandscape": "16:9",
