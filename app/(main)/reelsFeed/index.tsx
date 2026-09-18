@@ -20,6 +20,7 @@ import {
   View,
   ViewToken,
 } from "react-native";
+import Slider from "@react-native-community/slider";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,6 +30,7 @@ import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
@@ -61,6 +63,14 @@ function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+function formatReelTime(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const total = Math.floor(seconds);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 const createStyles = (theme: Theme) =>
@@ -134,8 +144,31 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       left: moderateWidthScale(14),
       right: moderateWidthScale(72),
-      bottom: moderateHeightScale(40),
+      bottom: moderateHeightScale(56),
       zIndex: 5,
+    },
+    seekBarWrap: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingHorizontal: moderateWidthScale(12),
+      zIndex: 6,
+    },
+    seekTimeRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(2),
+    },
+    seekTimeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white70,
+    },
+    seekSlider: {
+      width: "100%",
+      height: heightScale(28),
     },
     businessRow: {
       flexDirection: "row",
@@ -234,6 +267,7 @@ type ReelItemProps = {
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   topInset: number;
+  bottomInset: number;
   onBack: () => void;
   onLike: (reel: FeedReel) => void;
   onSave: (reel: FeedReel) => void;
@@ -251,6 +285,7 @@ function ReelFeedItemBase({
   styles,
   theme,
   topInset,
+  bottomInset,
   onBack,
   onLike,
   onSave,
@@ -266,6 +301,11 @@ function ReelFeedItemBase({
   const posterUrl = resolveApiImageUrl(reel.video?.thumbnail_url);
   const [showPoster, setShowPoster] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(
+    Math.max(0, reel.video?.duration_seconds ?? 0),
+  );
   const [centerIcon, setCenterIcon] = useState<"play-arrow" | "pause" | null>(
     null,
   );
@@ -273,14 +313,20 @@ function ReelFeedItemBase({
   const hideCenterIconTimer = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
+  const wasPlayingBeforeScrubRef = useRef(false);
+  const isScrubbingRef = useRef(false);
 
   const player = useVideoPlayer(playbackUrl, (p) => {
     p.loop = true;
+    p.timeUpdateEventInterval = 0.25;
   });
 
   useEffect(() => {
     if (!isActive) {
       setIsPaused(false);
+      setIsScrubbing(false);
+      isScrubbingRef.current = false;
+      setCurrentTime(0);
       setCenterIcon(null);
       centerIconOpacity.setValue(0);
       if (hideCenterIconTimer.current) {
@@ -292,6 +338,7 @@ function ReelFeedItemBase({
 
   useEffect(() => {
     if (!player) return;
+    if (isScrubbing) return;
     if (isActive && !isPaused) {
       try {
         player.play();
@@ -301,7 +348,31 @@ function ReelFeedItemBase({
         player.pause();
       } catch {}
     }
-  }, [isActive, isPaused, player]);
+  }, [isActive, isPaused, isScrubbing, player]);
+
+  useEffect(() => {
+    if (!player) return;
+    const statusSub = player.addListener("statusChange", ({ status }) => {
+      if (status === "readyToPlay" && player.duration > 0) {
+        setDuration(player.duration);
+      }
+    });
+    const timeSub = player.addListener("timeUpdate", ({ currentTime: tSec }) => {
+      if (isScrubbingRef.current) return;
+      setCurrentTime(tSec);
+      if (player.duration > 0) {
+        setDuration((prev) =>
+          prev > 0 && Math.abs(prev - player.duration) < 0.05
+            ? prev
+            : player.duration,
+        );
+      }
+    });
+    return () => {
+      statusSub.remove();
+      timeSub.remove();
+    };
+  }, [player]);
 
   useEffect(() => {
     return () => {
@@ -334,7 +405,7 @@ function ReelFeedItemBase({
   );
 
   const handleTogglePlayPause = useCallback(() => {
-    if (!playbackUrl || !isActive) return;
+    if (!playbackUrl || !isActive || isScrubbing) return;
     const nextPaused = !isPaused;
     setIsPaused(nextPaused);
     if (nextPaused) {
@@ -363,9 +434,42 @@ function ReelFeedItemBase({
     flashCenterIcon,
     isActive,
     isPaused,
+    isScrubbing,
     playbackUrl,
     player,
   ]);
+
+  const handleSeekStart = useCallback(() => {
+    wasPlayingBeforeScrubRef.current = isActive && !isPaused;
+    isScrubbingRef.current = true;
+    setIsScrubbing(true);
+    try {
+      player.pause();
+    } catch {}
+  }, [isActive, isPaused, player]);
+
+  const handleSeekChange = useCallback((value: number) => {
+    setCurrentTime(value);
+  }, []);
+
+  const handleSeekComplete = useCallback(
+    (value: number) => {
+      const clamped = Math.max(0, Math.min(value, duration || value));
+      try {
+        player.currentTime = clamped;
+      } catch {}
+      setCurrentTime(clamped);
+      isScrubbingRef.current = false;
+      setIsScrubbing(false);
+      if (wasPlayingBeforeScrubRef.current) {
+        setIsPaused(false);
+        try {
+          player.play();
+        } catch {}
+      }
+    },
+    [duration, player],
+  );
 
   const cityState = [reel.business?.city, reel.business?.state]
     .filter(Boolean)
@@ -374,6 +478,7 @@ function ReelFeedItemBase({
     reel.distance_km != null
       ? `${reel.distance_km.toFixed(1)} km`
       : null;
+  const seekMax = duration > 0 ? duration : Math.max(currentTime, 0.1);
 
   return (
     <View style={styles.item}>
@@ -562,6 +667,33 @@ function ReelFeedItemBase({
             <Text style={styles.ctaText}>{t("viewProfile")}</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View
+        style={[
+          styles.seekBarWrap,
+          {
+            paddingBottom: Math.max(bottomInset, moderateHeightScale(6)),
+          },
+        ]}
+      >
+        <View style={styles.seekTimeRow}>
+          <Text style={styles.seekTimeText}>{formatReelTime(currentTime)}</Text>
+          <Text style={styles.seekTimeText}>{formatReelTime(duration)}</Text>
+        </View>
+        <Slider
+          style={styles.seekSlider}
+          minimumValue={0}
+          maximumValue={seekMax}
+          value={Math.min(currentTime, seekMax)}
+          onSlidingStart={handleSeekStart}
+          onValueChange={handleSeekChange}
+          onSlidingComplete={handleSeekComplete}
+          minimumTrackTintColor={theme.white}
+          maximumTrackTintColor={theme.white15}
+          thumbTintColor={theme.white}
+          disabled={!playbackUrl || duration <= 0}
+        />
       </View>
     </View>
   );
@@ -1045,6 +1177,7 @@ export default function ReelsFeedScreen() {
             styles={styles}
             theme={theme}
             topInset={insets.top}
+            bottomInset={insets.bottom}
             onBack={goBack}
             onLike={handleLike}
             onSave={handleSave}
