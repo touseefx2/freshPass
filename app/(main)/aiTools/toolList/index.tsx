@@ -8,12 +8,14 @@ import {
   StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
+import MediaLibraryVideosTab from "@/src/components/mediaLibraryVideosTab";
+import MediaLibraryMyReelsTab from "@/src/components/mediaLibraryMyReelsTab";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -26,8 +28,11 @@ import {
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
+
 const TUTORIAL_VIDEO_URI =
   process.env.EXPO_PUBLIC_TUTORIAL_VIDEO_TRYON_URI || "";
+
+type BusinessMediaTab = "videos" | "myReels";
 
 interface TutorialInlineVideoProps {}
 
@@ -85,14 +90,22 @@ export default function ToolList() {
   const user = useAppSelector((state) => state.user);
   const userRole = user?.userRole;
   const dispatch = useAppDispatch();
+  const params = useLocalSearchParams<{ mode?: string; tab?: string }>();
 
   const isCustomer = userRole === "customer";
+  const isBusiness = userRole === "business";
+  const showAiTools =
+    !isBusiness || params.mode === "aiTools" || isCustomer;
+
+  const initialTab: BusinessMediaTab =
+    params.tab === "myReels" ? "myReels" : "videos";
 
   const [tutorialVideoActive, setTutorialVideoActive] = useState(false);
+  const [activeTab, setActiveTab] = useState<BusinessMediaTab>(initialTab);
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
+  const theme = colors as Theme;
 
-  // Business features (paramTitle is passed to tools screen and must match expected values)
   const businessFeatures = [
     {
       id: "generatePost",
@@ -114,7 +127,6 @@ export default function ToolList() {
     },
   ];
 
-  // Customer features – Tutorial first, then Hair Tryon
   const customerFeatures = [
     {
       id: "tutorial",
@@ -141,14 +153,20 @@ export default function ToolList() {
       openTutorial: false,
     },
   ];
-  // Select features based on user role
-  // Business users see social media tools, customers/staff/others see Hair Tryon
-  const features =
-    userRole === "business" ? businessFeatures : customerFeatures;
+
+  const features = isBusiness ? businessFeatures : customerFeatures;
 
   useEffect(() => {
     fetchQuota();
   }, []);
+
+  useEffect(() => {
+    if (params.tab === "myReels") {
+      setActiveTab("myReels");
+    } else if (params.tab === "videos") {
+      setActiveTab("videos");
+    }
+  }, [params.tab]);
 
   const fetchQuota = async () => {
     try {
@@ -169,205 +187,246 @@ export default function ToolList() {
     });
   };
 
-  return (
-    <View style={styles.safeArea}>
-      <StackHeader title={t("aiTools")} />
+  const businessTabs: { key: BusinessMediaTab; labelKey: string }[] = [
+    { key: "videos", labelKey: "videos" },
+    { key: "myReels", labelKey: "myReels" },
+  ];
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.actionButtonsRow}>
-          {isCustomer && (
-            <View style={styles.actionButtonShadow}>
+  const renderShortcutsAndFeatures = (includeCustomerPurchases: boolean) => (
+    <>
+      <View style={styles.actionButtonsRow}>
+        {includeCustomerPurchases && isCustomer && (
+          <View style={styles.actionButtonShadow}>
+            <TouchableOpacity
+              style={styles.actionButtonCard}
+              onPress={() => router.push("/aiTransactions")}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={[
+                  theme.darkGreenLight,
+                  theme.buttonBack,
+                  theme.darkGreen,
+                ]}
+                locations={[0, 0.45, 1]}
+                start={{ x: 0.15, y: 0 }}
+                end={{ x: 0.85, y: 1 }}
+                style={styles.actionButtonGradient}
+              >
+                <LinearGradient
+                  colors={[theme.white15, "transparent"]}
+                  start={{ x: 0.5, y: 0 }}
+                  end={{ x: 0.5, y: 1 }}
+                  style={styles.cardHighlight}
+                  pointerEvents="none"
+                />
+                <View style={styles.actionButtonIconWrap}>
+                  <MaterialIcons
+                    name="shopping-bag"
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </View>
+                <Text style={styles.actionButtonLabel} numberOfLines={1}>
+                  {t("myPurchases")}
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+        <View style={styles.actionButtonShadow}>
+          <TouchableOpacity
+            style={styles.actionButtonCard}
+            onPress={() => router.push("/aiRequests")}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[
+                theme.darkGreenLight,
+                theme.buttonBack,
+                theme.darkGreen,
+              ]}
+              locations={[0, 0.45, 1]}
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.actionButtonGradient}
+            >
+              <LinearGradient
+                colors={[theme.white15, "transparent"]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.cardHighlight}
+                pointerEvents="none"
+              />
+              <View style={styles.actionButtonIconWrap}>
+                <MaterialIcons
+                  name="list-alt"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+              </View>
+              <Text style={styles.actionButtonLabel} numberOfLines={1}>
+                {t("aiRequests")}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.actionButtonShadow}>
+          <TouchableOpacity
+            style={styles.actionButtonCard}
+            onPress={() => router.push("/aiMemories")}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[
+                theme.darkGreenLight,
+                theme.buttonBack,
+                theme.darkGreen,
+              ]}
+              locations={[0, 0.45, 1]}
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.85, y: 1 }}
+              style={styles.actionButtonGradient}
+            >
+              <LinearGradient
+                colors={[theme.white15, "transparent"]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={styles.cardHighlight}
+                pointerEvents="none"
+              />
+              <View style={styles.actionButtonIconWrap}>
+                <MaterialIcons
+                  name="psychology"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+              </View>
+              <Text style={styles.actionButtonLabel} numberOfLines={1}>
+                {t("memories")}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.featuresContainer}>
+        {features.map((feature) => {
+          const IconComponent = feature.icon;
+          const openTutorial =
+            "openTutorial" in feature && feature.openTutorial;
+          const isTutorial = feature.id === "tutorial";
+          const useLargeBox =
+            userRole !== "business" &&
+            (feature.id === "tutorial" || feature.id === "hairTryon");
+          const shadowStyle = useLargeBox
+            ? styles.featureShadowLarge
+            : styles.featureShadow;
+          const boxStyle = useLargeBox
+            ? styles.featureBoxLarge
+            : styles.featureBox;
+
+          if (isTutorial && tutorialVideoActive) {
+            return (
+              <View key={feature.id} style={shadowStyle}>
+                <View style={boxStyle}>
+                  <TutorialInlineVideo />
+                </View>
+              </View>
+            );
+          }
+
+          return (
+            <View key={feature.id} style={shadowStyle}>
               <TouchableOpacity
-                style={styles.actionButtonCard}
-                onPress={() => router.push("/aiTransactions")}
-                activeOpacity={0.85}
+                style={boxStyle}
+                onPress={() => {
+                  if (openTutorial) {
+                    setTutorialVideoActive(true);
+                  } else {
+                    handleFeaturePress(feature.paramTitle);
+                  }
+                }}
+                activeOpacity={0.82}
               >
                 <LinearGradient
                   colors={[
-                    (colors as Theme).darkGreenLight,
-                    (colors as Theme).buttonBack,
-                    (colors as Theme).darkGreen,
+                    theme.darkGreenLight,
+                    theme.buttonBack,
+                    theme.darkGreen,
                   ]}
-                  locations={[0, 0.45, 1]}
-                  start={{ x: 0.15, y: 0 }}
-                  end={{ x: 0.85, y: 1 }}
-                  style={styles.actionButtonGradient}
+                  locations={[0, 0.4, 1]}
+                  start={{ x: 0.1, y: 0 }}
+                  end={{ x: 0.9, y: 1 }}
+                  style={styles.gradientContainer}
                 >
                   <LinearGradient
-                    colors={[(colors as Theme).white15, "transparent"]}
+                    colors={[theme.white15, "transparent"]}
                     start={{ x: 0.5, y: 0 }}
                     end={{ x: 0.5, y: 1 }}
                     style={styles.cardHighlight}
                     pointerEvents="none"
                   />
-                  <View style={styles.actionButtonIconWrap}>
-                    <MaterialIcons
-                      name="shopping-bag"
-                      size={moderateWidthScale(20)}
-                      color={(colors as Theme).white}
+                  <View style={styles.iconContainer}>
+                    <IconComponent
+                      width={moderateWidthScale(30)}
+                      height={moderateWidthScale(30)}
+                      color={theme.white}
                     />
                   </View>
-                  <Text style={styles.actionButtonLabel} numberOfLines={1}>
-                    {t("myPurchases")}
+                  <Text style={styles.featureTitle}>
+                    {t(feature.titleKey)}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          )}
-          <View style={styles.actionButtonShadow}>
+          );
+        })}
+      </View>
+    </>
+  );
+
+  const headerTitle = showAiTools ? t("aiTools") : t("mediaLibrary");
+
+  return (
+    <View style={styles.safeArea}>
+      <StackHeader title={headerTitle} />
+
+      {isBusiness && !showAiTools && (
+        <View style={styles.tabsContainer}>
+          {businessTabs.map((tab) => (
             <TouchableOpacity
-              style={styles.actionButtonCard}
-              onPress={() => router.push("/aiRequests")}
-              activeOpacity={0.85}
+              key={tab.key}
+              style={styles.tab}
+              onPress={() => setActiveTab(tab.key)}
+              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={[
-                  (colors as Theme).darkGreenLight,
-                  (colors as Theme).buttonBack,
-                  (colors as Theme).darkGreen,
-                ]}
-                locations={[0, 0.45, 1]}
-                start={{ x: 0.15, y: 0 }}
-                end={{ x: 0.85, y: 1 }}
-                style={styles.actionButtonGradient}
+              <Text
+                style={
+                  activeTab === tab.key ? styles.tabTextActive : styles.tabText
+                }
               >
-                <LinearGradient
-                  colors={[(colors as Theme).white15, "transparent"]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.cardHighlight}
-                  pointerEvents="none"
-                />
-                <View style={styles.actionButtonIconWrap}>
-                  <MaterialIcons
-                    name="list-alt"
-                    size={moderateWidthScale(20)}
-                    color={(colors as Theme).white}
-                  />
-                </View>
-                <Text style={styles.actionButtonLabel} numberOfLines={1}>
-                  {t("aiRequests")}
-                </Text>
-              </LinearGradient>
+                {t(tab.labelKey)}
+              </Text>
+              {activeTab === tab.key && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
-          </View>
-          <View style={styles.actionButtonShadow}>
-            <TouchableOpacity
-              style={styles.actionButtonCard}
-              onPress={() => router.push("/aiMemories")}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={[
-                  (colors as Theme).darkGreenLight,
-                  (colors as Theme).buttonBack,
-                  (colors as Theme).darkGreen,
-                ]}
-                locations={[0, 0.45, 1]}
-                start={{ x: 0.15, y: 0 }}
-                end={{ x: 0.85, y: 1 }}
-                style={styles.actionButtonGradient}
-              >
-                <LinearGradient
-                  colors={[(colors as Theme).white15, "transparent"]}
-                  start={{ x: 0.5, y: 0 }}
-                  end={{ x: 0.5, y: 1 }}
-                  style={styles.cardHighlight}
-                  pointerEvents="none"
-                />
-                <View style={styles.actionButtonIconWrap}>
-                  <MaterialIcons
-                    name="psychology"
-                    size={moderateWidthScale(20)}
-                    color={(colors as Theme).white}
-                  />
-                </View>
-                <Text style={styles.actionButtonLabel} numberOfLines={1}>
-                  {t("memories")}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+          ))}
         </View>
+      )}
 
-        <View style={styles.featuresContainer}>
-          {features.map((feature) => {
-            const IconComponent = feature.icon;
-            const openTutorial =
-              "openTutorial" in feature && feature.openTutorial;
-            const isTutorial = feature.id === "tutorial";
-            const useLargeBox =
-              userRole !== "business" &&
-              (feature.id === "tutorial" || feature.id === "hairTryon");
-            const shadowStyle = useLargeBox
-              ? styles.featureShadowLarge
-              : styles.featureShadow;
-            const boxStyle = useLargeBox
-              ? styles.featureBoxLarge
-              : styles.featureBox;
-
-            if (isTutorial && tutorialVideoActive) {
-              return (
-                <View key={feature.id} style={shadowStyle}>
-                  <View style={boxStyle}>
-                    <TutorialInlineVideo />
-                  </View>
-                </View>
-              );
-            }
-
-            return (
-              <View key={feature.id} style={shadowStyle}>
-                <TouchableOpacity
-                  style={boxStyle}
-                  onPress={() => {
-                    if (openTutorial) {
-                      setTutorialVideoActive(true);
-                    } else {
-                      handleFeaturePress(feature.paramTitle);
-                    }
-                  }}
-                  activeOpacity={0.82}
-                >
-                  <LinearGradient
-                    colors={[
-                      (colors as Theme).darkGreenLight,
-                      (colors as Theme).buttonBack,
-                      (colors as Theme).darkGreen,
-                    ]}
-                    locations={[0, 0.4, 1]}
-                    start={{ x: 0.1, y: 0 }}
-                    end={{ x: 0.9, y: 1 }}
-                    style={styles.gradientContainer}
-                  >
-                    <LinearGradient
-                      colors={[(colors as Theme).white15, "transparent"]}
-                      start={{ x: 0.5, y: 0 }}
-                      end={{ x: 0.5, y: 1 }}
-                      style={styles.cardHighlight}
-                      pointerEvents="none"
-                    />
-                    <View style={styles.iconContainer}>
-                      <IconComponent
-                        width={moderateWidthScale(30)}
-                        height={moderateWidthScale(30)}
-                        color={(colors as Theme).white}
-                      />
-                    </View>
-                    <Text style={styles.featureTitle}>
-                      {t(feature.titleKey)}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
+      {isBusiness && !showAiTools && activeTab === "videos" ? (
+        <MediaLibraryVideosTab />
+      ) : isBusiness && !showAiTools && activeTab === "myReels" ? (
+        <MediaLibraryMyReelsTab />
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {renderShortcutsAndFeatures(isCustomer)}
+        </ScrollView>
+      )}
     </View>
   );
 }

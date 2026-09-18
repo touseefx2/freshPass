@@ -670,3 +670,94 @@ export const memoriesEndpoints = {
     return `/api/memories${query ? `?${query}` : ""}`;
   },
 };
+
+/**
+ * Media library (business video) endpoints — R-01 / R-02
+ */
+export const mediaEndpoints = {
+  list: (params?: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null)
+      queryParams.append("page", params.page.toString());
+    if (params?.per_page != null)
+      queryParams.append("per_page", params.per_page.toString());
+    if (params?.status) queryParams.append("status", params.status);
+    const query = queryParams.toString();
+    return `/api/media${query ? `?${query}` : ""}`;
+  },
+  getById: (id: number | string) => `/api/media/${id}`,
+  upload: `/api/media`,
+  deleteOne: (id: number | string) => `/api/media/${id}`,
+  deleteBulk: `/api/media`,
+};
+
+/**
+ * Reels endpoints — R-03 / R-04 / R-09 / R-10 / R-11
+ */
+export const reelsEndpoints = {
+  create: `/api/reels`,
+  mine: (params?: {
+    status?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.page != null)
+      queryParams.append("page", params.page.toString());
+    if (params?.per_page != null)
+      queryParams.append("per_page", params.per_page.toString());
+    const query = queryParams.toString();
+    return `/api/reels/mine${query ? `?${query}` : ""}`;
+  },
+  mineById: (id: number | string) => `/api/reels/mine/${id}`,
+  update: (id: number | string) => `/api/reels/${id}`,
+  publish: (id: number | string) => `/api/reels/${id}/publish`,
+  unpublish: (id: number | string) => `/api/reels/${id}/unpublish`,
+  delete: (id: number | string) => `/api/reels/${id}`,
+  mineStats: `/api/reels/mine/stats`,
+  mineReelStats: (id: number | string) => `/api/reels/mine/${id}/stats`,
+  categories: `/api/reels/categories`,
+  feed: (params?: {
+    category_id?: number | string;
+    first_reel_id?: number | string;
+    per_page?: number;
+    cursor?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.category_id != null)
+      queryParams.append("category_id", String(params.category_id));
+    if (params?.first_reel_id != null)
+      queryParams.append("first_reel_id", String(params.first_reel_id));
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    if (params?.cursor) queryParams.append("cursor", params.cursor);
+    if (params?.latitude != null)
+      queryParams.append("latitude", String(params.latitude));
+    if (params?.longitude != null)
+      queryParams.append("longitude", String(params.longitude));
+    const query = queryParams.toString();
+    return `/api/reels/feed${query ? `?${query}` : ""}`;
+  },
+  getById: (
+    id: number | string,
+    params?: { latitude?: number; longitude?: number },
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (params?.latitude != null)
+      queryParams.append("latitude", String(params.latitude));
+    if (params?.longitude != null)
+      queryParams.append("longitude", String(params.longitude));
+    const query = queryParams.toString();
+    return `/api/reels/${id}${query ? `?${query}` : ""}`;
+  },
+  view: (id: number | string) => `/api/reels/${id}/view`,
+  events: (id: number | string) => `/api/reels/${id}/events`,
+  like: (id: number | string) => `/api/reels/${id}/like`,
+};

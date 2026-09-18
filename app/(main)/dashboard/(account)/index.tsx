@@ -449,8 +449,13 @@ export default function AccountScreen() {
       }
     } else if (key === "subscriptions") {
       router.push(isCustomer ? "./subscriptionCustomer" : "./subscription");
-    } else if (key === "aiTools") {
+    } else if (key === "mediaLibrary") {
       router.push("/(main)/aiTools/toolList");
+    } else if (key === "aiTools") {
+      router.push({
+        pathname: "/(main)/aiTools/toolList",
+        params: { mode: "aiTools" },
+      });
     } else if (key === "viewBusiness") {
       const businessId = user.business_id;
       if (!businessId) {
@@ -487,6 +492,7 @@ export default function AccountScreen() {
       | "rules"
       | "reviews"
       | "subscriptions"
+      | "mediaLibrary"
       | "aiTools"
       | "viewBusiness"
       | "affiliationRequests"
@@ -516,6 +522,9 @@ export default function AccountScreen() {
           { key: "availability" as const, title: t("setAvailability") },
           { key: "uploadWork" as const, title: t("uploadYourWork") },
         ]
+      : []),
+    ...(userRole === "business"
+      ? [{ key: "mediaLibrary" as const, title: t("mediaLibrary") }]
       : []),
     ...(userRole === "business" || userRole === "customer"
       ? [{ key: "aiTools" as const, title: t("aiTools") }]
@@ -605,6 +614,8 @@ export default function AccountScreen() {
         return { name: "visibility", family: "material" };
       case "affiliationRequests":
         return { name: "handshake", family: "community" };
+      case "mediaLibrary":
+        return { name: "video-library", family: "material" };
       case "aiTools":
         // Same robot icon as AI Requests / Results header
         return { name: "smart-toy", family: "material" };

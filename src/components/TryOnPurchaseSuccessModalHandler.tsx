@@ -24,7 +24,10 @@ export default function TryOnPurchaseSuccessModalHandler() {
 
   const handleTryNow = () => {
     closeModal();
-    router.push("/(main)/aiTools/toolList");
+    router.push({
+      pathname: "/(main)/aiTools/toolList",
+      params: { mode: "aiTools" },
+    });
   };
 
   return (

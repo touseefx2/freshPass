@@ -14,6 +14,37 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.background,
     },
+    tabsContainer: {
+      backgroundColor: theme.orangeBrown30,
+      flexDirection: "row",
+      borderBottomWidth: moderateWidthScale(1),
+      borderBottomColor: theme.borderLight,
+    },
+    tab: {
+      flex: 1,
+      paddingVertical: moderateHeightScale(12),
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+    },
+    tabText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    tabTextActive: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    tabUnderline: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: moderateHeightScale(2.5),
+      backgroundColor: theme.selectCard,
+    },
     scrollContent: {
       flexGrow: 1,
       paddingVertical: moderateHeightScale(24),

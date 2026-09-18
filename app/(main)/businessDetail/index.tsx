@@ -65,6 +65,7 @@ import Button from "@/src/components/button";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
+import { reportReelEvent } from "@/src/services/reelsService";
 import RetryButton from "@/src/components/retryButton";
 import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
 import { resolveApiImageUrl } from "@/src/utils/media";
@@ -1329,7 +1330,21 @@ export default function BusinessDetailScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ business_id?: string }>();
+  const params = useLocalSearchParams<{
+    business_id?: string;
+    reel_id?: string;
+  }>();
+  const attributionReelId = params.reel_id
+    ? Number(params.reel_id)
+    : null;
+  const profileTapSentRef = useRef(false);
+
+  useEffect(() => {
+    if (!attributionReelId || profileTapSentRef.current) return;
+    profileTapSentRef.current = true;
+    reportReelEvent(attributionReelId, "profile_tap");
+  }, [attributionReelId]);
+
   const [activeTab, setActiveTab] = useState<
     "Details" | "Service" | "Ratings" | "Staff"
   >("Service");
@@ -2883,6 +2898,9 @@ export default function BusinessDetailScreen() {
                                   businessName: businessData?.name || "",
                                   businessLogo: businessData?.logo_url || "",
                                   screenName: "businessDetail",
+                                  ...(attributionReelId
+                                    ? { reel_id: String(attributionReelId) }
+                                    : {}),
                                 },
                               });
                             }}
@@ -3256,9 +3274,12 @@ export default function BusinessDetailScreen() {
                                   dispatch(
                                     setBusinessDataAction(businessPayload),
                                   );
-                                  // Navigate to bookingNow without params
+                                  // Navigate to bookingNow; forward reel attribution when present
                                   router.push({
                                     pathname: "/(main)/bookingNow",
+                                    params: attributionReelId
+                                      ? { reel_id: String(attributionReelId) }
+                                      : undefined,
                                   });
                                 }}
                               >

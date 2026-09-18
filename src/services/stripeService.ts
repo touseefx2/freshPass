@@ -170,14 +170,24 @@ export const ensureStripeReady = async (): Promise<string> => {
 export const fetchPaymentSheetParams = async (
   planId: number,
   additionalServiceIds: number[] = [],
+  reelId?: number | null,
 ): Promise<PaymentSheetParams> => {
   try {
+    const body: {
+      subscription_plan_id: number;
+      additional_service_ids: number[];
+      reel_id?: number;
+    } = {
+      subscription_plan_id: planId,
+      additional_service_ids: additionalServiceIds,
+    };
+    if (reelId) {
+      body.reel_id = reelId;
+    }
+
     const response = await ApiService.post<PaymentSheetApiResponse>(
       stripeEndpoints.paymentSheet,
-      {
-        subscription_plan_id: planId,
-        additional_service_ids: additionalServiceIds,
-      },
+      body,
       { headers: await getStripeModeHeaders() },
     );
 

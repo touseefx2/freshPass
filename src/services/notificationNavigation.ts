@@ -91,7 +91,10 @@ const CUSTOMERS_PATH = "/(main)/dashboard/(account)/customers";
 function navigateToAiMemoriesViaProfileAndTools(router: Router): void {
   router.push("/(main)/dashboard/(account)");
   setTimeout(() => {
-    router.push("/(main)/aiTools/toolList");
+    router.push({
+      pathname: "/(main)/aiTools/toolList",
+      params: { mode: "aiTools" },
+    });
     setTimeout(() => {
       router.push("/(main)/aiMemories");
     }, AI_MEMORY_CHAIN_STEP_MS);

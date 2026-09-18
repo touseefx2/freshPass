@@ -35,6 +35,7 @@ import ShowFavorites, {
 } from "./ShowFavorites";
 import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
+import HomeReelsSection from "@/src/components/homeReelsSection";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const createStyles = (theme: Theme) =>
@@ -1099,6 +1100,8 @@ export default function DashboardContent() {
           onRetry={fetchBusinesses}
         />
       </View>
+
+      <HomeReelsSection />
 
       {(proTipData?.cards?.length ?? 0) > 0 || proTipLoading || proTipError ? (
         <View style={styles.section}>

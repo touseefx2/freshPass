@@ -767,7 +767,10 @@ export default function ExploreScreen() {
                 dispatch(setGuestModeModalVisible(true));
                 return;
               }
-              router.push("/(main)/aiTools/toolList");
+              router.push({
+                pathname: "/(main)/aiTools/toolList",
+                params: { mode: "aiTools" },
+              });
             }}
             onDismiss={() => dispatch(setTryOnBannerDismissed(true))}
           />

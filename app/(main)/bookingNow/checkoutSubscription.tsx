@@ -399,7 +399,10 @@ function CheckoutSubscriptionContent() {
     businessName?: string;
     businessLogo?: string;
     screenName?: string;
+    reel_id?: string;
   }>();
+
+  const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
 
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
@@ -587,7 +590,11 @@ function CheckoutSubscriptionContent() {
         ephemeralKey,
         customer,
         connectedAccountId,
-      } = await fetchPaymentSheetParams(planId);
+      } = await fetchPaymentSheetParams(
+        planId,
+        [],
+        attributionReelId,
+      );
 
       try {
         await useStripeAccount(connectedAccountId);

@@ -51,6 +51,7 @@ import {
 } from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
+import { reportReelEvent } from "@/src/services/reelsService";
 import {
   businessEndpoints,
   appointmentsEndpoints,
@@ -1675,7 +1676,17 @@ export default function BookingNow() {
     appointment_date?: string;
     appointment_time?: string;
     staff_id?: string;
+    reel_id?: string;
   }>();
+
+  const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
+  const bookingStartedSentRef = useRef(false);
+
+  useEffect(() => {
+    if (!attributionReelId || bookingStartedSentRef.current) return;
+    bookingStartedSentRef.current = true;
+    reportReelEvent(attributionReelId, "booking_started");
+  }, [attributionReelId]);
 
   const isReschedule = params.is_reschedule === "1";
   const isSubscriptionBooking = Boolean(params.subscription_id && params.item);
@@ -3763,6 +3774,9 @@ export default function BookingNow() {
                       selectedSubscriptionServiceIds,
                     ),
                     subscription_plan_type: subscriptionPlanType ?? "",
+                    ...(attributionReelId
+                      ? { reel_id: String(attributionReelId) }
+                      : {}),
                   },
                 });
                 return;
@@ -3801,6 +3815,9 @@ export default function BookingNow() {
                       ? JSON.stringify(galleryImageUris)
                       : "",
                   subscription_plan_type: subscriptionPlanType ?? "",
+                  ...(attributionReelId
+                    ? { reel_id: String(attributionReelId) }
+                    : {}),
                 },
               });
             }}
