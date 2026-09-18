@@ -1341,5 +1341,6 @@
   "textBold": "Negrita",
   "textItalic": "Cursiva",
   "textMono": "Mono",
-  "textBackground": "Fondo"
+  "textBackground": "Fondo",
+  "textBgNone": "Ninguno"
 }

@@ -1341,5 +1341,6 @@
   "textBold": "Fett",
   "textItalic": "Kursiv",
   "textMono": "Mono",
-  "textBackground": "Hintergrund"
+  "textBackground": "Hintergrund",
+  "textBgNone": "Keine"
 }

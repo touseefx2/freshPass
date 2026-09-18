@@ -1381,12 +1381,13 @@
   "planVisitsOverageWarning": "This plan has {{total}} visits but only {{serviceTotal}} service visits in total. Customers can book at most {{serviceTotal}} visits a month.",
   "undo": "Undo",
   "videoPreviewFallback": "Preview switched to simple player. You can still trim and upload.",
-  "dragTextHint": "Drag the text on the video to place it anywhere.",
+  "dragTextHint": "Drag text on the video to move it.",
   "textColor": "Color",
   "textSize": "Size",
   "textStyle": "Style",
   "textBold": "Bold",
   "textItalic": "Italic",
   "textMono": "Mono",
-  "textBackground": "Background"
+  "textBackground": "Background",
+  "textBgNone": "None"
 }

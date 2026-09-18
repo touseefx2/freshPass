@@ -1341,5 +1341,6 @@
   "textBold": "Gras",
   "textItalic": "Italique",
   "textMono": "Mono",
-  "textBackground": "Fond"
+  "textBackground": "Fond",
+  "textBgNone": "Aucun"
 }

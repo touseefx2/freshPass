@@ -1341,5 +1341,6 @@
   "textBold": "عريض",
   "textItalic": "مائل",
   "textMono": "أحادي",
-  "textBackground": "خلفية"
+  "textBackground": "خلفية",
+  "textBgNone": "بدون"
 }

@@ -1341,5 +1341,6 @@
   "textBold": "太字",
   "textItalic": "斜体",
   "textMono": "等幅",
-  "textBackground": "背景"
+  "textBackground": "背景",
+  "textBgNone": "なし"
 }

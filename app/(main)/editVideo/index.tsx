@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import type { TextInput as TextInputType } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { CloseIcon } from "@/assets/icons";
 import * as DocumentPicker from "expo-document-picker";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
@@ -74,12 +75,14 @@ type EditorSnapshot = {
   overlayX: number;
   overlayY: number;
   overlayColorKey: OverlayColorKey;
+  overlayBgColorKey: OverlayColorKey | null;
   overlaySize: OverlaySize;
   overlayBold: boolean;
   overlayItalic: boolean;
   overlayMono: boolean;
-  overlayBg: boolean;
 };
+
+type TextColorTarget = "text" | "bg";
 
 const OVERLAY_COLOR_KEYS: OverlayColorKey[] = [
   "white",
@@ -240,7 +243,11 @@ const createStyles = (theme: Theme) =>
       color: theme.buttonText,
     },
     previewArea: {
-      ...StyleSheet.absoluteFillObject,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
       backgroundColor: theme.black,
       alignItems: "center",
       justifyContent: "center",
@@ -282,8 +289,9 @@ const createStyles = (theme: Theme) =>
       zIndex: 10,
     },
     textOverlayBg: {
-      backgroundColor: theme.borderDark,
       borderRadius: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
     },
     textOverlayLabel: {
       textAlign: "center",
@@ -298,10 +306,12 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(10),
     },
     textHitExpand: {
-      minWidth: widthScale(80),
-      minHeight: heightScale(44),
+      minWidth: widthScale(100),
+      minHeight: heightScale(52),
       alignItems: "center",
       justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(10),
     },
     colorDot: {
       width: widthScale(28),
@@ -312,7 +322,20 @@ const createStyles = (theme: Theme) =>
     },
     colorDotActive: {
       borderColor: theme.selectCard,
-      borderWidth: 3,
+      borderWidth: 2.5,
+    },
+    colorDotNone: {
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.black,
+      overflow: "hidden",
+    },
+    colorDotNoneSlash: {
+      position: "absolute",
+      width: "120%",
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.red,
+      transform: [{ rotate: "-45deg" }],
     },
     timeBadge: {
       position: "absolute",
@@ -337,26 +360,26 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.borderDark,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.white15,
-      paddingTop: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(4),
     },
     bottomDockKeyboard: {
       backgroundColor: theme.black,
       borderTopWidth: 0,
-      paddingTop: moderateHeightScale(4),
+      paddingTop: moderateHeightScale(2),
     },
     toolRow: {
       flexDirection: "row",
       justifyContent: "space-around",
       alignItems: "center",
       paddingHorizontal: moderateWidthScale(8),
-      paddingBottom: moderateHeightScale(6),
+      paddingBottom: moderateHeightScale(4),
     },
     toolBtn: {
       alignItems: "center",
       justifyContent: "center",
       minWidth: widthScale(64),
-      paddingVertical: moderateHeightScale(6),
-      gap: moderateHeightScale(4),
+      paddingVertical: moderateHeightScale(4),
+      gap: moderateHeightScale(2),
     },
     toolLabel: {
       fontSize: fontSize.size11,
@@ -370,42 +393,43 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
     },
     panel: {
-      paddingHorizontal: moderateWidthScale(16),
-      paddingTop: moderateHeightScale(8),
-      paddingBottom: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingTop: moderateHeightScale(6),
+      paddingBottom: moderateHeightScale(6),
     },
     panelCompact: {
-      paddingBottom: moderateHeightScale(6),
+      paddingBottom: moderateHeightScale(4),
     },
     panelTitle: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.white,
-      marginBottom: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(4),
     },
     panelHint: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white,
-      opacity: 0.65,
-      marginBottom: moderateHeightScale(8),
+      opacity: 0.55,
+      marginBottom: moderateHeightScale(2),
     },
     label: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white,
       opacity: 0.85,
-      marginBottom: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(2),
     },
     chipRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(8),
+      alignItems: "center",
+      gap: moderateWidthScale(6),
     },
     chip: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(18),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(14),
       borderWidth: 1,
       borderColor: theme.white15,
     },
@@ -414,11 +438,128 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.buttonBack,
     },
     chipText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
     chipTextActive: { color: theme.buttonText },
+    textStudio: {
+      gap: moderateHeightScale(8),
+    },
+    textColorBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+    },
+    textModeSeg: {
+      flexDirection: "row",
+      backgroundColor: theme.black,
+      borderRadius: moderateWidthScale(10),
+      padding: moderateWidthScale(2),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.white15,
+    },
+    textModeBtn: {
+      width: widthScale(34),
+      height: heightScale(28),
+      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    textModeBtnActive: {
+      backgroundColor: theme.buttonBack,
+    },
+    textColorTrack: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      flexWrap: "nowrap",
+    },
+    textStyleBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
+    },
+    textSizeSeg: {
+      flexDirection: "row",
+      backgroundColor: theme.black,
+      borderRadius: moderateWidthScale(10),
+      padding: moderateWidthScale(2),
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.white15,
+    },
+    textSizeBtn: {
+      width: widthScale(34),
+      height: heightScale(28),
+      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    textSizeBtnActive: {
+      backgroundColor: theme.buttonBack,
+    },
+    textSizeLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      opacity: 0.7,
+    },
+    textSizeLabelActive: {
+      opacity: 1,
+      color: theme.buttonText,
+    },
+    textFormatRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    textFormatBtn: {
+      width: widthScale(36),
+      height: heightScale(32),
+      borderRadius: moderateWidthScale(8),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.black,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.white15,
+    },
+    textFormatBtnActive: {
+      backgroundColor: theme.buttonBack,
+      borderColor: theme.buttonBack,
+    },
+    textInputTight: {
+      marginTop: 0,
+      marginBottom: 0,
+      paddingVertical: moderateHeightScale(8),
+      paddingLeft: moderateWidthScale(12),
+      paddingRight: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(10),
+      fontSize: fontSize.size14,
+      borderColor: theme.white15,
+      backgroundColor: theme.black,
+    },
+    textInputWrap: {
+      position: "relative",
+      justifyContent: "center",
+    },
+    textInputClear: {
+      position: "absolute",
+      right: moderateWidthScale(10),
+      top: 0,
+      bottom: 0,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 2,
+    },
+    colorDotTight: {
+      width: widthScale(18),
+      height: heightScale(18),
+      borderRadius: moderateWidthScale(9),
+      borderWidth: 1.5,
+    },
     musicRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -514,14 +655,17 @@ export default function EditVideoScreen() {
   const [musicVolume, setMusicVolume] = useState(0.8);
   const [overlayText, setOverlayText] = useState("");
   const [overlayX, setOverlayX] = useState(0.5);
-  const [overlayY, setOverlayY] = useState(0.82);
+  const [overlayY, setOverlayY] = useState(0.45);
   const [overlayColorKey, setOverlayColorKey] =
     useState<OverlayColorKey>("white");
   const [overlaySize, setOverlaySize] = useState<OverlaySize>("M");
   const [overlayBold, setOverlayBold] = useState(true);
   const [overlayItalic, setOverlayItalic] = useState(false);
   const [overlayMono, setOverlayMono] = useState(false);
-  const [overlayBg, setOverlayBg] = useState(false);
+  const [overlayBgColorKey, setOverlayBgColorKey] =
+    useState<OverlayColorKey | null>(null);
+  const [textColorTarget, setTextColorTarget] =
+    useState<TextColorTarget>("text");
   const [draggingText, setDraggingText] = useState(false);
   const [textBoxSize, setTextBoxSize] = useState({ width: 120, height: 36 });
   const [playing, setPlaying] = useState(false);
@@ -529,6 +673,7 @@ export default function EditVideoScreen() {
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [activeTool, setActiveTool] = useState<EditorTool>(null);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+  const [dockHeight, setDockHeight] = useState(0);
   const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -590,11 +735,11 @@ export default function EditVideoScreen() {
       overlayX,
       overlayY,
       overlayColorKey,
+      overlayBgColorKey,
       overlaySize,
       overlayBold,
       overlayItalic,
       overlayMono,
-      overlayBg,
     }),
     [
       aspect,
@@ -602,7 +747,7 @@ export default function EditVideoScreen() {
       musicUri,
       musicVolume,
       muteOriginal,
-      overlayBg,
+      overlayBgColorKey,
       overlayBold,
       overlayColorKey,
       overlayItalic,
@@ -633,11 +778,11 @@ export default function EditVideoScreen() {
         last.overlayX === snap.overlayX &&
         last.overlayY === snap.overlayY &&
         last.overlayColorKey === snap.overlayColorKey &&
+        last.overlayBgColorKey === snap.overlayBgColorKey &&
         last.overlaySize === snap.overlaySize &&
         last.overlayBold === snap.overlayBold &&
         last.overlayItalic === snap.overlayItalic &&
-        last.overlayMono === snap.overlayMono &&
-        last.overlayBg === snap.overlayBg
+        last.overlayMono === snap.overlayMono
       ) {
         return prev;
       }
@@ -668,11 +813,11 @@ export default function EditVideoScreen() {
       setOverlayX(snap.overlayX);
       setOverlayY(snap.overlayY);
       setOverlayColorKey(snap.overlayColorKey);
+      setOverlayBgColorKey(snap.overlayBgColorKey);
       setOverlaySize(snap.overlaySize);
       setOverlayBold(snap.overlayBold);
       setOverlayItalic(snap.overlayItalic);
       setOverlayMono(snap.overlayMono);
-      setOverlayBg(snap.overlayBg);
       return next;
     });
   }, []);
@@ -867,15 +1012,17 @@ export default function EditVideoScreen() {
             y: overlayY,
             anchor: "center",
             textAlign: "center",
-            paddingX: overlayBg ? 18 : 10,
-            paddingY: overlayBg ? 10 : 6,
+            paddingX: overlayBgColorKey ? 18 : 10,
+            paddingY: overlayBgColorKey ? 10 : 6,
             fontSize: OVERLAY_EXPORT_FONT[overlaySize],
             color: resolveOverlayColor(overlayColorKey),
             fontWeight: overlayBold ? "bold" : "normal",
             fontStyle: overlayItalic ? "italic" : "normal",
             fontFamily: overlayMono ? "monospace" : "system",
-            backgroundColor: overlayBg ? theme.borderDark : undefined,
-            cornerRadius: overlayBg ? 12 : undefined,
+            backgroundColor: overlayBgColorKey
+              ? resolveOverlayColor(overlayBgColorKey)
+              : undefined,
+            cornerRadius: overlayBgColorKey ? 12 : undefined,
             shadowColor: theme.black,
             shadowRadius: 4,
             shadowOpacity: 0.6,
@@ -894,7 +1041,7 @@ export default function EditVideoScreen() {
     musicUri,
     musicVolume,
     muteOriginal,
-    overlayBg,
+    overlayBgColorKey,
     overlayBold,
     overlayColorKey,
     overlayItalic,
@@ -906,7 +1053,6 @@ export default function EditVideoScreen() {
     resolveOverlayColor,
     sourceUri,
     theme.black,
-    theme.borderDark,
     trimEndMs,
     trimStartMs,
     videoSize.height,
@@ -1062,7 +1208,8 @@ export default function EditVideoScreen() {
   const textDragGesture = useMemo(
     () =>
       Gesture.Pan()
-        .minDistance(1)
+        .minDistance(2)
+        .hitSlop(20)
         .onBegin(() => {
           dragOriginX.value = posX.value;
           dragOriginY.value = posY.value;
@@ -1136,8 +1283,16 @@ export default function EditVideoScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Full-screen video layer — never shrinks when keyboard opens */}
-      <View style={styles.previewArea} onLayout={onPreviewLayout}>
+      {/* Video stays above bottom tools so text never sits under the panel */}
+      <View
+        style={[
+          styles.previewArea,
+          {
+            bottom: Math.max(dockHeight, 0) + keyboardHeight,
+          },
+        ]}
+        onLayout={onPreviewLayout}
+      >
         {frameSize.width > 0 ? (
           <View
             style={[
@@ -1184,7 +1339,15 @@ export default function EditVideoScreen() {
                   style={[
                     styles.textOverlay,
                     styles.textHitExpand,
-                    overlayBg && styles.textOverlayBg,
+                    overlayBgColorKey
+                      ? [
+                          styles.textOverlayBg,
+                          {
+                            backgroundColor:
+                              resolveOverlayColor(overlayBgColorKey),
+                          },
+                        ]
+                      : null,
                     (activeTool === "text" || draggingText) &&
                       styles.textOverlayActive,
                     textAnimatedStyle,
@@ -1298,6 +1461,12 @@ export default function EditVideoScreen() {
                 : Math.max(insets.bottom, moderateHeightScale(8)),
           },
         ]}
+        onLayout={(e) => {
+          const h = Math.round(e.nativeEvent.layout.height);
+          if (h > 0) {
+            setDockHeight((prev) => (prev === h ? prev : h));
+          }
+        }}
       >
           {activeTool ? (
             <Pressable
@@ -1484,151 +1653,228 @@ export default function EditVideoScreen() {
               ) : null}
 
               {activeTool === "text" ? (
-                <>
-                  {keyboardHeight === 0 ? (
-                    <Pressable onPress={dismissKeyboard}>
-                      <Text style={styles.panelTitle}>{t("overlayText")}</Text>
-                      <Text style={styles.panelHint}>{t("dragTextHint")}</Text>
-                    </Pressable>
-                  ) : null}
-                  <TextInput
-                    ref={textInputRef}
-                    style={styles.input}
-                    value={overlayText}
-                    onFocus={() => {
-                      if (!textHistoryPushedRef.current) {
-                        pushHistory();
-                        textHistoryPushedRef.current = true;
-                      }
-                    }}
-                    onBlur={() => {
-                      textHistoryPushedRef.current = false;
-                    }}
-                    onChangeText={setOverlayText}
-                    onSubmitEditing={dismissKeyboard}
-                    returnKeyType="done"
-                    blurOnSubmit
-                    placeholder={t("overlayTextPlaceholder")}
-                    placeholderTextColor={theme.white15}
-                    editable={!busy}
-                    maxLength={80}
-                  />
-
-                  <View style={styles.chipRow}>
-                    {OVERLAY_COLOR_KEYS.map((key) => (
-                      <TouchableOpacity
-                        key={key}
-                        style={[
-                          styles.colorDot,
-                          { backgroundColor: theme[key] as string },
-                          overlayColorKey === key && styles.colorDotActive,
-                        ]}
-                        onPress={() => {
-                          if (overlayColorKey === key) return;
+                <View style={styles.textStudio}>
+                  <View style={styles.textInputWrap}>
+                    <TextInput
+                      ref={textInputRef}
+                      style={[styles.input, styles.textInputTight]}
+                      value={overlayText}
+                      onFocus={() => {
+                        if (!textHistoryPushedRef.current) {
                           pushHistory();
-                          setOverlayColorKey(key);
+                          textHistoryPushedRef.current = true;
+                        }
+                      }}
+                      onBlur={() => {
+                        textHistoryPushedRef.current = false;
+                      }}
+                      onChangeText={setOverlayText}
+                      onSubmitEditing={dismissKeyboard}
+                      returnKeyType="done"
+                      blurOnSubmit
+                      placeholder={t("overlayTextPlaceholder")}
+                      placeholderTextColor={theme.white50}
+                      editable={!busy}
+                      maxLength={80}
+                    />
+                    {overlayText.length > 0 ? (
+                      <Pressable
+                        style={styles.textInputClear}
+                        onPress={() => {
+                          pushHistory();
+                          setOverlayText("");
                         }}
                         disabled={busy}
-                      />
-                    ))}
+                        hitSlop={8}
+                        accessibilityLabel={t("clear")}
+                      >
+                        <CloseIcon color={theme.white70} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.textColorBar}>
+                    <View style={styles.textModeSeg}>
+                      <TouchableOpacity
+                        style={[
+                          styles.textModeBtn,
+                          textColorTarget === "text" &&
+                            styles.textModeBtnActive,
+                        ]}
+                        onPress={() => setTextColorTarget("text")}
+                        disabled={busy}
+                        accessibilityLabel={t("textColor")}
+                      >
+                        <MaterialIcons
+                          name="format-color-text"
+                          size={moderateWidthScale(16)}
+                          color={
+                            textColorTarget === "text"
+                              ? theme.buttonText
+                              : theme.white
+                          }
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.textModeBtn,
+                          textColorTarget === "bg" && styles.textModeBtnActive,
+                        ]}
+                        onPress={() => setTextColorTarget("bg")}
+                        disabled={busy}
+                        accessibilityLabel={t("textBackground")}
+                      >
+                        <MaterialIcons
+                          name="format-color-fill"
+                          size={moderateWidthScale(16)}
+                          color={
+                            textColorTarget === "bg"
+                              ? theme.buttonText
+                              : theme.white
+                          }
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.textColorTrack}>
+                      {textColorTarget === "bg" ? (
+                        <TouchableOpacity
+                          style={[
+                            styles.colorDot,
+                            styles.colorDotTight,
+                            styles.colorDotNone,
+                            overlayBgColorKey === null &&
+                              styles.colorDotActive,
+                          ]}
+                          onPress={() => {
+                            if (overlayBgColorKey === null) return;
+                            pushHistory();
+                            setOverlayBgColorKey(null);
+                          }}
+                          disabled={busy}
+                          accessibilityLabel={t("textBgNone")}
+                        >
+                          <View style={styles.colorDotNoneSlash} />
+                        </TouchableOpacity>
+                      ) : null}
+                      {OVERLAY_COLOR_KEYS.map((key) => {
+                        const selected =
+                          textColorTarget === "text"
+                            ? overlayColorKey === key
+                            : overlayBgColorKey === key;
+                        return (
+                          <TouchableOpacity
+                            key={key}
+                            style={[
+                              styles.colorDot,
+                              styles.colorDotTight,
+                              { backgroundColor: theme[key] as string },
+                              selected && styles.colorDotActive,
+                            ]}
+                            onPress={() => {
+                              if (textColorTarget === "text") {
+                                if (overlayColorKey === key) return;
+                                pushHistory();
+                                setOverlayColorKey(key);
+                              } else {
+                                if (overlayBgColorKey === key) return;
+                                pushHistory();
+                                setOverlayBgColorKey(key);
+                              }
+                            }}
+                            disabled={busy}
+                          />
+                        );
+                      })}
+                    </View>
                   </View>
 
                   {keyboardHeight === 0 ? (
-                    <>
-                  <Text style={[styles.label, { marginTop: moderateHeightScale(10) }]}>
-                    {t("textSize")}
-                  </Text>
-                  <View style={styles.chipRow}>
-                    {(["S", "M", "L"] as OverlaySize[]).map((size) => (
-                      <TouchableOpacity
-                        key={size}
-                        style={[
-                          styles.chip,
-                          overlaySize === size && styles.chipActive,
-                        ]}
-                        onPress={() => {
-                          if (overlaySize === size) return;
-                          pushHistory();
-                          setOverlaySize(size);
-                        }}
-                        disabled={busy}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            overlaySize === size && styles.chipTextActive,
-                          ]}
-                        >
-                          {size}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                    <View style={styles.textStyleBar}>
+                      <View style={styles.textSizeSeg}>
+                        {(["S", "M", "L"] as OverlaySize[]).map((size) => {
+                          const active = overlaySize === size;
+                          return (
+                            <TouchableOpacity
+                              key={size}
+                              style={[
+                                styles.textSizeBtn,
+                                active && styles.textSizeBtnActive,
+                              ]}
+                              onPress={() => {
+                                if (overlaySize === size) return;
+                                pushHistory();
+                                setOverlaySize(size);
+                              }}
+                              disabled={busy}
+                            >
+                              <Text
+                                style={[
+                                  styles.textSizeLabel,
+                                  active && styles.textSizeLabelActive,
+                                ]}
+                              >
+                                {size}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
 
-                  <Text style={[styles.label, { marginTop: moderateHeightScale(10) }]}>
-                    {t("textStyle")}
-                  </Text>
-                  <View style={styles.chipRow}>
-                    {(
-                      [
-                        {
-                          key: "bold",
-                          label: t("textBold"),
-                          active: overlayBold,
-                          onPress: () => {
-                            pushHistory();
-                            setOverlayBold((v) => !v);
-                          },
-                        },
-                        {
-                          key: "italic",
-                          label: t("textItalic"),
-                          active: overlayItalic,
-                          onPress: () => {
-                            pushHistory();
-                            setOverlayItalic((v) => !v);
-                          },
-                        },
-                        {
-                          key: "mono",
-                          label: t("textMono"),
-                          active: overlayMono,
-                          onPress: () => {
-                            pushHistory();
-                            setOverlayMono((v) => !v);
-                          },
-                        },
-                        {
-                          key: "bg",
-                          label: t("textBackground"),
-                          active: overlayBg,
-                          onPress: () => {
-                            pushHistory();
-                            setOverlayBg((v) => !v);
-                          },
-                        },
-                      ] as const
-                    ).map((item) => (
-                      <TouchableOpacity
-                        key={item.key}
-                        style={[styles.chip, item.active && styles.chipActive]}
-                        onPress={item.onPress}
-                        disabled={busy}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            item.active && styles.chipTextActive,
-                          ]}
-                        >
-                          {item.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                    </>
+                      <View style={styles.textFormatRow}>
+                        {(
+                          [
+                            {
+                              key: "bold",
+                              icon: "format-bold" as const,
+                              active: overlayBold,
+                              onPress: () => {
+                                pushHistory();
+                                setOverlayBold((v) => !v);
+                              },
+                            },
+                            {
+                              key: "italic",
+                              icon: "format-italic" as const,
+                              active: overlayItalic,
+                              onPress: () => {
+                                pushHistory();
+                                setOverlayItalic((v) => !v);
+                              },
+                            },
+                            {
+                              key: "mono",
+                              icon: "code" as const,
+                              active: overlayMono,
+                              onPress: () => {
+                                pushHistory();
+                                setOverlayMono((v) => !v);
+                              },
+                            },
+                          ] as const
+                        ).map((item) => (
+                          <TouchableOpacity
+                            key={item.key}
+                            style={[
+                              styles.textFormatBtn,
+                              item.active && styles.textFormatBtnActive,
+                            ]}
+                            onPress={item.onPress}
+                            disabled={busy}
+                          >
+                            <MaterialIcons
+                              name={item.icon}
+                              size={moderateWidthScale(18)}
+                              color={
+                                item.active ? theme.buttonText : theme.white
+                              }
+                            />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
                   ) : null}
-                </>
+                </View>
               ) : null}
             </Pressable>
           ) : null}
