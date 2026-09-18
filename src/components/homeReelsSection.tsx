@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -110,9 +110,14 @@ export default function HomeReelsSection() {
   const router = useRouter();
   const [cards, setCards] = useState<ReelCategoryCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const cardsRef = useRef(cards);
+  cardsRef.current = cards;
 
   const load = useCallback(async () => {
-    setLoading(true);
+    // Show loader only when we don't already have data
+    if (cardsRef.current.length === 0) {
+      setLoading(true);
+    }
     try {
       const data = await fetchReelCategories();
       setCards(data);
