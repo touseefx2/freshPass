@@ -7,9 +7,13 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Animated,
   Dimensions,
   FlatList,
   Image,
+  Pressable,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,19 +34,28 @@ import {
 } from "@/src/theme/dimensions";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { ApiService } from "@/src/services/api";
-import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import {
   fetchReelFeed,
   likeReel,
   recordReelView,
+  saveReel,
+  shareReel,
   unlikeReel,
+  unsaveReel,
 } from "@/src/services/reelsService";
+import { followBusiness, unfollowBusiness } from "@/src/services/followService";
+import ReelCommentsSheet from "@/src/components/reelCommentsSheet";
+import ReelReportSheet, {
+  type ReportTarget,
+} from "@/src/components/reelReportSheet";
 import type { FeedReel } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+
+/** Fallback only — the server sends `share_url` on every feed item. */
+const REEL_SHARE_BASE_URL = "https://getfreshpass.com/r";
 
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -66,6 +79,24 @@ const createStyles = (theme: Theme) =>
     },
     poster: {
       ...StyleSheet.absoluteFillObject,
+    },
+    tapLayer: {
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 1,
+    },
+    centerPlayPause: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2,
+    },
+    centerPlayPauseCircle: {
+      width: moderateWidthScale(72),
+      height: moderateWidthScale(72),
+      borderRadius: moderateWidthScale(36),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.lightGreen,
     },
     topBar: {
       position: "absolute",
@@ -205,13 +236,16 @@ type ReelItemProps = {
   topInset: number;
   onBack: () => void;
   onLike: (reel: FeedReel) => void;
+  onSave: (reel: FeedReel) => void;
+  onComment: (reel: FeedReel) => void;
+  onShare: (reel: FeedReel) => void;
+  onMore: (reel: FeedReel) => void;
   onFollow: (reel: FeedReel) => void;
   onProfile: (reel: FeedReel) => void;
   onWantLook: (reel: FeedReel) => void;
-  onComingSoon: () => void;
 };
 
-function ReelFeedItem({
+function ReelFeedItemBase({
   reel,
   isActive,
   styles,
@@ -219,23 +253,46 @@ function ReelFeedItem({
   topInset,
   onBack,
   onLike,
+  onSave,
+  onComment,
+  onShare,
+  onMore,
   onFollow,
   onProfile,
   onWantLook,
-  onComingSoon,
 }: ReelItemProps) {
   const { t } = useTranslation();
   const playbackUrl = resolveApiImageUrl(reel.video?.playback_url) || "";
   const posterUrl = resolveApiImageUrl(reel.video?.thumbnail_url);
   const [showPoster, setShowPoster] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [centerIcon, setCenterIcon] = useState<"play-arrow" | "pause" | null>(
+    null,
+  );
+  const centerIconOpacity = useRef(new Animated.Value(0)).current;
+  const hideCenterIconTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const player = useVideoPlayer(playbackUrl, (p) => {
     p.loop = true;
   });
 
   useEffect(() => {
+    if (!isActive) {
+      setIsPaused(false);
+      setCenterIcon(null);
+      centerIconOpacity.setValue(0);
+      if (hideCenterIconTimer.current) {
+        clearTimeout(hideCenterIconTimer.current);
+        hideCenterIconTimer.current = null;
+      }
+    }
+  }, [centerIconOpacity, isActive]);
+
+  useEffect(() => {
     if (!player) return;
-    if (isActive) {
+    if (isActive && !isPaused) {
       try {
         player.play();
       } catch {}
@@ -244,7 +301,71 @@ function ReelFeedItem({
         player.pause();
       } catch {}
     }
-  }, [isActive, player]);
+  }, [isActive, isPaused, player]);
+
+  useEffect(() => {
+    return () => {
+      if (hideCenterIconTimer.current) {
+        clearTimeout(hideCenterIconTimer.current);
+      }
+    };
+  }, []);
+
+  const flashCenterIcon = useCallback(
+    (icon: "play-arrow" | "pause", keepVisible: boolean) => {
+      if (hideCenterIconTimer.current) {
+        clearTimeout(hideCenterIconTimer.current);
+        hideCenterIconTimer.current = null;
+      }
+      setCenterIcon(icon);
+      centerIconOpacity.setValue(1);
+      if (keepVisible) return;
+      hideCenterIconTimer.current = setTimeout(() => {
+        Animated.timing(centerIconOpacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }).start(({ finished }) => {
+          if (finished) setCenterIcon(null);
+        });
+      }, 450);
+    },
+    [centerIconOpacity],
+  );
+
+  const handleTogglePlayPause = useCallback(() => {
+    if (!playbackUrl || !isActive) return;
+    const nextPaused = !isPaused;
+    setIsPaused(nextPaused);
+    if (nextPaused) {
+      try {
+        player.pause();
+      } catch {}
+      // Brief pause flash, then keep play icon while paused (Reels-style)
+      if (hideCenterIconTimer.current) {
+        clearTimeout(hideCenterIconTimer.current);
+        hideCenterIconTimer.current = null;
+      }
+      setCenterIcon("pause");
+      centerIconOpacity.setValue(1);
+      hideCenterIconTimer.current = setTimeout(() => {
+        setCenterIcon("play-arrow");
+        centerIconOpacity.setValue(1);
+      }, 450);
+    } else {
+      try {
+        player.play();
+      } catch {}
+      flashCenterIcon("play-arrow", false);
+    }
+  }, [
+    centerIconOpacity,
+    flashCenterIcon,
+    isActive,
+    isPaused,
+    playbackUrl,
+    player,
+  ]);
 
   const cityState = [reel.business?.city, reel.business?.state]
     .filter(Boolean)
@@ -269,6 +390,28 @@ function ReelFeedItem({
         <Image source={{ uri: posterUrl }} style={styles.poster} />
       ) : null}
 
+      <Pressable
+        style={styles.tapLayer}
+        onPress={handleTogglePlayPause}
+        accessibilityRole="button"
+        accessibilityLabel={isPaused ? "Play" : "Pause"}
+      />
+
+      {centerIcon ? (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.centerPlayPause, { opacity: centerIconOpacity }]}
+        >
+          <View style={styles.centerPlayPauseCircle}>
+            <MaterialIcons
+              name={centerIcon}
+              size={moderateWidthScale(40)}
+              color={theme.white}
+            />
+          </View>
+        </Animated.View>
+      ) : null}
+
       <View style={[styles.topBar, { top: topInset + moderateHeightScale(8) }]}>
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
           <MaterialIcons
@@ -290,7 +433,10 @@ function ReelFeedItem({
             {formatCount(reel.stats?.likes ?? 0)}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sideBtn} onPress={onComingSoon}>
+        <TouchableOpacity
+          style={styles.sideBtn}
+          onPress={() => onComment(reel)}
+        >
           <MaterialIcons
             name="chat-bubble-outline"
             size={moderateWidthScale(28)}
@@ -300,7 +446,7 @@ function ReelFeedItem({
             {formatCount(reel.stats?.comments ?? 0)}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sideBtn} onPress={onComingSoon}>
+        <TouchableOpacity style={styles.sideBtn} onPress={() => onShare(reel)}>
           <MaterialIcons
             name="share"
             size={moderateWidthScale(28)}
@@ -310,13 +456,22 @@ function ReelFeedItem({
             {formatCount(reel.stats?.shares ?? 0)}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.sideBtn} onPress={onComingSoon}>
+        <TouchableOpacity style={styles.sideBtn} onPress={() => onSave(reel)}>
           <MaterialIcons
-            name="bookmark-border"
+            name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
+            size={moderateWidthScale(28)}
+            color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
+          />
+          <Text style={styles.sideCount}>
+            {formatCount(reel.stats?.saves ?? 0)}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.sideBtn} onPress={() => onMore(reel)}>
+          <MaterialIcons
+            name="more-vert"
             size={moderateWidthScale(28)}
             color={theme.white}
           />
-          <Text style={styles.sideCount}>{t("save")}</Text>
         </TouchableOpacity>
       </View>
 
@@ -412,6 +567,12 @@ function ReelFeedItem({
   );
 }
 
+/**
+ * Memoised so opening a sheet or updating one reel's counters doesn't
+ * re-render (and re-buffer) every other video in the pager.
+ */
+const ReelFeedItem = React.memo(ReelFeedItemBase);
+
 export default function ReelsFeedScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -438,6 +599,11 @@ export default function ReelsFeedScreen() {
   const [activeId, setActiveId] = useState<number | null>(
     firstReelId ? Number(firstReelId) : null,
   );
+  const [commentsReel, setCommentsReel] = useState<{
+    id: number;
+    count: number;
+  } | null>(null);
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const viewedIdsRef = useRef<Set<number>>(new Set());
   const likeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLikeRef = useRef<{
@@ -601,6 +767,29 @@ export default function ReelsFeedScreen() {
     [dispatch, flushLike, isGuest, user.accessToken],
   );
 
+  /** Follow state belongs to the business, so every reel of it must move together. */
+  const applyFollowState = useCallback(
+    (businessId: number, following: boolean, followers?: number | null) => {
+      setReels((list) =>
+        list.map((r) =>
+          r.business?.id === businessId
+            ? {
+                ...r,
+                viewer: { ...r.viewer, following },
+                business: {
+                  ...r.business,
+                  ...(followers != null
+                    ? { followers_count: followers }
+                    : {}),
+                },
+              }
+            : r,
+        ),
+      );
+    },
+    [],
+  );
+
   const handleFollow = useCallback(
     async (reel: FeedReel) => {
       if (isGuest || !user.accessToken) {
@@ -610,25 +799,69 @@ export default function ReelsFeedScreen() {
       const businessId = reel.business?.id;
       if (!businessId) return;
       const prev = !!reel.viewer?.following;
+      const prevCount = reel.business?.followers_count;
+      applyFollowState(
+        businessId,
+        !prev,
+        prevCount != null ? Math.max(0, prevCount + (prev ? -1 : 1)) : null,
+      );
+      try {
+        const result = prev
+          ? await unfollowBusiness(businessId)
+          : await followBusiness(businessId);
+        applyFollowState(businessId, result.following, result.followers);
+      } catch (error: any) {
+        applyFollowState(businessId, prev, prevCount ?? null);
+        const status = error?.response?.status ?? error?.status;
+        if (status === 401) {
+          dispatch(setGuestModeModalVisible(true));
+          return;
+        }
+        showBanner(
+          t("error"),
+          error?.message || (prev ? t("failedToUnfollow") : t("failedToFollow")),
+          "error",
+          2500,
+        );
+      }
+    },
+    [applyFollowState, dispatch, isGuest, showBanner, t, user.accessToken],
+  );
+
+  const handleSave = useCallback(
+    async (reel: FeedReel) => {
+      if (isGuest || !user.accessToken) {
+        dispatch(setGuestModeModalVisible(true));
+        return;
+      }
+      const prevSaved = !!reel.viewer?.saved;
+      const prevCount = reel.stats?.saves ?? 0;
       setReels((list) =>
         list.map((r) =>
           r.id === reel.id
-            ? { ...r, viewer: { ...r.viewer, following: !prev } }
+            ? {
+                ...r,
+                viewer: { ...r.viewer, saved: !prevSaved },
+                stats: {
+                  ...r.stats,
+                  saves: Math.max(0, prevCount + (prevSaved ? -1 : 1)),
+                },
+              }
             : r,
         ),
       );
       try {
-        const response = await ApiService.post<{
-          success?: boolean;
-          data?: { favorited?: boolean };
-          favorited?: boolean;
-        }>(businessEndpoints.favorite(businessId));
-        const favorited =
-          response?.data?.favorited ?? response?.favorited ?? !prev;
+        const result = prevSaved
+          ? await unsaveReel(reel.id)
+          : await saveReel(reel.id);
         setReels((list) =>
           list.map((r) =>
             r.id === reel.id
-              ? { ...r, viewer: { ...r.viewer, following: !!favorited } }
+              ? {
+                  ...r,
+                  viewer: { ...r.viewer, saved: result.saved },
+                  stats: { ...r.stats, saves: result.saves },
+                }
               : r,
           ),
         );
@@ -636,13 +869,22 @@ export default function ReelsFeedScreen() {
         setReels((list) =>
           list.map((r) =>
             r.id === reel.id
-              ? { ...r, viewer: { ...r.viewer, following: prev } }
+              ? {
+                  ...r,
+                  viewer: { ...r.viewer, saved: prevSaved },
+                  stats: { ...r.stats, saves: prevCount },
+                }
               : r,
           ),
         );
+        const status = error?.response?.status ?? error?.status;
+        if (status === 401) {
+          dispatch(setGuestModeModalVisible(true));
+          return;
+        }
         showBanner(
           t("error"),
-          error?.message || t("failedToFollow"),
+          error?.message || t("failedToSaveLook"),
           "error",
           2500,
         );
@@ -650,6 +892,80 @@ export default function ReelsFeedScreen() {
     },
     [dispatch, isGuest, showBanner, t, user.accessToken],
   );
+
+  const handleComment = useCallback((reel: FeedReel) => {
+    setCommentsReel({ id: reel.id, count: reel.stats?.comments ?? 0 });
+  }, []);
+
+  const handleCommentCountChange = useCallback(
+    (reelId: number, total: number) => {
+      setReels((list) =>
+        list.map((r) =>
+          r.id === reelId ? { ...r, stats: { ...r.stats, comments: total } } : r,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleShare = useCallback(
+    async (reel: FeedReel) => {
+      const url = reel.share_url || `${REEL_SHARE_BASE_URL}/${reel.id}`;
+      try {
+        const result = await Share.share({
+          message: reel.caption ? `${reel.caption}\n${url}` : url,
+          url,
+        });
+        if (result.action === Share.dismissedAction) return;
+      } catch (error) {
+        Logger.error(`Failed to open share sheet for reel ${reel.id}:`, error);
+        showBanner(t("error"), t("failedToShareReel"), "error", 2500);
+        return;
+      }
+      // Counting is best-effort and must not block the share itself.
+      const { shares } = await shareReel(reel.id);
+      if (shares == null) return;
+      setReels((list) =>
+        list.map((r) =>
+          r.id === reel.id ? { ...r, stats: { ...r.stats, shares } } : r,
+        ),
+      );
+    },
+    [showBanner, t],
+  );
+
+  const handleMore = useCallback(
+    (reel: FeedReel) => {
+      Alert.alert(t("reelOptions"), undefined, [
+        {
+          text: t("report"),
+          style: "destructive",
+          onPress: () => {
+            if (isGuest || !user.accessToken) {
+              dispatch(setGuestModeModalVisible(true));
+              return;
+            }
+            setReportTarget({ kind: "reel", reelId: reel.id });
+          },
+        },
+        { text: t("cancel"), style: "cancel" },
+      ]);
+    },
+    [dispatch, isGuest, t, user.accessToken],
+  );
+
+  const handleReportComment = useCallback(
+    (commentId: number) => {
+      if (!commentsReel) return;
+      const reelId = commentsReel.id;
+      // Close the comments sheet first — two Modalize sheets must not stack.
+      setCommentsReel(null);
+      setReportTarget({ kind: "comment", reelId, commentId });
+    },
+    [commentsReel],
+  );
+
+  const goBack = useCallback(() => router.back(), [router]);
 
   const openProfile = useCallback(
     (reel: FeedReel) => {
@@ -729,16 +1045,32 @@ export default function ReelsFeedScreen() {
             styles={styles}
             theme={theme}
             topInset={insets.top}
-            onBack={() => router.back()}
+            onBack={goBack}
             onLike={handleLike}
+            onSave={handleSave}
+            onComment={handleComment}
+            onShare={handleShare}
+            onMore={handleMore}
             onFollow={handleFollow}
             onProfile={openProfile}
             onWantLook={wantLook}
-            onComingSoon={() =>
-              showBanner(t("comingSoon"), t("reelFeatureComingSoon"), "info", 2000)
-            }
           />
         )}
+      />
+
+      <ReelCommentsSheet
+        visible={!!commentsReel}
+        reelId={commentsReel?.id ?? null}
+        initialCount={commentsReel?.count ?? 0}
+        onClose={() => setCommentsReel(null)}
+        onCountChange={handleCommentCountChange}
+        onReportComment={handleReportComment}
+      />
+
+      <ReelReportSheet
+        visible={!!reportTarget}
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
       />
     </View>
   );

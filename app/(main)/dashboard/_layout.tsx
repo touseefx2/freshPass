@@ -1,8 +1,9 @@
 import { Tabs, useSegments } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform, StyleSheet, View, Text } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { Theme } from "@/src/theme/colors";
 import {
   HomeIcon,
@@ -13,6 +14,7 @@ import {
   ExploreIcon,
 } from "@/assets/icons";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -20,6 +22,7 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AiChatBot from "@/src/components/AiChatBot";
+import BusinessCreateMediaMenu from "@/src/components/businessCreateMediaMenu";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import { resetChatContacts } from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
@@ -72,6 +75,20 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size8,
       fontFamily: fonts.fontMedium,
     },
+    createTabIcon: {
+      width: widthScale(44),
+      height: heightScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: moderateHeightScale(-6),
+      borderWidth: 3,
+      borderTopColor: theme.white,
+      borderLeftColor: theme.white,
+      borderRightColor: theme.orangeBrown,
+      borderBottomColor: theme.orangeBrown,
+    },
   });
 
 export default function DashboardLayout() {
@@ -88,7 +105,15 @@ export default function DashboardLayout() {
   const isGuest = user.isGuest;
   const userRole = user.userRole;
   const isCustomer = userRole === "customer" && !isGuest;
+  const isBusiness = userRole === "business";
   const dispatch = useAppDispatch();
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+
+  const closeCreateMenu = useCallback(() => setCreateMenuOpen(false), []);
+  const toggleCreateMenu = useCallback(
+    () => setCreateMenuOpen((open) => !open),
+    [],
+  );
 
   useEffect(() => {
     if (!isCustomer) return;
@@ -297,6 +322,12 @@ export default function DashboardLayout() {
     isFavoritesScreen ||
     isCustomersScreen;
 
+  useEffect(() => {
+    if (shouldHideAiChat && createMenuOpen) {
+      setCreateMenuOpen(false);
+    }
+  }, [shouldHideAiChat, createMenuOpen]);
+
   return (
     <>
       <Tabs
@@ -385,6 +416,31 @@ export default function DashboardLayout() {
         />
 
         <Tabs.Screen
+          name="(create)"
+          options={{
+            href: isBusiness ? undefined : null,
+            title: "",
+            tabBarLabel: () => null,
+            tabBarIcon: () => (
+              <View style={styles.createTabIcon}>
+                <MaterialIcons
+                  name="add"
+                  size={moderateWidthScale(28)}
+                  color={theme.buttonText}
+                />
+              </View>
+            ),
+          }}
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+              if (!isBusiness) return;
+              toggleCreateMenu();
+            },
+          }}
+        />
+
+        <Tabs.Screen
           name="(calendar)"
           options={{
             title:
@@ -433,6 +489,7 @@ export default function DashboardLayout() {
         <Tabs.Screen
           name="(account)"
           options={{
+            href: isBusiness ? null : undefined,
             title: t("tabProfile"),
             tabBarIcon: ({ color, size, focused }) => (
               <View
@@ -449,6 +506,12 @@ export default function DashboardLayout() {
           }}
         />
       </Tabs>
+      {isBusiness && (
+        <BusinessCreateMediaMenu
+          visible={createMenuOpen}
+          onClose={closeCreateMenu}
+        />
+      )}
       {/* Floating AI ChatBot Button */}
       {!shouldHideAiChat && <AiChatBot />}
     </>

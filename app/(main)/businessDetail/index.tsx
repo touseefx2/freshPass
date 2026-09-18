@@ -65,6 +65,7 @@ import Button from "@/src/components/button";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints, reviewsEndpoints } from "@/src/services/endpoints";
+import { followBusiness, unfollowBusiness } from "@/src/services/followService";
 import { reportReelEvent } from "@/src/services/reelsService";
 import RetryButton from "@/src/components/retryButton";
 import { formatLeaveRangeDisplay } from "@/src/utils/leaveDateTime";
@@ -285,6 +286,37 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
       textTransform: "capitalize",
+    },
+    followRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(10),
+    },
+    followButton: {
+      minWidth: widthScale(90),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    followButtonActive: {
+      backgroundColor: theme.white,
+    },
+    followButtonText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+    },
+    followButtonTextActive: {
+      color: theme.darkGreen,
+    },
+    followersText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
     },
     addressRow: {
       flexDirection: "row",
@@ -1439,7 +1471,11 @@ export default function BusinessDetailScreen() {
   const [reviewsTotal, setReviewsTotal] = useState(0);
   const [reviewsAverageRating, setReviewsAverageRating] = useState(0);
 
-  const [isFavorited, setIsFavorited] = useState<boolean | null>(null);
+  // "Favourite" and "Follow" are the same row server-side; `is_following` is
+  // the current field, `is_favorited` the legacy alias.
+  const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
+  const [followersCount, setFollowersCount] = useState<number | null>(null);
+  const [followLoading, setFollowLoading] = useState(false);
 
   // Fetch business details
   const fetchBusinessDetails = async () => {
@@ -1480,10 +1516,18 @@ export default function BusinessDetailScreen() {
             response.data.business.working_with_business ??
             null,
         );
-        setIsFavorited(
-          typeof response.data.business.is_favorited === "boolean"
-            ? response.data.business.is_favorited
-            : false,
+        const business = response.data.business;
+        setIsFollowing(
+          typeof business.is_following === "boolean"
+            ? business.is_following
+            : typeof business.is_favorited === "boolean"
+              ? business.is_favorited
+              : false,
+        );
+        setFollowersCount(
+          typeof business.followers_count === "number"
+            ? business.followers_count
+            : null,
         );
       } else {
         setError("Failed to load business details");
@@ -1502,53 +1546,59 @@ export default function BusinessDetailScreen() {
     }, []),
   );
 
-  const handleToggleFavorite = async () => {
+  const applyFollowState = (following: boolean, followers: number | null) => {
+    setIsFollowing(following);
+    setFollowersCount(followers);
+    setBusinessData((prev: any) =>
+      prev
+        ? {
+            ...prev,
+            is_following: following,
+            is_favorited: following,
+            ...(followers != null ? { followers_count: followers } : {}),
+          }
+        : prev,
+    );
+  };
+
+  const handleToggleFollow = async () => {
     const isInternetConnected = await checkInternetConnection();
     if (!isInternetConnected) {
       Alert.alert(t("error"), t("noInternetConnection"));
       return;
     }
 
-    if (!params.business_id || isFavorited === null) {
+    if (!params.business_id || isFollowing === null || followLoading) {
       return;
     }
 
-    const previousValue = isFavorited;
-    const nextValue = !previousValue;
+    const previousFollowing = isFollowing;
+    const previousCount = followersCount;
+    const nextFollowing = !previousFollowing;
 
     // Optimistic UI update
-    setIsFavorited(nextValue);
-    setBusinessData((prev: any) =>
-      prev ? { ...prev, is_favorited: nextValue } : prev,
+    setFollowLoading(true);
+    applyFollowState(
+      nextFollowing,
+      previousCount != null
+        ? Math.max(0, previousCount + (nextFollowing ? 1 : -1))
+        : null,
     );
 
     try {
-      const response = await ApiService.post<{
-        success: boolean;
-        favorited?: boolean;
-      }>(businessEndpoints.favorite(params.business_id));
-
-      if (!response?.success) {
-        // Revert on failure
-        setIsFavorited(previousValue);
-        setBusinessData((prev: any) =>
-          prev ? { ...prev, is_favorited: previousValue } : prev,
-        );
-        return;
-      }
-
-      if (typeof response.favorited === "boolean") {
-        setIsFavorited(response.favorited);
-        setBusinessData((prev: any) =>
-          prev ? { ...prev, is_favorited: response.favorited } : prev,
-        );
-      }
-    } catch (error) {
-      // Revert on error
-      setIsFavorited(previousValue);
-      setBusinessData((prev: any) =>
-        prev ? { ...prev, is_favorited: previousValue } : prev,
+      const result = nextFollowing
+        ? await followBusiness(params.business_id)
+        : await unfollowBusiness(params.business_id);
+      applyFollowState(result.following, result.followers ?? previousCount);
+    } catch (error: any) {
+      applyFollowState(previousFollowing, previousCount);
+      Alert.alert(
+        t("error"),
+        error?.message ||
+          (nextFollowing ? t("failedToFollow") : t("failedToUnfollow")),
       );
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -3768,12 +3818,12 @@ export default function BusinessDetailScreen() {
               ? undefined
               : isGuest
                 ? () => dispatch(setGuestModeModalVisible(true))
-                : handleToggleFavorite
+                : handleToggleFollow
           }
           disabled={!actionsEnabled || isBusinessOwnerView}
         >
           <MaterialIcons
-            name={isFavorited ? "favorite" : "favorite-border"}
+            name={isFollowing ? "favorite" : "favorite-border"}
             size={widthScale(16)}
             color={theme.lightGreen}
           />
@@ -3945,6 +3995,44 @@ export default function BusinessDetailScreen() {
               />
               <Text style={styles.businessName}>{businessName}</Text>
             </View>
+            {!isBusinessOwnerView && (
+              <View style={styles.followRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.followButton,
+                    isFollowing && styles.followButtonActive,
+                  ]}
+                  activeOpacity={0.8}
+                  disabled={followLoading || (!isGuest && isFollowing === null)}
+                  onPress={
+                    isGuest
+                      ? () => dispatch(setGuestModeModalVisible(true))
+                      : handleToggleFollow
+                  }
+                >
+                  {followLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isFollowing ? theme.darkGreen : theme.buttonText}
+                    />
+                  ) : (
+                    <Text
+                      style={[
+                        styles.followButtonText,
+                        isFollowing && styles.followButtonTextActive,
+                      ]}
+                    >
+                      {isFollowing ? t("following") : t("follow")}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {followersCount != null && (
+                  <Text style={styles.followersText}>
+                    {t("followersCount", { count: followersCount })}
+                  </Text>
+                )}
+              </View>
+            )}
             <View style={styles.addressRow}>
               <LocationPinIconBusinessDetail
                 width={widthScale(12)}

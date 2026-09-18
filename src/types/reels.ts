@@ -22,6 +22,7 @@ export type ReelBusiness = {
   image_url?: string | null;
   city?: string | null;
   state?: string | null;
+  followers_count?: number;
 };
 
 export type ReelStats = {
@@ -81,6 +82,7 @@ export type FeedReel = {
   distance_km?: number | null;
   stats: ReelStats;
   viewer: ReelViewer;
+  share_url?: string | null;
 };
 
 export type ReelCategoryCard = {
@@ -169,4 +171,45 @@ export type LikeResponse = {
   data: { liked: boolean; likes: number };
 };
 
+export type SaveResponse = {
+  success: boolean;
+  data: { saved: boolean; saves: number };
+};
+
+export type ShareResponse = {
+  success: boolean;
+  data: { share_url: string; shares: number };
+};
+
+export type FollowResponse = {
+  success: boolean;
+  data: { following: boolean; followers: number };
+};
+
+export type ReportResponse = {
+  success: boolean;
+  data: { already: boolean };
+};
+
 export type ReelEventType = "profile_tap" | "booking_started";
+
+/** Top-level reel comment (R-13). */
+export type ReelComment = {
+  id: number;
+  body: string;
+  created_at: string;
+  user: {
+    id: number;
+    name: string;
+    avatar_url?: string | null;
+  };
+  is_mine: boolean;
+};
+
+export type ReportReason = {
+  value: string;
+  label: string;
+};
+
+/** Reasons that need a note before the report can be submitted. */
+export const REPORT_REASONS_REQUIRING_NOTE = ["copyright", "other"];

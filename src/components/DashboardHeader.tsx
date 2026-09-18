@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import {
@@ -27,6 +28,9 @@ import { updateBusinessActiveStatus } from "@/src/state/thunks/businessThunks";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
 import { Feather } from "@expo/vector-icons";
+import { resolveApiImageUrl } from "@/src/utils/media";
+
+const AVATAR_SIZE = 36;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -53,6 +57,7 @@ const createStyles = (theme: Theme) =>
     toggleContainer: {
       flexDirection: "row",
       alignItems: "center",
+      gap: moderateWidthScale(10),
     },
     statusBadge: {
       flexDirection: "row",
@@ -81,6 +86,24 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
       letterSpacing: 0.3,
+    },
+    avatarButton: {
+      width: widthScale(AVATAR_SIZE),
+      height: heightScale(AVATAR_SIZE),
+      borderRadius: moderateWidthScale(AVATAR_SIZE / 2),
+      overflow: "hidden",
+      borderWidth: 1.5,
+      borderColor: theme.white50,
+      backgroundColor: theme.white15,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarImage: {
+      width: "100%",
+      height: "100%",
+    },
+    avatarPlaceholderIcon: {
+      marginTop: moderateHeightScale(2),
     },
     line: {
       width: "100%",
@@ -144,15 +167,24 @@ function DashboardHeader({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const { showBanner } = useNotificationContext();
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const userRole = useAppSelector((state) => state.user.userRole);
   const isGuest = useAppSelector((state) => state.user.isGuest);
+  const profileImageUrl = useAppSelector(
+    (state) => state.user.profile_image_url,
+  );
   const isCustomer = isGuest || userRole === "customer";
   const isOnline = businessStatus?.active ?? false;
   const insets = useSafeAreaInsets();
+  const avatarUri = resolveApiImageUrl(profileImageUrl);
 
   const toggleLoading = useAppSelector((state) => state.general.toggleLoading);
+
+  const handleProfilePress = useCallback(() => {
+    router.push("/(main)/dashboard/(account)" as any);
+  }, [router]);
 
   const handleStripeOnboardingPress = () => {
     dispatch(setStripeConnectModalVisible(true));
@@ -265,6 +297,27 @@ function DashboardHeader({
                   {isOnline ? t("active") : t("inactive")}
                 </Text>
               </View>
+              <TouchableOpacity
+                style={styles.avatarButton}
+                onPress={handleProfilePress}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t("tabProfile")}
+              >
+                {avatarUri ? (
+                  <Image
+                    source={{ uri: avatarUri }}
+                    style={styles.avatarImage}
+                  />
+                ) : (
+                  <Feather
+                    name="user"
+                    size={moderateWidthScale(18)}
+                    color={theme.white80}
+                    style={styles.avatarPlaceholderIcon}
+                  />
+                )}
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.toggleContainer}>

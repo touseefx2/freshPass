@@ -447,6 +447,8 @@ export default function AccountScreen() {
           params: { screenName: "customerReview" },
         } as any);
       }
+    } else if (key === "myLooks") {
+      router.push("/(main)/myLooks");
     } else if (key === "subscriptions") {
       router.push(isCustomer ? "./subscriptionCustomer" : "./subscription");
     } else if (key === "mediaLibrary") {
@@ -491,6 +493,7 @@ export default function AccountScreen() {
       | "notifications"
       | "rules"
       | "reviews"
+      | "myLooks"
       | "subscriptions"
       | "mediaLibrary"
       | "aiTools"
@@ -570,6 +573,9 @@ export default function AccountScreen() {
     ...(isCustomer
       ? [{ key: "reviews" as const, title: t("reviews") }]
       : []),
+    ...(isCustomer && !isGuest
+      ? [{ key: "myLooks" as const, title: t("myLooks") }]
+      : []),
     {
       key: "rules" as const,
       title: t("rulesAndTerms"),
@@ -610,6 +616,8 @@ export default function AccountScreen() {
         return { name: "notifications", family: "material" };
       case "reviews":
         return { name: "star", family: "material" };
+      case "myLooks":
+        return { name: "bookmark", family: "material" };
       case "viewBusiness":
         return { name: "visibility", family: "material" };
       case "affiliationRequests":

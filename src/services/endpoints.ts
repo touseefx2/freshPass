@@ -120,6 +120,8 @@ export const businessEndpoints = {
     `/api/business/details?business_id=${businessId}`,
   favorite: (businessId: string | number) =>
     `/api/businesses/${businessId}/favorite`,
+  follow: (businessId: string | number) =>
+    `/api/businesses/${businessId}/follow`,
   generateSubscription: `/api/subscription/generate`,
   stripeConnectCongratsSeen: `/api/business/stripe-connect-congrats/seen`,
   cancellationPolicy: `/api/business/cancellation-policy`,
@@ -760,4 +762,66 @@ export const reelsEndpoints = {
   view: (id: number | string) => `/api/reels/${id}/view`,
   events: (id: number | string) => `/api/reels/${id}/events`,
   like: (id: number | string) => `/api/reels/${id}/like`,
+  save: (id: number | string) => `/api/reels/${id}/save`,
+  share: (id: number | string) => `/api/reels/${id}/share`,
+  report: (id: number | string) => `/api/reels/${id}/report`,
+  comments: (
+    id: number | string,
+    params?: { per_page?: number; cursor?: string },
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    if (params?.cursor) queryParams.append("cursor", params.cursor);
+    const query = queryParams.toString();
+    return `/api/reels/${id}/comments${query ? `?${query}` : ""}`;
+  },
+  commentDelete: (id: number | string, commentId: number | string) =>
+    `/api/reels/${id}/comments/${commentId}`,
+  commentReport: (id: number | string, commentId: number | string) =>
+    `/api/reels/${id}/comments/${commentId}/report`,
+};
+
+/**
+ * Saved reels — R-12 "My Looks"
+ */
+export const myLooksEndpoints = {
+  list: (params?: {
+    per_page?: number;
+    cursor?: string;
+    latitude?: number;
+    longitude?: number;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    if (params?.cursor) queryParams.append("cursor", params.cursor);
+    if (params?.latitude != null)
+      queryParams.append("latitude", String(params.latitude));
+    if (params?.longitude != null)
+      queryParams.append("longitude", String(params.longitude));
+    const query = queryParams.toString();
+    return `/api/my-looks${query ? `?${query}` : ""}`;
+  },
+};
+
+/**
+ * Follow businesses — R-15
+ */
+export const followingEndpoints = {
+  list: (params?: { page?: number; per_page?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null) queryParams.append("page", String(params.page));
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    const query = queryParams.toString();
+    return `/api/following${query ? `?${query}` : ""}`;
+  },
+};
+
+/**
+ * Flagged content — R-14
+ */
+export const reportsEndpoints = {
+  reasons: `/api/reports/reasons`,
 };
