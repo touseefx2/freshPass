@@ -295,7 +295,7 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       right: moderateWidthScale(10),
       alignItems: "center",
-      gap: moderateHeightScale(14),
+      gap: moderateHeightScale(18),
       zIndex: 5,
     },
     sideShade: {
@@ -303,20 +303,20 @@ const createStyles = (theme: Theme) =>
       top: 0,
       right: 0,
       bottom: 0,
-      width: widthScale(72),
+      width: widthScale(88),
       zIndex: 3,
     },
     sideBtn: { alignItems: "center" },
     sideIconWrap: {
-      width: moderateWidthScale(42),
-      height: moderateWidthScale(42),
-      borderRadius: moderateWidthScale(21),
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
       alignItems: "center",
       justifyContent: "center",
     },
     sideCount: {
-      marginTop: moderateHeightScale(1),
-      fontSize: fontSize.size11,
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.white,
       textShadowColor: theme.black,
@@ -334,36 +334,15 @@ const createStyles = (theme: Theme) =>
     bottomMeta: {
       position: "absolute",
       left: moderateWidthScale(12),
-      right: moderateWidthScale(12),
+      right: moderateWidthScale(64),
       zIndex: 5,
     },
     metaHeaderRow: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: moderateWidthScale(10),
       marginBottom: moderateHeightScale(8),
     },
     metaHeaderLeft: {
       flex: 1,
       minWidth: 0,
-    },
-    metaHeaderActions: {
-      alignItems: "center",
-      gap: moderateHeightScale(12),
-      paddingTop: moderateHeightScale(2),
-    },
-    metaActionBtn: {
-      alignItems: "center",
-      minWidth: moderateWidthScale(36),
-    },
-    metaActionCount: {
-      marginTop: moderateHeightScale(2),
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-      textShadowColor: theme.black,
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 3,
     },
     seekBarWrap: {
       position: "absolute",
@@ -1236,10 +1215,8 @@ function ReelFeedItemBase({
         style={[
           styles.sideActions,
           {
-            bottom:
-              Math.max(bottomInset, moderateHeightScale(6)) +
-              heightScale(22) +
-              moderateHeightScale(220),
+            // Mid-right stack, well above bottom profile/product area
+            top: itemHeight * 0.40,
           },
         ]}
         pointerEvents={socialLocked ? "none" : "auto"}
@@ -1248,7 +1225,7 @@ function ReelFeedItemBase({
           <View style={styles.sideIconWrap}>
             <MaterialIcons
               name={reel.viewer?.liked ? "favorite" : "favorite-border"}
-              size={moderateWidthScale(28)}
+              size={moderateWidthScale(30)}
               color={reel.viewer?.liked ? theme.red : theme.white}
             />
           </View>
@@ -1256,11 +1233,26 @@ function ReelFeedItemBase({
             {formatCount(reel.stats?.likes ?? 0)}
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.sideBtn}
+          onPress={() => onComment(reel)}
+        >
+          <View style={styles.sideIconWrap}>
+            <MaterialIcons
+              name="chat-bubble-outline"
+              size={moderateWidthScale(28)}
+              color={theme.white}
+            />
+          </View>
+          <Text style={styles.sideCount}>
+            {formatCount(reel.stats?.comments ?? 0)}
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.sideBtn} onPress={() => onShare(reel)}>
           <View style={styles.sideIconWrap}>
             <MaterialIcons
               name="share"
-              size={moderateWidthScale(24)}
+              size={moderateWidthScale(26)}
               color={theme.white}
             />
           </View>
@@ -1268,6 +1260,20 @@ function ReelFeedItemBase({
             {formatCount(reel.stats?.shares ?? 0)}
           </Text>
         </TouchableOpacity>
+        {showAsCustomer ? (
+          <TouchableOpacity style={styles.sideBtn} onPress={() => onSave(reel)}>
+            <View style={styles.sideIconWrap}>
+              <MaterialIcons
+                name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
+                size={moderateWidthScale(28)}
+                color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
+              />
+            </View>
+            <Text style={styles.sideCount}>
+              {formatCount(reel.stats?.saves ?? 0)}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View
@@ -1405,37 +1411,6 @@ function ReelFeedItemBase({
               </TextWithEmoji>
             )}
           </View>
-
-          <View style={styles.metaHeaderActions}>
-              {showAsCustomer ? (
-                <TouchableOpacity
-                  style={styles.metaActionBtn}
-                  onPress={() => onSave(reel)}
-                >
-                  <MaterialIcons
-                    name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
-                    size={moderateWidthScale(26)}
-                    color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
-                  />
-                  <Text style={styles.metaActionCount}>
-                    {formatCount(reel.stats?.saves ?? 0)}
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
-              <TouchableOpacity
-                style={styles.metaActionBtn}
-                onPress={() => onComment(reel)}
-              >
-                <MaterialIcons
-                  name="chat-bubble-outline"
-                  size={moderateWidthScale(24)}
-                  color={theme.white}
-                />
-                <Text style={styles.metaActionCount}>
-                  {formatCount(reel.stats?.comments ?? 0)}
-                </Text>
-              </TouchableOpacity>
-            </View>
         </View>
 
         {showAsCustomer && product ? (
