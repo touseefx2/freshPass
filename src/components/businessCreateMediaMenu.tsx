@@ -7,18 +7,17 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import CreateReelPickerSheet from "@/src/components/createReelPickerSheet";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
-  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -36,6 +35,9 @@ import {
 } from "@/src/state/slices/generalSlice";
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
+
+const androidBlurMethod =
+  Platform.OS === "android" ? ("dimezisBlurView" as const) : ("none" as const);
 
 type CreateMenuAction =
   | "newAppointment"
@@ -99,7 +101,10 @@ const createStyles = (theme: Theme) =>
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: theme.lightGreen4,
+      overflow: "hidden",
+    },
+    blurFill: {
+      ...StyleSheet.absoluteFillObject,
     },
     menuWrap: {
       position: "absolute",
@@ -154,18 +159,20 @@ const createStyles = (theme: Theme) =>
 type BusinessCreateMediaMenuProps = {
   visible: boolean;
   onClose: () => void;
+  /** Exact tab bar height from dashboard layout — keeps blur flush with tab top. */
+  tabBarHeight: number;
 };
 
 export default function BusinessCreateMediaMenu({
   visible,
   onClose,
+  tabBarHeight,
 }: BusinessCreateMediaMenuProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
@@ -174,13 +181,14 @@ export default function BusinessCreateMediaMenu({
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [reelPickerVisible, setReelPickerVisible] = useState(false);
 
-  const tabBarClearance =
-    Math.max(insets.bottom, moderateHeightScale(8)) + heightScale(80);
-  /** Keep tab bar (and center X) tappable — backdrop stops above it. */
+  /** Blur ends exactly at tab bar top — no clear gap strip. */
+  const tabBarClearance = tabBarHeight;
   const menuBottom = tabBarClearance + moderateHeightScale(10);
-  /** Floating Create Reel card sits just above the center X. */
-  const reelPickerBottom =
-    tabBarClearance + heightScale(44) + moderateHeightScale(10);
+  /**
+   * Sit just above the center X (FAB protrudes ~6–12px above tab bar).
+   * Keep only a small gap — matches design sample.
+   */
+  const reelPickerBottom = tabBarClearance + moderateHeightScale(12);
 
   const maxSeconds = limits?.max_seconds ?? 15;
 
@@ -360,9 +368,7 @@ export default function BusinessCreateMediaMenu({
           return;
         case "addProduct":
           closeAll();
-          router.push(
-            "/(main)/dashboard/(account)/(businessProfileSettings)/services",
-          );
+          showBanner(t("addProduct"), t("comingSoon"), "info", 2500);
           return;
         case "blockTime":
           closeAll();
@@ -375,7 +381,7 @@ export default function BusinessCreateMediaMenu({
           closeAll();
       }
     },
-    [closeAll, openReelPicker, router],
+    [closeAll, openReelPicker, router, showBanner, t],
   );
 
   const renderMenuIcon = (item: MenuItem) => {
@@ -410,7 +416,14 @@ export default function BusinessCreateMediaMenu({
       {showSpeedDial ? (
         <View style={styles.root} pointerEvents="box-none">
           <TouchableWithoutFeedback onPress={closeAll}>
-            <View style={[styles.backdrop, { bottom: tabBarClearance }]} />
+            <View style={[styles.backdrop, { bottom: tabBarClearance }]}>
+              <BlurView
+                intensity={10}
+                tint="light"
+                style={styles.blurFill}
+                experimentalBlurMethod={androidBlurMethod}
+              />
+            </View>
           </TouchableWithoutFeedback>
           <View
             style={[styles.menuWrap, { bottom: menuBottom }]}

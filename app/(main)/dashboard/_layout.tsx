@@ -98,6 +98,9 @@ export default function DashboardLayout() {
   const theme = colors as Theme;
   const insets = useSafeAreaInsets();
   const isButtonMode = Platform.OS === "android" && insets.bottom > 30;
+  const tabBarHeight = isButtonMode
+    ? moderateHeightScale(110)
+    : moderateHeightScale(80);
   const user = useAppSelector((state) => state.user);
   const segments = useSegments() as string[];
   const unreadCount = user.unreadCount;
@@ -344,9 +347,7 @@ export default function DashboardLayout() {
           tabBarStyle: [
             styles.tabBar,
             {
-              height: isButtonMode
-                ? moderateHeightScale(110)
-                : moderateHeightScale(80),
+              height: tabBarHeight,
             },
             shouldHideAiChat && { display: "none" },
           ],
@@ -515,6 +516,7 @@ export default function DashboardLayout() {
         <BusinessCreateMediaMenu
           visible={createMenuOpen}
           onClose={closeCreateMenu}
+          tabBarHeight={tabBarHeight}
         />
       )}
       {/* Floating AI ChatBot Button */}

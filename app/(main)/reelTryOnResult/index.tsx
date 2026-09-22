@@ -345,14 +345,6 @@ export default function ReelTryOnResultScreen() {
     });
   }, [businessId, reelId, router, savedLookId, serviceId, showBanner, t]);
 
-  const handleFindPros = useCallback(() => {
-    if (!reelId) return;
-    router.push({
-      pathname: "/(main)/similarPros",
-      params: { reel_id: String(reelId) },
-    });
-  }, [reelId, router]);
-
   const startTryAnother = useCallback(
     async (uri: string) => {
       if (!reelId) return;
@@ -575,14 +567,6 @@ export default function ReelTryOnResultScreen() {
               color={theme.darkGreen}
             />
             <Text style={styles.secondaryBtnText}>{t("bookOriginalPro")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handleFindPros}>
-            <MaterialIcons
-              name="storefront"
-              size={moderateWidthScale(18)}
-              color={theme.darkGreen}
-            />
-            <Text style={styles.secondaryBtnText}>{t("findProsNearMe")}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

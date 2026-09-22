@@ -38,7 +38,7 @@ export default function MainLayout() {
                 statusBarTranslucent: true,
                 statusBarStyle: "light" as const,
                 statusBarBackgroundColor: "transparent",
-                navigationBarHidden: true,
+                navigationBarColor: colors.black,
               }
             : null),
         }}
@@ -53,7 +53,7 @@ export default function MainLayout() {
                 statusBarTranslucent: true,
                 statusBarStyle: "light" as const,
                 statusBarBackgroundColor: "transparent",
-                navigationBarHidden: true,
+                navigationBarColor: colors.black,
               }
             : null),
         }}

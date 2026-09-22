@@ -97,11 +97,13 @@ import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const INITIAL_SCREEN_HEIGHT = Dimensions.get("screen").height;
+const { width: SCREEN_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get("window");
 
 /** Fallback only — the server sends `share_url` on every feed item. */
 const REEL_SHARE_BASE_URL = "https://getfreshpass.com/r";
+
+/** Space reserved above the seek track for pills / CTAs. */
+const SEEK_BAR_CLEARANCE = heightScale(22);
 
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -1312,9 +1314,7 @@ function ReelFeedItemBase({
         style={[
           styles.bottomMeta,
           {
-            bottom:
-              Math.max(bottomInset, moderateHeightScale(6)) +
-              heightScale(22),
+            bottom: bottomInset + SEEK_BAR_CLEARANCE,
           },
         ]}
         pointerEvents={socialLocked ? "none" : "auto"}
@@ -1569,7 +1569,7 @@ function ReelFeedItemBase({
         style={[
           styles.seekBarWrap,
           {
-            paddingBottom: Math.max(bottomInset, moderateHeightScale(4)),
+            paddingBottom: bottomInset,
           },
         ]}
       >
@@ -1630,52 +1630,28 @@ export default function ReelsFeedScreen() {
   const isGuest = user.isGuest;
   const isBusiness = user.userRole === "business";
   const ownerBusinessId = user.business_id ?? null;
-  const [viewportHeight, setViewportHeight] = useState(INITIAL_SCREEN_HEIGHT);
-  const [edgeOffset, setEdgeOffset] = useState({ top: 0, bottom: 0 });
-  const rootRef = useRef<View>(null);
-  const edgeOffsetRef = useRef({ top: 0, bottom: 0 });
+  const [pageHeight, setPageHeight] = useState(WINDOW_HEIGHT);
 
-  const pageHeight = viewportHeight + edgeOffset.top + edgeOffset.bottom;
-
-  const syncEdgeToEdge = useCallback(() => {
-    requestAnimationFrame(() => {
-      rootRef.current?.measureInWindow((_x, y, _w, h) => {
-        if (!h) return;
-        const screenH = Dimensions.get("screen").height;
-        const topGap = Math.max(0, Math.round(y));
-        const bottomGap = Math.max(0, Math.round(screenH - (y + h)));
-        const nextH = Math.round(h);
-
-        // Accumulate only while still inset; once pulled under the system bars
-        // measure y≈0 and we keep the locked offset (avoids oscillation).
-        if (topGap > 1 || bottomGap > 1) {
-          const next = {
-            top: edgeOffsetRef.current.top + topGap,
-            bottom: edgeOffsetRef.current.bottom + bottomGap,
-          };
-          edgeOffsetRef.current = next;
-          setEdgeOffset(next);
-          if (nextH > 0) {
-            setViewportHeight((prev) => (prev === nextH ? prev : nextH));
-          }
-          return;
-        }
-
-        // Already edge-to-edge (no parent inset) — use measured height as page size.
-        if (
-          edgeOffsetRef.current.top === 0 &&
-          edgeOffsetRef.current.bottom === 0 &&
-          nextH > 0
-        ) {
-          setViewportHeight((prev) => (prev === nextH ? prev : nextH));
-        }
-      });
-    });
+  /**
+   * Page height must equal the visible root layout — never Dimensions.screen
+   * plus negative margins. That edge-offset hack oversized Android pages and
+   * clipped tags + seek bar below the fold.
+   */
+  const onRootLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height);
+    if (h > 0) {
+      setPageHeight((prev) => (prev === h ? prev : h));
+    }
   }, []);
 
-  const onRootLayout = useCallback(() => {
-    syncEdgeToEdge();
-  }, [syncEdgeToEdge]);
+  /**
+   * Android reports insets.bottom=0 with navigationBarHidden / edge-to-edge,
+   * but the gesture/nav region still covers the bottom. Keep overlays clear.
+   */
+  const feedBottomInset = Math.max(
+    insets.bottom,
+    Platform.OS === "android" ? moderateHeightScale(24) : moderateHeightScale(4),
+  );
 
   /** Pause audio when leaving this screen or backgrounding the app. */
   const [isFeedFocused, setIsFeedFocused] = useState(true);
@@ -1686,9 +1662,6 @@ export default function ReelsFeedScreen() {
   useFocusEffect(
     useCallback(() => {
       setIsFeedFocused(true);
-      // Reset so a fresh measure runs each time this screen focuses.
-      edgeOffsetRef.current = { top: 0, bottom: 0 };
-      setEdgeOffset({ top: 0, bottom: 0 });
 
       navigation.setOptions({
         contentStyle: { flex: 1, backgroundColor: theme.black },
@@ -1711,15 +1684,11 @@ export default function ReelsFeedScreen() {
         StatusBar.setBarStyle("light-content");
       }
       void SystemUI.setBackgroundColorAsync(theme.black);
-      const t1 = setTimeout(syncEdgeToEdge, 16);
-      const t2 = setTimeout(syncEdgeToEdge, 100);
       return () => {
         setIsFeedFocused(false);
-        clearTimeout(t1);
-        clearTimeout(t2);
         void SystemUI.setBackgroundColorAsync(theme.background);
       };
-    }, [navigation, syncEdgeToEdge, theme.background, theme.black]),
+    }, [navigation, theme.background, theme.black]),
   );
 
   useEffect(() => {
@@ -2559,15 +2528,6 @@ export default function ReelsFeedScreen() {
     bookFromLook(reel, wantLookDataRef.current);
   }, [bookFromLook]);
 
-  const handleWantLookFindPro = useCallback(() => {
-    const reel = wantLookReelRef.current;
-    if (!reel) return;
-    router.push({
-      pathname: "/(main)/similarPros",
-      params: { reel_id: String(reel.id) },
-    });
-  }, [router]);
-
   const runReelTryOn = useCallback(
     async (reel: FeedReel, imageUri: string, look: ReelLookResponse | null) => {
       setTryOnPipeline({
@@ -2700,18 +2660,7 @@ export default function ReelsFeedScreen() {
 
   if (loading && reels.length === 0) {
     return (
-      <View
-        ref={rootRef}
-        style={[
-          styles.centerLoader,
-          {
-            marginTop: -edgeOffset.top,
-            marginBottom: -edgeOffset.bottom,
-            height: pageHeight,
-          },
-        ]}
-        onLayout={onRootLayout}
-      >
+      <View style={styles.centerLoader} onLayout={onRootLayout}>
         <StatusBar
           translucent={true}
           backgroundColor="transparent"
@@ -2755,18 +2704,7 @@ export default function ReelsFeedScreen() {
       feedTab === "following" && (requiresLogin || isGuest);
 
     return (
-      <View
-        ref={rootRef}
-        style={[
-          styles.emptyWrap,
-          {
-            marginTop: -edgeOffset.top,
-            marginBottom: -edgeOffset.bottom,
-            height: pageHeight,
-          },
-        ]}
-        onLayout={onRootLayout}
-      >
+      <View style={styles.emptyWrap} onLayout={onRootLayout}>
         <StatusBar
           translucent={true}
           backgroundColor="transparent"
@@ -2803,18 +2741,7 @@ export default function ReelsFeedScreen() {
   }
 
   return (
-    <View
-      ref={rootRef}
-      style={[
-        styles.root,
-        {
-          marginTop: -edgeOffset.top,
-          marginBottom: -edgeOffset.bottom,
-          height: pageHeight,
-        },
-      ]}
-      onLayout={onRootLayout}
-    >
+    <View style={styles.root} onLayout={onRootLayout}>
       <StatusBar
         translucent={true}
         backgroundColor="transparent"
@@ -2850,7 +2777,10 @@ export default function ReelsFeedScreen() {
               <ReelFeedItem
                 reel={item}
                 isActive={
-                  item.id === activeId && isFeedFocused && isAppActive
+                  item.id === activeId &&
+                  isFeedFocused &&
+                  isAppActive &&
+                  (isPreviewMode || hasSeenReelsSwipeGuide)
                 }
                 isOwnReel={
                   ownerBusinessId != null &&
@@ -2864,7 +2794,7 @@ export default function ReelsFeedScreen() {
                 theme={theme}
                 itemHeight={pageHeight}
                 topInset={insets.top}
-                bottomInset={insets.bottom}
+                bottomInset={feedBottomInset}
                 onBack={goBack}
                 onLike={handleLike}
                 onSave={handleSave}
@@ -2923,7 +2853,6 @@ export default function ReelsFeedScreen() {
         onTryOn={handleWantLookTryOn}
         onSave={handleWantLookSave}
         onBook={handleWantLookBook}
-        onFindPro={handleWantLookFindPro}
       />
 
       <ImagePickerModal

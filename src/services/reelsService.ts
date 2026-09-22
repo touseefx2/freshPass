@@ -376,34 +376,6 @@ export async function getReelTryOnStatus(
   return data as ReelTryOnStatusResponse;
 }
 
-export async function fetchSimilarPros(
-  id: number | string,
-  params?: {
-    latitude?: number;
-    longitude?: number;
-    radius_km?: number;
-    availability_date?: string;
-    per_page?: number;
-  },
-): Promise<{ businesses: any[]; meta?: PageMeta }> {
-  const response = await ApiService.get<any>(
-    reelsEndpoints.similarPros(id, {
-      per_page: params?.per_page ?? 10,
-      ...params,
-    }),
-  );
-  const root = response?.data;
-  const businesses: any[] = Array.isArray(root)
-    ? root
-    : Array.isArray(root?.data)
-      ? root.data
-      : [];
-  const meta: PageMeta | undefined = Array.isArray(root)
-    ? response?.meta
-    : root?.meta;
-  return { businesses, meta };
-}
-
 export async function saveAiLook(params: {
   jobId: string;
   view?: string;

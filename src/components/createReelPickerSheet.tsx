@@ -1,11 +1,13 @@
 import React, { useMemo } from "react";
 import {
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -17,6 +19,9 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+
+const androidBlurMethod =
+  Platform.OS === "android" ? ("dimezisBlurView" as const) : ("none" as const);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -31,22 +36,27 @@ const createStyles = (theme: Theme) =>
       top: 0,
       left: 0,
       right: 0,
-      backgroundColor: theme.lightGreen4,
+      overflow: "hidden",
     },
-    /** Floating card sits above the center X — not a full-bleed bottom sheet. */
+    blurFill: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    /** Floating card — sits just above the center X. */
     sheet: {
       width: widthScale(340),
       maxWidth: "92%",
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(24),
-      paddingHorizontal: moderateWidthScale(18),
-      paddingTop: moderateHeightScale(12),
-      paddingBottom: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(10),
+      paddingBottom: moderateHeightScale(14),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: moderateHeightScale(8) },
-      shadowOpacity: 0.22,
-      shadowRadius: moderateWidthScale(16),
-      elevation: 14,
+      shadowOffset: { width: 0, height: moderateHeightScale(10) },
+      shadowOpacity: 0.35,
+      shadowRadius: moderateWidthScale(20),
+      elevation: 20,
     },
     handle: {
       alignSelf: "center",
@@ -54,7 +64,7 @@ const createStyles = (theme: Theme) =>
       height: heightScale(4),
       borderRadius: moderateWidthScale(2),
       backgroundColor: theme.borderNormal,
-      marginBottom: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(12),
     },
     title: {
       fontSize: fontSize.size20,
@@ -68,21 +78,20 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
-      marginBottom: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(14),
     },
     optionsRow: {
       flexDirection: "row",
       gap: moderateWidthScale(10),
-      marginBottom: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(12),
     },
     optionCard: {
       flex: 1,
       backgroundColor: theme.lightGreen07,
       borderRadius: moderateWidthScale(16),
       paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(16),
+      paddingVertical: moderateHeightScale(14),
       alignItems: "center",
-      minHeight: heightScale(140),
     },
     optionIconCircle: {
       width: widthScale(44),
@@ -108,7 +117,7 @@ const createStyles = (theme: Theme) =>
       lineHeight: fontSize.size14,
     },
     cancelButton: {
-      backgroundColor: theme.lightGreen2,
+      backgroundColor: theme.lightGreen015,
       borderRadius: moderateWidthScale(999),
       paddingVertical: moderateHeightScale(13),
       alignItems: "center",
@@ -126,7 +135,7 @@ export type CreateReelPickerSheetProps = {
   onClose: () => void;
   onRecordPress: () => void;
   onUploadPress: () => void;
-  /** Distance from screen bottom so the card sits above the center X. */
+  /** Distance from screen bottom so the card sits just above the center X. */
   bottomOffset: number;
   /** Keep tab bar (and X) clear of the dimmed backdrop. */
   tabBarClearance: number;
@@ -134,7 +143,7 @@ export type CreateReelPickerSheetProps = {
 
 /**
  * Reusable Create Reel source picker (Record / Upload).
- * Floating card above the center tab FAB — tab bar / X stay visible.
+ * Floating card just above the center tab FAB — tab bar / X stay visible.
  */
 export default function CreateReelPickerSheet({
   visible,
@@ -154,7 +163,14 @@ export default function CreateReelPickerSheet({
   return (
     <View style={styles.root} pointerEvents="box-none">
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={[styles.backdrop, { bottom: tabBarClearance }]} />
+        <View style={[styles.backdrop, { bottom: tabBarClearance }]}>
+          <BlurView
+            intensity={10}
+            tint="light"
+            style={styles.blurFill}
+            experimentalBlurMethod={androidBlurMethod}
+          />
+        </View>
       </TouchableWithoutFeedback>
       <View style={[styles.sheet, { marginBottom: bottomOffset }]}>
         <View style={styles.handle} />

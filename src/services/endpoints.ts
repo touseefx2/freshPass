@@ -790,30 +790,6 @@ export const reelsEndpoints = {
   look: (id: number | string) => `/api/reels/${id}/look`,
   /** Reel-tied AI try-on (multipart source_image) */
   tryOn: (id: number | string) => `/api/reels/${id}/try-on`,
-  similarPros: (
-    id: number | string,
-    params?: {
-      latitude?: number;
-      longitude?: number;
-      radius_km?: number;
-      availability_date?: string;
-      per_page?: number;
-    },
-  ) => {
-    const queryParams = new URLSearchParams();
-    if (params?.latitude != null)
-      queryParams.append("latitude", String(params.latitude));
-    if (params?.longitude != null)
-      queryParams.append("longitude", String(params.longitude));
-    if (params?.radius_km != null)
-      queryParams.append("radius_km", String(params.radius_km));
-    if (params?.availability_date)
-      queryParams.append("availability_date", params.availability_date);
-    if (params?.per_page != null)
-      queryParams.append("per_page", String(params.per_page));
-    const query = queryParams.toString();
-    return `/api/reels/${id}/similar-pros${query ? `?${query}` : ""}`;
-  },
 };
 
 /** Poll reel try-on job status */

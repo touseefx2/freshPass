@@ -18,7 +18,7 @@ import {
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import type { ReelLookResponse } from "@/src/types/reels";
 
-type ActionKey = "tryOn" | "save" | "book" | "findPro";
+type ActionKey = "tryOn" | "save" | "book";
 
 interface ReelWantLookSheetProps {
   visible: boolean;
@@ -30,7 +30,6 @@ interface ReelWantLookSheetProps {
   onTryOn: () => void;
   onSave: () => void;
   onBook: () => void;
-  onFindPro: () => void;
 }
 
 const createStyles = (theme: Theme) =>
@@ -107,7 +106,6 @@ export default function ReelWantLookSheet({
   onTryOn,
   onSave,
   onBook,
-  onFindPro,
 }: ReelWantLookSheetProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -140,11 +138,10 @@ export default function ReelWantLookSheet({
       setTimeout(() => {
         if (key === "tryOn") onTryOn();
         else if (key === "save") onSave();
-        else if (key === "book") onBook();
-        else onFindPro();
+        else onBook();
       }, 280);
     },
-    [onBook, onClose, onFindPro, onSave, onTryOn],
+    [onBook, onClose, onSave, onTryOn],
   );
 
   const tagLabel = lookTag || look?.look_tag;
@@ -228,7 +225,7 @@ export default function ReelWantLookSheet({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.actionRow}
+            style={[styles.actionRow, { borderBottomWidth: 0 }]}
             onPress={() => handlePress("book")}
             activeOpacity={0.7}
           >
@@ -245,31 +242,6 @@ export default function ReelWantLookSheet({
                 {look.book?.service_name
                   ? `${look.book.service_name}${look.book.business_title ? ` · ${look.book.business_title}` : ""}`
                   : bookTitle}
-              </Text>
-            </View>
-            <MaterialIcons
-              name="chevron-right"
-              size={moderateWidthScale(22)}
-              color={theme.lightGreen}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.actionRow, { borderBottomWidth: 0 }]}
-            onPress={() => handlePress("findPro")}
-            activeOpacity={0.7}
-          >
-            <View style={styles.iconWrap}>
-              <MaterialIcons
-                name="storefront"
-                size={moderateWidthScale(22)}
-                color={theme.darkGreen}
-              />
-            </View>
-            <View style={styles.actionTextCol}>
-              <Text style={styles.actionTitle}>{t("findAnotherPro")}</Text>
-              <Text style={styles.actionSubtitle}>
-                {t("findAnotherProSubtitle")}
               </Text>
             </View>
             <MaterialIcons

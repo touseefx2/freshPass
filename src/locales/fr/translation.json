@@ -1353,8 +1353,6 @@
   "saveLookForLater": "Keep this reel in My Looks",
   "tapToUnsaveLook": "Tap to remove from My Looks",
   "bookThisPro": "Book This Pro",
-  "findAnotherPro": "Find Another Pro",
-  "findAnotherProSubtitle": "See nearby pros with a similar look",
   "signInToTryOnLook": "Sign in to try this look on yourself",
   "needCreditsToTryOn": "Needs {{count}} credit(s) — tap to buy",
   "tryOnCostsCredits": "Uses {{count}} credit(s)",
@@ -1365,11 +1363,7 @@
   "lookSavedToMyLooks": "Saved to My Looks",
   "tryAnother": "Try Another",
   "bookOriginalPro": "Book the Original Pro",
-  "findProsNearMe": "Find Pros Near Me",
   "businessNotAvailable": "This business isn't available right now.",
-  "failedToLoadSimilarPros": "Couldn't load similar pros.",
-  "noSimilarPros": "No similar pros nearby",
-  "noSimilarProsSubtitle": "Nothing within {{radius}} km. Try again later or widen your search.",
   "aiLook": "AI",
   "inspirationLook": "Inspiration",
   "aiTryOnLook": "AI try-on",
@@ -1480,7 +1474,9 @@
   "shopNow": "Acheter",
   "reelsGuideTitle": "How to browse Reels",
   "reelsGuideSwipeVertical": "Swipe up or down to see more reels in this category",
-  "reelsGuideSwipeHorizontal": "Swipe left or right to change category",
+  "reelsGuideSwipeHorizontal": "Swipe left or right to switch category",
   "reelsGuideGotIt": "Got it",
-  "reelsCategoryPrefix": "Category"
+  "reelsCategoryPrefix": "Category",
+  "reelsGuideSwipeVerticalShort": "Swipe up / down",
+  "reelsGuideSwipeHorizontalShort": "Swipe left / right"
 }
