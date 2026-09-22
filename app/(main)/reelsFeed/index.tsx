@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
+  AppState,
   Dimensions,
   FlatList,
   Image,
@@ -24,6 +25,7 @@ import {
   TouchableOpacity,
   View,
   ViewToken,
+  type AppStateStatus,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -334,11 +336,12 @@ const createStyles = (theme: Theme) =>
     bottomMeta: {
       position: "absolute",
       left: moderateWidthScale(12),
-      right: moderateWidthScale(64),
+      right: moderateWidthScale(12),
       zIndex: 5,
     },
     metaHeaderRow: {
       marginBottom: moderateHeightScale(8),
+      paddingRight: moderateWidthScale(52),
     },
     metaHeaderLeft: {
       flex: 1,
@@ -423,14 +426,15 @@ const createStyles = (theme: Theme) =>
     metaRow: {
       flexDirection: "row",
       alignItems: "center",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(6),
+      flexWrap: "nowrap",
+      gap: moderateWidthScale(10),
       marginBottom: moderateHeightScale(6),
     },
     metaItem: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(3),
+      flexShrink: 1,
       maxWidth: "100%",
     },
     metaText: {
@@ -451,11 +455,6 @@ const createStyles = (theme: Theme) =>
       textShadowColor: `${theme.black}CC`,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 4,
-    },
-    metaDot: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white70,
     },
     caption: {
       fontSize: fontSize.size13,
@@ -521,13 +520,14 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     ctaRow: {
+      width: "100%",
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
       marginBottom: moderateHeightScale(10),
     },
     ctaPrimary: {
-      flex: 2,
+      flex: 1.7,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
@@ -559,13 +559,17 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
     },
     pillsRow: {
+      width: "100%",
       flexDirection: "row",
-      flexWrap: "wrap",
+      flexWrap: "nowrap",
+      alignItems: "center",
       gap: moderateWidthScale(8),
     },
     pill: {
       flexDirection: "row",
       alignItems: "center",
+      flexShrink: 1,
+      minWidth: 0,
       gap: moderateWidthScale(5),
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(7),
@@ -581,11 +585,13 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.green,
     },
     pillText: {
+      flexShrink: 1,
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
     pillCategoryText: {
+      flexShrink: 1,
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white,
@@ -1389,16 +1395,21 @@ function ReelFeedItemBase({
                       size={moderateWidthScale(13)}
                       color={theme.white85}
                     />
-                    <Text style={styles.metaText} numberOfLines={1}>
+                    <Text
+                      style={styles.metaText}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {cityState}
                     </Text>
                   </View>
                 )}
-                {!!cityState && !!categoryName ? (
-                  <Text style={styles.metaDot}>|</Text>
-                ) : null}
                 {!!categoryName && (
-                  <Text style={styles.metaCategoryText} numberOfLines={1}>
+                  <Text
+                    style={styles.metaCategoryText}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {categoryName}
                   </Text>
                 )}
@@ -1484,7 +1495,13 @@ function ReelFeedItemBase({
           {reel.available_now ? (
             <View style={styles.pill}>
               <View style={styles.pillLiveDot} />
-              <Text style={styles.pillText}>{t("availableNow")}</Text>
+              <Text
+                style={styles.pillText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {t("availableNow")}
+              </Text>
             </View>
           ) : null}
           {!!categoryName && (
@@ -1494,7 +1511,13 @@ function ReelFeedItemBase({
                 size={moderateWidthScale(12)}
                 color={theme.white}
               />
-              <Text style={styles.pillCategoryText}>{categoryName}</Text>
+              <Text
+                style={styles.pillCategoryText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {categoryName}
+              </Text>
             </View>
           )}
           {!!cityState && (
@@ -1504,7 +1527,11 @@ function ReelFeedItemBase({
                 size={moderateWidthScale(12)}
                 color={theme.white}
               />
-              <Text style={styles.pillText} numberOfLines={1}>
+              <Text
+                style={styles.pillText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
                 {cityState}
               </Text>
             </View>
@@ -1623,8 +1650,15 @@ export default function ReelsFeedScreen() {
     syncEdgeToEdge();
   }, [syncEdgeToEdge]);
 
+  /** Pause audio when leaving this screen or backgrounding the app. */
+  const [isFeedFocused, setIsFeedFocused] = useState(true);
+  const [isAppActive, setIsAppActive] = useState(
+    AppState.currentState === "active",
+  );
+
   useFocusEffect(
     useCallback(() => {
+      setIsFeedFocused(true);
       // Reset so a fresh measure runs each time this screen focuses.
       edgeOffsetRef.current = { top: 0, bottom: 0 };
       setEdgeOffset({ top: 0, bottom: 0 });
@@ -1653,12 +1687,21 @@ export default function ReelsFeedScreen() {
       const t1 = setTimeout(syncEdgeToEdge, 16);
       const t2 = setTimeout(syncEdgeToEdge, 100);
       return () => {
+        setIsFeedFocused(false);
         clearTimeout(t1);
         clearTimeout(t2);
         void SystemUI.setBackgroundColorAsync(theme.background);
       };
     }, [navigation, syncEdgeToEdge, theme.background, theme.black]),
   );
+
+  useEffect(() => {
+    const onAppStateChange = (next: AppStateStatus) => {
+      setIsAppActive(next === "active");
+    };
+    const sub = AppState.addEventListener("change", onAppStateChange);
+    return () => sub.remove();
+  }, []);
 
   const params = useLocalSearchParams<{
     category_id?: string;
@@ -2525,7 +2568,9 @@ export default function ReelsFeedScreen() {
             renderItem={({ item }) => (
               <ReelFeedItem
                 reel={item}
-                isActive={item.id === activeId}
+                isActive={
+                  item.id === activeId && isFeedFocused && isAppActive
+                }
                 isOwnReel={
                   ownerBusinessId != null &&
                   item.business?.id != null &&

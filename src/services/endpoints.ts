@@ -826,6 +826,28 @@ export const followingEndpoints = {
 };
 
 /**
+ * Business followers (owner reads who follows their business)
+ */
+export const businessFollowersEndpoints = {
+  list: (params?: {
+    page?: number;
+    per_page?: number;
+    search?: string;
+    business_id?: number | string;
+  }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null) queryParams.append("page", String(params.page));
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    if (params?.search) queryParams.append("search", params.search);
+    if (params?.business_id != null)
+      queryParams.append("business_id", String(params.business_id));
+    const query = queryParams.toString();
+    return `/api/business/followers${query ? `?${query}` : ""}`;
+  },
+};
+
+/**
  * Flagged content — R-14
  */
 export const reportsEndpoints = {

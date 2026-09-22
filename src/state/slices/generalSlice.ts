@@ -509,6 +509,7 @@ const generalSlice = createSlice({
       state.searchState = initialState.searchState;
       state.guestModeModalVisible = initialState.guestModeModalVisible;
       // state.isFirstShowTryOn = initialState.isFirstShowTryOn;
+        state.hasSeenReelsSwipeGuide = false;
       state.currentLocation = initialState.currentLocation;
       state.recentLocations = initialState.recentLocations;
       state.recentSearches = initialState.recentSearches;

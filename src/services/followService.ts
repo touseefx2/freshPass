@@ -1,11 +1,17 @@
 import { ApiService } from "@/src/services/api";
 import {
   businessEndpoints,
+  businessFollowersEndpoints,
   followingEndpoints,
 } from "@/src/services/endpoints";
+import type {
+  BusinessFollower,
+  BusinessFollowersPage,
+} from "@/src/types/businessFollowers";
 import type { FollowResponse, PageMeta } from "@/src/types/reels";
 
 export const FOLLOWING_PER_PAGE = 15;
+export const BUSINESS_FOLLOWERS_PER_PAGE = 15;
 
 type FollowResult = { following: boolean; followers: number | null };
 
@@ -45,6 +51,34 @@ export async function fetchFollowing(params?: {
   }>(followingEndpoints.list({ page, per_page: perPage }));
   return {
     businesses: response?.data?.data ?? [],
+    meta: response?.data?.meta ?? {
+      per_page: perPage,
+      current_page: page,
+      has_more: false,
+    },
+  };
+}
+
+export async function fetchBusinessFollowers(params?: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+}): Promise<{ followers: BusinessFollower[]; meta: PageMeta }> {
+  const perPage = params?.per_page ?? BUSINESS_FOLLOWERS_PER_PAGE;
+  const page = params?.page ?? 1;
+  const response = await ApiService.get<{
+    success: boolean;
+    data: BusinessFollowersPage;
+  }>(
+    businessFollowersEndpoints.list({
+      page,
+      per_page: perPage,
+      search: params?.search,
+    }),
+  );
+
+  return {
+    followers: response?.data?.data ?? [],
     meta: response?.data?.meta ?? {
       per_page: perPage,
       current_page: page,

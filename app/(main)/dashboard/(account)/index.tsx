@@ -26,6 +26,7 @@ import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
+import { canUploadOwnerWork } from "@/src/state/slices/userSlice";
 
 const CARD_WIDTH_PERCENT = "48%";
 
