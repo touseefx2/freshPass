@@ -63,13 +63,10 @@ export type MediaDeleteResponse = {
 
 export type MediaUploadSourceType = "camera" | "device";
 
-/** GET /api/media/limits — follower-based reel length + AI caps */
+/** GET /api/media/limits — reel length + AI caps */
 export type MediaLimits = {
   max_seconds: number;
   followers_count: number;
-  extended_max_seconds: number;
-  extended_at_followers: number;
-  has_extended: boolean;
   ai_seconds_per_image: number;
   ai_max_seconds_per_clip: number;
   ai_transition_seconds: number;

@@ -50,15 +50,9 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { AiToolsService } from "@/src/services/aiToolsService";
 import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
-import { getMediaLimits } from "@/src/services/mediaLibraryService";
 import { businessEndpoints, userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
-import type { MediaLimits } from "@/src/types/media";
-import {
-  estimateReelSeconds,
-  formatReelLimitMessage,
-  itemsToRemoveHint,
-} from "@/src/utils/reelLimits";
+import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
 
 interface MediaFile {
   id: string;
@@ -102,14 +96,7 @@ export default function Tools() {
       if (user.isGuest || user.userRole === "customer") {
         void fetchCustomerAiServices();
       }
-      if (toolType === "Generate Reel") {
-        void getMediaLimits()
-          .then(setMediaLimits)
-          .catch((error) => {
-            Logger.error("Failed to load media limits for Generate Reel:", error);
-          });
-      }
-    }, [user.isGuest, user.userRole, toolType]),
+    }, [user.isGuest, user.userRole]),
   );
 
   const fetchQuota = async () => {
@@ -156,35 +143,8 @@ export default function Tools() {
   const [backgroundMusic, setBackgroundMusic] = useState<AudioFile | null>(
     null,
   );
-  const [mediaLimits, setMediaLimits] = useState<MediaLimits | null>(null);
 
-  const reelAiMaxItems = mediaLimits?.ai_max_images ?? 6;
-  const reelMaxSeconds = mediaLimits?.max_seconds ?? 15;
-  const reelEstimateSeconds = useMemo(() => {
-    if (!mediaLimits || reelMedia.length === 0) return 0;
-    return estimateReelSeconds(
-      reelMedia.map((m) => ({
-        type: m.type,
-        durationMs: m.durationMs,
-      })),
-      mediaLimits,
-    );
-  }, [mediaLimits, reelMedia]);
-  const reelOverLimit =
-    Boolean(mediaLimits) &&
-    reelMedia.length > 0 &&
-    reelEstimateSeconds > reelMaxSeconds;
-  const reelRemoveHint = reelOverLimit
-    ? itemsToRemoveHint(
-        reelEstimateSeconds,
-        reelMaxSeconds,
-        mediaLimits?.ai_seconds_per_image ?? 3,
-      )
-    : 0;
-  const reelLimitBanner = useMemo(
-    () => (mediaLimits ? formatReelLimitMessage(mediaLimits, t) : null),
-    [mediaLimits, t],
-  );
+  const reelAiMaxItems = REEL_LIMIT_FALLBACK.ai_max_images;
 
   // State for Hair Tryon (source image + prompt)
   const [hairTryonSourceImage, setHairTryonSourceImage] = useState<
@@ -730,19 +690,6 @@ export default function Tools() {
         );
         return;
       }
-      if (reelOverLimit) {
-        showBanner(
-          t("validationError"),
-          t("reelEstimateOverLimit", {
-            estimate: reelEstimateSeconds,
-            max_seconds: reelMaxSeconds,
-            remove: Math.max(1, reelRemoveHint),
-          }),
-          "warning",
-          3500,
-        );
-        return;
-      }
     }
 
     // Check if business_id is available (only for social media tools)
@@ -966,9 +913,6 @@ export default function Tools() {
   const renderReelContent = () => (
     <>
       <View style={styles.fieldContainer}>
-        {reelLimitBanner ? (
-          <Text style={styles.hintText}>{reelLimitBanner}</Text>
-        ) : null}
         <Text style={styles.label}>
           {t("mediaFiles3ToMax", { max: reelAiMaxItems })}{" "}
           <Text style={styles.required}>*</Text>
@@ -1044,17 +988,6 @@ export default function Tools() {
             {t("reelMediaOrderHint")}
           </Text>
         )}
-        {reelMedia.length > 0 && mediaLimits ? (
-          <Text style={styles.hintText}>
-            {reelOverLimit
-              ? t("reelEstimateOverLimit", {
-                  estimate: reelEstimateSeconds,
-                  max_seconds: reelMaxSeconds,
-                  remove: Math.max(1, reelRemoveHint),
-                })
-              : t("reelEstimateOk", { estimate: reelEstimateSeconds })}
-          </Text>
-        ) : null}
       </View>
 
       <View style={styles.fieldContainer}>
@@ -1356,8 +1289,7 @@ export default function Tools() {
                 (toolType === "Hair Tryon" ? !hairTryonSelectedType : false) ||
                 (toolType === "Generate Reel" &&
                   (reelMedia.length < 3 ||
-                    reelMedia.length > reelAiMaxItems ||
-                    reelOverLimit))
+                    reelMedia.length > reelAiMaxItems))
               }
             />
           </>

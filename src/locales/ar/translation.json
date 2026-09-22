@@ -827,7 +827,6 @@
   "reelMax15Files": "يمكنك اختيار 15 ملف وسائط كحد أقصى.",
   "reelMaxFilesDynamic": "يمكنك اختيار {{max}} ملف وسائط كحد أقصى.",
   "reelLimitMaxSeconds": "الريلز محدودة بـ {{max_seconds}} ثانية.",
-  "reelLimitExtendedGoal": "اوصل إلى {{extended_at_followers}} متابع للنشر حتى {{extended_max_seconds}}.",
   "reelTrimMaxHint": "الحد الأقصى {{max_seconds}} ثانية لحسابك — قص المقاطع الأطول قبل المتابعة.",
   "reelTrimRequiredTitle": "القص مطلوب",
   "reelTrimRequiredMessage": "هذا المقطع {{clip_seconds}} ثانية. الريلز محدودة بـ {{max_seconds}} ثانية — قصّه أولاً.",

@@ -7,18 +7,18 @@ export type ReelEstimateItem = {
   durationMs?: number;
 };
 
+/** Defaults when GET /api/media/limits has not resolved or failed. */
+export const REEL_LIMIT_FALLBACK = {
+  max_seconds: 30,
+  ai_max_images: 12,
+} as const;
+
 /** User-facing length rule from GET /api/media/limits. */
 export function formatReelLimitMessage(
   limits: MediaLimits,
   t: TranslateFn,
 ): string {
-  const base = t("reelLimitMaxSeconds", { max_seconds: limits.max_seconds });
-  if (limits.has_extended) return base;
-  const goal = t("reelLimitExtendedGoal", {
-    extended_at_followers: limits.extended_at_followers,
-    extended_max_seconds: limits.extended_max_seconds,
-  });
-  return `${base} ${goal}`;
+  return t("reelLimitMaxSeconds", { max_seconds: limits.max_seconds });
 }
 
 /**

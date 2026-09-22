@@ -34,6 +34,7 @@ import {
   setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
+import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
 const androidBlurMethod =
@@ -190,7 +191,7 @@ export default function BusinessCreateMediaMenu({
    */
   const reelPickerBottom = tabBarClearance + moderateHeightScale(12);
 
-  const maxSeconds = limits?.max_seconds ?? 15;
+  const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
   useEffect(() => {
     if (!visible) {

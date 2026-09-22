@@ -53,6 +53,7 @@ import {
 } from "@/src/services/mediaLibraryService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
+import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
 
 type AspectPreset = "original" | "portrait" | "square" | "landscape";
 type EditorTool = "trim" | "crop" | "music" | "text" | null;
@@ -700,7 +701,7 @@ export default function EditVideoScreen() {
   const initialMaxSeconds =
     Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
       ? paramMaxSeconds
-      : getCachedMediaLimits()?.max_seconds ?? 15;
+      : getCachedMediaLimits()?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
   const [sourceUri, setSourceUri] = useState("");
   const [loadingInfo, setLoadingInfo] = useState(true);
@@ -927,7 +928,8 @@ export default function EditVideoScreen() {
           Math.round(
             (Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
               ? paramMaxSeconds
-              : getCachedMediaLimits()?.max_seconds ?? 15) * 1000,
+              : getCachedMediaLimits()?.max_seconds ??
+                REEL_LIMIT_FALLBACK.max_seconds) * 1000,
           ),
         );
         setDurationMs(dur);

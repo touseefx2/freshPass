@@ -51,7 +51,10 @@ import {
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel, ReelPerformanceStats } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
-import { formatReelLimitMessage } from "@/src/utils/reelLimits";
+import {
+  formatReelLimitMessage,
+  REEL_LIMIT_FALLBACK,
+} from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
 const FAB_SIZE = 56;
@@ -460,7 +463,7 @@ export default function MediaLibraryMyReelsTab() {
     [limits, t],
   );
 
-  const maxSeconds = limits?.max_seconds ?? 15;
+  const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
   const handleLoadMore = useCallback(() => {
     if (!hasMore || loadingMore || loading) return;

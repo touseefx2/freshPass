@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,7 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useAppSelector, useTheme } from "@/src/hooks/hooks";
+import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -35,6 +35,7 @@ import {
   updateReel,
 } from "@/src/services/reelsService";
 import { uploadVideo, waitForMediaReady } from "@/src/services/mediaLibraryService";
+import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel } from "@/src/types/reels";
 
@@ -284,9 +285,32 @@ export default function PublishReelScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const businessStatus = useAppSelector((s) => s.user.businessStatus);
-  const businessCategory = businessStatus?.business_category ?? null;
+  const completeProfileCategory = useAppSelector(
+    (s) => s.completeProfile.businessCategory,
+  );
+  const selectBsnsCategory = useAppSelector((s) => s.user.selectBsnsCategory);
+
+  /** Prefer live status, then onboarding slice, then persisted discovery pick. */
+  const resolvedBusinessCategory = useMemo(() => {
+    if (businessStatus?.business_category?.id != null) {
+      return businessStatus.business_category;
+    }
+    if (completeProfileCategory?.id != null) {
+      return completeProfileCategory;
+    }
+    const fromSelect = selectBsnsCategory?.[0];
+    if (fromSelect?.id != null) {
+      return fromSelect;
+    }
+    return null;
+  }, [
+    businessStatus?.business_category,
+    completeProfileCategory,
+    selectBsnsCategory,
+  ]);
 
   const params = useLocalSearchParams<{
     mediaAssetId?: string;
@@ -326,10 +350,10 @@ export default function PublishReelScreen() {
   const [productTag, setProductTag] = useState("");
   const [availableNow, setAvailableNow] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(
-    businessCategory?.id ?? null,
+    resolvedBusinessCategory?.id ?? null,
   );
   const [categoryName, setCategoryName] = useState(
-    businessCategory?.name ?? "",
+    resolvedBusinessCategory?.name ?? "",
   );
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -337,6 +361,7 @@ export default function PublishReelScreen() {
   const [existing, setExisting] = useState<OwnerReel | null>(null);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
+  const userPickedCategoryRef = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -358,6 +383,36 @@ export default function PublishReelScreen() {
     })();
   }, []);
 
+  // New reel: ensure business status (and thus category) is available.
+  useEffect(() => {
+    if (isEdit || resolvedBusinessCategory?.id != null) return;
+    void dispatch(fetchUserStatus({ showError: false }));
+  }, [dispatch, isEdit, resolvedBusinessCategory?.id]);
+
+  // New reel (AI post-as-reel + upload): default Category to the business category.
+  useEffect(() => {
+    if (isEdit || userPickedCategoryRef.current) return;
+    if (!resolvedBusinessCategory?.id) return;
+
+    if (categories.length > 0) {
+      const match =
+        categories.find((c) => c.id === resolvedBusinessCategory.id) ||
+        categories.find(
+          (c) =>
+            c.name.trim().toLowerCase() ===
+            (resolvedBusinessCategory.name || "").trim().toLowerCase(),
+        );
+      if (match) {
+        setCategoryId(match.id);
+        setCategoryName(match.name);
+        return;
+      }
+    }
+
+    setCategoryId(resolvedBusinessCategory.id);
+    setCategoryName(resolvedBusinessCategory.name ?? "");
+  }, [categories, isEdit, resolvedBusinessCategory]);
+
   useEffect(() => {
     if (!reelId) return;
     (async () => {
@@ -370,9 +425,10 @@ export default function PublishReelScreen() {
         setPromotionText(reel.promotion_text || "");
         setProductTag(reel.product_tag || "");
         setAvailableNow(!!reel.available_now);
-        setCategoryId(reel.category?.id ?? businessCategory?.id ?? null);
+        userPickedCategoryRef.current = true;
+        setCategoryId(reel.category?.id ?? resolvedBusinessCategory?.id ?? null);
         setCategoryName(
-          reel.category?.name ?? businessCategory?.name ?? "",
+          reel.category?.name ?? resolvedBusinessCategory?.name ?? "",
         );
         setServiceId(reel.service?.id ?? null);
       } catch (error: any) {
@@ -387,6 +443,7 @@ export default function PublishReelScreen() {
         setLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reelId]);
 
   const loadCategories = useCallback(async () => {
@@ -414,6 +471,13 @@ export default function PublishReelScreen() {
     }
   }, [categories, showBanner, t]);
 
+  // Prefetch so the default business category label resolves against the list.
+  useEffect(() => {
+    if (isEdit) return;
+    void loadCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit]);
+
   const handleChangeCategory = useCallback(async () => {
     if (showCategoryPicker) {
       setShowCategoryPicker(false);
@@ -427,6 +491,7 @@ export default function PublishReelScreen() {
   }, [loadCategories, showCategoryPicker]);
 
   const handleSelectCategory = useCallback((cat: CategoryOption) => {
+    userPickedCategoryRef.current = true;
     setCategoryId(cat.id);
     setCategoryName(cat.name);
     setShowCategoryPicker(false);

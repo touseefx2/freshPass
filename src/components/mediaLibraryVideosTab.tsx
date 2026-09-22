@@ -52,7 +52,10 @@ import type {
   MediaUploadSourceType,
   MediaVideo,
 } from "@/src/types/media";
-import { formatReelLimitMessage } from "@/src/utils/reelLimits";
+import {
+  formatReelLimitMessage,
+  REEL_LIMIT_FALLBACK,
+} from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -280,7 +283,7 @@ export default function MediaLibraryVideosTab() {
     fetchPage(page + 1, true);
   }, [fetchPage, hasMore, loadingMore, loading, page]);
 
-  const maxSeconds = limits?.max_seconds ?? 15;
+  const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
   const limitMessage = useMemo(
     () => (limits ? formatReelLimitMessage(limits, t) : null),
     [limits, t],

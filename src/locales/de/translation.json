@@ -827,7 +827,6 @@
   "reelMax15Files": "Maximal 15 Mediendateien auswählbar.",
   "reelMaxFilesDynamic": "Maximal {{max}} Mediendateien auswählbar.",
   "reelLimitMaxSeconds": "Reels sind auf {{max_seconds}} Sekunden begrenzt.",
-  "reelLimitExtendedGoal": "Erreiche {{extended_at_followers}} Follower, um bis zu {{extended_max_seconds}} Sekunden zu posten.",
   "reelTrimMaxHint": "Max. {{max_seconds}}s für dein Konto — längere Clips vorher kürzen.",
   "reelTrimRequiredTitle": "Zuschneiden erforderlich",
   "reelTrimRequiredMessage": "Dieser Clip ist {{clip_seconds}} Sekunden. Reels sind auf {{max_seconds}} Sekunden begrenzt — zuerst kürzen.",

@@ -827,7 +827,6 @@
   "reelMax15Files": "Vous pouvez sélectionner maximum 15 fichiers multimédias.",
   "reelMaxFilesDynamic": "Vous pouvez sélectionner maximum {{max}} fichiers multimédias.",
   "reelLimitMaxSeconds": "Les reels sont limités à {{max_seconds}} secondes.",
-  "reelLimitExtendedGoal": "Atteignez {{extended_at_followers}} abonnés pour publier jusqu'à {{extended_max_seconds}}.",
   "reelTrimMaxHint": "Max {{max_seconds}}s pour votre compte — coupez les clips plus longs avant de continuer.",
   "reelTrimRequiredTitle": "Découpe requise",
   "reelTrimRequiredMessage": "Ce clip dure {{clip_seconds}} secondes. Les reels sont limités à {{max_seconds}} secondes — coupez-le d'abord.",

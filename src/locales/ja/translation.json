@@ -827,7 +827,6 @@
   "reelMax15Files": "最大15メディアファイルまで選択できます。",
   "reelMaxFilesDynamic": "最大{{max}}メディアファイルまで選択できます。",
   "reelLimitMaxSeconds": "リールは{{max_seconds}}秒までに制限されています。",
-  "reelLimitExtendedGoal": "{{extended_at_followers}}フォロワーに達すると最大{{extended_max_seconds}}秒まで投稿できます。",
   "reelTrimMaxHint": "アカウントの上限は{{max_seconds}}秒です。長いクリップは先にトリミングしてください。",
   "reelTrimRequiredTitle": "トリミングが必要です",
   "reelTrimRequiredMessage": "このクリップは{{clip_seconds}}秒です。リールは{{max_seconds}}秒までに制限されています。先にトリミングしてください。",

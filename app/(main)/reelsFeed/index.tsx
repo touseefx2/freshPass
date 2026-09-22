@@ -96,7 +96,7 @@ import {
   savePendingReelTryOn,
 } from "@/src/utils/reelTryOnPoll";
 import { ApiService } from "@/src/services/api";
-import { userEndpoints } from "@/src/services/endpoints";
+import { businessEndpoints, userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 
 const { width: SCREEN_WIDTH, height: WINDOW_HEIGHT } = Dimensions.get("window");
@@ -113,9 +113,17 @@ function formatCount(n: number): string {
   return String(n);
 }
 
+type OwnerBusinessMeta = {
+  id: number;
+  title: string;
+  image_url?: string | null;
+  city?: string | null;
+  state?: string | null;
+};
+
 function mapOwnerReelToFeedReel(
   owner: OwnerReel,
-  business: { id: number; title: string; image_url?: string | null },
+  business: OwnerBusinessMeta,
 ): FeedReel {
   const video: any = owner.video || {};
   return {
@@ -139,6 +147,8 @@ function mapOwnerReelToFeedReel(
       id: business.id,
       title: business.title,
       image_url: business.image_url ?? null,
+      city: business.city ?? null,
+      state: business.state ?? null,
     },
     stats: owner.stats ?? {
       views: 0,
@@ -1624,6 +1634,8 @@ export default function ReelsFeedScreen() {
   const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((s) => s.user);
+  const profileArea = useAppSelector((s) => s.completeProfile.area);
+  const profileState = useAppSelector((s) => s.completeProfile.state);
   const hasSeenReelsSwipeGuide = useAppSelector(
     (s) => s.general.hasSeenReelsSwipeGuide,
   );
@@ -1810,6 +1822,42 @@ export default function ReelsFeedScreen() {
     id: number;
     liked: boolean;
   } | null>(null);
+  /** Cached so preview/owner loads don't refetch location every page. */
+  const ownerLocationCacheRef = useRef<{
+    city: string | null;
+    state: string | null;
+  } | null>(null);
+
+  const ensureOwnerBusinessLocation = useCallback(async () => {
+    if (ownerLocationCacheRef.current) {
+      return ownerLocationCacheRef.current;
+    }
+    const fromProfile = {
+      city: profileArea?.trim() || null,
+      state: profileState?.trim() || null,
+    };
+    if (fromProfile.city || fromProfile.state) {
+      ownerLocationCacheRef.current = fromProfile;
+      return fromProfile;
+    }
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        data?: { city?: string | null; state?: string | null };
+      }>(businessEndpoints.moduleData("business-location"));
+      const loc = {
+        city: response?.data?.city?.trim() || null,
+        state: response?.data?.state?.trim() || null,
+      };
+      ownerLocationCacheRef.current = loc;
+      return loc;
+    } catch (error) {
+      Logger.error("Failed to load business location for reel preview:", error);
+      const empty = { city: null, state: null };
+      ownerLocationCacheRef.current = empty;
+      return empty;
+    }
+  }, [profileArea, profileState]);
 
   const coords = useMemo(() => {
     const lat = user.location?.lat;
@@ -1823,11 +1871,16 @@ export default function ReelsFeedScreen() {
       if (!append) setLoading(true);
       try {
         if (isPreviewMode && firstReelId && !append) {
-          const owner = await getMyReel(firstReelId);
+          const [owner, location] = await Promise.all([
+            getMyReel(firstReelId),
+            ensureOwnerBusinessLocation(),
+          ]);
           const mapped = mapOwnerReelToFeedReel(owner, {
             id: Number(owner.business_id || ownerBusinessId || 0),
             title: user.business_name || "",
             image_url: user.profile_image_url,
+            city: location.city,
+            state: location.state,
           });
           setReels([mapped]);
           setCursor(null);
@@ -1837,10 +1890,13 @@ export default function ReelsFeedScreen() {
           return;
         }
         if (isOwnerMode) {
-          const businessMeta = {
+          const location = await ensureOwnerBusinessLocation();
+          const businessMeta: OwnerBusinessMeta = {
             id: Number(ownerBusinessId || 0),
             title: user.business_name || "",
             image_url: user.profile_image_url,
+            city: location.city,
+            state: location.state,
           };
           const pageToLoad = append
             ? Math.max(2, Number(nextCursor) || 2)
@@ -1855,6 +1911,8 @@ export default function ReelsFeedScreen() {
               id: Number(owner.business_id || businessMeta.id),
               title: businessMeta.title,
               image_url: businessMeta.image_url,
+              city: businessMeta.city,
+              state: businessMeta.state,
             }),
           );
           if (!append && firstReelId) {
@@ -1871,6 +1929,8 @@ export default function ReelsFeedScreen() {
                     id: Number(owner.business_id || businessMeta.id),
                     title: businessMeta.title,
                     image_url: businessMeta.image_url,
+                    city: businessMeta.city,
+                    state: businessMeta.state,
                   });
                   mapped = [
                     picked,
@@ -1966,6 +2026,7 @@ export default function ReelsFeedScreen() {
       activeId,
       categoryId,
       coords,
+      ensureOwnerBusinessLocation,
       feedTab,
       firstReelId,
       isOwnerMode,
