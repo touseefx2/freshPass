@@ -1238,6 +1238,8 @@
   "publish": "Publish",
   "unpublish": "Unpublish",
   "publishReel": "Publish reel",
+  "publishAsReel": "Publish as Reel",
+  "failedToPublishAsReel": "Couldn't publish as reel. Please try again.",
   "editReel": "Edit reel",
   "inReel": "In reel",
   "videoOptions": "Video options",

@@ -693,6 +693,8 @@ export const mediaEndpoints = {
   },
   getById: (id: number | string) => `/api/media/${id}`,
   upload: `/api/media`,
+  /** Copy a finished Generate Reel AI job into the business media library (R-19) */
+  fromAi: `/api/media/from-ai`,
   deleteOne: (id: number | string) => `/api/media/${id}`,
   deleteBulk: `/api/media`,
   limits: `/api/media/limits`,

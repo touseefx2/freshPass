@@ -74,6 +74,21 @@ export async function getVideo(id: number | string): Promise<MediaVideo> {
   return response.data;
 }
 
+/**
+ * Copy a completed Generate Reel AI job into the business video library (R-19).
+ * Returns status "ready" immediately — no polling required.
+ */
+export async function importVideoFromAi(jobId: string): Promise<MediaVideo> {
+  const response = await ApiService.post<MediaItemResponse>(
+    mediaEndpoints.fromAi,
+    { job_id: jobId },
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to save reel to library");
+  }
+  return response.data;
+}
+
 let cachedMediaLimits: MediaLimits | null = null;
 let mediaLimitsInflight: Promise<MediaLimits> | null = null;
 

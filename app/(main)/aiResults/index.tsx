@@ -26,8 +26,10 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
+import Button from "@/src/components/button";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints, chatEndpoints } from "@/src/services/endpoints";
+import { importVideoFromAi } from "@/src/services/mediaLibraryService";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { useAppSelector } from "@/src/hooks/hooks";
@@ -708,6 +710,7 @@ export default function AiResults() {
   const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const [editableCaption, setEditableCaption] = useState("");
   const [editableCompletePost, setEditableCompletePost] = useState("");
+  const [publishingAsReel, setPublishingAsReel] = useState(false);
 
   const [shareSheetVisible, setShareSheetVisible] = useState(false);
   const [shareContext, setShareContext] = useState<
@@ -943,6 +946,27 @@ export default function AiResults() {
     },
     [downloadMedia, normalized?.socialMedia?.jobType],
   );
+
+  /** R-19: save Generate Reel output to library, then open Publish Reel */
+  const handlePublishAsReel = useCallback(async () => {
+    if (!jobId || publishingAsReel) return;
+    setPublishingAsReel(true);
+    try {
+      const video = await importVideoFromAi(jobId);
+      router.push({
+        pathname: "/(main)/publishReel" as any,
+        params: { mediaAssetId: String(video.id) },
+      });
+    } catch (error: any) {
+      const message =
+        error?.data?.errors?.job_id?.[0] ||
+        error?.message ||
+        t("failedToPublishAsReel");
+      showBanner(t("error"), message, "error", 4000);
+    } finally {
+      setPublishingAsReel(false);
+    }
+  }, [jobId, publishingAsReel, router, showBanner, t]);
 
   const handleCopy = async (text: string) => {
     try {
@@ -1426,41 +1450,58 @@ export default function AiResults() {
           </View>
         )}
         {isReel && downloadUri && !isSelectionMode && (
-          <View style={styles.headerContainer}>
-            <TouchableOpacity
-              style={styles.downloadButtonPrimary}
-              onPress={() => handleDownloadPrimary(downloadUri)}
-              disabled={downloadingUrl === downloadUri}
-              activeOpacity={0.7}
-            >
-              {downloadingUrl === downloadUri ? (
-                <ActivityIndicator size="small" color={theme.white} />
-              ) : (
-                <>
-                  <Feather
-                    name="download"
-                    size={moderateWidthScale(16)}
-                    color={theme.white}
+          <View style={styles.reelActionsBlock}>
+            <View style={styles.headerContainer}>
+              <TouchableOpacity
+                style={styles.downloadButtonPrimary}
+                onPress={() => handleDownloadPrimary(downloadUri)}
+                disabled={downloadingUrl === downloadUri}
+                activeOpacity={0.7}
+              >
+                {downloadingUrl === downloadUri ? (
+                  <ActivityIndicator size="small" color={theme.white} />
+                ) : (
+                  <>
+                    <Feather
+                      name="download"
+                      size={moderateWidthScale(16)}
+                      color={theme.white}
+                    />
+                    <Text style={styles.downloadButtonPrimaryText}>
+                      {t("download")} {t("video")}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.reelShareIconButton}
+                onPress={() =>
+                  sm.video?.url && openShareSheetForReelVideo(sm.video.url)
+                }
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="share"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
+            </View>
+            <Button
+              title={t("publishAsReel")}
+              onPress={handlePublishAsReel}
+              loading={publishingAsReel}
+              disabled={publishingAsReel}
+              leftIcon={
+                publishingAsReel ? undefined : (
+                  <MaterialIcons
+                    name="video-library"
+                    size={moderateWidthScale(18)}
+                    color={theme.buttonText}
                   />
-                  <Text style={styles.downloadButtonPrimaryText}>
-                    {t("download")} {t("video")}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.reelShareIconButton}
-              onPress={() =>
-                sm.video?.url && openShareSheetForReelVideo(sm.video.url)
+                )
               }
-              activeOpacity={0.7}
-            >
-              <MaterialIcons
-                name="share"
-                size={moderateWidthScale(20)}
-                color={theme.white}
-              />
-            </TouchableOpacity>
+            />
           </View>
         )}
 
