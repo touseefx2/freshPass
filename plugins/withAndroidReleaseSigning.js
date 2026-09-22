@@ -27,7 +27,7 @@ const RELEASE_SIGNING_BLOCK = `    signingConfigs {
             signingConfig signingConfigs.debug
         }
         release {
-            // Uses Expo upload keystore from credentials/ (gitignored). Falls back to debug if missing.
+            // Local credentials/ if present; otherwise leave default for EAS to inject signing.
             if (signingConfigs.release.storeFile != null) {
                 signingConfig signingConfigs.release
             } else {
@@ -35,11 +35,16 @@ const RELEASE_SIGNING_BLOCK = `    signingConfigs {
             }`;
 
 /**
- * Injects release signing that reads credentials/keystore.properties
- * so it survives `expo prebuild`.
+ * Injects release signing from credentials/ for local builds only.
+ * Skips on EAS cloud so Expo can inject its own keystore.
  */
 function withAndroidReleaseSigning(config) {
   return withAppBuildGradle(config, (config) => {
+    // EAS Build sets this — let Expo manage Android signing on cloud.
+    if (process.env.EAS_BUILD === "true") {
+      return config;
+    }
+
     let contents = config.modResults.contents;
 
     if (contents.includes(SIGNING_MARKER)) {

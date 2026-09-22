@@ -23,8 +23,9 @@ expo-env.d.ts
 *.mobileprovision
 *.keystore
 
-# Android release signing (never commit)
-credentials/
+# Android release signing (never commit secrets; README is tracked)
+credentials/*
+!credentials/README.md
 credentials.json
 **/keystore.properties
 
