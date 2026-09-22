@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Image,
 } from "react-native";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -57,7 +57,7 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(5),
+      marginBottom: moderateHeightScale(8),
       textAlign: "center",
     },
     sloganText: {
@@ -66,6 +66,10 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       marginBottom: moderateHeightScale(24),
       textAlign: "center",
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    nameOnlySpacer: {
+      marginBottom: moderateHeightScale(24),
     },
     editButtonContainer: {
       width: "30%",
@@ -93,6 +97,46 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       paddingHorizontal: moderateWidthScale(20),
     },
+    detailsSection: {
+      width: "100%",
+      marginTop: moderateHeightScale(28),
+      borderTopWidth: 1,
+      borderTopColor: theme.lightGreen015,
+      paddingTop: moderateHeightScale(20),
+    },
+    detailRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+      gap: moderateWidthScale(12),
+    },
+    categoryIconWrap: {
+      width: widthScale(42),
+      height: widthScale(42),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.orangeBrown015,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    detailTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    detailLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    detailValue: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
     skeletonImage: {
       width: widthScale(120),
       height: widthScale(120),
@@ -103,7 +147,7 @@ const createStyles = (theme: Theme) =>
       height: moderateHeightScale(28),
       width: moderateWidthScale(200),
       borderRadius: moderateWidthScale(4),
-      marginBottom: moderateHeightScale(5),
+      marginBottom: moderateHeightScale(8),
       alignSelf: "center",
     },
     skeletonSlogan: {
@@ -127,6 +171,12 @@ const createStyles = (theme: Theme) =>
       alignSelf: "center",
       marginTop: moderateHeightScale(8),
     },
+    skeletonDetail: {
+      height: moderateHeightScale(48),
+      width: "100%",
+      borderRadius: moderateWidthScale(12),
+      marginTop: moderateHeightScale(28),
+    },
   });
 
 interface BusinessProfileData {
@@ -142,9 +192,14 @@ export default function BusinessProfileScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const businessCategoryName = useAppSelector(
+    (state) => state.user.businessStatus?.business_category?.name,
+  );
 
   const [loading, setLoading] = useState(true);
-  const [profileData, setProfileData] = useState<BusinessProfileData | null>(null);
+  const [profileData, setProfileData] = useState<BusinessProfileData | null>(
+    null,
+  );
 
   const fetchBusinessProfile = useCallback(async () => {
     setLoading(true);
@@ -168,7 +223,7 @@ export default function BusinessProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchBusinessProfile();
-    }, [fetchBusinessProfile])
+    }, [fetchBusinessProfile]),
   );
 
   const handleEditPress = () => {
@@ -196,6 +251,10 @@ export default function BusinessProfileScreen() {
     );
   };
 
+  const slogan = profileData?.slogan?.trim() || "";
+  const hasSlogan = !!slogan;
+  const hasCategory = !!businessCategoryName;
+
   const renderSkeleton = () => (
     <SkeletonPlaceholder backgroundColor="#E8DFB8" highlightColor="#DCCF9E">
       <View style={styles.contentContainer}>
@@ -204,6 +263,7 @@ export default function BusinessProfileScreen() {
         <View style={styles.skeletonSlogan} />
         <View style={styles.skeletonButton} />
         <View style={styles.skeletonNote} />
+        <View style={styles.skeletonDetail} />
       </View>
     </SkeletonPlaceholder>
   );
@@ -235,9 +295,12 @@ export default function BusinessProfileScreen() {
             <Text style={styles.businessNameText}>
               {profileData?.title || ""}
             </Text>
-            <Text style={styles.sloganText}>
-              {profileData?.slogan || "Slogan will be here"}
-            </Text>
+
+            {hasSlogan ? (
+              <Text style={styles.sloganText}>{slogan}</Text>
+            ) : (
+              <View style={styles.nameOnlySpacer} />
+            )}
 
             <View style={styles.editButtonContainer}>
               <TouchableOpacity
@@ -258,10 +321,29 @@ export default function BusinessProfileScreen() {
               This photo is seen by others when they view your profile, messages
               and reviews.
             </Text>
+
+            {hasCategory && (
+              <View style={styles.detailsSection}>
+                <View style={styles.detailRow}>
+                  <View style={styles.categoryIconWrap}>
+                    <MaterialIcons
+                      name="storefront"
+                      size={moderateWidthScale(22)}
+                      color={theme.selectCard}
+                    />
+                  </View>
+                  <View style={styles.detailTextCol}>
+                    <Text style={styles.detailLabel}>Category</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {businessCategoryName}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
     </View>
   );
 }
-
