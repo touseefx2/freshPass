@@ -60,8 +60,10 @@ import {
   fetchReelLook,
   getMyReel,
   likeReel,
+  listMyReels,
   publishReel,
   recordReelView,
+  REELS_MINE_PER_PAGE,
   saveReel,
   shareReel,
   startReelTryOn,
@@ -1221,9 +1223,7 @@ function ReelFeedItemBase({
               color={theme.white}
             />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.iconBtn} />
-        )}
+        ) : null}
       </View>
 
       <LinearGradient
@@ -1707,6 +1707,8 @@ export default function ReelsFeedScreen() {
     tab?: string;
   }>();
   const isPreviewMode = params.mode === "preview";
+  /** Business Media Library → own published reels (vertical only, no report / category swipe). */
+  const isOwnerMode = params.mode === "owner" && isBusiness;
   const shouldOpenComments = params.open_comments === "1";
   const initialTab: "for_you" | "following" =
     params.tab === "following" ? "following" : "for_you";
@@ -1834,6 +1836,78 @@ export default function ReelsFeedScreen() {
           setActiveId(mapped.id);
           return;
         }
+        if (isOwnerMode) {
+          const businessMeta = {
+            id: Number(ownerBusinessId || 0),
+            title: user.business_name || "",
+            image_url: user.profile_image_url,
+          };
+          const pageToLoad = append
+            ? Math.max(2, Number(nextCursor) || 2)
+            : 1;
+          const { reels: pageReels, meta } = await listMyReels(
+            pageToLoad,
+            "published",
+            REELS_MINE_PER_PAGE,
+          );
+          let mapped = pageReels.map((owner) =>
+            mapOwnerReelToFeedReel(owner, {
+              id: Number(owner.business_id || businessMeta.id),
+              title: businessMeta.title,
+              image_url: businessMeta.image_url,
+            }),
+          );
+          if (!append && firstReelId) {
+            const targetId = Number(firstReelId);
+            const idx = mapped.findIndex((r) => r.id === targetId);
+            if (idx > 0) {
+              const [picked] = mapped.splice(idx, 1);
+              mapped = [picked, ...mapped];
+            } else if (idx < 0) {
+              try {
+                const owner = await getMyReel(firstReelId);
+                if (owner.status === "published") {
+                  const picked = mapOwnerReelToFeedReel(owner, {
+                    id: Number(owner.business_id || businessMeta.id),
+                    title: businessMeta.title,
+                    image_url: businessMeta.image_url,
+                  });
+                  mapped = [
+                    picked,
+                    ...mapped.filter((r) => r.id !== picked.id),
+                  ];
+                }
+              } catch (error) {
+                Logger.error(
+                  "Failed to load first owner reel for library viewer:",
+                  error,
+                );
+              }
+            }
+          }
+          setReels((prev) => {
+            const merged = append
+              ? [
+                  ...prev,
+                  ...mapped.filter((r) => !prev.some((x) => x.id === r.id)),
+                ]
+              : mapped;
+            return merged;
+          });
+          const currentPage = meta.current_page ?? pageToLoad;
+          setCursor(meta.has_more ? String(currentPage + 1) : null);
+          setHasMore(Boolean(meta.has_more));
+          setPreviewStatus(null);
+          if (!append) {
+            const startId =
+              (firstReelId &&
+                mapped.find((r) => r.id === Number(firstReelId))?.id) ||
+              mapped[0]?.id ||
+              null;
+            setActiveId(startId);
+          }
+          return;
+        }
         const useFirstReel =
           !append && !firstReelUsedRef.current && !!firstReelId;
         const { reels: pageReels, meta } = await fetchReelFeed({
@@ -1889,10 +1963,12 @@ export default function ReelsFeedScreen() {
       }
     },
     [
+      activeId,
       categoryId,
       coords,
       feedTab,
       firstReelId,
+      isOwnerMode,
       isPreviewMode,
       ownerBusinessId,
       showBanner,
@@ -1903,7 +1979,7 @@ export default function ReelsFeedScreen() {
   );
 
   useEffect(() => {
-    if (isPreviewMode) {
+    if (isPreviewMode || isOwnerMode) {
       loadPage(null, false);
       return;
     }
@@ -1911,10 +1987,10 @@ export default function ReelsFeedScreen() {
     if (cached.loaded) return;
     loadPage(null, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedTab, categoryId]);
+  }, [feedTab, categoryId, isOwnerMode, isPreviewMode]);
 
   useEffect(() => {
-    if (isPreviewMode) return;
+    if (isPreviewMode || isOwnerMode) return;
     let cancelled = false;
     (async () => {
       try {
@@ -1927,11 +2003,11 @@ export default function ReelsFeedScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isPreviewMode]);
+  }, [isOwnerMode, isPreviewMode]);
 
   useEffect(() => {
     // Customer-only onboarding; business owners (e.g. Media Library play) skip it.
-    if (isPreviewMode || isBusiness || hasSeenReelsSwipeGuide) {
+    if (isPreviewMode || isOwnerMode || isBusiness || hasSeenReelsSwipeGuide) {
       setShowSwipeGuide(false);
       return;
     }
@@ -1941,6 +2017,7 @@ export default function ReelsFeedScreen() {
   }, [
     hasSeenReelsSwipeGuide,
     isBusiness,
+    isOwnerMode,
     isPreviewMode,
     loading,
     reels.length,
@@ -1960,6 +2037,7 @@ export default function ReelsFeedScreen() {
     (offset: number) => {
       if (
         isPreviewMode ||
+        isOwnerMode ||
         showSwipeGuide ||
         categorySwitchLockRef.current ||
         categoryCards.length < 2
@@ -2003,6 +2081,7 @@ export default function ReelsFeedScreen() {
     [
       categoryCards,
       categoryId,
+      isOwnerMode,
       isPreviewMode,
       showCategoryToast,
       showSwipeGuide,
@@ -2012,7 +2091,12 @@ export default function ReelsFeedScreen() {
   const categoryPanGesture = useMemo(
     () =>
       Gesture.Pan()
-        .enabled(!isPreviewMode && !showSwipeGuide && categoryCards.length > 1)
+        .enabled(
+          !isPreviewMode &&
+            !isOwnerMode &&
+            !showSwipeGuide &&
+            categoryCards.length > 1,
+        )
         .activeOffsetX([-28, 28])
         .failOffsetY([-18, 18])
         .onEnd((e) => {
@@ -2025,6 +2109,7 @@ export default function ReelsFeedScreen() {
         }),
     [
       categoryCards.length,
+      isOwnerMode,
       isPreviewMode,
       showSwipeGuide,
       switchCategoryByOffset,
@@ -2045,7 +2130,7 @@ export default function ReelsFeedScreen() {
   }, []);
 
   useEffect(() => {
-    if (isPreviewMode) return;
+    if (isPreviewMode || isOwnerMode) return;
     if (!tabCacheRef.current[feedTab].loaded && reels.length === 0) return;
     tabCacheRef.current[feedTab] = {
       reels,
@@ -2062,6 +2147,7 @@ export default function ReelsFeedScreen() {
     feedTab,
     followingCount,
     hasMore,
+    isOwnerMode,
     isPreviewMode,
     reels,
     requiresLogin,
@@ -2077,7 +2163,7 @@ export default function ReelsFeedScreen() {
   }, [firstReelId, reels, shouldOpenComments]);
 
   useEffect(() => {
-    if (isPreviewMode) return;
+    if (isPreviewMode || isOwnerMode) return;
     if (activeId == null) return;
     if (viewedIdsRef.current.has(activeId)) return;
     viewedIdsRef.current.add(activeId);
@@ -2091,7 +2177,7 @@ export default function ReelsFeedScreen() {
         ),
       );
     });
-  }, [activeId, isPreviewMode]);
+  }, [activeId, isOwnerMode, isPreviewMode]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -2780,12 +2866,16 @@ export default function ReelsFeedScreen() {
                   item.id === activeId &&
                   isFeedFocused &&
                   isAppActive &&
-                  (isPreviewMode || hasSeenReelsSwipeGuide)
+                  (isPreviewMode ||
+                    isOwnerMode ||
+                    isBusiness ||
+                    hasSeenReelsSwipeGuide)
                 }
                 isOwnReel={
-                  ownerBusinessId != null &&
-                  item.business?.id != null &&
-                  Number(item.business.id) === Number(ownerBusinessId)
+                  isOwnerMode ||
+                  (ownerBusinessId != null &&
+                    item.business?.id != null &&
+                    Number(item.business.id) === Number(ownerBusinessId))
                 }
                 isPreview={isPreviewMode}
                 canPublish={isPreviewMode && previewStatus === "draft"}

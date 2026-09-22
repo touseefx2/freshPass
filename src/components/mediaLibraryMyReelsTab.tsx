@@ -747,10 +747,9 @@ export default function MediaLibraryMyReelsTab() {
           pathname: "/(main)/reelsFeed" as any,
           params: {
             first_reel_id: String(item.id),
-            ...(item.status !== "published" ? { mode: "preview" } : {}),
-            ...(item.category?.id != null
-              ? { category_id: String(item.category.id) }
-              : {}),
+            // Published → owner library viewer (vertical published stack, no report / no category swipe).
+            // Drafts & others → single-reel preview.
+            mode: item.status === "published" ? "owner" : "preview",
           },
         });
       };
