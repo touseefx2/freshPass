@@ -18,7 +18,6 @@ import {
   businessEndpoints,
   appointmentsEndpoints,
   generalEndpoints,
-  favoritesEndpoints,
 } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
@@ -30,9 +29,6 @@ import {
 import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
-import ShowFavorites, {
-  FavoriteBusiness,
-} from "./ShowFavorites";
 import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
 import HomeReelsSection from "@/src/components/homeReelsSection";
@@ -427,12 +423,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       paddingHorizontal: moderateWidthScale(20),
     },
-    favoriteSectionTitle: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      flexShrink: 1,
-    },
   });
 
 interface Appointment {
@@ -548,9 +538,6 @@ export default function DashboardContent() {
   >([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
-  const [favoriteBusinesses, setFavoriteBusinesses] = useState<
-    FavoriteBusiness[]
-  >([]);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
   const [proTipLoading, setProTipLoading] = useState(false);
@@ -634,51 +621,6 @@ export default function DashboardContent() {
   }) => {
     const name = item.owner?.name || item.owner_name || null;
     return typeof name === "string" && name.trim() ? name.trim() : null;
-  };
-
-  const fetchFavoriteBusinesses = async () => {
-    try {
-      const response = await ApiService.get<{
-        success: boolean;
-        data: {
-          data: Array<{
-            id: number;
-            title: string;
-            address: string;
-            average_rating: number;
-            ratings_count: number;
-            image_url: string | null;
-            logo_url: string | null;
-            owner?: { id?: number; name?: string | null } | null;
-            owner_name?: string | null;
-            category?: { id: number; name: string; slug: string } | null;
-            portfolio_photos?: Array<{
-              id: number;
-              path: string;
-              url: string;
-            }>;
-          }>;
-        };
-      }>(favoritesEndpoints.list({ page: 1, per_page: 15 }));
-
-      const items = response?.data?.data ?? [];
-      const mappedFavorites: FavoriteBusiness[] = items.map((item) => ({
-        id: item.id,
-        businessName: item.title,
-        address: item.address,
-        rating: item.average_rating || 0,
-        reviewCount: item.ratings_count || 0,
-        image: buildBusinessImageUrl(item),
-        categoryName: item.category?.name ?? null,
-        ownerName: getOwnerName(item),
-      }));
-
-      setFavoriteBusinesses(mappedFavorites);
-    } catch (error) {
-      if (isRequestCanceled(error)) return;
-      Logger.error("Failed to fetch favorite businesses:", error);
-      setFavoriteBusinesses([]);
-    }
   };
 
   const fetchBusinessesDeals = async () => {
@@ -1005,9 +947,6 @@ export default function DashboardContent() {
     useCallback(() => {
       if (userRole === "customer") {
         fetchAppointments();
-        fetchFavoriteBusinesses();
-      } else {
-        setFavoriteBusinesses([]);
       }
       if (isCusotmerandGuest) {
         fetchCategories();
@@ -1055,27 +994,6 @@ export default function DashboardContent() {
       {userRole === "customer" && appointments.length > 0 && (
         <View style={styles.section}>
           <ShowAppointments appointments={appointments} />
-        </View>
-      )}
-
-      {favoriteBusinesses.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.favoriteSectionTitle}>
-              {t("favoriteBusinesses")}
-            </Text>
-            {favoriteBusinesses.length > 3 && (
-              <Text
-                style={styles.sectionViewMore}
-                onPress={() =>
-                  router.push("/(main)/dashboard/(home)/favourite" as any)
-                }
-              >
-                {t("seeAll")}
-              </Text>
-            )}
-          </View>
-          <ShowFavorites favorites={favoriteBusinesses} />
         </View>
       )}
 

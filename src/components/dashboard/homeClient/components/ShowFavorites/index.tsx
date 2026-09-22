@@ -24,6 +24,7 @@ export interface FavoriteBusiness {
   image: string | null;
   categoryName?: string | null;
   ownerName?: string | null;
+  isOfficial?: boolean;
 }
 
 interface ShowFavoritesProps {
@@ -70,7 +71,7 @@ export default function ShowFavorites({ favorites }: ShowFavoritesProps) {
             />
             <View style={styles.heartBadge}>
               <MaterialIcons
-                name="favorite"
+                name={item.isOfficial ? "verified" : "person"}
                 size={widthScale(16)}
                 color={theme.white}
               />
@@ -85,9 +86,27 @@ export default function ShowFavorites({ favorites }: ShowFavoritesProps) {
           </View>
 
           <View style={styles.content}>
-            <Text numberOfLines={1} style={styles.businessName}>
-              {item.businessName}
-            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: widthScale(4),
+              }}
+            >
+              <Text
+                numberOfLines={1}
+                style={[styles.businessName, { flexShrink: 1 }]}
+              >
+                {item.businessName}
+              </Text>
+              {item.isOfficial ? (
+                <MaterialIcons
+                  name="verified"
+                  size={widthScale(14)}
+                  color={theme.green}
+                />
+              ) : null}
+            </View>
             {!!item.ownerName && (
               <Text numberOfLines={1} style={styles.ownerName}>
                 {t("ownedBy", { name: item.ownerName })}

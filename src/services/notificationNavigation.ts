@@ -30,7 +30,14 @@ export type NotificationSubType =
   | "plan_upgraded"
   | "solo_switch"
   | "business_availability_sync"
-  | "customer_subscription_purchased";
+  | "customer_subscription_purchased"
+  | "follow_new_reel"
+  | "follow_new_service"
+  | "follow_new_membership"
+  | "business_new_follower"
+  | "business_reel_comment"
+  | "business_reel_booking"
+  | "business_reel_likes";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -55,6 +62,83 @@ function getNotificationSubType(
   return raw as NotificationSubType;
 }
 
+/** Coerce notification payload ids that may arrive as number or numeric string. */
+function pickNumber(
+  data: NotificationNavigationData,
+  ...keys: string[]
+): number | null {
+  for (const key of keys) {
+    const value = data[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+      const n = Number(value);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
+}
+
+function openReelPlayer(
+  router: Router,
+  reelId: number,
+  options?: { openComments?: boolean; fromInAppList?: boolean },
+): void {
+  const path = {
+    pathname: "/(main)/reelsFeed" as const,
+    params: {
+      first_reel_id: String(reelId),
+      ...(options?.openComments ? { open_comments: "1" } : {}),
+    },
+  };
+  if (options?.fromInAppList) {
+    if (router.canGoBack()) {
+      router.back();
+    }
+    setTimeout(() => {
+      router.push(path as any);
+    }, AI_MEMORY_BACK_DELAY_MS);
+    return;
+  }
+  router.push(path as any);
+}
+
+function openBusinessProfile(
+  router: Router,
+  businessId: number,
+  options?: { fromInAppList?: boolean; scrollTo?: string },
+): void {
+  const path = {
+    pathname: "/(main)/businessDetail" as const,
+    params: {
+      business_id: String(businessId),
+      ...(options?.scrollTo ? { scroll_to: options.scrollTo } : {}),
+    },
+  };
+  if (options?.fromInAppList) {
+    if (router.canGoBack()) {
+      router.back();
+    }
+    setTimeout(() => {
+      router.push(path as any);
+    }, AI_MEMORY_BACK_DELAY_MS);
+    return;
+  }
+  router.push(path as any);
+}
+
+function openOwnerReelsList(
+  router: Router,
+  options?: { fromInAppList?: boolean },
+): void {
+  navigateViaProfileFromNotification(
+    router,
+    "/(main)/aiTools/toolList",
+    options?.fromInAppList,
+  );
+}
+
 /**
  * Navigate based on notification data (push payload or API notification item).
  * Used by ExpoNotificationHandler (push tap), Notifications screen (list item tap),
@@ -73,6 +157,9 @@ function getNotificationSubType(
  * - type "affiliation" (host) → Profile → Affiliation requests
  * - type "affiliation" (solo) → Profile → Edit profile
  * - type "business" | "service" + model_id (customer role) → businessDetail
+ * - type "follow" + sub_type follow_new_reel → reelsFeed; else → businessDetail
+ * - type "business_follower" → owner's businessDetail
+ * - type "business_reel" + comment → reelsFeed+comments; booking → appointment; likes → reelStats
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
@@ -508,6 +595,143 @@ export function navigateFromNotificationData(
       );
       return;
     }
+  }
+
+  // R-16 · Follow notifications (customer following a business)
+  if (type === "follow") {
+    const businessId = pickNumber(data, "business_id", "model_id");
+    const reelId = pickNumber(data, "reel_id");
+
+    if (subType === "follow_new_reel" && reelId != null) {
+      openReelPlayer(router, reelId, {
+        fromInAppList: options?.fromInAppList,
+      });
+      Logger.log(
+        "------>navigateFromNotificationData (follow_new_reel) -> reelsFeed",
+        { reel_id: reelId },
+      );
+      return;
+    }
+
+    if (subType === "follow_new_membership" && businessId != null) {
+      openBusinessProfile(router, businessId, {
+        fromInAppList: options?.fromInAppList,
+        scrollTo: "memberships",
+      });
+      Logger.log(
+        "------>navigateFromNotificationData (follow_new_membership) -> businessDetail memberships",
+        { business_id: businessId },
+      );
+      return;
+    }
+
+    // follow_new_service + unknown follow subtypes → business profile
+    if (businessId != null) {
+      openBusinessProfile(router, businessId, {
+        fromInAppList: options?.fromInAppList,
+      });
+      Logger.log(
+        `------>navigateFromNotificationData (follow/${subType ?? "unknown"}) -> businessDetail`,
+        { business_id: businessId },
+      );
+      return;
+    }
+  }
+
+  // R-23 · New follower alert for the business owner
+  if (type === "business_follower") {
+    const ownBusinessId = store.getState().user.business_id;
+    if (ownBusinessId != null) {
+      openBusinessProfile(router, Number(ownBusinessId), {
+        fromInAppList: options?.fromInAppList,
+      });
+      Logger.log(
+        "------>navigateFromNotificationData (business_new_follower) -> own businessDetail",
+        { business_id: ownBusinessId },
+      );
+      return;
+    }
+    navigateViaProfileFromNotification(
+      router,
+      EDIT_PROFILE_PATH,
+      options?.fromInAppList,
+    );
+    return;
+  }
+
+  // R-23 · Owner alerts about their reels (comment / booking / likes digest)
+  if (type === "business_reel") {
+    if (subType === "business_reel_comment") {
+      const reelId = pickNumber(data, "reel_id", "model_id");
+      if (reelId != null) {
+        openReelPlayer(router, reelId, {
+          openComments: true,
+          fromInAppList: options?.fromInAppList,
+        });
+        Logger.log(
+          "------>navigateFromNotificationData (business_reel_comment) -> reelsFeed + comments",
+          { reel_id: reelId, comment_id: data.comment_id },
+        );
+        return;
+      }
+    }
+
+    if (subType === "business_reel_booking") {
+      const appointmentId = pickNumber(data, "appointment_id");
+      if (appointmentId != null) {
+        const path = {
+          pathname: "/(main)/bookingDetailsById" as const,
+          params: { bookingId: String(appointmentId) },
+        };
+        if (options?.fromInAppList) {
+          if (router.canGoBack()) {
+            router.back();
+          }
+          setTimeout(() => {
+            router.push(path as any);
+          }, AI_MEMORY_BACK_DELAY_MS);
+        } else {
+          router.push(path as any);
+        }
+        Logger.log(
+          "------>navigateFromNotificationData (business_reel_booking) -> bookingDetailsById",
+          { appointment_id: appointmentId },
+        );
+        return;
+      }
+    }
+
+    if (subType === "business_reel_likes") {
+      const reelId = pickNumber(data, "top_reel_id", "model_id");
+      if (reelId != null) {
+        const path = {
+          pathname: "/(main)/reelStats" as const,
+          params: { id: String(reelId) },
+        };
+        if (options?.fromInAppList) {
+          if (router.canGoBack()) {
+            router.back();
+          }
+          setTimeout(() => {
+            router.push(path as any);
+          }, AI_MEMORY_BACK_DELAY_MS);
+        } else {
+          router.push(path as any);
+        }
+        Logger.log(
+          "------>navigateFromNotificationData (business_reel_likes) -> reelStats",
+          { reel_id: reelId },
+        );
+        return;
+      }
+    }
+
+    // Unknown business_reel subtype → owner's reels list
+    openOwnerReelsList(router, { fromInAppList: options?.fromInAppList });
+    Logger.log(
+      `------>navigateFromNotificationData (business_reel/${subType ?? "unknown"}) -> mediaLibrary`,
+    );
+    return;
   }
 
   if (!options?.skipNotificationScreen) {

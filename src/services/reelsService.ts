@@ -148,6 +148,7 @@ export async function fetchReelFeed(params: {
   cursor?: string;
   latitude?: number;
   longitude?: number;
+  tab?: "for_you" | "following";
 }): Promise<{ reels: FeedReel[]; meta: PageMeta }> {
   const response = await ApiService.get<
     Envelope<{ data: FeedReel[]; meta: PageMeta }>

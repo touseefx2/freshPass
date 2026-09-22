@@ -1365,11 +1365,14 @@ export default function BusinessDetailScreen() {
   const params = useLocalSearchParams<{
     business_id?: string;
     reel_id?: string;
+    scroll_to?: string;
   }>();
   const attributionReelId = params.reel_id
     ? Number(params.reel_id)
     : null;
+  const scrollToTarget = params.scroll_to;
   const profileTapSentRef = useRef(false);
+  const scrolledToMembershipsRef = useRef(false);
 
   useEffect(() => {
     if (!attributionReelId || profileTapSentRef.current) return;
@@ -1476,6 +1479,26 @@ export default function BusinessDetailScreen() {
   const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
   const [followersCount, setFollowersCount] = useState<number | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
+
+  // Deep link / notification: open memberships segment (R-16 follow_new_membership)
+  useEffect(() => {
+    if (scrollToTarget !== "memberships") return;
+    if (scrolledToMembershipsRef.current) return;
+    if (loading || !businessData) return;
+    scrolledToMembershipsRef.current = true;
+    setActiveTab("Service");
+    setServiceSegment("subscriptions");
+    const timer = setTimeout(() => {
+      const position = sectionPositions.current.service;
+      if (position !== undefined && scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({
+          y: Math.max(0, position - moderateHeightScale(80)),
+          animated: true,
+        });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [scrollToTarget, loading, businessData]);
 
   // Fetch business details
   const fetchBusinessDetails = async () => {
@@ -3994,6 +4017,13 @@ export default function BusinessDetailScreen() {
                 resizeMode="cover"
               />
               <Text style={styles.businessName}>{businessName}</Text>
+              {businessData?.is_official ? (
+                <MaterialIcons
+                  name="verified"
+                  size={moderateWidthScale(18)}
+                  color={theme.green}
+                />
+              ) : null}
             </View>
             {!isBusinessOwnerView && (
               <View style={styles.followRow}>

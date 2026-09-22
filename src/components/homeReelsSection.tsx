@@ -220,11 +220,27 @@ export default function HomeReelsSection() {
                 <Text style={styles.categoryName} numberOfLines={1}>
                   {card.name}
                 </Text>
-                <Text style={styles.meta} numberOfLines={1}>
-                  {card.cover_reel?.business?.title ||
-                    card.cover_reel?.caption ||
-                    ""}
-                </Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: moderateHeightScale(2),
+                  }}
+                >
+                  <Text style={[styles.meta, { marginTop: 0, flexShrink: 1 }]} numberOfLines={1}>
+                    {card.cover_reel?.business?.title ||
+                      card.cover_reel?.caption ||
+                      ""}
+                  </Text>
+                  {card.cover_reel?.business?.is_official ? (
+                    <MaterialIcons
+                      name="verified"
+                      size={moderateWidthScale(12)}
+                      color={theme.green}
+                      style={{ marginLeft: moderateWidthScale(4) }}
+                    />
+                  ) : null}
+                </View>
               </TouchableOpacity>
             );
           })}

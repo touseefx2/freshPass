@@ -21,13 +21,15 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import EmptyState from "@/src/components/emptyState";
 import Button from "@/src/components/button";
-import { ApiService } from "@/src/services/api";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { favoritesEndpoints } from "@/src/services/endpoints";
-import { PlatformVerifiedStarIcon, StarIconSmall } from "@/assets/icons";
-
-// Popular countries list with their flag emojis and zip code formats
+import { MaterialIcons } from "@expo/vector-icons";
+import {
+  fetchFollowing,
+  unfollowBusiness,
+} from "@/src/services/followService";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import Logger from "@/src/services/logger";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -36,85 +38,65 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
     },
     contentContainer: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(24),
-      gap: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(16),
       paddingBottom: moderateHeightScale(40),
     },
-    card: {
-      backgroundColor: theme.darkGreen,
-      borderRadius: moderateWidthScale(12),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(10),
+    countText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginBottom: moderateHeightScale(12),
+    },
+    row: {
       flexDirection: "row",
       alignItems: "center",
+      paddingVertical: moderateHeightScale(12),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
       gap: moderateWidthScale(12),
     },
-    image: {
-      width: widthScale(110),
-      height: heightScale(110),
-      borderRadius: moderateWidthScale(6),
+    avatar: {
+      width: widthScale(52),
+      height: heightScale(52),
+      borderRadius: moderateWidthScale(26),
       backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
     },
-    content: {
+    textCol: {
       flex: 1,
-      gap: moderateHeightScale(10),
+      gap: moderateHeightScale(2),
     },
-    verifiedBadge: {
-      backgroundColor: theme.darkGreenLight,
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
+    nameRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(6),
-      alignSelf: "flex-start",
-    },
-    verifiedText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
+      gap: moderateWidthScale(4),
     },
     name: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
-      color: theme.white,
-      textTransform: "capitalize",
+      color: theme.darkGreen,
+      flexShrink: 1,
     },
-    ownerName: {
-      fontSize: fontSize.size11,
+    meta: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    unfollowBtn: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.lightGreen07,
+    },
+    unfollowBtnDisabled: {
+      opacity: 0.5,
+    },
+    unfollowText: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
-      marginTop: moderateHeightScale(2),
-      textTransform: "capitalize",
-    },
-    address: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.white80,
-    },
-    bottomRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    ratingPill: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      borderWidth: moderateWidthScale(1),
-      borderColor: theme.white70,
-      gap: moderateWidthScale(6),
-    },
-    ratingText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.white,
+      color: theme.darkGreen,
     },
     loaderContainer: {
       flex: 1,
@@ -134,46 +116,45 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
-      lineHeight: moderateHeightScale(22),
     },
     retryButton: {
       minWidth: widthScale(160),
     },
   });
 
-export default function FavouriteScreen() {
+export default function FollowingScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+  const { showBanner } = useNotificationContext();
 
-  const [favorites, setFavorites] = useState<any[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [unfollowingId, setUnfollowingId] = useState<number | null>(null);
 
   const perPage = 15;
 
   const buildImageUrl = useCallback((item: any) => {
     const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
     const rawUrl = item.image_url || item.logo_url || null;
-
     if (!rawUrl) {
       return process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
     }
-
     if (typeof rawUrl === "string" && rawUrl.startsWith("http")) {
       return rawUrl;
     }
-
     return `${baseUrl}${rawUrl}`;
   }, []);
 
-  const fetchFavorites = useCallback(
+  const loadPage = useCallback(
     async (
       pageToLoad: number,
       mode: "initial" | "more" | "refresh" = "initial",
@@ -183,158 +164,178 @@ export default function FavouriteScreen() {
         setError(null);
       } else if (mode === "more") {
         setLoadingMore(true);
-      } else if (mode === "refresh") {
+      } else {
         setRefreshing(true);
         setError(null);
       }
 
       try {
-        const response = await ApiService.get<any>(
-          favoritesEndpoints.list({
-            page: pageToLoad,
-            per_page: perPage,
-          }),
-        );
-
-        const payload = response?.data;
-        const items: any[] = payload?.data ?? [];
+        const { businesses, meta } = await fetchFollowing({
+          page: pageToLoad,
+          per_page: perPage,
+        });
 
         if (pageToLoad === 1) {
-          setFavorites(items);
+          setItems(businesses);
         } else {
-          setFavorites((prev) => [...prev, ...items]);
+          setItems((prev) => [...prev, ...businesses]);
         }
 
-        setHasMore(items.length === perPage);
+        if (typeof meta.total === "number") {
+          setTotalCount(meta.total);
+        } else if (pageToLoad === 1) {
+          setTotalCount(businesses.length);
+        }
+
+        setHasMore(Boolean(meta.has_more) || businesses.length === perPage);
         setPage(pageToLoad);
       } catch (err: any) {
-        setError(err?.message || "Failed to load favorites");
+        setError(err?.message || t("failedToLoadFollowing"));
       } finally {
         setLoading(false);
         setLoadingMore(false);
         setRefreshing(false);
       }
     },
-    [],
+    [t],
   );
 
   useFocusEffect(
     useCallback(() => {
-      fetchFavorites(1, "initial");
-    }, [fetchFavorites]),
+      loadPage(1, "initial");
+    }, [loadPage]),
   );
 
   const handleLoadMore = () => {
-    if (!hasMore || loadingMore || loading || favorites.length === 0) {
-      return;
-    }
-    fetchFavorites(page + 1, "more");
-  };
-
-  const handleRefresh = () => {
-    fetchFavorites(1, "refresh");
+    if (!hasMore || loadingMore || loading || items.length === 0) return;
+    loadPage(page + 1, "more");
   };
 
   const handlePressBusiness = (item: any) => {
     if (!item?.id) return;
-
     router.push({
       pathname: "/(main)/businessDetail",
       params: { business_id: item.id.toString() },
     } as any);
   };
 
+  const handleUnfollow = async (item: any) => {
+    if (!item?.id || unfollowingId != null) return;
+    const id = Number(item.id);
+    setUnfollowingId(id);
+    try {
+      await unfollowBusiness(id);
+      setItems((prev) => prev.filter((b) => Number(b.id) !== id));
+      setTotalCount((prev) =>
+        prev != null ? Math.max(0, prev - 1) : prev,
+      );
+    } catch (err: any) {
+      Logger.error("Failed to unfollow:", err);
+      showBanner(
+        t("error"),
+        err?.message || t("failedToUnfollow"),
+        "error",
+        2500,
+      );
+    } finally {
+      setUnfollowingId(null);
+    }
+  };
+
+  const displayCount = totalCount ?? items.length;
+  const totalLabel =
+    displayCount === 1
+      ? t("followingCountOne")
+      : t("followingCountMany", { count: displayCount });
+
   const renderItem = ({ item }: { item: any }) => {
     const imageUrl = buildImageUrl(item);
-    const rating =
-      typeof item.average_rating === "number" ? item.average_rating : 0;
-    const reviews =
-      typeof item.ratings_count === "number" ? item.ratings_count : 0;
+    const busy = unfollowingId === Number(item.id);
+    const address = item.address || item.street_address || item.city || "";
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.9}
-        style={styles.card}
-        onPress={() => handlePressBusiness(item)}
-      >
-        <Image source={{ uri: imageUrl }} style={styles.image} />
-
-        <View style={styles.content}>
-          <View style={styles.verifiedBadge}>
-            <PlatformVerifiedStarIcon
-              width={widthScale(10)}
-              height={heightScale(10)}
-            />
-            <Text style={styles.verifiedText}>{t("platformVerified")}</Text>
-          </View>
-
-          <View>
-            <Text numberOfLines={1} style={styles.name}>
-              {item.title}
-            </Text>
-            {!!item.owner?.name?.trim() && (
-              <Text numberOfLines={1} style={styles.ownerName}>
-                {t("ownedBy", { name: item.owner.name.trim() })}
+      <View style={styles.row}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => handlePressBusiness(item)}
+          style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: moderateWidthScale(12) }}
+        >
+          <Image source={{ uri: imageUrl }} style={styles.avatar} />
+          <View style={styles.textCol}>
+            <View style={styles.nameRow}>
+              <Text numberOfLines={1} style={styles.name}>
+                {item.title || ""}
+              </Text>
+              {item.is_official ? (
+                <MaterialIcons
+                  name="verified"
+                  size={moderateWidthScale(14)}
+                  color={theme.green}
+                />
+              ) : null}
+            </View>
+            {!!address && (
+              <Text numberOfLines={1} style={styles.meta}>
+                {address}
               </Text>
             )}
-            <Text numberOfLines={1} style={styles.address}>
-              {item.address || item.street_address}
-            </Text>
           </View>
-
-          <View style={styles.bottomRow}>
-            <View style={styles.ratingPill}>
-              <StarIconSmall
-                width={widthScale(12)}
-                height={heightScale(12)}
-                color={theme.orangeBrown}
-              />
-              <Text style={styles.ratingText}>
-                {rating || 0}/ {reviews || 0} {t("reviews").toLowerCase()}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.unfollowBtn, busy && styles.unfollowBtnDisabled]}
+          onPress={() => handleUnfollow(item)}
+          disabled={busy}
+          activeOpacity={0.8}
+        >
+          {busy ? (
+            <ActivityIndicator size="small" color={theme.darkGreen} />
+          ) : (
+            <Text style={styles.unfollowText}>{t("unfollow")}</Text>
+          )}
+        </TouchableOpacity>
+      </View>
     );
   };
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title={t("favorites")} />
-      {loading && favorites.length === 0 ? (
+      <StackHeader title={t("following")} />
+      {loading && items.length === 0 ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={theme.primary} />
+          <ActivityIndicator size="large" color={theme.darkGreen} />
         </View>
-      ) : error && favorites.length === 0 ? (
+      ) : error && items.length === 0 ? (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <Button
             title={t("retry")}
-            onPress={() => fetchFavorites(1, "initial")}
+            onPress={() => loadPage(1, "initial")}
             containerStyle={styles.retryButton}
           />
         </View>
-      ) : favorites.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState
-          icon="favorite-border"
-          title={t("noFavoritesYet")}
-          subtitle={t("favoritesEmptySubtitle")}
+          icon="person-outline"
+          title={t("noFollowingYet")}
+          subtitle={t("followingEmptySubtitle")}
         />
       ) : (
         <FlatList
-          data={favorites}
-          keyExtractor={(item) => item.id.toString()}
+          data={items}
+          keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={styles.contentContainer}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.2}
           refreshing={refreshing}
-          onRefresh={handleRefresh}
+          onRefresh={() => loadPage(1, "refresh")}
+          ListHeaderComponent={
+            <Text style={styles.countText}>{totalLabel}</Text>
+          }
           ListFooterComponent={
             loadingMore ? (
               <View style={styles.loaderContainer}>
-                <ActivityIndicator size="small" color={theme.primary} />
+                <ActivityIndicator size="small" color={theme.darkGreen} />
               </View>
             ) : null
           }

@@ -14,6 +14,7 @@
       "bundleIdentifier": "com.freshpass",
       "buildNumber": "54",
       "googleServicesFile": "./GoogleService-Info.plist",
+      "associatedDomains": ["applinks:getfreshpass.com"],
       "config": {
         "googleMapsApiKey": "AIzaSyB7LtqIwza7DsCRvXvh43CTH1yzQoWvVRg"
       },
@@ -55,7 +56,21 @@
       },
       "permissions": ["android.permission.RECORD_AUDIO"],
       "softwareKeyboardLayoutMode": "pan",
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "getfreshpass.com",
+              "pathPrefix": "/r/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "single",

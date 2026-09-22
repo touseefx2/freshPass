@@ -472,6 +472,7 @@ export const notificationsEndpoints = {
     `/api/notifications/${notificationId}/read`,
   markAllAsRead: `/api/notifications/mark-all-read`,
   unreadCount: `/api/notifications/unread-count`,
+  preferences: `/api/notification-preferences`,
 };
 
 /**
@@ -734,6 +735,7 @@ export const reelsEndpoints = {
     cursor?: string;
     latitude?: number;
     longitude?: number;
+    tab?: "for_you" | "following";
   }) => {
     const queryParams = new URLSearchParams();
     if (params?.category_id != null)
@@ -747,6 +749,7 @@ export const reelsEndpoints = {
       queryParams.append("latitude", String(params.latitude));
     if (params?.longitude != null)
       queryParams.append("longitude", String(params.longitude));
+    if (params?.tab) queryParams.append("tab", params.tab);
     const query = queryParams.toString();
     return `/api/reels/feed${query ? `?${query}` : ""}`;
   },

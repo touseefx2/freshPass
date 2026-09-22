@@ -164,6 +164,61 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(12),
       zIndex: 5,
     },
+    feedTabs: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(16),
+      flex: 1,
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(8),
+    },
+    feedTabText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.white50,
+      textShadowColor: `${theme.black}CC`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+    },
+    feedTabTextActive: {
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    officialBadge: {
+      marginLeft: moderateWidthScale(4),
+    },
+    emptyWrap: {
+      flex: 1,
+      backgroundColor: theme.black,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(32),
+    },
+    emptyTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    emptySubtitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(20),
+    },
+    emptyCta: {
+      backgroundColor: theme.buttonBack,
+      paddingHorizontal: moderateWidthScale(20),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(12),
+    },
+    emptyCtaText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+    },
     iconBtn: {
       width: moderateWidthScale(40),
       height: moderateWidthScale(40),
@@ -430,6 +485,9 @@ type ReelItemProps = {
   topInset: number;
   bottomInset: number;
   onBack: () => void;
+  feedTab?: "for_you" | "following";
+  onFeedTabChange?: (tab: "for_you" | "following") => void;
+  showFeedTabs?: boolean;
   onLike: (reel: FeedReel) => void;
   onSave: (reel: FeedReel) => void;
   onComment: (reel: FeedReel) => void;
@@ -453,6 +511,9 @@ function ReelFeedItemBase({
   topInset,
   bottomInset,
   onBack,
+  feedTab = "for_you",
+  onFeedTabChange,
+  showFeedTabs = false,
   onLike,
   onSave,
   onComment,
@@ -848,6 +909,32 @@ function ReelFeedItemBase({
             color={theme.white}
           />
         </TouchableOpacity>
+        {showFeedTabs && onFeedTabChange ? (
+          <View style={styles.feedTabs}>
+            <TouchableOpacity onPress={() => onFeedTabChange("for_you")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "for_you" && styles.feedTabTextActive,
+                ]}
+              >
+                {t("forYouTab")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onFeedTabChange("following")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "following" && styles.feedTabTextActive,
+                ]}
+              >
+                {t("following")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
         {canPublish && onPublish ? (
           <TouchableOpacity
             style={[
@@ -864,6 +951,8 @@ function ReelFeedItemBase({
               <Text style={styles.previewPublishText}>{t("publish")}</Text>
             )}
           </TouchableOpacity>
+        ) : showFeedTabs ? (
+          <View style={styles.iconBtn} />
         ) : null}
       </View>
 
@@ -1004,6 +1093,14 @@ function ReelFeedItemBase({
               <Text style={styles.businessName} numberOfLines={1}>
                 {reel.business?.title || ""}
               </Text>
+              {reel.business?.is_official ? (
+                <MaterialIcons
+                  name="verified"
+                  size={moderateWidthScale(16)}
+                  color={theme.green}
+                  style={styles.officialBadge}
+                />
+              ) : null}
             </>
           ) : (
             <>
@@ -1031,12 +1128,20 @@ function ReelFeedItemBase({
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ flexShrink: 1 }}
+                style={{ flexShrink: 1, flexDirection: "row", alignItems: "center" }}
                 onPress={() => onProfile(reel)}
               >
                 <Text style={styles.businessName} numberOfLines={1}>
                   {reel.business?.title || ""}
                 </Text>
+                {reel.business?.is_official ? (
+                  <MaterialIcons
+                    name="verified"
+                    size={moderateWidthScale(16)}
+                    color={theme.green}
+                    style={styles.officialBadge}
+                  />
+                ) : null}
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.followBtn}
@@ -1050,9 +1155,17 @@ function ReelFeedItemBase({
           )}
         </View>
 
-        {(cityState || distance) && (
+        {(cityState || distance || reel.business?.followers_count != null) && (
           <Text style={styles.location} numberOfLines={1}>
-            {[cityState, distance].filter(Boolean).join(" · ")}
+            {[
+              cityState,
+              distance,
+              reel.business?.followers_count != null
+                ? t("followersCount", { count: reel.business.followers_count })
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </Text>
         )}
 
@@ -1164,15 +1277,23 @@ export default function ReelsFeedScreen() {
     category_id?: string;
     first_reel_id?: string;
     mode?: string;
+    open_comments?: string;
+    tab?: string;
   }>();
   const categoryId = params.category_id;
   const firstReelId = params.first_reel_id;
   const isPreviewMode = params.mode === "preview";
+  const shouldOpenComments = params.open_comments === "1";
+  const initialTab: "for_you" | "following" =
+    params.tab === "following" ? "following" : "for_you";
 
+  const [feedTab, setFeedTab] = useState<"for_you" | "following">(initialTab);
   const [reels, setReels] = useState<FeedReel[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [requiresLogin, setRequiresLogin] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(
     firstReelId ? Number(firstReelId) : null,
   );
@@ -1180,6 +1301,48 @@ export default function ReelsFeedScreen() {
     id: number;
     count: number;
   } | null>(null);
+  const openedCommentsFromParamRef = useRef(false);
+  const firstReelUsedRef = useRef(false);
+  /** R-17: keep a separate cursor/page per tab so switching doesn't lose place. */
+  const tabCacheRef = useRef<{
+    for_you: {
+      reels: FeedReel[];
+      cursor: string | null;
+      hasMore: boolean;
+      followingCount: number;
+      requiresLogin: boolean;
+      activeId: number | null;
+      loaded: boolean;
+    };
+    following: {
+      reels: FeedReel[];
+      cursor: string | null;
+      hasMore: boolean;
+      followingCount: number;
+      requiresLogin: boolean;
+      activeId: number | null;
+      loaded: boolean;
+    };
+  }>({
+    for_you: {
+      reels: [],
+      cursor: null,
+      hasMore: false,
+      followingCount: 0,
+      requiresLogin: false,
+      activeId: null,
+      loaded: false,
+    },
+    following: {
+      reels: [],
+      cursor: null,
+      hasMore: false,
+      followingCount: 0,
+      requiresLogin: false,
+      activeId: null,
+      loaded: false,
+    },
+  });
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
@@ -1215,25 +1378,46 @@ export default function ReelsFeedScreen() {
           setActiveId(mapped.id);
           return;
         }
+        const useFirstReel =
+          !append && !firstReelUsedRef.current && !!firstReelId;
         const { reels: pageReels, meta } = await fetchReelFeed({
-          category_id: categoryId,
-          first_reel_id: firstReelId,
+          category_id: feedTab === "for_you" ? categoryId : undefined,
+          first_reel_id: useFirstReel ? firstReelId : undefined,
           cursor: nextCursor || undefined,
           latitude: coords?.latitude,
           longitude: coords?.longitude,
+          tab: feedTab,
         });
-        setReels((prev) =>
-          append
+        if (!append) {
+          firstReelUsedRef.current = true;
+        }
+        setReels((prev) => {
+          const merged = append
             ? [
                 ...prev,
                 ...pageReels.filter((r) => !prev.some((x) => x.id === r.id)),
               ]
-            : pageReels,
-        );
+            : pageReels;
+          const nextActiveId = !append
+            ? pageReels[0]?.id ?? null
+            : activeId;
+          tabCacheRef.current[feedTab] = {
+            reels: merged,
+            cursor: meta.next_cursor ?? null,
+            hasMore: Boolean(meta.has_more),
+            followingCount: meta.following_count ?? 0,
+            requiresLogin: Boolean(meta.requires_login),
+            activeId: nextActiveId,
+            loaded: true,
+          };
+          return merged;
+        });
         setCursor(meta.next_cursor ?? null);
         setHasMore(Boolean(meta.has_more));
+        setFollowingCount(meta.following_count ?? 0);
+        setRequiresLogin(Boolean(meta.requires_login));
         setPreviewStatus(null);
-        if (!append && pageReels[0] && !activeId) {
+        if (!append && pageReels[0]) {
           setActiveId(pageReels[0].id);
         }
       } catch (error: any) {
@@ -1249,9 +1433,9 @@ export default function ReelsFeedScreen() {
       }
     },
     [
-      activeId,
       categoryId,
       coords,
+      feedTab,
       firstReelId,
       isPreviewMode,
       ownerBusinessId,
@@ -1263,8 +1447,91 @@ export default function ReelsFeedScreen() {
   );
 
   useEffect(() => {
+    if (isPreviewMode) {
+      loadPage(null, false);
+      return;
+    }
+    const cached = tabCacheRef.current[feedTab];
+    if (cached.loaded) return;
     loadPage(null, false);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedTab]);
+
+  const handleFeedTabChange = useCallback(
+    (tab: "for_you" | "following") => {
+      if (tab === feedTab) return;
+      firstReelUsedRef.current = true;
+      // Save current tab before leaving
+      tabCacheRef.current[feedTab] = {
+        reels,
+        cursor,
+        hasMore,
+        followingCount,
+        requiresLogin,
+        activeId,
+        loaded: tabCacheRef.current[feedTab].loaded || reels.length > 0,
+      };
+      setFeedTab(tab);
+      const cached = tabCacheRef.current[tab];
+      if (cached.loaded) {
+        setReels(cached.reels);
+        setCursor(cached.cursor);
+        setHasMore(cached.hasMore);
+        setFollowingCount(cached.followingCount);
+        setRequiresLogin(cached.requiresLogin);
+        setActiveId(cached.activeId);
+        setLoading(false);
+        return;
+      }
+      setReels([]);
+      setCursor(null);
+      setHasMore(false);
+      setRequiresLogin(false);
+      setActiveId(null);
+      setLoading(true);
+    },
+    [
+      activeId,
+      cursor,
+      feedTab,
+      followingCount,
+      hasMore,
+      reels,
+      requiresLogin,
+    ],
+  );
+
+  useEffect(() => {
+    if (isPreviewMode) return;
+    if (!tabCacheRef.current[feedTab].loaded && reels.length === 0) return;
+    tabCacheRef.current[feedTab] = {
+      reels,
+      cursor,
+      hasMore,
+      followingCount,
+      requiresLogin,
+      activeId,
+      loaded: true,
+    };
+  }, [
+    activeId,
+    cursor,
+    feedTab,
+    followingCount,
+    hasMore,
+    isPreviewMode,
+    reels,
+    requiresLogin,
+  ]);
+
+  useEffect(() => {
+    if (!shouldOpenComments || openedCommentsFromParamRef.current) return;
+    if (!firstReelId || reels.length === 0) return;
+    const target = reels.find((r) => r.id === Number(firstReelId)) ?? reels[0];
+    if (!target) return;
+    openedCommentsFromParamRef.current = true;
+    setCommentsReel({ id: target.id, count: target.stats?.comments ?? 0 });
+  }, [firstReelId, reels, shouldOpenComments]);
 
   useEffect(() => {
     if (isPreviewMode) return;
@@ -1635,15 +1902,79 @@ export default function ReelsFeedScreen() {
   }
 
   if (!loading && reels.length === 0) {
+    const emptyMessage =
+      feedTab === "following"
+        ? requiresLogin || isGuest
+          ? t("signInToSeeFollowingReels")
+          : followingCount === 0
+            ? t("followBusinessesForReels")
+            : t("nothingNewFromFollowing")
+        : t("noReelsInFeed");
+    const showSignIn =
+      feedTab === "following" && (requiresLogin || isGuest);
+
     return (
-      <View style={styles.centerLoader}>
+      <View style={styles.emptyWrap}>
         <TouchableOpacity
-          style={[styles.iconBtn, { position: "absolute", top: insets.top + 8, left: 12 }]}
+          style={[
+            styles.iconBtn,
+            {
+              position: "absolute",
+              top: insets.top + moderateHeightScale(8),
+              left: moderateWidthScale(12),
+            },
+          ]}
           onPress={() => router.back()}
         >
-          <MaterialIcons name="arrow-back" size={22} color={theme.white} />
+          <MaterialIcons
+            name="arrow-back"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
         </TouchableOpacity>
-        <Text style={styles.emptyText}>{t("noReelsInFeed")}</Text>
+        {!isPreviewMode ? (
+          <View
+            style={[
+              styles.feedTabs,
+              {
+                position: "absolute",
+                top: insets.top + moderateHeightScale(16),
+                left: 0,
+                right: 0,
+              },
+            ]}
+          >
+            <TouchableOpacity onPress={() => handleFeedTabChange("for_you")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "for_you" && styles.feedTabTextActive,
+                ]}
+              >
+                {t("forYouTab")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleFeedTabChange("following")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "following" && styles.feedTabTextActive,
+                ]}
+              >
+                {t("following")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        <Text style={styles.emptyTitle}>{emptyMessage}</Text>
+        {showSignIn ? (
+          <TouchableOpacity
+            style={styles.emptyCta}
+            onPress={() => dispatch(setGuestModeModalVisible(true))}
+          >
+            <Text style={styles.emptyCtaText}>{t("signIn")}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     );
   }
@@ -1687,6 +2018,9 @@ export default function ReelsFeedScreen() {
             topInset={insets.top}
             bottomInset={insets.bottom}
             onBack={goBack}
+            feedTab={feedTab}
+            onFeedTabChange={handleFeedTabChange}
+            showFeedTabs={!isPreviewMode}
             onLike={handleLike}
             onSave={handleSave}
             onComment={handleComment}

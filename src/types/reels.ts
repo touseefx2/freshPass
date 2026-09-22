@@ -23,6 +23,7 @@ export type ReelBusiness = {
   city?: string | null;
   state?: string | null;
   followers_count?: number;
+  is_official?: boolean;
 };
 
 export type ReelStats = {
@@ -103,6 +104,9 @@ export type PageMeta = {
   to?: number | null;
   has_more: boolean;
   next_cursor?: string | null;
+  tab?: "for_you" | "following";
+  following_count?: number;
+  requires_login?: boolean;
 };
 
 export type CreateReelPayload = {

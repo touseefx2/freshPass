@@ -449,6 +449,8 @@ export default function AccountScreen() {
       }
     } else if (key === "myLooks") {
       router.push("/(main)/myLooks");
+    } else if (key === "following") {
+      router.push("/(main)/dashboard/(home)/favourite" as any);
     } else if (key === "subscriptions") {
       router.push(isCustomer ? "./subscriptionCustomer" : "./subscription");
     } else if (key === "mediaLibrary") {
@@ -494,6 +496,7 @@ export default function AccountScreen() {
       | "rules"
       | "reviews"
       | "myLooks"
+      | "following"
       | "subscriptions"
       | "mediaLibrary"
       | "aiTools"
@@ -576,6 +579,9 @@ export default function AccountScreen() {
     ...(isCustomer && !isGuest
       ? [{ key: "myLooks" as const, title: t("myLooks") }]
       : []),
+    ...(isCustomer && !isGuest
+      ? [{ key: "following" as const, title: t("following") }]
+      : []),
     {
       key: "rules" as const,
       title: t("rulesAndTerms"),
@@ -618,6 +624,8 @@ export default function AccountScreen() {
         return { name: "star", family: "material" };
       case "myLooks":
         return { name: "bookmark", family: "material" };
+      case "following":
+        return { name: "person-add", family: "material" };
       case "viewBusiness":
         return { name: "visibility", family: "material" };
       case "affiliationRequests":
