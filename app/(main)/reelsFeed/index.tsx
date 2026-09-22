@@ -570,6 +570,7 @@ function ReelFeedItemBase({
 
   const player = useVideoPlayer(playbackUrl, (p) => {
     p.loop = true;
+    p.muted = true; // unmute only while this reel is the active page
     p.timeUpdateEventInterval = 0.25;
   });
 
@@ -588,23 +589,43 @@ function ReelFeedItemBase({
     }
   }, [centerIconOpacity, isActive]);
 
+  /** Stop audio from off-screen reels (client: previous music keeps playing). */
+  const silencePlayer = useCallback(() => {
+    if (!player) return;
+    try {
+      player.muted = true;
+    } catch {}
+    try {
+      player.pause();
+    } catch {}
+  }, [player]);
+
   const syncPlayback = useCallback(() => {
     if (!player) return;
     if (isScrubbingRef.current) return;
     if (isActiveRef.current && !isPausedRef.current) {
       try {
+        player.muted = false;
+      } catch {}
+      try {
         player.play();
       } catch {}
     } else {
-      try {
-        player.pause();
-      } catch {}
+      silencePlayer();
     }
-  }, [player]);
+  }, [player, silencePlayer]);
 
   useEffect(() => {
     syncPlayback();
   }, [isActive, isPaused, isScrubbing, syncPlayback]);
+
+  // Hard-stop as soon as the page is no longer active (before status races).
+  useEffect(() => {
+    if (!player) return;
+    if (!isActive) {
+      silencePlayer();
+    }
+  }, [isActive, player, silencePlayer]);
 
   useEffect(() => {
     if (!player) return;
@@ -612,6 +633,7 @@ function ReelFeedItemBase({
       if (status === "readyToPlay") {
         if (player.duration > 0) setDuration(player.duration);
         // Android often ignores play() called before the player is ready.
+        // Re-check active so a late readyToPlay never restarts off-screen audio.
         syncPlayback();
       }
     });
@@ -629,8 +651,9 @@ function ReelFeedItemBase({
     return () => {
       statusSub.remove();
       timeSub.remove();
+      silencePlayer();
     };
-  }, [player, syncPlayback]);
+  }, [player, silencePlayer, syncPlayback]);
 
   useEffect(() => {
     return () => {
@@ -682,6 +705,9 @@ function ReelFeedItemBase({
         centerIconOpacity.setValue(1);
       }, 450);
     } else {
+      try {
+        player.muted = false;
+      } catch {}
       try {
         player.play();
       } catch {}
@@ -762,6 +788,9 @@ function ReelFeedItemBase({
       setIsScrubbing(false);
       if (wasPlayingBeforeScrubRef.current) {
         setIsPaused(false);
+        try {
+          player.muted = false;
+        } catch {}
         try {
           player.play();
         } catch {}
