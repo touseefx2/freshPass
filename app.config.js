@@ -27,6 +27,7 @@ module.exports = {
     plugins: [
       ...appJson.expo.plugins,
       "./plugins/withIosModularHeaders",
+      "./plugins/withAndroidReleaseSigning",
       ...(facebookPlugin ? [facebookPlugin] : []),
     ],
   },
