@@ -1270,6 +1270,8 @@
   "videoRequired": "A video is required.",
   "captionPlaceholder": "Describe the look…",
   "category": "Category",
+  "changeCategory": "Change category",
+  "hideCategories": "Hide categories",
   "serviceOptional": "Service (optional)",
   "none": "None",
   "lookTag": "Look tag",
@@ -1422,5 +1424,11 @@
   "officialAccount": "Official",
   "unfollow": "Unfollow",
   "followingCountOne": "Following 1 business",
-  "followingCountMany": "Following {{count}} businesses"
+  "followingCountMany": "Following {{count}} businesses",
+  "reelFormSubtitle": "Füge Details hinzu, damit Kunden diesen Look finden und buchen können.",
+  "reelContentSection": "Inhalt",
+  "reelClassifySection": "Klassifizierung",
+  "reelTagsSection": "Tags & Promo",
+  "reelVisibilitySection": "Sichtbarkeit",
+  "availableNowSubtitle": "Dieses Reel als sofort buchbar hervorheben."
 }

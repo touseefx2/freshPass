@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -11,15 +12,17 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
-import Button from "@/src/components/button";
+import CustomToggle from "@/src/components/customToggle";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -40,33 +43,118 @@ type ServiceOption = { id: number; name: string; price?: string | number };
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    safeArea: { flex: 1, backgroundColor: theme.background },
+    safeArea: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    flex: { flex: 1 },
     content: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingVertical: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(40),
+      paddingTop: moderateHeightScale(8),
+      paddingBottom: moderateHeightScale(20),
+    },
+    field: {
+      marginBottom: moderateHeightScale(18),
+    },
+    labelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(8),
     },
     label: {
-      marginTop: moderateHeightScale(14),
-      marginBottom: moderateHeightScale(6),
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
+    required: {
+      color: theme.selectCard,
+    },
+    charCount: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+    },
     input: {
       borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(10),
-      paddingHorizontal: moderateWidthScale(12),
+      borderColor: theme.lightGreen015,
+      borderRadius: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(12),
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
-      backgroundColor: theme.background,
+      backgroundColor: theme.white,
     },
     textArea: {
-      minHeight: moderateHeightScale(100),
+      minHeight: moderateHeightScale(96),
       textAlignVertical: "top",
+      lineHeight: fontSize.size20,
+    },
+    categoryShell: {
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+      backgroundColor: theme.white,
+      overflow: "hidden",
+    },
+    categoryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateWidthScale(10),
+    },
+    categoryDot: {
+      width: widthScale(10),
+      height: widthScale(10),
+      borderRadius: widthScale(5),
+      backgroundColor: theme.selectCard,
+    },
+    categoryTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(1),
+    },
+    categoryMeta: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    categoryValue: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    categoryPickerWrap: {
+      borderTopWidth: 1,
+      borderTopColor: theme.lightGreen015,
+      maxHeight: moderateHeightScale(220),
+    },
+    categoryLoading: {
+      paddingVertical: moderateHeightScale(16),
+      alignItems: "center",
+    },
+    categoryOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.lightGreen015,
+    },
+    categoryOptionActive: {
+      backgroundColor: theme.lightGreen07,
+    },
+    categoryOptionText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      paddingRight: moderateWidthScale(8),
+    },
+    categoryOptionTextActive: {
+      fontFamily: fonts.fontBold,
     },
     chipRow: {
       flexDirection: "row",
@@ -76,40 +164,109 @@ const createStyles = (theme: Theme) =>
     chip: {
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.white,
       borderWidth: 1,
-      borderColor: theme.borderLight,
+      borderColor: theme.lightGreen015,
     },
     chipActive: {
-      backgroundColor: theme.buttonBack,
-      borderColor: theme.buttonBack,
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
     },
     chipText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-    chipTextActive: { color: theme.buttonText },
+    chipTextActive: {
+      color: theme.buttonText,
+    },
     switchRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginTop: moderateHeightScale(18),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateWidthScale(12),
+    },
+    switchTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(2),
     },
     switchLabel: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
-      flex: 1,
-      paddingRight: moderateWidthScale(12),
     },
-    buttons: {
-      marginTop: moderateHeightScale(24),
-      gap: moderateHeightScale(12),
+    switchHint: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    footer: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(10),
+      paddingBottom: moderateHeightScale(14),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.lightGreen015,
+      backgroundColor: theme.background,
+      gap: moderateHeightScale(8),
+    },
+    footerActions: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+    },
+    footerSecondary: {
+      flex: 1,
+      height: moderateHeightScale(44),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.darkGreen,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    footerSecondaryText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    footerPrimary: {
+      flex: 1.35,
+      height: moderateHeightScale(44),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+      flexDirection: "row",
+      gap: moderateWidthScale(6),
+    },
+    footerPrimaryText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+    },
+    footerDisabled: {
+      opacity: 0.45,
+    },
+    unpublishLink: {
+      alignSelf: "center",
+      paddingVertical: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    unpublishLinkText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textDecorationLine: "underline",
     },
     progressText: {
-      marginTop: moderateHeightScale(10),
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       textAlign: "center",
@@ -129,6 +286,7 @@ export default function PublishReelScreen() {
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const businessStatus = useAppSelector((s) => s.user.businessStatus);
+  const businessCategory = businessStatus?.business_category ?? null;
 
   const params = useLocalSearchParams<{
     mediaAssetId?: string;
@@ -168,33 +326,25 @@ export default function PublishReelScreen() {
   const [productTag, setProductTag] = useState("");
   const [availableNow, setAvailableNow] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(
-    businessStatus?.business_category?.id ?? null,
+    businessCategory?.id ?? null,
+  );
+  const [categoryName, setCategoryName] = useState(
+    businessCategory?.name ?? "",
   );
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [existing, setExisting] = useState<OwnerReel | null>(null);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        const [catRes, svcRes] = await Promise.all([
-          ApiService.get<{
-            success: boolean;
-            data?: CategoryOption[] | { data?: CategoryOption[] };
-          }>(businessEndpoints.categories),
-          ApiService.get<{
-            success: boolean;
-            data?: ServiceOption[] | { data?: ServiceOption[] };
-          }>(businessEndpoints.services),
-        ]);
-
-        const catData = Array.isArray(catRes?.data)
-          ? catRes.data
-          : Array.isArray((catRes?.data as any)?.data)
-            ? (catRes.data as any).data
-            : [];
-        setCategories(catData);
+        const svcRes = await ApiService.get<{
+          success: boolean;
+          data?: ServiceOption[] | { data?: ServiceOption[] };
+        }>(businessEndpoints.services);
 
         const svcData = Array.isArray(svcRes?.data)
           ? svcRes.data
@@ -202,12 +352,8 @@ export default function PublishReelScreen() {
             ? (svcRes.data as any).data
             : [];
         setServices(svcData);
-
-        if (!categoryId && catData[0]?.id) {
-          setCategoryId(catData[0].id);
-        }
       } catch (error) {
-        Logger.error("Failed to load publish reel options:", error);
+        Logger.error("Failed to load publish reel services:", error);
       }
     })();
   }, []);
@@ -224,7 +370,10 @@ export default function PublishReelScreen() {
         setPromotionText(reel.promotion_text || "");
         setProductTag(reel.product_tag || "");
         setAvailableNow(!!reel.available_now);
-        setCategoryId(reel.category?.id ?? null);
+        setCategoryId(reel.category?.id ?? businessCategory?.id ?? null);
+        setCategoryName(
+          reel.category?.name ?? businessCategory?.name ?? "",
+        );
         setServiceId(reel.service?.id ?? null);
       } catch (error: any) {
         showBanner(
@@ -239,6 +388,49 @@ export default function PublishReelScreen() {
       }
     })();
   }, [reelId]);
+
+  const loadCategories = useCallback(async () => {
+    if (categories.length > 0) return categories;
+    setLoadingCategories(true);
+    try {
+      const catRes = await ApiService.get<{
+        success: boolean;
+        data?: CategoryOption[] | { data?: CategoryOption[] };
+      }>(businessEndpoints.categories);
+
+      const catData = Array.isArray(catRes?.data)
+        ? catRes.data
+        : Array.isArray((catRes?.data as any)?.data)
+          ? (catRes.data as any).data
+          : [];
+      setCategories(catData);
+      return catData;
+    } catch (error) {
+      Logger.error("Failed to load categories:", error);
+      showBanner(t("error"), t("failedToLoadCategories"), "error", 3000);
+      return [];
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, [categories, showBanner, t]);
+
+  const handleChangeCategory = useCallback(async () => {
+    if (showCategoryPicker) {
+      setShowCategoryPicker(false);
+      return;
+    }
+    setShowCategoryPicker(true);
+    const catData = await loadCategories();
+    if (catData.length === 0) {
+      setShowCategoryPicker(false);
+    }
+  }, [loadCategories, showCategoryPicker]);
+
+  const handleSelectCategory = useCallback((cat: CategoryOption) => {
+    setCategoryId(cat.id);
+    setCategoryName(cat.name);
+    setShowCategoryPicker(false);
+  }, []);
 
   const validate = useCallback(() => {
     if (!caption.trim()) {
@@ -392,7 +584,6 @@ export default function PublishReelScreen() {
         showBanner(t("success"), t("reelPublished"), "success", 2500);
       } else {
         const mediaId = await ensureMediaAssetId();
-        // Server rejects publish while media is still compressing/thumbnailing.
         await ensureMediaReadyForPublish(mediaId);
         await createReel(buildCreatePayload(true, mediaId));
         showBanner(t("success"), t("reelPublished"), "success", 2500);
@@ -432,6 +623,12 @@ export default function PublishReelScreen() {
     }
   };
 
+  const selectedCategoryName =
+    categories.find((c) => c.id === categoryId)?.name ||
+    categoryName ||
+    businessCategory?.name ||
+    "";
+
   if (loading) {
     return (
       <View style={styles.safeArea}>
@@ -446,150 +643,280 @@ export default function PublishReelScreen() {
   return (
     <View style={styles.safeArea}>
       <StackHeader title={isEdit ? t("editReel") : t("publishReel")} />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={moderateHeightScale(8)}
       >
-        <Text style={styles.label}>{t("caption")} *</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={caption}
-          onChangeText={setCaption}
-          placeholder={t("captionPlaceholder")}
-          placeholderTextColor={theme.lightGreen}
-          multiline
-          maxLength={2200}
-        />
-
-        <Text style={styles.label}>{t("category")} *</Text>
-        <View style={styles.chipRow}>
-          {categories.map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[styles.chip, categoryId === cat.id && styles.chipActive]}
-              onPress={() => setCategoryId(cat.id)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  categoryId === cat.id && styles.chipTextActive,
-                ]}
-              >
-                {cat.name}
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.field}>
+            <View style={styles.labelRow}>
+              <Text style={styles.label}>
+                {t("caption")} <Text style={styles.required}>*</Text>
               </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+              <Text style={styles.charCount}>{caption.length}/2200</Text>
+            </View>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              value={caption}
+              onChangeText={setCaption}
+              placeholder={t("captionPlaceholder")}
+              placeholderTextColor={theme.lightGreen5}
+              multiline
+              maxLength={2200}
+            />
+          </View>
 
-        <Text style={styles.label}>{t("serviceOptional")}</Text>
-        <View style={styles.chipRow}>
-          <TouchableOpacity
-            style={[styles.chip, serviceId == null && styles.chipActive]}
-            onPress={() => setServiceId(null)}
-          >
-            <Text
-              style={[
-                styles.chipText,
-                serviceId == null && styles.chipTextActive,
-              ]}
-            >
-              {t("none")}
+          <View style={styles.field}>
+            <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
+              {t("category")} <Text style={styles.required}>*</Text>
             </Text>
-          </TouchableOpacity>
-          {services.map((svc) => (
-            <TouchableOpacity
-              key={svc.id}
-              style={[styles.chip, serviceId === svc.id && styles.chipActive]}
-              onPress={() => setServiceId(svc.id)}
-            >
-              <Text
-                style={[
-                  styles.chipText,
-                  serviceId === svc.id && styles.chipTextActive,
-                ]}
+            <View style={styles.categoryShell}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={handleChangeCategory}
+                disabled={loadingCategories}
+                style={styles.categoryRow}
               >
-                {svc.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+                <View style={styles.categoryDot} />
+                <View style={styles.categoryTextCol}>
+                  <Text style={styles.categoryMeta}>
+                    {showCategoryPicker ? t("hideCategories") : t("changeCategory")}
+                  </Text>
+                  <Text style={styles.categoryValue} numberOfLines={1}>
+                    {selectedCategoryName || t("none")}
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name={showCategoryPicker ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                  size={moderateWidthScale(22)}
+                  color={theme.lightGreen}
+                />
+              </TouchableOpacity>
 
-        <Text style={styles.label}>{t("lookTag")}</Text>
-        <TextInput
-          style={styles.input}
-          value={lookTag}
-          onChangeText={setLookTag}
-          placeholder={t("lookTagPlaceholder")}
-          placeholderTextColor={theme.lightGreen}
-          maxLength={100}
-        />
+              {showCategoryPicker && (
+                <ScrollView
+                  style={styles.categoryPickerWrap}
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                >
+                  {loadingCategories ? (
+                    <View style={styles.categoryLoading}>
+                      <ActivityIndicator size="small" color={theme.darkGreen} />
+                    </View>
+                  ) : (
+                    categories.map((cat) => {
+                      const active = categoryId === cat.id;
+                      return (
+                        <TouchableOpacity
+                          key={cat.id}
+                          style={[
+                            styles.categoryOption,
+                            active && styles.categoryOptionActive,
+                          ]}
+                          onPress={() => handleSelectCategory(cat)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.categoryOptionText,
+                              active && styles.categoryOptionTextActive,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {cat.name}
+                          </Text>
+                          {active ? (
+                            <MaterialIcons
+                              name="check"
+                              size={moderateWidthScale(18)}
+                              color={theme.darkGreen}
+                            />
+                          ) : null}
+                        </TouchableOpacity>
+                      );
+                    })
+                  )}
+                </ScrollView>
+              )}
+            </View>
+          </View>
 
-        <Text style={styles.label}>{t("promotionText")}</Text>
-        <TextInput
-          style={styles.input}
-          value={promotionText}
-          onChangeText={setPromotionText}
-          placeholder={t("promotionTextPlaceholder")}
-          placeholderTextColor={theme.lightGreen}
-          maxLength={255}
-        />
+          <View style={styles.field}>
+            <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
+              {t("serviceOptional")}
+            </Text>
+            <View style={styles.chipRow}>
+              <TouchableOpacity
+                style={[styles.chip, serviceId == null && styles.chipActive]}
+                onPress={() => setServiceId(null)}
+                activeOpacity={0.75}
+              >
+                <Text
+                  style={[
+                    styles.chipText,
+                    serviceId == null && styles.chipTextActive,
+                  ]}
+                >
+                  {t("none")}
+                </Text>
+              </TouchableOpacity>
+              {services.map((svc) => (
+                <TouchableOpacity
+                  key={svc.id}
+                  style={[
+                    styles.chip,
+                    serviceId === svc.id && styles.chipActive,
+                  ]}
+                  onPress={() => setServiceId(svc.id)}
+                  activeOpacity={0.75}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      serviceId === svc.id && styles.chipTextActive,
+                    ]}
+                  >
+                    {svc.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
 
-        <Text style={styles.label}>{t("productTag")}</Text>
-        <TextInput
-          style={styles.input}
-          value={productTag}
-          onChangeText={setProductTag}
-          placeholder={t("productTagPlaceholder")}
-          placeholderTextColor={theme.lightGreen}
-          maxLength={255}
-        />
+          <View style={styles.field}>
+            <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
+              {t("lookTag")}
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={lookTag}
+              onChangeText={setLookTag}
+              placeholder={t("lookTagPlaceholder")}
+              placeholderTextColor={theme.lightGreen5}
+              maxLength={100}
+            />
+          </View>
 
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>{t("availableNow")}</Text>
-          <Switch
-            value={availableNow}
-            onValueChange={setAvailableNow}
-            trackColor={{
-              false: theme.lightGreen2,
-              true: theme.orangeBrown,
-            }}
-            thumbColor={theme.white}
-          />
-        </View>
+          <View style={styles.field}>
+            <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
+              {t("promotionText")}
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={promotionText}
+              onChangeText={setPromotionText}
+              placeholder={t("promotionTextPlaceholder")}
+              placeholderTextColor={theme.lightGreen5}
+              maxLength={255}
+            />
+          </View>
 
-        <View style={styles.buttons}>
+          <View style={styles.field}>
+            <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
+              {t("productTag")}
+            </Text>
+            <TextInput
+              style={styles.input}
+              value={productTag}
+              onChangeText={setProductTag}
+              placeholder={t("productTagPlaceholder")}
+              placeholderTextColor={theme.lightGreen5}
+              maxLength={255}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <View style={styles.switchRow}>
+              <View style={styles.switchTextCol}>
+                <Text style={styles.switchLabel}>{t("availableNow")}</Text>
+                <Text style={styles.switchHint}>{t("availableNowSubtitle")}</Text>
+              </View>
+              <CustomToggle
+                value={availableNow}
+                onValueChange={setAvailableNow}
+              />
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
           {isSubmitting && fromEditor && uploadProgress > 0 && !waitingForReady ? (
             <Text style={styles.progressText}>
               {`${t("uploadingVideo")} ${uploadProgress}%`}
             </Text>
           ) : null}
           {isSubmitting && waitingForReady ? (
-            <Text style={styles.progressText}>{t("videoProcessingForPublish")}</Text>
+            <Text style={styles.progressText}>
+              {t("videoProcessingForPublish")}
+            </Text>
           ) : null}
-          <Button
-            title={isEdit ? t("saveChanges") : t("saveDraft")}
-            onPress={handleSaveDraft}
-            loading={savingDraft}
-            disabled={isSubmitting}
-          />
-          <Button
-            title={t("publish")}
-            onPress={handlePublish}
-            loading={publishing}
-            disabled={isSubmitting || existing?.status === "removed"}
-          />
-          {isEdit && existing?.status === "published" && (
-            <Button
-              title={t("unpublish")}
-              onPress={handleUnpublish}
-              loading={unpublishing}
+
+          <View style={styles.footerActions}>
+            <TouchableOpacity
+              style={[
+                styles.footerSecondary,
+                isSubmitting && styles.footerDisabled,
+              ]}
+              onPress={handleSaveDraft}
               disabled={isSubmitting}
-              backgroundColor={theme.lightGreen4}
-              textColor={theme.white}
-            />
-          )}
+              activeOpacity={0.75}
+            >
+              {savingDraft ? (
+                <ActivityIndicator size="small" color={theme.darkGreen} />
+              ) : (
+                <Text style={styles.footerSecondaryText}>
+                  {isEdit ? t("saveChanges") : t("saveDraft")}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.footerPrimary,
+                (isSubmitting || existing?.status === "removed") &&
+                  styles.footerDisabled,
+              ]}
+              onPress={handlePublish}
+              disabled={isSubmitting || existing?.status === "removed"}
+              activeOpacity={0.75}
+            >
+              {publishing ? (
+                <ActivityIndicator size="small" color={theme.buttonText} />
+              ) : (
+                <>
+                  <MaterialIcons
+                    name="publish"
+                    size={moderateWidthScale(16)}
+                    color={theme.buttonText}
+                  />
+                  <Text style={styles.footerPrimaryText}>{t("publish")}</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {isEdit && existing?.status === "published" ? (
+            <TouchableOpacity
+              style={styles.unpublishLink}
+              onPress={handleUnpublish}
+              disabled={isSubmitting}
+              activeOpacity={0.7}
+            >
+              {unpublishing ? (
+                <ActivityIndicator size="small" color={theme.lightGreen} />
+              ) : (
+                <Text style={styles.unpublishLinkText}>{t("unpublish")}</Text>
+              )}
+            </TouchableOpacity>
+          ) : null}
         </View>
-      </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -435,6 +435,8 @@
   "videoRequired": "A video is required.",
   "captionPlaceholder": "Describe the look…",
   "category": "Category",
+  "changeCategory": "Change category",
+  "hideCategories": "Hide categories",
   "serviceOptional": "Service (optional)",
   "none": "None",
   "lookTag": "Look tag",
@@ -1469,5 +1471,11 @@
   "textItalic": "Italic",
   "textMono": "Mono",
   "textBackground": "Background",
-  "textBgNone": "None"
+  "textBgNone": "None",
+  "reelFormSubtitle": "Add details so customers can discover and book this look.",
+  "reelContentSection": "Content",
+  "reelClassifySection": "Classification",
+  "reelTagsSection": "Tags & promo",
+  "reelVisibilitySection": "Visibility",
+  "availableNowSubtitle": "Highlight this reel as bookable right now."
 }
