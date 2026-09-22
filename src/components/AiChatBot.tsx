@@ -47,6 +47,7 @@ import {
   toggleChat,
   openChat,
   closeChat,
+  setChatMinimized,
   clearMessages,
   setSessionId,
   sendUserMessage,
@@ -701,12 +702,11 @@ const AiChatBot: React.FC = () => {
     [theme, bottomInset, chatBottomOffset],
   );
 
-  const { isOpen, messages, isLoading, isStreaming, sessionId } =
+  const { isOpen, isMinimized, messages, isLoading, isStreaming, sessionId } =
     useAppSelector((state) => state.chat);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const [menuExpanded, setMenuExpanded] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
   const canShowMenu = userRole === "customer" || isGuest;
   const [chatMode, setChatMode] = useState<"ai_chat_bot" | "ai_receptionist">(
     "ai_chat_bot",
@@ -788,8 +788,8 @@ const AiChatBot: React.FC = () => {
   }, []);
 
   const handleExpand = useCallback(() => {
-    setIsMinimized(false);
-  }, []);
+    dispatch(setChatMinimized(false));
+  }, [dispatch]);
 
   const openAssistantChat = useCallback(
     (mode: "ai_chat_bot" | "ai_receptionist") => {
@@ -826,8 +826,8 @@ const AiChatBot: React.FC = () => {
       handleCloseChat();
     }
     setMenuExpanded(false);
-    setIsMinimized(true);
-  }, [isOpen, handleCloseChat]);
+    dispatch(setChatMinimized(true));
+  }, [isOpen, handleCloseChat, dispatch]);
 
   // Android hardware back: close chat/voice modal first, then close options menu
   useEffect(() => {

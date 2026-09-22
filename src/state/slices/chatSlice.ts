@@ -10,6 +10,8 @@ export interface ChatMessage {
 
 export interface ChatState {
   isOpen: boolean;
+  /** FAB collapsed to edge tab; survives AiChatBot unmount when navigating to stack screens */
+  isMinimized: boolean;
   messages: ChatMessage[];
   isLoading: boolean;
   isStreaming: boolean;
@@ -18,6 +20,7 @@ export interface ChatState {
 
 const initialState: ChatState = {
   isOpen: false,
+  isMinimized: false,
   messages: [],
   isLoading: false,
   isStreaming: false,
@@ -31,12 +34,19 @@ const chatSlice = createSlice({
     resetChat: () => initialState,
     toggleChat(state) {
       state.isOpen = !state.isOpen;
+      if (state.isOpen) {
+        state.isMinimized = false;
+      }
     },
     openChat(state) {
       state.isOpen = true;
+      state.isMinimized = false;
     },
     closeChat(state) {
       state.isOpen = false;
+    },
+    setChatMinimized(state, action: PayloadAction<boolean>) {
+      state.isMinimized = action.payload;
     },
     addMessage(
       state,
@@ -151,6 +161,7 @@ export const {
   toggleChat,
   openChat,
   closeChat,
+  setChatMinimized,
   addMessage,
   setLoading,
   setStreaming,
