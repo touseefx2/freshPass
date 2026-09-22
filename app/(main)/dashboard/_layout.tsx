@@ -294,6 +294,10 @@ export default function DashboardLayout() {
     segments.includes("favourite");
   const isCustomersScreen =
     Array.isArray(segments) && segments.includes("customers");
+  const isFollowersScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("followers");
   // Check if we should hide the AI chat button and tab bar on certain screens
   const shouldHideAiChat =
     isUserReviewsScreen ||
@@ -320,7 +324,8 @@ export default function DashboardLayout() {
     isLocationScreen ||
     isSearchScreen ||
     isFavoritesScreen ||
-    isCustomersScreen;
+    isCustomersScreen ||
+    isFollowersScreen;
 
   useEffect(() => {
     if (shouldHideAiChat && createMenuOpen) {
@@ -424,7 +429,7 @@ export default function DashboardLayout() {
             tabBarIcon: () => (
               <View style={styles.createTabIcon}>
                 <MaterialIcons
-                  name="add"
+                  name={createMenuOpen ? "close" : "add"}
                   size={moderateWidthScale(28)}
                   color={theme.buttonText}
                 />

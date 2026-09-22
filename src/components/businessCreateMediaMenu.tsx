@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -8,12 +7,13 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
+import CreateReelPickerSheet from "@/src/components/createReelPickerSheet";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -35,16 +35,70 @@ import {
   setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
-import { formatReelLimitMessage } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
+
+type CreateMenuAction =
+  | "newAppointment"
+  | "addEmployee"
+  | "addProduct"
+  | "createReel"
+  | "blockTime";
+
+type IconSet = "material" | "community";
+
+type MenuItem = {
+  id: CreateMenuAction;
+  labelKey: string;
+  icon: string;
+  iconSet: IconSet;
+  highlighted?: boolean;
+};
+
+const MENU_ITEMS: MenuItem[] = [
+  {
+    id: "newAppointment",
+    labelKey: "newAppointment",
+    icon: "calendar-plus",
+    iconSet: "community",
+  },
+  {
+    id: "addEmployee",
+    labelKey: "addEmployee",
+    icon: "account-multiple-plus-outline",
+    iconSet: "community",
+  },
+  {
+    id: "addProduct",
+    labelKey: "addProduct",
+    icon: "package-variant-closed",
+    iconSet: "community",
+  },
+  {
+    id: "createReel",
+    labelKey: "createReel",
+    icon: "movie-open-outline",
+    iconSet: "community",
+    highlighted: true,
+  },
+  {
+    id: "blockTime",
+    labelKey: "blockTime",
+    icon: "clock-outline",
+    iconSet: "community",
+  },
+];
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     root: {
-      flex: 1,
+      ...StyleSheet.absoluteFillObject,
+      zIndex: 40,
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
       backgroundColor: theme.lightGreen4,
     },
     menuWrap: {
@@ -55,45 +109,38 @@ const createStyles = (theme: Theme) =>
     },
     menu: {
       alignItems: "stretch",
-      gap: moderateHeightScale(10),
-    },
-    limitHint: {
-      maxWidth: widthScale(220),
-      marginBottom: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.darkGreenLight,
-    },
-    limitHintText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.white,
-      textAlign: "center",
+      gap: moderateHeightScale(8),
     },
     menuOption: {
       flexDirection: "row",
       alignItems: "center",
+      alignSelf: "center",
       gap: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(14),
-      backgroundColor: theme.darkGreenLight,
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 3,
-      borderTopColor: theme.white,
-      borderLeftColor: theme.white,
-      borderRightColor: theme.orangeBrown,
-      borderBottomColor: theme.orangeBrown,
-      minWidth: widthScale(160),
+      paddingVertical: moderateHeightScale(8),
+      paddingLeft: moderateWidthScale(8),
+      paddingRight: moderateWidthScale(18),
+      backgroundColor: theme.buttonBack,
+      borderRadius: moderateWidthScale(999),
+      borderWidth: 1,
+      borderColor: theme.white50,
       shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: moderateHeightScale(4) },
-      shadowOpacity: 0.38,
+      shadowOffset: { width: 0, height: moderateHeightScale(3) },
+      shadowOpacity: 0.25,
       shadowRadius: moderateWidthScale(6),
-      elevation: 8,
+      elevation: 7,
     },
-    menuOptionIcon: {
-      width: widthScale(24),
-      height: widthScale(24),
+    menuOptionHighlighted: {
+      borderColor: theme.orangeBrown,
+      borderWidth: 2,
+      shadowColor: theme.orangeBrown,
+      shadowOpacity: 0.45,
+      shadowRadius: moderateWidthScale(8),
+    },
+    menuOptionIconCircle: {
+      width: widthScale(32),
+      height: widthScale(32),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -121,45 +168,57 @@ export default function BusinessCreateMediaMenu({
   const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
-  const businessStatus = useAppSelector(
-    (state) => state.user.businessStatus,
-  );
+  const businessStatus = useAppSelector((state) => state.user.businessStatus);
 
   const [limits, setLimits] = useState<MediaLimits | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
+  const [reelPickerVisible, setReelPickerVisible] = useState(false);
 
-  const menuBottom =
-    Math.max(insets.bottom, moderateHeightScale(8)) + heightScale(88);
+  const tabBarClearance =
+    Math.max(insets.bottom, moderateHeightScale(8)) + heightScale(80);
+  /** Keep tab bar (and center X) tappable — backdrop stops above it. */
+  const menuBottom = tabBarClearance + moderateHeightScale(10);
+  /** Floating Create Reel card sits just above the center X. */
+  const reelPickerBottom =
+    tabBarClearance + heightScale(44) + moderateHeightScale(10);
 
   const maxSeconds = limits?.max_seconds ?? 15;
-  const limitMessage = useMemo(
-    () => (limits ? formatReelLimitMessage(limits, t) : null),
-    [limits, t],
-  );
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setReelPickerVisible(false);
+    }
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible && !reelPickerVisible) return;
     void getMediaLimits()
       .then(setLimits)
       .catch((error) => {
         Logger.error("Failed to load media limits:", error);
       });
-  }, [visible]);
+  }, [visible, reelPickerVisible]);
+
+  /** Close both speed-dial and reel picker; keeps center tab as +. */
+  const closeAll = useCallback(() => {
+    setReelPickerVisible(false);
+    onClose();
+  }, [onClose]);
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus);
     if (gate === "stripe") {
-      onClose();
+      closeAll();
       dispatch(setStripeConnectModalVisible(true));
       return false;
     }
     if (gate === "plan") {
-      onClose();
+      closeAll();
       setBuyPlanModalVisible(true);
       return false;
     }
     return true;
-  }, [businessStatus, dispatch, onClose]);
+  }, [businessStatus, closeAll, dispatch]);
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -187,12 +246,7 @@ export default function BusinessCreateMediaMenu({
     [router],
   );
 
-  const handleRecord = useCallback(async () => {
-    if (!ensureCanUploadReel()) return;
-    onClose();
-    const hasPermission = await handleCameraPermission();
-    if (!hasPermission) return;
-
+  const resolveMaxSeconds = useCallback(async () => {
     let seconds = maxSeconds;
     try {
       const data = await getMediaLimits();
@@ -201,6 +255,16 @@ export default function BusinessCreateMediaMenu({
     } catch {
       // keep last known / default
     }
+    return seconds;
+  }, [maxSeconds]);
+
+  const handleRecord = useCallback(async () => {
+    if (!ensureCanUploadReel()) return;
+    closeAll();
+    const hasPermission = await handleCameraPermission();
+    if (!hasPermission) return;
+
+    const seconds = await resolveMaxSeconds();
 
     try {
       const result = await ImagePicker.launchCameraAsync({
@@ -220,22 +284,22 @@ export default function BusinessCreateMediaMenu({
       Logger.error("Error recording video:", error);
       showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
     }
-  }, [ensureCanUploadReel, maxSeconds, onClose, openEditor, showBanner, t]);
+  }, [
+    closeAll,
+    ensureCanUploadReel,
+    openEditor,
+    resolveMaxSeconds,
+    showBanner,
+    t,
+  ]);
 
   const handleUpload = useCallback(async () => {
     if (!ensureCanUploadReel()) return;
-    onClose();
+    closeAll();
     const hasPermission = await handleMediaLibraryPermission();
     if (!hasPermission) return;
 
-    let seconds = maxSeconds;
-    try {
-      const data = await getMediaLimits();
-      setLimits(data);
-      seconds = data.max_seconds;
-    } catch {
-      // keep last known / default
-    }
+    const seconds = await resolveMaxSeconds();
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -255,63 +319,135 @@ export default function BusinessCreateMediaMenu({
       Logger.error("Error selecting video:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [ensureCanUploadReel, maxSeconds, onClose, openEditor, showBanner, t]);
+  }, [
+    closeAll,
+    ensureCanUploadReel,
+    openEditor,
+    resolveMaxSeconds,
+    showBanner,
+    t,
+  ]);
+
+  const openReelPicker = useCallback(() => {
+    const gate = getReelUploadGate(businessStatus);
+    if (gate === "stripe") {
+      closeAll();
+      dispatch(setStripeConnectModalVisible(true));
+      return;
+    }
+    if (gate === "plan") {
+      closeAll();
+      setBuyPlanModalVisible(true);
+      return;
+    }
+    // Keep parent `visible` true so center tab stays as X while picker is open.
+    setReelPickerVisible(true);
+  }, [businessStatus, closeAll, dispatch]);
+
+  const handleMenuAction = useCallback(
+    (action: CreateMenuAction) => {
+      switch (action) {
+        case "createReel":
+          openReelPicker();
+          return;
+        case "newAppointment":
+          closeAll();
+          router.push("/(main)/dashboard/(calendar)");
+          return;
+        case "addEmployee":
+          closeAll();
+          router.push("/(main)/addStaff");
+          return;
+        case "addProduct":
+          closeAll();
+          router.push(
+            "/(main)/dashboard/(account)/(businessProfileSettings)/services",
+          );
+          return;
+        case "blockTime":
+          closeAll();
+          router.push({
+            pathname: "/(main)/applyLeave",
+            params: { type: "break" },
+          });
+          return;
+        default:
+          closeAll();
+      }
+    },
+    [closeAll, openReelPicker, router],
+  );
+
+  const renderMenuIcon = (item: MenuItem) => {
+    const size = moderateWidthScale(18);
+    const color = theme.buttonBack;
+    if (item.iconSet === "community") {
+      return (
+        <MaterialCommunityIcons
+          name={item.icon as React.ComponentProps<typeof MaterialCommunityIcons>["name"]}
+          size={size}
+          color={color}
+        />
+      );
+    }
+    return (
+      <MaterialIcons
+        name={item.icon as React.ComponentProps<typeof MaterialIcons>["name"]}
+        size={size}
+        color={color}
+      />
+    );
+  };
+
+  if (!visible && !buyPlanModalVisible) {
+    return null;
+  }
+
+  const showSpeedDial = visible && !reelPickerVisible;
 
   return (
     <>
-      <Modal
-        visible={visible}
-        transparent
-        animationType="fade"
-        onRequestClose={onClose}
-        statusBarTranslucent
-      >
-        <View style={styles.root}>
-          <TouchableWithoutFeedback onPress={onClose}>
-            <View style={styles.backdrop} />
+      {showSpeedDial ? (
+        <View style={styles.root} pointerEvents="box-none">
+          <TouchableWithoutFeedback onPress={closeAll}>
+            <View style={[styles.backdrop, { bottom: tabBarClearance }]} />
           </TouchableWithoutFeedback>
           <View
             style={[styles.menuWrap, { bottom: menuBottom }]}
             pointerEvents="box-none"
           >
             <View style={styles.menu}>
-              {limitMessage ? (
-                <View style={styles.limitHint}>
-                  <Text style={styles.limitHintText}>{limitMessage}</Text>
-                </View>
-              ) : null}
-              <TouchableOpacity
-                style={styles.menuOption}
-                onPress={handleRecord}
-                activeOpacity={0.9}
-              >
-                <View style={styles.menuOptionIcon}>
-                  <MaterialIcons
-                    name="videocam"
-                    size={moderateWidthScale(22)}
-                    color={theme.white}
-                  />
-                </View>
-                <Text style={styles.menuOptionLabel}>{t("recordVideo")}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.menuOption}
-                onPress={handleUpload}
-                activeOpacity={0.9}
-              >
-                <View style={styles.menuOptionIcon}>
-                  <MaterialIcons
-                    name="file-upload"
-                    size={moderateWidthScale(22)}
-                    color={theme.white}
-                  />
-                </View>
-                <Text style={styles.menuOptionLabel}>{t("uploadVideo")}</Text>
-              </TouchableOpacity>
+              {MENU_ITEMS.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.menuOption,
+                    item.highlighted && styles.menuOptionHighlighted,
+                  ]}
+                  onPress={() => handleMenuAction(item.id)}
+                  activeOpacity={0.9}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(item.labelKey)}
+                >
+                  <View style={styles.menuOptionIconCircle}>
+                    {renderMenuIcon(item)}
+                  </View>
+                  <Text style={styles.menuOptionLabel}>{t(item.labelKey)}</Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         </View>
-      </Modal>
+      ) : null}
+
+      <CreateReelPickerSheet
+        visible={visible && reelPickerVisible}
+        onClose={closeAll}
+        onRecordPress={handleRecord}
+        onUploadPress={handleUpload}
+        bottomOffset={reelPickerBottom}
+        tabBarClearance={tabBarClearance}
+      />
 
       <BuyBusinessPlanModal
         visible={buyPlanModalVisible}

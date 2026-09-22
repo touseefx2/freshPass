@@ -23,8 +23,12 @@ import StackHeader from "@/src/components/StackHeader";
 import EmptyState from "@/src/components/emptyState";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
-import { fetchMyLooks, unsaveReel } from "@/src/services/reelsService";
-import type { FeedReel } from "@/src/types/reels";
+import {
+  deleteAiLook,
+  fetchMyLooks,
+  unsaveReel,
+} from "@/src/services/reelsService";
+import type { MyLookListItem } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
 const COLUMNS = 3;
@@ -36,6 +40,13 @@ function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+function itemKey(item: MyLookListItem, index: number): string {
+  if (item.type === "ai_look") {
+    return `ai-${item.look?.id ?? index}`;
+  }
+  return `reel-${item.reel?.id ?? index}`;
 }
 
 const createStyles = (theme: Theme) =>
@@ -68,6 +79,20 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
+    aiBadge: {
+      position: "absolute",
+      left: moderateWidthScale(6),
+      top: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen5,
+    },
+    aiBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
     unsaveButton: {
       position: "absolute",
       top: moderateHeightScale(6),
@@ -96,10 +121,11 @@ export default function MyLooksScreen() {
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((s) => s.user);
 
-  const [looks, setLooks] = useState<FeedReel[]>([]);
+  const [looks, setLooks] = useState<MyLookListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const cursorRef = useRef<string | null>(null);
+  const cursorReelsRef = useRef<string | null>(null);
+  const cursorAiRef = useRef<string | null>(null);
   const hasMoreRef = useRef(false);
 
   const coords = useMemo(() => {
@@ -112,12 +138,14 @@ export default function MyLooksScreen() {
   const loadFirstPage = useCallback(async () => {
     setLoading(true);
     try {
-      const { reels, meta } = await fetchMyLooks({
+      const { items, meta } = await fetchMyLooks({
+        type: "all",
         latitude: coords?.latitude,
         longitude: coords?.longitude,
       });
-      setLooks(reels);
-      cursorRef.current = meta.next_cursor ?? null;
+      setLooks(items);
+      cursorReelsRef.current = meta.cursors?.reels ?? meta.next_cursor ?? null;
+      cursorAiRef.current = meta.cursors?.ai ?? null;
       hasMoreRef.current = !!meta.has_more;
     } catch (error: any) {
       Logger.error("Failed to load my looks:", error);
@@ -142,16 +170,22 @@ export default function MyLooksScreen() {
     if (!hasMoreRef.current || loadingMore || loading) return;
     setLoadingMore(true);
     try {
-      const { reels, meta } = await fetchMyLooks({
-        cursor: cursorRef.current ?? undefined,
+      const { items, meta } = await fetchMyLooks({
+        type: "all",
+        cursor_reels: cursorReelsRef.current ?? undefined,
+        cursor_ai: cursorAiRef.current ?? undefined,
         latitude: coords?.latitude,
         longitude: coords?.longitude,
       });
       setLooks((prev) => {
-        const seen = new Set(prev.map((r) => r.id));
-        return [...prev, ...reels.filter((r) => !seen.has(r.id))];
+        const seen = new Set(prev.map((row, i) => itemKey(row, i)));
+        return [
+          ...prev,
+          ...items.filter((row, i) => !seen.has(itemKey(row, i))),
+        ];
       });
-      cursorRef.current = meta.next_cursor ?? null;
+      cursorReelsRef.current = meta.cursors?.reels ?? null;
+      cursorAiRef.current = meta.cursors?.ai ?? null;
       hasMoreRef.current = !!meta.has_more;
     } catch (error) {
       Logger.error("Failed to load more looks:", error);
@@ -161,11 +195,15 @@ export default function MyLooksScreen() {
   }, [coords, loading, loadingMore]);
 
   const handleUnsave = useCallback(
-    async (reel: FeedReel) => {
+    async (item: MyLookListItem) => {
       const previous = looks;
-      setLooks((prev) => prev.filter((r) => r.id !== reel.id));
+      setLooks((prev) => prev.filter((row) => row !== item));
       try {
-        await unsaveReel(reel.id);
+        if (item.type === "ai_look" && item.look?.id != null) {
+          await deleteAiLook(item.look.id);
+        } else if (item.reel?.id != null) {
+          await unsaveReel(item.reel.id);
+        }
       } catch (error: any) {
         setLooks(previous);
         showBanner(
@@ -179,46 +217,69 @@ export default function MyLooksScreen() {
     [looks, showBanner, t],
   );
 
-  const openReel = useCallback(
-    (reel: FeedReel) => {
-      router.push({
-        pathname: "/(main)/reelsFeed",
-        params: { first_reel_id: String(reel.id) },
-      });
+  const openItem = useCallback(
+    (item: MyLookListItem) => {
+      if (item.type === "ai_look") {
+        const reelId = item.reel?.id ?? item.look?.reel?.id;
+        if (reelId) {
+          router.push({
+            pathname: "/(main)/reelsFeed",
+            params: { first_reel_id: String(reelId) },
+          });
+        }
+        return;
+      }
+      if (item.reel?.id) {
+        router.push({
+          pathname: "/(main)/reelsFeed",
+          params: { first_reel_id: String(item.reel.id) },
+        });
+      }
     },
     [router],
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: FeedReel }) => {
-      const thumb = resolveApiImageUrl(item.video?.thumbnail_url);
+    ({ item }: { item: MyLookListItem }) => {
+      const isAi = item.type === "ai_look";
+      const thumb = resolveApiImageUrl(
+        isAi
+          ? item.look?.image_url
+          : item.reel?.video?.thumbnail_url,
+      );
+      const views = item.reel?.stats?.views ?? 0;
       return (
         <TouchableOpacity
           style={styles.tile}
           activeOpacity={0.85}
-          onPress={() => openReel(item)}
+          onPress={() => openItem(item)}
         >
           {thumb ? (
             <Image source={{ uri: thumb }} style={styles.thumb} />
           ) : (
             <View style={styles.tileFallback}>
               <MaterialIcons
-                name="movie"
+                name={isAi ? "face-retouching-natural" : "movie"}
                 size={moderateWidthScale(28)}
                 color={theme.lightGreen}
               />
             </View>
           )}
-          <View style={styles.tileFooter}>
-            <MaterialIcons
-              name="visibility"
-              size={moderateWidthScale(13)}
-              color={theme.white}
-            />
-            <Text style={styles.tileCount}>
-              {formatCount(item.stats?.views ?? 0)}
-            </Text>
-          </View>
+          {isAi ? (
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>{t("aiLook")}</Text>
+            </View>
+          ) : null}
+          {!isAi ? (
+            <View style={styles.tileFooter}>
+              <MaterialIcons
+                name="visibility"
+                size={moderateWidthScale(13)}
+                color={theme.white}
+              />
+              <Text style={styles.tileCount}>{formatCount(views)}</Text>
+            </View>
+          ) : null}
           <TouchableOpacity
             style={styles.unsaveButton}
             onPress={() => handleUnsave(item)}
@@ -233,7 +294,7 @@ export default function MyLooksScreen() {
         </TouchableOpacity>
       );
     },
-    [handleUnsave, openReel, styles, theme.lightGreen, theme.white],
+    [handleUnsave, openItem, styles, t, theme.lightGreen, theme.white],
   );
 
   return (
@@ -246,11 +307,10 @@ export default function MyLooksScreen() {
       ) : (
         <FlatList
           data={looks}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item, index) => itemKey(item, index)}
           numColumns={COLUMNS}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
           renderItem={renderItem}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.4}
@@ -263,11 +323,9 @@ export default function MyLooksScreen() {
           }
           ListFooterComponent={
             loadingMore ? (
-              <ActivityIndicator
-                style={styles.footerLoader}
-                size="small"
-                color={theme.darkGreen}
-              />
+              <View style={styles.footerLoader}>
+                <ActivityIndicator color={theme.darkGreen} />
+              </View>
             ) : null
           }
         />

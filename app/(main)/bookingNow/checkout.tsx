@@ -1489,9 +1489,13 @@ function CheckoutContent() {
     gallery_image_uris?: string;
     selected_subscription_service_ids?: string;
     reel_id?: string;
+    saved_look_id?: string;
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
+  const attributionSavedLookId = params.saved_look_id
+    ? Number(params.saved_look_id)
+    : null;
 
   // Prefer try-on URLs from route params (passed from bookingNow) so they're always in sync
   const tryOnImageUrls = useMemo(() => {
@@ -2005,6 +2009,7 @@ function CheckoutContent() {
       policy_accepted: boolean;
       setup_intent_id?: string;
       reel_id?: number;
+      saved_look_id?: number;
     } = {
       business_id: parseInt(resolvedCheckoutBusinessId, 10),
       appointment_type: "service",
@@ -2029,6 +2034,10 @@ function CheckoutContent() {
 
     if (attributionReelId) {
       requestBody.reel_id = attributionReelId;
+    }
+
+    if (attributionSavedLookId) {
+      requestBody.saved_look_id = attributionSavedLookId;
     }
 
     Logger.log("requestBody", requestBody);

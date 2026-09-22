@@ -3,21 +3,28 @@ import {
   myLooksEndpoints,
   reelsEndpoints,
   reportsEndpoints,
+  tryOnEndpoints,
 } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
+import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   CreateReelPayload,
   FeedReel,
   LikeResponse,
+  MyLookListItem,
   OwnerReel,
   PageMeta,
   ReelCategoryCard,
   ReelComment,
   ReelEventType,
+  ReelLookResponse,
   ReelPerformanceStats,
+  ReelTryOnStartResponse,
+  ReelTryOnStatusResponse,
   ReportReason,
   ReportResponse,
   SaveResponse,
+  SavedAiLook,
   ShareResponse,
   UpdateReelPayload,
 } from "@/src/types/reels";
@@ -253,25 +260,169 @@ export async function unsaveReel(
   };
 }
 
-/** Saved reels, most recently saved first. Cursor paged. */
+/** Saved reels, most recently saved first. Cursor paged. Default type=reels. */
 export async function fetchMyLooks(params?: {
   cursor?: string;
   per_page?: number;
   latitude?: number;
   longitude?: number;
-}): Promise<{ reels: FeedReel[]; meta: PageMeta }> {
+  type?: "reels" | "ai" | "all";
+  cursor_reels?: string;
+  cursor_ai?: string;
+}): Promise<{
+  reels: FeedReel[];
+  items: MyLookListItem[];
+  meta: PageMeta;
+}> {
   const perPage = params?.per_page ?? MY_LOOKS_PER_PAGE;
+  const type = params?.type ?? "reels";
   const response = await ApiService.get<
-    Envelope<{ data: FeedReel[]; meta: PageMeta }>
-  >(myLooksEndpoints.list({ ...params, per_page: perPage }));
-  return {
-    reels: response?.data?.data ?? [],
-    meta: response?.data?.meta ?? {
+    Envelope<{ data: (FeedReel | MyLookListItem)[]; meta: PageMeta }>
+  >(
+    myLooksEndpoints.list({
+      ...params,
+      type,
       per_page: perPage,
-      has_more: false,
-      next_cursor: null,
-    },
+    }),
+  );
+  const raw = response?.data?.data ?? [];
+  const meta = response?.data?.meta ?? {
+    per_page: perPage,
+    has_more: false,
+    next_cursor: null,
   };
+
+  if (type === "reels") {
+    const reels = raw as FeedReel[];
+    return {
+      reels,
+      items: reels.map((reel) => ({ type: "reel" as const, reel })),
+      meta,
+    };
+  }
+
+  const items = (raw as MyLookListItem[]).map((row) => {
+    if (row?.type === "ai_look") return row;
+    if (row?.type === "reel") return row;
+    // Defensive: plain reel objects if server omits wrapper for type=ai
+    const asReel = row as unknown as FeedReel;
+    if (asReel && typeof asReel === "object" && "id" in asReel && "video" in asReel) {
+      return { type: "reel" as const, reel: asReel };
+    }
+    return row;
+  });
+
+  const reels = items
+    .map((item) =>
+      item.type === "reel" ? item.reel : item.reel ?? null,
+    )
+    .filter((r): r is FeedReel => !!r);
+
+  return { reels, items, meta };
+}
+
+/** GET /api/reels/{id}/look — also records look_tap. */
+export async function fetchReelLook(
+  id: number | string,
+): Promise<ReelLookResponse> {
+  const response = await ApiService.get<Envelope<ReelLookResponse>>(
+    reelsEndpoints.look(id),
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to load look options");
+  }
+  return response.data;
+}
+
+/**
+ * POST /api/reels/{id}/try-on — multipart source_image only.
+ * Credits are debited server-side; do not update quota locally beyond re-read.
+ */
+export async function startReelTryOn(
+  id: number | string,
+  sourceImageUri: string,
+): Promise<ReelTryOnStartResponse> {
+  const formData = new FormData();
+  const prepared = await prepareImageForUpload(sourceImageUri, "source_image");
+  formData.append("source_image", prepared as any);
+
+  const response = await ApiService.post<Envelope<ReelTryOnStartResponse>>(
+    reelsEndpoints.tryOn(id),
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } },
+  );
+  const data = response?.data ?? (response as unknown as ReelTryOnStartResponse);
+  if (!data?.job_id) {
+    throw new Error(
+      (response as any)?.message || "Failed to start try-on",
+    );
+  }
+  return data as ReelTryOnStartResponse;
+}
+
+/** GET /api/try-ons/{job_id} */
+export async function getReelTryOnStatus(
+  jobId: string,
+): Promise<ReelTryOnStatusResponse> {
+  const response = await ApiService.get<Envelope<ReelTryOnStatusResponse>>(
+    tryOnEndpoints.getByJobId(jobId),
+  );
+  const data = response?.data ?? (response as unknown as ReelTryOnStatusResponse);
+  if (!data?.job_id) {
+    throw new Error(
+      (response as any)?.message || "Failed to load try-on status",
+    );
+  }
+  return data as ReelTryOnStatusResponse;
+}
+
+export async function fetchSimilarPros(
+  id: number | string,
+  params?: {
+    latitude?: number;
+    longitude?: number;
+    radius_km?: number;
+    availability_date?: string;
+    per_page?: number;
+  },
+): Promise<{ businesses: any[]; meta?: PageMeta }> {
+  const response = await ApiService.get<any>(
+    reelsEndpoints.similarPros(id, {
+      per_page: params?.per_page ?? 10,
+      ...params,
+    }),
+  );
+  const root = response?.data;
+  const businesses: any[] = Array.isArray(root)
+    ? root
+    : Array.isArray(root?.data)
+      ? root.data
+      : [];
+  const meta: PageMeta | undefined = Array.isArray(root)
+    ? response?.meta
+    : root?.meta;
+  return { businesses, meta };
+}
+
+export async function saveAiLook(params: {
+  jobId: string;
+  view?: string;
+}): Promise<SavedAiLook> {
+  const response = await ApiService.post<Envelope<SavedAiLook>>(
+    myLooksEndpoints.saveAi,
+    {
+      job_id: params.jobId,
+      ...(params.view ? { view: params.view } : {}),
+    },
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to save look");
+  }
+  return response.data;
+}
+
+export async function deleteAiLook(id: number | string): Promise<void> {
+  await ApiService.delete(myLooksEndpoints.deleteAi(id));
 }
 
 /**

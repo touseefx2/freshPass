@@ -26,7 +26,6 @@ import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
-import { canUploadOwnerWork } from "@/src/state/slices/userSlice";
 
 const CARD_WIDTH_PERCENT = "48%";
 
@@ -441,6 +440,8 @@ export default function AccountScreen() {
       router.push("/(main)/leaveList");
     } else if (key === "customers") {
       router.push("./customers");
+    } else if (key === "followers") {
+      router.push("./followers");
     } else if (key === "reviews") {
       if (user.id) {
         router.push({
@@ -491,6 +492,7 @@ export default function AccountScreen() {
       | "uploadWork"
       | "leaveRequest"
       | "customers"
+      | "followers"
       | "language"
       | "country"
       | "notifications"
@@ -522,6 +524,11 @@ export default function AccountScreen() {
             key: "customers" as const,
             title: t("customers"),
           },
+          {
+            key: "followers" as const,
+            title: t("followers"),
+          },
+          { key: "uploadWork" as const, title: t("uploadYourWork") },
         ]
       : []),
     ...(userRole === "staff" && !isGuest
@@ -613,6 +620,8 @@ export default function AccountScreen() {
         return { name: "event-busy", family: "material" };
       case "customers":
         return { name: "people", family: "material" };
+      case "followers":
+        return { name: "group", family: "material" };
       case "country":
         return { name: "public", family: "material" };
       case "language":

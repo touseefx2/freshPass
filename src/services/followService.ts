@@ -17,9 +17,13 @@ type FollowResult = { following: boolean; followers: number | null };
 
 export async function followBusiness(
   businessId: number | string,
+  options?: { reelId?: number | string },
 ): Promise<FollowResult> {
+  const body =
+    options?.reelId != null ? { reel_id: Number(options.reelId) } : undefined;
   const response = await ApiService.post<FollowResponse>(
     businessEndpoints.follow(businessId),
+    body,
   );
   return {
     following: response?.data?.following ?? true,

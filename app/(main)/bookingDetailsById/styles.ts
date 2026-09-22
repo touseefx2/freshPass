@@ -526,6 +526,47 @@ export const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: fontSize.size20,
     },
+    inspirationCard: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(18),
+      padding: moderateWidthScale(14),
+      gap: moderateHeightScale(10),
+    },
+    inspirationHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+    },
+    inspirationTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    inspirationRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
+      alignItems: "center",
+    },
+    inspirationThumb: {
+      width: widthScale(64),
+      height: widthScale(64),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.grey15,
+    },
+    inspirationMeta: {
+      flex: 1,
+      gap: moderateHeightScale(4),
+    },
+    inspirationLookTag: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    inspirationCaption: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
     assignedStaffRow: {
       flexDirection: "row",
       alignItems: "center",

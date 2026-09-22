@@ -28,6 +28,9 @@ import {
 } from "@/src/services/followService";
 import type { BusinessFollower } from "@/src/types/businessFollowers";
 
+const DEFAULT_AVATAR_URL =
+  process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE?.trim() ?? "";
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     container: {
@@ -91,7 +94,7 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-function formatFollowedAt(value: string | null, t: (key: string) => string) {
+function formatFollowedAt(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -102,7 +105,7 @@ function formatFollowedAt(value: string | null, t: (key: string) => string) {
       day: "numeric",
     });
   } catch {
-    return t("followed");
+    return "";
   }
 }
 
@@ -200,7 +203,7 @@ export default function BusinessFollowersScreen() {
       : t("followersCountMany", { count: displayCount });
 
   const renderItem = ({ item }: { item: BusinessFollower }) => {
-    const followedLabel = formatFollowedAt(item.followed_at, t);
+    const followedLabel = formatFollowedAt(item.followed_at);
     const contact = item.email?.trim() || item.phone?.trim() || "";
 
     return (
@@ -211,12 +214,14 @@ export default function BusinessFollowersScreen() {
       >
         <BusinessCustomerAvatar
           name={item.name}
-          profileImageUrl={item.profile_image_url}
+          profileImageUrl={
+            item.profile_image_url?.trim() || DEFAULT_AVATAR_URL || null
+          }
           size={moderateWidthScale(52)}
         />
         <View style={styles.textCol}>
           <Text numberOfLines={1} style={styles.name}>
-            {item.name?.trim() || t("unknown")}
+            {item.name?.trim() || "Unknown"}
           </Text>
           {!!contact && (
             <Text numberOfLines={1} style={styles.meta}>

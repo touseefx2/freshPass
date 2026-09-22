@@ -786,6 +786,39 @@ export const reelsEndpoints = {
     `/api/reels/${id}/comments/${commentId}`,
   commentReport: (id: number | string, commentId: number | string) =>
     `/api/reels/${id}/comments/${commentId}/report`,
+  /** I Want This Look sheet payload + look_tap analytics */
+  look: (id: number | string) => `/api/reels/${id}/look`,
+  /** Reel-tied AI try-on (multipart source_image) */
+  tryOn: (id: number | string) => `/api/reels/${id}/try-on`,
+  similarPros: (
+    id: number | string,
+    params?: {
+      latitude?: number;
+      longitude?: number;
+      radius_km?: number;
+      availability_date?: string;
+      per_page?: number;
+    },
+  ) => {
+    const queryParams = new URLSearchParams();
+    if (params?.latitude != null)
+      queryParams.append("latitude", String(params.latitude));
+    if (params?.longitude != null)
+      queryParams.append("longitude", String(params.longitude));
+    if (params?.radius_km != null)
+      queryParams.append("radius_km", String(params.radius_km));
+    if (params?.availability_date)
+      queryParams.append("availability_date", params.availability_date);
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    const query = queryParams.toString();
+    return `/api/reels/${id}/similar-pros${query ? `?${query}` : ""}`;
+  },
+};
+
+/** Poll reel try-on job status */
+export const tryOnEndpoints = {
+  getByJobId: (jobId: string) => `/api/try-ons/${jobId}`,
 };
 
 /**
@@ -797,6 +830,9 @@ export const myLooksEndpoints = {
     cursor?: string;
     latitude?: number;
     longitude?: number;
+    type?: "reels" | "ai" | "all";
+    cursor_reels?: string;
+    cursor_ai?: string;
   }) => {
     const queryParams = new URLSearchParams();
     if (params?.per_page != null)
@@ -806,9 +842,15 @@ export const myLooksEndpoints = {
       queryParams.append("latitude", String(params.latitude));
     if (params?.longitude != null)
       queryParams.append("longitude", String(params.longitude));
+    if (params?.type) queryParams.append("type", params.type);
+    if (params?.cursor_reels)
+      queryParams.append("cursor_reels", params.cursor_reels);
+    if (params?.cursor_ai) queryParams.append("cursor_ai", params.cursor_ai);
     const query = queryParams.toString();
     return `/api/my-looks${query ? `?${query}` : ""}`;
   },
+  saveAi: `/api/my-looks/ai`,
+  deleteAi: (id: number | string) => `/api/my-looks/ai/${id}`,
 };
 
 /**

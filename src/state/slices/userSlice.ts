@@ -96,13 +96,6 @@ export const canUseOwnerAsStaff = (
   status?: BusinessStatus | null,
 ): boolean => status?.owner_as_staff?.available === true;
 
-/** Show Upload Your Work when owner has joined their team on an active Business plan. */
-export const canUploadOwnerWork = (
-  status?: BusinessStatus | null,
-): boolean =>
-  status?.owner_as_staff?.available === true &&
-  status?.owner_as_staff?.enabled === true;
-
 const withDerivedBusinessStatus = (status: BusinessStatus): BusinessStatus => {
   const subscription_plan_name = status.subscription_plan_name ?? null;
   const subscription_is_single = status.subscription_is_single ?? false;

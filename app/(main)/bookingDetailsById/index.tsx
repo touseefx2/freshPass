@@ -229,6 +229,22 @@ interface BookingItem {
     profile_pic: string | null;
   };
   notes?: string | null;
+  inspiration?: {
+    reel?: {
+      id: number;
+      caption?: string | null;
+      look_tag?: string | null;
+      thumbnail_url?: string | null;
+      playback_url?: string | null;
+      business_id?: number | null;
+    } | null;
+    try_on?: {
+      id: number;
+      image_url?: string | null;
+      view?: string | null;
+      created_at?: string | null;
+    } | null;
+  } | null;
   appointmentDate?: string;
   appointmentTime?: string;
   createdAt?: string | null;
@@ -334,6 +350,22 @@ interface ApiBookingResponse {
   paymentDueNow?: boolean;
   paidAt?: string | null;
   notes: string | null;
+  inspiration?: {
+    reel?: {
+      id: number;
+      caption?: string | null;
+      look_tag?: string | null;
+      thumbnail_url?: string | null;
+      playback_url?: string | null;
+      business_id?: number | null;
+    } | null;
+    try_on?: {
+      id: number;
+      image_url?: string | null;
+      view?: string | null;
+      created_at?: string | null;
+    } | null;
+  } | null;
   cancelReason: string | null;
   cancelDate: string | null;
   createdAt: string;
@@ -763,6 +795,7 @@ export default function BookingDetailsById() {
       type: apiData.appointmentType,
       owner: apiData.owner,
       notes: apiData.notes ?? null,
+      inspiration: apiData.inspiration ?? null,
       appointmentDate: apiData.appointmentDate,
       appointmentTime: apiData.appointmentTime,
       createdAt: apiData.createdAt ?? null,
@@ -2418,6 +2451,99 @@ export default function BookingDetailsById() {
               )}
             </View>
           </View>
+
+          {/* Inspiration from reel / AI try-on */}
+          {booking.inspiration &&
+            (booking.inspiration.reel || booking.inspiration.try_on) && (
+              <View style={[styles.inspirationCard, styles.cardShadow]}>
+                <View style={styles.inspirationHeader}>
+                  <View style={styles.paymentIconCircle}>
+                    <Ionicons
+                      name="color-wand-outline"
+                      size={moderateWidthScale(18)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <Text style={styles.inspirationTitle}>
+                    {t("inspirationLook")}
+                  </Text>
+                </View>
+                {booking.inspiration.try_on?.image_url ? (
+                  <View style={styles.inspirationRow}>
+                    <Image
+                      source={{
+                        uri:
+                          resolveApiImageUrl(
+                            booking.inspiration.try_on.image_url,
+                          ) || "",
+                      }}
+                      style={styles.inspirationThumb}
+                    />
+                    <View style={styles.inspirationMeta}>
+                      <Text style={styles.inspirationLookTag}>
+                        {t("aiTryOnLook")}
+                        {booking.inspiration.try_on.view
+                          ? ` · ${booking.inspiration.try_on.view}`
+                          : ""}
+                      </Text>
+                      {booking.inspiration.reel?.look_tag ? (
+                        <Text
+                          style={styles.inspirationCaption}
+                          numberOfLines={2}
+                        >
+                          {booking.inspiration.reel.look_tag}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : booking.inspiration.reel ? (
+                  <View style={styles.inspirationRow}>
+                    {resolveApiImageUrl(
+                      booking.inspiration.reel.thumbnail_url,
+                    ) ? (
+                      <Image
+                        source={{
+                          uri: resolveApiImageUrl(
+                            booking.inspiration.reel.thumbnail_url,
+                          )!,
+                        }}
+                        style={styles.inspirationThumb}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.inspirationThumb,
+                          {
+                            alignItems: "center",
+                            justifyContent: "center",
+                          },
+                        ]}
+                      >
+                        <Ionicons
+                          name="videocam-outline"
+                          size={moderateWidthScale(22)}
+                          color={theme.lightGreen}
+                        />
+                      </View>
+                    )}
+                    <View style={styles.inspirationMeta}>
+                      <Text style={styles.inspirationLookTag} numberOfLines={1}>
+                        {booking.inspiration.reel.look_tag ||
+                          t("reelInspiration")}
+                      </Text>
+                      {booking.inspiration.reel.caption ? (
+                        <Text
+                          style={styles.inspirationCaption}
+                          numberOfLines={2}
+                        >
+                          {booking.inspiration.reel.caption}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            )}
 
           {/* Notes */}
           {booking.notes != null && String(booking.notes).trim() !== "" && (

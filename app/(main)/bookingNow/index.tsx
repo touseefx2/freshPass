@@ -1677,9 +1677,13 @@ export default function BookingNow() {
     appointment_time?: string;
     staff_id?: string;
     reel_id?: string;
+    saved_look_id?: string;
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
+  const attributionSavedLookId = params.saved_look_id
+    ? Number(params.saved_look_id)
+    : null;
   const bookingStartedSentRef = useRef(false);
 
   useEffect(() => {
@@ -3777,6 +3781,9 @@ export default function BookingNow() {
                     ...(attributionReelId
                       ? { reel_id: String(attributionReelId) }
                       : {}),
+                    ...(attributionSavedLookId
+                      ? { saved_look_id: String(attributionSavedLookId) }
+                      : {}),
                   },
                 });
                 return;
@@ -3817,6 +3824,9 @@ export default function BookingNow() {
                   subscription_plan_type: subscriptionPlanType ?? "",
                   ...(attributionReelId
                     ? { reel_id: String(attributionReelId) }
+                    : {}),
+                  ...(attributionSavedLookId
+                    ? { saved_look_id: String(attributionSavedLookId) }
                     : {}),
                 },
               });

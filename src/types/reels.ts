@@ -108,7 +108,92 @@ export type PageMeta = {
   tab?: "for_you" | "following";
   following_count?: number;
   requires_login?: boolean;
+  /** Present when listing my-looks with type=all */
+  cursors?: {
+    reels?: string | null;
+    ai?: string | null;
+  };
 };
+
+/** GET /api/reels/{id}/look — drives the I Want This Look sheet */
+export type ReelLookResponse = {
+  reel_id: number;
+  look_tag: string | null;
+  category: { id: number; name: string } | null;
+  try_on: {
+    available: boolean;
+    recommended: boolean;
+    requires_login: boolean;
+    prompt: string | null;
+    credits_required: number;
+    credits_balance: number;
+    can_afford: boolean;
+    reason: "sign_in_required" | "insufficient_credits" | string | null;
+  };
+  save: {
+    saved: boolean;
+    requires_login: boolean;
+  };
+  book: {
+    business_id: number | null;
+    business_title: string | null;
+    service_id: number | null;
+    service_name: string | null;
+  };
+  find_another_pro: {
+    category_id: number | null;
+    look_tag: string | null;
+  };
+};
+
+export type ReelTryOnJobStatus = "processing" | "completed" | "failed";
+
+export type ReelTryOnViewImages = {
+  front?: { url?: string } | null;
+  left?: { url?: string } | null;
+  right?: { url?: string } | null;
+  back?: { url?: string } | null;
+};
+
+export type ReelTryOnStartResponse = {
+  job_id: string;
+  reel_id: number;
+  prompt?: string | null;
+  status: ReelTryOnJobStatus;
+  estimated_time_minutes?: number;
+  credits_charged?: number;
+  credits_balance?: number;
+};
+
+export type ReelTryOnStatusResponse = {
+  job_id: string;
+  reel_id: number;
+  status: ReelTryOnJobStatus;
+  images: ReelTryOnViewImages | null;
+  prompt?: string | null;
+};
+
+export type SavedAiLook = {
+  id: number;
+  image_url: string;
+  view: string;
+  created_at?: string;
+  reel?: FeedReel | null;
+};
+
+export type MyLookListItem =
+  | {
+      type: "reel";
+      saved_at?: string;
+      reel: FeedReel;
+      look?: null;
+    }
+  | {
+      type: "ai_look";
+      saved_at?: string;
+      reel?: FeedReel | null;
+      look: SavedAiLook;
+    };
 
 export type CreateReelPayload = {
   media_asset_id: number;

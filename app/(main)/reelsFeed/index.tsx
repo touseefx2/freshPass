@@ -50,18 +50,21 @@ import {
 import {
   setGuestModeModalVisible,
   setHasSeenReelsSwipeGuide,
+  setTryOnPurchaseSuccessSource,
 } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
   fetchReelCategories,
   fetchReelFeed,
+  fetchReelLook,
   getMyReel,
   likeReel,
   publishReel,
   recordReelView,
   saveReel,
   shareReel,
+  startReelTryOn,
   unlikeReel,
   unsaveReel,
 } from "@/src/services/reelsService";
@@ -72,8 +75,27 @@ import ReelsSwipeGuide from "@/src/components/reelsSwipeGuide";
 import ReelReportSheet, {
   type ReportTarget,
 } from "@/src/components/reelReportSheet";
-import type { FeedReel, OwnerReel, ReelCategoryCard } from "@/src/types/reels";
+import ReelWantLookSheet from "@/src/components/reelWantLookSheet";
+import ImagePickerModal from "@/src/components/imagePickerModal";
+import HairPipelineProcessingModal, {
+  INITIAL_HAIR_PIPELINE_STATE,
+  type HairPipelineModalState,
+} from "@/src/components/HairPipelineProcessingModal";
+import type {
+  FeedReel,
+  OwnerReel,
+  ReelCategoryCard,
+  ReelLookResponse,
+} from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import {
+  clearPendingReelTryOn,
+  pollReelTryOnJob,
+  savePendingReelTryOn,
+} from "@/src/utils/reelTryOnPoll";
+import { ApiService } from "@/src/services/api";
+import { userEndpoints } from "@/src/services/endpoints";
+import { setUserDetails } from "@/src/state/slices/userSlice";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const INITIAL_SCREEN_HEIGHT = Dimensions.get("screen").height;
@@ -297,7 +319,7 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       right: moderateWidthScale(10),
       alignItems: "center",
-      gap: moderateHeightScale(18),
+      gap: moderateHeightScale(14),
       zIndex: 5,
     },
     sideShade: {
@@ -308,20 +330,24 @@ const createStyles = (theme: Theme) =>
       width: widthScale(88),
       zIndex: 3,
     },
-    sideBtn: { alignItems: "center" },
-    sideIconWrap: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(22),
+    sideBtn: {
       alignItems: "center",
       justifyContent: "center",
     },
+    sideIconWrap: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: `${theme.black}40`,
+    },
     sideCount: {
-      marginTop: moderateHeightScale(2),
+      marginTop: moderateHeightScale(3),
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.white,
-      textShadowColor: theme.black,
+      textShadowColor: `${theme.black}B3`,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 3,
     },
@@ -1222,7 +1248,7 @@ function ReelFeedItemBase({
           styles.sideActions,
           {
             // Mid-right stack, well above bottom profile/product area
-            top: itemHeight * 0.40,
+            top: itemHeight * 0.45,
           },
         ]}
         pointerEvents={socialLocked ? "none" : "auto"}
@@ -1231,7 +1257,7 @@ function ReelFeedItemBase({
           <View style={styles.sideIconWrap}>
             <MaterialIcons
               name={reel.viewer?.liked ? "favorite" : "favorite-border"}
-              size={moderateWidthScale(30)}
+              size={moderateWidthScale(26)}
               color={reel.viewer?.liked ? theme.red : theme.white}
             />
           </View>
@@ -1246,7 +1272,7 @@ function ReelFeedItemBase({
           <View style={styles.sideIconWrap}>
             <MaterialIcons
               name="chat-bubble-outline"
-              size={moderateWidthScale(28)}
+              size={moderateWidthScale(24)}
               color={theme.white}
             />
           </View>
@@ -1258,7 +1284,7 @@ function ReelFeedItemBase({
           <View style={styles.sideIconWrap}>
             <MaterialIcons
               name="share"
-              size={moderateWidthScale(26)}
+              size={moderateWidthScale(24)}
               color={theme.white}
             />
           </View>
@@ -1271,7 +1297,7 @@ function ReelFeedItemBase({
             <View style={styles.sideIconWrap}>
               <MaterialIcons
                 name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
-                size={moderateWidthScale(28)}
+                size={moderateWidthScale(24)}
                 color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
               />
             </View>
@@ -1602,6 +1628,7 @@ export default function ReelsFeedScreen() {
     (s) => s.general.hasSeenReelsSwipeGuide,
   );
   const isGuest = user.isGuest;
+  const isBusiness = user.userRole === "business";
   const ownerBusinessId = user.business_id ?? null;
   const [viewportHeight, setViewportHeight] = useState(INITIAL_SCREEN_HEIGHT);
   const [edgeOffset, setEdgeOffset] = useState({ top: 0, bottom: 0 });
@@ -1745,6 +1772,22 @@ export default function ReelsFeedScreen() {
     id: number;
     count: number;
   } | null>(null);
+  const [wantLookReel, setWantLookReel] = useState<FeedReel | null>(null);
+  const [wantLookData, setWantLookData] = useState<ReelLookResponse | null>(
+    null,
+  );
+  const [wantLookLoading, setWantLookLoading] = useState(false);
+  const wantLookReelRef = useRef<FeedReel | null>(null);
+  const wantLookDataRef = useRef<ReelLookResponse | null>(null);
+  const [tryOnPickerVisible, setTryOnPickerVisible] = useState(false);
+  const [tryOnPipeline, setTryOnPipeline] = useState<HairPipelineModalState>(
+    INITIAL_HAIR_PIPELINE_STATE,
+  );
+  const tryOnPollSignal = useRef({ cancelled: false });
+  const tryOnPipelineStartRef = useRef<number | null>(null);
+  const tryOnPipelineIntervalRef = useRef<ReturnType<
+    typeof setInterval
+  > | null>(null);
   const openedCommentsFromParamRef = useRef(false);
   const firstReelUsedRef = useRef(false);
   /** R-17: keep a separate cursor/page per tab so switching doesn't lose place. */
@@ -1918,14 +1961,21 @@ export default function ReelsFeedScreen() {
   }, [isPreviewMode]);
 
   useEffect(() => {
-    if (isPreviewMode || hasSeenReelsSwipeGuide) {
+    // Customer-only onboarding; business owners (e.g. Media Library play) skip it.
+    if (isPreviewMode || isBusiness || hasSeenReelsSwipeGuide) {
       setShowSwipeGuide(false);
       return;
     }
     if (!loading && reels.length > 0) {
       setShowSwipeGuide(true);
     }
-  }, [hasSeenReelsSwipeGuide, isPreviewMode, loading, reels.length]);
+  }, [
+    hasSeenReelsSwipeGuide,
+    isBusiness,
+    isPreviewMode,
+    loading,
+    reels.length,
+  ]);
 
   const showCategoryToast = useCallback((name: string) => {
     setCategoryToast(name);
@@ -2206,7 +2256,7 @@ export default function ReelsFeedScreen() {
       try {
         const result = prev
           ? await unfollowBusiness(businessId)
-          : await followBusiness(businessId);
+          : await followBusiness(businessId, { reelId: reel.id });
         applyFollowState(businessId, result.following, result.followers);
       } catch (error: any) {
         applyFollowState(businessId, prev, prevCount ?? null);
@@ -2386,6 +2436,49 @@ export default function ReelsFeedScreen() {
     }
   }, [firstReelId, publishing, router, showBanner, t]);
 
+  const refreshAiQuota = useCallback(async () => {
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        data?: { ai_quota?: number };
+      }>(userEndpoints.details);
+      if (response?.success && response.data?.ai_quota !== undefined) {
+        dispatch(setUserDetails({ ai_quota: response.data.ai_quota }));
+      }
+    } catch {}
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (!tryOnPipeline.visible || tryOnPipeline.complete) return;
+    const totalMs = tryOnPipeline.estimatedMinutes * 60 * 1000;
+    const start = tryOnPipelineStartRef.current ?? Date.now();
+    tryOnPipelineStartRef.current = start;
+    const tick = () => {
+      const pct = Math.min(100, ((Date.now() - start) / totalMs) * 100);
+      setTryOnPipeline((prev) => ({
+        ...prev,
+        progress: pct,
+        complete: pct >= 100,
+      }));
+      if (pct >= 100 && tryOnPipelineIntervalRef.current) {
+        clearInterval(tryOnPipelineIntervalRef.current);
+        tryOnPipelineIntervalRef.current = null;
+      }
+    };
+    tick();
+    tryOnPipelineIntervalRef.current = setInterval(tick, 500);
+    return () => {
+      if (tryOnPipelineIntervalRef.current) {
+        clearInterval(tryOnPipelineIntervalRef.current);
+        tryOnPipelineIntervalRef.current = null;
+      }
+    };
+  }, [
+    tryOnPipeline.visible,
+    tryOnPipeline.estimatedMinutes,
+    tryOnPipeline.complete,
+  ]);
+
   const openProfile = useCallback(
     (reel: FeedReel) => {
       router.push({
@@ -2399,14 +2492,17 @@ export default function ReelsFeedScreen() {
     [router],
   );
 
-  const wantLook = useCallback(
-    (reel: FeedReel) => {
-      if (reel.service?.id) {
+  const bookFromLook = useCallback(
+    (reel: FeedReel, look?: ReelLookResponse | null) => {
+      const serviceId = look?.book?.service_id ?? reel.service?.id ?? null;
+      const businessId =
+        look?.book?.business_id ?? reel.business?.id ?? null;
+      if (serviceId && businessId) {
         router.push({
           pathname: "/(main)/bookingNow",
           params: {
-            business_id: String(reel.business.id),
-            service_id: String(reel.service.id),
+            business_id: String(businessId),
+            service_id: String(serviceId),
             reel_id: String(reel.id),
           },
         });
@@ -2415,6 +2511,191 @@ export default function ReelsFeedScreen() {
       }
     },
     [openProfile, router],
+  );
+
+  const wantLook = useCallback(
+    async (reel: FeedReel) => {
+      wantLookReelRef.current = reel;
+      wantLookDataRef.current = null;
+      setWantLookReel(reel);
+      setWantLookData(null);
+      setWantLookLoading(true);
+      try {
+        const data = await fetchReelLook(reel.id);
+        wantLookDataRef.current = data;
+        setWantLookData(data);
+      } catch (error: any) {
+        Logger.error("Failed to load reel look options:", error);
+        wantLookReelRef.current = null;
+        setWantLookReel(null);
+        showBanner(
+          t("error"),
+          error?.message || t("failedToLoadLookOptions"),
+          "error",
+          2500,
+        );
+      } finally {
+        setWantLookLoading(false);
+      }
+    },
+    [showBanner, t],
+  );
+
+  const closeWantLookSheet = useCallback(() => {
+    setWantLookReel(null);
+    setWantLookData(null);
+    setWantLookLoading(false);
+  }, []);
+
+  const handleWantLookSave = useCallback(() => {
+    const reel = wantLookReelRef.current;
+    if (!reel) return;
+    void handleSave(reel);
+  }, [handleSave]);
+
+  const handleWantLookBook = useCallback(() => {
+    const reel = wantLookReelRef.current;
+    if (!reel) return;
+    bookFromLook(reel, wantLookDataRef.current);
+  }, [bookFromLook]);
+
+  const handleWantLookFindPro = useCallback(() => {
+    const reel = wantLookReelRef.current;
+    if (!reel) return;
+    router.push({
+      pathname: "/(main)/similarPros",
+      params: { reel_id: String(reel.id) },
+    });
+  }, [router]);
+
+  const runReelTryOn = useCallback(
+    async (reel: FeedReel, imageUri: string, look: ReelLookResponse | null) => {
+      setTryOnPipeline({
+        visible: true,
+        jobId: null,
+        jobType: "Hair Tryon",
+        estimatedMinutes: 5,
+        progress: 0,
+        imageUri,
+        complete: false,
+      });
+      tryOnPipelineStartRef.current = Date.now();
+      tryOnPollSignal.current.cancelled = true;
+      tryOnPollSignal.current = { cancelled: false };
+
+      try {
+        const started = await startReelTryOn(reel.id, imageUri);
+        await refreshAiQuota();
+        await savePendingReelTryOn({
+          jobId: started.job_id,
+          reelId: reel.id,
+          prompt: started.prompt ?? look?.try_on?.prompt ?? null,
+          estimatedMinutes: started.estimated_time_minutes ?? 5,
+          imageUri,
+          startedAt: Date.now(),
+        });
+        setTryOnPipeline((prev) => ({
+          ...prev,
+          jobId: started.job_id,
+          estimatedMinutes: started.estimated_time_minutes ?? 5,
+        }));
+
+        const result = await pollReelTryOnJob(started.job_id, {
+          signal: tryOnPollSignal.current,
+        });
+        setTryOnPipeline(INITIAL_HAIR_PIPELINE_STATE);
+
+        if (!result || result.status === "failed") {
+          void clearPendingReelTryOn();
+          void refreshAiQuota();
+          if (result?.status === "failed") {
+            showBanner(t("error"), t("tryOnFailed"), "error", 3000);
+          }
+          return;
+        }
+
+        await clearPendingReelTryOn();
+        router.push({
+          pathname: "/(main)/reelTryOnResult",
+          params: {
+            job_id: started.job_id,
+            reel_id: String(reel.id),
+            business_id: String(
+              look?.book?.business_id ?? reel.business?.id ?? "",
+            ),
+            ...(look?.book?.service_id || reel.service?.id
+              ? {
+                  service_id: String(
+                    look?.book?.service_id ?? reel.service?.id,
+                  ),
+                }
+              : {}),
+            ...(started.prompt || look?.try_on?.prompt
+              ? { prompt: started.prompt || look?.try_on?.prompt || "" }
+              : {}),
+            estimated_minutes: String(started.estimated_time_minutes ?? 5),
+          },
+        });
+      } catch (error: any) {
+        setTryOnPipeline(INITIAL_HAIR_PIPELINE_STATE);
+        const status = error?.status ?? error?.response?.status;
+        const errors = error?.data?.errors;
+        if (status === 429) return;
+        if (errors?.credits) {
+          dispatch(setTryOnPurchaseSuccessSource("tools"));
+          router.push({
+            pathname: "/(main)/tryOnPurchase",
+            params: { screen: "reels" },
+          });
+          return;
+        }
+        showBanner(
+          t("error"),
+          error?.message || t("tryOnFailed"),
+          "error",
+          3000,
+        );
+        void refreshAiQuota();
+      }
+    },
+    [dispatch, refreshAiQuota, router, showBanner, t],
+  );
+
+  const handleWantLookTryOn = useCallback(() => {
+    const reel = wantLookReelRef.current;
+    const look = wantLookDataRef.current;
+    if (!reel) return;
+
+    if (
+      look?.try_on?.reason === "sign_in_required" ||
+      isGuest ||
+      !user.accessToken
+    ) {
+      dispatch(setGuestModeModalVisible(true));
+      return;
+    }
+    if (
+      look?.try_on?.reason === "insufficient_credits" ||
+      look?.try_on?.can_afford === false
+    ) {
+      dispatch(setTryOnPurchaseSuccessSource("tools"));
+      router.push({
+        pathname: "/(main)/tryOnPurchase",
+        params: { screen: "reels" },
+      });
+      return;
+    }
+    setTryOnPickerVisible(true);
+  }, [dispatch, isGuest, router, user.accessToken]);
+
+  const handleTryOnImageSelected = useCallback(
+    (uri: string) => {
+      setTryOnPickerVisible(false);
+      const reel = wantLookReelRef.current;
+      if (!reel) return;
+      void runReelTryOn(reel, uri, wantLookDataRef.current);
+    },
+    [runReelTryOn],
   );
 
   if (loading && reels.length === 0) {
@@ -2630,6 +2911,37 @@ export default function ReelsFeedScreen() {
         visible={!!reportTarget}
         target={reportTarget}
         onClose={() => setReportTarget(null)}
+      />
+
+      <ReelWantLookSheet
+        visible={!!wantLookReel}
+        onClose={closeWantLookSheet}
+        loading={wantLookLoading}
+        look={wantLookData}
+        lookTag={wantLookReel?.look_tag}
+        saved={wantLookReel?.viewer?.saved}
+        onTryOn={handleWantLookTryOn}
+        onSave={handleWantLookSave}
+        onBook={handleWantLookBook}
+        onFindPro={handleWantLookFindPro}
+      />
+
+      <ImagePickerModal
+        visible={tryOnPickerVisible}
+        onClose={() => setTryOnPickerVisible(false)}
+        onImageSelected={handleTryOnImageSelected}
+      />
+
+      <HairPipelineProcessingModal
+        state={tryOnPipeline}
+        onClose={() => setTryOnPipeline(INITIAL_HAIR_PIPELINE_STATE)}
+        onSeeStatus={() => {
+          setTryOnPipeline(INITIAL_HAIR_PIPELINE_STATE);
+          router.push({
+            pathname: "/aiRequests",
+            params: { fromProcessingModal: "1" },
+          });
+        }}
       />
     </View>
   );

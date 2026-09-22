@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
-import { useTheme } from "@/src/hooks/hooks";
+import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -178,6 +178,10 @@ export default function StaffWorkImagesManageScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const { showBanner } = useNotificationContext();
+  const ownerStaffId = useAppSelector(
+    (state) => state.user.businessStatus?.owner_as_staff?.staff_id ?? null,
+  );
+  const userRole = useAppSelector((state) => state.user.userRole);
 
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -253,14 +257,31 @@ export default function StaffWorkImagesManageScreen() {
   const resolveStaffAndLoad = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await ApiService.get<{
-        success: boolean;
-        message: string;
-        data: { id?: number; staff?: { id?: number } } | null;
-      }>(staffEndpoints.profile);
+      let resolvedId: number | null = null;
 
-      const resolvedId =
-        response.data?.id ?? response.data?.staff?.id ?? null;
+      try {
+        const response = await ApiService.get<{
+          success: boolean;
+          message: string;
+          data: { id?: number; staff?: { id?: number } } | null;
+        }>(staffEndpoints.profile);
+
+        resolvedId =
+          response.data?.id ?? response.data?.staff?.id ?? null;
+      } catch (profileError: any) {
+        Logger.error(
+          "Failed to resolve staff profile for work images:",
+          profileError,
+        );
+      }
+
+      if (
+        resolvedId == null &&
+        userRole === "business" &&
+        typeof ownerStaffId === "number"
+      ) {
+        resolvedId = ownerStaffId;
+      }
 
       if (!resolvedId) {
         showBanner(t("error"), t("failedToLoadWorkImages"), "error", 3000);
@@ -282,7 +303,7 @@ export default function StaffWorkImagesManageScreen() {
       setExistingPhotos([]);
       setLoading(false);
     }
-  }, [fetchWorkImagesPage, showBanner, t]);
+  }, [fetchWorkImagesPage, ownerStaffId, showBanner, t, userRole]);
 
   useEffect(() => {
     resolveStaffAndLoad();
@@ -577,9 +598,14 @@ export default function StaffWorkImagesManageScreen() {
       router.back();
     } catch (error: any) {
       Logger.error("Failed to update staff work images:", error);
+      const status = error?.status ?? error?.response?.status;
+      const isPlanBlocked =
+        status === 403 && userRole === "business" && newPhotos.length > 0;
       showBanner(
         t("error"),
-        error?.message || t("failedToUpdateWorkImages"),
+        isPlanBlocked
+          ? t("ownerWorkImagesPlanRequired")
+          : error?.message || t("failedToUpdateWorkImages"),
         "error",
         3000,
       );
