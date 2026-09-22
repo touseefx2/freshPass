@@ -2,7 +2,8 @@
 /**
  * Local Android release build (APK or AAB).
  *
- * - Bumps expo.version (patch) + android.versionCode in app.json
+ * - Keeps expo.version from app.json as-is (manual only)
+ * - Auto-bumps android.versionCode in app.json on every APK/AAB
  * - Ensures android/ exists (prebuild if needed)
  * - Re-applies release signing from credentials/
  * - Syncs versionName / versionCode into build.gradle
@@ -65,35 +66,25 @@ function fail(message) {
   process.exit(1);
 }
 
-function bumpSemverPatch(version) {
-  const parts = String(version).split(".").map((p) => parseInt(p, 10) || 0);
-  while (parts.length < 3) parts.push(0);
-  parts[2] += 1;
-  return parts.join(".");
-}
-
-function bumpAppJsonVersions() {
+function bumpVersionCodeOnly() {
   const raw = fs.readFileSync(APP_JSON_PATH, "utf8");
   const appJson = JSON.parse(raw);
   const expo = appJson.expo;
 
   if (!expo.android) expo.android = {};
 
-  const prevVersion = expo.version || "1.0.0";
+  const versionName = expo.version || "1.0.0";
   const prevCode = Number(expo.android.versionCode) || 0;
-
-  const nextVersion = bumpSemverPatch(prevVersion);
   const nextCode = prevCode + 1;
 
-  expo.version = nextVersion;
   expo.android.versionCode = nextCode;
 
   fs.writeFileSync(APP_JSON_PATH, JSON.stringify(appJson, null, 2) + "\n");
 
-  console.log(`📦 Version: ${prevVersion} → ${nextVersion}`);
+  console.log(`📦 Version: ${versionName} (from app.json, unchanged)`);
   console.log(`🔢 versionCode: ${prevCode} → ${nextCode}`);
 
-  return { versionName: nextVersion, versionCode: nextCode };
+  return { versionName, versionCode: nextCode };
 }
 
 function ensureCredentials() {
@@ -214,7 +205,7 @@ function main() {
   console.log(`\n🚀 Android release (${target.toUpperCase()})\n`);
 
   ensureCredentials();
-  const { versionName, versionCode } = bumpAppJsonVersions();
+  const { versionName, versionCode } = bumpVersionCodeOnly();
   ensureAndroidProject();
   applyReleaseSigning();
   syncVersionsToGradle(versionName, versionCode);
