@@ -55,6 +55,7 @@ import {
 } from "@/src/services/reelsService";
 import { followBusiness, unfollowBusiness } from "@/src/services/followService";
 import ReelCommentsSheet from "@/src/components/reelCommentsSheet";
+import TextWithEmoji from "@/src/components/textWithEmoji";
 import ReelReportSheet, {
   type ReportTarget,
 } from "@/src/components/reelReportSheet";
@@ -1170,9 +1171,9 @@ function ReelFeedItemBase({
         )}
 
         {!!reel.caption && (
-          <Text style={styles.caption} numberOfLines={3}>
+          <TextWithEmoji style={styles.caption} numberOfLines={3}>
             {reel.caption}
-          </Text>
+          </TextWithEmoji>
         )}
 
         <View style={styles.badgesRow}>

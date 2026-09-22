@@ -1430,5 +1430,6 @@
   "reelClassifySection": "分類",
   "reelTagsSection": "タグ・プロモ",
   "reelVisibilitySection": "表示",
-  "availableNowSubtitle": "今すぐ予約可能としてこのリールを強調します。"
+  "availableNowSubtitle": "今すぐ予約可能としてこのリールを強調します。",
+  "views": "再生回数"
 }

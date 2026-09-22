@@ -1477,5 +1477,6 @@
   "reelClassifySection": "Classification",
   "reelTagsSection": "Tags & promo",
   "reelVisibilitySection": "Visibility",
-  "availableNowSubtitle": "Highlight this reel as bookable right now."
+  "availableNowSubtitle": "Highlight this reel as bookable right now.",
+  "views": "Views"
 }

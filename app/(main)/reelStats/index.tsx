@@ -18,6 +18,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import ReelCommentsSheet from "@/src/components/reelCommentsSheet";
+import TextWithEmoji from "@/src/components/textWithEmoji";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
@@ -349,9 +350,9 @@ export default function ReelStatsScreen() {
                   })
                 }
               >
-                <Text style={styles.topReelCaption} numberOfLines={1}>
+                <TextWithEmoji style={styles.topReelCaption} numberOfLines={1}>
                   {reel.caption || t("untitledReel")}
-                </Text>
+                </TextWithEmoji>
                 <Text style={styles.topReelMeta}>
                   {t("topReelMeta", {
                     views: reel.views,
