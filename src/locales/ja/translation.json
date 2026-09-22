@@ -1432,5 +1432,10 @@
   "reelVisibilitySection": "表示",
   "availableNowSubtitle": "今すぐ予約可能としてこのリールを強調します。",
   "views": "再生回数",
-  "shopNow": "購入する"
+  "shopNow": "購入する",
+  "reelsGuideTitle": "How to browse Reels",
+  "reelsGuideSwipeVertical": "Swipe up or down to see more reels in this category",
+  "reelsGuideSwipeHorizontal": "Swipe left or right to change category",
+  "reelsGuideGotIt": "Got it",
+  "reelsCategoryPrefix": "Category"
 }

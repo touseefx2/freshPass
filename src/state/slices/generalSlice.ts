@@ -68,6 +68,8 @@ export interface GeneralState {
   searchState: SearchState; // Search filters (search, serviceId, business, etc.)
   guestModeModalVisible: boolean; // Guest mode modal visibility state
   isFirstShowTryOn: boolean; // Track if first show try-on has been displayed
+  /** User has dismissed the first-time reels swipe guide (persisted) */
+  hasSeenReelsSwipeGuide: boolean;
   aiHairTryOnConsentAccepted: boolean; // User accepted AI Hair Try-On data sharing consent
   aiChatDataConsentAccepted: boolean; // User accepted AI chat data sharing with third-party AI
   aiVoiceDataConsentAccepted: boolean; // User accepted AI voice receptionist data sharing
@@ -143,6 +145,7 @@ const initialState: GeneralState = {
   searchState: initialSearchState,
   guestModeModalVisible: false,
   isFirstShowTryOn: false,
+  hasSeenReelsSwipeGuide: false,
   aiHairTryOnConsentAccepted: false,
   aiChatDataConsentAccepted: false,
   aiVoiceDataConsentAccepted: false,
@@ -415,6 +418,9 @@ const generalSlice = createSlice({
     setIsFirstShowTryOn(state, action: PayloadAction<boolean>) {
       state.isFirstShowTryOn = action.payload;
     },
+    setHasSeenReelsSwipeGuide(state, action: PayloadAction<boolean>) {
+      state.hasSeenReelsSwipeGuide = action.payload;
+    },
     setAiHairTryOnConsentAccepted(state, action: PayloadAction<boolean>) {
       state.aiHairTryOnConsentAccepted = action.payload;
     },
@@ -577,6 +583,7 @@ export const {
   clearChatTryOnPreselectedUrls,
   setBookingTryOnSelectionForJob,
   setIsFirstShowTryOn,
+  setHasSeenReelsSwipeGuide,
   setAiHairTryOnConsentAccepted,
   setAiChatDataConsentAccepted,
   setAiVoiceDataConsentAccepted,

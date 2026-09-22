@@ -24,6 +24,7 @@ export type ReelBusiness = {
   state?: string | null;
   followers_count?: number;
   is_official?: boolean;
+  is_verified?: boolean;
 };
 
 export type ReelStats = {

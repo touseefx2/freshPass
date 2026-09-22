@@ -4,9 +4,13 @@ import Constants from "expo-constants";
 import { openNativeNotificationSettings } from "@/modules/open-notification-settings";
 import Logger from "./logger";
 
+/** Don't block login/register if APNs/FCM never responds (e.g. iOS Simulator). */
+const PUSH_TOKEN_TIMEOUT_MS = 3000;
+
 /**
  * Get Expo push token for sending to backend (e.g. on login).
- * Returns token string or null if permission denied / unavailable.
+ * Returns token string or null if permission denied / unavailable / timed out.
+ * Waits at most 3s so auth is never blocked by a hanging push registration.
  * On Android, FCM must be configured (see https://docs.expo.dev/push-notifications/fcm-credentials/);
  * if not, this returns null and login continues without the token.
  */
@@ -16,10 +20,24 @@ export const getExpoPushToken = async (): Promise<string | null> => {
     if (status !== "granted") {
       return null;
     }
+
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-    const tokenResult = await Notifications.getExpoPushTokenAsync(
+    const tokenPromise = Notifications.getExpoPushTokenAsync(
       projectId ? { projectId } : undefined,
     );
+
+    const tokenResult = await Promise.race([
+      tokenPromise,
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), PUSH_TOKEN_TIMEOUT_MS);
+      }),
+    ]);
+
+    if (!tokenResult) {
+      Logger.log("Push token skipped: timed out after 3s");
+      return null;
+    }
+
     const token = tokenResult?.data ?? null;
     if (token) {
       Logger.log("Expo push token obtained");

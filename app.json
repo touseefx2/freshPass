@@ -20,7 +20,7 @@
       },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "UIViewControllerBasedStatusBarAppearance": true,
+        "UIViewControllerBasedStatusBarAppearance": false,
         "UISupportedInterfaceOrientations": [
           "UIInterfaceOrientationPortrait"
         ],

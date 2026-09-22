@@ -1432,5 +1432,10 @@
   "reelVisibilitySection": "Sichtbarkeit",
   "availableNowSubtitle": "Dieses Reel als sofort buchbar hervorheben.",
   "views": "Aufrufe",
-  "shopNow": "Jetzt kaufen"
+  "shopNow": "Jetzt kaufen",
+  "reelsGuideTitle": "How to browse Reels",
+  "reelsGuideSwipeVertical": "Swipe up or down to see more reels in this category",
+  "reelsGuideSwipeHorizontal": "Swipe left or right to change category",
+  "reelsGuideGotIt": "Got it",
+  "reelsCategoryPrefix": "Category"
 }

@@ -1432,5 +1432,10 @@
   "reelVisibilitySection": "الظهور",
   "availableNowSubtitle": "إبراز هذا الريل كقابل للحجز الآن.",
   "views": "المشاهدات",
-  "shopNow": "تسوق الآن"
+  "shopNow": "تسوق الآن",
+  "reelsGuideTitle": "How to browse Reels",
+  "reelsGuideSwipeVertical": "Swipe up or down to see more reels in this category",
+  "reelsGuideSwipeHorizontal": "Swipe left or right to change category",
+  "reelsGuideGotIt": "Got it",
+  "reelsCategoryPrefix": "Category"
 }

@@ -445,7 +445,7 @@
   "promotionTextPlaceholder": "e.g. 20% off first visit",
   "productTag": "Product tag",
   "productTagPlaceholder": "Product name or URL",
-  "availableNow": "Available now",
+  "availableNow": "Available Now",
   "saveDraft": "Save draft",
   "saveChanges": "Save changes",
   "reelSaved": "Reel saved.",
@@ -1479,5 +1479,10 @@
   "reelVisibilitySection": "Visibility",
   "availableNowSubtitle": "Highlight this reel as bookable right now.",
   "views": "Views",
-  "shopNow": "Shop Now"
+  "shopNow": "Shop Now",
+  "reelsGuideTitle": "How to browse Reels",
+  "reelsGuideSwipeVertical": "Swipe up or down to see more reels in this category",
+  "reelsGuideSwipeHorizontal": "Swipe left or right to change category",
+  "reelsGuideGotIt": "Got it",
+  "reelsCategoryPrefix": "Category"
 }

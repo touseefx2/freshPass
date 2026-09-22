@@ -33,6 +33,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
 import * as SystemUI from "expo-system-ui";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import { LeafLogo } from "@/assets/icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -43,10 +45,14 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
+import {
+  setGuestModeModalVisible,
+  setHasSeenReelsSwipeGuide,
+} from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import {
+  fetchReelCategories,
   fetchReelFeed,
   getMyReel,
   likeReel,
@@ -60,10 +66,11 @@ import {
 import { followBusiness, unfollowBusiness } from "@/src/services/followService";
 import ReelCommentsSheet from "@/src/components/reelCommentsSheet";
 import TextWithEmoji from "@/src/components/textWithEmoji";
+import ReelsSwipeGuide from "@/src/components/reelsSwipeGuide";
 import ReelReportSheet, {
   type ReportTarget,
 } from "@/src/components/reelReportSheet";
-import type { FeedReel, OwnerReel } from "@/src/types/reels";
+import type { FeedReel, OwnerReel, ReelCategoryCard } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -235,7 +242,15 @@ const createStyles = (theme: Theme) =>
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 3,
     },
-    officialBadge: { marginLeft: moderateWidthScale(4) },
+    officialBadge: {
+      width: moderateWidthScale(16),
+      height: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      marginLeft: moderateWidthScale(4),
+    },
     emptyWrap: {
       flex: 1,
       backgroundColor: theme.black,
@@ -280,7 +295,7 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       right: moderateWidthScale(10),
       alignItems: "center",
-      gap: moderateHeightScale(16),
+      gap: moderateHeightScale(14),
       zIndex: 5,
     },
     sideShade: {
@@ -288,7 +303,7 @@ const createStyles = (theme: Theme) =>
       top: 0,
       right: 0,
       bottom: 0,
-      width: widthScale(88),
+      width: widthScale(72),
       zIndex: 3,
     },
     sideBtn: { alignItems: "center" },
@@ -313,14 +328,42 @@ const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
       bottom: 0,
-      height: heightScale(320),
+      height: heightScale(420),
       zIndex: 3,
     },
     bottomMeta: {
       position: "absolute",
-      left: moderateWidthScale(14),
-      right: moderateWidthScale(68),
+      left: moderateWidthScale(12),
+      right: moderateWidthScale(12),
       zIndex: 5,
+    },
+    metaHeaderRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(8),
+    },
+    metaHeaderLeft: {
+      flex: 1,
+      minWidth: 0,
+    },
+    metaHeaderActions: {
+      alignItems: "center",
+      gap: moderateHeightScale(12),
+      paddingTop: moderateHeightScale(2),
+    },
+    metaActionBtn: {
+      alignItems: "center",
+      minWidth: moderateWidthScale(36),
+    },
+    metaActionCount: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+      textShadowColor: theme.black,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
     seekBarWrap: {
       position: "absolute",
@@ -382,6 +425,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
       flexShrink: 1,
+      textTransform: "capitalize",
       textShadowColor: `${theme.black}CC`,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 5,
@@ -389,7 +433,7 @@ const createStyles = (theme: Theme) =>
     followBtn: {
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(8),
       backgroundColor: theme.buttonBack,
     },
     followText: {
@@ -401,7 +445,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       flexWrap: "wrap",
-      gap: moderateWidthScale(8),
+      gap: moderateWidthScale(6),
       marginBottom: moderateHeightScale(6),
     },
     metaItem: {
@@ -419,11 +463,25 @@ const createStyles = (theme: Theme) =>
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 4,
     },
+    metaCategoryText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white85,
+      flexShrink: 1,
+      textTransform: "uppercase",
+      textShadowColor: `${theme.black}CC`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+    },
+    metaDot: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white70,
+    },
     caption: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.white,
-      marginBottom: moderateHeightScale(10),
       lineHeight: moderateHeightScale(18),
       textShadowColor: `${theme.black}E6`,
       textShadowOffset: { width: 0, height: 1 },
@@ -433,24 +491,25 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(10),
-      backgroundColor: `${theme.black}B3`,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(10),
+      backgroundColor: `${theme.black}CC`,
+      borderRadius: moderateWidthScale(16),
+      padding: moderateWidthScale(12),
       marginBottom: moderateHeightScale(10),
       borderWidth: 1,
       borderColor: theme.white15,
     },
     productThumb: {
-      width: widthScale(44),
-      height: widthScale(44),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.lightGreen4,
+      width: widthScale(56),
+      height: widthScale(56),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
+      overflow: "hidden",
     },
-    productBody: { flex: 1, gap: moderateHeightScale(2) },
+    productBody: { flex: 1, gap: moderateHeightScale(3), minWidth: 0 },
     productTitle: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
@@ -458,9 +517,10 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
+      lineHeight: moderateHeightScale(15),
     },
     productPrice: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.white,
       marginTop: moderateHeightScale(2),
@@ -468,14 +528,16 @@ const createStyles = (theme: Theme) =>
     shopBtn: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(4),
+      justifyContent: "center",
+      gap: moderateWidthScale(5),
       backgroundColor: theme.selectCard,
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      alignSelf: "center",
     },
     shopBtnText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
@@ -486,24 +548,24 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(10),
     },
     ctaPrimary: {
-      flex: 1.55,
+      flex: 2,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(6),
-      minHeight: moderateHeightScale(44),
+      minHeight: moderateHeightScale(46),
       paddingHorizontal: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(14),
       backgroundColor: theme.buttonBack,
     },
     ctaSecondary: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      minHeight: moderateHeightScale(44),
+      minHeight: moderateHeightScale(46),
       paddingHorizontal: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: `${theme.black}99`,
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: `${theme.black}B3`,
       borderWidth: 1,
       borderColor: theme.white50,
     },
@@ -520,35 +582,58 @@ const createStyles = (theme: Theme) =>
     pillsRow: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(6),
+      gap: moderateWidthScale(8),
     },
     pill: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(5),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: `${theme.black}99`,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: `${theme.black}B3`,
       borderWidth: 1,
       borderColor: theme.white15,
     },
     pillLiveDot: {
-      width: moderateWidthScale(6),
-      height: moderateWidthScale(6),
-      borderRadius: moderateWidthScale(3),
+      width: moderateWidthScale(7),
+      height: moderateWidthScale(7),
+      borderRadius: moderateWidthScale(4),
       backgroundColor: theme.green,
     },
     pillText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white,
+    },
+    pillCategoryText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+      textTransform: "uppercase",
     },
     centerLoader: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.black,
+    },
+    categoryToast: {
+      position: "absolute",
+      alignSelf: "center",
+      zIndex: 30,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: `${theme.black}B3`,
+      borderWidth: 1,
+      borderColor: theme.white15,
+    },
+    categoryToastText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textTransform: "uppercase",
     },
     emptyText: {
       color: theme.white,
@@ -963,6 +1048,7 @@ function ReelFeedItemBase({
   const cityState = [reel.business?.city, reel.business?.state]
     .filter(Boolean)
     .join(", ");
+  const categoryName = reel.category?.name?.trim() || "";
   const product = parseProductTag(reel.product_tag);
   const productPrice = formatServicePrice(reel.service?.price);
 
@@ -1153,7 +1239,7 @@ function ReelFeedItemBase({
             bottom:
               Math.max(bottomInset, moderateHeightScale(6)) +
               heightScale(22) +
-              moderateHeightScale(140),
+              moderateHeightScale(220),
           },
         ]}
         pointerEvents={socialLocked ? "none" : "auto"}
@@ -1170,21 +1256,6 @@ function ReelFeedItemBase({
             {formatCount(reel.stats?.likes ?? 0)}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.sideBtn}
-          onPress={() => onComment(reel)}
-        >
-          <View style={styles.sideIconWrap}>
-            <MaterialIcons
-              name="chat-bubble-outline"
-              size={moderateWidthScale(26)}
-              color={theme.white}
-            />
-          </View>
-          <Text style={styles.sideCount}>
-            {formatCount(reel.stats?.comments ?? 0)}
-          </Text>
-        </TouchableOpacity>
         <TouchableOpacity style={styles.sideBtn} onPress={() => onShare(reel)}>
           <View style={styles.sideIconWrap}>
             <MaterialIcons
@@ -1197,20 +1268,6 @@ function ReelFeedItemBase({
             {formatCount(reel.stats?.shares ?? 0)}
           </Text>
         </TouchableOpacity>
-        {showAsCustomer ? (
-          <TouchableOpacity style={styles.sideBtn} onPress={() => onSave(reel)}>
-            <View style={styles.sideIconWrap}>
-              <MaterialIcons
-                name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
-                size={moderateWidthScale(26)}
-                color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
-              />
-            </View>
-            <Text style={styles.sideCount}>
-              {formatCount(reel.stats?.saves ?? 0)}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       <View
@@ -1224,172 +1281,203 @@ function ReelFeedItemBase({
         ]}
         pointerEvents={socialLocked ? "none" : "auto"}
       >
-        <View style={styles.businessRow}>
-          {showAsOwner ? (
-            <>
-              {resolveApiImageUrl(reel.business?.image_url) ? (
-                <Image
-                  source={{
-                    uri: resolveApiImageUrl(reel.business?.image_url)!,
-                  }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View
-                  style={[
-                    styles.avatar,
-                    { alignItems: "center", justifyContent: "center" },
-                  ]}
-                >
-                  <MaterialIcons
-                    name="storefront"
-                    size={moderateWidthScale(18)}
-                    color={theme.lightGreen}
-                  />
-                </View>
-              )}
-              <Text style={styles.businessName} numberOfLines={1}>
-                {reel.business?.title || ""}
-              </Text>
-              {reel.business?.is_official ? (
-                <MaterialIcons
-                  name="verified"
-                  size={moderateWidthScale(16)}
-                  color={theme.green}
-                  style={styles.officialBadge}
-                />
-              ) : null}
-            </>
-          ) : (
-            <>
-              <TouchableOpacity onPress={() => onProfile(reel)}>
-                {resolveApiImageUrl(reel.business?.image_url) ? (
-                  <Image
-                    source={{
-                      uri: resolveApiImageUrl(reel.business?.image_url)!,
-                    }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.avatar,
-                      { alignItems: "center", justifyContent: "center" },
-                    ]}
-                  >
+        <View style={styles.metaHeaderRow}>
+          <View style={styles.metaHeaderLeft}>
+            <View style={styles.businessRow}>
+              {showAsOwner ? (
+                <>
+                  {resolveApiImageUrl(reel.business?.image_url) ? (
+                    <Image
+                      source={{
+                        uri: resolveApiImageUrl(reel.business?.image_url)!,
+                      }}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.avatar,
+                        { alignItems: "center", justifyContent: "center" },
+                      ]}
+                    >
+                      <MaterialIcons
+                        name="storefront"
+                        size={moderateWidthScale(18)}
+                        color={theme.lightGreen}
+                      />
+                    </View>
+                  )}
+                  <Text style={styles.businessName} numberOfLines={1}>
+                    {reel.business?.title || ""}
+                  </Text>
+                  <View style={styles.officialBadge}>
                     <MaterialIcons
-                      name="storefront"
-                      size={moderateWidthScale(18)}
-                      color={theme.lightGreen}
+                      name="check"
+                      size={moderateWidthScale(11)}
+                      color={theme.white}
                     />
                   </View>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flexShrink: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-                onPress={() => onProfile(reel)}
-              >
-                <Text style={styles.businessName} numberOfLines={1}>
-                  {reel.business?.title || ""}
-                </Text>
-                {reel.business?.is_official ? (
-                  <MaterialIcons
-                    name="verified"
-                    size={moderateWidthScale(16)}
-                    color={theme.green}
-                    style={styles.officialBadge}
-                  />
-                ) : null}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.followBtn}
-                onPress={() => onFollow(reel)}
-              >
-                <Text style={styles.followText}>
-                  {reel.viewer?.following ? t("following") : t("follow")}
-                </Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity onPress={() => onProfile(reel)}>
+                    {resolveApiImageUrl(reel.business?.image_url) ? (
+                      <Image
+                        source={{
+                          uri: resolveApiImageUrl(reel.business?.image_url)!,
+                        }}
+                        style={styles.avatar}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.avatar,
+                          { alignItems: "center", justifyContent: "center" },
+                        ]}
+                      >
+                        <MaterialIcons
+                          name="storefront"
+                          size={moderateWidthScale(18)}
+                          color={theme.lightGreen}
+                        />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{
+                      flexShrink: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                    onPress={() => onProfile(reel)}
+                  >
+                    <Text style={styles.businessName} numberOfLines={1}>
+                      {reel.business?.title || ""}
+                    </Text>
+                    <View style={styles.officialBadge}>
+                      <MaterialIcons
+                        name="check"
+                        size={moderateWidthScale(11)}
+                        color={theme.white}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.followBtn}
+                    onPress={() => onFollow(reel)}
+                  >
+                    <Text style={styles.followText}>
+                      {reel.viewer?.following ? t("following") : t("follow")}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
 
-        {(cityState || !!reel.category?.name) && (
-          <View style={styles.metaRow}>
-            {!!cityState && (
-              <View style={styles.metaItem}>
-                <MaterialIcons
-                  name="place"
-                  size={moderateWidthScale(13)}
-                  color={theme.white85}
-                />
-                <Text style={styles.metaText} numberOfLines={1}>
-                  {cityState}
-                </Text>
+            {(cityState || !!categoryName) && (
+              <View style={styles.metaRow}>
+                {!!cityState && (
+                  <View style={styles.metaItem}>
+                    <MaterialIcons
+                      name="place"
+                      size={moderateWidthScale(13)}
+                      color={theme.white85}
+                    />
+                    <Text style={styles.metaText} numberOfLines={1}>
+                      {cityState}
+                    </Text>
+                  </View>
+                )}
+                {!!cityState && !!categoryName ? (
+                  <Text style={styles.metaDot}>|</Text>
+                ) : null}
+                {!!categoryName && (
+                  <Text style={styles.metaCategoryText} numberOfLines={1}>
+                    {categoryName}
+                  </Text>
+                )}
               </View>
             )}
-            {!!reel.category?.name && (
-              <View style={styles.metaItem}>
-                <MaterialIcons
-                  name="content-cut"
-                  size={moderateWidthScale(13)}
-                  color={theme.white85}
-                />
-                <Text style={styles.metaText} numberOfLines={1}>
-                  {reel.category.name}
-                </Text>
-              </View>
+
+            {!!reel.caption && (
+              <TextWithEmoji style={styles.caption} numberOfLines={3}>
+                {reel.caption}
+              </TextWithEmoji>
             )}
           </View>
-        )}
 
-        {!!reel.caption && (
-          <TextWithEmoji style={styles.caption} numberOfLines={3}>
-            {reel.caption}
-          </TextWithEmoji>
-        )}
+          <View style={styles.metaHeaderActions}>
+              {showAsCustomer ? (
+                <TouchableOpacity
+                  style={styles.metaActionBtn}
+                  onPress={() => onSave(reel)}
+                >
+                  <MaterialIcons
+                    name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
+                    size={moderateWidthScale(26)}
+                    color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
+                  />
+                  <Text style={styles.metaActionCount}>
+                    {formatCount(reel.stats?.saves ?? 0)}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              <TouchableOpacity
+                style={styles.metaActionBtn}
+                onPress={() => onComment(reel)}
+              >
+                <MaterialIcons
+                  name="chat-bubble-outline"
+                  size={moderateWidthScale(24)}
+                  color={theme.white}
+                />
+                <Text style={styles.metaActionCount}>
+                  {formatCount(reel.stats?.comments ?? 0)}
+                </Text>
+              </TouchableOpacity>
+            </View>
+        </View>
 
         {showAsCustomer && product ? (
           <View style={styles.productCard}>
             <View style={styles.productThumb}>
               <MaterialIcons
                 name="shopping-bag"
-                size={moderateWidthScale(22)}
-                color={theme.white}
+                size={moderateWidthScale(24)}
+                color={theme.black}
               />
             </View>
             <View style={styles.productBody}>
               <Text style={styles.productTitle} numberOfLines={1}>
                 {product.title}
               </Text>
-              {!!reel.look_tag && (
-                <Text style={styles.productDesc} numberOfLines={1}>
-                  {reel.look_tag}
+              {!!(reel.look_tag || reel.promotion_text) && (
+                <Text style={styles.productDesc} numberOfLines={2}>
+                  {reel.look_tag || reel.promotion_text}
                 </Text>
               )}
               {!!productPrice && (
                 <Text style={styles.productPrice}>{productPrice}</Text>
               )}
             </View>
-            {!!product.url && (
-              <TouchableOpacity
-                style={styles.shopBtn}
-                activeOpacity={0.85}
-                onPress={() => {
-                  Linking.openURL(product.url!).catch(() => {});
-                }}
-              >
-                <MaterialIcons
-                  name="shopping-cart"
-                  size={moderateWidthScale(14)}
-                  color={theme.white}
-                />
-                <Text style={styles.shopBtnText}>{t("shopNow")}</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.shopBtn}
+              activeOpacity={0.85}
+              onPress={() => {
+                if (product.url) {
+                  Linking.openURL(product.url).catch(() => {});
+                } else {
+                  onProfile(reel);
+                }
+              }}
+            >
+              <MaterialIcons
+                name="shopping-cart"
+                size={moderateWidthScale(14)}
+                color={theme.white}
+              />
+              <Text style={styles.shopBtnText}>{t("shopNow")}</Text>
+            </TouchableOpacity>
           </View>
         ) : null}
 
@@ -1424,21 +1512,21 @@ function ReelFeedItemBase({
               <Text style={styles.pillText}>{t("availableNow")}</Text>
             </View>
           ) : null}
-          {!!reel.category?.name && (
+          {!!categoryName && (
             <View style={styles.pill}>
               <MaterialIcons
                 name="content-cut"
-                size={moderateWidthScale(11)}
+                size={moderateWidthScale(12)}
                 color={theme.white}
               />
-              <Text style={styles.pillText}>{reel.category.name}</Text>
+              <Text style={styles.pillCategoryText}>{categoryName}</Text>
             </View>
           )}
           {!!cityState && (
             <View style={styles.pill}>
               <MaterialIcons
                 name="place"
-                size={moderateWidthScale(11)}
+                size={moderateWidthScale(12)}
                 color={theme.white}
               />
               <Text style={styles.pillText} numberOfLines={1}>
@@ -1508,6 +1596,9 @@ export default function ReelsFeedScreen() {
   const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((s) => s.user);
+  const hasSeenReelsSwipeGuide = useAppSelector(
+    (s) => s.general.hasSeenReelsSwipeGuide,
+  );
   const isGuest = user.isGuest;
   const ownerBusinessId = user.business_id ?? null;
   const [viewportHeight, setViewportHeight] = useState(INITIAL_SCREEN_HEIGHT);
@@ -1574,10 +1665,14 @@ export default function ReelsFeedScreen() {
             }
           : null),
       } as any);
-      StatusBar.setBarStyle("light-content", true);
+      // iOS: only touch StatusBar when Info.plist has
+      // UIViewControllerBasedStatusBarAppearance=NO (app uses RN StatusBar).
       if (Platform.OS === "android") {
+        StatusBar.setBarStyle("light-content", true);
         StatusBar.setTranslucent(true);
         StatusBar.setBackgroundColor("transparent", true);
+      } else {
+        StatusBar.setBarStyle("light-content");
       }
       void SystemUI.setBackgroundColorAsync(theme.black);
       const t1 = setTimeout(syncEdgeToEdge, 16);
@@ -1597,12 +1692,19 @@ export default function ReelsFeedScreen() {
     open_comments?: string;
     tab?: string;
   }>();
-  const categoryId = params.category_id;
-  const firstReelId = params.first_reel_id;
   const isPreviewMode = params.mode === "preview";
   const shouldOpenComments = params.open_comments === "1";
   const initialTab: "for_you" | "following" =
     params.tab === "following" ? "following" : "for_you";
+
+  const [feedCategoryId, setFeedCategoryId] = useState<string | undefined>(
+    params.category_id ? String(params.category_id) : undefined,
+  );
+  const [feedFirstReelId, setFeedFirstReelId] = useState<string | undefined>(
+    params.first_reel_id ? String(params.first_reel_id) : undefined,
+  );
+  const categoryId = feedCategoryId;
+  const firstReelId = feedFirstReelId;
 
   const [feedTab, setFeedTab] = useState<"for_you" | "following">(initialTab);
   const [reels, setReels] = useState<FeedReel[]>([]);
@@ -1613,6 +1715,13 @@ export default function ReelsFeedScreen() {
   const [requiresLogin, setRequiresLogin] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(
     firstReelId ? Number(firstReelId) : null,
+  );
+  const [categoryCards, setCategoryCards] = useState<ReelCategoryCard[]>([]);
+  const [categoryToast, setCategoryToast] = useState<string | null>(null);
+  const [showSwipeGuide, setShowSwipeGuide] = useState(false);
+  const categorySwitchLockRef = useRef(false);
+  const categoryToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
   );
   const [commentsReel, setCommentsReel] = useState<{
     id: number;
@@ -1772,7 +1881,131 @@ export default function ReelsFeedScreen() {
     if (cached.loaded) return;
     loadPage(null, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedTab]);
+  }, [feedTab, categoryId]);
+
+  useEffect(() => {
+    if (isPreviewMode) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const cards = await fetchReelCategories();
+        if (!cancelled) setCategoryCards(cards);
+      } catch (error) {
+        Logger.error("Failed to load reel categories for swipe:", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isPreviewMode]);
+
+  useEffect(() => {
+    if (isPreviewMode || hasSeenReelsSwipeGuide) {
+      setShowSwipeGuide(false);
+      return;
+    }
+    if (!loading && reels.length > 0) {
+      setShowSwipeGuide(true);
+    }
+  }, [hasSeenReelsSwipeGuide, isPreviewMode, loading, reels.length]);
+
+  const showCategoryToast = useCallback((name: string) => {
+    setCategoryToast(name);
+    if (categoryToastTimerRef.current) {
+      clearTimeout(categoryToastTimerRef.current);
+    }
+    categoryToastTimerRef.current = setTimeout(() => {
+      setCategoryToast(null);
+    }, 1400);
+  }, []);
+
+  const switchCategoryByOffset = useCallback(
+    (offset: number) => {
+      if (
+        isPreviewMode ||
+        showSwipeGuide ||
+        categorySwitchLockRef.current ||
+        categoryCards.length < 2
+      ) {
+        return;
+      }
+      const currentIdx = categoryCards.findIndex(
+        (c) => String(c.id) === String(categoryId),
+      );
+      const baseIdx = currentIdx >= 0 ? currentIdx : 0;
+      const nextIdx =
+        (baseIdx + offset + categoryCards.length) % categoryCards.length;
+      const next = categoryCards[nextIdx];
+      if (!next || String(next.id) === String(categoryId)) return;
+
+      categorySwitchLockRef.current = true;
+      firstReelUsedRef.current = false;
+      tabCacheRef.current.for_you = {
+        reels: [],
+        cursor: null,
+        hasMore: false,
+        followingCount: 0,
+        requiresLogin: false,
+        activeId: null,
+        loaded: false,
+      };
+      setLoading(true);
+      setReels([]);
+      setCursor(null);
+      setHasMore(false);
+      setActiveId(next.cover_reel?.id ? Number(next.cover_reel.id) : null);
+      setFeedFirstReelId(
+        next.cover_reel?.id ? String(next.cover_reel.id) : undefined,
+      );
+      setFeedCategoryId(String(next.id));
+      showCategoryToast(next.name);
+      setTimeout(() => {
+        categorySwitchLockRef.current = false;
+      }, 450);
+    },
+    [
+      categoryCards,
+      categoryId,
+      isPreviewMode,
+      showCategoryToast,
+      showSwipeGuide,
+    ],
+  );
+
+  const categoryPanGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(!isPreviewMode && !showSwipeGuide && categoryCards.length > 1)
+        .activeOffsetX([-28, 28])
+        .failOffsetY([-18, 18])
+        .onEnd((e) => {
+          if (Math.abs(e.translationX) < 56) return;
+          if (e.translationX < 0) {
+            runOnJS(switchCategoryByOffset)(1);
+          } else {
+            runOnJS(switchCategoryByOffset)(-1);
+          }
+        }),
+    [
+      categoryCards.length,
+      isPreviewMode,
+      showSwipeGuide,
+      switchCategoryByOffset,
+    ],
+  );
+
+  const dismissSwipeGuide = useCallback(() => {
+    setShowSwipeGuide(false);
+    dispatch(setHasSeenReelsSwipeGuide(true));
+  }, [dispatch]);
+
+  useEffect(() => {
+    return () => {
+      if (categoryToastTimerRef.current) {
+        clearTimeout(categoryToastTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isPreviewMode) return;
@@ -2288,58 +2521,80 @@ export default function ReelsFeedScreen() {
         backgroundColor="transparent"
         barStyle="light-content"
       />
-      <FlatList
-        data={reels}
-        keyExtractor={(item) => String(item.id)}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToInterval={pageHeight}
-        decelerationRate="fast"
-        windowSize={3}
-        maxToRenderPerBatch={2}
-        initialNumToRender={1}
-        removeClippedSubviews={false}
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        automaticallyAdjustsScrollIndicatorInsets={false}
-        getItemLayout={(_, index) => ({
-          length: pageHeight,
-          offset: pageHeight * index,
-          index,
-        })}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.3}
-        renderItem={({ item }) => (
-          <ReelFeedItem
-            reel={item}
-            isActive={item.id === activeId}
-            isOwnReel={
-              ownerBusinessId != null &&
-              item.business?.id != null &&
-              Number(item.business.id) === Number(ownerBusinessId)
-            }
-            isPreview={isPreviewMode}
-            canPublish={isPreviewMode && previewStatus === "draft"}
-            publishing={publishing}
-            styles={styles}
-            theme={theme}
-            itemHeight={pageHeight}
-            topInset={insets.top}
-            bottomInset={insets.bottom}
-            onBack={goBack}
-            onLike={handleLike}
-            onSave={handleSave}
-            onComment={handleComment}
-            onShare={handleShare}
-            onMore={handleMore}
-            onFollow={handleFollow}
-            onProfile={openProfile}
-            onWantLook={wantLook}
-            onPublish={handlePublishPreview}
+      <GestureDetector gesture={categoryPanGesture}>
+        <View style={{ flex: 1 }}>
+          <FlatList
+            key={categoryId || "all"}
+            data={reels}
+            keyExtractor={(item) => String(item.id)}
+            pagingEnabled
+            showsVerticalScrollIndicator={false}
+            snapToInterval={pageHeight}
+            decelerationRate="fast"
+            windowSize={3}
+            maxToRenderPerBatch={2}
+            initialNumToRender={1}
+            removeClippedSubviews={false}
+            contentInsetAdjustmentBehavior="never"
+            automaticallyAdjustContentInsets={false}
+            automaticallyAdjustsScrollIndicatorInsets={false}
+            getItemLayout={(_, index) => ({
+              length: pageHeight,
+              offset: pageHeight * index,
+              index,
+            })}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            onEndReached={handleEndReached}
+            onEndReachedThreshold={0.3}
+            renderItem={({ item }) => (
+              <ReelFeedItem
+                reel={item}
+                isActive={item.id === activeId}
+                isOwnReel={
+                  ownerBusinessId != null &&
+                  item.business?.id != null &&
+                  Number(item.business.id) === Number(ownerBusinessId)
+                }
+                isPreview={isPreviewMode}
+                canPublish={isPreviewMode && previewStatus === "draft"}
+                publishing={publishing}
+                styles={styles}
+                theme={theme}
+                itemHeight={pageHeight}
+                topInset={insets.top}
+                bottomInset={insets.bottom}
+                onBack={goBack}
+                onLike={handleLike}
+                onSave={handleSave}
+                onComment={handleComment}
+                onShare={handleShare}
+                onMore={handleMore}
+                onFollow={handleFollow}
+                onProfile={openProfile}
+                onWantLook={wantLook}
+                onPublish={handlePublishPreview}
+              />
+            )}
           />
-        )}
+        </View>
+      </GestureDetector>
+
+      {categoryToast ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.categoryToast,
+            { top: insets.top + moderateHeightScale(58) },
+          ]}
+        >
+          <Text style={styles.categoryToastText}>{categoryToast}</Text>
+        </View>
+      ) : null}
+
+      <ReelsSwipeGuide
+        visible={showSwipeGuide}
+        onDismiss={dismissSwipeGuide}
       />
 
       <ReelCommentsSheet
