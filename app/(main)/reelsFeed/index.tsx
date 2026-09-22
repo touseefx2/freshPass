@@ -13,10 +13,12 @@ import {
   FlatList,
   Image,
   LayoutChangeEvent,
+  Linking,
   PanResponder,
   Platform,
   Pressable,
   Share,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,10 +28,12 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useTranslation } from "react-i18next";
+import * as SystemUI from "expo-system-ui";
+import { LeafLogo } from "@/assets/icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -62,7 +66,8 @@ import ReelReportSheet, {
 import type { FeedReel, OwnerReel } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const INITIAL_SCREEN_HEIGHT = Dimensions.get("screen").height;
 
 /** Fallback only — the server sends `share_url` on every feed item. */
 const REEL_SHARE_BASE_URL = "https://getfreshpass.com/r";
@@ -120,6 +125,32 @@ function formatReelTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+
+function parseProductTag(tag: string | null | undefined): {
+  title: string;
+  url: string | null;
+} | null {
+  const trimmed = tag?.trim();
+  if (!trimmed) return null;
+  const isUrl = /^https?:\/\//i.test(trimmed);
+  if (!isUrl) return { title: trimmed, url: null };
+  try {
+    const host = new URL(trimmed).hostname.replace(/^www\./i, "");
+    return { title: host || trimmed, url: trimmed };
+  } catch {
+    return { title: trimmed, url: trimmed };
+  }
+}
+
+function formatServicePrice(
+  price: string | number | null | undefined,
+): string | null {
+  if (price == null || price === "") return null;
+  const n = typeof price === "number" ? price : Number(price);
+  if (Number.isFinite(n)) return `$${n.toFixed(2)}`;
+  return String(price);
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     root: {
@@ -128,19 +159,20 @@ const createStyles = (theme: Theme) =>
     },
     item: {
       width: SCREEN_WIDTH,
-      height: SCREEN_HEIGHT,
       backgroundColor: theme.black,
+      overflow: "hidden",
     },
     video: {
       ...StyleSheet.absoluteFillObject,
+      width: "100%",
+      height: "100%",
     },
     poster: {
       ...StyleSheet.absoluteFillObject,
+      width: "100%",
+      height: "100%",
     },
-    tapLayer: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 1,
-    },
+    tapLayer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
     centerPlayPause: {
       ...StyleSheet.absoluteFillObject,
       alignItems: "center",
@@ -165,29 +197,45 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(12),
       zIndex: 5,
     },
-    feedTabs: {
+    topShade: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: heightScale(140),
+      zIndex: 4,
+    },
+    brandLeft: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(16),
-      flex: 1,
+      gap: moderateWidthScale(8),
+      marginLeft: moderateWidthScale(8),
+      marginRight: moderateWidthScale(8),
+    },
+    brandTextCol: {
+      flexShrink: 1,
       justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(8),
     },
-    feedTabText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
-      color: theme.white50,
-      textShadowColor: `${theme.black}CC`,
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 4,
-    },
-    feedTabTextActive: {
-      fontFamily: fonts.fontBold,
+    brandTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontExtraBold,
       color: theme.white,
+      letterSpacing: 0.4,
+      textShadowColor: `${theme.black}AA`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
-    officialBadge: {
-      marginLeft: moderateWidthScale(4),
+    brandTagline: {
+      marginTop: moderateHeightScale(1),
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontMedium,
+      color: theme.white70,
+      textShadowColor: `${theme.black}AA`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 3,
     },
+    officialBadge: { marginLeft: moderateWidthScale(4) },
     emptyWrap: {
       flex: 1,
       backgroundColor: theme.black,
@@ -221,18 +269,18 @@ const createStyles = (theme: Theme) =>
       color: theme.buttonText,
     },
     iconBtn: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(18),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.lightGreen4,
+      backgroundColor: `${theme.black}66`,
     },
     sideActions: {
       position: "absolute",
-      right: moderateWidthScale(12),
+      right: moderateWidthScale(10),
       alignItems: "center",
-      gap: moderateHeightScale(14),
+      gap: moderateHeightScale(16),
       zIndex: 5,
     },
     sideShade: {
@@ -240,20 +288,19 @@ const createStyles = (theme: Theme) =>
       top: 0,
       right: 0,
       bottom: 0,
-      width: widthScale(96),
+      width: widthScale(88),
       zIndex: 3,
     },
     sideBtn: { alignItems: "center" },
     sideIconWrap: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(22),
+      width: moderateWidthScale(42),
+      height: moderateWidthScale(42),
+      borderRadius: moderateWidthScale(21),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: `${theme.black}59`,
     },
     sideCount: {
-      marginTop: moderateHeightScale(2),
+      marginTop: moderateHeightScale(1),
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white,
@@ -266,13 +313,13 @@ const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
       bottom: 0,
-      height: heightScale(250),
+      height: heightScale(320),
       zIndex: 3,
     },
     bottomMeta: {
       position: "absolute",
       left: moderateWidthScale(14),
-      right: moderateWidthScale(72),
+      right: moderateWidthScale(68),
       zIndex: 5,
     },
     seekBarWrap: {
@@ -306,10 +353,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.white15,
       overflow: "visible",
     },
-    seekFill: {
-      height: "100%",
-      backgroundColor: theme.white,
-    },
+    seekFill: { height: "100%", backgroundColor: theme.white },
     seekThumb: {
       position: "absolute",
       top: -moderateHeightScale(5),
@@ -322,14 +366,16 @@ const createStyles = (theme: Theme) =>
     businessRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(10),
-      marginBottom: moderateHeightScale(8),
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(6),
     },
     avatar: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(18),
       backgroundColor: theme.grey15,
+      borderWidth: 1,
+      borderColor: theme.white50,
     },
     businessName: {
       fontSize: fontSize.size15,
@@ -341,7 +387,7 @@ const createStyles = (theme: Theme) =>
       textShadowRadius: 5,
     },
     followBtn: {
-      paddingHorizontal: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(5),
       borderRadius: moderateWidthScale(6),
       backgroundColor: theme.buttonBack,
@@ -351,59 +397,152 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
-    location: {
-      fontSize: fontSize.size13,
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(6),
+    },
+    metaItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+      maxWidth: "100%",
+    },
+    metaText: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.white85,
-      marginBottom: moderateHeightScale(6),
+      flexShrink: 1,
       textShadowColor: `${theme.black}CC`,
       textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 5,
+      textShadowRadius: 4,
     },
     caption: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
       color: theme.white,
-      marginBottom: moderateHeightScale(8),
-      lineHeight: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(10),
+      lineHeight: moderateHeightScale(18),
       textShadowColor: `${theme.black}E6`,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 6,
     },
-    badgesRow: {
+    productCard: {
       flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(6),
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      backgroundColor: `${theme.black}B3`,
+      borderRadius: moderateWidthScale(12),
+      padding: moderateWidthScale(10),
       marginBottom: moderateHeightScale(10),
+      borderWidth: 1,
+      borderColor: theme.white15,
     },
-    badge: {
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(3),
-      borderRadius: moderateWidthScale(4),
-      backgroundColor: theme.selectCard,
+    productThumb: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen4,
+      alignItems: "center",
+      justifyContent: "center",
     },
-    badgeText: {
+    productBody: { flex: 1, gap: moderateHeightScale(2) },
+    productTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    productDesc: {
       fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+    },
+    productPrice: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      marginTop: moderateHeightScale(2),
+    },
+    shopBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      backgroundColor: theme.selectCard,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(8),
+    },
+    shopBtnText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
       color: theme.white,
     },
     ctaRow: {
       flexDirection: "row",
+      alignItems: "center",
       gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(10),
     },
-    cta: {
+    ctaPrimary: {
+      flex: 1.55,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(6),
+      minHeight: moderateHeightScale(44),
       paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(10),
       backgroundColor: theme.buttonBack,
     },
     ctaSecondary: {
-      backgroundColor: theme.lightGreen4,
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: moderateHeightScale(44),
+      paddingHorizontal: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: `${theme.black}99`,
+      borderWidth: 1,
+      borderColor: theme.white50,
     },
-    ctaText: {
-      fontSize: fontSize.size12,
+    ctaPrimaryText: {
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
+    },
+    ctaSecondaryText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    pillsRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(6),
+    },
+    pill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: `${theme.black}99`,
+      borderWidth: 1,
+      borderColor: theme.white15,
+    },
+    pillLiveDot: {
+      width: moderateWidthScale(6),
+      height: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(3),
+      backgroundColor: theme.green,
+    },
+    pillText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
     },
     centerLoader: {
       flex: 1,
@@ -428,9 +567,7 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(16),
       paddingBottom: moderateHeightScale(6),
     },
-    viewModeBannerBlur: {
-      ...StyleSheet.absoluteFillObject,
-    },
+    viewModeBannerBlur: { ...StyleSheet.absoluteFillObject },
     viewModeBannerOverlay: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: theme.lightGreen5,
@@ -451,28 +588,25 @@ const createStyles = (theme: Theme) =>
     viewModeExitText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.green,
+      color: theme.orangeBrown,
     },
     previewPublishBtn: {
-      marginLeft: "auto" as const,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(18),
+      minWidth: moderateWidthScale(72),
+      height: moderateHeightScale(32),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(16),
       backgroundColor: theme.buttonBack,
       alignItems: "center",
       justifyContent: "center",
-      minWidth: widthScale(72),
-      minHeight: moderateHeightScale(32),
     },
-    previewPublishBtnDisabled: {
-      opacity: 0.7,
-    },
+    previewPublishBtnDisabled: { opacity: 0.6 },
     previewPublishText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
   });
+
 
 type ReelItemProps = {
   reel: FeedReel;
@@ -483,12 +617,10 @@ type ReelItemProps = {
   publishing?: boolean;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
+  itemHeight: number;
   topInset: number;
   bottomInset: number;
   onBack: () => void;
-  feedTab?: "for_you" | "following";
-  onFeedTabChange?: (tab: "for_you" | "following") => void;
-  showFeedTabs?: boolean;
   onLike: (reel: FeedReel) => void;
   onSave: (reel: FeedReel) => void;
   onComment: (reel: FeedReel) => void;
@@ -509,12 +641,10 @@ function ReelFeedItemBase({
   publishing = false,
   styles,
   theme,
+  itemHeight,
   topInset,
   bottomInset,
   onBack,
-  feedTab = "for_you",
-  onFeedTabChange,
-  showFeedTabs = false,
   onLike,
   onSave,
   onComment,
@@ -833,6 +963,9 @@ function ReelFeedItemBase({
   const cityState = [reel.business?.city, reel.business?.state]
     .filter(Boolean)
     .join(", ");
+  const product = parseProductTag(reel.product_tag);
+  const productPrice = formatServicePrice(reel.service?.price);
+
   const distance =
     reel.distance_km != null
       ? `${reel.distance_km.toFixed(1)} km`
@@ -841,13 +974,12 @@ function ReelFeedItemBase({
     duration > 0 ? Math.max(0, Math.min(1, currentTime / duration)) : 0;
   const videoW = reel.video?.width ?? 0;
   const videoH = reel.video?.height ?? 0;
-  // Landscape / square crops (e.g. 16:9) should letterbox — cover would
-  // re-crop them on a portrait phone and hide the editor crop.
+  // Portrait / 9:16 always cover the phone. Only letterbox true landscape.
   const contentFit =
-    videoW > 0 && videoH > 0 && videoW / videoH > 0.85 ? "contain" : "cover";
+    videoW > 0 && videoH > 0 && videoW / videoH >= 1.2 ? "contain" : "cover";
 
   return (
-    <View style={styles.item}>
+    <View style={[styles.item, { height: itemHeight }]}>
       {playbackUrl ? (
         <VideoView
           player={player}
@@ -921,13 +1053,20 @@ function ReelFeedItemBase({
         </View>
       ) : null}
 
+      <LinearGradient
+        pointerEvents="none"
+        colors={[`${theme.black}55`, `${theme.black}00`]}
+        locations={[0, 1]}
+        style={styles.topShade}
+      />
+
       <View
         style={[
           styles.topBar,
           {
             top:
               topInset +
-              moderateHeightScale(8) +
+              moderateHeightScale(6) +
               (isPreview ? moderateHeightScale(28) : 0),
           },
         ]}
@@ -935,36 +1074,26 @@ function ReelFeedItemBase({
         <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
           <MaterialIcons
             name="arrow-back"
-            size={moderateWidthScale(22)}
+            size={moderateWidthScale(20)}
             color={theme.white}
           />
         </TouchableOpacity>
-        {showFeedTabs && onFeedTabChange ? (
-          <View style={styles.feedTabs}>
-            <TouchableOpacity onPress={() => onFeedTabChange("for_you")}>
-              <Text
-                style={[
-                  styles.feedTabText,
-                  feedTab === "for_you" && styles.feedTabTextActive,
-                ]}
-              >
-                {t("forYouTab")}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => onFeedTabChange("following")}>
-              <Text
-                style={[
-                  styles.feedTabText,
-                  feedTab === "following" && styles.feedTabTextActive,
-                ]}
-              >
-                {t("following")}
-              </Text>
-            </TouchableOpacity>
+
+        <View style={styles.brandLeft}>
+          <LeafLogo
+            width={moderateWidthScale(22)}
+            height={moderateWidthScale(22)}
+            color1={theme.orangeBrown}
+            color2={theme.white}
+          />
+          <View style={styles.brandTextCol}>
+            <Text style={styles.brandTitle}>FRESHPASS</Text>
+            <Text style={styles.brandTagline} numberOfLines={1}>
+              {t("alwaysReadyAlwaysYou")}
+            </Text>
           </View>
-        ) : (
-          <View style={{ flex: 1 }} />
-        )}
+        </View>
+
         {canPublish && onPublish ? (
           <TouchableOpacity
             style={[
@@ -981,9 +1110,21 @@ function ReelFeedItemBase({
               <Text style={styles.previewPublishText}>{t("publish")}</Text>
             )}
           </TouchableOpacity>
-        ) : showFeedTabs ? (
+        ) : showAsCustomer ? (
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => onMore(reel)}
+            disabled={socialLocked}
+          >
+            <MaterialIcons
+              name="more-vert"
+              size={moderateWidthScale(20)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+        ) : (
           <View style={styles.iconBtn} />
-        ) : null}
+        )}
       </View>
 
       <LinearGradient
@@ -991,15 +1132,15 @@ function ReelFeedItemBase({
         colors={[
           `${theme.black}00`,
           `${theme.black}73`,
-          `${theme.black}BF`,
+          `${theme.black}D9`,
         ]}
-        locations={[0, 0.45, 1]}
+        locations={[0, 0.4, 1]}
         style={styles.bottomShade}
       />
 
       <LinearGradient
         pointerEvents="none"
-        colors={[`${theme.black}00`, `${theme.black}66`]}
+        colors={[`${theme.black}00`, `${theme.black}55`]}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
         style={styles.sideShade}
@@ -1012,7 +1153,7 @@ function ReelFeedItemBase({
             bottom:
               Math.max(bottomInset, moderateHeightScale(6)) +
               heightScale(22) +
-              moderateHeightScale(100),
+              moderateHeightScale(140),
           },
         ]}
         pointerEvents={socialLocked ? "none" : "auto"}
@@ -1021,7 +1162,7 @@ function ReelFeedItemBase({
           <View style={styles.sideIconWrap}>
             <MaterialIcons
               name={reel.viewer?.liked ? "favorite" : "favorite-border"}
-              size={moderateWidthScale(26)}
+              size={moderateWidthScale(28)}
               color={reel.viewer?.liked ? theme.red : theme.white}
             />
           </View>
@@ -1036,7 +1177,7 @@ function ReelFeedItemBase({
           <View style={styles.sideIconWrap}>
             <MaterialIcons
               name="chat-bubble-outline"
-              size={moderateWidthScale(24)}
+              size={moderateWidthScale(26)}
               color={theme.white}
             />
           </View>
@@ -1061,7 +1202,7 @@ function ReelFeedItemBase({
             <View style={styles.sideIconWrap}>
               <MaterialIcons
                 name={reel.viewer?.saved ? "bookmark" : "bookmark-border"}
-                size={moderateWidthScale(24)}
+                size={moderateWidthScale(26)}
                 color={reel.viewer?.saved ? theme.orangeBrown : theme.white}
               />
             </View>
@@ -1070,30 +1211,17 @@ function ReelFeedItemBase({
             </Text>
           </TouchableOpacity>
         ) : null}
-        {showAsCustomer ? (
-          <TouchableOpacity style={styles.sideBtn} onPress={() => onMore(reel)}>
-            <View style={styles.sideIconWrap}>
-              <MaterialIcons
-                name="more-vert"
-                size={moderateWidthScale(24)}
-                color={theme.white}
-              />
-            </View>
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       <View
         style={[
           styles.bottomMeta,
           {
-            // Keep CTAs / caption clear of the fixed bottom seek strip.
             bottom:
               Math.max(bottomInset, moderateHeightScale(6)) +
               heightScale(22),
           },
         ]}
-      
         pointerEvents={socialLocked ? "none" : "auto"}
       >
         <View style={styles.businessRow}>
@@ -1115,7 +1243,7 @@ function ReelFeedItemBase({
                 >
                   <MaterialIcons
                     name="storefront"
-                    size={moderateWidthScale(20)}
+                    size={moderateWidthScale(18)}
                     color={theme.lightGreen}
                   />
                 </View>
@@ -1151,14 +1279,18 @@ function ReelFeedItemBase({
                   >
                     <MaterialIcons
                       name="storefront"
-                      size={moderateWidthScale(20)}
+                      size={moderateWidthScale(18)}
                       color={theme.lightGreen}
                     />
                   </View>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ flexShrink: 1, flexDirection: "row", alignItems: "center" }}
+                style={{
+                  flexShrink: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
                 onPress={() => onProfile(reel)}
               >
                 <Text style={styles.businessName} numberOfLines={1}>
@@ -1185,18 +1317,33 @@ function ReelFeedItemBase({
           )}
         </View>
 
-        {(cityState || distance || reel.business?.followers_count != null) && (
-          <Text style={styles.location} numberOfLines={1}>
-            {[
-              cityState,
-              distance,
-              reel.business?.followers_count != null
-                ? t("followersCount", { count: reel.business.followers_count })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </Text>
+        {(cityState || !!reel.category?.name) && (
+          <View style={styles.metaRow}>
+            {!!cityState && (
+              <View style={styles.metaItem}>
+                <MaterialIcons
+                  name="place"
+                  size={moderateWidthScale(13)}
+                  color={theme.white85}
+                />
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {cityState}
+                </Text>
+              </View>
+            )}
+            {!!reel.category?.name && (
+              <View style={styles.metaItem}>
+                <MaterialIcons
+                  name="content-cut"
+                  size={moderateWidthScale(13)}
+                  color={theme.white85}
+                />
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {reel.category.name}
+                </Text>
+              </View>
+            )}
+          </View>
         )}
 
         {!!reel.caption && (
@@ -1205,42 +1352,102 @@ function ReelFeedItemBase({
           </TextWithEmoji>
         )}
 
-        <View style={styles.badgesRow}>
-          {!!reel.promotion_text && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{reel.promotion_text}</Text>
+        {showAsCustomer && product ? (
+          <View style={styles.productCard}>
+            <View style={styles.productThumb}>
+              <MaterialIcons
+                name="shopping-bag"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
             </View>
-          )}
-          {reel.available_now && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{t("availableNow")}</Text>
+            <View style={styles.productBody}>
+              <Text style={styles.productTitle} numberOfLines={1}>
+                {product.title}
+              </Text>
+              {!!reel.look_tag && (
+                <Text style={styles.productDesc} numberOfLines={1}>
+                  {reel.look_tag}
+                </Text>
+              )}
+              {!!productPrice && (
+                <Text style={styles.productPrice}>{productPrice}</Text>
+              )}
             </View>
-          )}
-          {!!reel.category?.name && (
-            <View style={[styles.badge, { backgroundColor: theme.lightGreen4 }]}>
-              <Text style={styles.badgeText}>{reel.category.name}</Text>
-            </View>
-          )}
-        </View>
+            {!!product.url && (
+              <TouchableOpacity
+                style={styles.shopBtn}
+                activeOpacity={0.85}
+                onPress={() => {
+                  Linking.openURL(product.url!).catch(() => {});
+                }}
+              >
+                <MaterialIcons
+                  name="shopping-cart"
+                  size={moderateWidthScale(14)}
+                  color={theme.white}
+                />
+                <Text style={styles.shopBtnText}>{t("shopNow")}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : null}
 
         {showAsCustomer ? (
           <View style={styles.ctaRow}>
             <TouchableOpacity
-              style={styles.cta}
+              style={styles.ctaPrimary}
               onPress={() => onWantLook(reel)}
+              activeOpacity={0.85}
             >
-              <Text style={styles.ctaText}>{t("iWantThisLook")}</Text>
+              <MaterialIcons
+                name="auto-awesome"
+                size={moderateWidthScale(16)}
+                color={theme.buttonText}
+              />
+              <Text style={styles.ctaPrimaryText}>{t("iWantThisLook")}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.cta, styles.ctaSecondary]}
+              style={styles.ctaSecondary}
               onPress={() => onProfile(reel)}
+              activeOpacity={0.85}
             >
-              <Text style={styles.ctaText}>{t("viewProfile")}</Text>
+              <Text style={styles.ctaSecondaryText}>{t("viewProfile")}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
-      </View>
 
+        <View style={styles.pillsRow}>
+          {reel.available_now ? (
+            <View style={styles.pill}>
+              <View style={styles.pillLiveDot} />
+              <Text style={styles.pillText}>{t("availableNow")}</Text>
+            </View>
+          ) : null}
+          {!!reel.category?.name && (
+            <View style={styles.pill}>
+              <MaterialIcons
+                name="content-cut"
+                size={moderateWidthScale(11)}
+                color={theme.white}
+              />
+              <Text style={styles.pillText}>{reel.category.name}</Text>
+            </View>
+          )}
+          {!!cityState && (
+            <View style={styles.pill}>
+              <MaterialIcons
+                name="place"
+                size={moderateWidthScale(11)}
+                color={theme.white}
+              />
+              <Text style={styles.pillText} numberOfLines={1}>
+                {cityState}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
 
       <View
         style={[
@@ -1296,12 +1503,92 @@ export default function ReelsFeedScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const user = useAppSelector((s) => s.user);
   const isGuest = user.isGuest;
   const ownerBusinessId = user.business_id ?? null;
+  const [viewportHeight, setViewportHeight] = useState(INITIAL_SCREEN_HEIGHT);
+  const [edgeOffset, setEdgeOffset] = useState({ top: 0, bottom: 0 });
+  const rootRef = useRef<View>(null);
+  const edgeOffsetRef = useRef({ top: 0, bottom: 0 });
+
+  const pageHeight = viewportHeight + edgeOffset.top + edgeOffset.bottom;
+
+  const syncEdgeToEdge = useCallback(() => {
+    requestAnimationFrame(() => {
+      rootRef.current?.measureInWindow((_x, y, _w, h) => {
+        if (!h) return;
+        const screenH = Dimensions.get("screen").height;
+        const topGap = Math.max(0, Math.round(y));
+        const bottomGap = Math.max(0, Math.round(screenH - (y + h)));
+        const nextH = Math.round(h);
+
+        // Accumulate only while still inset; once pulled under the system bars
+        // measure y≈0 and we keep the locked offset (avoids oscillation).
+        if (topGap > 1 || bottomGap > 1) {
+          const next = {
+            top: edgeOffsetRef.current.top + topGap,
+            bottom: edgeOffsetRef.current.bottom + bottomGap,
+          };
+          edgeOffsetRef.current = next;
+          setEdgeOffset(next);
+          if (nextH > 0) {
+            setViewportHeight((prev) => (prev === nextH ? prev : nextH));
+          }
+          return;
+        }
+
+        // Already edge-to-edge (no parent inset) — use measured height as page size.
+        if (
+          edgeOffsetRef.current.top === 0 &&
+          edgeOffsetRef.current.bottom === 0 &&
+          nextH > 0
+        ) {
+          setViewportHeight((prev) => (prev === nextH ? prev : nextH));
+        }
+      });
+    });
+  }, []);
+
+  const onRootLayout = useCallback(() => {
+    syncEdgeToEdge();
+  }, [syncEdgeToEdge]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Reset so a fresh measure runs each time this screen focuses.
+      edgeOffsetRef.current = { top: 0, bottom: 0 };
+      setEdgeOffset({ top: 0, bottom: 0 });
+
+      navigation.setOptions({
+        contentStyle: { flex: 1, backgroundColor: theme.black },
+        ...(Platform.OS === "android"
+          ? {
+              statusBarTranslucent: true,
+              statusBarStyle: "light",
+              statusBarBackgroundColor: "transparent",
+              navigationBarColor: theme.black,
+            }
+          : null),
+      } as any);
+      StatusBar.setBarStyle("light-content", true);
+      if (Platform.OS === "android") {
+        StatusBar.setTranslucent(true);
+        StatusBar.setBackgroundColor("transparent", true);
+      }
+      void SystemUI.setBackgroundColorAsync(theme.black);
+      const t1 = setTimeout(syncEdgeToEdge, 16);
+      const t2 = setTimeout(syncEdgeToEdge, 100);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        void SystemUI.setBackgroundColorAsync(theme.background);
+      };
+    }, [navigation, syncEdgeToEdge, theme.background, theme.black]),
+  );
 
   const params = useLocalSearchParams<{
     category_id?: string;
@@ -1486,50 +1773,6 @@ export default function ReelsFeedScreen() {
     loadPage(null, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedTab]);
-
-  const handleFeedTabChange = useCallback(
-    (tab: "for_you" | "following") => {
-      if (tab === feedTab) return;
-      firstReelUsedRef.current = true;
-      // Save current tab before leaving
-      tabCacheRef.current[feedTab] = {
-        reels,
-        cursor,
-        hasMore,
-        followingCount,
-        requiresLogin,
-        activeId,
-        loaded: tabCacheRef.current[feedTab].loaded || reels.length > 0,
-      };
-      setFeedTab(tab);
-      const cached = tabCacheRef.current[tab];
-      if (cached.loaded) {
-        setReels(cached.reels);
-        setCursor(cached.cursor);
-        setHasMore(cached.hasMore);
-        setFollowingCount(cached.followingCount);
-        setRequiresLogin(cached.requiresLogin);
-        setActiveId(cached.activeId);
-        setLoading(false);
-        return;
-      }
-      setReels([]);
-      setCursor(null);
-      setHasMore(false);
-      setRequiresLogin(false);
-      setActiveId(null);
-      setLoading(true);
-    },
-    [
-      activeId,
-      cursor,
-      feedTab,
-      followingCount,
-      hasMore,
-      reels,
-      requiresLogin,
-    ],
-  );
 
   useEffect(() => {
     if (isPreviewMode) return;
@@ -1925,7 +2168,23 @@ export default function ReelsFeedScreen() {
 
   if (loading && reels.length === 0) {
     return (
-      <View style={styles.centerLoader}>
+      <View
+        ref={rootRef}
+        style={[
+          styles.centerLoader,
+          {
+            marginTop: -edgeOffset.top,
+            marginBottom: -edgeOffset.bottom,
+            height: pageHeight,
+          },
+        ]}
+        onLayout={onRootLayout}
+      >
+        <StatusBar
+          translucent={true}
+          backgroundColor="transparent"
+          barStyle="light-content"
+        />
         <TouchableOpacity
           style={[
             styles.iconBtn,
@@ -1964,7 +2223,23 @@ export default function ReelsFeedScreen() {
       feedTab === "following" && (requiresLogin || isGuest);
 
     return (
-      <View style={styles.emptyWrap}>
+      <View
+        ref={rootRef}
+        style={[
+          styles.emptyWrap,
+          {
+            marginTop: -edgeOffset.top,
+            marginBottom: -edgeOffset.bottom,
+            height: pageHeight,
+          },
+        ]}
+        onLayout={onRootLayout}
+      >
+        <StatusBar
+          translucent={true}
+          backgroundColor="transparent"
+          barStyle="light-content"
+        />
         <TouchableOpacity
           style={[
             styles.iconBtn,
@@ -1982,40 +2257,6 @@ export default function ReelsFeedScreen() {
             color={theme.white}
           />
         </TouchableOpacity>
-        {!isPreviewMode ? (
-          <View
-            style={[
-              styles.feedTabs,
-              {
-                position: "absolute",
-                top: insets.top + moderateHeightScale(16),
-                left: 0,
-                right: 0,
-              },
-            ]}
-          >
-            <TouchableOpacity onPress={() => handleFeedTabChange("for_you")}>
-              <Text
-                style={[
-                  styles.feedTabText,
-                  feedTab === "for_you" && styles.feedTabTextActive,
-                ]}
-              >
-                {t("forYouTab")}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => handleFeedTabChange("following")}>
-              <Text
-                style={[
-                  styles.feedTabText,
-                  feedTab === "following" && styles.feedTabTextActive,
-                ]}
-              >
-                {t("following")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
         <Text style={styles.emptyTitle}>{emptyMessage}</Text>
         {showSignIn ? (
           <TouchableOpacity
@@ -2030,21 +2271,40 @@ export default function ReelsFeedScreen() {
   }
 
   return (
-    <View style={styles.root}>
+    <View
+      ref={rootRef}
+      style={[
+        styles.root,
+        {
+          marginTop: -edgeOffset.top,
+          marginBottom: -edgeOffset.bottom,
+          height: pageHeight,
+        },
+      ]}
+      onLayout={onRootLayout}
+    >
+      <StatusBar
+        translucent={true}
+        backgroundColor="transparent"
+        barStyle="light-content"
+      />
       <FlatList
         data={reels}
         keyExtractor={(item) => String(item.id)}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT}
+        snapToInterval={pageHeight}
         decelerationRate="fast"
         windowSize={3}
         maxToRenderPerBatch={2}
         initialNumToRender={1}
         removeClippedSubviews={false}
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustsScrollIndicatorInsets={false}
         getItemLayout={(_, index) => ({
-          length: SCREEN_HEIGHT,
-          offset: SCREEN_HEIGHT * index,
+          length: pageHeight,
+          offset: pageHeight * index,
           index,
         })}
         onViewableItemsChanged={onViewableItemsChanged}
@@ -2065,12 +2325,10 @@ export default function ReelsFeedScreen() {
             publishing={publishing}
             styles={styles}
             theme={theme}
+            itemHeight={pageHeight}
             topInset={insets.top}
             bottomInset={insets.bottom}
             onBack={goBack}
-            feedTab={feedTab}
-            onFeedTabChange={handleFeedTabChange}
-            showFeedTabs={!isPreviewMode}
             onLike={handleLike}
             onSave={handleSave}
             onComment={handleComment}

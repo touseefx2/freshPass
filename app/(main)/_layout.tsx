@@ -28,6 +28,36 @@ export default function MainLayout() {
           gestureEnabled: false,
         }}
       />
+      <Stack.Screen
+        name="reelsFeed/index"
+        options={{
+          animation: "fade",
+          contentStyle: { flex: 1, backgroundColor: colors.black },
+          ...(Platform.OS === "android"
+            ? {
+                statusBarTranslucent: true,
+                statusBarStyle: "light" as const,
+                statusBarBackgroundColor: "transparent",
+                navigationBarHidden: true,
+              }
+            : null),
+        }}
+      />
+      <Stack.Screen
+        name="reelsFeed"
+        options={{
+          animation: "fade",
+          contentStyle: { flex: 1, backgroundColor: colors.black },
+          ...(Platform.OS === "android"
+            ? {
+                statusBarTranslucent: true,
+                statusBarStyle: "light" as const,
+                statusBarBackgroundColor: "transparent",
+                navigationBarHidden: true,
+              }
+            : null),
+        }}
+      />
       <Stack.Screen name="stripeConnectOnboarding" />
     </Stack>
   );

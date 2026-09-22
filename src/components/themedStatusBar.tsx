@@ -1,21 +1,22 @@
 import { StatusBar } from "react-native";
 import { useTheme } from "../hooks/hooks";
-import { Theme, themes } from "../theme/colors";
 
 export function ThemedStatusBar() {
-  const { colors, theme } = useTheme();
+  const { theme } = useTheme();
 
-  // Safety check: Use fallback if colors is undefined (during Redux rehydration)
-  const safeColors = colors || themes.light;
   const safeTheme = theme || "light";
 
+  // Transparent + translucent so content draws edge-to-edge (reels, heroes).
+  // Solid status-bar colors fight Android/iOS edge-to-edge and leave a black gap.
   return (
     <StatusBar
       animated
-      translucent
-      backgroundColor={(safeColors as Theme).background}
+      translucent={true}
+      backgroundColor="transparent"
       barStyle={
-        safeTheme === "dark" || safeTheme === "blue" ? "light-content" : "dark-content"
+        safeTheme === "dark" || safeTheme === "blue"
+          ? "light-content"
+          : "dark-content"
       }
     />
   );
