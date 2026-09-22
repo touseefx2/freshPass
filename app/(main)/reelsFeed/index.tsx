@@ -1897,6 +1897,26 @@ export default function ReelsFeedScreen() {
   if (loading && reels.length === 0) {
     return (
       <View style={styles.centerLoader}>
+        <TouchableOpacity
+          style={[
+            styles.iconBtn,
+            {
+              position: "absolute",
+              top: insets.top + moderateHeightScale(8),
+              left: moderateWidthScale(12),
+              zIndex: 2,
+            },
+          ]}
+          onPress={goBack}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={t("back")}
+        >
+          <MaterialIcons
+            name="arrow-back"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        </TouchableOpacity>
         <ActivityIndicator size="large" color={theme.white} />
       </View>
     );
