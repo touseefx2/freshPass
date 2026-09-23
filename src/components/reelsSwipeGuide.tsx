@@ -1,18 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
+  BackHandler,
   Easing,
-  Image,
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import { Image } from "expo-image";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Button from "@/src/components/button";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -26,11 +27,17 @@ import {
 type Props = {
   visible: boolean;
   onDismiss: () => void;
-  /** Android BlurView can't blur Video — use reel thumbnail instead. */
+  /**
+   * Android can't blur live Video with BlurView. Pass the active reel
+   * thumbnail so we can show a single-layer blurred backdrop (no double image).
+   */
   blurImageUri?: string | null;
 };
 
 type DemoPhase = "vertical" | "horizontal";
+
+const SWIPE_CYCLE_MS = 1100;
+const PHASE_HOLD_MS = 180;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -43,8 +50,6 @@ const createStyles = (theme: Theme) =>
     },
     androidBlurImage: {
       ...StyleSheet.absoluteFillObject,
-      width: "100%",
-      height: "100%",
     },
     dim: {
       ...StyleSheet.absoluteFillObject,
@@ -52,7 +57,7 @@ const createStyles = (theme: Theme) =>
     },
     androidDim: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: `${theme.black}40`,
+      backgroundColor: `${theme.black}38`,
     },
     content: {
       ...StyleSheet.absoluteFillObject,
@@ -124,7 +129,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: `${theme.white}1A`,
       borderWidth: 1,
       borderColor: `${theme.white}30`,
-      marginBottom: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(16),
     },
     hintText: {
       fontSize: fontSize.size14,
@@ -135,21 +140,23 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       alignItems: "center",
       paddingBottom: moderateHeightScale(8),
+      minHeight: heightScale(120),
+      justifyContent: "flex-end",
+    },
+    gotItWrap: {
+      width: "100%",
+      maxWidth: widthScale(320),
+      minHeight: moderateHeightScale(52),
     },
     gotItBtn: {
       width: "100%",
-      maxWidth: widthScale(320),
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(32),
-      paddingVertical: moderateHeightScale(15),
       borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.buttonBack,
+      height: moderateHeightScale(52),
     },
-    gotItText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
+    gotItPlaceholder: {
+      width: "100%",
+      maxWidth: widthScale(320),
+      height: moderateHeightScale(52),
     },
   });
 
@@ -157,10 +164,13 @@ function SwipeHandDemo({
   phase,
   styles,
   theme,
+  playToken,
 }: {
   phase: DemoPhase;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
+  /** Bumps to restart a single swipe cycle */
+  playToken: number;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
   const press = useRef(new Animated.Value(0)).current;
@@ -169,41 +179,28 @@ function SwipeHandDemo({
     progress.setValue(0);
     press.setValue(0);
 
-    const loop = Animated.loop(
-      Animated.sequence([
-        // Finger lands / presses
-        Animated.timing(press, {
-          toValue: 1,
-          duration: 220,
-          easing: Easing.out(Easing.quad),
-          useNativeDriver: true,
-        }),
-        // Swipe across
-        Animated.timing(progress, {
-          toValue: 1,
-          duration: 1050,
-          easing: Easing.inOut(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        // Lift off
-        Animated.timing(press, {
-          toValue: 0,
-          duration: 180,
-          useNativeDriver: true,
-        }),
-        Animated.delay(160),
-        // Reset position instantly while lifted
-        Animated.timing(progress, {
-          toValue: 0,
-          duration: 0,
-          useNativeDriver: true,
-        }),
-        Animated.delay(280),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [phase, press, progress]);
+    const anim = Animated.sequence([
+      Animated.timing(press, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 720,
+        easing: Easing.inOut(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(press, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]);
+    anim.start();
+    return () => anim.stop();
+  }, [phase, playToken, press, progress]);
 
   const travelY = progress.interpolate({
     inputRange: [0, 1],
@@ -227,7 +224,6 @@ function SwipeHandDemo({
     outputRange: [0.7, 1.15],
   });
 
-  // Soft motion ghosts trailing behind the hand
   const ghost1Progress = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [0.18, 1.18],
@@ -274,7 +270,6 @@ function SwipeHandDemo({
   return (
     <View style={styles.stage}>
       <View style={styles.swipeTrack}>
-        {/* Motion ghosts */}
         <Animated.View
           pointerEvents="none"
           style={[
@@ -314,7 +309,6 @@ function SwipeHandDemo({
           />
         </Animated.View>
 
-        {/* Main hand */}
         <Animated.View style={[styles.handWrap, { transform }]}>
           <Animated.View
             style={[
@@ -347,26 +341,108 @@ export default function ReelsSwipeGuide({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const fade = useRef(new Animated.Value(0)).current;
+  const gotItAnim = useRef(new Animated.Value(0)).current;
   const [phase, setPhase] = useState<DemoPhase>("vertical");
+  const [playToken, setPlayToken] = useState(0);
+  const [showGotIt, setShowGotIt] = useState(false);
+  const phaseRef = useRef<DemoPhase>("vertical");
+  phaseRef.current = phase;
 
+  const switchPhase = useCallback((next: DemoPhase) => {
+    setPhase(next);
+    setPlayToken((n) => n + 1);
+  }, []);
+
+  const revealGotIt = useCallback(() => {
+    setShowGotIt(true);
+    gotItAnim.setValue(0);
+    Animated.sequence([
+      Animated.delay(80),
+      Animated.spring(gotItAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 56,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [gotItAnim]);
+
+  const handleGotItPress = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(fade, {
+        toValue: 0,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(gotItAnim, {
+        toValue: 0,
+        duration: 180,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) onDismiss();
+    });
+  }, [fade, gotItAnim, onDismiss]);
+
+  // Block hardware / gesture back while guide is visible
   useEffect(() => {
     if (!visible) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, [visible]);
+
+  // Intro sequence: vertical once → horizontal once → Got it
+  useEffect(() => {
+    if (!visible) return;
+
     fade.setValue(0);
+    gotItAnim.setValue(0);
     setPhase("vertical");
+    setPlayToken(0);
+    setShowGotIt(false);
+
     Animated.timing(fade, {
       toValue: 1,
       duration: 280,
       useNativeDriver: true,
     }).start();
-  }, [fade, visible]);
 
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    timers.push(
+      setTimeout(() => {
+        switchPhase("horizontal");
+      }, SWIPE_CYCLE_MS + PHASE_HOLD_MS),
+    );
+
+    timers.push(
+      setTimeout(
+        () => {
+          revealGotIt();
+        },
+        SWIPE_CYCLE_MS + PHASE_HOLD_MS + SWIPE_CYCLE_MS + PHASE_HOLD_MS,
+      ),
+    );
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [fade, gotItAnim, revealGotIt, switchPhase, visible]);
+
+  // Soft loop gestures after Got it is visible
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || !showGotIt) return;
+
     const timer = setInterval(() => {
-      setPhase((prev) => (prev === "vertical" ? "horizontal" : "vertical"));
-    }, 2800);
+      const next =
+        phaseRef.current === "vertical" ? "horizontal" : "vertical";
+      switchPhase(next);
+    }, SWIPE_CYCLE_MS + 500);
+
     return () => clearInterval(timer);
-  }, [visible]);
+  }, [showGotIt, switchPhase, visible]);
 
   if (!visible) return null;
 
@@ -374,6 +450,15 @@ export default function ReelsSwipeGuide({
     phase === "vertical"
       ? t("reelsGuideSwipeVertical")
       : t("reelsGuideSwipeHorizontal");
+
+  const gotItTranslateY = gotItAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [heightScale(36), 0],
+  });
+  const gotItScale = gotItAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.92, 1],
+  });
 
   return (
     <Animated.View
@@ -383,18 +468,17 @@ export default function ReelsSwipeGuide({
       {Platform.OS === "ios" ? (
         <BlurView intensity={40} tint="dark" style={styles.blur} />
       ) : blurImageUri ? (
+        // Single layer only — BlurView + thumbnail together looks "double" on Android
         <Image
           source={{ uri: blurImageUri }}
           style={styles.androidBlurImage}
-          blurRadius={14}
-          resizeMode="cover"
+          contentFit="cover"
+          blurRadius={10}
+          transition={0}
         />
       ) : (
-        <BlurView
-          intensity={80}
-          tint="dark"
-          experimentalBlurMethod="dimezisBlurView"
-          style={styles.blur}
+        <View
+          style={[styles.blur, { backgroundColor: `${theme.black}B3` }]}
         />
       )}
       <View style={Platform.OS === "android" ? styles.androidDim : styles.dim} />
@@ -413,7 +497,12 @@ export default function ReelsSwipeGuide({
           <Text style={styles.subtitle}>{hint}</Text>
         </View>
 
-        <SwipeHandDemo phase={phase} styles={styles} theme={theme} />
+        <SwipeHandDemo
+          phase={phase}
+          styles={styles}
+          theme={theme}
+          playToken={playToken}
+        />
 
         <View style={styles.bottomBlock}>
           <View style={styles.hintChip}>
@@ -433,13 +522,28 @@ export default function ReelsSwipeGuide({
             </Text>
           </View>
 
-          <TouchableOpacity
-            style={styles.gotItBtn}
-            onPress={onDismiss}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.gotItText}>{t("reelsGuideGotIt")}</Text>
-          </TouchableOpacity>
+          {showGotIt ? (
+            <Animated.View
+              style={[
+                styles.gotItWrap,
+                {
+                  opacity: gotItAnim,
+                  transform: [
+                    { translateY: gotItTranslateY },
+                    { scale: gotItScale },
+                  ],
+                },
+              ]}
+            >
+              <Button
+                title={t("reelsGuideGotIt")}
+                onPress={handleGotItPress}
+                containerStyle={styles.gotItBtn}
+              />
+            </Animated.View>
+          ) : (
+            <View style={styles.gotItPlaceholder} />
+          )}
         </View>
       </View>
     </Animated.View>

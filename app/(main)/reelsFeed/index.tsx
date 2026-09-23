@@ -10,6 +10,7 @@ import {
   Alert,
   Animated,
   AppState,
+  BackHandler,
   Dimensions,
   FlatList,
   Image,
@@ -2734,7 +2735,25 @@ export default function ReelsFeedScreen() {
     [commentsReel],
   );
 
-  const goBack = useCallback(() => router.back(), [router]);
+  const goBack = useCallback(() => {
+    if (showSwipeGuide) return;
+    router.back();
+  }, [router, showSwipeGuide]);
+
+  // Block Android hardware back + iOS swipe-back while guide is open
+  useEffect(() => {
+    if (!showSwipeGuide) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, [showSwipeGuide]);
+
+  useEffect(() => {
+    if (!showSwipeGuide) return;
+    const unsub = navigation.addListener("beforeRemove", (e) => {
+      e.preventDefault();
+    });
+    return unsub;
+  }, [navigation, showSwipeGuide]);
 
   const handlePublishPreview = useCallback(async () => {
     if (!firstReelId || publishing) return;
