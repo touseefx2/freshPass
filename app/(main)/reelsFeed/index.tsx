@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   AppState,
   BackHandler,
@@ -76,9 +75,11 @@ import { followBusiness, unfollowBusiness } from "@/src/services/followService";
 import ReelCommentsSheet from "@/src/components/reelCommentsSheet";
 import TextWithEmoji from "@/src/components/textWithEmoji";
 import ReelsSwipeGuide from "@/src/components/reelsSwipeGuide";
+import ReelsFeedSkeleton from "@/src/components/reelsFeedSkeleton";
 import ReelReportSheet, {
   type ReportTarget,
 } from "@/src/components/reelReportSheet";
+import ReelOptionsMenu from "@/src/components/reelOptionsMenu";
 import ReelWantLookSheet from "@/src/components/reelWantLookSheet";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import HairPipelineProcessingModal, {
@@ -242,7 +243,8 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(12),
-      zIndex: 5,
+      zIndex: 20,
+      elevation: 20,
     },
     topShade: {
       position: "absolute",
@@ -664,12 +666,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white,
       textTransform: "uppercase",
-    },
-    centerLoader: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: theme.black,
     },
     categoryToast: {
       position: "absolute",
@@ -1150,7 +1146,11 @@ function ReelFeedItemBase({
       ) : null}
 
       <Pressable
-        style={styles.tapLayer}
+        style={[
+          styles.tapLayer,
+          // Keep header controls (back / menu) clear of the play-pause layer.
+          { top: topInset + moderateHeightScale(52) },
+        ]}
         onPress={handleTogglePlayPause}
         accessibilityRole="button"
         accessibilityLabel={isPaused ? "Play" : "Pause"}
@@ -1209,6 +1209,7 @@ function ReelFeedItemBase({
       />
 
       <View
+        pointerEvents="box-none"
         style={[
           styles.topBar,
           {
@@ -1219,7 +1220,11 @@ function ReelFeedItemBase({
           },
         ]}
       >
-        <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          onPress={onBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <MaterialIcons
             name="arrow-back"
             size={moderateWidthScale(20)}
@@ -1255,7 +1260,7 @@ function ReelFeedItemBase({
           </View>
         ) : null}
         */}
-        <View style={styles.brandLeft}>
+        <View style={styles.brandLeft} pointerEvents="none">
           <LeafLogo
             width={moderateWidthScale(22)}
             height={moderateWidthScale(22)}
@@ -1291,6 +1296,9 @@ function ReelFeedItemBase({
             style={styles.iconBtn}
             onPress={() => onMore(reel)}
             disabled={socialLocked}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={t("reelOptions")}
           >
             <MaterialIcons
               name="more-vert"
@@ -1873,6 +1881,7 @@ export default function ReelsFeedScreen() {
     },
   });
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
+  const [optionsReel, setOptionsReel] = useState<FeedReel | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
   const viewedIdsRef = useRef<Set<number>>(new Set());
@@ -2704,25 +2713,24 @@ export default function ReelsFeedScreen() {
     [showBanner, t],
   );
 
-  const handleMore = useCallback(
-    (reel: FeedReel) => {
-      Alert.alert(t("reelOptions"), undefined, [
-        {
-          text: t("report"),
-          style: "destructive",
-          onPress: () => {
-            if (isGuest || !user.accessToken) {
-              dispatch(setGuestModeModalVisible(true));
-              return;
-            }
-            setReportTarget({ kind: "reel", reelId: reel.id });
-          },
-        },
-        { text: t("cancel"), style: "cancel" },
-      ]);
-    },
-    [dispatch, isGuest, t, user.accessToken],
-  );
+  const handleMore = useCallback((reel: FeedReel) => {
+    setOptionsReel(reel);
+  }, []);
+
+  const closeOptionsMenu = useCallback(() => {
+    setOptionsReel(null);
+  }, []);
+
+  const handleReportFromOptions = useCallback(() => {
+    const reel = optionsReel;
+    setOptionsReel(null);
+    if (!reel) return;
+    if (isGuest || !user.accessToken) {
+      dispatch(setGuestModeModalVisible(true));
+      return;
+    }
+    setReportTarget({ kind: "reel", reelId: reel.id });
+  }, [dispatch, isGuest, optionsReel, user.accessToken]);
 
   const handleReportComment = useCallback(
     (commentId: number) => {
@@ -3031,33 +3039,13 @@ export default function ReelsFeedScreen() {
 
   if (loading && reels.length === 0) {
     return (
-      <View style={styles.centerLoader} onLayout={onRootLayout}>
+      <View style={styles.root} onLayout={onRootLayout}>
         <StatusBar
           translucent={true}
           backgroundColor="transparent"
           barStyle="light-content"
         />
-        <TouchableOpacity
-          style={[
-            styles.iconBtn,
-            {
-              position: "absolute",
-              top: insets.top + moderateHeightScale(8),
-              left: moderateWidthScale(12),
-              zIndex: 2,
-            },
-          ]}
-          onPress={goBack}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel={t("back")}
-        >
-          <MaterialIcons
-            name="arrow-back"
-            size={moderateWidthScale(22)}
-            color={theme.white}
-          />
-        </TouchableOpacity>
-        <ActivityIndicator size="large" color={theme.white} />
+        <ReelsFeedSkeleton onBack={goBack} />
       </View>
     );
   }
@@ -3253,6 +3241,12 @@ export default function ReelsFeedScreen() {
         onClose={() => setCommentsReel(null)}
         onCountChange={handleCommentCountChange}
         onReportComment={handleReportComment}
+      />
+
+      <ReelOptionsMenu
+        visible={!!optionsReel}
+        onClose={closeOptionsMenu}
+        onReport={handleReportFromOptions}
       />
 
       <ReelReportSheet
