@@ -1180,6 +1180,17 @@ export default function BookingDetailsById() {
       ? t("savedCardLastFour", { lastFour: booking.cardLastFour })
       : null;
 
+  const inspirationReel = booking?.inspiration?.reel ?? null;
+  const canOpenInspirationReel = inspirationReel?.id != null;
+
+  const handleOpenInspirationReel = useCallback(() => {
+    if (!inspirationReel?.id) return;
+    router.push({
+      pathname: "/(main)/reelsFeed",
+      params: { first_reel_id: String(inspirationReel.id) },
+    });
+  }, [inspirationReel?.id, router]);
+
   const handleReschedulePress = () => {
     if (!booking) return;
     const baseParams: Record<string, string> = {
@@ -2455,7 +2466,12 @@ export default function BookingDetailsById() {
           {/* Inspiration from reel / AI try-on */}
           {booking.inspiration &&
             (booking.inspiration.reel || booking.inspiration.try_on) && (
-              <View style={[styles.inspirationCard, styles.cardShadow]}>
+              <TouchableOpacity
+                style={[styles.inspirationCard, styles.cardShadow]}
+                activeOpacity={canOpenInspirationReel ? 0.85 : 1}
+                disabled={!canOpenInspirationReel}
+                onPress={handleOpenInspirationReel}
+              >
                 <View style={styles.inspirationHeader}>
                   <View style={styles.paymentIconCircle}>
                     <Ionicons
@@ -2467,6 +2483,14 @@ export default function BookingDetailsById() {
                   <Text style={styles.inspirationTitle}>
                     {t("inspirationLook")}
                   </Text>
+                  {canOpenInspirationReel ? (
+                    <Ionicons
+                      name="chevron-forward"
+                      size={moderateWidthScale(18)}
+                      color={theme.lightGreen}
+                      style={{ marginLeft: "auto" }}
+                    />
+                  ) : null}
                 </View>
                 {booking.inspiration.try_on?.image_url ? (
                   <View style={styles.inspirationRow}>
@@ -2498,34 +2522,45 @@ export default function BookingDetailsById() {
                   </View>
                 ) : booking.inspiration.reel ? (
                   <View style={styles.inspirationRow}>
-                    {resolveApiImageUrl(
-                      booking.inspiration.reel.thumbnail_url,
-                    ) ? (
-                      <Image
-                        source={{
-                          uri: resolveApiImageUrl(
-                            booking.inspiration.reel.thumbnail_url,
-                          )!,
-                        }}
-                        style={styles.inspirationThumb}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.inspirationThumb,
-                          {
-                            alignItems: "center",
-                            justifyContent: "center",
-                          },
-                        ]}
-                      >
-                        <Ionicons
-                          name="videocam-outline"
-                          size={moderateWidthScale(22)}
-                          color={theme.lightGreen}
+                    <View style={styles.inspirationThumbWrap}>
+                      {resolveApiImageUrl(
+                        booking.inspiration.reel.thumbnail_url,
+                      ) ? (
+                        <Image
+                          source={{
+                            uri: resolveApiImageUrl(
+                              booking.inspiration.reel.thumbnail_url,
+                            )!,
+                          }}
+                          style={styles.inspirationThumb}
                         />
-                      </View>
-                    )}
+                      ) : (
+                        <View
+                          style={[
+                            styles.inspirationThumb,
+                            {
+                              alignItems: "center",
+                              justifyContent: "center",
+                            },
+                          ]}
+                        >
+                          <Ionicons
+                            name="videocam-outline"
+                            size={moderateWidthScale(22)}
+                            color={theme.lightGreen}
+                          />
+                        </View>
+                      )}
+                      {canOpenInspirationReel ? (
+                        <View style={styles.inspirationPlayBadge}>
+                          <Ionicons
+                            name="play"
+                            size={moderateWidthScale(14)}
+                            color={theme.white}
+                          />
+                        </View>
+                      ) : null}
+                    </View>
                     <View style={styles.inspirationMeta}>
                       <Text style={styles.inspirationLookTag} numberOfLines={1}>
                         {booking.inspiration.reel.look_tag ||
@@ -2539,10 +2574,15 @@ export default function BookingDetailsById() {
                           {booking.inspiration.reel.caption}
                         </Text>
                       ) : null}
+                      {canOpenInspirationReel ? (
+                        <Text style={styles.inspirationCaption}>
+                          {t("tapToWatchReel")}
+                        </Text>
+                      ) : null}
                     </View>
                   </View>
                 ) : null}
-              </View>
+              </TouchableOpacity>
             )}
 
           {/* Notes */}
