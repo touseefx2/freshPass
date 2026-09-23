@@ -337,6 +337,8 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       alignItems: "center",
       gap: moderateHeightScale(14),
+      // Slightly below true vertical center
+      transform: [{ translateY: moderateHeightScale(40) }],
       zIndex: 5,
     },
     sideShade: {
