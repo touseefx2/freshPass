@@ -1,10 +1,12 @@
-# Android Release Builds (Local + Expo)
+# FreshPass Release Builds (Local + Expo)
 
-Guide for developers: how to build a **signed** Android APK/AAB locally, vs building on **Expo EAS cloud**.
+Guide for developers: **Android** APK/AAB locally, **iOS** via Xcode (manual), vs **Expo EAS cloud**.
 
 ---
 
 ## Quick comparison
+
+### Android
 
 | Command | Where it builds | Signing key |
 |---------|-----------------|-------------|
@@ -13,8 +15,15 @@ Guide for developers: how to build a **signed** Android APK/AAB locally, vs buil
 | `eas build --platform android --profile preview` | **Expo cloud** | Expo-managed credentials |
 | `eas build --platform android --profile production` | **Expo cloud** | Expo-managed credentials |
 
+### iOS
+
+| Command / flow | Where it builds | Signing |
+|----------------|-----------------|---------|
+| Xcode → **Product → Archive** | **Local** (Mac + Xcode) | Same Apple team as Expo (see below) |
+| `eas build -p ios --profile production --auto-submit` | **Expo cloud** | Expo-managed Apple credentials |
+
 - Local builds do **not** use Expo Free-plan build quota.
-- Cloud builds **do** use Expo quota (and can fail if Android builds are exhausted for the month).
+- Cloud builds **do** use Expo quota (and can fail if builds are exhausted for the month).
 
 ---
 
@@ -187,9 +196,115 @@ Debug APK is fine for testing; it is **not** for Play Store.
 
 ---
 
+---
+
+## iOS — Expo cloud vs manual Xcode (important)
+
+Expo cloud ek command se sab manage karti hai:
+
+```bash
+eas build -p ios --profile production --auto-submit
+```
+
+Agar Expo iOS quota khatam ho / local banana ho, **Xcode se manually** Archive + TestFlight/App Store submit kar sakte ho. Android jaisa `credentials/` folder iOS ke liye **zaroori nahi** — Apple team + Xcode signing kaafi hai.
+
+### Same Apple team as Expo (must)
+
+1. Check Expo: [expo.dev](https://expo.dev) → FreshPass → **Credentials** → **iOS** → App Store  
+2. Note the **Team** name (for FreshPass this is **`dany daniel (Individual)`**, Team ID `SQ9F854P84`)  
+3. In Xcode → **Signing & Capabilities** → Team = **exactly that same team**
+
+Galat / dusri team (e.g. personal other accounts, company teams jo Expo pe nahi) select mat karo — signing / Push / submit mismatch ho sakta hai.
+
+| | Expo EAS | Xcode local |
+|--|----------|-------------|
+| Certs kahan | Expo credentials (cloud) | Mac Keychain + selected Apple Team |
+| Kaun manage | Expo | Xcode Automatic signing |
+| Team | Jo Expo pe linked hai | **Wahi same team** |
+
+Expo cloud ke certificates Xcode mein auto-attach nahi hote. Local pe **same Apple Developer team** select karke Xcode khud certs/profiles banati / use karti hai (`Automatically manage signing` ON).
+
+### Push notifications
+
+Push alag se Expo se `.p12` download karke Xcode mein paste karne wali cheez nahi (normal flow).
+
+Zaruri:
+
+1. Apple Developer → App ID `com.freshpass` pe **Push Notifications** enabled  
+2. Jo provisioning profile use ho rahi hai usme Push capability ho  
+3. App entitlements mein `aps-environment` ho (`ios/FreshPass/FreshPass.entitlements`)  
+4. Server-side APNs / FCM key (`.p8` etc.) — ye build signing se **alag** hai  
+
+Expo cloud pe Expo ensure karti hai ke profile Push ke sath bane. Xcode Automatic + **sahi team** pe bhi Push chal sakti hai agar App ID + entitlements theek hon. Archive se pehle Capabilities mein Push verify kar lo.
+
+### Version / build number (`app.json`)
+
+Source of truth:
+
+```json
+{
+  "expo": {
+    "version": "1.0.8",
+    "ios": {
+      "buildNumber": "54"
+    }
+  }
+}
+```
+
+| `app.json` | Xcode / Info.plist |
+|------------|-------------------|
+| `"version"` | Marketing Version |
+| `"ios.buildNumber"` | Build (`CFBundleVersion`) |
+
+- Har TestFlight / App Store upload pe **build number badhao** (55, 56, …).  
+- Marketing `version` tab badhao jab app store version change karni ho.  
+- Xcode mein Archive se pehle dono values `app.json` se match karke manually set/verify karo (local pe Expo `autoIncrement` nahi chalega).
+
+### Xcode Archive steps (manual release)
+
+1. `ios/` maujood ho (warna `npx expo prebuild --platform ios` + `cd ios && pod install`)  
+2. Open **`ios/FreshPass.xcworkspace`** (`.xcodeproj` nahi)  
+3. Scheme: **FreshPass** (alag “Release” scheme banane ki zaroorat nahi)  
+4. Destination: **Any iOS Device (arm64)** — simulator pe Archive / TestFlight nahi  
+5. Signing: **Automatically manage signing** ON + Team = Expo wala same team  
+6. Version + Build number check (`app.json` se)  
+7. **Product → Archive**  
+8. Organizer → Distribute App → App Store Connect / TestFlight  
+
+**Release configuration:** Archive action by default **Release** use karti hai. Confirm: Scheme → **Edit Scheme…** → **Archive** → Build Configuration = `Release`. Simulator pe Run = Debug / Development cert; Archive = Release / Distribution.
+
+### Prebuild (iOS)
+
+- `expo prebuild` `ios/` regenerate kar sakta hai → Xcode signing dubara verify karo (Team select).  
+- Android wala `withAndroidReleaseSigning` plugin **iOS ko touch nahi karta**.  
+- `buildNumber` / `version` hamesha `app.json` mein rakho taake prebuild ke baad bhi pata rahe.
+
+### Optional: EAS local iOS (no cloud quota)
+
+```bash
+eas build -p ios --profile production --local
+eas submit --platform ios --path <path-to-ipa>
+```
+
+Mac pe build hoti hai; Apple credentials Expo login / local setup se aa sakti hain.
+
+### iOS quick checklist
+
+- [ ] Expo Credentials → iOS pe jo Team hai, Xcode mein **wahi** selected hai  
+- [ ] Bundle ID = `com.freshpass`  
+- [ ] Automatically manage signing ON  
+- [ ] Destination = Any iOS Device (not simulator) before Archive  
+- [ ] `version` + `ios.buildNumber` updated / higher than last TestFlight upload  
+- [ ] Push / Associated Domains / Sign in with Apple capabilities OK  
+- [ ] Archive → Distribute → App Store Connect  
+
+---
+
 ## Related files
 
-- `scripts/android-release.js` — local release script
-- `plugins/withAndroidReleaseSigning.js` — prebuild signing injection (skipped on EAS)
-- `app.json` — `version` + `android.versionCode`
-- `package.json` — `android:release:apk` / `android:release:aab` scripts
+- `scripts/android-release.js` — local Android release script  
+- `plugins/withAndroidReleaseSigning.js` — Android prebuild signing (skipped on EAS)  
+- `app.json` — `version`, `android.versionCode`, `ios.buildNumber`  
+- `package.json` — `android:release:apk` / `android:release:aab` scripts  
+- `ios/FreshPass.xcworkspace` — open this in Xcode for manual iOS Archive  
