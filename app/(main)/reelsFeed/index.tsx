@@ -332,6 +332,9 @@ const createStyles = (theme: Theme) =>
     sideActions: {
       position: "absolute",
       right: moderateWidthScale(10),
+      top: 0,
+      bottom: 0,
+      justifyContent: "center",
       alignItems: "center",
       gap: moderateHeightScale(14),
       zIndex: 5,
@@ -1256,13 +1259,7 @@ function ReelFeedItemBase({
       />
 
       <View
-        style={[
-          styles.sideActions,
-          {
-            // Mid-right stack, well above bottom profile/product area
-            top: itemHeight * 0.45,
-          },
-        ]}
+        style={styles.sideActions}
         pointerEvents={socialLocked ? "none" : "auto"}
       >
         <TouchableOpacity style={styles.sideBtn} onPress={() => onLike(reel)}>

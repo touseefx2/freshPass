@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +11,10 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
+import {
+  KeyboardAwareScrollView,
+  KeyboardStickyView,
+} from "react-native-keyboard-controller";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -708,17 +710,13 @@ export default function PublishReelScreen() {
   return (
     <View style={styles.safeArea}>
       <StackHeader title={isEdit ? t("editReel") : t("publishReel")} />
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={moderateHeightScale(8)}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(90)}
       >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
           <View style={styles.field}>
             <View style={styles.labelRow}>
               <Text style={styles.label}>
@@ -908,8 +906,9 @@ export default function PublishReelScreen() {
               />
             </View>
           </View>
-        </ScrollView>
+      </KeyboardAwareScrollView>
 
+      <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
         <View style={styles.footer}>
           {isSubmitting && fromEditor && uploadProgress > 0 && !waitingForReady ? (
             <Text style={styles.progressText}>
@@ -981,7 +980,7 @@ export default function PublishReelScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardStickyView>
     </View>
   );
 }
