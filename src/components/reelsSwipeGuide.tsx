@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -9,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/hooks/hooks";
@@ -25,6 +26,8 @@ import {
 type Props = {
   visible: boolean;
   onDismiss: () => void;
+  /** Android BlurView can't blur Video — use reel thumbnail instead. */
+  blurImageUri?: string | null;
 };
 
 type DemoPhase = "vertical" | "horizontal";
@@ -38,234 +41,306 @@ const createStyles = (theme: Theme) =>
     blur: {
       ...StyleSheet.absoluteFillObject,
     },
+    androidBlurImage: {
+      ...StyleSheet.absoluteFillObject,
+      width: "100%",
+      height: "100%",
+    },
     dim: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: `${theme.black}99`,
+      backgroundColor: `${theme.black}55`,
+    },
+    androidDim: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: `${theme.black}40`,
     },
     content: {
       ...StyleSheet.absoluteFillObject,
       alignItems: "center",
-      justifyContent: "center",
+      justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(28),
     },
+    topCopy: {
+      width: "100%",
+      alignItems: "center",
+      paddingTop: moderateHeightScale(28),
+    },
     title: {
-      fontSize: fontSize.size22,
+      fontSize: fontSize.size24,
       fontFamily: fonts.fontExtraBold,
       color: theme.white,
       textAlign: "center",
-      marginBottom: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(10),
       textShadowColor: `${theme.black}AA`,
       textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 6,
+      textShadowRadius: 8,
     },
     subtitle: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
       color: theme.white85,
       textAlign: "center",
-      marginBottom: moderateHeightScale(28),
-      paddingHorizontal: moderateWidthScale(12),
-      lineHeight: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(16),
+      lineHeight: moderateHeightScale(22),
     },
     stage: {
-      width: widthScale(220),
-      height: heightScale(220),
+      width: "100%",
+      flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: moderateHeightScale(28),
+      maxHeight: heightScale(420),
     },
-    phoneFrame: {
-      width: widthScale(120),
-      height: heightScale(200),
-      borderRadius: moderateWidthScale(22),
-      borderWidth: 2,
-      borderColor: `${theme.white}55`,
-      backgroundColor: `${theme.white}12`,
-      overflow: "hidden",
+    swipeTrack: {
+      width: widthScale(160),
+      height: heightScale(280),
       alignItems: "center",
       justifyContent: "center",
     },
-    phoneScreenLine: {
-      position: "absolute",
-      left: moderateWidthScale(14),
-      right: moderateWidthScale(14),
-      height: 1,
-      backgroundColor: `${theme.white}22`,
-    },
-    trail: {
-      position: "absolute",
-      width: moderateWidthScale(10),
-      height: moderateWidthScale(10),
-      borderRadius: moderateWidthScale(5),
-      backgroundColor: `${theme.white}55`,
-    },
-    fingerWrap: {
+    ghostHand: {
       position: "absolute",
       alignItems: "center",
       justifyContent: "center",
     },
-    fingerTip: {
-      width: moderateWidthScale(34),
-      height: moderateWidthScale(34),
-      borderRadius: moderateWidthScale(17),
-      backgroundColor: `${theme.white}E6`,
-      borderWidth: 2,
-      borderColor: theme.white,
-      shadowColor: theme.black,
-      shadowOpacity: 0.35,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 6,
-    },
-    fingerRipple: {
+    handWrap: {
       position: "absolute",
-      width: moderateWidthScale(54),
-      height: moderateWidthScale(54),
-      borderRadius: moderateWidthScale(27),
-      borderWidth: 2,
-      borderColor: `${theme.white}66`,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tipGlow: {
+      position: "absolute",
+      width: moderateWidthScale(56),
+      height: moderateWidthScale(56),
+      borderRadius: moderateWidthScale(28),
+      backgroundColor: `${theme.white}28`,
+      top: moderateHeightScale(6),
     },
     hintChip: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: `${theme.white}18`,
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: `${theme.white}1A`,
       borderWidth: 1,
-      borderColor: `${theme.white}28`,
-      marginBottom: moderateHeightScale(28),
+      borderColor: `${theme.white}30`,
+      marginBottom: moderateHeightScale(20),
     },
     hintText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
+    bottomBlock: {
+      width: "100%",
+      alignItems: "center",
+      paddingBottom: moderateHeightScale(8),
+    },
     gotItBtn: {
-      minWidth: widthScale(180),
+      width: "100%",
+      maxWidth: widthScale(320),
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: moderateWidthScale(32),
-      paddingVertical: moderateHeightScale(14),
+      paddingVertical: moderateHeightScale(15),
       borderRadius: moderateWidthScale(14),
       backgroundColor: theme.buttonBack,
     },
     gotItText: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
   });
 
-function FingerSwipeDemo({
+function SwipeHandDemo({
   phase,
   styles,
+  theme,
 }: {
   phase: DemoPhase;
   styles: ReturnType<typeof createStyles>;
+  theme: Theme;
 }) {
   const progress = useRef(new Animated.Value(0)).current;
-  const ripple = useRef(new Animated.Value(0)).current;
+  const press = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     progress.setValue(0);
-    ripple.setValue(0);
+    press.setValue(0);
+
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(ripple, {
+        // Finger lands / presses
+        Animated.timing(press, {
           toValue: 1,
-          duration: 280,
-          easing: Easing.out(Easing.ease),
+          duration: 220,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
+        // Swipe across
         Animated.timing(progress, {
           toValue: 1,
-          duration: 900,
+          duration: 1050,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: true,
         }),
+        // Lift off
+        Animated.timing(press, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.delay(160),
+        // Reset position instantly while lifted
         Animated.timing(progress, {
           toValue: 0,
           duration: 0,
           useNativeDriver: true,
         }),
-        Animated.delay(220),
+        Animated.delay(280),
       ]),
     );
     loop.start();
     return () => loop.stop();
-  }, [phase, progress, ripple]);
+  }, [phase, press, progress]);
 
-  const verticalY = progress.interpolate({
+  const travelY = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [heightScale(-42), heightScale(42)],
+    outputRange: [heightScale(70), heightScale(-70)],
   });
-  const horizontalX = progress.interpolate({
+  const travelX = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [widthScale(36), widthScale(-36)],
+    outputRange: [widthScale(48), widthScale(-48)],
   });
-  const trailOpacity = progress.interpolate({
-    inputRange: [0, 0.2, 0.8, 1],
-    outputRange: [0, 0.55, 0.35, 0],
-  });
-  const rippleScale = ripple.interpolate({
+
+  const handScale = press.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.6, 1.35],
+    outputRange: [1, 0.88],
   });
-  const rippleOpacity = ripple.interpolate({
+  const glowOpacity = press.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.7, 0],
+    outputRange: [0.15, 0.55],
   });
+  const glowScale = press.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.7, 1.15],
+  });
+
+  // Soft motion ghosts trailing behind the hand
+  const ghost1Progress = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.18, 1.18],
+  });
+  const ghost2Progress = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.36, 1.36],
+  });
+  const ghost1Y = ghost1Progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [heightScale(70), heightScale(-70)],
+    extrapolate: "clamp",
+  });
+  const ghost1X = ghost1Progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [widthScale(48), widthScale(-48)],
+    extrapolate: "clamp",
+  });
+  const ghost2Y = ghost2Progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [heightScale(70), heightScale(-70)],
+    extrapolate: "clamp",
+  });
+  const ghost2X = ghost2Progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [widthScale(48), widthScale(-48)],
+    extrapolate: "clamp",
+  });
+  const ghost1Opacity = progress.interpolate({
+    inputRange: [0, 0.15, 0.7, 1],
+    outputRange: [0, 0.35, 0.2, 0],
+  });
+  const ghost2Opacity = progress.interpolate({
+    inputRange: [0, 0.25, 0.75, 1],
+    outputRange: [0, 0.2, 0.12, 0],
+  });
+
+  const handSize = moderateWidthScale(92);
+  const transform =
+    phase === "vertical"
+      ? [{ translateY: travelY }, { scale: handScale }]
+      : [{ translateX: travelX }, { scale: handScale }];
 
   return (
     <View style={styles.stage}>
-      <View style={styles.phoneFrame}>
-        <View style={[styles.phoneScreenLine, { top: "28%" }]} />
-        <View style={[styles.phoneScreenLine, { top: "52%" }]} />
-        <View style={[styles.phoneScreenLine, { top: "76%" }]} />
-
+      <View style={styles.swipeTrack}>
+        {/* Motion ghosts */}
         <Animated.View
+          pointerEvents="none"
           style={[
-            styles.trail,
+            styles.ghostHand,
             {
-              opacity: trailOpacity,
+              opacity: ghost1Opacity,
               transform:
                 phase === "vertical"
-                  ? [{ translateY: verticalY }]
-                  : [{ translateX: horizontalX }],
-            },
-          ]}
-        />
-
-        <Animated.View
-          style={[
-            styles.fingerWrap,
-            {
-              transform:
-                phase === "vertical"
-                  ? [{ translateY: verticalY }]
-                  : [{ translateX: horizontalX }],
+                  ? [{ translateY: ghost1Y }, { scale: 0.92 }]
+                  : [{ translateX: ghost1X }, { scale: 0.92 }],
             },
           ]}
         >
+          <MaterialCommunityIcons
+            name="hand-pointing-up"
+            size={handSize}
+            color={`${theme.white}99`}
+          />
+        </Animated.View>
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.ghostHand,
+            {
+              opacity: ghost2Opacity,
+              transform:
+                phase === "vertical"
+                  ? [{ translateY: ghost2Y }, { scale: 0.86 }]
+                  : [{ translateX: ghost2X }, { scale: 0.86 }],
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="hand-pointing-up"
+            size={handSize}
+            color={`${theme.white}66`}
+          />
+        </Animated.View>
+
+        {/* Main hand */}
+        <Animated.View style={[styles.handWrap, { transform }]}>
           <Animated.View
             style={[
-              styles.fingerRipple,
+              styles.tipGlow,
               {
-                opacity: rippleOpacity,
-                transform: [{ scale: rippleScale }],
+                opacity: glowOpacity,
+                transform: [{ scale: glowScale }],
               },
             ]}
           />
-          <View style={styles.fingerTip} />
+          <MaterialCommunityIcons
+            name="hand-pointing-up"
+            size={handSize}
+            color={theme.white}
+          />
         </Animated.View>
       </View>
     </View>
   );
 }
 
-export default function ReelsSwipeGuide({ visible, onDismiss }: Props) {
+export default function ReelsSwipeGuide({
+  visible,
+  onDismiss,
+  blurImageUri,
+}: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -289,7 +364,7 @@ export default function ReelsSwipeGuide({ visible, onDismiss }: Props) {
     if (!visible) return;
     const timer = setInterval(() => {
       setPhase((prev) => (prev === "vertical" ? "horizontal" : "vertical"));
-    }, 2600);
+    }, 2800);
     return () => clearInterval(timer);
   }, [visible]);
 
@@ -306,53 +381,66 @@ export default function ReelsSwipeGuide({ visible, onDismiss }: Props) {
       pointerEvents="auto"
     >
       {Platform.OS === "ios" ? (
-        <BlurView intensity={55} tint="dark" style={styles.blur} />
+        <BlurView intensity={40} tint="dark" style={styles.blur} />
+      ) : blurImageUri ? (
+        <Image
+          source={{ uri: blurImageUri }}
+          style={styles.androidBlurImage}
+          blurRadius={14}
+          resizeMode="cover"
+        />
       ) : (
         <BlurView
-          intensity={70}
+          intensity={80}
           tint="dark"
           experimentalBlurMethod="dimezisBlurView"
           style={styles.blur}
         />
       )}
-      <View style={styles.dim} />
+      <View style={Platform.OS === "android" ? styles.androidDim : styles.dim} />
 
       <View
         style={[
           styles.content,
           {
-            paddingTop: insets.top + moderateHeightScale(24),
-            paddingBottom: insets.bottom + moderateHeightScale(24),
+            paddingTop: insets.top + moderateHeightScale(12),
+            paddingBottom: insets.bottom + moderateHeightScale(16),
           },
         ]}
       >
-        <Text style={styles.title}>{t("reelsGuideTitle")}</Text>
-        <Text style={styles.subtitle}>{hint}</Text>
-
-        <FingerSwipeDemo phase={phase} styles={styles} />
-
-        <View style={styles.hintChip}>
-          <MaterialIcons
-            name={
-              phase === "vertical" ? "swap-vert" : "swap-horiz"
-            }
-            size={moderateWidthScale(18)}
-            color={theme.white}
-          />
-          <Text style={styles.hintText}>
-            {phase === "vertical"
-              ? t("reelsGuideSwipeVerticalShort")
-              : t("reelsGuideSwipeHorizontalShort")}
-          </Text>
+        <View style={styles.topCopy}>
+          <Text style={styles.title}>{t("reelsGuideTitle")}</Text>
+          <Text style={styles.subtitle}>{hint}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.gotItBtn}
-          onPress={onDismiss}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.gotItText}>{t("reelsGuideGotIt")}</Text>
-        </TouchableOpacity>
+        <SwipeHandDemo phase={phase} styles={styles} theme={theme} />
+
+        <View style={styles.bottomBlock}>
+          <View style={styles.hintChip}>
+            <MaterialCommunityIcons
+              name={
+                phase === "vertical"
+                  ? "gesture-swipe-vertical"
+                  : "gesture-swipe-horizontal"
+              }
+              size={moderateWidthScale(20)}
+              color={theme.white}
+            />
+            <Text style={styles.hintText}>
+              {phase === "vertical"
+                ? t("reelsGuideSwipeVerticalShort")
+                : t("reelsGuideSwipeHorizontalShort")}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.gotItBtn}
+            onPress={onDismiss}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.gotItText}>{t("reelsGuideGotIt")}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </Animated.View>
   );

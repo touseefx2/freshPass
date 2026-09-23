@@ -2353,6 +2353,11 @@ export default function ReelsFeedScreen() {
     dispatch(setHasSeenReelsSwipeGuide(true));
   }, [dispatch]);
 
+  const swipeGuideBlurUri = useMemo(() => {
+    const active = reels.find((r) => r.id === activeId) ?? reels[0];
+    return resolveApiImageUrl(active?.video?.thumbnail_url) ?? null;
+  }, [activeId, reels]);
+
   useEffect(() => {
     return () => {
       if (categoryToastTimerRef.current) {
@@ -3219,6 +3224,7 @@ export default function ReelsFeedScreen() {
       <ReelsSwipeGuide
         visible={showSwipeGuide}
         onDismiss={dismissSwipeGuide}
+        blurImageUri={swipeGuideBlurUri}
       />
 
       <ReelCommentsSheet
