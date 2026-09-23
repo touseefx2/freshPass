@@ -1462,7 +1462,7 @@
   "followersCountOne": "1 follower",
   "followersCountMany": "{{count}} followers",
   "followedOn": "Followed {{date}}",
-  "ownerWorkImagesPlanRequired": "Your Business plan needs to be active to upload new work photos.",
+  "ownerWorkImagesPlanRequired": "You need an active plan to upload work photos.",
   "reelFormSubtitle": "お客様がこのスタイルを見つけて予約できるよう詳細を追加しましょう。",
   "reelContentSection": "コンテンツ",
   "reelClassifySection": "分類",

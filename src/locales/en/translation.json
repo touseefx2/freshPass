@@ -706,7 +706,7 @@
   "followersCountOne": "1 follower",
   "followersCountMany": "{{count}} followers",
   "followedOn": "Followed {{date}}",
-  "ownerWorkImagesPlanRequired": "Your Business plan needs to be active to upload new work photos.",
+  "ownerWorkImagesPlanRequired": "You need an active plan to upload work photos.",
   "officialAccount": "Official",
   "failedToLoadBusinesses": "Failed to load businesses",
   "noBusinessesFound": "No businesses found",

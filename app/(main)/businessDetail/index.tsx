@@ -79,6 +79,10 @@ import {
 } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
 import type { AffiliatedBusiness } from "@/src/types/affiliation";
+import type {
+  OwnerWorkImagesPreview,
+  StaffWorkImage,
+} from "@/src/types/staffWorkImages";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -1352,6 +1356,59 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    ownerWorkPhotosBlock: {
+      marginTop: moderateHeightScale(16),
+    },
+    ownerWorkSectionTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: 0,
+    },
+    ownerWorkHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(12),
+    },
+    ownerWorkSeeAllText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.buttonBack,
+    },
+    ownerWorkSeeAllRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(2),
+    },
+    ownerWorkPhotosScroll: {
+      gap: moderateWidthScale(12),
+      paddingBottom: moderateHeightScale(4),
+    },
+    ownerWorkPhotoCardShadow: {
+      width: widthScale(120),
+      height: widthScale(120),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.background,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.18,
+      shadowRadius: 5,
+      elevation: 4,
+    },
+    ownerWorkPhotoCard: {
+      width: "100%",
+      height: "100%",
+      borderRadius: moderateWidthScale(16),
+      overflow: "hidden",
+      backgroundColor: theme.grey15,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    ownerWorkPhotoImage: {
+      width: "100%",
+      height: "100%",
+    },
   });
 
 export default function BusinessDetailScreen() {
@@ -1441,6 +1498,8 @@ export default function BusinessDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [businessData, setBusinessData] = useState<any>(null);
+  const [ownerWorkImages, setOwnerWorkImages] =
+    useState<OwnerWorkImagesPreview | null>(null);
   const [subscriptionPlanType, setSubscriptionPlanType] = useState<
     "Solo" | "Business" | null
   >(null);
@@ -1520,11 +1579,27 @@ export default function BusinessDetailScreen() {
           subscription_status?: "active" | "inactive";
           working_with_business_id?: number | null;
           working_with_business?: AffiliatedBusiness | null;
+          owner_work_images?: OwnerWorkImagesPreview | null;
         };
       }>(businessEndpoints.businessDetails(params.business_id));
 
       if (response.success && response.data?.business) {
         setBusinessData(response.data.business);
+        const ownerWork =
+          response.data.owner_work_images ??
+          response.data.business?.owner_work_images ??
+          null;
+        setOwnerWorkImages(
+          ownerWork && Array.isArray(ownerWork.data)
+            ? {
+                data: ownerWork.data,
+                total:
+                  typeof ownerWork.total === "number"
+                    ? ownerWork.total
+                    : ownerWork.data.length,
+              }
+            : { data: [], total: 0 },
+        );
         const planType = response.data.subscription_plan_type ?? null;
         setSubscriptionPlanType(
           planType === "Solo" || planType === "Business" ? planType : null,
@@ -1554,9 +1629,11 @@ export default function BusinessDetailScreen() {
         );
       } else {
         setError("Failed to load business details");
+        setOwnerWorkImages(null);
       }
     } catch (err: any) {
       setError(err.message || "Failed to load business details");
+      setOwnerWorkImages(null);
     } finally {
       setLoading(false);
     }
@@ -1890,6 +1967,43 @@ export default function BusinessDetailScreen() {
     isGuest,
     router,
   ]);
+
+  const ownerWorkPreview = useMemo(() => {
+    const photos = ownerWorkImages?.data ?? [];
+    const total = ownerWorkImages?.total ?? 0;
+    if (!photos.length || total === 0) {
+      return null;
+    }
+    return { photos, total };
+  }, [ownerWorkImages]);
+
+  const handleOpenOwnerWorkImage = useCallback(
+    (index: number) => {
+      const urls = (ownerWorkPreview?.photos ?? [])
+        .map((img: StaffWorkImage) => img.url)
+        .filter(Boolean);
+      if (!urls.length) return;
+      dispatch(
+        openFullImageModal({
+          images: urls,
+          initialIndex: index,
+        }),
+      );
+    },
+    [dispatch, ownerWorkPreview],
+  );
+
+  const handleSeeAllOwnerWorkImages = useCallback(() => {
+    const businessId = params.business_id ?? businessData?.id;
+    if (!businessId) return;
+    router.push({
+      pathname: "/(main)/staffWorkImagesGallery",
+      params: {
+        businessId: String(businessId),
+        name: businessData?.owner?.name || "",
+      },
+    } as any);
+  }, [businessData?.id, businessData?.owner?.name, params.business_id, router]);
 
   const handleCallNow = async () => {
     const phoneNumber = businessPhone.replace(/[^\d+]/g, ""); // Remove non-digit characters except +
@@ -2674,6 +2788,54 @@ export default function BusinessDetailScreen() {
                   </View>
                 </View>
               )}
+              {ownerWorkPreview ? (
+                <View style={styles.ownerWorkPhotosBlock}>
+                  <View style={styles.ownerWorkHeaderRow}>
+                    <Text style={styles.ownerWorkSectionTitle}>
+                      {t("workPhotosTitle")}
+                    </Text>
+                    {ownerWorkPreview.total > ownerWorkPreview.photos.length ? (
+                      <TouchableOpacity
+                        onPress={handleSeeAllOwnerWorkImages}
+                        activeOpacity={0.7}
+                        style={styles.ownerWorkSeeAllRow}
+                      >
+                        <Text style={styles.ownerWorkSeeAllText}>
+                          {t("seeAll")}
+                        </Text>
+                        <MaterialIcons
+                          name="chevron-right"
+                          size={moderateWidthScale(18)}
+                          color={theme.buttonBack}
+                        />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.ownerWorkPhotosScroll}
+                  >
+                    {ownerWorkPreview.photos.map(
+                      (image: StaffWorkImage, index: number) => (
+                        <TouchableOpacity
+                          key={image.id}
+                          activeOpacity={0.85}
+                          onPress={() => handleOpenOwnerWorkImage(index)}
+                          style={styles.ownerWorkPhotoCardShadow}
+                        >
+                          <View style={styles.ownerWorkPhotoCard}>
+                            <Image
+                              source={{ uri: image.url }}
+                              style={styles.ownerWorkPhotoImage}
+                            />
+                          </View>
+                        </TouchableOpacity>
+                      ),
+                    )}
+                  </ScrollView>
+                </View>
+              ) : null}
             </View>
           </>
         )}

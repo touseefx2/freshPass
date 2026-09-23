@@ -24,7 +24,7 @@ import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
-import { staffEndpoints } from "@/src/services/endpoints";
+import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import type {
   StaffWorkImage,
@@ -131,8 +131,14 @@ export default function StaffWorkImagesGalleryScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const { t } = useTranslation();
   const dispatch = useDispatch();
-  const params = useLocalSearchParams<{ staffId?: string; name?: string }>();
+  const params = useLocalSearchParams<{
+    staffId?: string;
+    businessId?: string;
+    name?: string;
+  }>();
   const staffId = params.staffId;
+  const businessId = params.businessId;
+  const isOwnerGallery = Boolean(businessId) && !staffId;
 
   const [images, setImages] = useState<StaffWorkImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,7 +155,7 @@ export default function StaffWorkImagesGalleryScreen() {
 
   const fetchPage = useCallback(
     async (pageToLoad: number, append: boolean) => {
-      if (!staffId) {
+      if (!staffId && !businessId) {
         setError(t("failedToLoadWorkImages"));
         setLoading(false);
         return;
@@ -168,12 +174,15 @@ export default function StaffWorkImagesGalleryScreen() {
       }
 
       try {
-        // GET /api/staff/{staffId}/images?page=&per_page=15
+        const endpoint = isOwnerGallery
+          ? businessEndpoints.ownerWorkImages(businessId!, pageToLoad, PER_PAGE)
+          : staffEndpoints.images(staffId!, pageToLoad, PER_PAGE);
+
         const response = await ApiService.get<{
           success: boolean;
           message: string;
           data: StaffWorkImagePage;
-        }>(staffEndpoints.images(staffId, pageToLoad, PER_PAGE));
+        }>(endpoint);
 
         const pageData = response.data;
         const nextItems = pageData?.data ?? [];
@@ -208,7 +217,7 @@ export default function StaffWorkImagesGalleryScreen() {
         loadingMoreRef.current = false;
       }
     },
-    [staffId, t],
+    [businessId, isOwnerGallery, staffId, t],
   );
 
   useEffect(() => {

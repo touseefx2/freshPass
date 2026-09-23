@@ -178,15 +178,17 @@ export default function StaffWorkImagesManageScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const { showBanner } = useNotificationContext();
-  const ownerStaffId = useAppSelector(
-    (state) => state.user.businessStatus?.owner_as_staff?.staff_id ?? null,
-  );
   const userRole = useAppSelector((state) => state.user.userRole);
+  const subscriptionStatus = useAppSelector(
+    (state) => state.user.businessStatus?.subscription_status ?? "",
+  );
+  /** Owners need an active plan to add photos; staff are unchanged */
+  const canUploadWork =
+    userRole !== "business" || subscriptionStatus === "active";
 
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [staffId, setStaffId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [existingPhotos, setExistingPhotos] = useState<StaffWorkImage[]>([]);
@@ -204,7 +206,7 @@ export default function StaffWorkImagesManageScreen() {
     `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   const fetchWorkImagesPage = useCallback(
-    async (id: number, pageToLoad: number, append: boolean) => {
+    async (pageToLoad: number, append: boolean) => {
       if (append) {
         setLoadingMore(true);
       } else {
@@ -212,12 +214,12 @@ export default function StaffWorkImagesManageScreen() {
       }
 
       try {
-        // GET /api/staff/{staffId}/images?page=&per_page=15
+        // GET /api/staff/work-images?page=&per_page=15 (token decides whose photos)
         const response = await ApiService.get<{
           success: boolean;
           message: string;
           data: StaffWorkImagePage;
-        }>(staffEndpoints.images(id, pageToLoad, PER_PAGE));
+        }>(staffEndpoints.myWorkImages(pageToLoad, PER_PAGE));
 
         const pageData = response.data;
         const nextItems = (pageData?.data ?? []).filter(
@@ -254,74 +256,16 @@ export default function StaffWorkImagesManageScreen() {
     [showBanner, t],
   );
 
-  const resolveStaffAndLoad = useCallback(async () => {
-    setLoading(true);
-    try {
-      let resolvedId: number | null = null;
-
-      try {
-        const response = await ApiService.get<{
-          success: boolean;
-          message: string;
-          data: { id?: number; staff?: { id?: number } } | null;
-        }>(staffEndpoints.profile);
-
-        resolvedId =
-          response.data?.id ?? response.data?.staff?.id ?? null;
-      } catch (profileError: any) {
-        Logger.error(
-          "Failed to resolve staff profile for work images:",
-          profileError,
-        );
-      }
-
-      if (
-        resolvedId == null &&
-        userRole === "business" &&
-        typeof ownerStaffId === "number"
-      ) {
-        resolvedId = ownerStaffId;
-      }
-
-      if (!resolvedId) {
-        showBanner(t("error"), t("failedToLoadWorkImages"), "error", 3000);
-        setExistingPhotos([]);
-        setLoading(false);
-        return;
-      }
-
-      setStaffId(resolvedId);
-      await fetchWorkImagesPage(resolvedId, 1, false);
-    } catch (error: any) {
-      Logger.error("Failed to resolve staff profile for work images:", error);
-      showBanner(
-        t("error"),
-        error?.message || t("failedToLoadWorkImages"),
-        "error",
-        3000,
-      );
-      setExistingPhotos([]);
-      setLoading(false);
-    }
-  }, [fetchWorkImagesPage, ownerStaffId, showBanner, t, userRole]);
-
   useEffect(() => {
-    resolveStaffAndLoad();
-  }, [resolveStaffAndLoad]);
+    fetchWorkImagesPage(1, false);
+  }, [fetchWorkImagesPage]);
 
   const handleLoadMore = useCallback(() => {
-    if (loading || loadingMore || !hasMore || staffId == null) {
+    if (loading || loadingMore || !hasMore) {
       return;
     }
-    fetchWorkImagesPage(staffId, page + 1, true);
-  }, [
-    fetchWorkImagesPage,
-    hasMore,
-    loading,
-    loadingMore,
-    page,
-    staffId,
-  ]);
+    fetchWorkImagesPage(page + 1, true);
+  }, [fetchWorkImagesPage, hasMore, loading, loadingMore, page]);
 
   const handleSelectFromGallery = useCallback(async () => {
     const hasPermission = await handleMediaLibraryPermission();
@@ -413,9 +357,15 @@ export default function StaffWorkImagesManageScreen() {
   }, []);
 
   const gridData: GridItem[] = useMemo(() => {
+    const uploadTiles: GridItem[] = canUploadWork
+      ? [
+          { type: "gallery", id: "gallery" },
+          { type: "camera", id: "camera" },
+        ]
+      : [];
+
     return [
-      { type: "gallery", id: "gallery" },
-      { type: "camera", id: "camera" },
+      ...uploadTiles,
       ...existingPhotos.map((photo) => ({
         type: "photo" as const,
         id: `existing_${photo.id}`,
@@ -430,7 +380,7 @@ export default function StaffWorkImagesManageScreen() {
         isExisting: false,
       })),
     ];
-  }, [existingPhotos, newPhotos]);
+  }, [canUploadWork, existingPhotos, newPhotos]);
 
   const renderItem = useCallback(
     ({ item, index }: { item: GridItem; index: number }) => {
@@ -514,12 +464,17 @@ export default function StaffWorkImagesManageScreen() {
       return;
     }
 
+    const photosToUpload = canUploadWork ? newPhotos : [];
+    if (photosToUpload.length === 0 && removedPhotoIds.length === 0) {
+      return;
+    }
+
     setIsUpdating(true);
     try {
-      if (newPhotos.length > 0) {
+      if (photosToUpload.length > 0) {
         const formData = new FormData();
         const preparedPhotos = await prepareImagesForUpload(
-          newPhotos.map((photo) => photo.uri),
+          photosToUpload.map((photo) => photo.uri),
           "work_image",
         );
 
@@ -600,7 +555,9 @@ export default function StaffWorkImagesManageScreen() {
       Logger.error("Failed to update staff work images:", error);
       const status = error?.status ?? error?.response?.status;
       const isPlanBlocked =
-        status === 403 && userRole === "business" && newPhotos.length > 0;
+        status === 403 &&
+        userRole === "business" &&
+        photosToUpload.length > 0;
       showBanner(
         t("error"),
         isPlanBlocked
@@ -615,7 +572,8 @@ export default function StaffWorkImagesManageScreen() {
   };
 
   const hasAnyPhoto = existingPhotos.length > 0 || newPhotos.length > 0;
-  const hasChanges = newPhotos.length > 0 || removedPhotoIds.length > 0;
+  const hasChanges =
+    (canUploadWork && newPhotos.length > 0) || removedPhotoIds.length > 0;
 
   const listHeader = useMemo(
     () => (

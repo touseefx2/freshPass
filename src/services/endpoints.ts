@@ -37,6 +37,13 @@ export const staffEndpoints = {
   workImages: `/api/staff/work-images`,
   workImage: (imageId: number | string) =>
     `/api/staff/work-images/${imageId}`,
+  /** Logged-in user's work images (owner or staff) — no staff id required */
+  myWorkImages: (page = 1, perPage = 20) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("page", page.toString());
+    queryParams.append("per_page", perPage.toString());
+    return `/api/staff/work-images?${queryParams.toString()}`;
+  },
   images: (
     staffId: number | string,
     page = 1,
@@ -118,6 +125,16 @@ export const businessEndpoints = {
     `/api/subscriptions/${subscriptionId}/cancel`,
   businessDetails: (businessId: string | number) =>
     `/api/business/details?business_id=${businessId}`,
+  ownerWorkImages: (
+    businessId: string | number,
+    page = 1,
+    perPage = 20,
+  ) => {
+    const queryParams = new URLSearchParams();
+    queryParams.append("page", page.toString());
+    queryParams.append("per_page", perPage.toString());
+    return `/api/businesses/${businessId}/owner-work-images?${queryParams.toString()}`;
+  },
   favorite: (businessId: string | number) =>
     `/api/businesses/${businessId}/favorite`,
   follow: (businessId: string | number) =>
