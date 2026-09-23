@@ -63,6 +63,7 @@ import {
   listMyReels,
   publishReel,
   recordReelView,
+  reportCategoryDwell,
   REELS_MINE_PER_PAGE,
   saveReel,
   shareReel,
@@ -279,6 +280,27 @@ const createStyles = (theme: Theme) =>
       textShadowColor: `${theme.black}AA`,
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 3,
+    },
+    feedTabs: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(16),
+      marginLeft: moderateWidthScale(8),
+      marginRight: moderateWidthScale(8),
+    },
+    feedTabText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.white50,
+      textShadowColor: `${theme.black}CC`,
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
+    },
+    feedTabTextActive: {
+      fontFamily: fonts.fontBold,
+      color: theme.white,
     },
     officialBadge: {
       width: moderateWidthScale(16),
@@ -730,12 +752,17 @@ type ReelItemProps = {
   isPreview?: boolean;
   canPublish?: boolean;
   publishing?: boolean;
+  // showFeedTabs?: boolean;
+  // feedTab?: "for_you" | "following";
+  // /** True while browsing a home/swipe category — For You looks inactive until cleared. */
+  // categoryScoped?: boolean;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   itemHeight: number;
   topInset: number;
   bottomInset: number;
   onBack: () => void;
+  // onFeedTabChange?: (tab: "for_you" | "following") => void;
   onLike: (reel: FeedReel) => void;
   onSave: (reel: FeedReel) => void;
   onComment: (reel: FeedReel) => void;
@@ -754,12 +781,16 @@ function ReelFeedItemBase({
   isPreview = false,
   canPublish = false,
   publishing = false,
+  // showFeedTabs = false,
+  // feedTab = "for_you",
+  // categoryScoped = false,
   styles,
   theme,
   itemHeight,
   topInset,
   bottomInset,
   onBack,
+  // onFeedTabChange,
   onLike,
   onSave,
   onComment,
@@ -1195,6 +1226,34 @@ function ReelFeedItemBase({
           />
         </TouchableOpacity>
 
+        {/* For You / Following tabs — hidden for now; restore when tab UI ships
+        {showFeedTabs && onFeedTabChange ? (
+          <View style={styles.feedTabs}>
+            <TouchableOpacity onPress={() => onFeedTabChange("for_you")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "for_you" &&
+                    !categoryScoped &&
+                    styles.feedTabTextActive,
+                ]}
+              >
+                {t("forYouTab")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => onFeedTabChange("following")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "following" && styles.feedTabTextActive,
+                ]}
+              >
+                {t("following")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        */}
         <View style={styles.brandLeft}>
           <LeafLogo
             width={moderateWidthScale(22)}
@@ -1816,6 +1875,14 @@ export default function ReelsFeedScreen() {
   const [publishing, setPublishing] = useState(false);
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
   const viewedIdsRef = useRef<Set<number>>(new Set());
+  /** R-24: unique reels that became active during the current category visit. */
+  const categorySeenSetRef = useRef<Set<number>>(new Set());
+  const dwellCategoryIdRef = useRef<string | undefined>(
+    params.category_id ? String(params.category_id) : undefined,
+  );
+  const dwellFlushedRef = useRef(false);
+  const feedTabRef = useRef(feedTab);
+  feedTabRef.current = feedTab;
   const likeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingLikeRef = useRef<{
     id: number;
@@ -1826,6 +1893,33 @@ export default function ReelsFeedScreen() {
     city: string | null;
     state: string | null;
   } | null>(null);
+
+  const emptyTabCache = useCallback(
+    () => ({
+      reels: [] as FeedReel[],
+      cursor: null as string | null,
+      hasMore: false,
+      followingCount: 0,
+      requiresLogin: false,
+      activeId: null as number | null,
+      loaded: false,
+    }),
+    [],
+  );
+
+  const beginCategoryVisit = useCallback((nextCategoryId?: string) => {
+    dwellCategoryIdRef.current = nextCategoryId;
+    categorySeenSetRef.current = new Set();
+    dwellFlushedRef.current = false;
+  }, []);
+
+  const flushCategoryDwell = useCallback(() => {
+    const cat = dwellCategoryIdRef.current;
+    if (!cat || dwellFlushedRef.current) return;
+    dwellFlushedRef.current = true;
+    const reelsSeen = Math.min(500, categorySeenSetRef.current.size);
+    void reportCategoryDwell(cat, reelsSeen);
+  }, []);
 
   const ensureOwnerBusinessLocation = useCallback(async () => {
     if (ownerLocationCacheRef.current) {
@@ -2113,17 +2207,13 @@ export default function ReelsFeedScreen() {
       const next = categoryCards[nextIdx];
       if (!next || String(next.id) === String(categoryId)) return;
 
+      // Leaving current category — report dwell (0 is a valid signal).
+      flushCategoryDwell();
+      beginCategoryVisit(String(next.id));
+
       categorySwitchLockRef.current = true;
       firstReelUsedRef.current = false;
-      tabCacheRef.current.for_you = {
-        reels: [],
-        cursor: null,
-        hasMore: false,
-        followingCount: 0,
-        requiresLogin: false,
-        activeId: null,
-        loaded: false,
-      };
+      tabCacheRef.current.for_you = emptyTabCache();
       setLoading(true);
       setReels([]);
       setCursor(null);
@@ -2133,20 +2223,102 @@ export default function ReelsFeedScreen() {
         next.cover_reel?.id ? String(next.cover_reel.id) : undefined,
       );
       setFeedCategoryId(String(next.id));
+      setFeedTab("for_you");
       showCategoryToast(next.name);
       setTimeout(() => {
         categorySwitchLockRef.current = false;
       }, 450);
     },
     [
+      beginCategoryVisit,
       categoryCards,
       categoryId,
+      emptyTabCache,
+      flushCategoryDwell,
       isOwnerMode,
       isPreviewMode,
       showCategoryToast,
       showSwipeGuide,
     ],
   );
+
+  /* For You / Following tab switcher — restore with tab UI
+  const handleFeedTabChange = useCallback(
+    (tab: "for_you" | "following") => {
+      if (isPreviewMode || isOwnerMode) return;
+
+      const clearingCategory = tab === "for_you" && !!categoryId;
+      if (tab === feedTab && !clearingCategory) return;
+
+      if (clearingCategory || (tab === "following" && categoryId)) {
+        flushCategoryDwell();
+        beginCategoryVisit(undefined);
+      }
+
+      tabCacheRef.current[feedTab] = {
+        reels,
+        cursor,
+        hasMore,
+        followingCount,
+        requiresLogin,
+        activeId,
+        loaded: tabCacheRef.current[feedTab].loaded || reels.length > 0,
+      };
+
+      if (clearingCategory) {
+        setFeedCategoryId(undefined);
+        setFeedFirstReelId(undefined);
+        firstReelUsedRef.current = true;
+        tabCacheRef.current.for_you = emptyTabCache();
+      }
+
+      setFeedTab(tab);
+
+      if (clearingCategory) {
+        setReels([]);
+        setCursor(null);
+        setHasMore(false);
+        setRequiresLogin(false);
+        setActiveId(null);
+        setLoading(true);
+        return;
+      }
+
+      const cached = tabCacheRef.current[tab];
+      if (cached.loaded) {
+        setReels(cached.reels);
+        setCursor(cached.cursor);
+        setHasMore(cached.hasMore);
+        setFollowingCount(cached.followingCount);
+        setRequiresLogin(cached.requiresLogin);
+        setActiveId(cached.activeId);
+        setLoading(false);
+        return;
+      }
+      setReels([]);
+      setCursor(null);
+      setHasMore(false);
+      setRequiresLogin(false);
+      setActiveId(null);
+      setLoading(true);
+    },
+    [
+      activeId,
+      beginCategoryVisit,
+      categoryId,
+      cursor,
+      emptyTabCache,
+      feedTab,
+      flushCategoryDwell,
+      followingCount,
+      hasMore,
+      isOwnerMode,
+      isPreviewMode,
+      reels,
+      requiresLogin,
+    ],
+  );
+  */
 
   const categoryPanGesture = useMemo(
     () =>
@@ -2189,6 +2361,22 @@ export default function ReelsFeedScreen() {
     };
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      // Screen re-focused after leave: start a fresh dwell window for the same category.
+      if (
+        dwellFlushedRef.current &&
+        dwellCategoryIdRef.current &&
+        feedTabRef.current === "for_you"
+      ) {
+        beginCategoryVisit(dwellCategoryIdRef.current);
+      }
+      return () => {
+        flushCategoryDwell();
+      };
+    }, [beginCategoryVisit, flushCategoryDwell]),
+  );
+
   useEffect(() => {
     if (isPreviewMode || isOwnerMode) return;
     if (!tabCacheRef.current[feedTab].loaded && reels.length === 0) return;
@@ -2225,19 +2413,32 @@ export default function ReelsFeedScreen() {
   useEffect(() => {
     if (isPreviewMode || isOwnerMode) return;
     if (activeId == null) return;
+
+    // R-24 dwell: count reels that start playing in the active category visit.
+    if (feedTab === "for_you" && categoryId && !dwellFlushedRef.current) {
+      categorySeenSetRef.current.add(activeId);
+    }
+
     if (viewedIdsRef.current.has(activeId)) return;
     viewedIdsRef.current.add(activeId);
-    recordReelView(activeId).then((views) => {
-      if (views == null) return;
+    recordReelView(activeId).then((result) => {
+      if (result == null || !result.counted) return;
+      // Public views column is rebuilt on a schedule; bump locally when this play counts.
       setReels((prev) =>
         prev.map((r) =>
           r.id === activeId
-            ? { ...r, stats: { ...r.stats, views } }
+            ? {
+                ...r,
+                stats: {
+                  ...r.stats,
+                  views: (r.stats?.views ?? 0) + 1,
+                },
+              }
             : r,
         ),
       );
     });
-  }, [activeId, isOwnerMode, isPreviewMode]);
+  }, [activeId, categoryId, feedTab, isOwnerMode, isPreviewMode]);
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -2873,6 +3074,44 @@ export default function ReelsFeedScreen() {
             color={theme.white}
           />
         </TouchableOpacity>
+        {/* For You / Following tabs — hidden for now
+        {!isPreviewMode && !isOwnerMode ? (
+          <View
+            style={[
+              styles.feedTabs,
+              {
+                position: "absolute",
+                top: insets.top + moderateHeightScale(16),
+                left: 0,
+                right: 0,
+              },
+            ]}
+          >
+            <TouchableOpacity onPress={() => handleFeedTabChange("for_you")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "for_you" &&
+                    !categoryId &&
+                    styles.feedTabTextActive,
+                ]}
+              >
+                {t("forYouTab")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleFeedTabChange("following")}>
+              <Text
+                style={[
+                  styles.feedTabText,
+                  feedTab === "following" && styles.feedTabTextActive,
+                ]}
+              >
+                {t("following")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        */}
         <Text style={styles.emptyTitle}>{emptyMessage}</Text>
         {showSignIn ? (
           <TouchableOpacity
@@ -2940,12 +3179,16 @@ export default function ReelsFeedScreen() {
                 isPreview={isPreviewMode}
                 canPublish={isPreviewMode && previewStatus === "draft"}
                 publishing={publishing}
+                // showFeedTabs={!isPreviewMode && !isOwnerMode}
+                // feedTab={feedTab}
+                // categoryScoped={feedTab === "for_you" && !!categoryId}
                 styles={styles}
                 theme={theme}
                 itemHeight={pageHeight}
                 topInset={insets.top}
                 bottomInset={feedBottomInset}
                 onBack={goBack}
+                // onFeedTabChange={handleFeedTabChange}
                 onLike={handleLike}
                 onSave={handleSave}
                 onComment={handleComment}

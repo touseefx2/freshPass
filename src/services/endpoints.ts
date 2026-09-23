@@ -745,6 +745,9 @@ export const reelsEndpoints = {
   mineStats: `/api/reels/mine/stats`,
   mineReelStats: (id: number | string) => `/api/reels/mine/${id}/stats`,
   categories: `/api/reels/categories`,
+  /** R-24: category dwell — call once when leaving a category */
+  categoryDwell: (categoryId: number | string) =>
+    `/api/reels/categories/${categoryId}/dwell`,
   feed: (params?: {
     category_id?: number | string;
     first_reel_id?: number | string;

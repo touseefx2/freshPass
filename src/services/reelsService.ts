@@ -188,17 +188,44 @@ export async function getPublicReel(
   return response.data;
 }
 
-/** Fire-and-forget view count. Ignores 429. */
-export async function recordReelView(id: number | string): Promise<number | null> {
+/** Fire-and-forget view count. Ignores 429. `counted` = this play adds to the public total. */
+export async function recordReelView(
+  id: number | string,
+): Promise<{ views: number; counted: boolean } | null> {
   try {
-    const response = await ApiService.post<Envelope<{ views?: number }>>(
-      reelsEndpoints.view(id),
-    );
-    return response?.data?.views ?? null;
+    const response = await ApiService.post<
+      Envelope<{ views?: number; counted?: boolean }>
+    >(reelsEndpoints.view(id));
+    if (!response?.data) return null;
+    return {
+      views: response.data.views ?? 0,
+      counted: Boolean(response.data.counted),
+    };
   } catch (error: any) {
     if (error?.response?.status === 429 || error?.status === 429) return null;
     Logger.error(`Failed to record reel view ${id}:`, error);
     return null;
+  }
+}
+
+/**
+ * R-24: report how long a viewer stayed in a category.
+ * Call once when leaving (swipe away or leave feed). Send 0 if they watched nothing.
+ * Guests get 200 with nothing stored — no auth branch needed.
+ */
+export async function reportCategoryDwell(
+  categoryId: number | string,
+  reelsSeen: number,
+): Promise<void> {
+  const clamped = Math.min(500, Math.max(0, Math.floor(reelsSeen)));
+  try {
+    await ApiService.post(reelsEndpoints.categoryDwell(categoryId), {
+      reels_seen: clamped,
+    });
+  } catch (error: any) {
+    const status = error?.response?.status ?? error?.status;
+    if (status === 429 || status === 404) return;
+    Logger.error(`Failed to report category dwell ${categoryId}:`, error);
   }
 }
 
