@@ -367,11 +367,7 @@ export default function EditBusinessProfileScreen() {
   }>();
 
   const getInitialLogoUri = () => {
-    return (
-      resolveApiImageUrl(params.logo_url) ??
-      getDefaultBusinessLogo() ||
-      "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
-    );
+    return resolveApiImageUrl(params.logo_url) ?? getDefaultBusinessLogo();
   };
 
   const originalLogoImageUri = getInitialLogoUri();

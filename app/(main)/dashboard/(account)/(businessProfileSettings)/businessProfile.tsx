@@ -248,9 +248,7 @@ export default function BusinessProfileScreen() {
 
   const getLogoUri = () => {
     return (
-      resolveApiImageUrl(profileData?.logo_url) ??
-      getDefaultBusinessLogo() ||
-      "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
+      resolveApiImageUrl(profileData?.logo_url) ?? getDefaultBusinessLogo()
     );
   };
 

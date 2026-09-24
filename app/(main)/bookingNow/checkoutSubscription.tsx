@@ -558,9 +558,7 @@ function CheckoutSubscriptionContent() {
         params.businessLogo && params.businessLogo !== ""
           ? params.businessLogo
           : businessData?.logo_url,
-      ) ??
-      getDefaultBusinessLogo() ||
-      "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
+      ) ?? getDefaultBusinessLogo()
     );
   }, [businessData?.logo_url, params.businessLogo]);
 
