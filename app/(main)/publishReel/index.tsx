@@ -15,6 +15,7 @@ import {
   KeyboardAwareScrollView,
   KeyboardStickyView,
 } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -285,6 +286,7 @@ export default function PublishReelScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -909,7 +911,15 @@ export default function PublishReelScreen() {
       </KeyboardAwareScrollView>
 
       <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
-        <View style={styles.footer}>
+        <View
+          style={[
+            styles.footer,
+            {
+              paddingBottom:
+                moderateHeightScale(12) + Math.max(insets.bottom, 0),
+            },
+          ]}
+        >
           {isSubmitting && fromEditor && uploadProgress > 0 && !waitingForReady ? (
             <Text style={styles.progressText}>
               {`${t("uploadingVideo")} ${uploadProgress}%`}
