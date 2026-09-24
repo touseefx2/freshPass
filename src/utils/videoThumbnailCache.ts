@@ -71,3 +71,39 @@ export async function extractVideoThumbnail(
     releaseSlot();
   }
 }
+
+const localUriThumbCache = new Map<string, string>();
+
+/**
+ * Extract a still frame from a local (or remote) video URI for grid previews.
+ * Cached by URI so Generate Reel / pickers don't re-extract the same file.
+ */
+export async function extractLocalVideoThumbnail(
+  uri: string,
+): Promise<string | null> {
+  if (!uri?.trim()) return null;
+
+  const cached = localUriThumbCache.get(uri);
+  if (cached) return cached;
+
+  await acquireSlot();
+  try {
+    const again = localUriThumbCache.get(uri);
+    if (again) return again;
+
+    const result = await VideoThumbnails.getThumbnailAsync(uri, {
+      time: 0,
+      quality: 0.7,
+    });
+    if (result?.uri) {
+      localUriThumbCache.set(uri, result.uri);
+      return result.uri;
+    }
+    return null;
+  } catch (error) {
+    Logger.error("Failed to extract local video thumbnail:", error);
+    return null;
+  } finally {
+    releaseSlot();
+  }
+}

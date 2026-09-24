@@ -3,6 +3,7 @@ import { StyleSheet, Dimensions } from "react-native";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 
@@ -30,6 +31,12 @@ export const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.text,
       marginBottom: moderateHeightScale(8),
+    },
+    labelInRow: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+      flexShrink: 1,
     },
     required: {
       color: theme.red,
@@ -81,8 +88,8 @@ export const createStyles = (theme: Theme) =>
     mediaGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: moderateWidthScale(12),
-      marginTop: moderateHeightScale(16),
+      gap: moderateWidthScale(10),
+      marginTop: moderateHeightScale(14),
     },
     mediaItem: {
       position: "relative",
@@ -135,6 +142,156 @@ export const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen4,
       marginTop: moderateHeightScale(8),
+    },
+    /** Generate Reel — media picker trigger */
+    mediaPickerCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      borderWidth: 1.5,
+      borderColor: theme.borderNormal,
+      borderStyle: "dashed",
+      borderRadius: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(16),
+    },
+    mediaPickerCardFilled: {
+      borderStyle: "solid",
+      borderColor: theme.borderLight,
+      backgroundColor: theme.lightGreen05,
+    },
+    mediaPickerIconCircle: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    mediaPickerTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    mediaPickerTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    mediaPickerSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    /** Generate Reel — music card */
+    musicCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      borderRadius: moderateWidthScale(14),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+    },
+    musicCardEmpty: {
+      borderStyle: "dashed",
+      borderWidth: 1.5,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.lightGreen05,
+    },
+    musicIconCircle: {
+      width: widthScale(42),
+      height: widthScale(42),
+      borderRadius: moderateWidthScale(21),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    musicTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+      minWidth: 0,
+    },
+    musicTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.text,
+    },
+    musicSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    musicActionBtn: {
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen015,
+    },
+    musicActionText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    musicRemoveBtn: {
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      borderRadius: moderateWidthScale(16),
+      backgroundColor: theme.lightRed,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    optionalBadge: {
+      alignSelf: "flex-start",
+      marginLeft: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen015,
+    },
+    optionalBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    labelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: moderateHeightScale(8),
+    },
+    /** Bottom sheet option cards for reel media */
+    sheetOptionCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(4),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    sheetOptionIcon: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sheetOptionTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    sheetOptionTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    sheetOptionDesc: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     audioFileContainer: {
       flexDirection: "row",

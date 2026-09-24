@@ -15,6 +15,7 @@ import {
   Platform,
   TextInput,
   Keyboard,
+  Dimensions,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -24,6 +25,10 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
+import ReelMediaTile, {
+  type ReelMediaItem,
+} from "@/src/components/reelMediaTile";
+import LocalVideoPreviewModal from "@/src/components/localVideoPreviewModal";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -53,12 +58,15 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints, userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
 import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
+import { extractLocalVideoThumbnail } from "@/src/utils/videoThumbnailCache";
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
 
 interface MediaFile {
   id: string;
   uri: string;
   type: "image" | "video";
-  thumbnailUri?: string; // For video thumbnails
+  thumbnailUri?: string;
   durationMs?: number;
 }
 
@@ -143,8 +151,14 @@ export default function Tools() {
   const [backgroundMusic, setBackgroundMusic] = useState<AudioFile | null>(
     null,
   );
+  const [previewVideoUri, setPreviewVideoUri] = useState<string | null>(null);
 
   const reelAiMaxItems = REEL_LIMIT_FALLBACK.ai_max_images;
+  const reelTileWidth = useMemo(
+    () =>
+      (SCREEN_WIDTH - moderateWidthScale(40) - moderateWidthScale(20)) / 3,
+    [],
+  );
 
   // State for Hair Tryon (source image + prompt)
   const [hairTryonSourceImage, setHairTryonSourceImage] = useState<
@@ -169,7 +183,6 @@ export default function Tools() {
   // Modal states
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [mediaPickerVisible, setMediaPickerVisible] = useState(false);
-  const [audioPickerVisible, setAudioPickerVisible] = useState(false);
 
   // Hair pipeline processing modal state (single object)
   const [hairPipelineState, setHairPipelineState] =
@@ -258,6 +271,61 @@ export default function Tools() {
     closeHairPipelineModal();
   };
 
+  const isVideoAsset = (asset: ImagePicker.ImagePickerAsset): boolean => {
+    if (asset.type === "video") return true;
+    const mime = (asset as { mimeType?: string }).mimeType ?? "";
+    if (mime.startsWith("video/")) return true;
+    const uri = asset.uri?.toLowerCase() ?? "";
+    return /\.(mp4|mov|m4v|webm|avi|mkv)(\?|$)/i.test(uri);
+  };
+
+  const mapAssetToMediaFile = (
+    asset: ImagePicker.ImagePickerAsset,
+  ): MediaFile => {
+    const isVideo = isVideoAsset(asset);
+    const durationMs =
+      typeof asset.duration === "number" && asset.duration > 0
+        ? asset.duration
+        : undefined;
+    const pickerThumb = (asset as { thumbnailUri?: string }).thumbnailUri;
+    return {
+      id: generateId(),
+      uri: asset.uri,
+      type: isVideo ? "video" : "image",
+      // Never use the video file URI as an Image source
+      thumbnailUri:
+        isVideo && pickerThumb && pickerThumb !== asset.uri
+          ? pickerThumb
+          : undefined,
+      durationMs,
+    };
+  };
+
+  const appendReelMedia = useCallback(
+    async (incoming: MediaFile[]) => {
+      if (incoming.length === 0) return;
+
+      setReelMedia((prev) => {
+        const remaining = reelAiMaxItems - prev.length;
+        if (remaining <= 0) return prev;
+        return [...prev, ...incoming.slice(0, remaining)];
+      });
+
+      // Extract real still frames for videos (picker URI is not displayable in Image)
+      for (const item of incoming) {
+        if (item.type !== "video" || item.thumbnailUri) continue;
+        const thumb = await extractLocalVideoThumbnail(item.uri);
+        if (!thumb) continue;
+        setReelMedia((prev) =>
+          prev.map((m) =>
+            m.id === item.id ? { ...m, thumbnailUri: thumb } : m,
+          ),
+        );
+      }
+    },
+    [reelAiMaxItems],
+  );
+
   const handleSelectFromGallery = useCallback(async () => {
     setImagePickerVisible(false);
     setMediaPickerVisible(false);
@@ -316,47 +384,34 @@ export default function Tools() {
             setCollageImages([...collageImages, ...newImages]);
           }
         } else if (toolType === "Generate Reel") {
-          const newMedia: MediaFile[] = result.assets
+          const newMedia = result.assets
             .filter((asset) => asset.uri)
-            .map((asset) => {
-              const isVideo = asset.type === "video";
-              const durationMs =
-                typeof asset.duration === "number" && asset.duration > 0
-                  ? asset.duration
-                  : undefined;
-              return {
-                id: generateId(),
-                uri: asset.uri,
-                type: (isVideo ? "video" : "image") as "image" | "video",
-                thumbnailUri: isVideo
-                  ? (asset as any).thumbnailUri || asset.uri
-                  : undefined,
-                durationMs,
-              };
-            });
+            .map(mapAssetToMediaFile);
 
-          const totalMedia = reelMedia.length + newMedia.length;
-          if (totalMedia > reelAiMaxItems) {
+          if (reelMedia.length + newMedia.length > reelAiMaxItems) {
             showBanner(
               t("limitExceeded"),
               t("reelLimitMessageDynamic", { max: reelAiMaxItems }),
               "warning",
               3000,
             );
-            const remaining = reelAiMaxItems - reelMedia.length;
-            if (remaining > 0) {
-              setReelMedia([...reelMedia, ...newMedia.slice(0, remaining)]);
-            }
-          } else {
-            setReelMedia([...reelMedia, ...newMedia]);
           }
+          await appendReelMedia(newMedia);
         }
       }
     } catch (error) {
       Logger.error("Error selecting media:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [toolType, collageImages, reelMedia, reelAiMaxItems, showBanner, t]);
+  }, [
+    toolType,
+    collageImages,
+    reelMedia.length,
+    reelAiMaxItems,
+    appendReelMedia,
+    showBanner,
+    t,
+  ]);
 
   const handleTakePhoto = useCallback(async () => {
     setImagePickerVisible(false);
@@ -367,9 +422,8 @@ export default function Tools() {
     }
 
     try {
-      const isReel = toolType === "Generate Reel";
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: isReel ? ["images", "videos"] : "images",
+        mediaTypes: ["images"],
         quality: 0.8,
         allowsEditing: false,
         ...(Platform.OS === "ios" && {
@@ -413,40 +467,88 @@ export default function Tools() {
             );
             return;
           }
-          const isVideo = asset.type === "video";
-          const durationMs =
-            typeof asset.duration === "number" && asset.duration > 0
-              ? asset.duration
-              : undefined;
-          setReelMedia([
-            ...reelMedia,
-            {
-              id: generateId(),
-              uri: asset.uri,
-              type: isVideo ? "video" : "image",
-              thumbnailUri: isVideo
-                ? (asset as any).thumbnailUri || asset.uri
-                : undefined,
-              durationMs,
-            },
-          ]);
+          await appendReelMedia([mapAssetToMediaFile(asset)]);
         }
       }
     } catch (error) {
       Logger.error("Error taking photo:", error);
       showBanner(t("error"), t("failedToTakePhoto"), "error", 3000);
     }
-  }, [toolType, collageImages, reelMedia, reelAiMaxItems, showBanner, t]);
+  }, [
+    toolType,
+    collageImages,
+    reelMedia.length,
+    reelAiMaxItems,
+    appendReelMedia,
+    showBanner,
+    t,
+  ]);
 
+  const handleRecordVideo = useCallback(async () => {
+    setMediaPickerVisible(false);
+    const hasPermission = await handleCameraPermission();
+    if (!hasPermission) {
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["videos"],
+        quality: 1,
+        videoMaxDuration: 60,
+        ...(Platform.OS === "ios" && {
+          preferredAssetRepresentationMode:
+            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
+              .Compatible,
+        }),
+      });
+
+      if (!result.canceled && result.assets?.[0]) {
+        if (reelMedia.length >= reelAiMaxItems) {
+          showBanner(
+            t("limitExceeded"),
+            t("reelMaxFilesDynamic", { max: reelAiMaxItems }),
+            "warning",
+            3000,
+          );
+          return;
+        }
+        await appendReelMedia([mapAssetToMediaFile(result.assets[0])]);
+      }
+    } catch (error) {
+      Logger.error("Error recording video:", error);
+      showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
+    }
+  }, [reelMedia.length, reelAiMaxItems, appendReelMedia, showBanner, t]);
+
+  const handleReelMediaPress = useCallback(
+    (media: ReelMediaItem) => {
+      if (media.type === "video") {
+        setPreviewVideoUri(media.uri);
+        return;
+      }
+      dispatch(openFullImageModal({ images: [media.uri] }));
+    },
+    [dispatch],
+  );
+
+  const handleReelThumbnailReady = useCallback(
+    (id: string, thumbnailUri: string) => {
+      setReelMedia((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, thumbnailUri } : m)),
+      );
+    },
+    [],
+  );
   const handleDeleteImage = useCallback(
     (id: string) => {
       if (toolType === "Generate Collage") {
-        setCollageImages(collageImages.filter((img) => img.id !== id));
+        setCollageImages((prev) => prev.filter((img) => img.id !== id));
       } else if (toolType === "Generate Reel") {
-        setReelMedia(reelMedia.filter((media) => media.id !== id));
+        setReelMedia((prev) => prev.filter((media) => media.id !== id));
       }
     },
-    [toolType, collageImages, reelMedia],
+    [toolType],
   );
 
   const handleDeletePostImage = useCallback(() => {
@@ -462,7 +564,6 @@ export default function Tools() {
   }, []);
 
   const handleSelectAudio = useCallback(async () => {
-    setAudioPickerVisible(false);
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ["audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a"],
@@ -496,7 +597,7 @@ export default function Tools() {
       Logger.error("Error selecting audio file:", error);
       showBanner(t("error"), t("failedToSelectAudio"), "error", 3000);
     }
-  }, [t]);
+  }, [t, showBanner]);
 
   const openTryOnPurchase = useCallback(() => {
     dispatch(setTryOnPurchaseSuccessSource("tools"));
@@ -815,12 +916,14 @@ export default function Tools() {
   }, []);
 
   const openMediaPicker = useCallback(() => {
+    Keyboard.dismiss();
     setMediaPickerVisible(true);
   }, []);
 
   const openAudioPicker = useCallback(() => {
-    setAudioPickerVisible(true);
-  }, []);
+    Keyboard.dismiss();
+    void handleSelectAudio();
+  }, [handleSelectAudio]);
 
   const renderPostContent = () => (
     <View style={styles.fieldContainer}>
@@ -913,72 +1016,58 @@ export default function Tools() {
   const renderReelContent = () => (
     <>
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>
-          {t("mediaFiles3ToMax", { max: reelAiMaxItems })}{" "}
-          <Text style={styles.required}>*</Text>
-        </Text>
-        <TouchableOpacity
-          style={styles.fileInput}
-          onPress={openMediaPicker}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.fileInputText}>
-            {reelMedia.length > 0
-              ? t("filesSelectedCount", { count: reelMedia.length })
-              : t("chooseFiles")}
+        <View style={styles.labelRow}>
+          <Text style={styles.labelInRow}>
+            {t("mediaFiles3ToMax", { max: reelAiMaxItems })}{" "}
+            <Text style={styles.required}>*</Text>
           </Text>
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.mediaPickerCard,
+            reelMedia.length > 0 && styles.mediaPickerCardFilled,
+          ]}
+          onPress={openMediaPicker}
+          activeOpacity={0.75}
+          disabled={reelMedia.length >= reelAiMaxItems}
+        >
+          <View style={styles.mediaPickerIconCircle}>
+            <MaterialIcons
+              name={reelMedia.length > 0 ? "add" : "perm-media"}
+              size={moderateWidthScale(22)}
+              color={theme.white}
+            />
+          </View>
+          <View style={styles.mediaPickerTextCol}>
+            <Text style={styles.mediaPickerTitle}>
+              {reelMedia.length > 0
+                ? t("addMoreMedia")
+                : t("addPhotosOrVideos")}
+            </Text>
+            <Text style={styles.mediaPickerSubtitle}>
+              {reelMedia.length > 0
+                ? t("filesSelectedCount", { count: reelMedia.length })
+                : t("reelMediaPickerHint")}
+            </Text>
+          </View>
           <MaterialIcons
-            name="arrow-drop-down"
+            name="chevron-right"
             size={moderateWidthScale(24)}
-            color={theme.text}
+            color={theme.lightGreen}
           />
         </TouchableOpacity>
         {reelMedia.length > 0 && (
           <View style={styles.mediaGrid}>
-            {reelMedia.map((media) => (
-              <View key={media.id} style={styles.mediaItem}>
-                {media.type === "image" ? (
-                  <Image
-                    source={{ uri: media.uri }}
-                    style={styles.mediaThumbnail}
-                  />
-                ) : (
-                  <View style={styles.videoThumbnailContainer}>
-                    {media.thumbnailUri ? (
-                      <Image
-                        source={{ uri: media.thumbnailUri }}
-                        style={styles.mediaThumbnail}
-                      />
-                    ) : (
-                      <View style={styles.videoThumbnail}>
-                        <MaterialIcons
-                          name="videocam"
-                          size={moderateWidthScale(24)}
-                          color={theme.white}
-                        />
-                      </View>
-                    )}
-                    <View style={styles.videoPlayIcon}>
-                      <MaterialIcons
-                        name="videocam"
-                        size={moderateWidthScale(32)}
-                        color={theme.white}
-                      />
-                    </View>
-                  </View>
-                )}
-                <TouchableOpacity
-                  style={styles.deleteButtonSmall}
-                  onPress={() => handleDeleteImage(media.id)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialIcons
-                    name="close"
-                    size={moderateWidthScale(16)}
-                    color={theme.white}
-                  />
-                </TouchableOpacity>
-              </View>
+            {reelMedia.map((media, index) => (
+              <ReelMediaTile
+                key={media.id}
+                media={media}
+                index={index}
+                width={reelTileWidth}
+                onPress={handleReelMediaPress}
+                onRemove={handleDeleteImage}
+                onThumbnailReady={handleReelThumbnailReady}
+              />
             ))}
           </View>
         )}
@@ -991,43 +1080,73 @@ export default function Tools() {
       </View>
 
       <View style={styles.fieldContainer}>
-        <Text style={styles.label}>{t("backgroundMusicLabel")}</Text>
-        <TouchableOpacity
-          style={styles.fileInput}
-          onPress={openAudioPicker}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.fileInputText}>
-            {backgroundMusic ? backgroundMusic.name : t("chooseFile")}
-          </Text>
-          <MaterialIcons
-            name="arrow-drop-down"
-            size={moderateWidthScale(24)}
-            color={theme.text}
-          />
-        </TouchableOpacity>
-        {backgroundMusic && (
-          <View style={styles.audioFileContainer}>
-            <MaterialIcons
-              name="audiotrack"
-              size={moderateWidthScale(20)}
-              color={theme.darkGreen}
-            />
-            <Text style={styles.audioFileName} numberOfLines={1}>
-              {backgroundMusic.name}
-            </Text>
+        <View style={styles.labelRow}>
+          <Text style={styles.labelInRow}>{t("backgroundMusicLabel")}</Text>
+          <View style={styles.optionalBadge}>
+            <Text style={styles.optionalBadgeText}>{t("optional")}</Text>
+          </View>
+        </View>
+        {backgroundMusic ? (
+          <View style={styles.musicCard}>
+            <View style={styles.musicIconCircle}>
+              <MaterialIcons
+                name="music-note"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </View>
+            <View style={styles.musicTextCol}>
+              <Text style={styles.musicTitle} numberOfLines={1}>
+                {backgroundMusic.name}
+              </Text>
+              <Text style={styles.musicSubtitle}>{t("musicSelectedHint")}</Text>
+            </View>
             <TouchableOpacity
-              style={styles.deleteButtonSmall}
+              style={styles.musicActionBtn}
+              onPress={openAudioPicker}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.musicActionText}>{t("changeMusic")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.musicRemoveBtn}
               onPress={handleDeleteAudio}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={t("remove")}
             >
               <MaterialIcons
                 name="close"
                 size={moderateWidthScale(16)}
-                color={theme.white}
+                color={theme.red}
               />
             </TouchableOpacity>
           </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.musicCard, styles.musicCardEmpty]}
+            onPress={openAudioPicker}
+            activeOpacity={0.75}
+          >
+            <View style={styles.musicIconCircle}>
+              <MaterialIcons
+                name="library-music"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </View>
+            <View style={styles.musicTextCol}>
+              <Text style={styles.musicTitle}>{t("addBackgroundMusic")}</Text>
+              <Text style={styles.musicSubtitle}>
+                {t("backgroundMusicFormats")}
+              </Text>
+            </View>
+            <MaterialIcons
+              name="add"
+              size={moderateWidthScale(24)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
         )}
       </View>
     </>
@@ -1338,54 +1457,71 @@ export default function Tools() {
         title={t("selectMedia")}
       >
         <TouchableOpacity
-          style={styles.optionItem}
+          style={styles.sheetOptionCard}
           onPress={handleSelectFromGallery}
           activeOpacity={0.7}
         >
-          <MaterialIcons
-            name="photo-library"
-            size={moderateWidthScale(24)}
-            color={theme.darkGreen}
-            style={styles.optionIcon}
-          />
-          <Text style={styles.optionText}>{t("fromGallery")}</Text>
+          <View style={styles.sheetOptionIcon}>
+            <MaterialIcons
+              name="photo-library"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <View style={styles.sheetOptionTextCol}>
+            <Text style={styles.sheetOptionTitle}>{t("fromGallery")}</Text>
+            <Text style={styles.sheetOptionDesc}>
+              {t("reelGalleryOptionDesc")}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.optionItem}
+          style={styles.sheetOptionCard}
           onPress={handleTakePhoto}
           activeOpacity={0.7}
         >
-          <MaterialIcons
-            name="camera-alt"
-            size={moderateWidthScale(24)}
-            color={theme.darkGreen}
-            style={styles.optionIcon}
-          />
-          <Text style={styles.optionText}>{t("fromCamera")}</Text>
+          <View style={styles.sheetOptionIcon}>
+            <MaterialIcons
+              name="photo-camera"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <View style={styles.sheetOptionTextCol}>
+            <Text style={styles.sheetOptionTitle}>{t("takePhoto")}</Text>
+            <Text style={styles.sheetOptionDesc}>
+              {t("takePhotoDescription")}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.sheetOptionCard, { borderBottomWidth: 0 }]}
+          onPress={handleRecordVideo}
+          activeOpacity={0.7}
+        >
+          <View style={styles.sheetOptionIcon}>
+            <MaterialIcons
+              name="videocam"
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <View style={styles.sheetOptionTextCol}>
+            <Text style={styles.sheetOptionTitle}>{t("recordVideoOption")}</Text>
+            <Text style={styles.sheetOptionDesc}>
+              {t("recordVideoDescriptionShort")}
+            </Text>
+          </View>
         </TouchableOpacity>
       </ModalizeBottomSheet>
 
-      {/* Audio Picker Modal */}
-      <ModalizeBottomSheet
-        visible={audioPickerVisible}
-        onClose={() => setAudioPickerVisible(false)}
-        title={t("selectAudioFile")}
-      >
-        <TouchableOpacity
-          style={styles.optionItem}
-          onPress={handleSelectAudio}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons
-            name="audiotrack"
-            size={moderateWidthScale(24)}
-            color={theme.darkGreen}
-            style={styles.optionIcon}
-          />
-          <Text style={styles.optionText}>{t("chooseAudioFile")}</Text>
-        </TouchableOpacity>
-      </ModalizeBottomSheet>
+      <LocalVideoPreviewModal
+        visible={!!previewVideoUri}
+        uri={previewVideoUri}
+        onClose={() => setPreviewVideoUri(null)}
+      />
 
       <HairPipelineProcessingModal
         state={hairPipelineState}
