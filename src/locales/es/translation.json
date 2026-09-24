@@ -915,6 +915,8 @@
   "paymentprocessing": "Procesando pago",
   "yourApiIsProcessing": "Tu API está procesando",
   "aiIsProcessing": "La IA está procesando",
+  "aiRequestSubmittedTitle": "¡Solicitud enviada!",
+  "aiRequestSubmittedMessage": "Te avisaremos cuando tu resultado esté listo.",
   "estimatedTimeMinutes": "~{{count}} min",
   "pleaseWaitForMinutes": "Por favor espere {{count}} min",
   "whenDoneYouWillGetNotification": "Cuando termine el procesamiento, recibirás una notificación.",

@@ -1117,6 +1117,8 @@
   "paymentprocessing": "Payment processing",
   "yourApiIsProcessing": "Your API is processing",
   "aiIsProcessing": "Ai is processing",
+  "aiRequestSubmittedTitle": "Request submitted!",
+  "aiRequestSubmittedMessage": "We'll notify you when your result is ready.",
   "estimatedTimeMinutes": "~{{count}} min",
   "pleaseWaitForMinutes": "Please wait for {{count}} min",
   "whenDoneYouWillGetNotification": "When processing is done, you'll get a notification.",

@@ -915,6 +915,8 @@
   "paymentprocessing": "支払い処理中",
   "yourApiIsProcessing": "APIを処理中です",
   "aiIsProcessing": "AI処理中",
+  "aiRequestSubmittedTitle": "リクエストを送信しました！",
+  "aiRequestSubmittedMessage": "結果の準備ができ次第、お知らせします。",
   "estimatedTimeMinutes": "約{{count}}分",
   "pleaseWaitForMinutes": "{{count}}分お待ちください",
   "whenDoneYouWillGetNotification": "処理が完了すると通知が届きます。",

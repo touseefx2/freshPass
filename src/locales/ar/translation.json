@@ -915,6 +915,8 @@
   "paymentprocessing": "جارٍ معالجة الدفع",
   "yourApiIsProcessing": "طلبك في حالة معالجة",
   "aiIsProcessing": "الذكاء الاصطناعي يعالج الطلب",
+  "aiRequestSubmittedTitle": "تم إرسال الطلب!",
+  "aiRequestSubmittedMessage": "سنُعلمك عندما يصبح الناتج جاهزاً.",
   "estimatedTimeMinutes": "~{{count}} دقيقة",
   "pleaseWaitForMinutes": "الرجاء الانتظار {{count}} دقيقة",
   "whenDoneYouWillGetNotification": "عند الانتهاء، ستصلك إشعار بالنتيجة.",

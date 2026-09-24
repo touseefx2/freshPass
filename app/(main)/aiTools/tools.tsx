@@ -261,15 +261,12 @@ export default function Tools() {
     setHairPipelineState(INITIAL_HAIR_PIPELINE_STATE);
     hairPipelineStartTimeRef.current = null;
     fetchQuota();
-  }, []);
-
-  const handleHairPipelineSeeStatus = () => {
-    router.push({
-      pathname: "/aiRequests",
-      params: { fromProcessingModal: "1" },
-    });
-    closeHairPipelineModal();
-  };
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(main)/aiTools/toolList" as any);
+    }
+  }, [router]);
 
   const isVideoAsset = (asset: ImagePicker.ImagePickerAsset): boolean => {
     if (asset.type === "video") return true;
@@ -1572,7 +1569,6 @@ export default function Tools() {
       <HairPipelineProcessingModal
         state={hairPipelineState}
         onClose={closeHairPipelineModal}
-        onSeeStatus={handleHairPipelineSeeStatus}
       />
 
       <AiHairTryOnConsentModal

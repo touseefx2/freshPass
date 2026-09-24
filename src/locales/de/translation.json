@@ -915,6 +915,8 @@
   "paymentprocessing": "Zahlung wird verarbeitet",
   "yourApiIsProcessing": "Ihre API wird verarbeitet",
   "aiIsProcessing": "KI verarbeitet",
+  "aiRequestSubmittedTitle": "Anfrage gesendet!",
+  "aiRequestSubmittedMessage": "Wir benachrichtigen dich, sobald dein Ergebnis fertig ist.",
   "estimatedTimeMinutes": "~{{count}} Min",
   "pleaseWaitForMinutes": "Bitte warten Sie {{count}} Min",
   "whenDoneYouWillGetNotification": "Nach Abschluss erhalten Sie eine Benachrichtigung.",

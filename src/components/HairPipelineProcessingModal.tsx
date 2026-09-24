@@ -3,23 +3,21 @@ import {
   Modal,
   View,
   Text,
-  TouchableOpacity,
-  Image,
   StyleSheet,
-  Alert,
+  Pressable,
+  TouchableOpacity,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import {
   moderateWidthScale,
   moderateHeightScale,
-  heightScale,
+  widthScale,
   iconScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
-import { router } from "expo-router";
 
 export type PipelineJobType =
   | "Hair Tryon"
@@ -47,263 +45,275 @@ export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
   complete: false,
 };
 
-// export const INITIAL_HAIR_PIPELINE_STATE: HairPipelineModalState = {
-//   complete: false,
-//   estimatedMinutes: 5,
-//   imageUri:
-//     "file:///Users/touseef/Library/Developer/CoreSimulator/Devices/A80F36A4-78FF-4772-8FFC-FDAC4131C5F0/data/Containers/Data/Application/C0B78EED-D1ED-46A1-B22E-CA2E089E9F02/Library/Caches/ImagePicker/99190096-D140-4780-94CA-124C7C34F407.jpg",
-//   jobId: "ee040ee5-ad3",
-//   jobType: "Hair Tryon",
-//   progress: 28.747666666666667,
-//   visible: true,
-// };
-
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    overlay: {
+    modalOverlay: {
       flex: 1,
-      backgroundColor: "rgba(0,0,0,0.6)",
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
       justifyContent: "center",
       alignItems: "center",
       paddingHorizontal: moderateWidthScale(24),
     },
-    card: {
+    modalContainer: {
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(28),
       width: "100%",
-      maxWidth: moderateWidthScale(340),
-      backgroundColor: theme.background,
-      borderRadius: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(24),
-      paddingHorizontal: moderateWidthScale(20),
+      maxWidth: widthScale(340),
+      paddingHorizontal: moderateWidthScale(24),
+      paddingTop: moderateHeightScale(32),
+      paddingBottom: moderateHeightScale(20),
       alignItems: "center",
-    },
-    closeBtn: {
-      position: "absolute",
-      top: moderateHeightScale(12),
-      right: moderateWidthScale(12),
-      padding: moderateWidthScale(8),
-      zIndex: 1,
+      shadowColor: theme.shadow,
+      shadowOffset: {
+        width: 0,
+        height: moderateHeightScale(8),
+      },
+      shadowOpacity: 0.15,
+      shadowRadius: moderateWidthScale(20),
+      elevation: 8,
     },
     iconWrap: {
-      width: moderateWidthScale(64),
-      height: moderateWidthScale(64),
-      borderRadius: moderateWidthScale(32),
-      backgroundColor: theme.lightGreen2,
+      width: moderateWidthScale(120),
+      height: moderateWidthScale(120),
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(20),
+    },
+    iconHalo: {
+      position: "absolute",
+      width: moderateWidthScale(100),
+      height: moderateWidthScale(100),
+      borderRadius: moderateWidthScale(50),
+      backgroundColor: theme.lightGreen05,
+    },
+    iconCircle: {
+      width: moderateWidthScale(72),
+      height: moderateWidthScale(72),
+      borderRadius: moderateWidthScale(36),
+      backgroundColor: theme.buttonBack,
+      justifyContent: "center",
+      alignItems: "center",
+      zIndex: 1,
+    },
+    confettiDot: {
+      position: "absolute",
+      borderRadius: moderateWidthScale(50),
+    },
+    confettiTriangle: {
+      position: "absolute",
+      width: 0,
+      height: 0,
+      backgroundColor: "transparent",
+      borderStyle: "solid",
+      borderLeftWidth: moderateWidthScale(5),
+      borderRightWidth: moderateWidthScale(5),
+      borderBottomWidth: moderateWidthScale(9),
+      borderLeftColor: "transparent",
+      borderRightColor: "transparent",
+    },
+    confettiBar: {
+      position: "absolute",
+      borderRadius: moderateWidthScale(2),
     },
     title: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
-      color: theme.text,
-      marginBottom: moderateHeightScale(4),
+      color: theme.darkGreen,
       textAlign: "center",
+      marginBottom: moderateHeightScale(8),
     },
-    estTime: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-      marginBottom: moderateHeightScale(12),
-    },
-    notifyText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(16),
-    },
-    imageWrap: {
-      width: "100%",
-      aspectRatio: 1,
-      maxHeight: heightScale(160),
-      borderRadius: moderateWidthScale(12),
-      overflow: "hidden",
-      backgroundColor: theme.grey15,
-      marginBottom: moderateHeightScale(12),
-    },
-    image: {
-      width: "100%",
-      height: "100%",
-    },
-    barBg: {
-      width: "100%",
-      height: moderateHeightScale(8),
-      backgroundColor: theme.grey15,
-      borderRadius: moderateWidthScale(4),
-      overflow: "hidden",
-      marginBottom: moderateHeightScale(16),
-    },
-    barFill: {
-      height: "100%",
-      borderRadius: moderateWidthScale(4),
-      backgroundColor: theme.primary,
-    },
-    barFillComplete: {
-      backgroundColor: theme.green,
-    },
-    viewResultText: {
+    subtitle: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
-      color: theme.primary,
-      marginBottom: moderateHeightScale(16),
-      textDecorationLine: "underline",
+      color: theme.buttonBack,
+      textAlign: "center",
+      marginBottom: moderateHeightScale(10),
     },
-    bottomCol: {
-      width: "100%",
-      marginTop: moderateHeightScale(8),
-      gap: moderateWidthScale(12),
+    message: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size22,
+      marginBottom: moderateHeightScale(28),
+      paddingHorizontal: moderateWidthScale(4),
     },
-    btnSecondary: {
+    buttonContainer: {
       width: "100%",
-      paddingVertical: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.borderLine,
+    },
+    primaryButton: {
+      backgroundColor: theme.buttonBack,
+      borderRadius: moderateWidthScale(28),
+      height: moderateHeightScale(52),
       alignItems: "center",
       justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(20),
     },
-    btnPrimary: {
-      width: "100%",
-      paddingVertical: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.primary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    btnTextSecondary: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-    },
-    btnTextPrimary: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
+    primaryButtonText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
     },
   });
+
+function jobTypeTitleKey(jobType: PipelineJobType | null): string {
+  switch (jobType) {
+    case "Hair Tryon":
+      return "hairTryon";
+    case "Generate Post":
+      return "generatePost";
+    case "Generate Collage":
+      return "generateCollage";
+    case "Generate Reel":
+      return "generateReel";
+    default:
+      return "aiTools";
+  }
+}
 
 interface HairPipelineProcessingModalProps {
   state: HairPipelineModalState;
   onClose: () => void;
-  onSeeStatus: () => void;
+  /** Kept for call-site compatibility; unused in the simple OK flow. */
+  onSeeStatus?: () => void;
 }
 
 export default function HairPipelineProcessingModal({
   state,
   onClose,
-  onSeeStatus,
 }: HairPipelineProcessingModalProps) {
   const { colors } = useTheme();
-  const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { t } = useTranslation();
 
   return (
     <Modal
-      visible={state.visible}
       transparent
+      visible={state.visible}
       animationType="fade"
-      // onRequestClose={onClose}
+      statusBarTranslucent
+      onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          {/* <TouchableOpacity
-            style={styles.closeBtn}
-            onPress={onClose}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <MaterialIcons
-              name="close"
-              size={iconScale(24)}
-              color={theme.text}
-            />
-          </TouchableOpacity> */}
-
+      <View style={styles.modalOverlay}>
+        <Pressable
+          style={styles.modalContainer}
+          onPress={(e) => e.stopPropagation()}
+        >
           <View style={styles.iconWrap}>
-            <MaterialIcons
-              name="schedule"
-              size={iconScale(36)}
-              color={theme.primary}
-            />
-          </View>
-          <Text style={styles.title}>
-            {state.jobType
-              ? `${t(
-                  state.jobType === "Hair Tryon"
-                    ? "hairTryon"
-                    : state.jobType === "Generate Post"
-                    ? "generatePost"
-                    : state.jobType === "Generate Collage"
-                    ? "generateCollage"
-                    : "generateReel",
-                )} - ${t("aiIsProcessing")}`
-              : t("aiIsProcessing")}
-          </Text>
-          <Text style={styles.estTime}>
-            {t("pleaseWaitForMinutes", {
-              count: state.estimatedMinutes,
-            })}
-          </Text>
-          <Text style={styles.notifyText}>
-            {t("whenDoneYouWillGetNotification")}
-          </Text>
+            <View style={styles.iconHalo} />
 
-          {state.imageUri && (
-            <View style={styles.imageWrap}>
-              <Image source={{ uri: state.imageUri }} style={styles.image} />
-            </View>
-          )}
-
-          <View style={styles.barBg}>
             <View
               style={[
-                styles.barFill,
-                state.progress >= 100 && styles.barFillComplete,
+                styles.confettiDot,
                 {
-                  width: `${Math.min(state.progress, 100)}%`,
+                  width: moderateWidthScale(7),
+                  height: moderateWidthScale(7),
+                  backgroundColor: theme.primary,
+                  top: moderateHeightScale(18),
+                  left: moderateWidthScale(18),
                 },
               ]}
             />
+            <View
+              style={[
+                styles.confettiDot,
+                {
+                  width: moderateWidthScale(5),
+                  height: moderateWidthScale(5),
+                  backgroundColor: theme.link,
+                  top: moderateHeightScale(28),
+                  right: moderateWidthScale(22),
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiDot,
+                {
+                  width: moderateWidthScale(6),
+                  height: moderateWidthScale(6),
+                  backgroundColor: theme.green,
+                  bottom: moderateHeightScale(22),
+                  left: moderateWidthScale(22),
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiTriangle,
+                {
+                  borderBottomColor: theme.primary,
+                  top: moderateHeightScale(22),
+                  right: moderateWidthScale(14),
+                  transform: [{ rotate: "25deg" }],
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiTriangle,
+                {
+                  borderBottomColor: theme.link,
+                  bottom: moderateHeightScale(28),
+                  right: moderateWidthScale(20),
+                  transform: [{ rotate: "-30deg" }],
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiBar,
+                {
+                  width: moderateWidthScale(8),
+                  height: moderateHeightScale(3),
+                  backgroundColor: theme.orangeBrown,
+                  top: moderateHeightScale(40),
+                  left: moderateWidthScale(10),
+                  transform: [{ rotate: "-40deg" }],
+                },
+              ]}
+            />
+            <View
+              style={[
+                styles.confettiBar,
+                {
+                  width: moderateWidthScale(7),
+                  height: moderateHeightScale(3),
+                  backgroundColor: theme.green,
+                  bottom: moderateHeightScale(18),
+                  right: moderateWidthScale(12),
+                  transform: [{ rotate: "50deg" }],
+                },
+              ]}
+            />
+
+            <View style={styles.iconCircle}>
+              <Feather name="check" size={iconScale(32)} color={theme.white} />
+            </View>
           </View>
 
-          {state.progress >= 100 && (
-            <TouchableOpacity onPress={onSeeStatus} activeOpacity={0.7}>
-              <Text style={styles.viewResultText}>{t("viewResult")}</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={styles.title}>{t("aiRequestSubmittedTitle")}</Text>
 
-          <View style={styles.bottomCol}>
+          <Text style={styles.subtitle}>
+            {t(jobTypeTitleKey(state.jobType))}
+          </Text>
+
+          <Text style={styles.message}>
+            {t("aiRequestSubmittedMessage")}
+          </Text>
+
+          <View style={styles.buttonContainer}>
             <TouchableOpacity
-              style={styles.btnSecondary}
-              onPress={() => {
-                state.progress >= 100
-                  ? onClose()
-                  : Alert.alert(t("close"), t("closeAiProcessAlertMessage"), [
-                      { text: t("cancel"), onPress: () => {} },
-                      { text: t("ok"), onPress: onClose },
-                    ]);
-              }}
+              style={styles.primaryButton}
+              onPress={onClose}
               activeOpacity={0.7}
+              accessibilityRole="button"
             >
-              <Text style={styles.btnTextSecondary}>{t("close")}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.btnPrimary}
-              onPress={() => {
-                onClose();
-                router.push({
-                  pathname: "/aiRequests",
-                  params: { fromProcessingModal: "1" },
-                });
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.btnTextPrimary}>
-                {t("goToAiRequestsList")}
-              </Text>
+              <Text style={styles.primaryButtonText}>{t("ok")}</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </Pressable>
       </View>
     </Modal>
   );
