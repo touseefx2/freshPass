@@ -13,10 +13,11 @@ This guide covers everything needed to set up, configure, and run the project lo
 3. [Environment Variables](#environment-variables)
 4. [Running the App](#running-the-app)
 5. [Native Builds (iOS / Android)](#native-builds-ios--android)
-6. [EAS Cloud Builds](#eas-cloud-builds)
-7. [Project Structure](#project-structure)
-8. [Troubleshooting](#troubleshooting)
-9. [Additional Documentation](#additional-documentation)
+6. [Version Sync & Local Releases](#version-sync--local-releases)
+7. [EAS Cloud Builds](#eas-cloud-builds)
+8. [Project Structure](#project-structure)
+9. [Troubleshooting](#troubleshooting)
+10. [Additional Documentation](#additional-documentation)
 
 ---
 
@@ -267,6 +268,63 @@ The file `google-services.json` is included in the repo for Android Firebase set
 
 ---
 
+## Version Sync & Local Releases
+
+**Source of truth is `app.json`.** Update versions there yourself — scripts do **not** auto-increment.
+
+```json
+{
+  "expo": {
+    "version": "1.0.8",
+    "ios": {
+      "buildNumber": "82"
+    },
+    "android": {
+      "versionCode": 20
+    }
+  }
+}
+```
+
+| `app.json` field | Native target |
+|------------------|---------------|
+| `version` | iOS `CFBundleShortVersionString` / Android `versionName` |
+| `ios.buildNumber` | iOS `CFBundleVersion` (Info.plist) |
+| `android.versionCode` | Android `versionCode` (`build.gradle`) |
+
+### Sync only (no release build)
+
+```bash
+# app.json → ios/FreshPass/Info.plist
+# If ios/ is missing → expo prebuild --clean --platform ios
+npm run ios:sync
+
+# app.json → android/app/build.gradle
+# If android/ is missing → expo prebuild --clean --platform android
+npm run android:sync
+```
+
+### Local Android release (APK / AAB)
+
+Requires `credentials/` keystore setup — see [credentials/README.md](./credentials/README.md).
+
+```bash
+# Syncs version from app.json, then builds signed APK
+npm run android:release:apk
+
+# Syncs version from app.json, then builds signed AAB (Play Store)
+npm run android:release:aab
+```
+
+Release scripts:
+1. Read `version` + `versionCode` from `app.json` (no auto-bump)
+2. Create `android/` via prebuild if missing
+3. Sync values into `build.gradle`
+4. Apply release signing from `credentials/`
+5. Run Gradle `assembleRelease` / `bundleRelease`
+
+---
+
 ## EAS Cloud Builds
 
 For distributing builds to testers or submitting to app stores, use [EAS Build](https://docs.expo.dev/build/introduction/).
@@ -325,9 +383,13 @@ freshPass/
 │   ├── types/              # TypeScript type definitions
 │   └── utils/              # Utility functions
 ├── assets/                 # Images, fonts, animations
+├── scripts/
+│   ├── android-version.js      # Sync app.json → build.gradle
+│   ├── android-release.js      # Local signed APK/AAB
+│   └── ios-version.js          # Sync app.json → Info.plist
 ├── docs/                   # Additional technical documentation
 ├── plugins/                # Expo config plugins
-├── app.json                # Expo app configuration
+├── app.json                # Expo app configuration (version source of truth)
 ├── app.config.js           # Dynamic Expo config (Facebook SDK, etc.)
 ├── eas.json                # EAS build profiles
 ├── .env.example            # Environment variable template
@@ -416,6 +478,7 @@ yarn install
 
 | Document | Description |
 |----------|-------------|
+| [credentials/README.md](./credentials/README.md) | Local Android/iOS release builds & signing |
 | [docs/IAP_IMPLEMENTATION_GUIDE.md](./docs/IAP_IMPLEMENTATION_GUIDE.md) | iOS In-App Purchase setup |
 | [docs/IAP_BACKEND_API_SPEC.md](./docs/IAP_BACKEND_API_SPEC.md) | IAP backend API contract |
 | [docs/IAP_BACKEND_IMPLEMENTATION_GUIDE.md](./docs/IAP_BACKEND_IMPLEMENTATION_GUIDE.md) | Backend IAP implementation |

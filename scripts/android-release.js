@@ -2,11 +2,10 @@
 /**
  * Local Android release build (APK or AAB).
  *
- * - Keeps expo.version from app.json as-is (manual only)
- * - Auto-bumps android.versionCode in app.json on every APK/AAB
- * - Ensures android/ exists (prebuild if needed)
- * - Re-applies release signing from credentials/
+ * - Reads expo.version + android.versionCode from app.json (no auto-bump)
  * - Syncs versionName / versionCode into build.gradle
+ * - If android/ missing → expo prebuild --clean --platform android
+ * - Re-applies release signing from credentials/
  * - Runs assembleRelease or bundleRelease
  *
  * Usage:
@@ -66,25 +65,20 @@ function fail(message) {
   process.exit(1);
 }
 
-function bumpVersionCodeOnly() {
-  const raw = fs.readFileSync(APP_JSON_PATH, "utf8");
-  const appJson = JSON.parse(raw);
+function readVersionsFromAppJson() {
+  const appJson = JSON.parse(fs.readFileSync(APP_JSON_PATH, "utf8"));
   const expo = appJson.expo;
+  if (!expo) fail("app.json missing expo key");
 
-  if (!expo.android) expo.android = {};
+  const versionName = expo.version;
+  const versionCode = expo.android && expo.android.versionCode;
 
-  const versionName = expo.version || "1.0.0";
-  const prevCode = Number(expo.android.versionCode) || 0;
-  const nextCode = prevCode + 1;
+  if (!versionName) fail("app.json missing expo.version");
+  if (versionCode == null) fail("app.json missing expo.android.versionCode");
 
-  expo.android.versionCode = nextCode;
+  console.log(`📦 app.json  version=${versionName}  versionCode=${versionCode}`);
 
-  fs.writeFileSync(APP_JSON_PATH, JSON.stringify(appJson, null, 2) + "\n");
-
-  console.log(`📦 Version: ${versionName} (from app.json, unchanged)`);
-  console.log(`🔢 versionCode: ${prevCode} → ${nextCode}`);
-
-  return { versionName, versionCode: nextCode };
+  return { versionName: String(versionName), versionCode: Number(versionCode) };
 }
 
 function ensureCredentials() {
@@ -99,10 +93,12 @@ function ensureCredentials() {
 function ensureAndroidProject() {
   if (fs.existsSync(BUILD_GRADLE_PATH)) return;
 
-  console.log("📱 android/ missing — running expo prebuild...");
+  console.log(
+    "📁 android/ not found — running expo prebuild --clean (android)…"
+  );
   const result = spawnSync(
     "npx",
-    ["expo", "prebuild", "--platform", "android", "--no-install"],
+    ["expo", "prebuild", "--clean", "--platform", "android"],
     { cwd: ROOT, stdio: "inherit", shell: true }
   );
   if (result.status !== 0) fail("expo prebuild failed");
@@ -205,10 +201,10 @@ function main() {
   console.log(`\n🚀 Android release (${target.toUpperCase()})\n`);
 
   ensureCredentials();
-  const { versionName, versionCode } = bumpVersionCodeOnly();
+  const { versionName, versionCode } = readVersionsFromAppJson();
   ensureAndroidProject();
-  applyReleaseSigning();
   syncVersionsToGradle(versionName, versionCode);
+  applyReleaseSigning();
   runGradle(target);
 }
 

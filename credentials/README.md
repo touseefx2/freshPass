@@ -89,10 +89,20 @@ Source of truth is **`app.json`** (not `android/app/build.gradle`):
 }
 ```
 
-- **`version`** → shown as `versionName` on Android (you update manually when marketing version changes, e.g. `1.0.8` → `1.0.9`).
-- **`android.versionCode`** → integer Play Store requires; **auto +1** on every local release APK/AAB build.
+- **`version`** → shown as `versionName` on Android (update manually when marketing version changes, e.g. `1.0.8` → `1.0.9`).
+- **`android.versionCode`** → integer Play Store requires; **update manually** in `app.json` (scripts do **not** auto-increment).
 
 After `expo prebuild`, Gradle is regenerated from `app.json`, so the previous `versionCode` is **not lost** as long as it lives in `app.json`.
+
+### Sync helpers
+
+```bash
+# app.json → android/app/build.gradle (prebuild only if android/ missing)
+npm run android:sync
+
+# app.json → ios/FreshPass/Info.plist (prebuild only if ios/ missing)
+npm run ios:sync
+```
 
 ---
 
@@ -110,12 +120,11 @@ npm run android:release:aab
 
 ### What the script does automatically
 
-1. Bumps `android.versionCode` by **1** in `app.json`
-2. Leaves `expo.version` as you set it (does **not** auto-bump `1.0.8`)
-3. Ensures `android/` exists (runs prebuild if needed)
+1. Reads `expo.version` + `android.versionCode` from `app.json` (**no auto-bump**)
+2. Ensures `android/` exists (runs `expo prebuild --clean --platform android` if missing)
+3. Syncs `version` + `versionCode` into `android/app/build.gradle`
 4. Applies release signing from this `credentials/` folder
-5. Syncs `version` + `versionCode` into `android/app/build.gradle`
-6. Runs Gradle `assembleRelease` (APK) or `bundleRelease` (AAB)
+5. Runs Gradle `assembleRelease` (APK) or `bundleRelease` (AAB)
 
 ### Output paths
 
@@ -126,8 +135,8 @@ npm run android:release:aab
 
 ### Play Store upload (AAB)
 
-1. Set `"version"` in `app.json` if you want a new marketing version.
-2. Run `npm run android:release:aab` (versionCode increments automatically).
+1. Set `"version"` and `"android.versionCode"` in `app.json` (versionCode must be **higher** than last Play upload).
+2. Run `npm run android:release:aab` (uses values from `app.json` as-is).
 3. Upload the `.aab` in Google Play Console.
 4. Must be signed with the **same** upload keystore Expo/Play already uses (this folder).
 
@@ -257,18 +266,19 @@ Source of truth:
 | `"version"` | Marketing Version |
 | `"ios.buildNumber"` | Build (`CFBundleVersion`) |
 
-- Har TestFlight / App Store upload pe **build number badhao** (55, 56, …).  
+- Har TestFlight / App Store upload pe **build number badhao** (55, 56, …) — khud `app.json` mein.  
 - Marketing `version` tab badhao jab app store version change karni ho.  
-- Xcode mein Archive se pehle dono values `app.json` se match karke manually set/verify karo (local pe Expo `autoIncrement` nahi chalega).
+- Sync: `npm run ios:sync` → `app.json` values `Info.plist` mein likh deta hai (agar `ios/` nahi hai to prebuild).  
+- Xcode Archive se pehle version/build verify karo.
 
 ### Xcode Archive steps (manual release)
 
-1. `ios/` maujood ho (warna `npx expo prebuild --platform ios` + `cd ios && pod install`)  
+1. `ios/` maujood ho (warna `npm run ios:sync` ya `npx expo prebuild --platform ios` + `cd ios && pod install`)  
 2. Open **`ios/FreshPass.xcworkspace`** (`.xcodeproj` nahi)  
 3. Scheme: **FreshPass** (alag “Release” scheme banane ki zaroorat nahi)  
 4. Destination: **Any iOS Device (arm64)** — simulator pe Archive / TestFlight nahi  
 5. Signing: **Automatically manage signing** ON + Team = Expo wala same team  
-6. Version + Build number check (`app.json` se)  
+6. Version + Build number check (`app.json` se / `npm run ios:sync` ke baad)  
 7. **Product → Archive**  
 8. Organizer → Distribute App → App Store Connect / TestFlight  
 
@@ -295,7 +305,7 @@ Mac pe build hoti hai; Apple credentials Expo login / local setup se aa sakti ha
 - [ ] Bundle ID = `com.freshpass`  
 - [ ] Automatically manage signing ON  
 - [ ] Destination = Any iOS Device (not simulator) before Archive  
-- [ ] `version` + `ios.buildNumber` updated / higher than last TestFlight upload  
+- [ ] `version` + `ios.buildNumber` updated / higher than last TestFlight upload (`npm run ios:sync`)  
 - [ ] Push / Associated Domains / Sign in with Apple capabilities OK  
 - [ ] Archive → Distribute → App Store Connect  
 
@@ -303,8 +313,10 @@ Mac pe build hoti hai; Apple credentials Expo login / local setup se aa sakti ha
 
 ## Related files
 
+- `scripts/android-version.js` — sync `app.json` → `build.gradle` (`npm run android:sync`)  
 - `scripts/android-release.js` — local Android release script  
+- `scripts/ios-version.js` — sync `app.json` → Info.plist (`npm run ios:sync`)  
 - `plugins/withAndroidReleaseSigning.js` — Android prebuild signing (skipped on EAS)  
 - `app.json` — `version`, `android.versionCode`, `ios.buildNumber`  
-- `package.json` — `android:release:apk` / `android:release:aab` scripts  
+- `package.json` — `android:sync`, `ios:sync`, `android:release:apk` / `android:release:aab`  
 - `ios/FreshPass.xcworkspace` — open this in Xcode for manual iOS Archive  

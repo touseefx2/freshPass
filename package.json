@@ -10,6 +10,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "postinstall": "patch-package",
+    "android:sync": "node scripts/android-version.js",
     "android:release:apk": "node scripts/android-release.js apk",
     "android:release:aab": "node scripts/android-release.js aab",
     "ios:sync": "node scripts/ios-version.js"
