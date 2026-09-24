@@ -11,7 +11,8 @@
     "lint": "expo lint",
     "postinstall": "patch-package",
     "android:release:apk": "node scripts/android-release.js apk",
-    "android:release:aab": "node scripts/android-release.js aab"
+    "android:release:aab": "node scripts/android-release.js aab",
+    "ios:sync": "node scripts/ios-version.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "^6.1.2",
