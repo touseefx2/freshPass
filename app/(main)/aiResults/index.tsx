@@ -26,7 +26,6 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
-import Button from "@/src/components/button";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { importVideoFromAi } from "@/src/services/mediaLibraryService";
@@ -1467,8 +1466,40 @@ export default function AiResults() {
                       size={moderateWidthScale(16)}
                       color={theme.white}
                     />
-                    <Text style={styles.downloadButtonPrimaryText}>
-                      {t("download")} {t("video")}
+                    <Text
+                      style={styles.downloadButtonPrimaryText}
+                      numberOfLines={1}
+                    >
+                      {t("download")}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.publishReelChip}
+                onPress={handlePublishAsReel}
+                disabled={publishingAsReel}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t("publishAsReel")}
+              >
+                {publishingAsReel ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.buttonBack}
+                  />
+                ) : (
+                  <>
+                    <MaterialIcons
+                      name="video-library"
+                      size={moderateWidthScale(16)}
+                      color={theme.buttonBack}
+                    />
+                    <Text
+                      style={styles.publishReelChipText}
+                      numberOfLines={1}
+                    >
+                      {t("publishReel")}
                     </Text>
                   </>
                 )}
@@ -1487,21 +1518,6 @@ export default function AiResults() {
                 />
               </TouchableOpacity>
             </View>
-            <Button
-              title={t("publishAsReel")}
-              onPress={handlePublishAsReel}
-              loading={publishingAsReel}
-              disabled={publishingAsReel}
-              leftIcon={
-                publishingAsReel ? undefined : (
-                  <MaterialIcons
-                    name="video-library"
-                    size={moderateWidthScale(18)}
-                    color={theme.buttonText}
-                  />
-                )
-              }
-            />
           </View>
         )}
 
