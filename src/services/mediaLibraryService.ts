@@ -2,6 +2,7 @@ import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { mediaEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
+import { prepareVideoForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   MediaDeleteResponse,
   MediaItemResponse,
@@ -207,13 +208,18 @@ export function uploadVideo(
         return;
       }
 
-      const mimeType = guessMimeType(params.uri, params.mimeType);
+      // Mild client-side compress before upload (reels / camera / gallery)
+      const prepared = await prepareVideoForUpload(params.uri, {
+        fileName: params.fileName,
+        mimeType: params.mimeType,
+      });
+      const mimeType = prepared.type || guessMimeType(prepared.uri, params.mimeType);
       const fileName =
-        params.fileName || guessFileName(params.uri, mimeType);
+        prepared.name || params.fileName || guessFileName(prepared.uri, mimeType);
 
       const formData = new FormData();
       formData.append("video", {
-        uri: params.uri,
+        uri: prepared.uri,
         type: mimeType,
         name: fileName,
       } as any);

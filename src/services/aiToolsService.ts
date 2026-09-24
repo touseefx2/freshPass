@@ -13,6 +13,7 @@ import Logger from "./logger";
 import {
   prepareImageForUpload,
   prepareImagesForUpload,
+  prepareVideoForUpload,
 } from "@/src/utils/prepareImageForUpload";
 
 // Get AI Tool base URL and token from environment
@@ -586,23 +587,17 @@ export class AiToolsService {
 
     formData.append("user_id", userId.toString());
 
-    // Add media_files (images JPEG-converted for iPhone HEIC; videos unchanged)
+    // Images JPEG-converted; videos mildly compressed before upload
     for (let index = 0; index < mediaFiles.length; index++) {
       const media = mediaFiles[index];
       if (media.type === "video") {
-        const fileExtension = media.uri.split(".").pop()?.toLowerCase() || "mp4";
-        const fileName = `reel_video_${index}.${fileExtension}`;
-        const mimeType =
-          fileExtension === "mp4"
-            ? "video/mp4"
-            : fileExtension === "mov"
-              ? "video/quicktime"
-              : "video/mp4";
-
+        const prepared = await prepareVideoForUpload(media.uri, {
+          fileName: `reel_video_${index}.mp4`,
+        });
         formData.append("media_files", {
-          uri: media.uri,
-          type: mimeType,
-          name: fileName,
+          uri: prepared.uri,
+          type: prepared.type,
+          name: prepared.name,
         } as any);
       } else {
         const prepared = await prepareImageForUpload(

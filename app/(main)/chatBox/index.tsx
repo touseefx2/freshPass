@@ -50,6 +50,7 @@ import { useDispatch } from "react-redux";
 import { ApiService } from "@/src/services/api";
 import {
   prepareImageForUpload,
+  prepareVideoForUpload,
   isLikelyVideoUri,
 } from "@/src/utils/prepareImageForUpload";
 import {
@@ -2312,11 +2313,11 @@ export default function ChatBoxScreen() {
       ) {
         const uri = localUris[i];
         if (isLikelyVideoUri(uri)) {
-          const { mimeType, name } = getMimeAndName(uri);
+          const prepared = await prepareVideoForUpload(uri);
           formData.append("attachments[]", {
-            uri,
-            type: mimeType,
-            name,
+            uri: prepared.uri,
+            type: prepared.type,
+            name: prepared.name,
           } as any);
         } else {
           const prepared = await prepareImageForUpload(uri, `chat_image_${i}`);
