@@ -28,6 +28,7 @@ module.exports = {
       ...appJson.expo.plugins,
       "./plugins/withIosModularHeaders",
       "./plugins/withAndroidReleaseSigning",
+      "./plugins/withAndroidAllowBackupReplace",
       ...(facebookPlugin ? [facebookPlugin] : []),
     ],
   },

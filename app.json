@@ -21,6 +21,8 @@
         "googleMapsApiKey": "AIzaSyB7LtqIwza7DsCRvXvh43CTH1yzQoWvVRg"
       },
       "infoPlist": {
+        "CFBundleDisplayName": "FreshPass",
+        "LSApplicationCategoryType": "public.app-category.business",
         "ITSAppUsesNonExemptEncryption": false,
         "UIViewControllerBasedStatusBarAppearance": false,
         "UISupportedInterfaceOrientations": [
