@@ -1013,7 +1013,15 @@ export default function Tools() {
     </View>
   );
 
-  const renderReelContent = () => (
+  const renderReelContent = () => {
+    const reelImages = reelMedia
+      .map((media, index) => ({ media, index }))
+      .filter(({ media }) => media.type === "image");
+    const reelVideos = reelMedia
+      .map((media, index) => ({ media, index }))
+      .filter(({ media }) => media.type === "video");
+
+    return (
     <>
       <View style={styles.fieldContainer}>
         <View style={styles.labelRow}>
@@ -1056,19 +1064,56 @@ export default function Tools() {
             color={theme.lightGreen}
           />
         </TouchableOpacity>
-        {reelMedia.length > 0 && (
-          <View style={styles.mediaGrid}>
-            {reelMedia.map((media, index) => (
-              <ReelMediaTile
-                key={media.id}
-                media={media}
-                index={index}
-                width={reelTileWidth}
-                onPress={handleReelMediaPress}
-                onRemove={handleDeleteImage}
-                onThumbnailReady={handleReelThumbnailReady}
+        {reelImages.length > 0 && (
+          <View style={styles.mediaSection}>
+            <View style={styles.mediaSectionHeader}>
+              <MaterialIcons
+                name="photo-library"
+                size={moderateWidthScale(16)}
+                color={theme.darkGreen}
               />
-            ))}
+              <Text style={styles.mediaSectionTitle}>{t("photos")}</Text>
+              <Text style={styles.mediaSectionCount}>{reelImages.length}</Text>
+            </View>
+            <View style={styles.mediaGrid}>
+              {reelImages.map(({ media, index }) => (
+                <ReelMediaTile
+                  key={media.id}
+                  media={media}
+                  index={index}
+                  width={reelTileWidth}
+                  onPress={handleReelMediaPress}
+                  onRemove={handleDeleteImage}
+                  onThumbnailReady={handleReelThumbnailReady}
+                />
+              ))}
+            </View>
+          </View>
+        )}
+        {reelVideos.length > 0 && (
+          <View style={styles.mediaSection}>
+            <View style={styles.mediaSectionHeader}>
+              <MaterialIcons
+                name="videocam"
+                size={moderateWidthScale(16)}
+                color={theme.darkGreen}
+              />
+              <Text style={styles.mediaSectionTitle}>{t("videos")}</Text>
+              <Text style={styles.mediaSectionCount}>{reelVideos.length}</Text>
+            </View>
+            <View style={styles.mediaGrid}>
+              {reelVideos.map(({ media, index }) => (
+                <ReelMediaTile
+                  key={media.id}
+                  media={media}
+                  index={index}
+                  width={reelTileWidth}
+                  onPress={handleReelMediaPress}
+                  onRemove={handleDeleteImage}
+                  onThumbnailReady={handleReelThumbnailReady}
+                />
+              ))}
+            </View>
           </View>
         )}
         {reelMedia.length > 0 && (
@@ -1150,7 +1195,8 @@ export default function Tools() {
         )}
       </View>
     </>
-  );
+    );
+  };
 
   const renderHairTryonContent = () => {
     const isProcessing = hairTryonSelectedType === "processing";

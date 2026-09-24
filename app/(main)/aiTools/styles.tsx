@@ -89,7 +89,31 @@ export const createStyles = (theme: Theme) =>
       flexDirection: "row",
       flexWrap: "wrap",
       gap: moderateWidthScale(10),
-      marginTop: moderateHeightScale(14),
+      marginTop: moderateHeightScale(10),
+    },
+    mediaSection: {
+      marginTop: moderateHeightScale(16),
+    },
+    mediaSectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    mediaSectionTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      flex: 1,
+    },
+    mediaSectionCount: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      backgroundColor: theme.lightGreen015,
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(10),
+      overflow: "hidden",
     },
     mediaItem: {
       position: "relative",
