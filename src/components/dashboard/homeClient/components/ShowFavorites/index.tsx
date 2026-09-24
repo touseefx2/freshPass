@@ -5,6 +5,8 @@ import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -13,7 +15,10 @@ import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { heightScale, widthScale } from "@/src/theme/dimensions";
 import { StarIconSmall } from "@/assets/icons";
+import RetryButton from "@/src/components/retryButton";
 import { createStyles } from "./styles";
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export interface FavoriteBusiness {
   id: number;
@@ -29,14 +34,41 @@ export interface FavoriteBusiness {
 
 interface ShowFavoritesProps {
   favorites: FavoriteBusiness[];
+  loading?: boolean;
+  error?: boolean;
+  onRetry?: () => void;
 }
 
-export default function ShowFavorites({ favorites }: ShowFavoritesProps) {
+export default function ShowFavorites({
+  favorites,
+  loading = false,
+  error = false,
+  onRetry,
+}: ShowFavoritesProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
+
+  if (loading && favorites.length === 0) {
+    return (
+      <View style={[styles.loadingContainer, { width: SCREEN_WIDTH }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
+    );
+  }
+
+  if (error && favorites.length === 0) {
+    return (
+      <View style={[styles.errorContainer, { width: SCREEN_WIDTH }]}>
+        <Text style={styles.errorText}>{t("failedToLoadFollowing")}</Text>
+        {onRetry ? (
+          <RetryButton onPress={onRetry} loading={loading} />
+        ) : null}
+      </View>
+    );
+  }
 
   if (favorites.length === 0) {
     return null;

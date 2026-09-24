@@ -99,4 +99,22 @@ export const createStyles = (theme: Theme) =>
       color: theme.orangeBrown,
       includeFontPadding: false,
     },
+    loadingContainer: {
+      paddingVertical: moderateHeightScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    errorContainer: {
+      paddingVertical: moderateHeightScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    errorText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
   });

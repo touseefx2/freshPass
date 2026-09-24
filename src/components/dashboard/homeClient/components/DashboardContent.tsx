@@ -29,9 +29,13 @@ import {
 import SearchBar from "./SearchBar";
 import CategorySection from "./CategorySection";
 import ShowBusiness from "./ShowBusiness";
+import ShowFavorites, {
+  FavoriteBusiness,
+} from "./ShowFavorites";
 import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
 import HomeReelsSection from "@/src/components/homeReelsSection";
+import { fetchFollowing } from "@/src/services/followService";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const createStyles = (theme: Theme) =>
@@ -224,6 +228,12 @@ const createStyles = (theme: Theme) =>
       color: theme.orangeBrown,
       textDecorationLine: "underline",
       textDecorationColor: theme.orangeBrown,
+    },
+    favoriteSectionTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      flexShrink: 1,
     },
     serviceCard: {
       backgroundColor: theme.white,
@@ -538,6 +548,11 @@ export default function DashboardContent() {
   >([]);
   const [dealsLoading, setDealsLoading] = useState(false);
   const [dealsError, setDealsError] = useState(false);
+  const [favoriteBusinesses, setFavoriteBusinesses] = useState<
+    FavoriteBusiness[]
+  >([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const [favoritesError, setFavoritesError] = useState(false);
   const [appointments, setAppointments] = useState<AppointmentCard[]>([]);
   const isCategoryScrollingRef = useRef(false);
   const [proTipLoading, setProTipLoading] = useState(false);
@@ -621,6 +636,34 @@ export default function DashboardContent() {
   }) => {
     const name = item.owner?.name || item.owner_name || null;
     return typeof name === "string" && name.trim() ? name.trim() : null;
+  };
+
+  const fetchFavoriteBusinesses = async () => {
+    try {
+      setFavoritesLoading(true);
+      setFavoritesError(false);
+      const { businesses } = await fetchFollowing({ page: 1, per_page: 15 });
+      const mappedFavorites: FavoriteBusiness[] = (businesses ?? []).map(
+        (item: any) => ({
+          id: item.id,
+          businessName: item.title ?? "",
+          address: item.address || item.street_address || item.city || "",
+          rating: item.average_rating || 0,
+          reviewCount: item.ratings_count || 0,
+          image: buildBusinessImageUrl(item),
+          categoryName: item.category?.name ?? null,
+          ownerName: getOwnerName(item),
+          isOfficial: Boolean(item.is_official),
+        }),
+      );
+      setFavoriteBusinesses(mappedFavorites);
+    } catch (error) {
+      if (isRequestCanceled(error)) return;
+      Logger.error("Failed to fetch favorite businesses:", error);
+      setFavoritesError(true);
+    } finally {
+      setFavoritesLoading(false);
+    }
   };
 
   const fetchBusinessesDeals = async () => {
@@ -947,6 +990,11 @@ export default function DashboardContent() {
     useCallback(() => {
       if (userRole === "customer") {
         fetchAppointments();
+        fetchFavoriteBusinesses();
+      } else {
+        setFavoriteBusinesses([]);
+        setFavoritesError(false);
+        setFavoritesLoading(false);
       }
       if (isCusotmerandGuest) {
         fetchCategories();
@@ -997,7 +1045,36 @@ export default function DashboardContent() {
         </View>
       )}
 
-      {(verifiedSalonsDeals.length > 0 || dealsLoading) && (
+      {userRole === "customer" &&
+        (favoriteBusinesses.length > 0 ||
+          favoritesLoading ||
+          favoritesError) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.favoriteSectionTitle}>
+                {t("favoriteBusinesses")}
+              </Text>
+              {favoriteBusinesses.length > 3 && (
+                <Text
+                  style={styles.sectionViewMore}
+                  onPress={() =>
+                    router.push("/(main)/dashboard/(home)/favourite" as any)
+                  }
+                >
+                  {t("seeAll")}
+                </Text>
+              )}
+            </View>
+            <ShowFavorites
+              favorites={favoriteBusinesses}
+              loading={favoritesLoading}
+              error={favoritesError}
+              onRetry={fetchFavoriteBusinesses}
+            />
+          </View>
+        )}
+
+      {(verifiedSalonsDeals.length > 0 || dealsLoading || dealsError) && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("freshPassDeals")}</Text>
           <ShowBusiness

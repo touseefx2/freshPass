@@ -24,6 +24,7 @@ import Logger from "@/src/services/logger";
 import { fetchReelCategories } from "@/src/services/reelsService";
 import type { ReelCategoryCard } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import RetryButton from "@/src/components/retryButton";
 
 function formatViews(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -100,6 +101,19 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(24),
       alignItems: "center",
     },
+    errorContainer: {
+      paddingVertical: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(12),
+    },
+    errorText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
   });
 
 export default function HomeReelsSection() {
@@ -110,6 +124,7 @@ export default function HomeReelsSection() {
   const router = useRouter();
   const [cards, setCards] = useState<ReelCategoryCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const cardsRef = useRef(cards);
   cardsRef.current = cards;
 
@@ -118,12 +133,17 @@ export default function HomeReelsSection() {
     if (cardsRef.current.length === 0) {
       setLoading(true);
     }
+    setError(false);
     try {
       const data = await fetchReelCategories();
       setCards(data);
-    } catch (error) {
-      Logger.error("Failed to load reel categories:", error);
-      setCards([]);
+      setError(false);
+    } catch (err) {
+      Logger.error("Failed to load reel categories:", err);
+      if (cardsRef.current.length <= 0) {
+        setError(true);
+        setCards([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -150,7 +170,7 @@ export default function HomeReelsSection() {
     [router],
   );
 
-  if (!loading && cards.length === 0) {
+  if (!loading && !error && cards.length === 0) {
     return null;
   }
 
@@ -160,9 +180,14 @@ export default function HomeReelsSection() {
         <Text style={styles.title}>{t("freshPassReels")}</Text>
       </View>
 
-      {loading ? (
+      {loading && cards.length === 0 ? (
         <View style={styles.loader}>
           <ActivityIndicator size="small" color={theme.darkGreen} />
+        </View>
+      ) : error && cards.length === 0 ? (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{t("failedToLoadReels")}</Text>
+          <RetryButton onPress={load} loading={loading} />
         </View>
       ) : (
         <ScrollView
@@ -227,7 +252,10 @@ export default function HomeReelsSection() {
                     marginTop: moderateHeightScale(2),
                   }}
                 >
-                  <Text style={[styles.meta, { marginTop: 0, flexShrink: 1 }]} numberOfLines={1}>
+                  <Text
+                    style={[styles.meta, { marginTop: 0, flexShrink: 1 }]}
+                    numberOfLines={1}
+                  >
                     {card.cover_reel?.business?.title ||
                       card.cover_reel?.caption ||
                       ""}
