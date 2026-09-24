@@ -4,6 +4,9 @@
  */
 import type { ChatContactItem } from "@/src/state/slices/generalSlice";
 import { ApiService } from "./api";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 export const CHAT_CONTACTS_URL = "/api/chat/contacts";
 
@@ -40,7 +43,7 @@ export type ContactsResponse = {
 
 function getAvatarUrl(avatar: string | null): string {
   if (!avatar || avatar.trim() === "") {
-    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+    return getDefaultAvatarImage();
   }
   const trimmed = avatar.trim();
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
@@ -50,7 +53,7 @@ function getAvatarUrl(avatar: string | null): string {
   const path = trimmed.replace(/^\//, "");
   return path
     ? `${base}/${path}`
-    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+    : (getDefaultAvatarImage());
 }
 
 function formatTimeLabel(isoString: string | null): string {

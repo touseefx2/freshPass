@@ -42,6 +42,9 @@ import type {
   StaffWorkImage,
   StaffWorkImagePage,
 } from "@/src/types/staffWorkImages";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 type ActionIconType = "message" | "call" | "email";
 
@@ -1112,7 +1115,7 @@ export default function StaffDetail() {
           id: String(data.user.id),
           name: data.name ?? "",
           image:
-            staffImage || (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? ""),
+            staffImage || (getDefaultAvatarImage()),
         }),
       },
     });
@@ -1204,7 +1207,7 @@ export default function StaffDetail() {
       ? data.user.profile_image_url
       : (process.env.EXPO_PUBLIC_API_BASE_URL || "") +
         data.user.profile_image_url
-    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+    : (getDefaultAvatarImage());
 
   const workingHours = data.user?.working_hours ?? [];
   const dayOrder = [

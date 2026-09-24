@@ -50,6 +50,9 @@ import * as Location from "expo-location";
 import { tryGetPosition } from "@/src/constant/functions";
 import { handleLocationPermission } from "@/src/services/locationPermissionService";
 import { setLocation } from "@/src/state/slices/userSlice";
+import {
+  getDefaultBusinessImage,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -367,7 +370,7 @@ export default function ExploreScreen() {
       if (response.success && response.data) {
         // Map API response to VerifiedSalon format
         const mappedSalons: VerifiedSalon[] = response.data.map((item) => {
-          let imageUrl = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
+          let imageUrl = getDefaultBusinessImage();
 
           if (
             item.portfolio_photos &&
@@ -481,7 +484,7 @@ export default function ExploreScreen() {
 
       if (response.success && response.data) {
         const mappedSalons: VerifiedSalon[] = response.data.map((item) => {
-          let imageUrl = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
+          let imageUrl = getDefaultBusinessImage();
 
           if (
             item.portfolio_photos &&

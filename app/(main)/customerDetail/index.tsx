@@ -31,6 +31,9 @@ import { userEndpoints } from "@/src/services/endpoints";
 import { setActionLoader } from "@/src/state/slices/generalSlice";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ChatIcon } from "@/assets/icons";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -403,7 +406,7 @@ export default function CustomerDetail() {
       data.profile_image_url.startsWith("https://")
       ? data.profile_image_url
       : (process.env.EXPO_PUBLIC_API_BASE_URL || "") + data.profile_image_url
-    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+    : (getDefaultAvatarImage());
 
   const primaryRole =
     data.roles && data.roles.length > 0 ? data.roles[0].name : null;

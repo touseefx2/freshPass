@@ -77,6 +77,9 @@ import type {
   AffiliatedBusiness,
   UserAffiliationFields,
 } from "@/src/types/affiliation";
+import {
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -452,8 +455,6 @@ type BusinessesSearchResponse = {
 };
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
-const DEFAULT_BUSINESS_LOGO =
-  process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
 const BARBERSHOP_SEARCH_DEBOUNCE_MS = 400;
 
 function toBarbershopItem(
@@ -475,7 +476,7 @@ function toBarbershopItem(
 
 function getBusinessLogoUrl(logo: string | null | undefined): string {
   if (logo == null || logo.trim() === "") {
-    return DEFAULT_BUSINESS_LOGO;
+    return getDefaultBusinessLogo();
   }
   const trimmed = logo.trim();
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {

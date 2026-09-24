@@ -13,14 +13,51 @@ export const REMOTE_CONFIG_KEYS = {
   trialDays: "trial_days",
 } as const;
 
+/** Default media / tutorial URLs from Remote Config */
+export const DEFAULT_MEDIA_RC_KEYS = {
+  defaultAiRequestsImage: "default_ai_requests_image",
+  defaultAvatarImage: "default_avatar_image",
+  defaultBusinessImage: "default_business_image",
+  defaultBusinessLogo: "default_business_logo",
+  defaultCategoryImage: "default_category_image",
+  tutorialVideoTryonUri: "tutorial_video_tryon_uri",
+} as const;
+
 export type PurchaseRemoteConfig = {
   trialDays: string;
 };
+
+export type DefaultMediaRemoteConfig = {
+  defaultAiRequestsImage: string;
+  defaultAvatarImage: string;
+  defaultBusinessImage: string;
+  defaultBusinessLogo: string;
+  defaultCategoryImage: string;
+  tutorialVideoTryonUri: string;
+};
+
+/** In-app fallbacks used until Remote Config is fetched (match RC template defaults). */
+const DEFAULT_MEDIA_FALLBACKS: DefaultMediaRemoteConfig = {
+  defaultAiRequestsImage:
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyoAbiW7jy4zhRsp7k38GJcUIO8R2s1bwIxw&s",
+  defaultAvatarImage:
+    "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg",
+  defaultBusinessImage:
+    "https://content.artofmanliness.com/uploads/2011/06/Barber-Shoppe-7.jpg",
+  defaultBusinessLogo:
+    "https://cdn.vectorstock.com/i/500p/60/36/global-tech-globe-logo-vector-26746036.jpg",
+  defaultCategoryImage:
+    "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=400&fit=crop&auto=format",
+  tutorialVideoTryonUri: "https://getfreshpass.com/videos/hair-tryon.MP4",
+};
+
+const DEFAULT_MEDIA_RC_CACHE = "@freshpass/default_media_remote_config";
 
 const PURCHASE_CONFIG_MISSING_ERROR =
   "Failed to start payment. Purchase configuration is missing. Please try again later.";
 
 let purchaseConfigMemoryCache: PurchaseRemoteConfig | null = null;
+let defaultMediaMemoryCache: DefaultMediaRemoteConfig | null = null;
 
 export type RemoteConfigEntries = Record<string, { value?: string } | string>;
 
@@ -187,4 +224,164 @@ export async function prefetchPurchaseRemoteConfig(): Promise<void> {
 export async function resolveTrialDays(): Promise<string> {
   const config = await resolvePurchaseRemoteConfig();
   return config.trialDays;
+}
+
+function pickMediaUrl(value: string | undefined, fallback: string): string {
+  return value?.trim() || fallback;
+}
+
+function toDefaultMediaConfig(
+  partial: Partial<DefaultMediaRemoteConfig>,
+): DefaultMediaRemoteConfig {
+  return {
+    defaultAiRequestsImage: pickMediaUrl(
+      partial.defaultAiRequestsImage,
+      DEFAULT_MEDIA_FALLBACKS.defaultAiRequestsImage,
+    ),
+    defaultAvatarImage: pickMediaUrl(
+      partial.defaultAvatarImage,
+      DEFAULT_MEDIA_FALLBACKS.defaultAvatarImage,
+    ),
+    defaultBusinessImage: pickMediaUrl(
+      partial.defaultBusinessImage,
+      DEFAULT_MEDIA_FALLBACKS.defaultBusinessImage,
+    ),
+    defaultBusinessLogo: pickMediaUrl(
+      partial.defaultBusinessLogo,
+      DEFAULT_MEDIA_FALLBACKS.defaultBusinessLogo,
+    ),
+    defaultCategoryImage: pickMediaUrl(
+      partial.defaultCategoryImage,
+      DEFAULT_MEDIA_FALLBACKS.defaultCategoryImage,
+    ),
+    tutorialVideoTryonUri: pickMediaUrl(
+      partial.tutorialVideoTryonUri,
+      DEFAULT_MEDIA_FALLBACKS.tutorialVideoTryonUri,
+    ),
+  };
+}
+
+function parseCachedDefaultMediaConfig(
+  raw: string | null,
+): DefaultMediaRemoteConfig | null {
+  if (!raw?.trim()) return null;
+  try {
+    return toDefaultMediaConfig(
+      JSON.parse(raw) as Partial<DefaultMediaRemoteConfig>,
+    );
+  } catch {
+    return null;
+  }
+}
+
+function defaultMediaFromEntries(
+  entries: RemoteConfigEntries,
+): DefaultMediaRemoteConfig {
+  return toDefaultMediaConfig({
+    defaultAiRequestsImage: readRemoteConfigEntry(
+      entries,
+      DEFAULT_MEDIA_RC_KEYS.defaultAiRequestsImage,
+    ),
+    defaultAvatarImage: readRemoteConfigEntry(
+      entries,
+      DEFAULT_MEDIA_RC_KEYS.defaultAvatarImage,
+    ),
+    defaultBusinessImage: readRemoteConfigEntry(
+      entries,
+      DEFAULT_MEDIA_RC_KEYS.defaultBusinessImage,
+    ),
+    defaultBusinessLogo: readRemoteConfigEntry(
+      entries,
+      DEFAULT_MEDIA_RC_KEYS.defaultBusinessLogo,
+    ),
+    defaultCategoryImage: readRemoteConfigEntry(
+      entries,
+      DEFAULT_MEDIA_RC_KEYS.defaultCategoryImage,
+    ),
+    tutorialVideoTryonUri: readRemoteConfigEntry(
+      entries,
+      DEFAULT_MEDIA_RC_KEYS.tutorialVideoTryonUri,
+    ),
+  });
+}
+
+/**
+ * Default media URLs from Firebase Remote Config.
+ * Order: memory → Remote Config → AsyncStorage → in-app fallbacks.
+ */
+export async function resolveDefaultMediaRemoteConfig(options?: {
+  forceRefresh?: boolean;
+}): Promise<DefaultMediaRemoteConfig> {
+  const forceRefresh = options?.forceRefresh === true;
+
+  if (!forceRefresh && defaultMediaMemoryCache) {
+    return defaultMediaMemoryCache;
+  }
+
+  try {
+    const entries = await fetchRemoteConfigEntries();
+    const fromRemote = defaultMediaFromEntries(entries);
+    defaultMediaMemoryCache = fromRemote;
+    await AsyncStorage.setItem(
+      DEFAULT_MEDIA_RC_CACHE,
+      JSON.stringify(fromRemote),
+    );
+    Logger.log("[MediaRC] Using Remote Config default media values", fromRemote);
+    return fromRemote;
+  } catch (error) {
+    Logger.warn("[MediaRC] Remote Config fetch failed:", error);
+  }
+
+  try {
+    const cached = parseCachedDefaultMediaConfig(
+      await AsyncStorage.getItem(DEFAULT_MEDIA_RC_CACHE),
+    );
+    if (cached) {
+      defaultMediaMemoryCache = cached;
+      Logger.log("[MediaRC] Using cached default media values", cached);
+      return cached;
+    }
+  } catch {
+    // ignore cache read errors
+  }
+
+  defaultMediaMemoryCache = DEFAULT_MEDIA_FALLBACKS;
+  return DEFAULT_MEDIA_FALLBACKS;
+}
+
+/** App open: fetch default media URLs from Remote Config into memory. */
+export async function prefetchDefaultMediaRemoteConfig(): Promise<void> {
+  try {
+    await resolveDefaultMediaRemoteConfig({ forceRefresh: true });
+  } catch {
+    defaultMediaMemoryCache = DEFAULT_MEDIA_FALLBACKS;
+  }
+}
+
+function currentDefaultMedia(): DefaultMediaRemoteConfig {
+  return defaultMediaMemoryCache ?? DEFAULT_MEDIA_FALLBACKS;
+}
+
+export function getDefaultAiRequestsImage(): string {
+  return currentDefaultMedia().defaultAiRequestsImage;
+}
+
+export function getDefaultAvatarImage(): string {
+  return currentDefaultMedia().defaultAvatarImage;
+}
+
+export function getDefaultBusinessImage(): string {
+  return currentDefaultMedia().defaultBusinessImage;
+}
+
+export function getDefaultBusinessLogo(): string {
+  return currentDefaultMedia().defaultBusinessLogo;
+}
+
+export function getDefaultCategoryImage(): string {
+  return currentDefaultMedia().defaultCategoryImage;
+}
+
+export function getTutorialVideoTryonUri(): string {
+  return currentDefaultMedia().tutorialVideoTryonUri;
 }

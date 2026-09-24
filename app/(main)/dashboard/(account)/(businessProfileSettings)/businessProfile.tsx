@@ -23,6 +23,9 @@ import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import {
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -246,7 +249,7 @@ export default function BusinessProfileScreen() {
   const getLogoUri = () => {
     return (
       resolveApiImageUrl(profileData?.logo_url) ??
-      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
+      getDefaultBusinessLogo() ||
       "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
     );
   };

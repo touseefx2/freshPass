@@ -69,10 +69,48 @@
       },
       "description": "Business plan free trial length in days (UI copy + Stripe payment sheet label)",
       "valueType": "STRING"
+    },
+    "default_ai_requests_image": {
+      "defaultValue": {
+        "value": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyoAbiW7jy4zhRsp7k38GJcUIO8R2s1bwIxw&s"
+      },
+      "description": "Default placeholder image for AI requests",
+      "valueType": "STRING"
+    },
+    "default_avatar_image": {
+      "defaultValue": {
+        "value": "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
+      },
+      "description": "Default user/staff avatar image URL",
+      "valueType": "STRING"
+    },
+    "default_business_image": {
+      "defaultValue": {
+        "value": "https://content.artofmanliness.com/uploads/2011/06/Barber-Shoppe-7.jpg"
+      },
+      "description": "Default business cover/hero image URL",
+      "valueType": "STRING"
+    },
+    "default_business_logo": {
+      "defaultValue": {
+        "value": "https://cdn.vectorstock.com/i/500p/60/36/global-tech-globe-logo-vector-26746036.jpg"
+      },
+      "description": "Default business logo URL",
+      "valueType": "STRING"
+    },
+    "default_category_image": {
+      "defaultValue": {
+        "value": "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=400&fit=crop&auto=format"
+      },
+      "description": "Default category image URL",
+      "valueType": "STRING"
+    },
+    "tutorial_video_tryon_uri": {
+      "defaultValue": {
+        "value": "https://getfreshpass.com/videos/hair-tryon.MP4"
+      },
+      "description": "Tutorial video URL for AI hair try-on feature",
+      "valueType": "STRING"
     }
-  },
-  "version": {
-    "description": "FreshPass Remote Config template (force update + maintenance + trial)"
-  },
-  "conditions": []
+  }
 }

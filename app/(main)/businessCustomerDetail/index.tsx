@@ -51,6 +51,9 @@ import {
   resolveBusinessCustomerAvatarUrl,
 } from "@/src/utils/businessCustomerDisplay";
 import { getCustomerSubscriptionPill } from "@/src/utils/customerSubscriptionLifecycle";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -806,8 +809,7 @@ export default function BusinessCustomerDetail() {
           name: data.name ?? "",
           image:
             resolveBusinessCustomerAvatarUrl(data.profile_image_url) ??
-            process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ??
-            "",
+            getDefaultAvatarImage(),
         }),
       },
     });

@@ -45,6 +45,9 @@ import FloatingInput from "@/src/components/floatingInput";
 import { SearchIcon, CloseIcon } from "@/assets/icons";
 import { ApiService } from "@/src/services/api";
 import { exploreEndpoints } from "@/src/services/endpoints";
+import {
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 export type PopularServiceItem = { id: number | null; name: string };
 
@@ -88,12 +91,10 @@ type ServiceBusinessListResponse = {
 };
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
-const DEFAULT_BUSINESS_LOGO =
-  process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
 
 function getBusinessLogoUrl(logo: string | null | undefined): string {
   if (logo == null || logo.trim() === "") {
-    return DEFAULT_BUSINESS_LOGO;
+    return getDefaultBusinessLogo();
   }
   const trimmed = logo.trim();
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {

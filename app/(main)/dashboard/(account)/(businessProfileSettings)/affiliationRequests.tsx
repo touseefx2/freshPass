@@ -34,14 +34,16 @@ import type {
   AffiliationRequestsResponse,
 } from "@/src/types/affiliation";
 import Logger from "@/src/services/logger";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 type AffiliationTab = "pending" | "approved";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "";
-const DEFAULT_AVATAR = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
 
 const resolveImageUrl = (path?: string | null) => {
-  if (!path) return DEFAULT_AVATAR;
+  if (!path) return getDefaultAvatarImage();
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   return `${API_BASE_URL}${path}`;
 };

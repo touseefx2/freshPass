@@ -68,6 +68,9 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
@@ -211,7 +214,7 @@ const formatShortTimeLabel = (minutes: number) => {
 };
 
 const resolveCustomerAvatar = (appointment: Appointment) => {
-  const fallback = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  const fallback = getDefaultAvatarImage();
   const raw =
     appointment.userProfilePic ??
     appointment.userImage ??

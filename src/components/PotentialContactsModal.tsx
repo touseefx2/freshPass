@@ -21,6 +21,9 @@ import {
 } from "@/src/theme/dimensions";
 import { Feather } from "@expo/vector-icons";
 import EmptyState from "@/src/components/emptyState";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 export type PotentialContact = {
   id: number;
@@ -30,7 +33,7 @@ export type PotentialContact = {
 
 export function getPotentialContactAvatar(avatar: string | null): string {
   if (avatar == null || avatar.trim() === "") {
-    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+    return getDefaultAvatarImage();
   }
   const trimmed = avatar.trim();
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
@@ -40,7 +43,7 @@ export function getPotentialContactAvatar(avatar: string | null): string {
   const path = trimmed.replace(/^\//, "");
   return path
     ? `${base}/${path}`
-    : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+    : (getDefaultAvatarImage());
 }
 
 function renderInitials(name: string): string {

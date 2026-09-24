@@ -39,6 +39,9 @@ import { businessEndpoints } from "@/src/services/endpoints";
 import { Skeleton } from "@/src/components/skeletons";
 import RetryButton from "@/src/components/retryButton";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import {
+  getDefaultCategoryImage,
+} from "@/src/services/remoteConfigService";
 
 const SEARCH_DEBOUNCE_MS = 400;
 
@@ -324,7 +327,7 @@ export default function StepOne({
 
   const getCategoryImageUri = useCallback((imageUrl: string | null) => {
     if (!imageUrl || !imageUrl.trim()) {
-      return process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE ?? "";
+      return getDefaultCategoryImage();
     }
     if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
       return imageUrl;

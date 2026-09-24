@@ -29,6 +29,9 @@ import { SvgXml } from "react-native-svg";
 import { MaterialIcons, Feather, Ionicons } from "@expo/vector-icons";
 import Button from "@/src/components/button";
 import dayjs from "dayjs";
+import {
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 interface Service {
   id: number;
@@ -546,7 +549,7 @@ export default function BookingDetail() {
         (body && typeof body === "object" && "title" in body ? body : null);
       if (b) {
         const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-        const defaultLogo = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "";
+        const defaultLogo = getDefaultBusinessLogo();
         const rawLogo = b?.logo_url?.trim() || "";
         const businessLogoUrlResolved = !rawLogo
           ? defaultLogo

@@ -27,9 +27,10 @@ import {
   fetchBusinessFollowers,
 } from "@/src/services/followService";
 import type { BusinessFollower } from "@/src/types/businessFollowers";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
-const DEFAULT_AVATAR_URL =
-  process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE?.trim() ?? "";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -215,7 +216,7 @@ export default function BusinessFollowersScreen() {
         <BusinessCustomerAvatar
           name={item.name}
           profileImageUrl={
-            item.profile_image_url?.trim() || DEFAULT_AVATAR_URL || null
+            item.profile_image_url?.trim() || getDefaultAvatarImage() || null
           }
           size={moderateWidthScale(52)}
         />

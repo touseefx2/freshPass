@@ -95,6 +95,9 @@ import { IMAGES } from "@/src/constant/images";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 dayjs.extend(weekOfYear);
 dayjs.extend(isoWeek);
@@ -103,7 +106,6 @@ const STAFF_CARD_WIDTH = widthScale(140);
 const STAFF_CARD_HEIGHT = heightScale(168);
 const STAFF_CARD_GAP = moderateWidthScale(14);
 const STAFF_LIST_PADDING = moderateWidthScale(20);
-const DEFAULT_AVATAR_URL = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
 
 type StaffCarouselItem = {
   id: string;
@@ -1533,7 +1535,7 @@ function StaffCard({
   onAnyoneInfoPress,
 }: StaffCardProps) {
   const isAnyone = staff.id === "anyone";
-  const imageUri = staff.image || DEFAULT_AVATAR_URL;
+  const imageUri = staff.image || getDefaultAvatarImage();
   const selectProgress = useSharedValue(isSelected ? 1 : 0);
   const pressScale = useSharedValue(1);
 
@@ -2078,7 +2080,7 @@ export default function BookingNow() {
           .filter((staff: any) => staff.invitation_status === "accepted")
           .map((staff: any) => {
             // Construct image URL from API response
-            let image = DEFAULT_AVATAR_URL;
+            let image = getDefaultAvatarImage();
             if (staff.avatar) {
               const isAbsoluteUrl =
                 typeof staff.avatar === "string" &&

@@ -47,6 +47,9 @@ import {
   disableOwnerAsStaff,
   enableOwnerAsStaff,
 } from "@/src/services/ownerAsStaffService";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -349,7 +352,7 @@ const createStyles = (theme: Theme) =>
 
 function getImageUri(profileImage: string | null | undefined) {
   if (!profileImage) {
-    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+    return getDefaultAvatarImage();
   }
   if (
     profileImage.startsWith("http://") ||

@@ -59,6 +59,9 @@ import {
 } from "react-native-country-codes-picker";
 import CountryPickerItem from "@/src/components/countryPickerItem";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import {
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -366,7 +369,7 @@ export default function EditBusinessProfileScreen() {
   const getInitialLogoUri = () => {
     return (
       resolveApiImageUrl(params.logo_url) ??
-      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
+      getDefaultBusinessLogo() ||
       "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
     );
   };

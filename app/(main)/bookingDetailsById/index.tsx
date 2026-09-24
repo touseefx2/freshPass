@@ -82,6 +82,10 @@ import type {
 } from "@/src/types/cancellationPolicy";
 import OutcomeSummaryCard from "@/src/components/OutcomeSummaryCard";
 import { createStyles } from "./styles";
+import {
+  getDefaultAvatarImage,
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 const SEND_MESSAGE_URL = "/api/chat/messages";
 
@@ -513,7 +517,7 @@ export default function BookingDetailsById() {
 
   const assignedStaffImageUri = useMemo(() => {
     const resolved = resolveApiImageUrl(booking?.staffImage);
-    const fallback = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE?.trim() ?? "";
+    const fallback = getDefaultAvatarImage();
     return resolved || fallback || null;
   }, [booking?.staffImage]);
 
@@ -742,7 +746,7 @@ export default function BookingDetailsById() {
         apiData.businessLogoUrl.startsWith("https://")
         ? apiData.businessLogoUrl
         : process.env.EXPO_PUBLIC_API_BASE_URL + apiData.businessLogoUrl
-      : (process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "");
+      : (getDefaultBusinessLogo());
 
     const resolvedServiceImage = firstServiceImage
       ? firstServiceImage.startsWith("http://") ||
@@ -1986,7 +1990,7 @@ export default function BookingDetailsById() {
                   uri:
                     booking.serviceImageUrl ||
                     booking.businessLogoUrl ||
-                    process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ||
+                    getDefaultBusinessLogo() ||
                     "",
                 }}
                 style={styles.serviceImage}

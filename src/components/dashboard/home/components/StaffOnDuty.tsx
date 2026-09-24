@@ -57,6 +57,9 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
 import { ApiService } from "@/src/services/api";
 import { staffEndpoints } from "@/src/services/endpoints";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 const STAFF_CARD_WIDTH = widthScale(140);
 const STAFF_CARD_GAP = moderateWidthScale(14);
@@ -470,7 +473,7 @@ function isOwnerMember(staff: StaffData) {
 
 function getImageUri(profileImage: string | null | undefined) {
   if (!profileImage) {
-    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+    return getDefaultAvatarImage();
   }
   if (
     profileImage.startsWith("http://") ||

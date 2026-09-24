@@ -166,19 +166,21 @@ Stripe publishable key, IAP product IDs, and trial days are loaded from Firebase
 | `EXPO_PUBLIC_AITOOL_API_BASE_URL` | Optional | AI tools microservice base URL |
 | `EXPO_PUBLIC_AI_API_BEARER_TOKEN` | Optional | Bearer token for AI API |
 | `EXPO_PUBLIC_WEBHOOK_URL` | Optional | AI voice agent WebSocket URL |
-| `EXPO_PUBLIC_TUTORIAL_VIDEO_TRYON_URI` | Optional | Tutorial video URL for AI try-on feature |
-
-### Default Images & URLs
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE` | Optional | Default user avatar image URL |
-| `EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE` | Optional | Default business cover image URL |
-| `EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO` | Optional | Default business logo URL |
-| `EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE` | Optional | Default category image URL |
-| `EXPO_PUBLIC_DEFAULT_AI_REQUESTS_IMAGE` | Optional | Default AI requests image URL |
 | `EXPO_PUBLIC_TERMS_URL` | Optional | Terms & conditions page URL |
 | `EXPO_PUBLIC_PRIVACY_URL` | Optional | Privacy policy page URL |
+
+### Default Images & Tutorial (Firebase Remote Config)
+
+Managed in `firebase-remote-config-template.json` (not `.env`). Deploy with `firebase deploy --only remoteconfig`.
+
+| Parameter | Description |
+|-----------|-------------|
+| `default_avatar_image` | Default user avatar image URL |
+| `default_business_image` | Default business cover image URL |
+| `default_business_logo` | Default business logo URL |
+| `default_category_image` | Default category image URL |
+| `default_ai_requests_image` | Default AI requests image URL |
+| `tutorial_video_tryon_uri` | Tutorial video URL for AI try-on feature |
 
 > **Important:** After changing `.env`, restart the Metro bundler (`yarn start`) and rebuild native apps if running on iOS/Android.
 

@@ -31,7 +31,10 @@ import StripeConnectedCongratsModalHandler from "@/src/components/StripeConnecte
 import TryOnPurchaseSuccessModalHandler from "@/src/components/TryOnPurchaseSuccessModalHandler";
 import BusinessPlanPurchasedCongratsModalHandler from "@/src/components/BusinessPlanPurchasedCongratsModalHandler";
 import BusinessPlansModalHandler from "@/src/components/BusinessPlansModalHandler";
-import { prefetchPurchaseRemoteConfig } from "@/src/services/remoteConfigService";
+import {
+  prefetchDefaultMediaRemoteConfig,
+  prefetchPurchaseRemoteConfig,
+} from "@/src/services/remoteConfigService";
 import { resolveStripePublishableKey } from "@/src/services/stripeService";
 import "../global.css";
 import * as SystemUI from "expo-system-ui";
@@ -60,6 +63,7 @@ export default function RootLayout() {
     let cancelled = false;
     (async () => {
       void prefetchPurchaseRemoteConfig();
+      void prefetchDefaultMediaRemoteConfig();
       const key = await resolveStripePublishableKey();
       if (cancelled) return;
       if (key) {

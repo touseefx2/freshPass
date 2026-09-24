@@ -67,6 +67,9 @@ import {
   CHAT_WHISPER_STOP_TYPING,
 } from "@/src/services/echo";
 import { useVideoPlayer, VideoView } from "expo-video";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 const PER_PAGE = 20;
 const MAX_ATTACHMENTS = 10;
@@ -2059,7 +2062,7 @@ export default function ChatBoxScreen() {
   let image = chatItem?.image || "";
 
   if (!image) {
-    image = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+    image = getDefaultAvatarImage();
   } else if (image.startsWith("http") || image.startsWith("https")) {
     image = image;
   } else {

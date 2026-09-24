@@ -27,9 +27,10 @@ import {
 import { ApiService } from "@/src/services/api";
 import { userEndpoints } from "@/src/services/endpoints";
 import { setUserDetails } from "@/src/state/slices/userSlice";
+import {
+  getTutorialVideoTryonUri,
+} from "@/src/services/remoteConfigService";
 
-const TUTORIAL_VIDEO_URI =
-  process.env.EXPO_PUBLIC_TUTORIAL_VIDEO_TRYON_URI || "";
 
 interface TutorialInlineVideoProps {}
 
@@ -41,7 +42,7 @@ function TutorialInlineVideo({}: TutorialInlineVideoProps) {
 
   const [isVideoReady, setIsVideoReady] = useState(false);
 
-  const player = useVideoPlayer(TUTORIAL_VIDEO_URI, (p) => {
+  const player = useVideoPlayer(getTutorialVideoTryonUri(), (p) => {
     p.loop = false;
   });
 

@@ -36,6 +36,9 @@ import { businessEndpoints } from "@/src/services/endpoints";
 import SubscriptionPickerBottomSheet from "@/src/components/SubscriptionPickerBottomSheet";
 import { setGuestModeModalVisible } from "@/src/state/slices/generalSlice";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import {
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -556,7 +559,7 @@ function CheckoutSubscriptionContent() {
           ? params.businessLogo
           : businessData?.logo_url,
       ) ??
-      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
+      getDefaultBusinessLogo() ||
       "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
     );
   }, [businessData?.logo_url, params.businessLogo]);

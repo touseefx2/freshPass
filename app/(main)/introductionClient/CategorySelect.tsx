@@ -36,6 +36,9 @@ import {
   setIsGuest,
 } from "@/src/state/slices/userSlice";
 import { setIsVisitFirst } from "@/src/state/slices/generalSlice";
+import {
+  getDefaultCategoryImage,
+} from "@/src/services/remoteConfigService";
 interface CategorySelectProps {
   onNext: () => void;
 }
@@ -336,7 +339,7 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
                     item.imageUrl.startsWith("https://")
                     ? item.imageUrl
                     : process.env.EXPO_PUBLIC_API_BASE_URL + item.imageUrl
-                  : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
+                  : getDefaultCategoryImage(),
               }}
               style={[
                 styles.categoryImage,

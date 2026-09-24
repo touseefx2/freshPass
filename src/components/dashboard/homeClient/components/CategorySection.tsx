@@ -22,6 +22,9 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import RetryButton from "@/src/components/retryButton";
+import {
+  getDefaultCategoryImage,
+} from "@/src/services/remoteConfigService";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -293,7 +296,7 @@ export default function CategorySection({
                     category.image.startsWith("https://")
                     ? category.image
                     : process.env.EXPO_PUBLIC_API_BASE_URL + category.image
-                  : process.env.EXPO_PUBLIC_DEFAULT_CATEGORY_IMAGE,
+                  : getDefaultCategoryImage(),
               }}
               style={[
                 styles.categoryImage,

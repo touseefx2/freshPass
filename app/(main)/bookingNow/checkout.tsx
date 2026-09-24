@@ -59,6 +59,9 @@ import type {
   CancellationPolicyQuote,
   CardSetupResponse,
 } from "@/src/types/cancellationPolicy";
+import {
+  getDefaultAvatarImage,
+} from "@/src/services/remoteConfigService";
 
 const isWebUrl = (u?: string) => !!u && /^https?:\/\//i.test(u);
 
@@ -253,10 +256,10 @@ const resolveStaffImageUri = (
   staffMember: StaffMember | null,
 ): string => {
   if (staffId === "anyone") {
-    return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+    return getDefaultAvatarImage();
   }
   const img = staffMember?.image;
-  if (!img) return process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
+  if (!img) return getDefaultAvatarImage();
   const isAbsolute =
     typeof img === "string" &&
     (img.startsWith("http://") || img.startsWith("https://"));

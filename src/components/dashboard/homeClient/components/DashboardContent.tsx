@@ -36,6 +36,11 @@ import ShowAppointments from "./ShowAppointments";
 import ShowProTips from "./ShowProTips";
 import HomeReelsSection from "@/src/components/homeReelsSection";
 import { fetchFollowing } from "@/src/services/followService";
+import {
+  getDefaultAvatarImage,
+  getDefaultBusinessImage,
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const createStyles = (theme: Theme) =>
@@ -612,7 +617,7 @@ export default function DashboardContent() {
     portfolio_photos?: Array<{ url?: string }>;
   }) => {
     const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
-    const defaultImage = process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
+    const defaultImage = getDefaultBusinessImage();
 
     if (item.portfolio_photos?.[0]?.url) {
       return item.portfolio_photos[0].url;
@@ -932,14 +937,14 @@ export default function DashboardContent() {
               ? appointment.businessLogoUrl
               : process.env.EXPO_PUBLIC_API_BASE_URL +
                 appointment.businessLogoUrl
-            : (process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ?? "");
+            : (getDefaultBusinessLogo());
 
           const staffImageUrl = appointment.staffImage
             ? appointment.staffImage.startsWith("http://") ||
               appointment.staffImage.startsWith("https://")
               ? appointment.staffImage
               : process.env.EXPO_PUBLIC_API_BASE_URL + appointment.staffImage
-            : (process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "");
+            : (getDefaultAvatarImage());
 
           const dateTime = formatAppointmentDateTime(
             appointment.appointmentDate,

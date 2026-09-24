@@ -83,6 +83,11 @@ import type {
   OwnerWorkImagesPreview,
   StaffWorkImage,
 } from "@/src/types/staffWorkImages";
+import {
+  getDefaultAvatarImage,
+  getDefaultBusinessImage,
+  getDefaultBusinessLogo,
+} from "@/src/services/remoteConfigService";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -1491,7 +1496,7 @@ export default function BusinessDetailScreen() {
 
   // Default portfolio images
   const DEFAULT_PORTFOLIO_IMAGES = [
-    process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "",
+    getDefaultBusinessImage(),
   ];
 
   // API state
@@ -2088,8 +2093,7 @@ export default function BusinessDetailScreen() {
   const getBusinessLogoUrl = () => {
     return (
       resolveApiImageUrl(businessData?.logo_url) ??
-      process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_LOGO ??
-      ""
+      getDefaultBusinessLogo()
     );
   };
 
@@ -2376,7 +2380,6 @@ export default function BusinessDetailScreen() {
     return ["All", ...uniqueNames];
   }, [serviceTemplates]);
 
-  const DEFAULT_AVATAR_URL = process.env.EXPO_PUBLIC_DEFAULT_AVATAR_IMAGE ?? "";
 
   // Map staff from API
   const staffMembers = useMemo(() => {
@@ -2385,7 +2388,7 @@ export default function BusinessDetailScreen() {
     return businessData.staff
       .filter((staff: any) => staff.invitation_status === "accepted")
       .map((staff: any) => {
-        let image = DEFAULT_AVATAR_URL;
+        let image = getDefaultAvatarImage();
 
         if (staff.avatar) {
           const isAbsoluteUrl =
@@ -2480,7 +2483,7 @@ export default function BusinessDetailScreen() {
 
       return `${process.env.EXPO_PUBLIC_API_BASE_URL}${avatar}`;
     }
-    return DEFAULT_AVATAR_URL;
+    return getDefaultAvatarImage();
   };
 
   // Get owner avatar URL
@@ -2498,7 +2501,7 @@ export default function BusinessDetailScreen() {
       return `${process.env.EXPO_PUBLIC_API_BASE_URL}${avatar}`;
     }
 
-    return DEFAULT_AVATAR_URL;
+    return getDefaultAvatarImage();
   };
 
   // Format owner phone with country code
@@ -3460,7 +3463,7 @@ export default function BusinessDetailScreen() {
                                     )
                                     .map((staff: any) => {
                                       // Construct image URL from API response
-                                      let image = DEFAULT_AVATAR_URL;
+                                      let image = getDefaultAvatarImage();
                                       if (staff.avatar) {
                                         const isAbsoluteUrl =
                                           typeof staff.avatar === "string" &&

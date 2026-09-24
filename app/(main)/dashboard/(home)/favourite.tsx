@@ -30,6 +30,9 @@ import {
 } from "@/src/services/followService";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
+import {
+  getDefaultBusinessImage,
+} from "@/src/services/remoteConfigService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -146,7 +149,7 @@ export default function FollowingScreen() {
     const baseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || "";
     const rawUrl = item.image_url || item.logo_url || null;
     if (!rawUrl) {
-      return process.env.EXPO_PUBLIC_DEFAULT_BUSINESS_IMAGE ?? "";
+      return getDefaultBusinessImage();
     }
     if (typeof rawUrl === "string" && rawUrl.startsWith("http")) {
       return rawUrl;
