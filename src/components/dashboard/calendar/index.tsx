@@ -2513,9 +2513,6 @@ export default function CalendarScreen() {
 
   const renderDayView = () => (
     <View style={{ flex: 1 }}>
-      <View style={styles.daysStrip}>
-        {week.map((day) => renderDayCell(day))}
-      </View>
       {renderTimeGrid()}
     </View>
   );
