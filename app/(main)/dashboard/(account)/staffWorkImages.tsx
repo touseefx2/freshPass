@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
-  Image,
   FlatList,
   StyleSheet,
   Text,
@@ -11,6 +10,7 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -432,7 +432,7 @@ export default function StaffWorkImagesManageScreen() {
       return (
         <View style={itemStyle}>
           <View style={styles.photoContainer}>
-            <Image source={{ uri: item.uri }} style={styles.photo} />
+            <AppImage uri={item.uri} style={styles.photo} />
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => handleDeletePhoto(item)}

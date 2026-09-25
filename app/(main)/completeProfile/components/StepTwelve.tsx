@@ -6,7 +6,6 @@ import {
   View,
   TouchableOpacity,
   Alert,
-  Image,
   Dimensions,
   FlatList,
   Platform,
@@ -14,6 +13,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -292,7 +292,7 @@ export default function StepTwelve() {
       return (
         <View style={itemStyle}>
           <View style={styles.photoContainer}>
-            <Image source={{ uri: item.uri }} style={styles.photo} />
+            <AppImage uri={item.uri} style={styles.photo} />
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => handleDeletePhoto(item.id)}

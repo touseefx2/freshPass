@@ -13,12 +13,12 @@ import {
   ScrollView,
   TextInput,
   Pressable,
-  Image,
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -349,11 +349,9 @@ function RecentBusinessLogo({
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }) {
-  const [imageError, setImageError] = useState(false);
   const showPlaceholder =
     !logoUrl ||
-    !(logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) ||
-    imageError;
+    !(logoUrl.startsWith("http://") || logoUrl.startsWith("https://"));
   if (showPlaceholder) {
     return (
       <View style={styles.recentBusinessPlaceholder}>
@@ -367,11 +365,10 @@ function RecentBusinessLogo({
   }
   return (
     <View style={styles.recentBusinessPlaceholder}>
-      <Image
-        source={{ uri: logoUrl }}
+      <AppImage
+        uri={logoUrl}
         style={styles.recentBusinessLogoImage}
         resizeMode="cover"
-        onError={() => setImageError(true)}
       />
     </View>
   );
@@ -386,9 +383,8 @@ function BusinessLogoImage({
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }) {
-  const [imageError, setImageError] = useState(false);
   const uri = getBusinessLogoUrl(logo);
-  const showPlaceholder = !uri || imageError;
+  const showPlaceholder = !uri;
 
   if (showPlaceholder) {
     return (
@@ -403,10 +399,9 @@ function BusinessLogoImage({
   }
   return (
     <View style={styles.businessPlaceholder}>
-      <Image
-        source={{ uri }}
+      <AppImage
+        uri={uri}
         style={styles.businessLogoImage}
-        onError={() => setImageError(true)}
         resizeMode="cover"
       />
     </View>

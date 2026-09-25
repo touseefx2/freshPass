@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useRef, useEffect } from "react";
 import {
   View,
-  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -11,6 +10,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useDispatch, useSelector } from "react-redux";
 import Zoom from "react-native-zoom-reanimated";
 import { useTheme } from "@/src/hooks/hooks";
@@ -139,8 +139,8 @@ export default function FullImageModal() {
           minScale={1}
           maxScale={4}
         >
-          <Image
-            source={{ uri: item }}
+          <AppImage
+            uri={item}
             style={styles.modalImage}
             resizeMode="contain"
           />
@@ -183,8 +183,8 @@ export default function FullImageModal() {
         {displayImages.length === 1 && (
           <View style={styles.imagePage}>
             <Zoom minScale={1} maxScale={4}>
-              <Image
-                source={{ uri: displayImages[0] }}
+              <AppImage
+                uri={displayImages[0]}
                 style={styles.modalImage}
                 resizeMode="contain"
               />

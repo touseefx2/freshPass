@@ -13,10 +13,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Pressable,
-  Image,
   GestureResponderEvent,
   InteractionManager,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -2013,8 +2013,8 @@ export default function CalendarScreen() {
               <Text numberOfLines={serviceLines} style={styles.blockService}>
                 {first.title}
               </Text>
-              <Image
-                source={{ uri: first.avatar_url }}
+              <AppImage
+                uri={first.avatar_url}
                 style={styles.blockAvatar}
                 resizeMode="cover"
               />
@@ -2082,8 +2082,8 @@ export default function CalendarScreen() {
           <Text numberOfLines={serviceLines} style={styles.blockService}>
             {appointment.title}
           </Text>
-          <Image
-            source={{ uri: appointment.avatar_url }}
+          <AppImage
+            uri={appointment.avatar_url}
             style={styles.blockAvatar}
             resizeMode="cover"
           />
@@ -2094,8 +2094,8 @@ export default function CalendarScreen() {
 
   const renderDetailCardContent = (appointment: CalendarAppointment) => (
     <View style={styles.detailRow}>
-      <Image
-        source={{ uri: appointment.avatar_url }}
+      <AppImage
+        uri={appointment.avatar_url}
         style={styles.detailAvatar}
         resizeMode="cover"
       />

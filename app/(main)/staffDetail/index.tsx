@@ -5,7 +5,6 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
-  Image,
   StatusBar,
   TouchableOpacity,
   Alert,
@@ -26,6 +25,7 @@ import {
 } from "@/src/theme/dimensions";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
@@ -1340,8 +1340,8 @@ export default function StaffDetail() {
             <View style={styles.heroTop}>
               <View style={styles.avatarRing}>
                 <View style={styles.avatar}>
-                  <Image
-                    source={{ uri: profileImageUrl }}
+                  <AppImage
+                    uri={profileImageUrl}
                     style={styles.avatarImage}
                     resizeMode="cover"
                   />
@@ -1549,8 +1549,8 @@ export default function StaffDetail() {
                   style={styles.workPhotoCardShadow}
                 >
                   <View style={styles.workPhotoCard}>
-                    <Image
-                      source={{ uri: image.url }}
+                    <AppImage
+                      uri={image.url}
                       style={styles.workPhotoImage}
                     />
                   </View>

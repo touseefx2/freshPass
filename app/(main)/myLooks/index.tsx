@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -19,6 +18,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import EmptyState from "@/src/components/emptyState";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -255,7 +255,7 @@ export default function MyLooksScreen() {
           onPress={() => openItem(item)}
         >
           {thumb ? (
-            <Image source={{ uri: thumb }} style={styles.thumb} />
+            <AppImage uri={thumb} style={styles.thumb} />
           ) : (
             <View style={styles.tileFallback}>
               <MaterialIcons

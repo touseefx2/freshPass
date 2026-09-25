@@ -11,7 +11,6 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
   Modal,
   Pressable,
   StatusBar,
@@ -27,6 +26,7 @@ import { MaterialIcons, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import dayjs from "dayjs";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { setBusinessData as setBusinessDataAction } from "@/src/state/slices/bsnsSlice";
@@ -2517,10 +2517,8 @@ export default function BusinessDetailScreen() {
       >
         <View style={styles.reviewCardHeaderRow}>
           <View style={styles.reviewAvatar}>
-            <Image
-              source={{
-                uri: getProfileImageUrl(review.user?.avatar || null),
-              }}
+            <AppImage
+              uri={getProfileImageUrl(review.user?.avatar || null)}
               style={styles.reviewAvatarImage}
             />
           </View>
@@ -2744,8 +2742,8 @@ export default function BusinessDetailScreen() {
               </Text>
               <View style={styles.ownerRow}>
                 <View style={styles.ownerAvatar}>
-                  <Image
-                    source={{ uri: getOwnerAvatarUrl() }}
+                  <AppImage
+                    uri={getOwnerAvatarUrl()}
                     style={styles.ownerAvatarImage}
                     resizeMode="cover"
                   />
@@ -2828,8 +2826,8 @@ export default function BusinessDetailScreen() {
                           style={styles.ownerWorkPhotoCardShadow}
                         >
                           <View style={styles.ownerWorkPhotoCard}>
-                            <Image
-                              source={{ uri: image.url }}
+                            <AppImage
+                              uri={image.url}
                               style={styles.ownerWorkPhotoImage}
                             />
                           </View>
@@ -3651,8 +3649,8 @@ export default function BusinessDetailScreen() {
                   })
                 }
               >
-                <Image
-                  source={{ uri: staff.image }}
+                <AppImage
+                  uri={staff.image}
                   style={styles.staffProfileImage}
                   resizeMode="cover"
                 />
@@ -4102,8 +4100,8 @@ export default function BusinessDetailScreen() {
                 activeOpacity={1}
                 onPress={handleOpenFullImage}
               >
-                <Image
-                  source={{ uri }}
+                <AppImage
+                  uri={uri}
                   style={styles.heroImage}
                   resizeMode="cover"
                 />
@@ -4123,8 +4121,8 @@ export default function BusinessDetailScreen() {
                   key={index}
                   onPress={() => handleThumbnailSelect(thumbnail)}
                 >
-                  <Image
-                    source={{ uri: thumbnail }}
+                  <AppImage
+                    uri={thumbnail}
                     style={[
                       styles.thumbnail,
                       currentHeroImage !== thumbnail && {
@@ -4180,8 +4178,8 @@ export default function BusinessDetailScreen() {
                 marginBottom: moderateHeightScale(8),
               }}
             >
-              <Image
-                source={{ uri: getBusinessLogoUrl() }}
+              <AppImage
+                uri={getBusinessLogoUrl()}
                 style={styles.businessLogo}
                 resizeMode="cover"
               />
@@ -4450,12 +4448,10 @@ export default function BusinessDetailScreen() {
               >
                 <View style={styles.fullReviewCardHeaderRow}>
                   <View style={styles.reviewAvatar}>
-                    <Image
-                      source={{
-                        uri: getProfileImageUrl(
-                          selectedReview.user?.avatar || null,
-                        ),
-                      }}
+                    <AppImage
+                      uri={getProfileImageUrl(
+                        selectedReview.user?.avatar || null,
+                      )}
                       style={styles.reviewAvatarImage}
                     />
                   </View>

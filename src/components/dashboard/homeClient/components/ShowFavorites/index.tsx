@@ -3,11 +3,11 @@ import {
   View,
   Text,
   ScrollView,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -96,8 +96,8 @@ export default function ShowFavorites({
           }}
         >
           <View style={styles.imageWrap}>
-            <Image
-              source={{ uri: item.image ?? "" }}
+            <AppImage
+              uri={item.image ?? ""}
               style={styles.image}
               resizeMode="cover"
             />

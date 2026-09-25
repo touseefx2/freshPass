@@ -4,11 +4,11 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Alert,
   Platform,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -547,8 +547,8 @@ function StaffMotionCard({
           onLongPress={onLongPress}
           delayLongPress={350}
         >
-          <Image
-            source={{ uri: getStaffImageUri(staff) }}
+          <AppImage
+            uri={getStaffImageUri(staff)}
             style={styles.staffImage}
             resizeMode="cover"
           />
@@ -884,8 +884,8 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
           <View style={styles.ownerProfileRow}>
             <View style={styles.ownerAvatarWrap}>
               <View style={styles.ownerAvatarClip}>
-                <Image
-                  source={{ uri: ownerImageUri }}
+                <AppImage
+                  uri={ownerImageUri}
                   style={styles.ownerAvatar}
                 />
               </View>

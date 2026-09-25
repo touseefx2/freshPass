@@ -1,11 +1,11 @@
 import React, { useMemo } from "react";
 import {
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
@@ -203,8 +203,8 @@ export default function EarningsStaffRow({
             color={theme.lightGreen6}
           />
         ) : item.profileImage ? (
-          <Image
-            source={{ uri: item.profileImage }}
+          <AppImage
+            uri={item.profileImage}
             style={styles.avatarImage}
           />
         ) : (

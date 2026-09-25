@@ -1,13 +1,13 @@
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -208,8 +208,8 @@ export default function HomeReelsSection() {
               >
                 <View style={styles.thumbWrap}>
                   {thumb ? (
-                    <Image
-                      source={{ uri: thumb }}
+                    <AppImage
+                      uri={thumb}
                       style={styles.thumb}
                       resizeMode="cover"
                     />

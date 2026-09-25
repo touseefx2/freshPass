@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +18,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
@@ -178,8 +178,8 @@ export default function ProductDetailScreen() {
       >
         <View style={styles.hero}>
           {product.imageUri ? (
-            <Image
-              source={{ uri: product.imageUri }}
+            <AppImage
+              uri={product.imageUri}
               style={styles.heroImage}
               resizeMode="cover"
             />

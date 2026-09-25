@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import {
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -9,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
@@ -205,8 +205,8 @@ export default function EarningsStaffPickerModal({
                     style={[styles.avatar, row.removed && styles.avatarMuted]}
                   >
                     {row.profileImage ? (
-                      <Image
-                        source={{ uri: row.profileImage }}
+                      <AppImage
+                        uri={row.profileImage}
                         style={styles.avatarImage}
                       />
                     ) : (

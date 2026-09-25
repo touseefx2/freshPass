@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   View,
   Text,
@@ -23,6 +22,7 @@ import {
 import { openFullImageModal } from "@/src/state/slices/generalSlice";
 import { ApiService } from "@/src/services/api";
 import { generalEndpoints } from "@/src/services/endpoints";
+import AppImage from "@/src/components/AppImage";
 import RetryButton from "@/src/components/retryButton";
 import StackHeader from "@/src/components/StackHeader";
 
@@ -213,7 +213,7 @@ export default function TipDetail() {
               onPress={() => dispatch(openFullImageModal({ images: [image] }))}
               activeOpacity={0.95}
             >
-              <Image source={{ uri: image }} style={styles.image} />
+              <AppImage uri={image} style={styles.image} />
             </TouchableOpacity>
           ) : null}
           <View style={styles.content}>

@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { Modalize } from "react-native-modalize";
 import { Portal } from "@gorhom/portal";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
@@ -415,7 +415,7 @@ export default function ReelCommentsSheet({
       return (
         <View style={styles.row}>
           {avatar ? (
-            <Image source={{ uri: avatar }} style={styles.avatar} />
+            <AppImage uri={avatar} style={styles.avatar} />
           ) : (
             <View style={[styles.avatar, styles.avatarFallback]}>
               <MaterialIcons

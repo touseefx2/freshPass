@@ -4,7 +4,6 @@ import {
   View,
   Text,
   FlatList,
-  Image,
   ActivityIndicator,
   StatusBar,
 } from "react-native";
@@ -17,6 +16,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import EmptyState from "@/src/components/emptyState";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -328,8 +328,8 @@ export default function UserReviewsScreen() {
               },
             ]}
           >
-            <Image
-              source={{ uri: getProfileImageUrl(item.user.profile_image_url) }}
+            <AppImage
+              uri={getProfileImageUrl(item.user.profile_image_url)}
               style={styles.avatarImage}
             />
           </View>

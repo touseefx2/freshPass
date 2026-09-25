@@ -2,11 +2,11 @@ import React, { useState } from "react";
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -64,8 +64,8 @@ export function BusinessCard({
       activeOpacity={0.9}
       style={styles.verifiedSalonCardNew}
     >
-      <Image
-        source={{ uri: salon.image ?? "" }}
+      <AppImage
+        uri={salon.image ?? ""}
         style={styles.verifiedSalonImage}
         resizeMode="cover"
       />

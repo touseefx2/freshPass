@@ -5,13 +5,13 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StatusBar,
   BackHandler,
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import {
   setSelectedStaff,
   type StaffMember,
@@ -2553,8 +2553,8 @@ function CheckoutContent() {
             <View style={styles.staffRowModern}>
               <View style={styles.staffAvatarWrap}>
                 {staffImageUri ? (
-                  <Image
-                    source={{ uri: staffImageUri }}
+                  <AppImage
+                    uri={staffImageUri}
                     style={styles.staffAvatar}
                     resizeMode="cover"
                   />
@@ -2630,8 +2630,8 @@ function CheckoutContent() {
               <View style={styles.tryOnImagesRow}>
                 {attachedImageUris.map((uri, index) => (
                   <View key={`${uri}-${index}`} style={styles.tryOnImageBox}>
-                    <Image
-                      source={{ uri }}
+                    <AppImage
+                      uri={uri}
                       style={styles.tryOnImageThumb}
                       resizeMode="cover"
                     />

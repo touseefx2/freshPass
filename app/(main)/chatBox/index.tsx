@@ -14,7 +14,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
-  Image,
   Keyboard,
   StatusBar,
   ActivityIndicator,
@@ -28,6 +27,7 @@ import {
   type AppStateStatus,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useTranslation } from "react-i18next";
@@ -892,10 +892,8 @@ function MessageContent({
                           }
                           activeOpacity={0.9}
                         >
-                          <Image
-                            source={{
-                              uri: getMessageImageUrl(item.url) || item.url,
-                            }}
+                          <AppImage
+                            uri={getMessageImageUrl(item.url) || item.url}
                             style={styles.bubbleOriginalMediaCardImage}
                             resizeMode="cover"
                           />
@@ -979,10 +977,8 @@ function MessageContent({
                 }
                 activeOpacity={0.9}
               >
-                <Image
-                  source={{
-                    uri: getMessageImageUrl(item.url) || item.url,
-                  }}
+                <AppImage
+                  uri={getMessageImageUrl(item.url) || item.url}
                   style={styles.bubbleInlineImage}
                   resizeMode="cover"
                 />
@@ -1743,11 +1739,9 @@ const ChatContent = ({
                                         styles.bubbleImageGridWrapSingle,
                                     ]}
                                   >
-                                    <Image
+                                    <AppImage
                                       style={styles.bubbleImageGrid}
-                                      source={{
-                                        uri: getMessageImageUrl(uri) || uri,
-                                      }}
+                                      uri={getMessageImageUrl(uri) || uri}
                                       resizeMode="cover"
                                     />
                                     {onDownloadPress ? (
@@ -1875,9 +1869,9 @@ const ChatContent = ({
                       />
                     </View>
                   ) : (
-                    <Image
+                    <AppImage
                       style={styles.attachmentThumbnail}
-                      source={{ uri }}
+                      uri={uri}
                       resizeMode="cover"
                     />
                   )}
@@ -2421,7 +2415,7 @@ export default function ChatBoxScreen() {
         <View style={styles.headerInfo}>
           <View style={styles.headerAvatar}>
             {image ? (
-              <Image style={styles.headerAvatarImage} source={{ uri: image }} />
+              <AppImage style={styles.headerAvatarImage} uri={image} />
             ) : (
               <Text style={styles.headerInitials}>{renderInitials(name)}</Text>
             )}

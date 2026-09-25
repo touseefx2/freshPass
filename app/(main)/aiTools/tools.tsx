@@ -10,7 +10,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
   TextInput,
@@ -20,6 +19,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
@@ -941,7 +941,7 @@ export default function Tools() {
       </TouchableOpacity>
       {postImage && (
         <View style={styles.imagePreviewContainer}>
-          <Image source={{ uri: postImage }} style={styles.imagePreview} />
+          <AppImage uri={postImage} style={styles.imagePreview} />
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={handleDeletePostImage}
@@ -983,8 +983,8 @@ export default function Tools() {
         <View style={styles.mediaGrid}>
           {collageImages.map((image) => (
             <View key={image.id} style={styles.mediaItem}>
-              <Image
-                source={{ uri: image.uri }}
+              <AppImage
+                uri={image.uri}
                 style={styles.mediaThumbnail}
               />
               <TouchableOpacity
@@ -1380,8 +1380,8 @@ export default function Tools() {
               activeOpacity={0.9}
               style={{ width: "100%", height: "100%" }}
             >
-              <Image
-                source={{ uri: hairTryonSourceImage }}
+              <AppImage
+                uri={hairTryonSourceImage}
                 style={styles.imagePreview}
               />
             </TouchableOpacity>

@@ -5,11 +5,11 @@ import {
   View,
   SectionList,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   RefreshControl,
   ScrollView,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -586,9 +586,9 @@ export default function ChatScreen() {
             >
               <View style={styles.avatarContainer}>
                 {item?.image ? (
-                  <Image
+                  <AppImage
+                    uri={item?.image}
                     style={styles.avatarImage}
-                    source={{ uri: item?.image }}
                   />
                 ) : (
                   <Text style={styles.avatarInitials}>

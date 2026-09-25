@@ -12,7 +12,6 @@ import {
   BackHandler,
   Dimensions,
   FlatList,
-  Image,
   LayoutChangeEvent,
   PanResponder,
   Platform,
@@ -26,6 +25,7 @@ import {
   ViewToken,
   type AppStateStatus,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -1120,8 +1120,8 @@ function ReelFeedItemBase({
         />
       ) : null}
       {showPoster && posterUrl ? (
-        <Image
-          source={{ uri: posterUrl }}
+        <AppImage
+          uri={posterUrl}
           style={styles.poster}
           resizeMode={contentFit}
         />
@@ -1384,10 +1384,8 @@ function ReelFeedItemBase({
               {showAsOwner ? (
                 <>
                   {resolveApiImageUrl(reel.business?.image_url) ? (
-                    <Image
-                      source={{
-                        uri: resolveApiImageUrl(reel.business?.image_url)!,
-                      }}
+                    <AppImage
+                      uri={resolveApiImageUrl(reel.business?.image_url)!}
                       style={styles.avatar}
                     />
                   ) : (
@@ -1419,10 +1417,8 @@ function ReelFeedItemBase({
                 <>
                   <TouchableOpacity onPress={() => onProfile(reel)}>
                     {resolveApiImageUrl(reel.business?.image_url) ? (
-                      <Image
-                        source={{
-                          uri: resolveApiImageUrl(reel.business?.image_url)!,
-                        }}
+                      <AppImage
+                        uri={resolveApiImageUrl(reel.business?.image_url)!}
                         style={styles.avatar}
                       />
                     ) : (
@@ -1513,8 +1509,8 @@ function ReelFeedItemBase({
           <View style={styles.productCard}>
             <View style={styles.productThumb}>
               {shopProduct.imageUri ? (
-                <Image
-                  source={{ uri: shopProduct.imageUri }}
+                <AppImage
+                  uri={shopProduct.imageUri}
                   style={{ width: "100%", height: "100%" }}
                   resizeMode="cover"
                 />

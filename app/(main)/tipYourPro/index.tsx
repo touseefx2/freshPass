@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +20,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import RetryButton from "@/src/components/retryButton";
@@ -390,7 +390,7 @@ export default function TipYourProScreen() {
     return (
       <View style={styles.recipientCard}>
         {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.recipientImage} />
+          <AppImage uri={imageUri} style={styles.recipientImage} />
         ) : (
           <View style={[styles.recipientImage, styles.recipientPlaceholder]}>
             <Text style={styles.recipientInitial}>{initial}</Text>

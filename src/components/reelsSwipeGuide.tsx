@@ -9,10 +9,10 @@ import {
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import { Image } from "expo-image";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AppImage from "@/src/components/AppImage";
 import Button from "@/src/components/button";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -469,8 +469,8 @@ export default function ReelsSwipeGuide({
         <BlurView intensity={40} tint="dark" style={styles.blur} />
       ) : blurImageUri ? (
         // Single layer only — BlurView + thumbnail together looks "double" on Android
-        <Image
-          source={{ uri: blurImageUri }}
+        <AppImage
+          uri={blurImageUri}
           style={styles.androidBlurImage}
           contentFit="cover"
           blurRadius={10}

@@ -6,9 +6,9 @@ import {
   StyleSheet,
   Pressable,
   TouchableOpacity,
-  Image,
   Platform,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -290,8 +290,8 @@ export default function StaffActionMenuModal({
           <View style={styles.avatarFloat}>
             <View style={styles.avatarRing}>
               {imageUri ? (
-                <Image
-                  source={{ uri: imageUri }}
+                <AppImage
+                  uri={imageUri}
                   style={styles.avatarImage}
                   resizeMode="cover"
                 />

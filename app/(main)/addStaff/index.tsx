@@ -11,7 +11,6 @@ import {
   View,
   TouchableOpacity,
   TextInput,
-  Image,
   Pressable,
   Dimensions,
 } from "react-native";
@@ -23,6 +22,7 @@ import {
 import { MaterialIcons, Feather, AntDesign } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -1460,8 +1460,8 @@ export default function AddStaffScreen() {
           <View style={styles.profileSection}>
             <View style={styles.profileImageContainer}>
               {profileImageUri ? (
-                <Image
-                  source={{ uri: profileImageUri }}
+                <AppImage
+                  uri={profileImageUri}
                   style={styles.profileImage}
                   resizeMode="cover"
                 />

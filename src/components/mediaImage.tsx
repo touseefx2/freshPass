@@ -1,17 +1,10 @@
-import React, { useMemo, useState } from "react";
-import {
-  Image,
-  ImageStyle,
-  StyleProp,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from "react-native";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
+import React, { useMemo } from "react";
+import { ImageStyle, StyleProp, StyleSheet, View, ViewStyle } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
-import { isLegacyAiMediaUrl } from "@/src/utils/media";
+import AppImage from "@/src/components/AppImage";
 
 type MediaImageProps = {
   uri?: string | null;
@@ -42,37 +35,28 @@ export default function MediaImage({
 }: MediaImageProps) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
-  const [imageError, setImageError] = useState(false);
-
-  const trimmed = uri?.trim() ?? "";
-  const showPlaceholder =
-    !trimmed || isLegacyAiMediaUrl(trimmed) || imageError;
 
   const size = iconSize ?? moderateWidthScale(28);
 
-  if (showPlaceholder) {
-    return (
-      <View style={[style, styles.placeholder, containerStyle]}>
-        {placeholderIcon === "photo-library" ||
-        placeholderIcon === "videocam" ? (
-          <MaterialIcons
-            name={placeholderIcon}
-            size={size}
-            color={colors.lightGreen4}
-          />
-        ) : (
-          <Feather name="image" size={size} color={colors.lightGreen4} />
-        )}
+  const materialFallback =
+    placeholderIcon === "photo-library" || placeholderIcon === "videocam" ? (
+      <View style={[style as any, styles.placeholder, containerStyle]}>
+        <MaterialIcons
+          name={placeholderIcon}
+          size={size}
+          color={(colors as Theme).lightGreen4}
+        />
       </View>
-    );
-  }
+    ) : undefined;
 
   return (
-    <Image
-      source={{ uri: trimmed }}
+    <AppImage
+      uri={uri}
       style={style}
       resizeMode={resizeMode}
-      onError={() => setImageError(true)}
+      iconSize={iconSize}
+      containerStyle={containerStyle}
+      fallback={materialFallback}
     />
   );
 }

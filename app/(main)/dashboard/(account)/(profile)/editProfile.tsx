@@ -11,13 +11,13 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
   Alert,
   TextInput,
   Pressable,
   Dimensions,
   ActivityIndicator,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { AntDesign, MaterialIcons, Feather, Ionicons } from "@expo/vector-icons";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -494,9 +494,8 @@ function BarbershopLogoImage({
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
 }) {
-  const [imageError, setImageError] = useState(false);
   const uri = getBusinessLogoUrl(logo);
-  const showPlaceholder = !uri || imageError;
+  const showPlaceholder = !uri;
 
   if (showPlaceholder) {
     return (
@@ -511,10 +510,9 @@ function BarbershopLogoImage({
   }
   return (
     <View style={styles.barbershopPlaceholder}>
-      <Image
-        source={{ uri }}
+      <AppImage
+        uri={uri}
         style={styles.barbershopLogoImage}
-        onError={() => setImageError(true)}
         resizeMode="cover"
       />
     </View>
@@ -1584,10 +1582,8 @@ export default function EditProfileScreen() {
       >
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={{
-                uri: profileImageUri,
-              }}
+            <AppImage
+              uri={profileImageUri}
               style={styles.profileImage}
               resizeMode="cover"
             />

@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from "react";
 import {
-  Image,
   Keyboard,
   Platform,
   Pressable,
@@ -11,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -519,8 +519,8 @@ export default function ProductFormScreen({ initial, mode, onSubmit }: Props) {
                 onPress={() => setPickerOpen(true)}
               >
                 {draft.imageUri ? (
-                  <Image
-                    source={{ uri: draft.imageUri }}
+                  <AppImage
+                    uri={draft.imageUri}
                     style={styles.imagePreview}
                     resizeMode="cover"
                   />
@@ -727,8 +727,8 @@ export default function ProductFormScreen({ initial, mode, onSubmit }: Props) {
               <View style={styles.reviewHeroTop}>
                 <View style={styles.reviewThumb}>
                   {draft.imageUri ? (
-                    <Image
-                      source={{ uri: draft.imageUri }}
+                    <AppImage
+                      uri={draft.imageUri}
                       style={styles.imagePreview}
                       resizeMode="cover"
                     />

@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useStripe } from "@stripe/stripe-react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -352,30 +352,21 @@ function getNameInitial(name: string): string {
 }
 
 function RecipientAvatar({ name, image, styles }: RecipientAvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false);
   const imageUri = useMemo(() => resolveApiImageUrl(image), [image]);
   const initial = getNameInitial(name);
 
-  useEffect(() => {
-    setImageFailed(false);
-  }, [imageUri]);
-
-  const showImage = Boolean(imageUri) && !imageFailed;
-
   return (
     <View style={styles.avatarRing}>
-      {showImage && imageUri ? (
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.recipientImage}
-          resizeMode="cover"
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <View style={[styles.recipientImage, styles.recipientPlaceholder]}>
-          <Text style={styles.recipientInitial}>{initial}</Text>
-        </View>
-      )}
+      <AppImage
+        uri={imageUri}
+        style={styles.recipientImage}
+        resizeMode="cover"
+        fallback={
+          <View style={[styles.recipientImage, styles.recipientPlaceholder]}>
+            <Text style={styles.recipientInitial}>{initial}</Text>
+          </View>
+        }
+      />
     </View>
   );
 }

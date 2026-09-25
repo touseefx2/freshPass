@@ -4,11 +4,11 @@ import {
   Text,
   View,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Modal,
   FlatList,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -282,9 +282,9 @@ export default function PotentialContactsModal({
                     >
                       <View style={styles.avatarContainer}>
                         {avatarUri ? (
-                          <Image
+                          <AppImage
                             style={styles.avatarImage}
-                            source={{ uri: avatarUri }}
+                            uri={avatarUri}
                           />
                         ) : (
                           <Text style={styles.avatarInitials}>

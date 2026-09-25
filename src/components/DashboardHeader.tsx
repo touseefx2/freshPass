@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Image,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -305,8 +306,8 @@ function DashboardHeader({
                 accessibilityLabel={t("tabProfile")}
               >
                 {avatarUri ? (
-                  <Image
-                    source={{ uri: avatarUri }}
+                  <AppImage
+                    uri={avatarUri}
                     style={styles.avatarImage}
                   />
                 ) : (

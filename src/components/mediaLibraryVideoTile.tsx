@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -208,8 +208,8 @@ export default function MediaLibraryVideoTile({
       delayLongPress={350}
     >
       {showImage ? (
-        <Image
-          source={{ uri: localThumb! }}
+        <AppImage
+          uri={localThumb!}
           style={styles.image}
           resizeMode="cover"
         />

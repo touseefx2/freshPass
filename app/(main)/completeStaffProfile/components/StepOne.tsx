@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Image,
   TouchableOpacity,
   TextInput,
   Pressable,
@@ -11,6 +10,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { CloseIcon } from "@/assets/icons";
 import { useTheme } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -218,8 +218,8 @@ export default function StepOne() {
       <View style={styles.profileSection}>
         <View style={styles.profileImageContainer}>
           {profileImageUri ? (
-            <Image
-              source={{ uri: profileImageUri }}
+            <AppImage
+              uri={profileImageUri}
               style={styles.profileImage}
               resizeMode="cover"
             />

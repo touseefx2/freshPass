@@ -4,10 +4,10 @@ import {
   Text,
   View,
   FlatList,
-  Image,
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -263,7 +263,7 @@ export default function FollowingScreen() {
           onPress={() => handlePressBusiness(item)}
           style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: moderateWidthScale(12) }}
         >
-          <Image source={{ uri: imageUrl }} style={styles.avatar} />
+          <AppImage uri={imageUrl} style={styles.avatar} />
           <View style={styles.textCol}>
             <View style={styles.nameRow}>
               <Text numberOfLines={1} style={styles.name}>

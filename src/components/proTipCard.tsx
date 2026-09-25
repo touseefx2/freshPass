@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -93,7 +94,7 @@ export default function ProTipCard({
   const content = (
     <>
       <View style={styles.imageContainer}>
-        <Image source={{ uri: item.image }} style={styles.image} />
+        <AppImage uri={item.image} style={styles.image} />
       </View>
       <View style={styles.content}>
         <Text style={styles.title}>{item.title}</Text>

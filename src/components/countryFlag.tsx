@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { StyleSheet, View, ViewStyle } from "react-native";
-import { Image } from "expo-image";
+import AppImage from "@/src/components/AppImage";
 import {
   moderateHeightScale,
   moderateWidthScale,
@@ -30,8 +30,8 @@ export default function CountryFlag({ code, style }: CountryFlagProps) {
 
   return (
     <View style={[styles.container, style]}>
-      <Image
-        source={{ uri }}
+      <AppImage
+        uri={uri}
         style={styles.flag}
         contentFit="cover"
         recyclingKey={uri}

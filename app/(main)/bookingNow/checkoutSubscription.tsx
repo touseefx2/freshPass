@@ -5,12 +5,12 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StatusBar,
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -814,8 +814,8 @@ function CheckoutSubscriptionContent() {
             {/* Business Info */}
             {businessData && (
               <View style={styles.businessInfo}>
-                <Image
-                  source={{ uri: getBusinessLogoUrl }}
+                <AppImage
+                  uri={getBusinessLogoUrl}
                   style={styles.businessLogo}
                   resizeMode="cover"
                 />

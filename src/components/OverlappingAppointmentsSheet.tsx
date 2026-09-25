@@ -1,11 +1,11 @@
 import React, { useMemo } from "react";
 import {
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { Feather } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -153,8 +153,8 @@ export default function OverlappingAppointmentsSheet({
             activeOpacity={0.75}
             onPress={() => onSelect(appointment.id)}
           >
-            <Image
-              source={{ uri: appointment.avatarUrl }}
+            <AppImage
+              uri={appointment.avatarUrl}
               style={styles.avatar}
               resizeMode="cover"
             />

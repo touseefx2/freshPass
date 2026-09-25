@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,6 +18,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
@@ -210,8 +210,8 @@ export default function ShopCartScreen() {
               <View key={product.id} style={styles.card}>
                 <View style={styles.thumb}>
                   {product.imageUri ? (
-                    <Image
-                      source={{ uri: product.imageUri }}
+                    <AppImage
+                      uri={product.imageUri}
                       style={styles.thumbImage}
                       resizeMode="cover"
                     />

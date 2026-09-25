@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, Image } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -211,16 +212,14 @@ export default function StaffSelectionBottomSheet({
                     resizeMode="cover"
                   />
                 ) : staff.image ? (
-                  <Image
-                    source={{ uri: staff.image }}
+                  <AppImage
+                    uri={staff.image}
                     style={styles.staffImage}
                     resizeMode="cover"
                   />
                 ) : (
-                  <Image
-                    source={{
-                      uri: "https://www.w3schools.com/howto/img_avatar2.png",
-                    }}
+                  <AppImage
+                    uri="https://www.w3schools.com/howto/img_avatar2.png"
                     style={styles.staffImage}
                     resizeMode="cover"
                   />

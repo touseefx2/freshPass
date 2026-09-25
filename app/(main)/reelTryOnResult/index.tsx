@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import {
   ActivityIndicator,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,6 +25,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -508,7 +508,7 @@ export default function ReelTryOnResultScreen() {
       <StackHeader title={t("tryOnResult")} />
       <ScrollView contentContainerStyle={styles.scroll}>
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} />
+          <AppImage uri={imageUrl} style={styles.image} />
         ) : (
           <View style={[styles.image, styles.center]}>
             <MaterialIcons

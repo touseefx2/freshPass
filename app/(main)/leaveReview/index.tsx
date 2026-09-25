@@ -10,7 +10,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   Platform,
   TextInput,
   Pressable,
@@ -27,6 +26,7 @@ import {
   widthScale,
   heightScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
@@ -409,7 +409,7 @@ export default function LeaveReview() {
     <View>
       {/* Business Info */}
       <View style={styles.businessInfo}>
-        <Image source={{ uri: businessLogoUrl }} style={styles.businessLogo} />
+        <AppImage uri={businessLogoUrl} style={styles.businessLogo} />
         <View style={styles.businessInfoText}>
           <Text style={styles.businessName}>{businessName}</Text>
           <Text style={styles.businessAddress}>{businessAddress}</Text>

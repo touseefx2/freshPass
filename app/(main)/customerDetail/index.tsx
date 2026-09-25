@@ -5,13 +5,13 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
-  Image,
   StatusBar,
   TouchableOpacity,
   Alert,
   Linking,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { Theme } from "@/src/theme/colors";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -502,8 +502,8 @@ export default function CustomerDetail() {
       >
         <View style={styles.profileSection}>
           <View style={styles.avatar}>
-            <Image
-              source={{ uri: profileImageUrl }}
+            <AppImage
+              uri={profileImageUrl}
               style={styles.avatarImage}
               resizeMode="cover"
             />

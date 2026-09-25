@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -209,7 +209,7 @@ export default function ReelMediaTile({
       accessibilityRole="button"
     >
       {thumbUri ? (
-        <Image source={{ uri: thumbUri }} style={styles.image} />
+        <AppImage uri={thumbUri} style={styles.image} />
       ) : (
         <View style={styles.placeholder}>
           {loadingThumb ? (

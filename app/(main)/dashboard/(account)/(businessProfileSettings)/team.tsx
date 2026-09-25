@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
-  Image,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -741,8 +741,8 @@ export default function ManageTeamScreen() {
                   <View style={styles.ownerProfileRow}>
                     <View style={styles.ownerAvatarWrap}>
                       <View style={styles.ownerAvatarClip}>
-                        <Image
-                          source={{ uri: ownerImageUri }}
+                        <AppImage
+                          uri={ownerImageUri}
                           style={styles.ownerAvatar}
                         />
                       </View>

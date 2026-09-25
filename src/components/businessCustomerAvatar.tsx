@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Image, StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, Text, View, ViewStyle } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -7,6 +7,7 @@ import {
   getBusinessCustomerInitials,
   resolveBusinessCustomerAvatarUrl,
 } from "@/src/utils/businessCustomerDisplay";
+import AppImage from "@/src/components/AppImage";
 
 type BusinessCustomerAvatarProps = {
   name?: string | null;
@@ -57,13 +58,19 @@ export default function BusinessCustomerAvatar({
     [theme, size, textSize],
   );
 
+  const initialsFallback = (
+    <View style={[styles.container, style]}>
+      <Text style={styles.text}>{getBusinessCustomerInitials(name)}</Text>
+    </View>
+  );
+
   return (
     <View style={[styles.container, style]}>
-      {avatarUri ? (
-        <Image source={{ uri: avatarUri }} style={styles.image} />
-      ) : (
-        <Text style={styles.text}>{getBusinessCustomerInitials(name)}</Text>
-      )}
+      <AppImage
+        uri={avatarUri}
+        style={styles.image}
+        fallback={initialsFallback}
+      />
     </View>
   );
 }

@@ -2,13 +2,13 @@ import React, { useMemo, useState } from "react";
 import {
   Alert,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -317,8 +317,8 @@ export default function ProductsInventoryScreen() {
               <View style={styles.card}>
                 <View style={styles.thumb}>
                   {item.imageUri ? (
-                    <Image
-                      source={{ uri: item.imageUri }}
+                    <AppImage
+                      uri={item.imageUri}
                       style={styles.thumbImage}
                       resizeMode="cover"
                     />

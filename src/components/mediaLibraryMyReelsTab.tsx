@@ -4,7 +4,6 @@ import {
   ActionSheetIOS,
   Alert,
   FlatList,
-  Image,
   Platform,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -772,7 +772,7 @@ export default function MediaLibraryMyReelsTab() {
             style={styles.thumbWrap}
           >
             {thumb ? (
-              <Image source={{ uri: thumb }} style={styles.thumb} />
+              <AppImage uri={thumb} style={styles.thumb} />
             ) : (
               <View
                 style={[

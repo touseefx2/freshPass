@@ -2,10 +2,10 @@ import React, { useMemo } from "react";
 import {
   StyleSheet,
   View,
-  Image,
   TouchableOpacity,
   Dimensions,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -90,7 +90,7 @@ export default function PhotoGrid({
           key={photo.id}
           style={[styles.photoContainer, { width: photoWidth }]}
         >
-          <Image source={{ uri: photo.uri }} style={styles.photo} />
+          <AppImage uri={photo.uri} style={styles.photo} />
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => onDeletePhoto(photo.id)}

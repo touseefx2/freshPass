@@ -11,7 +11,6 @@ import {
   TouchableOpacity,
   View,
   ScrollView,
-  Image,
   Linking,
   Platform,
   Alert,
@@ -20,6 +19,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
@@ -1985,14 +1985,13 @@ export default function BookingDetailsById() {
           {/* Service / Plan card */}
           <View style={[styles.serviceCard, styles.cardShadow]}>
             <View style={styles.serviceCardRow}>
-              <Image
-                source={{
-                  uri:
-                    booking.serviceImageUrl ||
-                    booking.businessLogoUrl ||
-                    getDefaultBusinessLogo() ||
-                    "",
-                }}
+              <AppImage
+                uri={
+                  booking.serviceImageUrl ||
+                  booking.businessLogoUrl ||
+                  getDefaultBusinessLogo() ||
+                  ""
+                }
                 style={styles.serviceImage}
               />
               <View style={styles.serviceInfo}>
@@ -2138,8 +2137,8 @@ export default function BookingDetailsById() {
             >
               <View style={styles.assignedStaffAvatar}>
                 {assignedStaffImageUri ? (
-                  <Image
-                    source={{ uri: assignedStaffImageUri }}
+                  <AppImage
+                    uri={assignedStaffImageUri}
                     style={styles.assignedStaffAvatarImage}
                   />
                 ) : (
@@ -2185,8 +2184,8 @@ export default function BookingDetailsById() {
               }}
               disabled={booking.businessId == null}
             >
-              <Image
-                source={{ uri: booking.businessLogoUrl }}
+              <AppImage
+                uri={booking.businessLogoUrl}
                 style={styles.locationAvatar}
               />
               <View style={styles.locationInfo}>
@@ -2329,8 +2328,8 @@ export default function BookingDetailsById() {
                         onPress={() => handleOpenFullImage(index)}
                         activeOpacity={0.9}
                       >
-                        <Image
-                          source={{ uri: img.url }}
+                        <AppImage
+                          uri={img.url}
                           style={styles.imageCardImage}
                           resizeMode="cover"
                         />
@@ -2498,13 +2497,12 @@ export default function BookingDetailsById() {
                 </View>
                 {booking.inspiration.try_on?.image_url ? (
                   <View style={styles.inspirationRow}>
-                    <Image
-                      source={{
-                        uri:
-                          resolveApiImageUrl(
-                            booking.inspiration.try_on.image_url,
-                          ) || "",
-                      }}
+                    <AppImage
+                      uri={
+                        resolveApiImageUrl(
+                          booking.inspiration.try_on.image_url,
+                        ) || ""
+                      }
                       style={styles.inspirationThumb}
                     />
                     <View style={styles.inspirationMeta}>
@@ -2530,12 +2528,10 @@ export default function BookingDetailsById() {
                       {resolveApiImageUrl(
                         booking.inspiration.reel.thumbnail_url,
                       ) ? (
-                        <Image
-                          source={{
-                            uri: resolveApiImageUrl(
-                              booking.inspiration.reel.thumbnail_url,
-                            )!,
-                          }}
+                        <AppImage
+                          uri={resolveApiImageUrl(
+                            booking.inspiration.reel.thumbnail_url,
+                          )!}
                           style={styles.inspirationThumb}
                         />
                       ) : (
@@ -2614,8 +2610,8 @@ export default function BookingDetailsById() {
                   <View style={styles.tipReceiptAvatarWrap}>
                     <View style={styles.tipReceiptAvatar}>
                       {tipReceiptImageUri ? (
-                        <Image
-                          source={{ uri: tipReceiptImageUri }}
+                        <AppImage
+                          uri={tipReceiptImageUri}
                           style={styles.tipReceiptAvatarImage}
                           resizeMode="cover"
                         />

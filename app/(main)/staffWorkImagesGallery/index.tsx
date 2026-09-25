@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
-  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,6 +19,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import RetryButton from "@/src/components/retryButton";
 import { ApiService } from "@/src/services/api";
@@ -263,7 +263,7 @@ export default function StaffWorkImagesGalleryScreen() {
           onPress={() => handleOpenImage(index)}
         >
           <View style={styles.gridItem}>
-            <Image source={{ uri: item.url }} style={styles.photo} />
+            <AppImage uri={item.url} style={styles.photo} />
           </View>
         </TouchableOpacity>
       );
