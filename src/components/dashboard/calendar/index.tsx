@@ -369,8 +369,10 @@ const createStyles = (theme: Theme) =>
     },
     daysStrip: {
       flexDirection: "row",
-      paddingTop: moderateHeightScale(6),
-      paddingBottom: moderateHeightScale(8),
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(6),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
     },
@@ -426,6 +428,20 @@ const createStyles = (theme: Theme) =>
       width: widthScale(5),
       height: widthScale(5),
       marginTop: moderateHeightScale(3),
+    },
+    weekDayCellPill: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(5),
+      paddingHorizontal: moderateWidthScale(4),
+      borderRadius: moderateWidthScale(8),
+    },
+    weekDayCellPillSelected: {
+      backgroundColor: theme.darkGreen,
+    },
+    weekDayCellPillToday: {
+      borderWidth: 1.5,
+      borderColor: theme.orangeBrown,
     },
     agendaContainer: {
       flex: 1,
@@ -714,8 +730,9 @@ const createStyles = (theme: Theme) =>
     },
     monthWeekdaysRow: {
       flexDirection: "row",
-      paddingHorizontal: moderateWidthScale(8),
       paddingBottom: moderateHeightScale(6),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
     },
     monthWeekdayText: {
       flex: 1,
@@ -726,7 +743,8 @@ const createStyles = (theme: Theme) =>
     },
     monthRow: {
       flexDirection: "row",
-      paddingHorizontal: moderateWidthScale(8),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
     },
     monthCell: {
       flex: 1,
@@ -734,6 +752,8 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "flex-start",
       paddingTop: moderateHeightScale(6),
+      borderRightWidth: 1,
+      borderRightColor: theme.borderLight,
     },
     monthCellSelected: {
       backgroundColor: theme.lightGreen07,
@@ -2426,6 +2446,72 @@ export default function CalendarScreen() {
     );
   };
 
+  const renderWeekDayCell = (day: dayjs.Dayjs) => {
+    const dateStr = day.format("YYYY-MM-DD");
+    const isSelected = day.isSame(selectedDate, "day");
+    const isToday = day.isSame(today, "day");
+
+    const textColor = isSelected
+      ? theme.white
+      : isToday
+        ? theme.selectCard
+        : theme.darkGreen;
+
+    const textWeight = isSelected || isToday
+      ? fonts.fontBold
+      : fonts.fontMedium;
+
+    return (
+      <TouchableOpacity
+        key={dateStr}
+        style={{
+          flex: 1,
+          alignItems: "center",
+          borderLeftWidth: 1,
+          borderLeftColor: theme.borderLight,
+        }}
+        activeOpacity={0.7}
+        onPress={() => {
+          closeOverlays();
+          setSelectedDate(day);
+        }}
+      >
+        <View
+          key={`wc-${dateStr}-${isSelected ? "s" : isToday ? "t" : "d"}`}
+          style={[
+            styles.weekDayCellPill,
+            isSelected && styles.weekDayCellPillSelected,
+            isToday && !isSelected && styles.weekDayCellPillToday,
+          ]}
+        >
+          <Text
+            style={{
+              fontSize: fontSize.size11,
+              fontFamily: isSelected ? fonts.fontBold : fonts.fontSemiBold,
+              color: textColor,
+              textAlign: "center" as const,
+              includeFontPadding: false,
+            }}
+          >
+            {day.format("ddd")}
+          </Text>
+          <Text
+            style={{
+              fontSize: 10,
+              fontFamily: textWeight,
+              color: textColor,
+              textAlign: "center" as const,
+              includeFontPadding: false,
+              marginTop: moderateHeightScale(1),
+            }}
+          >
+            {day.format("MMM D")}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   const renderTimeGrid = (columnWidth?: number) => (
     <ScrollView
       ref={scrollViewRef}
@@ -2505,7 +2591,7 @@ export default function CalendarScreen() {
     <View style={{ flex: 1 }}>
       <View style={styles.daysStrip}>
         <View style={styles.daysStripGutter} />
-        {week.map((day) => renderDayCell(day))}
+        {week.map((day) => renderWeekDayCell(day))}
       </View>
       {renderTimeGrid()}
     </View>
