@@ -408,7 +408,18 @@ export default function BusinessCreateMediaMenu({
           return;
         case "addProduct":
           closeAll();
-          showBanner(t("addProduct"), t("comingSoon"), "info", 2500);
+          // Profile → Business profile settings → Products listing
+          router.push("/(main)/dashboard/(account)");
+          setTimeout(() => {
+            router.push(
+              "/(main)/dashboard/(account)/(businessProfileSettings)",
+            );
+            setTimeout(() => {
+              router.push(
+                "/(main)/dashboard/(account)/(businessProfileSettings)/products",
+              );
+            }, 15);
+          }, 15);
           return;
         case "blockTime":
           closeAll();
@@ -421,7 +432,7 @@ export default function BusinessCreateMediaMenu({
           closeAll();
       }
     },
-    [closeAll, handleAddEmployee, openReelPicker, router, showBanner, t],
+    [closeAll, handleAddEmployee, openReelPicker, router],
   );
 
   const renderMenuIcon = (item: MenuItem) => {
