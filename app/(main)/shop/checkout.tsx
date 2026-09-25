@@ -4,7 +4,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -21,6 +20,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
+import FloatingInput from "@/src/components/floatingInput";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   clearCart,
@@ -39,11 +39,11 @@ const createStyles = (theme: Theme) =>
     container: { flex: 1, backgroundColor: theme.background },
     content: { flex: 1, paddingHorizontal: moderateWidthScale(20) },
     contentContainer: {
-      paddingVertical: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(16),
       gap: moderateHeightScale(12),
     },
     actions: {
-      marginTop: moderateHeightScale(8),
+      marginTop: moderateHeightScale(12),
       gap: moderateHeightScale(10),
     },
     stepper: {
@@ -92,24 +92,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(4),
-    },
-    label: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(6),
-      marginTop: moderateHeightScale(4),
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
     },
     row2: { flexDirection: "row", gap: moderateWidthScale(10) },
     half: { flex: 1 },
@@ -279,6 +261,7 @@ export default function ShopCheckoutScreen() {
         : t("placeOrder");
 
   const onPrimary = () => {
+    Keyboard.dismiss();
     if (step === 1) {
       if (!validateShipping()) return;
       setStep(2);
@@ -298,10 +281,12 @@ export default function ShopCheckoutScreen() {
         style={styles.content}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingBottom: insets.bottom + moderateHeightScale(24) },
+          { paddingBottom: insets.bottom + moderateHeightScale(32) },
         ]}
         keyboardShouldPersistTaps="handled"
-        bottomOffset={moderateHeightScale(24)}
+        showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(32)}
+        extraKeyboardSpace={moderateHeightScale(24)}
         onScrollBeginDrag={Keyboard.dismiss}
       >
         <View style={styles.stepper}>
@@ -343,59 +328,62 @@ export default function ShopCheckoutScreen() {
         {step === 1 ? (
           <>
             <Text style={styles.sectionTitle}>{t("shippingAddress")}</Text>
-            <Text style={styles.label}>{t("fullName")}</Text>
-            <TextInput
-              style={styles.input}
+            <FloatingInput
+              label={t("fullName")}
               value={address.fullName}
               onChangeText={(v) => dispatch(setShippingAddress({ fullName: v }))}
-              placeholder={t("fullName")}
-              placeholderTextColor={theme.lightGreen5}
+              autoCapitalize="words"
+              showClearButton
+              onClear={() => dispatch(setShippingAddress({ fullName: "" }))}
             />
-            <Text style={styles.label}>{t("streetAddress")}</Text>
-            <TextInput
-              style={styles.input}
+            <FloatingInput
+              label={t("streetAddress")}
               value={address.street}
               onChangeText={(v) => dispatch(setShippingAddress({ street: v }))}
-              placeholder={t("streetAddress")}
-              placeholderTextColor={theme.lightGreen5}
+              showClearButton
+              onClear={() => dispatch(setShippingAddress({ street: "" }))}
             />
             <View style={styles.row2}>
               <View style={styles.half}>
-                <Text style={styles.label}>{t("city")}</Text>
-                <TextInput
-                  style={styles.input}
+                <FloatingInput
+                  label={t("city")}
                   value={address.city}
                   onChangeText={(v) =>
                     dispatch(setShippingAddress({ city: v }))
                   }
-                  placeholder={t("city")}
-                  placeholderTextColor={theme.lightGreen5}
+                  autoCapitalize="words"
+                  showClearButton
+                  onClear={() => dispatch(setShippingAddress({ city: "" }))}
                 />
               </View>
               <View style={styles.half}>
-                <Text style={styles.label}>{t("state")}</Text>
-                <TextInput
-                  style={styles.input}
+                <FloatingInput
+                  label={t("state")}
                   value={address.state}
                   onChangeText={(v) =>
                     dispatch(setShippingAddress({ state: v }))
                   }
-                  placeholder={t("state")}
-                  placeholderTextColor={theme.lightGreen5}
+                  autoCapitalize="characters"
+                  showClearButton
+                  onClear={() => dispatch(setShippingAddress({ state: "" }))}
                 />
               </View>
             </View>
-            <Text style={styles.label}>{t("zipCode")}</Text>
-            <TextInput
-              style={styles.input}
+            <FloatingInput
+              label={t("zipCode")}
               value={address.zip}
               onChangeText={(v) => dispatch(setShippingAddress({ zip: v }))}
-              placeholder={t("zipCode")}
-              placeholderTextColor={theme.lightGreen5}
               keyboardType="number-pad"
+              showClearButton
+              onClear={() => dispatch(setShippingAddress({ zip: "" }))}
             />
 
-            <Text style={[styles.sectionTitle, { marginTop: moderateHeightScale(12) }]}>
+            <Text
+              style={[
+                styles.sectionTitle,
+                { marginTop: moderateHeightScale(12) },
+              ]}
+            >
               {t("shippingMethod")}
             </Text>
             {methodOptions.map((opt) => {
@@ -428,36 +416,36 @@ export default function ShopCheckoutScreen() {
           <>
             <Text style={styles.sectionTitle}>{t("payment")}</Text>
             <Text style={styles.mockNote}>{t("paymentMockNote")}</Text>
-            <Text style={styles.label}>{t("cardNumber")}</Text>
-            <TextInput
-              style={styles.input}
+            <FloatingInput
+              label={t("cardNumber")}
               value={cardNumber}
               onChangeText={setCardNumber}
               placeholder="4242 4242 4242 4242"
-              placeholderTextColor={theme.lightGreen5}
               keyboardType="number-pad"
+              showClearButton
+              onClear={() => setCardNumber("")}
             />
             <View style={styles.row2}>
               <View style={styles.half}>
-                <Text style={styles.label}>{t("expiry")}</Text>
-                <TextInput
-                  style={styles.input}
+                <FloatingInput
+                  label={t("expiry")}
                   value={expiry}
                   onChangeText={setExpiry}
                   placeholder="MM/YY"
-                  placeholderTextColor={theme.lightGreen5}
+                  showClearButton
+                  onClear={() => setExpiry("")}
                 />
               </View>
               <View style={styles.half}>
-                <Text style={styles.label}>{t("cvc")}</Text>
-                <TextInput
-                  style={styles.input}
+                <FloatingInput
+                  label={t("cvc")}
                   value={cvc}
                   onChangeText={setCvc}
                   placeholder="123"
-                  placeholderTextColor={theme.lightGreen5}
                   keyboardType="number-pad"
                   secureTextEntry
+                  showClearButton
+                  onClear={() => setCvc("")}
                 />
               </View>
             </View>

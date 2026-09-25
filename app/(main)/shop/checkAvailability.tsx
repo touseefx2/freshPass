@@ -4,7 +4,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -21,6 +20,7 @@ import {
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
+import FloatingInput from "@/src/components/floatingInput";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   setCheckedZip,
@@ -35,11 +35,11 @@ const createStyles = (theme: Theme) =>
     container: { flex: 1, backgroundColor: theme.background },
     content: { flex: 1, paddingHorizontal: moderateWidthScale(20) },
     contentContainer: {
-      paddingVertical: moderateHeightScale(16),
+      paddingTop: moderateHeightScale(16),
       gap: moderateHeightScale(12),
     },
     actions: {
-      marginTop: moderateHeightScale(8),
+      marginTop: moderateHeightScale(12),
       gap: moderateHeightScale(10),
     },
     title: {
@@ -53,33 +53,8 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       lineHeight: fontSize.size18,
     },
-    zipRow: {
-      flexDirection: "row",
-      gap: moderateWidthScale(8),
-      alignItems: "center",
-    },
-    zipInput: {
-      flex: 1,
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.text,
-    },
-    checkBtn: {
-      paddingHorizontal: moderateWidthScale(18),
-      paddingVertical: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.buttonBack,
-    },
-    checkBtnText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
+    zipBlock: {
+      gap: moderateHeightScale(10),
     },
     successBanner: {
       flexDirection: "row",
@@ -199,6 +174,7 @@ export default function CheckAvailabilityScreen() {
   ];
 
   const handleCheck = () => {
+    Keyboard.dismiss();
     const trimmed = zip.trim();
     if (trimmed.length < 3) {
       showBanner(t("checkAvailability"), t("enterValidZip"), "warning");
@@ -215,28 +191,32 @@ export default function CheckAvailabilityScreen() {
         style={styles.content}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingBottom: insets.bottom + moderateHeightScale(24) },
+          { paddingBottom: insets.bottom + moderateHeightScale(32) },
         ]}
         keyboardShouldPersistTaps="handled"
-        bottomOffset={moderateHeightScale(24)}
+        showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(32)}
+        extraKeyboardSpace={moderateHeightScale(24)}
         onScrollBeginDrag={Keyboard.dismiss}
       >
         <Text style={styles.title}>{t("checkAvailability")}</Text>
         <Text style={styles.subtitle}>{t("enterZipCode")}</Text>
 
-        <View style={styles.zipRow}>
-          <TextInput
-            style={styles.zipInput}
+        <View style={styles.zipBlock}>
+          <FloatingInput
+            label={t("zipCode")}
             value={zip}
             onChangeText={setZip}
             placeholder={t("zipCode")}
-            placeholderTextColor={theme.lightGreen5}
             keyboardType="number-pad"
             maxLength={10}
+            showClearButton
+            onClear={() => {
+              setZip("");
+              setChecked(false);
+            }}
           />
-          <Pressable style={styles.checkBtn} onPress={handleCheck}>
-            <Text style={styles.checkBtnText}>{t("check")}</Text>
-          </Pressable>
+          <Button title={t("check")} onPress={handleCheck} />
         </View>
 
         {checked ? (
