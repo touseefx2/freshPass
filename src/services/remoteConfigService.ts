@@ -39,13 +39,13 @@ export type DefaultMediaRemoteConfig = {
 /** In-app fallbacks used until Remote Config is fetched (match RC template defaults). */
 const DEFAULT_MEDIA_FALLBACKS: DefaultMediaRemoteConfig = {
   defaultAiRequestsImage:
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyoAbiW7jy4zhRsp7k38GJcUIO8R2s1bwIxw&s",
+    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&h=400&fit=crop&auto=format",
   defaultAvatarImage:
-    "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg",
+    "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop&auto=format",
   defaultBusinessImage:
-    "https://content.artofmanliness.com/uploads/2011/06/Barber-Shoppe-7.jpg",
+    "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=800&h=600&fit=crop&auto=format",
   defaultBusinessLogo:
-    "https://cdn.vectorstock.com/i/500p/60/36/global-tech-globe-logo-vector-26746036.jpg",
+    "https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400&h=400&fit=crop&auto=format",
   defaultCategoryImage:
     "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=400&fit=crop&auto=format",
   tutorialVideoTryonUri: "https://getfreshpass.com/videos/hair-tryon.MP4",

@@ -72,28 +72,28 @@
     },
     "default_ai_requests_image": {
       "defaultValue": {
-        "value": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyoAbiW7jy4zhRsp7k38GJcUIO8R2s1bwIxw&s"
+        "value": "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&h=400&fit=crop&auto=format"
       },
       "description": "Default placeholder image for AI requests",
       "valueType": "STRING"
     },
     "default_avatar_image": {
       "defaultValue": {
-        "value": "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg"
+        "value": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop&auto=format"
       },
       "description": "Default user/staff avatar image URL",
       "valueType": "STRING"
     },
     "default_business_image": {
       "defaultValue": {
-        "value": "https://content.artofmanliness.com/uploads/2011/06/Barber-Shoppe-7.jpg"
+        "value": "https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=800&h=600&fit=crop&auto=format"
       },
       "description": "Default business cover/hero image URL",
       "valueType": "STRING"
     },
     "default_business_logo": {
       "defaultValue": {
-        "value": "https://cdn.vectorstock.com/i/500p/60/36/global-tech-globe-logo-vector-26746036.jpg"
+        "value": "https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400&h=400&fit=crop&auto=format"
       },
       "description": "Default business logo URL",
       "valueType": "STRING"
