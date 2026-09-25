@@ -11,11 +11,11 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
   TextInput,
   Pressable,
   Dimensions,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { AntDesign } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -782,17 +782,12 @@ export default function EditBusinessProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileSection}>
-          {logoImageUri && (
-            <View style={styles.profileImageContainer}>
-              <Image
-                source={{
-                  uri: logoImageUri,
-                }}
-                style={styles.profileImage}
-                resizeMode="cover"
-              />
-            </View>
-          )}
+          <View style={styles.profileImageContainer}>
+            <AppImage
+              uri={logoImageUri}
+              style={styles.profileImage}
+            />
+          </View>
           <View style={styles.uploadSection}>
             <Text style={styles.uploadText}>{t("addYourBusinessLogo")}</Text>
             <TouchableOpacity

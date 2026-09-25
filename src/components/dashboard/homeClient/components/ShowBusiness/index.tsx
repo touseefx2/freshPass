@@ -3,11 +3,11 @@ import {
   View,
   Text,
   ScrollView,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Dimensions,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -93,12 +93,11 @@ export default function ShowBusiness({
             key={salon.id}
             style={[styles.verifiedSalonCardNew]}
           >
-            <Image
-              source={{
-                uri: salon.image ?? "",
-              }}
+            <AppImage
+              uri={salon.image}
               style={styles.verifiedSalonImage}
-              resizeMode="cover"
+              iconSize={widthScale(36)}
+              iconColor={theme.white50}
             />
 
             <View style={styles.verifiedSalonContent}>

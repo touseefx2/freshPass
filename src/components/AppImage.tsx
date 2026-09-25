@@ -17,6 +17,8 @@ type AppImageProps = {
   fallback?: React.ReactNode;
   /** Size of the default placeholder icon (defaults to 28 scaled) */
   iconSize?: number;
+  /** Color of the default placeholder icon (defaults to theme.lightGreen4) */
+  iconColor?: string;
   /** Additional props forwarded to expo-image */
   transition?: number;
   recyclingKey?: string;
@@ -56,6 +58,7 @@ export default function AppImage({
   resizeMode,
   fallback,
   iconSize,
+  iconColor,
   transition = 200,
   recyclingKey,
   containerStyle,
@@ -84,7 +87,7 @@ export default function AppImage({
     }
     return (
       <View style={[style as any, styles.placeholder, containerStyle]}>
-        <Feather name="image" size={size} color={theme.lightGreen4} />
+        <Feather name="image" size={size} color={iconColor ?? theme.lightGreen4} />
       </View>
     );
   }

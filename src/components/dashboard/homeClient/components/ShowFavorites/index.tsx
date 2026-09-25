@@ -97,9 +97,10 @@ export default function ShowFavorites({
         >
           <View style={styles.imageWrap}>
             <AppImage
-              uri={item.image ?? ""}
+              uri={item.image}
               style={styles.image}
-              resizeMode="cover"
+              iconSize={widthScale(36)}
+              iconColor={theme.white50}
             />
             <View style={styles.heartBadge}>
               <MaterialIcons

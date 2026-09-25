@@ -65,9 +65,10 @@ export function BusinessCard({
       style={styles.verifiedSalonCardNew}
     >
       <AppImage
-        uri={salon.image ?? ""}
+        uri={salon.image}
         style={styles.verifiedSalonImage}
-        resizeMode="cover"
+        iconSize={widthScale(36)}
+        iconColor={theme.white50}
       />
       <View style={styles.verifiedSalonContent}>
         <View style={styles.platformVerifiedBadge}>

@@ -6,8 +6,8 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -165,12 +165,9 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.profileImageContainer}>
-          <Image
-            source={{
-              uri: profileImageUri,
-            }}
+          <AppImage
+            uri={profileImageUri}
             style={styles.profileImage}
-            resizeMode="cover"
           />
         </View>
 

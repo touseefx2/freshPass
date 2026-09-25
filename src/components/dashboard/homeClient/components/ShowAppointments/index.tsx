@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { View, Text, ScrollView, Image, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -65,12 +66,11 @@ export default function ShowAppointments({
             </View>
           </View>
           <View style={styles.verifiedCardContent}>
-            <Image
-              source={{
-                uri: appointment.staffImage,
-              }}
+            <AppImage
+              uri={appointment.staffImage}
               style={styles.verifiedCardImage}
-              resizeMode="cover"
+              iconSize={widthScale(28)}
+              iconColor={theme.white50}
             />
             <View style={styles.verifiedCardTextContainer}>
               <Text numberOfLines={1} style={styles.salonName}>

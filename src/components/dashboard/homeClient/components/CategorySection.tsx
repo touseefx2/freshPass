@@ -5,12 +5,12 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Dimensions,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -289,15 +289,15 @@ export default function CategorySection({
             onPress={() => onCategorySelect(category.id)}
             activeOpacity={0.8}
           >
-            <Image
-              source={{
-                uri: category?.image
+            <AppImage
+              uri={
+                category?.image
                   ? category.image.startsWith("http://") ||
                     category.image.startsWith("https://")
                     ? category.image
                     : process.env.EXPO_PUBLIC_API_BASE_URL + category.image
-                  : getDefaultCategoryImage(),
-              }}
+                  : getDefaultCategoryImage()
+              }
               style={[
                 styles.categoryImage,
                 selectedCategory === category.id && styles.categoryImageActive,
@@ -307,7 +307,6 @@ export default function CategorySection({
                   ),
                 },
               ]}
-              resizeMode="cover"
             />
             <Text
               style={

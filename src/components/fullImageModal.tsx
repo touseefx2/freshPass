@@ -143,6 +143,8 @@ export default function FullImageModal() {
             uri={item}
             style={styles.modalImage}
             resizeMode="contain"
+            iconSize={48}
+            iconColor="#999"
           />
         </Zoom>
       </View>
@@ -187,6 +189,8 @@ export default function FullImageModal() {
                 uri={displayImages[0]}
                 style={styles.modalImage}
                 resizeMode="contain"
+                iconSize={48}
+                iconColor="#999"
               />
             </Zoom>
           </View>

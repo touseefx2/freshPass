@@ -4104,6 +4104,8 @@ export default function BusinessDetailScreen() {
                   uri={uri}
                   style={styles.heroImage}
                   resizeMode="cover"
+                  iconSize={widthScale(48)}
+                  iconColor={theme.white50}
                 />
               </TouchableOpacity>
             ))}
@@ -4133,6 +4135,7 @@ export default function BusinessDetailScreen() {
                       },
                     ]}
                     resizeMode="cover"
+                    iconColor={theme.white50}
                   />
                 </TouchableOpacity>
               ))}

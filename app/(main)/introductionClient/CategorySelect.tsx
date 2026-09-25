@@ -1,6 +1,5 @@
 import React, { useMemo, useEffect, useCallback, useState } from "react";
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -10,6 +9,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -332,20 +332,19 @@ export default function CategorySelect({ onNext }: CategorySelectProps) {
                 <Text style={styles.selectedBadgeText}>{selectedIndex}</Text>
               </View>
             )}
-            <Image
-              source={{
-                uri: item?.imageUrl
+            <AppImage
+              uri={
+                item?.imageUrl
                   ? item.imageUrl.startsWith("http://") ||
                     item.imageUrl.startsWith("https://")
                     ? item.imageUrl
                     : process.env.EXPO_PUBLIC_API_BASE_URL + item.imageUrl
-                  : getDefaultCategoryImage(),
-              }}
+                  : getDefaultCategoryImage()
+              }
               style={[
                 styles.categoryImage,
                 isSelected && styles.categoryCardSelected,
               ]}
-              resizeMode="cover"
             />
           </View>
           <View style={styles.categoryLabelContainer}>

@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
-import { StyleSheet, View, Text, FlatList, Image } from "react-native";
+import { StyleSheet, View, Text, FlatList } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -285,14 +286,9 @@ export default function BusinessList({ data }: BusinessListProps) {
   const renderSubscriptionItem = ({ item }: { item: SubscriptionItem }) => {
     return (
       <View style={[styles.subscriptionCard, styles.shadow]}>
-        <Image
-          source={{
-            uri:
-              item.image ||
-              "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg",
-          }}
+        <AppImage
+          uri={item.image}
           style={styles.subscriptionImage}
-          resizeMode="cover"
         />
         <View
           style={{

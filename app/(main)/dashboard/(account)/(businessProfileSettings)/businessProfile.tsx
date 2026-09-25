@@ -5,8 +5,8 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
-  Image,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -281,17 +281,12 @@ export default function BusinessProfileScreen() {
           renderSkeleton()
         ) : (
           <>
-            {getLogoUri() && (
-              <View style={styles.profileImageContainer}>
-                <Image
-                  source={{
-                    uri: getLogoUri()!,
-                  }}
-                  style={styles.profileImage}
-                  resizeMode="cover"
-                />
-              </View>
-            )}
+            <View style={styles.profileImageContainer}>
+              <AppImage
+                uri={getLogoUri()}
+                style={styles.profileImage}
+              />
+            </View>
 
             <Text style={styles.businessNameText}>
               {profileData?.title || ""}

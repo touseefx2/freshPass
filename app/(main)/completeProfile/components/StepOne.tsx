@@ -6,7 +6,6 @@ import React, {
   useRef,
 } from "react";
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import {
   TouchableWithoutFeedback,
   ScrollView,
 } from "react-native";
+import AppImage from "@/src/components/AppImage";
 import { Feather } from "@expo/vector-icons";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -510,15 +510,12 @@ export default function StepOne({
                       onPress={() => handleSelectCategory(item.id, item.name)}
                       style={styles.categoryCard}
                     >
-                      <Image
-                        source={{
-                          uri: getCategoryImageUri(item.imageUrl),
-                        }}
+                      <AppImage
+                        uri={getCategoryImageUri(item.imageUrl)}
                         style={[
                           styles.categoryImage,
                           isSelected && styles.categoryCardSelected,
                         ]}
-                        resizeMode="cover"
                       />
                       <View style={styles.categoryLabelContainer}>
                         <Text style={styles.categoryLabel}>{item.name}</Text>
