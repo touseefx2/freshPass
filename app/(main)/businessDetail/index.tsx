@@ -3761,8 +3761,10 @@ export default function BusinessDetailScreen() {
                 color={theme.selectCard}
               />
               <Text style={styles.ratingBadgeText}>
-                {averageRatingToShow.toFixed(1)}/{" "}
-                {t("reviewsCount", { count: totalReviewsToShow })}
+                {t("reviewsCount", {
+                  rating: `${averageRatingToShow.toFixed(1)}/5`,
+                  count: totalReviewsToShow,
+                })}
               </Text>
             </View>
             <Text style={styles.averageRatingText}>
@@ -4164,8 +4166,10 @@ export default function BusinessDetailScreen() {
                 color={theme.selectCard}
               />
               <Text style={styles.ratingText}>
-                {averageRating.toFixed(1)}/{" "}
-                {t("reviewsCount", { count: totalReviews })}
+                {t("reviewsCount", {
+                  rating: `${averageRating.toFixed(1)}/5`,
+                  count: totalReviews,
+                })}
               </Text>
             </View>
             <View

@@ -982,7 +982,6 @@
   "membershipSubscriptionsList": "Membership subscriptions list",
   "paymentCancelationPolicy": "Payment & cancelation policy",
   "showAllReviews": "Show all {{count}} reviews",
-  "reviewsCount": "{{count}} reviews",
   "average": "Average",
   "breakLabel": "Break:",
   "staffMembersCount": "Staff members ({{count}})",
