@@ -589,6 +589,14 @@ export default function ChatScreen() {
                   <AppImage
                     uri={item?.image}
                     style={styles.avatarImage}
+                    iconSize={moderateWidthScale(18)}
+                    fallback={
+                      <View style={[styles.avatarImage, { alignItems: "center", justifyContent: "center", backgroundColor: theme.galleryPhotoBack }]}>
+                        <Text style={styles.avatarInitials}>
+                          {renderInitials(item.name)}
+                        </Text>
+                      </View>
+                    }
                   />
                 ) : (
                   <Text style={styles.avatarInitials}>

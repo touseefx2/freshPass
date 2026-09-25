@@ -2415,7 +2415,16 @@ export default function ChatBoxScreen() {
         <View style={styles.headerInfo}>
           <View style={styles.headerAvatar}>
             {image ? (
-              <AppImage style={styles.headerAvatarImage} uri={image} />
+              <AppImage
+                style={styles.headerAvatarImage}
+                uri={image}
+                iconSize={moderateWidthScale(16)}
+                fallback={
+                  <View style={[styles.headerAvatarImage, { alignItems: "center", justifyContent: "center", backgroundColor: theme.galleryPhotoBack }]}>
+                    <Text style={styles.headerInitials}>{renderInitials(name)}</Text>
+                  </View>
+                }
+              />
             ) : (
               <Text style={styles.headerInitials}>{renderInitials(name)}</Text>
             )}

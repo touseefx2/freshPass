@@ -558,6 +558,8 @@ function OriginalMediaCard({
             uri={item.url}
             style={styles.originalMediaCardImage}
             resizeMode="cover"
+            iconSize={moderateWidthScale(32)}
+            placeholderIcon="image"
           />
         </TouchableOpacity>
       )}
@@ -572,6 +574,8 @@ function OriginalMediaCard({
               StyleSheet.absoluteFillObject,
             ]}
             resizeMode="cover"
+            iconSize={moderateWidthScale(32)}
+            placeholderIcon="videocam"
           />
           {!isLegacyAiMediaUrl(item.url) && (
             <MiniVideoPlayer videoUrl={item.url} styles={styles} theme={theme} />
