@@ -37,6 +37,7 @@ const createStyles = (
       backgroundColor: backgroundColor || theme.buttonBack,
       borderRadius: moderateWidthScale(12),
       height: moderateHeightScale(48),
+      paddingHorizontal: moderateWidthScale(24),
       alignItems: "center",
       justifyContent: "center",
       flexDirection: "row",
@@ -49,6 +50,8 @@ const createStyles = (
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: textColor || theme.buttonText,
+      textAlignVertical: "center",
+      includeFontPadding: false,
     },
   });
 

@@ -1544,7 +1544,7 @@
   "productsInventory": "Products (In Store Inventory)",
   "productsInventoryCardSubtitle": "Add and manage products customers can buy.",
   "addProduct": "Add Product",
-  "addProductCta": "+ Add Product",
+  "addProductCta": "Add Product",
   "editProduct": "Edit Product",
   "searchProducts": "Search products...",
   "productFilterAll": "All",

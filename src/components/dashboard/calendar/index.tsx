@@ -169,15 +169,15 @@ interface BreakBlock {
 type ViewMode = "day" | "week" | "month";
 
 const SLOT_INTERVAL_MINUTES = 30;
-const HOUR_HEIGHT = heightScale(148);
-const MIN_BLOCK_HEIGHT_COMPACT = heightScale(80);
-const MIN_BLOCK_HEIGHT_DETAILED = heightScale(62);
+const HOUR_HEIGHT = heightScale(60);
+const MIN_BLOCK_HEIGHT_COMPACT = heightScale(36);
+const MIN_BLOCK_HEIGHT_DETAILED = heightScale(40);
 const TIME_GUTTER_WIDTH = widthScale(38);
 const BLOCK_LINE_HEIGHT = moderateHeightScale(16);
 const BLOCK_AVATAR_SIZE = widthScale(18);
 const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
-const MONTH_CELL_HEIGHT = heightScale(54);
+const MONTH_CELL_HEIGHT = heightScale(60);
 const DAY_CIRCLE_SIZE = widthScale(36);
 const SWIPE_THRESHOLD = moderateWidthScale(50);
 const APPLY_BOX_WIDTH = widthScale(168);
@@ -301,39 +301,37 @@ const createStyles = (theme: Theme) =>
     toolbar: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(14),
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(12),
-      paddingBottom: moderateHeightScale(10),
-      gap: moderateWidthScale(8),
+      paddingBottom: moderateHeightScale(8),
     },
     segmentGroup: {
       flexDirection: "row",
       alignItems: "center",
-      flexShrink: 1,
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(20),
-      borderWidth: 1,
-      borderColor: theme.borderNormal,
-      padding: moderateWidthScale(3),
+      flex: 1,
+      gap: moderateWidthScale(4),
     },
     segment: {
-      flexShrink: 1,
-      paddingHorizontal: moderateWidthScale(11),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(16),
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.secondary,
     },
     segmentActive: {
       backgroundColor: theme.darkGreen,
     },
     segmentText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
     segmentTextActive: {
       color: theme.white,
-      fontFamily: fonts.fontBold,
+      fontFamily: fonts.fontMedium,
     },
     toolbarRight: {
       flexDirection: "row",
@@ -353,14 +351,12 @@ const createStyles = (theme: Theme) =>
       color: theme.selectCard,
     },
     arrowButton: {
-      width: widthScale(32),
-      height: widthScale(32),
-      borderRadius: widthScale(16),
-      borderWidth: 1,
-      borderColor: theme.borderNormal,
-      backgroundColor: theme.white,
+      minWidth: widthScale(44),
+      minHeight: widthScale(44),
       alignItems: "center",
       justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(8),
     },
     rangeRow: {
       alignItems: "center",
@@ -396,7 +392,6 @@ const createStyles = (theme: Theme) =>
       borderRadius: DAY_CIRCLE_SIZE / 2,
       alignItems: "center",
       justifyContent: "center",
-      overflow: "hidden",
     },
     dayNumberSelected: {
       backgroundColor: theme.darkGreen,
@@ -411,6 +406,14 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       textAlign: "center",
       includeFontPadding: false,
+    },
+    dayNumberSelectedText: {
+      color: theme.white,
+      fontFamily: fonts.fontBold,
+    },
+    dayNumberTodayText: {
+      color: theme.selectCard,
+      fontFamily: fonts.fontBold,
     },
     dayDot: {
       width: widthScale(5),
@@ -526,9 +529,9 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       borderRadius: moderateWidthScale(8),
       borderLeftWidth: 3,
-      paddingHorizontal: moderateWidthScale(4),
-      paddingVertical: moderateHeightScale(5),
-      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(4),
+      justifyContent: "center",
       overflow: "hidden",
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: 1 },
@@ -717,8 +720,8 @@ const createStyles = (theme: Theme) =>
     monthWeekdayText: {
       flex: 1,
       textAlign: "center",
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontSemiBold,
       color: theme.lightGreen,
     },
     monthRow: {
@@ -730,9 +733,7 @@ const createStyles = (theme: Theme) =>
       height: MONTH_CELL_HEIGHT,
       alignItems: "center",
       justifyContent: "flex-start",
-      paddingTop: moderateHeightScale(4),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
+      paddingTop: moderateHeightScale(6),
     },
     monthCellSelected: {
       backgroundColor: theme.lightGreen07,
@@ -1016,6 +1017,101 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
+    navRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(12),
+      paddingBottom: moderateHeightScale(10),
+    },
+    navRangeText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    cancelledLabel: {
+      color: theme.red,
+      fontFamily: fonts.fontBold,
+    },
+    listCardRow: {
+      flexDirection: "row",
+      alignItems: "center",
+    },
+    listCardTimeWrap: {
+      width: moderateWidthScale(50),
+      alignItems: "center",
+      marginRight: moderateWidthScale(10),
+    },
+    listCardTime: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    listCardPeriod: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    listCardContent: {
+      flex: 1,
+    },
+    listCardName: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    listCardService: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreenLight,
+      marginTop: moderateHeightScale(2),
+      textTransform: "capitalize",
+    },
+    fab: {
+      position: "absolute",
+      bottom: moderateHeightScale(20),
+      right: moderateWidthScale(20),
+      width: widthScale(52),
+      height: widthScale(52),
+      borderRadius: widthScale(26),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 5,
+      elevation: 6,
+      zIndex: 10,
+    },
+    monthListHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(14),
+      paddingTop: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(6),
+    },
+    monthListCountText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    monthDateCircle: {
+      width: DAY_CIRCLE_SIZE,
+      height: DAY_CIRCLE_SIZE,
+      borderRadius: DAY_CIRCLE_SIZE / 2,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    monthDateCircleSelected: {
+      backgroundColor: theme.darkGreen,
+    },
+    monthDateCircleTodayRing: {
+      borderWidth: 1.5,
+      borderColor: theme.orangeBrown,
+    },
   });
 
 export default function CalendarScreen() {
@@ -1089,6 +1185,23 @@ export default function CalendarScreen() {
       return blockPalette[numeric % blockPalette.length];
     },
     [blockPalette],
+  );
+
+  const cancelledPalette = useMemo(
+    () => ({ bg: theme.lightRed, accent: theme.red }),
+    [theme],
+  );
+
+  const isCancelled = useCallback(
+    (appt: CalendarAppointment) =>
+      appt.originalAppointment.status === "cancelled",
+    [],
+  );
+
+  const getApptPalette = useCallback(
+    (appt: CalendarAppointment) =>
+      isCancelled(appt) ? cancelledPalette : getPalette(appt.id),
+    [isCancelled, cancelledPalette, getPalette],
   );
 
   const fetchRange = useMemo(() => {
@@ -1611,7 +1724,7 @@ export default function CalendarScreen() {
   };
 
   const rangeLabel = useMemo(() => {
-    if (viewMode === "day") return selectedDate.format("dddd, MMM D, YYYY");
+    if (viewMode === "day") return selectedDate.format("ddd, MMM D, YYYY");
     if (viewMode === "month") return selectedDate.format("MMMM YYYY");
     return `${week[0].format("MMM D")} - ${week[6].format("MMM D, YYYY")}`;
   }, [viewMode, selectedDate, week]);
@@ -1957,23 +2070,17 @@ export default function CalendarScreen() {
     const { appointments: stackAppointments } = positioned;
     const extraCount = stackAppointments.length - 1;
     const first = stackAppointments[0];
-    const isCompact = viewMode !== "day";
-    const palette = getPalette(first.id);
-    const minHeight = isCompact
-      ? MIN_BLOCK_HEIGHT_COMPACT
-      : MIN_BLOCK_HEIGHT_DETAILED;
+    const cancelled = isCancelled(first);
+    const palette = cancelled ? cancelledPalette : getPalette(first.id);
     const blockMinutes = Math.max(
       first.duration_minutes,
       SLOT_INTERVAL_MINUTES,
     );
     const top =
       ((first.start_minutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
-    const height = Math.max((blockMinutes / 60) * HOUR_HEIGHT, minHeight);
-    const reservedHeight =
-      BLOCK_LINE_HEIGHT * 2 + BLOCK_AVATAR_SIZE + moderateHeightScale(12);
-    const serviceLines = Math.max(
-      1,
-      Math.min(4, Math.floor((height - reservedHeight) / BLOCK_LINE_HEIGHT)),
+    const height = Math.max(
+      (blockMinutes / 60) * HOUR_HEIGHT,
+      MIN_BLOCK_HEIGHT_COMPACT,
     );
 
     return (
@@ -1993,44 +2100,32 @@ export default function CalendarScreen() {
         <TouchableOpacity
           style={[
             styles.block,
-            isCompact ? null : styles.blockDetailed,
             { backgroundColor: palette.bg, borderLeftColor: palette.accent },
           ]}
           activeOpacity={0.85}
           onPress={() => openOverlapSheet(stackAppointments)}
         >
-          {isCompact ? (
-            <>
-              <Text
-                numberOfLines={1}
-                style={[styles.blockTime, { color: palette.accent }]}
-              >
-                {formatShortTimeLabel(first.start_minutes)}
-              </Text>
-              <Text numberOfLines={1} style={styles.blockClient}>
-                {first.client_name}
-              </Text>
-              <Text numberOfLines={serviceLines} style={styles.blockService}>
-                {first.title}
-              </Text>
-              <AppImage
-                uri={first.avatar_url}
-                style={styles.blockAvatar}
-                resizeMode="cover"
-              />
-            </>
-          ) : (
-            renderDetailCardContent(first)
-          )}
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.blockClient,
+              cancelled && { color: theme.red },
+            ]}
+          >
+            {first.client_name}
+          </Text>
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.blockService,
+              cancelled && styles.cancelledLabel,
+            ]}
+          >
+            {cancelled ? "CANCELLED" : first.title}
+          </Text>
           <View style={styles.stackOverlay} pointerEvents="none">
             <View style={styles.stackBadge}>
-              <Text
-                style={
-                  isCompact
-                    ? styles.stackBadgeTextCompact
-                    : styles.stackBadgeText
-                }
-              >
+              <Text style={styles.stackBadgeTextCompact}>
                 {t("moreAppointments", { count: extraCount })}
               </Text>
             </View>
@@ -2045,15 +2140,8 @@ export default function CalendarScreen() {
     top: number,
     height: number,
   ) => {
-    const palette = getPalette(appointment.id);
-    // Time + client + avatar + padding are always shown, the rest of the box is
-    // filled with as many service lines as fit.
-    const reservedHeight =
-      BLOCK_LINE_HEIGHT * 2 + BLOCK_AVATAR_SIZE + moderateHeightScale(12);
-    const serviceLines = Math.max(
-      1,
-      Math.min(4, Math.floor((height - reservedHeight) / BLOCK_LINE_HEIGHT)),
-    );
+    const cancelled = isCancelled(appointment);
+    const palette = cancelled ? cancelledPalette : getPalette(appointment.id);
     return (
       <View
         key={appointment.id}
@@ -2072,21 +2160,22 @@ export default function CalendarScreen() {
         >
           <Text
             numberOfLines={1}
-            style={[styles.blockTime, { color: palette.accent }]}
+            style={[
+              styles.blockClient,
+              cancelled && { color: theme.red },
+            ]}
           >
-            {formatShortTimeLabel(appointment.start_minutes)}
-          </Text>
-          <Text numberOfLines={1} style={styles.blockClient}>
             {appointment.client_name}
           </Text>
-          <Text numberOfLines={serviceLines} style={styles.blockService}>
-            {appointment.title}
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.blockService,
+              cancelled && styles.cancelledLabel,
+            ]}
+          >
+            {cancelled ? "CANCELLED" : appointment.title}
           </Text>
-          <AppImage
-            uri={appointment.avatar_url}
-            style={styles.blockAvatar}
-            resizeMode="cover"
-          />
         </TouchableOpacity>
       </View>
     );
@@ -2150,13 +2239,17 @@ export default function CalendarScreen() {
       return renderStackBlock(positioned);
     }
     const appointment = positioned.appointments[0];
-    return viewMode === "day"
-      ? renderDetailBlock(appointment, positioned.top, positioned.height)
-      : renderCompactBlock(appointment, positioned.top, positioned.height);
+    return renderCompactBlock(appointment, positioned.top, positioned.height);
   };
 
   const renderListCard = (appointment: CalendarAppointment) => {
-    const palette = getPalette(appointment.id);
+    const cancelled = isCancelled(appointment);
+    const palette = cancelled ? cancelledPalette : getPalette(appointment.id);
+    const hour = Math.floor(appointment.start_minutes / 60);
+    const minute = appointment.start_minutes % 60;
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    const timeStr = `${displayHour}:${minute.toString().padStart(2, "0")}`;
     return (
       <TouchableOpacity
         key={appointment.id}
@@ -2167,7 +2260,44 @@ export default function CalendarScreen() {
         activeOpacity={0.8}
         onPress={() => openAppointment(appointment)}
       >
-        {renderDetailCardContent(appointment)}
+        <View style={styles.listCardRow}>
+          <View style={styles.listCardTimeWrap}>
+            <Text
+              style={[
+                styles.listCardTime,
+                cancelled && { color: theme.red },
+              ]}
+            >
+              {timeStr}
+            </Text>
+            <Text style={styles.listCardPeriod}>{period}</Text>
+          </View>
+          <View style={styles.listCardContent}>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.listCardName,
+                cancelled && { color: theme.red },
+              ]}
+            >
+              {appointment.originalAppointment.user}
+            </Text>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.listCardService,
+                cancelled && styles.cancelledLabel,
+              ]}
+            >
+              {cancelled ? "CANCELLED" : appointment.title}
+            </Text>
+          </View>
+          <MaterialIcons
+            name="chevron-right"
+            size={iconScale(22)}
+            color={cancelled ? theme.red : theme.lightGreen}
+          />
+        </View>
       </TouchableOpacity>
     );
   };
@@ -2245,6 +2375,23 @@ export default function CalendarScreen() {
     const hasAppointments = (appointmentsByDate[dateStr] ?? []).length > 0;
     const isSelected = day.isSame(selectedDate, "day");
     const isToday = day.isSame(today, "day");
+
+    const circleStyle = isSelected
+      ? styles.dayNumberSelected
+      : isToday
+        ? styles.dayNumberToday
+        : null;
+
+    const textColor = isSelected
+      ? theme.white
+      : isToday
+        ? theme.selectCard
+        : theme.darkGreen;
+
+    const textWeight = isSelected || isToday
+      ? fonts.fontBold
+      : fonts.fontMedium;
+
     return (
       <TouchableOpacity
         key={dateStr}
@@ -2256,26 +2403,16 @@ export default function CalendarScreen() {
         }}
       >
         <Text style={styles.dayName}>{day.format("ddd")}</Text>
-        <View
-          style={[
-            styles.dayNumberContainer,
-            isSelected && styles.dayNumberSelected,
-            isToday && styles.dayNumberToday,
-          ]}
-        >
+        <View style={[styles.dayNumberContainer, circleStyle]}>
           <Text
-            style={[
-              styles.dayNumber,
-              {
-                color: isSelected
-                  ? theme.white
-                  : isToday
-                    ? theme.selectCard
-                    : theme.darkGreen,
-                fontFamily:
-                  isSelected || isToday ? fonts.fontBold : fonts.fontMedium,
-              },
-            ]}
+            key={`${dateStr}-${isSelected ? "s" : isToday ? "t" : "d"}`}
+            style={{
+              fontSize: fontSize.size16,
+              fontFamily: textWeight,
+              color: textColor,
+              textAlign: "center" as const,
+              includeFontPadding: false,
+            }}
           >
             {day.format("D")}
           </Text>
@@ -2295,8 +2432,8 @@ export default function CalendarScreen() {
       style={{ flex: 1 }}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
-        paddingTop: moderateHeightScale(12),
-        paddingBottom: moderateHeightScale(28),
+        paddingTop: moderateHeightScale(8),
+        paddingBottom: moderateHeightScale(80),
       }}
     >
       <View style={[styles.gridRow, { height: gridHeight }]}>
@@ -2387,12 +2524,12 @@ export default function CalendarScreen() {
     <ScrollView
       style={{ flex: 1 }}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: moderateHeightScale(28) }}
+      contentContainerStyle={{ paddingBottom: moderateHeightScale(80) }}
     >
       <View style={styles.monthWeekdaysRow}>
         {monthWeeks[0]?.map((day) => (
           <Text key={`wd-${day.format("dd")}`} style={styles.monthWeekdayText}>
-            {day.format("dd")}
+            {day.format("ddd")}
           </Text>
         ))}
       </View>
@@ -2401,7 +2538,8 @@ export default function CalendarScreen() {
         <View key={`row-${weekRow[0].format("YYYY-MM-DD")}`} style={styles.monthRow}>
           {weekRow.map((day) => {
             const dateStr = day.format("YYYY-MM-DD");
-            const count = (appointmentsByDate[dateStr] ?? []).length;
+            const dayAppts = appointmentsByDate[dateStr] ?? [];
+            const count = dayAppts.length;
             const hasLeaveOrClose = leaveDotDates.has(dateStr);
             const isCurrentMonth = day.isSame(selectedDate, "month");
             const isSelectedDay = day.isSame(selectedDate, "day");
@@ -2420,33 +2558,49 @@ export default function CalendarScreen() {
                   setWeek(getWeekDays(day));
                 }}
               >
-                <Text
+                <View
                   style={[
-                    styles.monthCellNumber,
-                    !isCurrentMonth && styles.monthCellNumberMuted,
-                    isToday && styles.monthCellNumberToday,
+                    styles.monthDateCircle,
+                    isSelectedDay && styles.monthDateCircleSelected,
+                    isToday && !isSelectedDay && styles.monthDateCircleTodayRing,
                   ]}
                 >
-                  {day.format("D")}
-                </Text>
+                  <Text
+                    key={`m-${dateStr}-${isSelectedDay ? "s" : isToday ? "t" : "d"}`}
+                    style={{
+                      fontSize: fontSize.size12,
+                      fontFamily: isSelectedDay || isToday ? fonts.fontBold : fonts.fontMedium,
+                      color: isSelectedDay
+                        ? theme.white
+                        : isToday
+                          ? theme.selectCard
+                          : !isCurrentMonth
+                            ? theme.lightGreen4
+                            : theme.darkGreen,
+                      includeFontPadding: false,
+                    }}
+                  >
+                    {day.format("D")}
+                  </Text>
+                </View>
                 {(count > 0 || hasLeaveOrClose) && (
                   <View style={styles.monthDotsRow}>
                     {hasLeaveOrClose && (
                       <View style={styles.monthLeaveDot} />
                     )}
-                    {count > 0 &&
-                      Array.from({ length: Math.min(count, 3) }).map(
-                        (_, dotIndex) => (
-                          <View
-                            key={`dot-${dateStr}-${dotIndex}`}
-                            style={styles.monthDot}
-                          />
-                        ),
-                      )}
+                    {dayAppts.slice(0, 4).map((appt, dotIndex) => {
+                      const dotPalette = getApptPalette(appt);
+                      return (
+                        <View
+                          key={`dot-${dateStr}-${dotIndex}`}
+                          style={[
+                            styles.monthDot,
+                            { backgroundColor: dotPalette.accent },
+                          ]}
+                        />
+                      );
+                    })}
                   </View>
-                )}
-                {count > 3 && (
-                  <Text style={styles.monthCountText}>+{count - 3}</Text>
                 )}
               </TouchableOpacity>
             );
@@ -2454,10 +2608,18 @@ export default function CalendarScreen() {
         </View>
       ))}
 
-      <View style={styles.monthListHeader}>
+      <View style={styles.monthListHeaderRow}>
         <Text style={styles.monthListHeaderText}>
-          {selectedDate.format("dddd, MMM D, YYYY")}
+          {selectedDate.format("ddd, MMM D, YYYY")}
         </Text>
+        {selectedDayAppointments.length > 0 && (
+          <Text style={styles.monthListCountText}>
+            {selectedDayAppointments.length}{" "}
+            {selectedDayAppointments.length === 1
+              ? t("appointment") || "Appointment"
+              : t("appointments") || "Appointments"}
+          </Text>
+        )}
       </View>
 
       {selectedDayAppointments.length > 0 ? (
@@ -2476,7 +2638,7 @@ export default function CalendarScreen() {
     <View style={styles.container}>
       <DashboardHeader />
       <View style={styles.content}>
-        {/* Toolbar: view switcher + today + navigation */}
+        {/* Toolbar: view switcher */}
         <View style={styles.toolbar}>
           <View style={styles.segmentGroup}>
             {(["day", "week", "month"] as ViewMode[]).map((mode) => (
@@ -2504,45 +2666,38 @@ export default function CalendarScreen() {
               </TouchableOpacity>
             ))}
           </View>
-
-          <View style={styles.toolbarRight}>
-            <TouchableOpacity
-              style={styles.todayButton}
-              activeOpacity={0.8}
-              onPress={handleToday}
-            >
-              <Text style={styles.todayButtonText}>{t("today")}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.arrowButton}
-              activeOpacity={0.8}
-              onPress={handlePrev}
-            >
-              <MaterialIcons
-                name="keyboard-arrow-left"
-                size={iconScale(20)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.arrowButton}
-              activeOpacity={0.8}
-              onPress={handleNext}
-            >
-              <MaterialIcons
-                name="keyboard-arrow-right"
-                size={iconScale(20)}
-                color={theme.darkGreen}
-              />
-            </TouchableOpacity>
-          </View>
         </View>
 
-        {viewMode === "month" && (
-          <View style={styles.rangeRow}>
-            <Text style={styles.rangeText}>{rangeLabel}</Text>
-          </View>
-        )}
+        {/* Navigation: arrows + range label */}
+        <View style={styles.navRow}>
+          <TouchableOpacity
+            style={styles.arrowButton}
+            activeOpacity={0.8}
+            onPress={handlePrev}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather
+              name="chevron-left"
+              size={iconScale(28)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7} onPress={handleToday}>
+            <Text style={styles.navRangeText}>{rangeLabel}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.arrowButton}
+            activeOpacity={0.8}
+            onPress={handleNext}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather
+              name="chevron-right"
+              size={iconScale(28)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        </View>
 
         {/* Agenda */}
         <View style={styles.agendaContainer}>
@@ -2868,7 +3023,7 @@ export default function CalendarScreen() {
         onClose={closeOverlapSheet}
         slotLabel={overlapSlotLabel}
         appointments={overlapAppointments.map((appointment) => {
-          const palette = getPalette(appointment.id);
+          const palette = getApptPalette(appointment);
           return {
             id: appointment.id,
             title: appointment.title,

@@ -122,6 +122,10 @@ const createStyles = (theme: Theme) =>
     listFooter: {
       marginTop: moderateHeightScale(16),
       gap: moderateHeightScale(10),
+      alignSelf: "stretch",
+    },
+    addProductButton: {
+      minWidth: widthScale(200),
     },
     card: {
       flexDirection: "row",
@@ -292,6 +296,14 @@ export default function ProductsInventoryScreen() {
             <View style={styles.listFooter}>
               <Button
                 title={t("addProductCta")}
+                leftIcon={
+                  <MaterialIcons
+                    name="add"
+                    size={moderateWidthScale(20)}
+                    color={theme.buttonText}
+                  />
+                }
+                containerStyle={styles.addProductButton}
                 onPress={() => router.push("./addProduct" as any)}
               />
             </View>
@@ -309,6 +321,14 @@ export default function ProductsInventoryScreen() {
               <View style={styles.listFooter}>
                 <Button
                   title={t("addProductCta")}
+                  leftIcon={
+                    <MaterialIcons
+                      name="add"
+                      size={moderateWidthScale(20)}
+                      color={theme.buttonText}
+                    />
+                  }
+                  containerStyle={styles.addProductButton}
                   onPress={() => router.push("./addProduct" as any)}
                 />
               </View>
