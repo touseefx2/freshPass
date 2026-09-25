@@ -14,7 +14,6 @@ import {
   FlatList,
   Image,
   LayoutChangeEvent,
-  Linking,
   PanResponder,
   Platform,
   Pressable,
@@ -38,6 +37,11 @@ import * as SystemUI from "expo-system-ui";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { LeafLogo } from "@/assets/icons";
+import {
+  DEMO_SHOP_PRODUCT_ID,
+  STATIC_DEMO_PRODUCT,
+  formatShopPrice,
+} from "@/src/constants/demoShopProduct";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -173,31 +177,6 @@ function formatReelTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-
-function parseProductTag(tag: string | null | undefined): {
-  title: string;
-  url: string | null;
-} | null {
-  const trimmed = tag?.trim();
-  if (!trimmed) return null;
-  const isUrl = /^https?:\/\//i.test(trimmed);
-  if (!isUrl) return { title: trimmed, url: null };
-  try {
-    const host = new URL(trimmed).hostname.replace(/^www\./i, "");
-    return { title: host || trimmed, url: trimmed };
-  } catch {
-    return { title: trimmed, url: trimmed };
-  }
-}
-
-function formatServicePrice(
-  price: string | number | null | undefined,
-): string | null {
-  if (price == null || price === "") return null;
-  const n = typeof price === "number" ? price : Number(price);
-  if (Number.isFinite(n)) return `$${n.toFixed(2)}`;
-  return String(price);
-}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -1107,8 +1086,11 @@ function ReelFeedItemBase({
     .filter(Boolean)
     .join(", ");
   const categoryName = reel.category?.name?.trim() || "";
-  const product = parseProductTag(reel.product_tag);
-  const productPrice = formatServicePrice(reel.service?.price);
+  // BACKEND_SWAP: replace STATIC_DEMO_PRODUCT with reel.attached_product ?? null
+  // (and hide the card when null). For now every customer reel shows the demo product.
+  const shopProduct = STATIC_DEMO_PRODUCT;
+  const productPrice = formatShopPrice(shopProduct.sellingPrice);
+  const router = useRouter();
 
   const distance =
     reel.distance_km != null
@@ -1527,37 +1509,42 @@ function ReelFeedItemBase({
           </View>
         </View>
 
-        {showAsCustomer && product ? (
+        {showAsCustomer && shopProduct ? (
           <View style={styles.productCard}>
             <View style={styles.productThumb}>
-              <MaterialIcons
-                name="shopping-bag"
-                size={moderateWidthScale(24)}
-                color={theme.black}
-              />
+              {shopProduct.imageUri ? (
+                <Image
+                  source={{ uri: shopProduct.imageUri }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <MaterialIcons
+                  name="shopping-bag"
+                  size={moderateWidthScale(24)}
+                  color={theme.black}
+                />
+              )}
             </View>
             <View style={styles.productBody}>
               <Text style={styles.productTitle} numberOfLines={1}>
-                {product.title}
+                {shopProduct.name}
               </Text>
-              {!!(reel.look_tag || reel.promotion_text) && (
+              {!!shopProduct.description && (
                 <Text style={styles.productDesc} numberOfLines={2}>
-                  {reel.look_tag || reel.promotion_text}
+                  {shopProduct.description}
                 </Text>
               )}
-              {!!productPrice && (
-                <Text style={styles.productPrice}>{productPrice}</Text>
-              )}
+              <Text style={styles.productPrice}>{productPrice}</Text>
             </View>
             <TouchableOpacity
               style={styles.shopBtn}
               activeOpacity={0.85}
               onPress={() => {
-                if (product.url) {
-                  Linking.openURL(product.url).catch(() => {});
-                } else {
-                  onProfile(reel);
-                }
+                router.push({
+                  pathname: "/(main)/shop/productDetail" as any,
+                  params: { productId: DEMO_SHOP_PRODUCT_ID },
+                });
               }}
             >
               <MaterialIcons

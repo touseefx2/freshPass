@@ -41,7 +41,8 @@ type SettingKey =
   | "subscriptions"
   | "team"
   | "socialMedia"
-  | "portfolio";
+  | "portfolio"
+  | "products";
 
 type SettingItem = {
   key: SettingKey;
@@ -354,6 +355,8 @@ export default function BusinessProfileSettingsScreen() {
       router.push("./team");
     } else if (key === "portfolio") {
       router.push("./portfolio");
+    } else if (key === "products") {
+      router.push("./products");
     } else if (key === "businessLocation") {
       router.push("./location");
     } else {
@@ -420,6 +423,11 @@ export default function BusinessProfileSettingsScreen() {
       title: t("managePortfolioPhotos"),
       subtitle: t("portfolioCardSubtitle"),
     },
+    {
+      key: "products",
+      title: t("productsInventory"),
+      subtitle: t("productsInventoryCardSubtitle"),
+    },
   ];
 
   const getIconMeta = (
@@ -447,6 +455,8 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "share-variant", family: "community" };
       case "portfolio":
         return { name: "image-outline", family: "community" };
+      case "products":
+        return { name: "inventory-2", family: "material" };
       default:
         return { name: "settings", family: "material" };
     }

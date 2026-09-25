@@ -9,6 +9,8 @@ import bsnsReducer from "./slices/bsnsSlice";
 import chatReducer from "./slices/chatSlice";
 import categoriesReducer from "./slices/categoriesSlice";
 import downloadReducer from "./slices/downloadSlice";
+import inventoryReducer from "./slices/inventorySlice";
+import shopCartReducer from "./slices/shopCartSlice";
 
 // ✅ Custom AsyncStorage adapter for redux-persist
 // Note: redux-persist supports async storage, but we need to ensure promises are properly handled
@@ -105,6 +107,28 @@ const persistedGeneralReducer = persistReducer(
 // ✅ Persist the user reducer with field filtering
 const persistedUserReducer = persistReducer(userPersistConfig, userReducer);
 
+const inventoryPersistConfig = {
+  key: "inventory",
+  storage: LocalStorageAdapter,
+  whitelist: ["products"],
+};
+
+const shopCartPersistConfig = {
+  key: "shopCart",
+  storage: LocalStorageAdapter,
+  whitelist: ["items", "shippingMethod", "checkedZip", "address", "lastOrderId"],
+};
+
+const persistedInventoryReducer = persistReducer(
+  inventoryPersistConfig,
+  inventoryReducer,
+);
+
+const persistedShopCartReducer = persistReducer(
+  shopCartPersistConfig,
+  shopCartReducer,
+);
+
 // ✅ combine reducers
 const rootReducer = combineReducers({
   general: persistedGeneralReducer, // Already persisted with field filtering
@@ -114,6 +138,8 @@ const rootReducer = combineReducers({
   chat: chatReducer, // AI Chat state (not persisted)
   categories: categoriesReducer, // Categories state (not persisted)
   download: downloadReducer, // Global download loader (not persisted)
+  inventory: persistedInventoryReducer, // Business in-store products (UI-only until API)
+  shopCart: persistedShopCartReducer, // Product cart / checkout draft (UI-only)
 });
 
 // ✅ No root-level persistence needed - general is already persisted with nested config
