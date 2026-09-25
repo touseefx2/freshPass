@@ -26,8 +26,9 @@ import Logger from "@/src/services/logger";
 import { appointmentsEndpoints, resolveAppointmentStaffId } from "@/src/services/endpoints";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
-  fetchAppointmentPaymentSheetParams,
   getStripeModeHeaders,
+  pollAppointmentCheckoutStatus,
+  startAppointmentCheckout,
   useStripeAccount,
 } from "@/src/services/stripeService";
 import { Theme } from "@/src/theme/colors";
@@ -1558,6 +1559,42 @@ function CheckoutContent() {
     [galleryImageUris, showBanner, tryOnImageUrls],
   );
 
+  /** Pay-now: same booking body as create, but hits checkout (no appointment yet). */
+  const postAppointmentCheckout = useCallback(
+    async (requestBody: Record<string, any>) => {
+      const imageUrls = (tryOnImageUrls ?? []).filter(isWebUrl);
+      const body: Record<string, any> = { ...requestBody };
+      if (imageUrls.length > 0) {
+        body.image_urls = imageUrls;
+      } else {
+        delete body.image_urls;
+      }
+
+      if (galleryImageUris.length > 0) {
+        const preparedImages = await prepareImagesForUpload(
+          galleryImageUris,
+          "appointment_image",
+        );
+        if (preparedImages.length !== galleryImageUris.length) {
+          showBanner(
+            "Error",
+            "Some photos could not be prepared. Please try again.",
+            "error",
+            3000,
+          );
+          return null;
+        }
+        return startAppointmentCheckout(
+          buildAppointmentFormData(body, preparedImages),
+          { multipart: true },
+        );
+      }
+
+      return startAppointmentCheckout(body);
+    },
+    [galleryImageUris, showBanner, tryOnImageUrls],
+  );
+
   // Use Redux directly - no local state needed
   const selectedServices = reduxSelectedServices || [];
   const selectedStaffId = reduxSelectedStaff || "anyone";
@@ -2048,6 +2085,193 @@ function CheckoutContent() {
     dispatch(setActionLoader(true));
 
     try {
+      if (paymentMethod === "payNow") {
+        const checkout = await postAppointmentCheckout(requestBody);
+        dispatch(setActionLoader(false));
+
+        if (!checkout) {
+          return;
+        }
+
+        const {
+          checkoutId,
+          paymentIntent,
+          setupIntent,
+          customerSessionClientSecret,
+          ephemeralKey,
+          customer,
+          connectedAccountId,
+          serviceAmount,
+          totalAmount,
+        } = checkout;
+
+        if (!checkoutId) {
+          showBanner(
+            "Payment Failed",
+            "Checkout could not be started. Please try again.",
+            "error",
+            4000,
+          );
+          return;
+        }
+
+        const chargedService =
+          typeof serviceAmount === "number" ? serviceAmount : totalPrice;
+        const chargedTotal =
+          typeof totalAmount === "number"
+            ? totalAmount
+            : chargedService + tax;
+
+        try {
+          await useStripeAccount(connectedAccountId);
+
+          const paymentConfig: any = {
+            merchantDisplayName: "Fresh Pass",
+            customerId: customer,
+            allowsDelayedPaymentMethods: true,
+            defaultBillingDetails: {
+              name: user.name || undefined,
+              email: user.email || undefined,
+            },
+            customFlow: false,
+          };
+
+          if (customerSessionClientSecret) {
+            paymentConfig.customerSessionClientSecret =
+              customerSessionClientSecret;
+          } else if (ephemeralKey) {
+            paymentConfig.customerEphemeralKeySecret = ephemeralKey;
+          } else {
+            throw new Error(
+              "Either customerSessionClientSecret or ephemeralKey must be provided",
+            );
+          }
+
+          if (paymentIntent && paymentIntent.trim() !== "") {
+            paymentConfig.paymentIntentClientSecret = paymentIntent;
+          } else if (setupIntent && setupIntent.trim() !== "") {
+            paymentConfig.setupIntentClientSecret = setupIntent;
+          } else {
+            throw new Error(
+              "Either Payment Intent or Setup Intent must be provided",
+            );
+          }
+
+          const { error: initError } = await initPaymentSheet(paymentConfig);
+
+          if (initError) {
+            throw new Error(
+              initError.message || "Failed to initialize payment",
+            );
+          }
+
+          const { error: presentError } = await presentPaymentSheet();
+
+          if (presentError) {
+            // Sheet closed without paying — nothing was booked; user can retry Pay Now.
+            if (!presentError.code?.includes("Canceled")) {
+              showBanner(
+                "Payment Failed",
+                presentError.message || "Payment could not be completed",
+                "error",
+                4000,
+              );
+            }
+            return;
+          }
+
+          setProcessingPayment(true);
+
+          try {
+            const checkoutStatus = await pollAppointmentCheckoutStatus(
+              checkoutId,
+            );
+
+            if (checkoutStatus.status === "completed") {
+              const appointmentId = checkoutStatus.appointmentId;
+              const appointmentDate =
+                checkoutStatus.appointment?.appointmentDate ||
+                checkoutStatus.appointment?.appointment_date ||
+                null;
+
+              showBanner(
+                "Success",
+                "Payment successful! Your booking is confirmed.",
+                "success",
+                3000,
+              );
+
+              let dateFormatted = "";
+              if (appointmentDate) {
+                const dateParts = String(appointmentDate).split("/");
+                if (dateParts.length === 3) {
+                  const [month, day, year] = dateParts;
+                  dateFormatted = `${year}${month.padStart(
+                    2,
+                    "0",
+                  )}${day.padStart(2, "0")}`;
+                }
+              }
+              const bookingId =
+                appointmentId && dateFormatted
+                  ? `${dateFormatted}${appointmentId}`
+                  : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
+
+              router.push({
+                pathname: "/(main)/bookingDetail",
+                params: {
+                  appointmentId: appointmentId
+                    ? appointmentId.toString()
+                    : "",
+                  bookingId: bookingId,
+                  selectedServices: JSON.stringify(selectedServices),
+                  selectedStaff: selectedStaffId,
+                  selectedStaffMember: selectedStaffMember
+                    ? JSON.stringify(selectedStaffMember)
+                    : "",
+                  selectedDate: reduxSelectedDate || "",
+                  selectedTimeSlot: reduxSelectedTimeSlot || "",
+                  paymentMethod: paymentMethod,
+                  totalPrice: chargedService.toFixed(2),
+                  tax: tax.toFixed(2),
+                  estimatedTotal: chargedTotal.toFixed(2),
+                  businessId: resolvedCheckoutBusinessId,
+                  business_id: resolvedCheckoutBusinessId,
+                  note: note || "",
+                },
+              });
+              return;
+            }
+
+            if (checkoutStatus.status === "failed") {
+              // Backend message already covers reason + refund; show as-is.
+              showBanner(
+                "Booking not completed",
+                checkoutStatus.message ||
+                  "Your booking could not be completed. Please pick another time.",
+                "error",
+                6000,
+              );
+              router.back();
+              return;
+            }
+
+            // Still pending after timeout — webhook will finish booking.
+            showBanner(
+              "Payment Received",
+              "Your payment was received. Your booking will appear in your appointments shortly.",
+              "success",
+              5000,
+            );
+          } finally {
+            setProcessingPayment(false);
+          }
+        } finally {
+          await useStripeAccount(null);
+        }
+        return;
+      }
+
       const response = (await postCreateAppointment(requestBody)) as {
         success?: boolean;
         message?: string;
@@ -2086,163 +2310,6 @@ function CheckoutContent() {
           (response?.data as any)?.appointmentDate ||
           (response?.data as any)?.data?.appointmentDate ||
           null;
-
-        if (paymentMethod === "payNow") {
-          if (!appointmentId) {
-            showBanner(
-              "Payment Failed",
-              "Appointment ID is missing. Please try again.",
-              "error",
-              4000,
-            );
-            return;
-          }
-
-          try {
-            const {
-              paymentIntent,
-              setupIntent,
-              customerSessionClientSecret,
-              ephemeralKey,
-              customer,
-              connectedAccountId,
-              serviceAmount,
-              totalAmount,
-            } = await fetchAppointmentPaymentSheetParams(appointmentId);
-
-            const chargedService =
-              typeof serviceAmount === "number" ? serviceAmount : totalPrice;
-            const chargedTotal =
-              typeof totalAmount === "number"
-                ? totalAmount
-                : chargedService + tax;
-
-            try {
-              await useStripeAccount(connectedAccountId);
-
-              const paymentConfig: any = {
-                merchantDisplayName: "Fresh Pass",
-                customerId: customer,
-                allowsDelayedPaymentMethods: true,
-                defaultBillingDetails: {
-                  name: user.name || undefined,
-                  email: user.email || undefined,
-                },
-                customFlow: false,
-              };
-
-              if (customerSessionClientSecret) {
-                paymentConfig.customerSessionClientSecret =
-                  customerSessionClientSecret;
-              } else if (ephemeralKey) {
-                paymentConfig.customerEphemeralKeySecret = ephemeralKey;
-              } else {
-                throw new Error(
-                  "Either customerSessionClientSecret or ephemeralKey must be provided",
-                );
-              }
-
-              if (paymentIntent && paymentIntent.trim() !== "") {
-                paymentConfig.paymentIntentClientSecret = paymentIntent;
-              } else if (setupIntent && setupIntent.trim() !== "") {
-                paymentConfig.setupIntentClientSecret = setupIntent;
-              } else {
-                throw new Error(
-                  "Either Payment Intent or Setup Intent must be provided",
-                );
-              }
-              const { error: initError } =
-                await initPaymentSheet(paymentConfig);
-
-              if (initError) {
-                throw new Error(
-                  initError.message || "Failed to initialize payment",
-                );
-              }
-
-              const { error: presentError } = await presentPaymentSheet();
-
-              if (presentError) {
-                if (!presentError.code?.includes("Canceled")) {
-                  showBanner(
-                    "Payment Failed",
-                    presentError.message || "Payment could not be completed",
-                    "error",
-                    4000,
-                  );
-                }
-                return;
-              }
-
-              setProcessingPayment(true);
-
-              setTimeout(() => {
-                setProcessingPayment(false);
-                showBanner(
-                  "Success",
-                  "Payment successful! Your booking is confirmed.",
-                  "success",
-                  3000,
-                );
-
-                let dateFormatted = "";
-                if (appointmentDate) {
-                  const dateParts = appointmentDate.split("/");
-                  if (dateParts.length === 3) {
-                    const [month, day, year] = dateParts;
-                    dateFormatted = `${year}${month.padStart(
-                      2,
-                      "0",
-                    )}${day.padStart(2, "0")}`;
-                  }
-                }
-                const bookingId =
-                  appointmentId && dateFormatted
-                    ? `${dateFormatted}${appointmentId}`
-                    : `${Date.now()}${Math.floor(Math.random() * 10000)}`;
-
-                router.push({
-                  pathname: "/(main)/bookingDetail",
-                  params: {
-                    appointmentId: appointmentId
-                      ? appointmentId.toString()
-                      : "",
-                    bookingId: bookingId,
-                    selectedServices: JSON.stringify(selectedServices),
-                    selectedStaff: selectedStaffId,
-                    selectedStaffMember: selectedStaffMember
-                      ? JSON.stringify(selectedStaffMember)
-                      : "",
-                    selectedDate: reduxSelectedDate || "",
-                    selectedTimeSlot: reduxSelectedTimeSlot || "",
-                    paymentMethod: paymentMethod,
-                    totalPrice: chargedService.toFixed(2),
-                    tax: tax.toFixed(2),
-                    estimatedTotal: chargedTotal.toFixed(2),
-                    businessId: resolvedCheckoutBusinessId,
-                    business_id: resolvedCheckoutBusinessId,
-                    note: note || "",
-                  },
-                });
-              }, 2000);
-            } finally {
-              await useStripeAccount(null);
-            }
-          } catch (err: any) {
-            let errorMessage = "Failed to process payment";
-
-            if (err.data?.message) {
-              errorMessage = err.data.message;
-            } else if (err.data?.error) {
-              errorMessage = err.data.error;
-            } else if (err.message) {
-              errorMessage = err.message;
-            }
-
-            showBanner("Payment Failed", errorMessage, "error", 4000);
-          }
-          return;
-        }
 
         if (paymentMethod === "payLater") {
           let dateFormatted = "";
@@ -2295,12 +2362,20 @@ function CheckoutContent() {
       }
     } catch (error: any) {
       dispatch(setActionLoader(false));
+      setProcessingPayment(false);
 
       Logger.error("Appointment API Error:", error);
 
+      const apiMessage =
+        error?.data?.message ||
+        error?.response?.data?.message ||
+        error?.message;
+
       showBanner(
-        "Booking Failed",
-        getAppointmentImageErrorMessage(error),
+        paymentMethod === "payNow" ? "Payment Failed" : "Booking Failed",
+        paymentMethod === "payNow"
+          ? apiMessage || "Failed to process payment"
+          : getAppointmentImageErrorMessage(error),
         "error",
         4000,
       );

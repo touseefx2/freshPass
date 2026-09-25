@@ -400,6 +400,11 @@ export const appointmentsEndpoints = {
     return `/api/appointments/cancellation-policy?${q.toString()}`;
   },
   cardSetup: `/api/appointments/card-setup`,
+  /** Pay-now service booking: validates slot and returns payment sheet (no appointment yet). */
+  checkout: `/api/appointments/checkout`,
+  /** Poll after payment succeeds; may finish booking if webhook has not run yet. */
+  checkoutStatus: (checkoutId: string | number) =>
+    `/api/appointments/checkout/${checkoutId}`,
   cancellationPreview: (id: string | number) =>
     `/api/appointments/${id}/cancellation-preview`,
   awaitingOutcome: (params?: { per_page?: number; page?: number }) => {

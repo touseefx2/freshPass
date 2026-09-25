@@ -326,6 +326,8 @@ export default function NotificationsScreen() {
         return "schedule";
       case "appointment_reminder":
         return "notification";
+      case "appointment_checkout_failed":
+        return "payment";
     }
 
     if (type === "message") {

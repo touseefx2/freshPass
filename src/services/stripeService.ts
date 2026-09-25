@@ -5,7 +5,7 @@ import {
 } from "@stripe/stripe-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ApiService } from "./api";
-import { stripeEndpoints } from "./endpoints";
+import { appointmentsEndpoints, stripeEndpoints } from "./endpoints";
 import Logger from "./logger";
 
 const STRIPE_KEY_CACHE = "@freshpass/stripe_publishable_key";
@@ -276,6 +276,150 @@ export const fetchAppointmentPaymentSheetParams = async (
   } catch (error) {
     throw error;
   }
+};
+
+export type AppointmentCheckoutResult = PaymentSheetParams & {
+  checkoutId: number;
+  appointmentId: number | null;
+};
+
+interface AppointmentCheckoutApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    checkoutId: number;
+    appointmentId: number | null;
+    customer: string;
+    customerSessionClientSecret?: string;
+    ephemeralKey?: string;
+    paymentIntent: string;
+    setupIntent?: string;
+    connectedAccountId?: string | null;
+    serviceAmount?: number;
+    tipAmount?: number;
+    totalAmount?: number;
+    currency?: string;
+    tip?: PaymentSheetTipInfo | null;
+  };
+}
+
+/**
+ * Pay-now service booking: validates booking details and returns payment sheet
+ * params without creating an appointment. Appointment is created after Stripe
+ * confirms payment (webhook or checkout-status poll).
+ */
+export const startAppointmentCheckout = async (
+  body: Record<string, unknown> | FormData,
+  options?: { multipart?: boolean },
+): Promise<AppointmentCheckoutResult> => {
+  const stripeHeaders = await getStripeModeHeaders();
+  const response = await ApiService.post<AppointmentCheckoutApiResponse>(
+    appointmentsEndpoints.checkout,
+    body,
+    {
+      headers: options?.multipart
+        ? { ...stripeHeaders, "Content-Type": "multipart/form-data" }
+        : stripeHeaders,
+    },
+  );
+
+  if (response.success && response.data) {
+    return {
+      checkoutId: response.data.checkoutId,
+      appointmentId: response.data.appointmentId ?? null,
+      customer: response.data.customer,
+      customerSessionClientSecret: response.data.customerSessionClientSecret,
+      ephemeralKey: response.data.ephemeralKey,
+      paymentIntent: response.data.paymentIntent || "",
+      setupIntent: response.data.setupIntent,
+      connectedAccountId: response.data.connectedAccountId ?? null,
+      serviceAmount: response.data.serviceAmount,
+      tipAmount: response.data.tipAmount,
+      totalAmount: response.data.totalAmount,
+      currency: response.data.currency,
+      tip: response.data.tip ?? null,
+    };
+  }
+
+  throw new Error(response.message || "Failed to start checkout");
+};
+
+export type AppointmentCheckoutStatusValue =
+  | "pending"
+  | "completed"
+  | "failed";
+
+export type AppointmentCheckoutStatus = {
+  checkoutId: number;
+  status: AppointmentCheckoutStatusValue;
+  appointmentId: number | null;
+  message: string | null;
+  /** true once Stripe accepted refund; false if refund still retrying; null for pending/completed */
+  refunded: boolean | null;
+  appointment: Record<string, any> | null;
+};
+
+interface AppointmentCheckoutStatusApiResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    checkoutId: number;
+    status: AppointmentCheckoutStatusValue;
+    appointmentId: number | null;
+    message: string | null;
+    refunded?: boolean | null;
+    appointment: Record<string, any> | null;
+  };
+}
+
+export const fetchAppointmentCheckoutStatus = async (
+  checkoutId: number,
+): Promise<AppointmentCheckoutStatus> => {
+  const response =
+    await ApiService.get<AppointmentCheckoutStatusApiResponse>(
+      appointmentsEndpoints.checkoutStatus(checkoutId),
+      { headers: await getStripeModeHeaders() },
+    );
+
+  if (response.success && response.data) {
+    return {
+      checkoutId: response.data.checkoutId,
+      status: response.data.status,
+      appointmentId: response.data.appointmentId ?? null,
+      message: response.data.message ?? null,
+      refunded: response.data.refunded ?? null,
+      appointment: response.data.appointment ?? null,
+    };
+  }
+
+  throw new Error(response.message || "Failed to fetch checkout status");
+};
+
+/**
+ * Poll until checkout is completed/failed, or until timeout (still pending).
+ */
+export const pollAppointmentCheckoutStatus = async (
+  checkoutId: number,
+  options?: { intervalMs?: number; timeoutMs?: number },
+): Promise<AppointmentCheckoutStatus> => {
+  const intervalMs = options?.intervalMs ?? 1500;
+  const timeoutMs = options?.timeoutMs ?? 30000;
+  const deadline = Date.now() + timeoutMs;
+  let last: AppointmentCheckoutStatus | null = null;
+
+  while (Date.now() < deadline) {
+    last = await fetchAppointmentCheckoutStatus(checkoutId);
+    if (last.status === "completed" || last.status === "failed") {
+      return last;
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) break;
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(intervalMs, remaining)),
+    );
+  }
+
+  return last ?? (await fetchAppointmentCheckoutStatus(checkoutId));
 };
 
 interface AiToolsPaymentSheetApiResponse {

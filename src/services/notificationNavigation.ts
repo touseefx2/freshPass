@@ -37,7 +37,8 @@ export type NotificationSubType =
   | "business_new_follower"
   | "business_reel_comment"
   | "business_reel_booking"
-  | "business_reel_likes";
+  | "business_reel_likes"
+  | "appointment_checkout_failed";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -146,6 +147,7 @@ function openOwnerReelsList(
  * - type "message" + model_id + sender → chatBox
  * - type "appointment" + model_id → bookingDetailsById
  * - type "appointment_outcomes" + model_id → bookingDetailsById (else home)
+ * - type "appointment_checkout" + subType appointment_checkout_failed → bookingNow (if business_id) or notification list — never appointment details
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
@@ -372,6 +374,42 @@ export function navigateFromNotificationData(
     Logger.log(
       "------>navigateFromNotificationData (appointment_outcomes) -> home",
       { count: data.count },
+    );
+    return;
+  }
+
+  // Pay-now checkout failed after payment — no appointment exists. Do NOT open
+  // appointment details. Prefer business booking screen when business_id is present.
+  if (type === "appointment_checkout") {
+    if (subType === "appointment_checkout_failed") {
+      const businessId = pickNumber(data, "business_id");
+      if (businessId != null) {
+        router.push({
+          pathname: "/(main)/bookingNow",
+          params: { business_id: String(businessId) },
+        });
+        Logger.log(
+          "------>navigateFromNotificationData (appointment_checkout_failed) -> bookingNow",
+          { business_id: businessId, checkoutId: data.model_id },
+        );
+        return;
+      }
+      navigateFromNotificationList(
+        router,
+        "/(main)/notification",
+        options?.fromInAppList,
+      );
+      Logger.log(
+        "------>navigateFromNotificationData (appointment_checkout_failed) -> notification list",
+        { checkoutId: data.model_id },
+      );
+      return;
+    }
+
+    navigateFromNotificationList(
+      router,
+      "/(main)/notification",
+      options?.fromInAppList,
     );
     return;
   }
