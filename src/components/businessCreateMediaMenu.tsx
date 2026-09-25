@@ -14,6 +14,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import CreateReelPickerSheet from "@/src/components/createReelPickerSheet";
+import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -30,9 +31,15 @@ import {
   handleMediaLibraryPermission,
 } from "@/src/services/mediaPermissionService";
 import {
+  setBusinessPlansModalBusinessOnly,
   setBusinessPlansModalVisible,
   setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
+import {
+  canAddStaffMembers,
+  isSoloSubscription,
+  isStripeOnboardingCompleted,
+} from "@/src/state/slices/userSlice";
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
 import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
@@ -180,7 +187,10 @@ export default function BusinessCreateMediaMenu({
 
   const [limits, setLimits] = useState<MediaLimits | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
+  const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [reelPickerVisible, setReelPickerVisible] = useState(false);
+  const canAddStaff = canAddStaffMembers(businessStatus);
+  const isSoloPlan = isSoloSubscription(businessStatus);
 
   /** Blur ends exactly at tab bar top — no clear gap strip. */
   const tabBarClearance = tabBarHeight;
@@ -233,6 +243,36 @@ export default function BusinessCreateMediaMenu({
     setBuyPlanModalVisible(false);
     dispatch(setBusinessPlansModalVisible(true));
   }, [dispatch]);
+
+  const handleUpgradePlan = useCallback(() => {
+    setUpgradeModalVisible(false);
+    dispatch(setBusinessPlansModalBusinessOnly(true));
+    dispatch(setBusinessPlansModalVisible(true));
+  }, [dispatch]);
+
+  const handleAddEmployee = useCallback(() => {
+    closeAll();
+    if (!isStripeOnboardingCompleted(businessStatus)) {
+      dispatch(setStripeConnectModalVisible(true));
+      return;
+    }
+    if (isSoloPlan) {
+      setUpgradeModalVisible(true);
+      return;
+    }
+    if (!canAddStaff) {
+      setBuyPlanModalVisible(true);
+      return;
+    }
+    router.push("/(main)/addStaff");
+  }, [
+    businessStatus,
+    canAddStaff,
+    closeAll,
+    dispatch,
+    isSoloPlan,
+    router,
+  ]);
 
   const openEditor = useCallback(
     (
@@ -364,8 +404,7 @@ export default function BusinessCreateMediaMenu({
           router.push("/(main)/dashboard/(calendar)");
           return;
         case "addEmployee":
-          closeAll();
-          router.push("/(main)/addStaff");
+          handleAddEmployee();
           return;
         case "addProduct":
           closeAll();
@@ -382,7 +421,7 @@ export default function BusinessCreateMediaMenu({
           closeAll();
       }
     },
-    [closeAll, openReelPicker, router, showBanner, t],
+    [closeAll, handleAddEmployee, openReelPicker, router, showBanner, t],
   );
 
   const renderMenuIcon = (item: MenuItem) => {
@@ -406,7 +445,7 @@ export default function BusinessCreateMediaMenu({
     );
   };
 
-  if (!visible && !buyPlanModalVisible) {
+  if (!visible && !buyPlanModalVisible && !upgradeModalVisible) {
     return null;
   }
 
@@ -467,6 +506,12 @@ export default function BusinessCreateMediaMenu({
         visible={buyPlanModalVisible}
         onClose={() => setBuyPlanModalVisible(false)}
         onViewPlans={handleViewPlans}
+      />
+
+      <UpgradeToBusinessModal
+        visible={upgradeModalVisible}
+        onClose={() => setUpgradeModalVisible(false)}
+        onUpgradePlan={handleUpgradePlan}
       />
     </>
   );

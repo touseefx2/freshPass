@@ -35,6 +35,10 @@ import {
 import { GalleryIcon, CameraIcon } from "@/assets/icons";
 import { Skeleton } from "@/src/components/skeletons";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import {
+  isBusinessSubscriptionActive,
+  isStripeOnboardingCompleted,
+} from "@/src/state/slices/userSlice";
 import { prepareImagesForUpload } from "@/src/utils/prepareImageForUpload";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import type {
@@ -179,12 +183,14 @@ export default function StaffWorkImagesManageScreen() {
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state) => state.user.userRole);
-  const subscriptionStatus = useAppSelector(
-    (state) => state.user.businessStatus?.subscription_status ?? "",
+  const businessStatus = useAppSelector(
+    (state) => state.user.businessStatus,
   );
-  /** Owners need an active plan to add photos; staff are unchanged */
+  /** Owners need Stripe + active plan to add photos; staff are unchanged */
   const canUploadWork =
-    userRole !== "business" || subscriptionStatus === "active";
+    userRole !== "business" ||
+    (isStripeOnboardingCompleted(businessStatus) &&
+      isBusinessSubscriptionActive(businessStatus));
 
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);

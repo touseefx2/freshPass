@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { useTheme, useAppSelector } from "@/src/hooks/hooks";
+import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -17,6 +17,7 @@ import {
   moderateHeightScale,
   moderateWidthScale,
 } from "@/src/theme/dimensions";
+import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -26,6 +27,14 @@ import { userEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import DashboardHeaderClient from "@/src/components/DashboardHeaderClient";
 import { openNotificationSettings } from "@/src/services/notificationPermissionService";
+import {
+  setBusinessPlansModalVisible,
+  setStripeConnectModalVisible,
+} from "@/src/state/slices/generalSlice";
+import {
+  isBusinessSubscriptionActive,
+  isStripeOnboardingCompleted,
+} from "@/src/state/slices/userSlice";
 
 const CARD_WIDTH_PERCENT = "48%";
 
@@ -335,8 +344,10 @@ export default function AccountScreen() {
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const { t } = useTranslation();
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
 
   const user = useAppSelector((state) => state.user);
   const userRole = user.userRole;
@@ -347,6 +358,24 @@ export default function AccountScreen() {
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "pending";
+
+  const handleViewPlans = useCallback(() => {
+    setBuyPlanModalVisible(false);
+    dispatch(setBusinessPlansModalVisible(true));
+  }, [dispatch]);
+
+  const ensureCanUploadWork = useCallback((): boolean => {
+    if (userRole !== "business") return true;
+    if (!isStripeOnboardingCompleted(businessStatus)) {
+      dispatch(setStripeConnectModalVisible(true));
+      return false;
+    }
+    if (!isBusinessSubscriptionActive(businessStatus)) {
+      setBuyPlanModalVisible(true);
+      return false;
+    }
+    return true;
+  }, [businessStatus, dispatch, userRole]);
 
   const handleLogout = async () => {
     if (isGuest) {
@@ -435,6 +464,7 @@ export default function AccountScreen() {
     } else if (key === "availability") {
       router.push("./staffAvailability");
     } else if (key === "uploadWork") {
+      if (!ensureCanUploadWork()) return;
       router.push("./staffWorkImages");
     } else if (key === "leaveRequest") {
       router.push("/(main)/leaveList");
@@ -697,6 +727,12 @@ export default function AccountScreen() {
           })}
         </View>
       </ScrollView>
+
+      <BuyBusinessPlanModal
+        visible={buyPlanModalVisible}
+        onClose={() => setBuyPlanModalVisible(false)}
+        onViewPlans={handleViewPlans}
+      />
     </View>
   );
 }
