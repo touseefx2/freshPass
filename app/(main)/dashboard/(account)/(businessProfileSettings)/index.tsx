@@ -126,8 +126,14 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      textTransform:"capitalize"
     },
     profileEmail: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+    },
+    profilePhone: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
@@ -400,8 +406,13 @@ export default function BusinessProfileSettingsScreen() {
                 {profileData?.title || user.name || ""}
               </Text>
               <Text style={styles.profileEmail} numberOfLines={1}>
-                {user.email || ""}
+                {profileData?.slogan?.trim() || user.email || ""}
               </Text>
+              {profileData?.phone ? (
+                <Text style={styles.profilePhone} numberOfLines={1}>
+                  {profileData.country_code ? `${profileData.country_code} ` : ""}{profileData.phone}
+                </Text>
+              ) : null}
               {businessCategoryName ? (
                 <Text style={styles.profileCategory} numberOfLines={1}>
                   {businessCategoryName}
