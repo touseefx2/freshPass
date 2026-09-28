@@ -1,12 +1,13 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import Logger from "@/src/services/logger";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  Pressable,
   Platform,
+  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -15,24 +16,21 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
+import AppImage from "@/src/components/AppImage";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { canShowStaffManagement } from "@/src/state/slices/userSlice";
+import { ApiService } from "@/src/services/api";
+import { businessEndpoints } from "@/src/services/endpoints";
+import { resolveApiImageUrl } from "@/src/utils/media";
+import { getDefaultBusinessLogo } from "@/src/services/remoteConfigService";
 
-const CARD_WIDTH_PERCENT = "49%";
-
-type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
 
-function getIconVariant(index: number): IconVariant {
-  const variants: IconVariant[] = ["dark", "accent", "cream"];
-  return variants[index % 3];
-}
-
 type SettingKey =
-  | "businessProfile"
   | "businessLocation"
   | "description"
   | "availability"
@@ -50,113 +48,12 @@ type SettingItem = {
   subtitle: string;
 };
 
-function SettingCard({
-  title,
-  subtitle,
-  iconName,
-  iconFamily = "material",
-  onPress,
-  theme,
-  styles,
-  iconVariant,
-}: {
+interface BusinessProfileData {
   title: string;
-  subtitle: string;
-  iconName: string;
-  iconFamily?: IconFamily;
-  onPress: () => void;
-  theme: Theme;
-  styles: ReturnType<typeof createStyles>;
-  iconVariant: IconVariant;
-}) {
-  const [pressed, setPressed] = useState(false);
-  const iconSize = moderateWidthScale(26);
-  const thickness = moderateHeightScale(2.5);
-  const radius = moderateWidthScale(16);
-
-  const iconBg =
-    iconVariant === "dark"
-      ? theme.darkGreen
-      : iconVariant === "accent"
-        ? theme.selectCard
-        : theme.orangeBrown015;
-
-  const iconColor =
-    iconVariant === "cream" ? theme.darkGreen : theme.white;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      style={styles.gridItem}
-    >
-      <View
-        style={[
-          styles.cardShadowWrap,
-          pressed && styles.cardShadowWrapPressed,
-        ]}
-      >
-        <View
-          style={[
-            styles.cardBase,
-            {
-              borderRadius: radius,
-              paddingBottom: pressed ? moderateHeightScale(1) : thickness,
-              transform: [
-                {
-                  translateY: pressed
-                    ? thickness - moderateHeightScale(1)
-                    : 0,
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={[styles.cardFace, { borderRadius: radius }]}>
-            <View
-              style={[
-                styles.iconWrap,
-                { backgroundColor: iconBg },
-                iconVariant === "cream" && styles.iconWrapCream,
-              ]}
-            >
-              {iconFamily === "community" ? (
-                <MaterialCommunityIcons
-                  name={
-                    iconName as React.ComponentProps<
-                      typeof MaterialCommunityIcons
-                    >["name"]
-                  }
-                  size={iconSize}
-                  color={iconColor}
-                />
-              ) : (
-                <MaterialIcons
-                  name={
-                    iconName as React.ComponentProps<
-                      typeof MaterialIcons
-                    >["name"]
-                  }
-                  size={iconSize}
-                  color={iconColor}
-                />
-              )}
-            </View>
-
-            <View style={styles.cardTextBlock}>
-              <Text style={styles.cardTitle} numberOfLines={2}>
-                {title}
-              </Text>
-              <Text style={styles.cardSubtitle} numberOfLines={3}>
-                {subtitle}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Pressable>
-  );
+  slogan: string;
+  logo_url: string | null;
+  country_code?: string | null;
+  phone?: string | null;
 }
 
 const createStyles = (theme: Theme) =>
@@ -170,7 +67,7 @@ const createStyles = (theme: Theme) =>
     },
     contentContainer: {
       paddingTop: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
       paddingBottom: moderateHeightScale(32),
     },
     headerBlock: {
@@ -190,138 +87,96 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(8),
       lineHeight: fontSize.size18,
     },
-    gridContainer: {
-      marginTop: moderateHeightScale(14),
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
-      rowGap: moderateHeightScale(10),
-      columnGap: moderateWidthScale(6),
-    },
-    gridItem: {
-      width: CARD_WIDTH_PERCENT as any,
-    },
-    cardShadowWrap: {
-      borderRadius: moderateWidthScale(18),
-      ...Platform.select({
-        ios: {
-          shadowColor: theme.darkGreen,
-          shadowOffset: {
-            width: 0,
-            height: 0,
-          },
-          shadowOpacity: 0.18,
-          shadowRadius: moderateWidthScale(8),
-        },
-        android: {
-          elevation: 5,
-          shadowColor: theme.darkGreen,
-        },
-        default: {
-          shadowColor: theme.darkGreen,
-          shadowOffset: {
-            width: 0,
-            height: 0,
-          },
-          shadowOpacity: 0.18,
-          shadowRadius: moderateWidthScale(8),
-        },
-      }),
-    },
-    cardShadowWrapPressed: {
-      ...Platform.select({
-        ios: {
-          shadowOpacity: 0.1,
-          shadowRadius: moderateWidthScale(4),
-        },
-        android: {
-          elevation: 2,
-        },
-        default: {
-          shadowOpacity: 0.1,
-        },
-      }),
-    },
-    cardBase: {
-      backgroundColor: theme.lightGreen16,
-    },
-    cardFace: {
+    profileCard: {
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.background,
-      paddingHorizontal: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      paddingHorizontal: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(14),
-      minHeight: moderateHeightScale(92),
-      gap: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
+      marginBottom: moderateHeightScale(6),
+      gap: moderateWidthScale(12),
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.darkGreen,
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.12,
+          shadowRadius: moderateWidthScale(6),
+        },
+        android: { elevation: 3, shadowColor: theme.darkGreen },
+      }),
     },
-    iconWrap: {
-      width: moderateWidthScale(48),
-      height: moderateWidthScale(48),
-      borderRadius: moderateWidthScale(12),
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
+    profileImageWrapper: {
+      width: widthScale(60),
+      height: widthScale(60),
+      borderRadius: widthScale(30),
       overflow: "hidden",
-      ...Platform.select({
-        ios: {
-          shadowColor: theme.shadow,
-          shadowOffset: {
-            width: 0,
-            height: 0,
-          },
-          shadowOpacity: 0.2,
-          shadowRadius: moderateWidthScale(4),
-        },
-        android: {
-          elevation: 0,
-        },
-        default: {
-          shadowColor: theme.shadow,
-          shadowOffset: {
-            width: 0,
-            height: 0,
-          },
-          shadowOpacity: 0.2,
-          shadowRadius: moderateWidthScale(4),
-        },
-      }),
     },
-    iconWrapCream: {
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
-      ...Platform.select({
-        ios: {
-          shadowOpacity: 0.12,
-        },
-        android: {
-          elevation: 0,
-        },
-        default: {
-          shadowOpacity: 0.12,
-        },
-      }),
+    profileImage: {
+      width: "100%",
+      height: "100%",
     },
-    cardTextBlock: {
+    profileInfoCol: {
       flex: 1,
-      flexShrink: 1,
-      justifyContent: "center",
       gap: moderateHeightScale(2),
     },
-    cardTitle: {
-      fontSize: fontSize.size12,
+    profileName: {
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      lineHeight: fontSize.size15,
-      textAlign: "left",
     },
-    cardSubtitle: {
-      fontSize: fontSize.size9,
+    profileEmail: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen6,
-      lineHeight: fontSize.size12,
-      textAlign: "left",
+      color: theme.lightGreen5,
+    },
+    profileCategory: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.selectCard,
+      marginTop: moderateHeightScale(2),
+      textTransform: "uppercase",
+    },
+    listContainer: {
+      marginTop: moderateHeightScale(14),
+    },
+    rowItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: moderateHeightScale(14),
+      paddingHorizontal: moderateWidthScale(4),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.lightGreen1,
+      gap: moderateWidthScale(14),
+    },
+    rowIconWrap: {
+      width: moderateWidthScale(38),
+      height: moderateWidthScale(38),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rowTextCol: {
+      flex: 1,
+    },
+    rowTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    rowSubtitle: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(2),
+    },
+    profileLoading: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: moderateHeightScale(20),
+      marginBottom: moderateHeightScale(6),
     },
   });
 
@@ -333,13 +188,66 @@ export default function BusinessProfileSettingsScreen() {
   const router = useRouter();
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const userRole = useAppSelector((state) => state.user.userRole);
+  const user = useAppSelector((state) => state.user);
   const showManageTeam = canShowStaffManagement(businessStatus);
   const isBusinessOwner = userRole === "business";
+  const businessCategoryName = businessStatus?.business_category?.name;
+
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileData, setProfileData] = useState<BusinessProfileData | null>(
+    null,
+  );
+
+  const fetchBusinessProfile = useCallback(async () => {
+    setProfileLoading(true);
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: BusinessProfileData;
+      }>(businessEndpoints.moduleData("business-profile"));
+
+      if (response.success && response.data) {
+        setProfileData(response.data);
+      }
+    } catch (error: any) {
+      Logger.error("Failed to fetch business profile:", error);
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchBusinessProfile();
+    }, [fetchBusinessProfile]),
+  );
+
+  const getLogoUri = () => {
+    return (
+      resolveApiImageUrl(profileData?.logo_url) ?? getDefaultBusinessLogo()
+    );
+  };
+
+  const handleEditBusinessProfile = useCallback(() => {
+    if (profileData) {
+      router.push({
+        pathname: "./editBusinessProfile",
+        params: {
+          title: profileData.title,
+          slogan: profileData.slogan || "",
+          logo_url: profileData.logo_url || "",
+          country_code: profileData.country_code || "",
+          phone: profileData.phone || "",
+        },
+      });
+    } else {
+      router.push("./editBusinessProfile");
+    }
+  }, [profileData, router]);
 
   const handleRowPress = (key: string) => {
-    if (key === "businessProfile") {
-      router.push("./businessProfile");
-    } else if (key === "description") {
+    if (key === "description") {
       router.push("./description");
     } else if (key === "services") {
       router.push("./services");
@@ -365,11 +273,6 @@ export default function BusinessProfileSettingsScreen() {
   };
 
   const settings: SettingItem[] = [
-    {
-      key: "businessProfile",
-      title: t("businessProfile"),
-      subtitle: t("businessProfileCardSubtitle"),
-    },
     {
       key: "businessLocation",
       title: t("yourBusinessLocation"),
@@ -433,10 +336,7 @@ export default function BusinessProfileSettingsScreen() {
   const getIconMeta = (
     key: SettingKey,
   ): { name: string; family: IconFamily } => {
-    // Closest matches to client design icons
     switch (key) {
-      case "businessProfile":
-        return { name: "storefront", family: "material" };
       case "businessLocation":
         return { name: "place", family: "material" };
       case "description":
@@ -477,21 +377,82 @@ export default function BusinessProfileSettingsScreen() {
           </Text>
         </View>
 
-        <View style={styles.gridContainer}>
-          {settings.map((setting, index) => {
+        {profileLoading ? (
+          <View style={styles.profileLoading}>
+            <ActivityIndicator size="small" color={theme.darkGreen} />
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={handleEditBusinessProfile}
+            style={styles.profileCard}
+          >
+            <View style={styles.profileImageWrapper}>
+              <AppImage
+                uri={getLogoUri()}
+                style={styles.profileImage}
+              />
+            </View>
+            <View style={styles.profileInfoCol}>
+              <Text style={styles.profileName} numberOfLines={1}>
+                {profileData?.title || user.name || ""}
+              </Text>
+              <Text style={styles.profileEmail} numberOfLines={1}>
+                {user.email || ""}
+              </Text>
+              {businessCategoryName ? (
+                <Text style={styles.profileCategory} numberOfLines={1}>
+                  {businessCategoryName}
+                </Text>
+              ) : null}
+            </View>
+            <MaterialIcons
+              name="chevron-right"
+              size={moderateWidthScale(24)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.listContainer}>
+          {settings.map((setting) => {
             const iconMeta = getIconMeta(setting.key);
             return (
-              <SettingCard
+              <TouchableOpacity
                 key={setting.key}
-                title={setting.title}
-                subtitle={setting.subtitle}
-                iconName={iconMeta.name}
-                iconFamily={iconMeta.family}
+                activeOpacity={0.6}
                 onPress={() => handleRowPress(setting.key)}
-                theme={theme}
-                styles={styles}
-                iconVariant={getIconVariant(index)}
-              />
+                style={styles.rowItem}
+              >
+                <View style={styles.rowIconWrap}>
+                  {iconMeta.family === "community" ? (
+                    <MaterialCommunityIcons
+                      name={iconMeta.name as any}
+                      size={moderateWidthScale(24)}
+                      color={theme.darkGreen}
+                    />
+                  ) : (
+                    <MaterialIcons
+                      name={iconMeta.name as any}
+                      size={moderateWidthScale(24)}
+                      color={theme.darkGreen}
+                    />
+                  )}
+                </View>
+                <View style={styles.rowTextCol}>
+                  <Text style={styles.rowTitle} numberOfLines={1}>
+                    {setting.title}
+                  </Text>
+                  <Text style={styles.rowSubtitle} numberOfLines={2}>
+                    {setting.subtitle}
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(22)}
+                  color={theme.lightGreen5}
+                />
+              </TouchableOpacity>
             );
           })}
         </View>
