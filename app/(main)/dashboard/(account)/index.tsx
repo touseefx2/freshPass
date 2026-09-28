@@ -584,7 +584,11 @@ export default function AccountScreen() {
             <View style={styles.profileInfoCol}>
               <Text style={styles.profileName} numberOfLines={1}>{userName}</Text>
               <Text style={styles.profileEmail} numberOfLines={1}>{userEmailDisplay}</Text>
-              
+              {user.phone ? (
+                <Text style={styles.profileEmail} numberOfLines={1}>
+                  {user.country_code ? `${user.country_code} ` : ""}{user.phone}
+                </Text>
+              ) : null}
             </View>
             <MaterialIcons
               name="chevron-right"
