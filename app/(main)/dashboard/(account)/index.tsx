@@ -150,12 +150,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
-    rowSubtitle: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      marginTop: moderateHeightScale(2),
-    },
     rowDeleteTitle: {
       color: theme.red,
     },
@@ -379,114 +373,65 @@ export default function AccountScreen() {
       | "logout"
       | "delete";
     title: string;
-    subtitle?: string;
   };
 
   const rows: Row[] = [
     ...(userRole === "business" && !isGuest
       ? [
-          {
-            key: "business" as const,
-            title: t("businessProfileSettings"),
-            subtitle: t("manageBusinessProfile") || "Manage your business settings.",
-          },
-          {
-            key: "customers" as const,
-            title: t("customers"),
-            subtitle: t("manageCustomers") || "View and manage your customers.",
-          },
-          {
-            key: "followers" as const,
-            title: t("followers"),
-            subtitle: t("manageFollowers") || "See who follows your business.",
-          },
-          {
-            key: "uploadWork" as const,
-            title: t("uploadYourWork"),
-            subtitle: t("uploadWorkSubtitle") || "Showcase your work and portfolio.",
-          },
+          { key: "business" as const, title: t("businessProfileSettings") },
+          { key: "customers" as const, title: t("customers") },
+          { key: "followers" as const, title: t("followers") },
+          { key: "uploadWork" as const, title: t("uploadYourWork") },
         ]
       : []),
     ...(userRole === "staff" && !isGuest
       ? [
-          {
-            key: "availability" as const,
-            title: t("setAvailability"),
-            subtitle: t("setAvailabilitySubtitle") || "Set your available hours.",
-          },
-          {
-            key: "uploadWork" as const,
-            title: t("uploadYourWork"),
-            subtitle: t("uploadWorkSubtitle") || "Showcase your work and portfolio.",
-          },
+          { key: "availability" as const, title: t("setAvailability") },
+          { key: "uploadWork" as const, title: t("uploadYourWork") },
         ]
       : []),
     ...(userRole === "business"
-      ? [{ key: "mediaLibrary" as const, title: t("mediaLibrary"), subtitle: t("mediaLibrarySubtitle") || "Manage your media content." }]
+      ? [{ key: "mediaLibrary" as const, title: t("mediaLibrary") }]
       : []),
     ...(userRole === "business" || userRole === "customer"
-      ? [{ key: "aiTools" as const, title: t("aiTools"), subtitle: t("aiToolsSubtitle") || "AI-powered tools and features." }]
+      ? [{ key: "aiTools" as const, title: t("aiTools") }]
       : []),
     ...(isCustomer
-      ? [{ key: "country" as const, title: t("country"), subtitle: t("countrySubtitle") || "Set your country preference." }]
+      ? [{ key: "country" as const, title: t("country") }]
       : []),
-    {
-      key: "language",
-      title: t("language"),
-      subtitle: t("languageSubtitle") || "Choose your preferred language.",
-    },
+    { key: "language" as const, title: t("language") },
     ...(userRole === "business" && !isGuest
-      ? [{ key: "viewBusiness" as const, title: t("viewBusiness"), subtitle: t("viewBusinessSubtitle") || "Preview your public business page." }]
+      ? [{ key: "viewBusiness" as const, title: t("viewBusiness") }]
       : []),
     ...(userRole === "business" &&
     !isGuest &&
     businessStatus?.subscription_status === "active" &&
     businessStatus?.subscription_is_single === false
-      ? [
-          {
-            key: "affiliationRequests" as const,
-            title: t("affiliationRequests"),
-            subtitle: t("affiliationRequestsSubtitle") || "Manage staff affiliation requests.",
-          },
-        ]
+      ? [{ key: "affiliationRequests" as const, title: t("affiliationRequests") }]
       : []),
     ...((userRole === "business" || userRole === "staff") &&
     !isGuest &&
     !isCustomer
-      ? [
-          {
-            key: "leaveRequest" as const,
-            title: t("leaveRequest") || "Leave Request",
-            subtitle: t("leaveRequestSubtitle") || "Request or manage time off.",
-          },
-        ]
+      ? [{ key: "leaveRequest" as const, title: t("leaveRequest") || "Leave Request" }]
       : []),
-    {
-      key: "notifications",
-      title: t("notificationSettings"),
-      subtitle: t("notificationSettingsSubtitle") || "Manage your notification preferences.",
-    },
+    { key: "notifications" as const, title: t("notificationSettings") },
     ...(isCustomer || (userRole === "business" && !showStripeBanner)
-      ? [{ key: "subscriptions" as const, title: t("subscription"), subtitle: t("subscriptionSubtitle") || "Manage your subscription plan." }]
+      ? [{ key: "subscriptions" as const, title: t("subscription") }]
       : []),
     ...(isCustomer
-      ? [{ key: "reviews" as const, title: t("reviews"), subtitle: t("reviewsSubtitle") || "View and respond to reviews." }]
+      ? [{ key: "reviews" as const, title: t("reviews") }]
       : []),
     ...(isCustomer && !isGuest
-      ? [{ key: "myLooks" as const, title: t("myLooks"), subtitle: t("myLooksSubtitle") || "Your saved looks and styles." }]
+      ? [{ key: "myLooks" as const, title: t("myLooks") }]
       : []),
     ...(isCustomer && !isGuest
-      ? [{ key: "following" as const, title: t("following"), subtitle: t("followingSubtitle") || "Businesses you follow." }]
+      ? [{ key: "following" as const, title: t("following") }]
       : []),
-    {
-      key: "rules" as const,
-      title: t("rulesAndTerms"),
-      subtitle: t("rulesSubtitle") || "View rules, terms and policies.",
-    },
+    { key: "rules" as const, title: t("rulesAndTerms") },
     ...(!isGuest
-      ? [{ key: "changePassword" as const, title: t("changePassword"), subtitle: t("changePasswordSubtitle") || "Update your account password." }]
+      ? [{ key: "changePassword" as const, title: t("changePassword") }]
       : []),
-    { key: "logout", title: isGuest ? t("signIn") : t("logOut") },
+    { key: "logout" as const, title: isGuest ? t("signIn") : t("logOut") },
     ...(!isGuest
       ? [{ key: "delete" as const, title: t("deleteAccount") }]
       : []),
@@ -642,11 +587,6 @@ export default function AccountScreen() {
                   >
                     {row.title}
                   </Text>
-                  {row.subtitle ? (
-                    <Text style={styles.rowSubtitle} numberOfLines={1}>
-                      {row.subtitle}
-                    </Text>
-                  ) : null}
                 </View>
                 {!isLogout && !isDelete && (
                   <MaterialIcons
