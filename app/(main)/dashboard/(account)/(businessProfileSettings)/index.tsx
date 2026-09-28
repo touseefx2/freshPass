@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import Logger from "@/src/services/logger";
 import {
   StyleSheet,
@@ -197,9 +197,10 @@ export default function BusinessProfileSettingsScreen() {
   const [profileData, setProfileData] = useState<BusinessProfileData | null>(
     null,
   );
+  const hasFetchedOnce = useRef(false);
 
   const fetchBusinessProfile = useCallback(async () => {
-    setProfileLoading(true);
+    if (!hasFetchedOnce.current) setProfileLoading(true);
     try {
       const response = await ApiService.get<{
         success: boolean;
@@ -209,6 +210,7 @@ export default function BusinessProfileSettingsScreen() {
 
       if (response.success && response.data) {
         setProfileData(response.data);
+        hasFetchedOnce.current = true;
       }
     } catch (error: any) {
       Logger.error("Failed to fetch business profile:", error);
