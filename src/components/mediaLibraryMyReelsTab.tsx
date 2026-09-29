@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ActionSheetIOS,
@@ -39,6 +39,7 @@ import {
 import {
   deleteReel,
   getBusinessReelStats,
+  getGenerationStatus,
   listMyReels,
   publishReel,
   REELS_MINE_PER_PAGE,
@@ -270,6 +271,28 @@ const createStyles = (theme: Theme) =>
     statusBadgeRemoved: {
       backgroundColor: theme.lightGreen4,
     },
+    genOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen4,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(4),
+    },
+    genOverlayFailed: {
+      backgroundColor: theme.selectCard,
+    },
+    genOverlayText: {
+      marginTop: moderateHeightScale(4),
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      textAlign: "center",
+    },
+    cardHighlight: {
+      borderColor: theme.buttonBack,
+      borderWidth: 2,
+    },
     statusBadgeText: {
       fontSize: fontSize.size9,
       fontFamily: fonts.fontBold,
@@ -348,7 +371,15 @@ const createStyles = (theme: Theme) =>
 
 type StatusFilter = "all" | "draft" | "published" | "removed";
 
-export default function MediaLibraryMyReelsTab() {
+const GEN_POLL_MS = 8000;
+
+type MediaLibraryMyReelsTabProps = {
+  highlightReelId?: string;
+};
+
+export default function MediaLibraryMyReelsTab({
+  highlightReelId,
+}: MediaLibraryMyReelsTabProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -360,6 +391,7 @@ export default function MediaLibraryMyReelsTab() {
   const businessStatus = useAppSelector(
     (state) => state.user.businessStatus,
   );
+  const listRef = useRef<FlatList<OwnerReel>>(null);
 
   const [filter, setFilter] = useState<StatusFilter>("all");
   const [reels, setReels] = useState<OwnerReel[]>([]);
@@ -371,6 +403,8 @@ export default function MediaLibraryMyReelsTab() {
   const [fabOpen, setFabOpen] = useState(false);
   const [limits, setLimits] = useState<MediaLimits | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
+
+  const highlightedId = highlightReelId ? Number(highlightReelId) : null;
 
   const fabBottom =
     Math.max(insets.bottom, moderateHeightScale(12)) +
@@ -439,6 +473,69 @@ export default function MediaLibraryMyReelsTab() {
       void fetchLimits();
     }, [fetchPage, fetchSummary, fetchLimits]),
   );
+
+  // Auto-refresh Shotstack reels that are still generating
+  useEffect(() => {
+    const inProgress = reels.filter(
+      (r) =>
+        r.generation_status === "pending" ||
+        r.generation_status === "rendering",
+    );
+    if (inProgress.length === 0) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      let needsRefresh = false;
+      for (const reel of inProgress) {
+        try {
+          const status = await getGenerationStatus(reel.id);
+          if (
+            status.generation_status === "ready" ||
+            status.generation_status === "failed"
+          ) {
+            needsRefresh = true;
+            setReels((prev) =>
+              prev.map((r) =>
+                r.id === reel.id
+                  ? {
+                      ...r,
+                      generation_status: status.generation_status,
+                      generation_error: status.generation_error,
+                    }
+                  : r,
+              ),
+            );
+          }
+        } catch (error) {
+          Logger.error(`Generation poll failed for reel ${reel.id}:`, error);
+        }
+      }
+      if (!cancelled && needsRefresh) {
+        void fetchPage(1, false);
+        void fetchSummary();
+      }
+    };
+
+    const id = setInterval(() => {
+      void tick();
+    }, GEN_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [fetchPage, fetchSummary, reels]);
+
+  useEffect(() => {
+    if (highlightedId == null || loading || reels.length === 0) return;
+    const index = reels.findIndex((r) => r.id === highlightedId);
+    if (index < 0) return;
+    const timer = setTimeout(() => {
+      try {
+        listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.2 });
+      } catch {}
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [highlightedId, loading, reels]);
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus);
@@ -748,11 +845,38 @@ export default function MediaLibraryMyReelsTab() {
 
   const renderItem = useCallback(
     ({ item }: { item: OwnerReel }) => {
+      const genStatus = item.generation_status ?? null;
+      const isGenerating =
+        genStatus === "pending" || genStatus === "rendering";
+      const isGenFailed = genStatus === "failed";
       const thumb =
         resolveApiImageUrl(
           (item.video as any)?.thumbnail_url ?? null,
         ) || null;
+
       const openPreview = () => {
+        if (isGenerating) {
+          router.push({
+            pathname: "/(main)/reelGeneration" as any,
+            params: { reelId: String(item.id) },
+          });
+          return;
+        }
+        if (isGenFailed) {
+          Alert.alert(
+            t("generationFailed"),
+            item.generation_error || t("generationFailedHint"),
+            [
+              { text: t("cancel"), style: "cancel" },
+              {
+                text: t("tryAgain"),
+                onPress: () =>
+                  router.push("/(main)/reelTemplates" as any),
+              },
+            ],
+          );
+          return;
+        }
         if (item.status === "removed") {
           showBanner(
             t("draft"),
@@ -766,8 +890,6 @@ export default function MediaLibraryMyReelsTab() {
           pathname: "/(main)/reelsFeed" as any,
           params: {
             first_reel_id: String(item.id),
-            // Published → owner library viewer (vertical published stack, no report / no category swipe).
-            // Drafts & others → single-reel preview.
             mode: item.status === "published" ? "owner" : "preview",
           },
         });
@@ -780,14 +902,19 @@ export default function MediaLibraryMyReelsTab() {
             ? styles.statusBadgeRemoved
             : null;
 
+      const isHighlighted =
+        highlightedId != null && item.id === highlightedId;
+
       return (
-        <View style={styles.card}>
+        <View
+          style={[styles.card, isHighlighted ? styles.cardHighlight : null]}
+        >
           <TouchableOpacity
             onPress={openPreview}
             activeOpacity={0.85}
             style={styles.thumbWrap}
           >
-            {thumb ? (
+            {thumb && !isGenerating ? (
               <AppImage uri={thumb} style={styles.thumb} />
             ) : (
               <View
@@ -797,15 +924,37 @@ export default function MediaLibraryMyReelsTab() {
                 ]}
               >
                 <MaterialIcons
-                  name="videocam"
+                  name={isGenFailed ? "error-outline" : "videocam"}
                   size={moderateWidthScale(24)}
                   color={theme.lightGreen}
                 />
               </View>
             )}
-            <View style={[styles.statusBadge, statusBadgeStyle]}>
-              <Text style={styles.statusBadgeText}>{item.status}</Text>
-            </View>
+            {isGenerating ? (
+              <View style={styles.genOverlay}>
+                <ActivityIndicator color={theme.white} size="small" />
+                <Text style={styles.genOverlayText}>
+                  {genStatus === "pending"
+                    ? t("reelQueued")
+                    : t("reelGenerating")}
+                </Text>
+              </View>
+            ) : null}
+            {isGenFailed ? (
+              <View style={[styles.genOverlay, styles.genOverlayFailed]}>
+                <MaterialIcons
+                  name="error-outline"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+                <Text style={styles.genOverlayText}>{t("generationFailed")}</Text>
+              </View>
+            ) : null}
+            {!isGenerating && !isGenFailed ? (
+              <View style={[styles.statusBadge, statusBadgeStyle]}>
+                <Text style={styles.statusBadgeText}>{item.status}</Text>
+              </View>
+            ) : null}
           </TouchableOpacity>
 
           <View style={styles.cardBody}>
@@ -818,22 +967,57 @@ export default function MediaLibraryMyReelsTab() {
                   {item.category.name}
                 </Text>
               )}
+              {isGenFailed && item.generation_error ? (
+                <Text style={styles.categoryMeta} numberOfLines={2}>
+                  {item.generation_error}
+                </Text>
+              ) : null}
             </View>
 
             <View style={styles.iconActions}>
-              <TouchableOpacity
-                style={styles.iconBtn}
-                onPress={openPreview}
-                hitSlop={6}
-                accessibilityLabel={t("viewReel")}
-              >
-                <MaterialIcons
-                  name="play-arrow"
-                  size={moderateWidthScale(18)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              {item.status !== "removed" && (
+              {isGenerating ? (
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={openPreview}
+                  hitSlop={6}
+                  accessibilityLabel={t("generatingReel")}
+                >
+                  <MaterialIcons
+                    name="hourglass-top"
+                    size={moderateWidthScale(16)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+              ) : null}
+              {isGenFailed ? (
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={openPreview}
+                  hitSlop={6}
+                  accessibilityLabel={t("tryAgain")}
+                >
+                  <MaterialIcons
+                    name="refresh"
+                    size={moderateWidthScale(16)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+              ) : null}
+              {!isGenerating && !isGenFailed ? (
+                <TouchableOpacity
+                  style={styles.iconBtn}
+                  onPress={openPreview}
+                  hitSlop={6}
+                  accessibilityLabel={t("viewReel")}
+                >
+                  <MaterialIcons
+                    name="play-arrow"
+                    size={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                </TouchableOpacity>
+              ) : null}
+              {item.status !== "removed" && !isGenerating ? (
                 <TouchableOpacity
                   style={styles.iconBtn}
                   hitSlop={6}
@@ -851,7 +1035,7 @@ export default function MediaLibraryMyReelsTab() {
                     color={theme.darkGreen}
                   />
                 </TouchableOpacity>
-              )}
+              ) : null}
               {item.status === "published" && (
                 <TouchableOpacity
                   style={styles.iconBtn}
@@ -903,6 +1087,7 @@ export default function MediaLibraryMyReelsTab() {
     },
     [
       confirmDelete,
+      highlightedId,
       openReelMoreMenu,
       router,
       showBanner,
@@ -1004,12 +1189,14 @@ export default function MediaLibraryMyReelsTab() {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={reels}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
+          onScrollToIndexFailed={() => {}}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <MaterialIcons

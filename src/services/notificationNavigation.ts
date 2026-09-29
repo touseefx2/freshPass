@@ -131,13 +131,28 @@ function openBusinessProfile(
 
 function openOwnerReelsList(
   router: Router,
-  options?: { fromInAppList?: boolean },
+  options?: { fromInAppList?: boolean; highlightReelId?: number },
 ): void {
-  navigateViaProfileFromNotification(
-    router,
-    "/(main)/aiTools/toolList",
-    options?.fromInAppList,
-  );
+  const go = () => {
+    router.push("/(main)/dashboard/(account)" as any);
+    setTimeout(() => {
+      router.push({
+        pathname: "/(main)/aiTools/toolList",
+        ...(options?.highlightReelId
+          ? { params: { highlightReelId: String(options.highlightReelId) } }
+          : {}),
+      } as any);
+    }, AI_MEMORY_CHAIN_STEP_MS);
+  };
+
+  if (options?.fromInAppList) {
+    if (router.canGoBack()) {
+      router.back();
+    }
+    setTimeout(go, AI_MEMORY_BACK_DELAY_MS);
+    return;
+  }
+  go();
 }
 
 /**
@@ -150,6 +165,7 @@ function openOwnerReelsList(
  * - type "appointment_checkout" + subType appointment_checkout_failed → bookingNow (if business_id) or notification list — never appointment details
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
+ * - type "reel_generation" + reel_id (business) → Account → Media Library / My Reels (highlight)
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
  * - type "customer_subscription" + model_id (business role) → Profile → Customers → businessCustomerDetail
  * - type "subscription" (customer role) → Profile → Customer subscriptions
@@ -512,6 +528,34 @@ export function navigateFromNotificationData(
       );
       return;
     }
+  }
+
+  // Shotstack template reel finished (business only) — Media Library / My Reels
+  // MD: tap → My Reels with highlightReelId (ready or failed). Not AI Results.
+  // Chain: Profile/Account tab first, then Media Library (toolList without aiTools mode).
+  if (type === "reel_generation") {
+    const userRole = store.getState().user.userRole;
+    const reelId = pickNumber(data, "reel_id", "model_id");
+    const status =
+      typeof data.status === "string" ? data.status.toLowerCase() : "";
+
+    if (userRole !== "business" || reelId == null) {
+      Logger.log(
+        "------>navigateFromNotificationData (reel_generation) -> skipped",
+        { userRole, reelId },
+      );
+      return;
+    }
+
+    openOwnerReelsList(router, {
+      fromInAppList: options?.fromInAppList,
+      highlightReelId: reelId,
+    });
+    Logger.log(
+      "------>navigateFromNotificationData (reel_generation) -> Account → Media Library / My Reels",
+      { reel_id: reelId, status },
+    );
+    return;
   }
 
   if (type === "business" || type === "service") {

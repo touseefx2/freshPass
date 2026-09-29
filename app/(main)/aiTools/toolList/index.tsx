@@ -88,7 +88,11 @@ export default function ToolList() {
   const user = useAppSelector((state) => state.user);
   const userRole = user?.userRole;
   const dispatch = useAppDispatch();
-  const params = useLocalSearchParams<{ mode?: string; tab?: string }>();
+  const params = useLocalSearchParams<{
+    mode?: string;
+    tab?: string;
+    highlightReelId?: string;
+  }>();
 
   const isCustomer = userRole === "customer";
   const isBusiness = userRole === "business";
@@ -379,7 +383,7 @@ export default function ToolList() {
       <StackHeader title={headerTitle} />
 
       {isBusiness && !showAiTools ? (
-        <MediaLibraryMyReelsTab />
+        <MediaLibraryMyReelsTab highlightReelId={params.highlightReelId} />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scrollContent}

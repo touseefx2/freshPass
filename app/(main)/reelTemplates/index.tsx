@@ -16,6 +16,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Button from "@/src/components/button";
+import HairPipelineProcessingModal, {
+  INITIAL_HAIR_PIPELINE_STATE,
+  type HairPipelineModalState,
+} from "@/src/components/HairPipelineProcessingModal";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -409,6 +413,9 @@ export default function ReelTemplatesScreen() {
   const [mediaPickerSlot, setMediaPickerSlot] = useState<number | null>(null);
   const [libraryVideos, setLibraryVideos] = useState<MediaVideo[]>([]);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
+  const [pipelineModal, setPipelineModal] = useState<HairPipelineModalState>(
+    INITIAL_HAIR_PIPELINE_STATE,
+  );
 
   const selected = useMemo(
     () => templates.find((item) => item.id === selectedId) ?? null,
@@ -580,9 +587,15 @@ export default function ReelTemplatesScreen() {
         music_asset_id: null,
       });
 
-      router.replace({
-        pathname: "/(main)/reelGeneration" as any,
-        params: { reelId: String(result.reel_id) },
+      // Same success popup as Generate Post / Collage — notify when ready.
+      setPipelineModal({
+        visible: true,
+        jobId: String(result.reel_id),
+        jobType: "Generate Reel",
+        estimatedMinutes: 2,
+        progress: 0,
+        imageUri: null,
+        complete: false,
       });
     } catch (error: any) {
       Logger.error("Failed to start reel generation:", error);
@@ -598,7 +611,6 @@ export default function ReelTemplatesScreen() {
     canGenerate,
     caption,
     categoryId,
-    router,
     selected,
     selectedMedia,
     showBanner,
@@ -606,6 +618,15 @@ export default function ReelTemplatesScreen() {
     t,
     texts,
   ]);
+
+  const closePipelineModal = useCallback(() => {
+    setPipelineModal(INITIAL_HAIR_PIPELINE_STATE);
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(main)/aiTools/toolList" as any);
+    }
+  }, [router]);
 
   if (loading) {
     return (
@@ -964,6 +985,11 @@ export default function ReelTemplatesScreen() {
           </View>
         </View>
       </Modal>
+
+      <HairPipelineProcessingModal
+        state={pipelineModal}
+        onClose={closePipelineModal}
+      />
     </View>
   );
 }

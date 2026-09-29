@@ -1609,7 +1609,7 @@
   "generatingReel": "Generating Reel",
   "preparingYourReel": "Preparing your reel…",
   "renderingYourReel": "Rendering your reel…",
-  "generationInProgressHint": "This may take a minute. You can leave and come back — rendering continues on the server.",
+  "generationInProgressHint": "You can close this screen. We'll notify you when your reel is ready.",
   "generationFailed": "Generation failed",
   "generationFailedHint": "Something went wrong while rendering. Please try again.",
   "failedToGetGenerationStatus": "Couldn't load generation status.",
@@ -1624,5 +1624,7 @@
   "selectTemplatePlaceholder": "Choose a reel template",
   "selectTemplateHint": "Select a template from the dropdown to see what’s required.",
   "templateRequirements": "What’s required",
-  "mediaAlreadySelected": "This video is already used in another slot. Pick a different one."
+  "mediaAlreadySelected": "This video is already used in another slot. Pick a different one.",
+  "reelQueued": "Queued…",
+  "reelGenerating": "Generating…"
 }
