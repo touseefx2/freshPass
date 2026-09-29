@@ -1619,5 +1619,10 @@
   "discard": "Discard",
   "reelDiscarded": "Reel discarded.",
   "failedToDiscardReel": "Failed to discard reel.",
-  "videoTooLong": "Video must be {{max_seconds}} seconds or shorter."
+  "videoTooLong": "Video must be {{max_seconds}} seconds or shorter.",
+  "selectTemplate": "Select template",
+  "selectTemplatePlaceholder": "Choose a reel template",
+  "selectTemplateHint": "Select a template from the dropdown to see what’s required.",
+  "templateRequirements": "What’s required",
+  "mediaAlreadySelected": "This video is already used in another slot. Pick a different one."
 }
