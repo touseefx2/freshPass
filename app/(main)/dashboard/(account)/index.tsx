@@ -4,10 +4,10 @@ import {
   Text,
   View,
   ScrollView,
+  Pressable,
   Alert,
   ActivityIndicator,
   Platform,
-  TouchableOpacity,
 } from "react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
@@ -16,11 +16,9 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
 } from "@/src/theme/dimensions";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import DashboardHeader from "@/src/components/DashboardHeader";
-import AppImage from "@/src/components/AppImage";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ApiService } from "@/src/services/api";
@@ -38,7 +36,146 @@ import {
   isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
 
+const CARD_WIDTH_PERCENT = "48%";
+
+type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
+
+function getIconVariant(index: number): IconVariant {
+  const variants: IconVariant[] = ["dark", "accent", "cream"];
+  return variants[index % 3];
+}
+
+function ProfileSettingCard({
+  title,
+  iconName,
+  iconFamily = "community",
+  onPress,
+  disabled,
+  isDelete,
+  loading,
+  theme,
+  styles,
+  iconVariant,
+}: {
+  title: string;
+  iconName: React.ComponentProps<typeof MaterialCommunityIcons>["name"] | string;
+  iconFamily?: IconFamily;
+  onPress: () => void;
+  disabled?: boolean;
+  isDelete?: boolean;
+  loading?: boolean;
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+  iconVariant: IconVariant;
+}) {
+  const [pressed, setPressed] = useState(false);
+  const iconSize = moderateWidthScale(27);
+  const thickness = moderateHeightScale(2.5);
+  const radius = moderateWidthScale(18);
+
+  const iconBg =
+    isDelete
+      ? theme.lightRed
+      : iconVariant === "dark"
+        ? theme.darkGreen
+        : iconVariant === "accent"
+          ? theme.selectCard
+          : theme.orangeBrown015;
+
+  const iconColor =
+    isDelete
+      ? theme.red
+      : iconVariant === "cream"
+        ? theme.darkGreen
+        : theme.white;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={styles.gridItem}
+    >
+      {/* Soft drop shadow wrapper */}
+      <View
+        style={[
+          styles.cardShadowWrap,
+          pressed && styles.cardShadowWrapPressed,
+        ]}
+      >
+        {/* Thickness base = real 3D depth */}
+        <View
+          style={[
+            styles.cardBase,
+            {
+              borderRadius: radius,
+              paddingBottom: pressed ? moderateHeightScale(1) : thickness,
+              transform: [
+                {
+                  translateY: pressed
+                    ? thickness - moderateHeightScale(1)
+                    : 0,
+                },
+              ],
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.cardFace,
+              {
+                borderRadius: radius,
+              },
+            ]}
+          >
+            {/* Single raised icon — soft shadow only */}
+            <View
+              style={[
+                styles.iconWrap,
+                { backgroundColor: iconBg },
+                iconVariant === "cream" && !isDelete && styles.iconWrapCream,
+                isDelete && styles.iconWrapDelete,
+              ]}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={theme.red} />
+              ) : iconFamily === "community" ? (
+                <MaterialCommunityIcons
+                  name={
+                    iconName as React.ComponentProps<
+                      typeof MaterialCommunityIcons
+                    >["name"]
+                  }
+                  size={iconSize}
+                  color={iconColor}
+                />
+              ) : (
+                <MaterialIcons
+                  name={
+                    iconName as React.ComponentProps<
+                      typeof MaterialIcons
+                    >["name"]
+                  }
+                  size={iconSize}
+                  color={iconColor}
+                />
+              )}
+            </View>
+
+            <Text
+              style={[styles.cardTitle, isDelete && styles.deleteCardTitle]}
+              numberOfLines={3}
+            >
+              {title}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -70,87 +207,133 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen5,
       marginBottom: moderateHeightScale(8),
     },
-    profileCard: {
+    gridContainer: {
+      marginTop: moderateHeightScale(14),
       flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: theme.background,
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      rowGap: moderateHeightScale(10),
+      columnGap: moderateWidthScale(8),
+    },
+    gridItem: {
+      width: CARD_WIDTH_PERCENT as any,
+    },
+    cardShadowWrap: {
       borderRadius: moderateWidthScale(18),
-      borderWidth: 1,
-      borderColor: theme.lightGreen1,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      marginBottom: moderateHeightScale(10),
-      gap: moderateWidthScale(12),
       ...Platform.select({
         ios: {
           shadowColor: theme.darkGreen,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.12,
-          shadowRadius: moderateWidthScale(6),
+          shadowOffset: {
+            width: 0,
+            height: 0,
+          },
+          shadowOpacity: 0.18,
+          shadowRadius: moderateWidthScale(8),
         },
-        android: { elevation: 3, shadowColor: theme.darkGreen },
+        android: {
+          elevation: 5,
+          shadowColor: theme.darkGreen,
+        },
+        default: {
+          shadowColor: theme.darkGreen,
+          shadowOffset: {
+            width: 0,
+            height: 0,
+          },
+          shadowOpacity: 0.18,
+          shadowRadius: moderateWidthScale(8),
+        },
       }),
     },
-    profileImageWrapper: {
-      width: widthScale(70),
-      height: widthScale(70),
-      borderRadius: widthScale(35),
-      overflow: "hidden",
+    cardShadowWrapPressed: {
+      ...Platform.select({
+        ios: {
+          shadowOpacity: 0.1,
+          shadowRadius: moderateWidthScale(4),
+        },
+        android: {
+          elevation: 2,
+        },
+        default: {
+          shadowOpacity: 0.1,
+        },
+      }),
     },
-    profileImage: {
-      width: "100%",
-      height: "100%",
+    // Darker base under face = visible 3D side
+    cardBase: {
+      backgroundColor: theme.lightGreen16,
     },
-    profileInfoCol: {
-      flex: 1,
-      gap: moderateHeightScale(2),
-    },
-    profileName: {
-      fontSize: fontSize.size17,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "capitalize",
-    },
-    profileEmail: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      marginBottom: moderateHeightScale(6),
-    },
-    profileCategory: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      marginTop: moderateHeightScale(2),
-    },
-    listContainer: {
-      marginTop: moderateHeightScale(14),
-      gap: moderateHeightScale(0),
-    },
-    rowItem: {
+    cardFace: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(4),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.lightGreen1,
-      gap: moderateWidthScale(14),
+      backgroundColor: theme.background,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(18),
+      minHeight: moderateHeightScale(90),
+      gap: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
     },
-    rowIconWrap: {
-      width: moderateWidthScale(38),
-      height: moderateWidthScale(38),
+    iconWrap: {
+      width: moderateWidthScale(48),
+      height: moderateWidthScale(48),
+      borderRadius: moderateWidthScale(13),
       alignItems: "center",
       justifyContent: "center",
+      flexShrink: 0,
+      overflow: "hidden",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: 0,
+          },
+          shadowOpacity: 0.2,
+          shadowRadius: moderateWidthScale(4),
+        },
+        // Android elevation on small colored boxes creates muddy black shade
+        android: {
+          elevation: 0,
+        },
+        default: {
+          shadowColor: theme.shadow,
+          shadowOffset: {
+            width: 0,
+            height: 0,
+          },
+          shadowOpacity: 0.2,
+          shadowRadius: moderateWidthScale(4),
+        },
+      }),
     },
-    rowTextCol: {
+    iconWrapCream: {
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      ...Platform.select({
+        ios: {
+          shadowOpacity: 0.12,
+        },
+        android: {
+          elevation: 0,
+        },
+        default: {
+          shadowOpacity: 0.12,
+        },
+      }),
+    },
+    iconWrapDelete: {
+      borderWidth: 1,
+      borderColor: theme.lightRed30,
+    },
+    cardTitle: {
       flex: 1,
-    },
-    rowTitle: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      lineHeight: fontSize.size17,
     },
-    rowDeleteTitle: {
+    deleteCardTitle: {
       color: theme.red,
     },
   });
@@ -175,23 +358,6 @@ export default function AccountScreen() {
     userRole === "business" &&
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "pending";
-
-  const profileImageUri = user?.profile_image_url
-    ? user.profile_image_url.startsWith("http://") ||
-      user.profile_image_url.startsWith("https://")
-      ? user.profile_image_url
-      : process.env.EXPO_PUBLIC_API_BASE_URL + user.profile_image_url
-    : "https://imgcdn.stablediffusionweb.com/2024/3/24/3b153c48-649f-4ee2-b1cc-3d45333db028.jpg";
-  const userName = user.name || "";
-  const userEmailDisplay = user.email || "";
-
-  const handleEditProfile = useCallback(() => {
-    router.push("./(profile)/editProfile");
-  }, [router]);
-
-  const handleChangePassword = useCallback(() => {
-    router.push("./(profile)/changePassword");
-  }, [router]);
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -283,7 +449,9 @@ export default function AccountScreen() {
   };
 
   const handleRowPress = async (key: string) => {
-    if (key === "rules") {
+    if (key === "personal") {
+      router.push("./(profile)");
+    } else if (key === "rules") {
       router.push("./rulesAndTerms");
     } else if (key === "notifications") {
       await openNotificationSettings();
@@ -337,8 +505,6 @@ export default function AccountScreen() {
       router.push(
         "/(main)/dashboard/(account)/(businessProfileSettings)/affiliationRequests",
       );
-    } else if (key === "changePassword") {
-      handleChangePassword();
     } else if (key === "logout") {
       handleLogout();
     } else if (key === "delete") {
@@ -369,18 +535,29 @@ export default function AccountScreen() {
       | "aiTools"
       | "viewBusiness"
       | "affiliationRequests"
-      | "changePassword"
       | "logout"
       | "delete";
     title: string;
   };
 
   const rows: Row[] = [
+    ...(!isGuest
+      ? [{ key: "personal" as const, title: t("personalInformation") }]
+      : []),
     ...(userRole === "business" && !isGuest
       ? [
-          { key: "business" as const, title: t("businessProfileSettings") },
-          { key: "customers" as const, title: t("customers") },
-          { key: "followers" as const, title: t("followers") },
+          {
+            key: "business" as const,
+            title: t("businessProfileSettings"),
+          },
+          {
+            key: "customers" as const,
+            title: t("customers"),
+          },
+          {
+            key: "followers" as const,
+            title: t("followers"),
+          },
           { key: "uploadWork" as const, title: t("uploadYourWork") },
         ]
       : []),
@@ -399,7 +576,10 @@ export default function AccountScreen() {
     ...(isCustomer
       ? [{ key: "country" as const, title: t("country") }]
       : []),
-    { key: "language" as const, title: t("language") },
+    {
+      key: "language",
+      title: t("language"),
+    },
     ...(userRole === "business" && !isGuest
       ? [{ key: "viewBusiness" as const, title: t("viewBusiness") }]
       : []),
@@ -407,14 +587,27 @@ export default function AccountScreen() {
     !isGuest &&
     businessStatus?.subscription_status === "active" &&
     businessStatus?.subscription_is_single === false
-      ? [{ key: "affiliationRequests" as const, title: t("affiliationRequests") }]
+      ? [
+          {
+            key: "affiliationRequests" as const,
+            title: t("affiliationRequests"),
+          },
+        ]
       : []),
     ...((userRole === "business" || userRole === "staff") &&
     !isGuest &&
     !isCustomer
-      ? [{ key: "leaveRequest" as const, title: t("leaveRequest") || "Leave Request" }]
+      ? [
+          {
+            key: "leaveRequest" as const,
+            title: t("leaveRequest") || "Leave Request",
+          },
+        ]
       : []),
-    { key: "notifications" as const, title: t("notificationSettings") },
+    {
+      key: "notifications",
+      title: t("notificationSettings"),
+    },
     ...(isCustomer || (userRole === "business" && !showStripeBanner)
       ? [{ key: "subscriptions" as const, title: t("subscription") }]
       : []),
@@ -427,11 +620,11 @@ export default function AccountScreen() {
     ...(isCustomer && !isGuest
       ? [{ key: "following" as const, title: t("following") }]
       : []),
-    { key: "rules" as const, title: t("rulesAndTerms") },
-    ...(!isGuest
-      ? [{ key: "changePassword" as const, title: t("changePassword") }]
-      : []),
-    { key: "logout" as const, title: isGuest ? t("signIn") : t("logOut") },
+    {
+      key: "rules" as const,
+      title: t("rulesAndTerms"),
+    },
+    { key: "logout", title: isGuest ? t("signIn") : t("logOut") },
     ...(!isGuest
       ? [{ key: "delete" as const, title: t("deleteAccount") }]
       : []),
@@ -482,8 +675,6 @@ export default function AccountScreen() {
       case "aiTools":
         // Same robot icon as AI Requests / Results header
         return { name: "smart-toy", family: "material" };
-      case "changePassword":
-        return { name: "lock", family: "material" };
       case "rules":
         return { name: "description", family: "material" };
       case "logout":
@@ -514,88 +705,24 @@ export default function AccountScreen() {
           </Text>
         </View>
 
-        {!isGuest && (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={handleEditProfile}
-            style={styles.profileCard}
-          >
-            <View style={styles.profileImageWrapper}>
-              <AppImage
-                uri={profileImageUri}
-                style={styles.profileImage}
-              />
-            </View>
-            <View style={styles.profileInfoCol}>
-              <Text style={styles.profileName} numberOfLines={1}>{userName}</Text>
-              <Text style={styles.profileEmail} numberOfLines={1}>{userEmailDisplay}</Text>
-              {user.phone ? (
-                <Text style={styles.profileEmail} numberOfLines={1}>
-                  {user.country_code ? `${user.country_code} ` : ""}{user.phone}
-                </Text>
-              ) : null}
-            </View>
-            <MaterialIcons
-              name="chevron-right"
-              size={moderateWidthScale(24)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.listContainer}>
-          {rows.map((row) => {
+        <View style={styles.gridContainer}>
+          {rows.map((row, index) => {
             const isDelete = row.key === "delete";
-            const isLogout = row.key === "logout";
             const iconMeta = getIconMeta(row.key);
-            const iconColor = isDelete
-              ? theme.red
-              : theme.darkGreen;
-
             return (
-              <TouchableOpacity
+              <ProfileSettingCard
                 key={row.key}
-                activeOpacity={0.6}
+                title={row.title}
+                iconName={iconMeta.name}
+                iconFamily={iconMeta.family}
                 onPress={() => handleRowPress(row.key)}
                 disabled={isDelete && deleteLoading}
-                style={styles.rowItem}
-              >
-                <View style={styles.rowIconWrap}>
-                  {isDelete && deleteLoading ? (
-                    <ActivityIndicator size="small" color={theme.red} />
-                  ) : iconMeta.family === "community" ? (
-                    <MaterialCommunityIcons
-                      name={iconMeta.name as any}
-                      size={moderateWidthScale(24)}
-                      color={iconColor}
-                    />
-                  ) : (
-                    <MaterialIcons
-                      name={iconMeta.name as any}
-                      size={moderateWidthScale(24)}
-                      color={iconColor}
-                    />
-                  )}
-                </View>
-                <View style={styles.rowTextCol}>
-                  <Text
-                    style={[
-                      styles.rowTitle,
-                      isDelete && styles.rowDeleteTitle,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {row.title}
-                  </Text>
-                </View>
-                {!isLogout && !isDelete && (
-                  <MaterialIcons
-                    name="chevron-right"
-                    size={moderateWidthScale(22)}
-                    color={theme.lightGreen5}
-                  />
-                )}
-              </TouchableOpacity>
+                isDelete={isDelete}
+                loading={isDelete && deleteLoading}
+                theme={theme}
+                styles={styles}
+                iconVariant={getIconVariant(index)}
+              />
             );
           })}
         </View>
