@@ -25,7 +25,7 @@ import {
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
-import { getMediaLimits } from "@/src/services/mediaLibraryService";
+import { getMediaLimits, MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
 import {
   handleCameraPermission,
   handleMediaLibraryPermission,
@@ -281,6 +281,19 @@ export default function BusinessCreateMediaMenu({
       seconds: number,
     ) => {
       if (!asset.uri) return;
+      // expo-image-picker duration is milliseconds
+      const durationMs = asset.duration ?? 0;
+      const durationSec =
+        durationMs > 0 ? Math.ceil(durationMs / 1000) : null;
+      if (durationSec != null && durationSec > seconds) {
+        showBanner(
+          t("error"),
+          t("videoTooLong", { max_seconds: seconds }),
+          "error",
+          3000,
+        );
+        return;
+      }
       router.push({
         pathname: "/(main)/editVideo" as any,
         params: {
@@ -289,10 +302,12 @@ export default function BusinessCreateMediaMenu({
           fileName: asset.fileName || "video.mp4",
           sourceType,
           maxSeconds: String(seconds),
+          ...(asset.width ? { width: String(asset.width) } : {}),
+          ...(asset.height ? { height: String(asset.height) } : {}),
         },
       });
     },
-    [router],
+    [router, showBanner, t],
   );
 
   const resolveMaxSeconds = useCallback(async () => {
@@ -304,7 +319,7 @@ export default function BusinessCreateMediaMenu({
     } catch {
       // keep last known / default
     }
-    return seconds;
+    return Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
   }, [maxSeconds]);
 
   const handleRecord = useCallback(async () => {
@@ -376,6 +391,12 @@ export default function BusinessCreateMediaMenu({
     showBanner,
     t,
   ]);
+
+  const handleGenerateFromTemplate = useCallback(() => {
+    if (!ensureCanUploadReel()) return;
+    closeAll();
+    router.push("/(main)/reelTemplates" as any);
+  }, [closeAll, ensureCanUploadReel, router]);
 
   const openReelPicker = useCallback(() => {
     const gate = getReelUploadGate(businessStatus);
@@ -509,6 +530,7 @@ export default function BusinessCreateMediaMenu({
         onClose={closeAll}
         onRecordPress={handleRecord}
         onUploadPress={handleUpload}
+        onGenerateFromTemplatePress={handleGenerateFromTemplate}
         bottomOffset={reelPickerBottom}
         tabBarClearance={tabBarClearance}
       />

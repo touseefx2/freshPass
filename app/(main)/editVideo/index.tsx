@@ -691,6 +691,8 @@ export default function EditVideoScreen() {
     fileName?: string;
     sourceType?: string;
     maxSeconds?: string;
+    width?: string;
+    height?: string;
   }>();
 
   const paramUri = params.uri ? decodeURIComponent(params.uri) : "";
@@ -1295,6 +1297,17 @@ export default function EditVideoScreen() {
       } catch {}
     }
 
+    const clipDurationSeconds = Math.max(
+      1,
+      Math.round((trimEndMs - trimStartMs) / 1000),
+    );
+    const widthParam =
+      params.width ||
+      (videoSize.width > 0 ? String(Math.round(videoSize.width)) : undefined);
+    const heightParam =
+      params.height ||
+      (videoSize.height > 0 ? String(Math.round(videoSize.height)) : undefined);
+
     router.push({
       pathname: "/(main)/publishReel" as any,
       params: {
@@ -1302,6 +1315,9 @@ export default function EditVideoScreen() {
         mimeType,
         fileName,
         sourceType,
+        durationSeconds: String(clipDurationSeconds),
+        ...(widthParam ? { width: widthParam } : {}),
+        ...(heightParam ? { height: heightParam } : {}),
       },
     });
   }, [
@@ -1314,7 +1330,9 @@ export default function EditVideoScreen() {
     muteOriginal,
     overlayText,
     params.fileName,
+    params.height,
     params.mimeType,
+    params.width,
     player,
     project,
     router,
@@ -1324,6 +1342,8 @@ export default function EditVideoScreen() {
     t,
     trimEndMs,
     trimStartMs,
+    videoSize.height,
+    videoSize.width,
   ]);
 
   const toggleTool = useCallback(

@@ -178,11 +178,18 @@ export async function deleteVideos(
   });
 }
 
+/** Backend rejects videos longer than this (POST /api/media). */
+export const MAX_VIDEO_UPLOAD_SECONDS = 30;
+
 export type UploadVideoParams = {
   uri: string;
   mimeType?: string | null;
   fileName?: string | null;
   sourceType: MediaUploadSourceType;
+  /** Required by API — integer seconds, max 30 */
+  durationSeconds: number;
+  width?: number | null;
+  height?: number | null;
 };
 
 /**
@@ -224,6 +231,20 @@ export function uploadVideo(
         name: fileName,
       } as any);
       formData.append("source_type", params.sourceType);
+      const durationSeconds = Math.max(
+        1,
+        Math.min(
+          MAX_VIDEO_UPLOAD_SECONDS,
+          Math.round(params.durationSeconds),
+        ),
+      );
+      formData.append("duration_seconds", String(durationSeconds));
+      if (params.width != null) {
+        formData.append("width", String(params.width));
+      }
+      if (params.height != null) {
+        formData.append("height", String(params.height));
+      }
 
       const baseUrl = BASE_URL.endsWith("/")
         ? BASE_URL.slice(0, -1)

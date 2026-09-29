@@ -13,10 +13,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
-import {
-  KeyboardAwareScrollView,
-  KeyboardStickyView,
-} from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import Button from "@/src/components/button";
@@ -42,6 +39,7 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import type { MediaVideo } from "@/src/types/media";
 import type { ReelTemplate } from "@/src/types/reels";
+import { resolveApiImageUrl } from "@/src/utils/media";
 
 type CategoryOption = { id: number; name: string };
 
@@ -217,13 +215,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
-    footer: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(10),
-      paddingBottom: moderateHeightScale(10),
-      backgroundColor: theme.background,
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
+    generateButton: {
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(16),
     },
     modalOverlay: {
       flex: 1,
@@ -283,21 +277,22 @@ function TemplatePreview({ uri }: { uri: string | null }) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const player = useVideoPlayer(uri || "", (p) => {
+  const resolvedUri = resolveApiImageUrl(uri) || "";
+  const player = useVideoPlayer(resolvedUri, (p) => {
     p.loop = true;
     p.muted = true;
-    if (uri) p.play();
+    if (resolvedUri) p.play();
   });
 
   useEffect(() => {
-    if (!uri) return;
+    if (!resolvedUri) return;
     try {
-      player.replaceAsync(uri);
+      player.replaceAsync(resolvedUri);
       player.play();
     } catch {}
-  }, [player, uri]);
+  }, [player, resolvedUri]);
 
-  if (!uri) {
+  if (!resolvedUri) {
     return (
       <View style={[styles.previewWrap, styles.previewPlaceholder]}>
         <MaterialIcons
@@ -575,9 +570,10 @@ export default function ReelTemplateConfigureScreen() {
         style={styles.flex}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
-        bottomOffset={moderateHeightScale(80)}
+        showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(24)}
       >
-        <TemplatePreview uri={template.preview_video_url} />
+        <TemplatePreview uri={template.preview_video_url ?? null} />
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t("selectMedia")}</Text>
@@ -723,18 +719,15 @@ export default function ReelTemplateConfigureScreen() {
               : null}
           </View>
         </View>
-      </KeyboardAwareScrollView>
 
-      <KeyboardStickyView offset={{ closed: 0, opened: 0 }}>
-        <View style={styles.footer}>
-          <Button
-            title={t("generateReel")}
-            onPress={handleGenerate}
-            disabled={!canGenerate || submitting}
-            loading={submitting}
-          />
-        </View>
-      </KeyboardStickyView>
+        <Button
+          title={t("generateReel")}
+          onPress={handleGenerate}
+          disabled={!canGenerate || submitting}
+          loading={submitting}
+          containerStyle={styles.generateButton}
+        />
+      </KeyboardAwareScrollView>
 
       <Modal
         visible={mediaPickerSlot != null}

@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ReelTemplateCardThumb from "@/src/components/reelTemplateCardThumb";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useTheme } from "@/src/hooks/hooks";
@@ -20,10 +21,8 @@ import Logger from "@/src/services/logger";
 import { listReelTemplates } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
 import {
-  heightScale,
   moderateHeightScale,
   moderateWidthScale,
-  widthScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import type { ReelTemplate } from "@/src/types/reels";
@@ -44,18 +43,32 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    filters: {
+    tabBarWrap: {
+      flexShrink: 0,
+      minHeight: moderateHeightScale(52),
+      justifyContent: "center",
+      backgroundColor: theme.background,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+      zIndex: 2,
+    },
+    tabBarContent: {
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(10),
-      gap: moderateWidthScale(8),
+      flexDirection: "row",
+      alignItems: "center",
     },
     filterChip: {
-      paddingHorizontal: moderateWidthScale(14),
+      marginRight: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(8),
       borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.lightGreen07,
+      backgroundColor: theme.white,
       borderWidth: 1,
       borderColor: theme.borderLight,
+    },
+    list: {
+      flex: 1,
     },
     filterChipActive: {
       backgroundColor: theme.buttonBack,
@@ -66,12 +79,16 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       textTransform: "capitalize",
+      includeFontPadding: false,
+      textAlignVertical: "center",
     },
     filterChipTextActive: {
       color: theme.white,
+      fontFamily: fonts.fontBold,
     },
     listContent: {
       paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(14),
       paddingBottom: moderateHeightScale(32),
       gap: moderateHeightScale(12),
     },
@@ -85,15 +102,11 @@ const createStyles = (theme: Theme) =>
       overflow: "hidden",
       borderWidth: 1,
       borderColor: theme.borderLight,
-    },
-    thumb: {
-      width: "100%",
-      height: heightScale(160),
-      backgroundColor: theme.lightGreen07,
-    },
-    thumbPlaceholder: {
-      alignItems: "center",
-      justifyContent: "center",
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: moderateHeightScale(2) },
+      shadowOpacity: 0.06,
+      shadowRadius: moderateWidthScale(6),
+      elevation: 2,
     },
     cardBody: {
       paddingHorizontal: moderateWidthScale(10),
@@ -161,6 +174,11 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+function formatMusicName(name: string | null): string {
+  if (!name?.trim()) return "";
+  return name.replace(/\.(mp3|wav|m4a|aac)$/i, "").replace(/-/g, " ");
+}
+
 export default function ReelTemplatesScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -210,6 +228,7 @@ export default function ReelTemplatesScreen() {
         item.media_count === 1
           ? t("photosNeededOne")
           : t("photosNeeded", { count: item.media_count });
+      const musicLabel = formatMusicName(item.music_name);
 
       return (
         <TouchableOpacity
@@ -224,21 +243,11 @@ export default function ReelTemplatesScreen() {
           accessibilityRole="button"
           accessibilityLabel={item.name}
         >
-          {item.thumbnail_url ? (
-            <Image
-              source={{ uri: item.thumbnail_url }}
-              style={styles.thumb}
-              resizeMode="cover"
-            />
-          ) : (
-            <View style={[styles.thumb, styles.thumbPlaceholder]}>
-              <MaterialIcons
-                name="movie"
-                size={moderateWidthScale(36)}
-                color={theme.lightGreen}
-              />
-            </View>
-          )}
+          <ReelTemplateCardThumb
+            templateId={item.id}
+            thumbnailUrl={item.thumbnail_url}
+            previewVideoUrl={item.preview_video_url}
+          />
           <View style={styles.cardBody}>
             <Text style={styles.cardTitle} numberOfLines={2}>
               {item.name}
@@ -262,7 +271,7 @@ export default function ReelTemplatesScreen() {
                   color={theme.lightGreen}
                 />
                 <Text style={styles.metaText} numberOfLines={1}>
-                  {item.music_name || t("includesMusic")}
+                  {musicLabel || t("includesMusic")}
                 </Text>
               </View>
             ) : null}
@@ -277,33 +286,36 @@ export default function ReelTemplatesScreen() {
     <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
       <StackHeader title={t("reelTemplates")} />
 
-      <FlatList
-        horizontal
-        data={TEMPLATE_CATEGORIES as unknown as TemplateCategoryFilter[]}
-        keyExtractor={(item) => item}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filters}
-        renderItem={({ item }) => {
-          const active = category === item;
-          return (
-            <TouchableOpacity
-              style={[styles.filterChip, active && styles.filterChipActive]}
-              onPress={() => setCategory(item)}
-              activeOpacity={0.85}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  active && styles.filterChipTextActive,
-                ]}
+      <View style={styles.tabBarWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          bounces={false}
+          nestedScrollEnabled
+          contentContainerStyle={styles.tabBarContent}
+        >
+          {TEMPLATE_CATEGORIES.map((item) => {
+            const active = category === item;
+            return (
+              <TouchableOpacity
+                key={item}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setCategory(item)}
+                activeOpacity={0.85}
               >
-                {item === "all" ? t("all") : item}
-              </Text>
-            </TouchableOpacity>
-          );
-        }}
-        style={{ flexGrow: 0 }}
-      />
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    active && styles.filterChipTextActive,
+                  ]}
+                >
+                  {item === "all" ? t("all") : item}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {loading && !refreshing ? (
         <View style={styles.loader}>
@@ -311,9 +323,11 @@ export default function ReelTemplatesScreen() {
         </View>
       ) : (
         <FlatList
+          style={styles.list}
           data={templates}
           keyExtractor={(item) => String(item.id)}
           numColumns={2}
+          nestedScrollEnabled
           columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={styles.listContent}
           renderItem={renderItem}

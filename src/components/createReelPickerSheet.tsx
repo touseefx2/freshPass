@@ -83,7 +83,7 @@ const createStyles = (theme: Theme) =>
     optionsRow: {
       flexDirection: "row",
       gap: moderateWidthScale(10),
-      marginBottom: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(10),
     },
     optionCard: {
       flex: 1,
@@ -92,6 +92,14 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(14),
       alignItems: "center",
+    },
+    optionCardWide: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
     },
     optionIconCircle: {
       width: widthScale(44),
@@ -102,6 +110,12 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       marginBottom: moderateHeightScale(10),
     },
+    optionIconCircleInline: {
+      marginBottom: 0,
+    },
+    optionTextCol: {
+      flex: 1,
+    },
     optionTitle: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
@@ -109,12 +123,19 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       marginBottom: moderateHeightScale(4),
     },
+    optionTitleLeft: {
+      textAlign: "left",
+      marginBottom: moderateHeightScale(2),
+    },
     optionDesc: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
       lineHeight: fontSize.size14,
+    },
+    optionDescLeft: {
+      textAlign: "left",
     },
     cancelButton: {
       backgroundColor: theme.lightGreen015,
@@ -135,6 +156,7 @@ export type CreateReelPickerSheetProps = {
   onClose: () => void;
   onRecordPress: () => void;
   onUploadPress: () => void;
+  onGenerateFromTemplatePress?: () => void;
   /** Distance from screen bottom so the card sits just above the center X. */
   bottomOffset: number;
   /** Keep tab bar (and X) clear of the dimmed backdrop. */
@@ -142,7 +164,7 @@ export type CreateReelPickerSheetProps = {
 };
 
 /**
- * Reusable Create Reel source picker (Record / Upload).
+ * Reusable Create Reel source picker (Record / Upload / Template).
  * Floating card just above the center tab FAB — tab bar / X stay visible.
  */
 export default function CreateReelPickerSheet({
@@ -150,6 +172,7 @@ export default function CreateReelPickerSheet({
   onClose,
   onRecordPress,
   onUploadPress,
+  onGenerateFromTemplatePress,
   bottomOffset,
   tabBarClearance,
 }: CreateReelPickerSheetProps) {
@@ -214,6 +237,32 @@ export default function CreateReelPickerSheet({
             <Text style={styles.optionDesc}>{t("uploadVideoDescription")}</Text>
           </TouchableOpacity>
         </View>
+
+        {onGenerateFromTemplatePress ? (
+          <TouchableOpacity
+            style={[styles.optionCard, styles.optionCardWide]}
+            onPress={onGenerateFromTemplatePress}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t("generateFromTemplate")}
+          >
+            <View style={[styles.optionIconCircle, styles.optionIconCircleInline]}>
+              <MaterialIcons
+                name="auto-awesome"
+                size={moderateWidthScale(22)}
+                color={theme.white}
+              />
+            </View>
+            <View style={styles.optionTextCol}>
+              <Text style={[styles.optionTitle, styles.optionTitleLeft]}>
+                {t("generateFromTemplate")}
+              </Text>
+              <Text style={[styles.optionDesc, styles.optionDescLeft]}>
+                {t("generateFromTemplateDescription")}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
 
         <TouchableOpacity
           style={styles.cancelButton}

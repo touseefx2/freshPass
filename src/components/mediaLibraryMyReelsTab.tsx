@@ -31,7 +31,7 @@ import {
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
-import { getMediaLimits } from "@/src/services/mediaLibraryService";
+import { getMediaLimits, MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
 import {
   handleCameraPermission,
   handleMediaLibraryPermission,
@@ -482,6 +482,18 @@ export default function MediaLibraryMyReelsTab() {
       seconds: number,
     ) => {
       if (!asset.uri) return;
+      const durationMs = asset.duration ?? 0;
+      const durationSec =
+        durationMs > 0 ? Math.ceil(durationMs / 1000) : null;
+      if (durationSec != null && durationSec > seconds) {
+        showBanner(
+          t("error"),
+          t("videoTooLong", { max_seconds: seconds }),
+          "error",
+          3000,
+        );
+        return;
+      }
       router.push({
         pathname: "/(main)/editVideo" as any,
         params: {
@@ -490,10 +502,12 @@ export default function MediaLibraryMyReelsTab() {
           fileName: asset.fileName || "video.mp4",
           sourceType,
           maxSeconds: String(seconds),
+          ...(asset.width ? { width: String(asset.width) } : {}),
+          ...(asset.height ? { height: String(asset.height) } : {}),
         },
       });
     },
-    [router],
+    [router, showBanner, t],
   );
 
   const handleRecord = useCallback(async () => {
@@ -509,6 +523,7 @@ export default function MediaLibraryMyReelsTab() {
     } catch {
       // keep last known / default
     }
+    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
 
     try {
       const result = await ImagePicker.launchCameraAsync({
@@ -543,6 +558,7 @@ export default function MediaLibraryMyReelsTab() {
     } catch {
       // keep last known / default
     }
+    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({

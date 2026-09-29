@@ -37,7 +37,11 @@ import {
   unpublishReel,
   updateReel,
 } from "@/src/services/reelsService";
-import { uploadVideo, waitForMediaReady } from "@/src/services/mediaLibraryService";
+import {
+  MAX_VIDEO_UPLOAD_SECONDS,
+  uploadVideo,
+  waitForMediaReady,
+} from "@/src/services/mediaLibraryService";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel } from "@/src/types/reels";
@@ -323,6 +327,9 @@ export default function PublishReelScreen() {
     mimeType?: string;
     fileName?: string;
     sourceType?: string;
+    durationSeconds?: string;
+    width?: string;
+    height?: string;
   }>();
   const mediaAssetIdParam = params.mediaAssetId
     ? Number(params.mediaAssetId)
@@ -334,6 +341,17 @@ export default function PublishReelScreen() {
   const localFileName = params.fileName || "video.mp4";
   const localSourceType: MediaUploadSourceType =
     params.sourceType === "camera" ? "camera" : "device";
+  const parsedDuration = Number(params.durationSeconds);
+  const localDurationSeconds =
+    Number.isFinite(parsedDuration) && parsedDuration > 0
+      ? Math.min(MAX_VIDEO_UPLOAD_SECONDS, Math.round(parsedDuration))
+      : MAX_VIDEO_UPLOAD_SECONDS;
+  const parsedWidth = Number(params.width);
+  const localWidth =
+    Number.isFinite(parsedWidth) && parsedWidth > 0 ? parsedWidth : null;
+  const parsedHeight = Number(params.height);
+  const localHeight =
+    Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : null;
   const reelId = params.reelId ? Number(params.reelId) : null;
   const isEdit = !!reelId;
   const fromEditor = !!localVideoUri && !mediaAssetIdParam;
@@ -537,16 +555,22 @@ export default function PublishReelScreen() {
         mimeType: localMimeType,
         fileName: localFileName,
         sourceType: localSourceType,
+        durationSeconds: localDurationSeconds,
+        width: localWidth,
+        height: localHeight,
       },
       setUploadProgress,
     );
     setResolvedMediaAssetId(uploaded.id);
     return uploaded.id;
   }, [
+    localDurationSeconds,
     localFileName,
+    localHeight,
     localMimeType,
     localSourceType,
     localVideoUri,
+    localWidth,
     resolvedMediaAssetId,
     t,
   ]);
@@ -695,7 +719,7 @@ export default function PublishReelScreen() {
   const selectedCategoryName =
     categories.find((c) => c.id === categoryId)?.name ||
     categoryName ||
-    businessCategory?.name ||
+    resolvedBusinessCategory?.name ||
     "";
 
   if (loading) {

@@ -30,6 +30,7 @@ import {
   getMediaLimits,
   getVideo,
   listVideos,
+  MAX_VIDEO_UPLOAD_SECONDS,
   MEDIA_VIDEOS_PER_PAGE,
 } from "@/src/services/mediaLibraryService";
 import {
@@ -314,6 +315,18 @@ export default function MediaLibraryVideosTab() {
       seconds: number,
     ) => {
       if (!asset.uri) return;
+      const durationMs = asset.duration ?? 0;
+      const durationSec =
+        durationMs > 0 ? Math.ceil(durationMs / 1000) : null;
+      if (durationSec != null && durationSec > seconds) {
+        showBanner(
+          t("error"),
+          t("videoTooLong", { max_seconds: seconds }),
+          "error",
+          3000,
+        );
+        return;
+      }
       router.push({
         pathname: "/(main)/editVideo" as any,
         params: {
@@ -322,10 +335,12 @@ export default function MediaLibraryVideosTab() {
           fileName: asset.fileName || "video.mp4",
           sourceType,
           maxSeconds: String(seconds),
+          ...(asset.width ? { width: String(asset.width) } : {}),
+          ...(asset.height ? { height: String(asset.height) } : {}),
         },
       });
     },
-    [router],
+    [router, showBanner, t],
   );
 
   const afterPick = useCallback(
@@ -352,6 +367,7 @@ export default function MediaLibraryVideosTab() {
     } catch {
       // keep last known / default
     }
+    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
 
     try {
       const result = await ImagePicker.launchCameraAsync({
@@ -386,6 +402,7 @@ export default function MediaLibraryVideosTab() {
     } catch {
       // keep last known / default
     }
+    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({

@@ -64,6 +64,9 @@ export type OwnerReel = {
   service: ReelService | null;
   video: MediaVideo | ReelVideo;
   stats: ReelStats;
+  /** Present while Shotstack render is in flight / finished */
+  generation_status?: GenerationStatus | null;
+  generation_error?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -303,3 +306,49 @@ export type ReportReason = {
 
 /** Reasons that need a note before the report can be submitted. */
 export const REPORT_REASONS_REQUIRING_NOTE = ["copyright", "other"];
+
+/** Shotstack reel templates (GET /api/reel-templates) */
+export type ReelTemplate = {
+  id: number;
+  name: string;
+  slug: string;
+  preview_video_url: string | null;
+  thumbnail_url: string | null;
+  category: string;
+  merge_fields: string[];
+  text_fields: string[];
+  media_fields: string[];
+  media_count: number;
+  has_music: boolean;
+  music_name: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type GenerateReelPayload = {
+  template_id: number;
+  media_asset_ids: number[];
+  texts: Record<string, string>;
+  category_id: number;
+  caption: string;
+  music_asset_id?: number | null;
+};
+
+export type GenerateReelResponse = {
+  reel_id: number;
+  generation_status: "pending";
+};
+
+export type GenerationStatus =
+  | "pending"
+  | "rendering"
+  | "ready"
+  | "failed";
+
+export type GenerationStatusResponse = {
+  reel_id: number;
+  generation_status: GenerationStatus;
+  generation_error: string | null;
+  video_url: string | null;
+  progress: number | null;
+};

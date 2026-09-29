@@ -166,7 +166,12 @@ export default function ToolList() {
     } catch {}
   };
 
-  const handleFeaturePress = (paramTitle: string) => {
+  const handleFeaturePress = (featureId: string, paramTitle: string) => {
+    // Shotstack templates replace the old AI generate-reel endpoint
+    if (featureId === "generateReel") {
+      router.push("/(main)/reelTemplates" as any);
+      return;
+    }
     router.push({
       pathname: "/(main)/aiTools/tools",
       params: { toolType: paramTitle },
@@ -325,7 +330,7 @@ export default function ToolList() {
                   if (openTutorial) {
                     setTutorialVideoActive(true);
                   } else {
-                    handleFeaturePress(feature.paramTitle);
+                    handleFeaturePress(feature.id, feature.paramTitle);
                   }
                 }}
                 activeOpacity={0.82}

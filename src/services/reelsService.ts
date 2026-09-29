@@ -1,6 +1,7 @@
 import { ApiService } from "@/src/services/api";
 import {
   myLooksEndpoints,
+  reelTemplateEndpoints,
   reelsEndpoints,
   reportsEndpoints,
   tryOnEndpoints,
@@ -10,6 +11,9 @@ import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   CreateReelPayload,
   FeedReel,
+  GenerateReelPayload,
+  GenerateReelResponse,
+  GenerationStatusResponse,
   LikeResponse,
   MyLookListItem,
   OwnerReel,
@@ -19,6 +23,7 @@ import type {
   ReelEventType,
   ReelLookResponse,
   ReelPerformanceStats,
+  ReelTemplate,
   ReelTryOnStartResponse,
   ReelTryOnStatusResponse,
   ReportReason,
@@ -39,6 +44,53 @@ type Envelope<T> = {
   message?: string;
   data: T;
 };
+
+/** List active Shotstack reel templates (optional category filter). */
+export async function listReelTemplates(
+  category?: string,
+): Promise<ReelTemplate[]> {
+  const response = await ApiService.get<Envelope<ReelTemplate[]>>(
+    reelTemplateEndpoints.list({ category }),
+  );
+  return response?.data ?? [];
+}
+
+export async function getReelTemplate(
+  id: number | string,
+): Promise<ReelTemplate> {
+  const response = await ApiService.get<Envelope<ReelTemplate>>(
+    reelTemplateEndpoints.getById(id),
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Template not found");
+  }
+  return response.data;
+}
+
+export async function generateReelFromTemplate(
+  payload: GenerateReelPayload,
+): Promise<GenerateReelResponse> {
+  const response = await ApiService.post<Envelope<GenerateReelResponse>>(
+    reelTemplateEndpoints.generate,
+    payload,
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to start generation");
+  }
+  return response.data;
+}
+
+export async function getGenerationStatus(
+  reelId: number | string,
+): Promise<GenerationStatusResponse> {
+  const response = await ApiService.get<Envelope<GenerationStatusResponse>>(
+    reelTemplateEndpoints.generationStatus(reelId),
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to get status");
+  }
+  return response.data;
+}
 
 export async function createReel(
   payload: CreateReelPayload,
