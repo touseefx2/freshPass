@@ -297,22 +297,13 @@ export interface AvailableSlot {
   available_staff?: AvailableSlotStaff[];
 }
 
-/** Pick one staff at random from available_staff (falls back to first if only one). */
-export function pickRandomAvailableStaff(
-  availableStaff?: AvailableSlotStaff[] | null,
-): AvailableSlotStaff | undefined {
-  if (!availableStaff?.length) return undefined;
-  if (availableStaff.length === 1) return availableStaff[0];
-  const index = Math.floor(Math.random() * availableStaff.length);
-  return availableStaff[index];
-}
-
-/** Resolve staff_id for POST/PUT appointment when "Anyone" auto-assigns an available staff. */
+/**
+ * Resolve staff_id for appointment create/reschedule.
+ * For "Anyone", only returns assignedStaffId from the assign-anyone-staff API (no frontend random pick).
+ */
 export function resolveAppointmentStaffId(params: {
   selectedStaff: string;
   assignedStaffId: number | null;
-  selectedTimeSlot?: string | null;
-  slots?: AvailableSlot[];
 }): number | undefined {
   if (params.selectedStaff !== "anyone") {
     const id = parseInt(params.selectedStaff, 10);
@@ -320,11 +311,6 @@ export function resolveAppointmentStaffId(params: {
   }
   if (params.assignedStaffId != null) {
     return params.assignedStaffId;
-  }
-  if (params.selectedTimeSlot && params.slots?.length) {
-    const slot = params.slots.find((s) => s.start === params.selectedTimeSlot);
-    const picked = pickRandomAvailableStaff(slot?.available_staff);
-    if (picked) return picked.id;
   }
   return undefined;
 }
@@ -368,6 +354,8 @@ export const appointmentsEndpoints = {
     return `/api/appointments${queryString ? `?${queryString}` : ""}`;
   },
   create: `/api/appointments`,
+  /** Round-robin staff assignment when customer selects "Anyone". */
+  assignAnyoneStaff: `/api/appointments/assign-anyone-staff`,
   getById: (bookingId: string | number) => `/api/appointments/${bookingId}`,
   cancel: (bookingId: string | number) =>
     `/api/appointments/${bookingId}/cancel`,

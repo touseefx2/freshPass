@@ -14,6 +14,7 @@ import { useTheme, useAppSelector, useAppDispatch } from "@/src/hooks/hooks";
 import AppImage from "@/src/components/AppImage";
 import {
   setSelectedStaff,
+  setAssignedStaffId,
   type StaffMember,
 } from "@/src/state/slices/bsnsSlice";
 import {
@@ -24,6 +25,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { appointmentsEndpoints, resolveAppointmentStaffId } from "@/src/services/endpoints";
+import { assignAnyoneStaff } from "@/src/services/anyoneStaffService";
 import { useStripe } from "@stripe/stripe-react-native";
 import {
   getStripeModeHeaders,
@@ -1748,11 +1750,46 @@ function CheckoutContent() {
       );
       return;
     }
-    const resolvedStaffId = resolveAppointmentStaffId({
+    if (!reduxSelectedDate || !reduxSelectedTimeSlot) {
+      showBanner(
+        "Select time",
+        "Please select a date and time slot.",
+        "warning",
+        4000,
+      );
+      return;
+    }
+
+    dispatch(setActionLoader(true));
+    let resolvedStaffId = resolveAppointmentStaffId({
       selectedStaff: selectedStaffId,
       assignedStaffId,
-      selectedTimeSlot: reduxSelectedTimeSlot,
     });
+
+    if (selectedStaffId === "anyone") {
+      try {
+        const assigned = await assignAnyoneStaff({
+          business_id: parseInt(resolvedCheckoutBusinessId, 10),
+          service_ids: selectedSubscriptionServiceIds,
+          date: reduxSelectedDate,
+          start_time: reduxSelectedTimeSlot,
+        });
+        resolvedStaffId = assigned.staff_id;
+        dispatch(setAssignedStaffId(assigned.staff_id));
+      } catch (error: any) {
+        dispatch(setActionLoader(false));
+        showBanner(
+          "Booking Failed",
+          error?.message ||
+            error?.data?.message ||
+            "No staff available for this time slot.",
+          "error",
+          4000,
+        );
+        return;
+      }
+    }
+
     const requestBody: {
       business_id: number;
       appointment_type: string;
@@ -1782,7 +1819,6 @@ function CheckoutContent() {
       requestBody.subscription_id = subscriptionId;
     }
     Logger.log("requestBody (subscription)", requestBody);
-    dispatch(setActionLoader(true));
     try {
       const response = (await postCreateAppointment(requestBody)) as {
         success?: boolean;
@@ -2029,11 +2065,45 @@ function CheckoutContent() {
       );
       return;
     }
-    const resolvedStaffId = resolveAppointmentStaffId({
+    if (!reduxSelectedDate || !reduxSelectedTimeSlot) {
+      showBanner(
+        "Select time",
+        "Please select a date and time slot.",
+        "warning",
+        4000,
+      );
+      return;
+    }
+
+    dispatch(setActionLoader(true));
+    let resolvedStaffId = resolveAppointmentStaffId({
       selectedStaff: selectedStaffId,
       assignedStaffId,
-      selectedTimeSlot: reduxSelectedTimeSlot,
     });
+
+    if (selectedStaffId === "anyone") {
+      try {
+        const assigned = await assignAnyoneStaff({
+          business_id: parseInt(resolvedCheckoutBusinessId, 10),
+          service_ids: selectedServices.map((service) => service.id),
+          date: reduxSelectedDate,
+          start_time: reduxSelectedTimeSlot,
+        });
+        resolvedStaffId = assigned.staff_id;
+        dispatch(setAssignedStaffId(assigned.staff_id));
+      } catch (error: any) {
+        dispatch(setActionLoader(false));
+        showBanner(
+          "Booking Failed",
+          error?.message ||
+            error?.data?.message ||
+            "No staff available for this time slot.",
+          "error",
+          4000,
+        );
+        return;
+      }
+    }
 
     const requestBody: {
       business_id: number;
@@ -2081,8 +2151,6 @@ function CheckoutContent() {
     }
 
     Logger.log("requestBody", requestBody);
-
-    dispatch(setActionLoader(true));
 
     try {
       if (paymentMethod === "payNow") {

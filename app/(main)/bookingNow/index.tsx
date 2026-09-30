@@ -57,8 +57,8 @@ import {
   appointmentsEndpoints,
   type AvailableSlot,
   resolveAppointmentStaffId,
-  pickRandomAvailableStaff,
 } from "@/src/services/endpoints";
+import { assignAnyoneStaff } from "@/src/services/anyoneStaffService";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -2250,16 +2250,6 @@ export default function BookingNow() {
     dispatch(setAssignedStaffId(null));
   }, [selectedStaff, staffMembers, dispatch]);
 
-  // Auto-assign a random available staff when "Anyone" + slot already selected (e.g. reschedule preset)
-  useEffect(() => {
-    if (selectedStaff !== "anyone" || !selectedTimeSlot || apiSlots.length === 0) {
-      return;
-    }
-    const slotData = apiSlots.find((s) => s.start === selectedTimeSlot);
-    const picked = pickRandomAvailableStaff(slotData?.available_staff);
-    dispatch(setAssignedStaffId(picked?.id ?? null));
-  }, [selectedStaff, selectedTimeSlot, apiSlots, dispatch]);
-
   const getDayNameFromDate = (date: dayjs.Dayjs): string => {
     const dayNamesFull = [
       "Sunday",
@@ -2448,14 +2438,8 @@ export default function BookingNow() {
     setSelectedTimeSlotState(slot);
     dispatch(setSelectedTimeSlot(slot));
     setSelectedCategory(getSlotCategory(slot));
-
-    if (selectedStaff === "anyone") {
-      const slotData = apiSlots.find((s) => s.start === slot);
-      const picked = pickRandomAvailableStaff(slotData?.available_staff);
-      dispatch(setAssignedStaffId(picked?.id ?? null));
-    } else {
-      dispatch(setAssignedStaffId(null));
-    }
+    // Anyone assignment happens via backend round-robin API at checkout/reschedule
+    dispatch(setAssignedStaffId(null));
   };
 
   const prevWeek = () => {
@@ -3629,57 +3613,85 @@ export default function BookingNow() {
                 );
                 return;
               }
-              const resolvedStaffId = resolveAppointmentStaffId({
-                selectedStaff,
-                assignedStaffId: businessData?.assignedStaffId ?? null,
-                selectedTimeSlot,
-                slots: apiSlots,
-              });
               const appointmentDate = selectedDate.format("YYYY-MM-DD");
               const appointmentTime = selectedTimeSlot;
               const appointmentType =
                 params.appointment_type === "subscription"
                   ? "subscription"
                   : "service";
-              const body: {
-                business_id: number;
-                appointment_type: string;
-                staff_id?: number;
-                appointment_date: string;
-                appointment_time: string;
-                notes?: string;
-                service_ids?: number[];
-                subscription_id?: number;
-              } = {
-                business_id: parseInt(businessId, 10),
-                appointment_type: appointmentType,
-                appointment_date: appointmentDate,
-                appointment_time: appointmentTime,
-                notes: note.trim() || undefined,
-              };
-              if (resolvedStaffId != null) {
-                body.staff_id = resolvedStaffId;
-              }
+
+              let serviceIds: number[] = [];
               if (appointmentType === "service" && params.service_ids) {
                 try {
-                  body.service_ids = JSON.parse(params.service_ids) as number[];
+                  serviceIds = JSON.parse(params.service_ids) as number[];
                 } catch (_) {
-                  // fallback: treat as comma-separated
-                  body.service_ids = params.service_ids
+                  serviceIds = params.service_ids
                     .split(",")
                     .map((id) => parseInt(id.trim(), 10))
                     .filter((n) => !Number.isNaN(n));
                 }
               }
-              if (
-                appointmentType === "subscription" &&
-                params.subscription_id != null &&
-                params.subscription_id !== ""
-              ) {
-                body.subscription_id = parseInt(params.subscription_id, 10);
+              if (serviceIds.length === 0 && selectedServices.length > 0) {
+                serviceIds = selectedServices.map((s) => s.id);
               }
+
               setRescheduleLoading(true);
               try {
+                let resolvedStaffId = resolveAppointmentStaffId({
+                  selectedStaff,
+                  assignedStaffId: businessData?.assignedStaffId ?? null,
+                });
+
+                if (selectedStaff === "anyone") {
+                  if (serviceIds.length === 0) {
+                    showBanner(
+                      t("error"),
+                      "Services are required to assign staff.",
+                      "error",
+                      4000,
+                    );
+                    return;
+                  }
+                  const assigned = await assignAnyoneStaff({
+                    business_id: parseInt(businessId, 10),
+                    service_ids: serviceIds,
+                    date: appointmentDate,
+                    start_time: appointmentTime,
+                  });
+                  resolvedStaffId = assigned.staff_id;
+                  dispatch(setAssignedStaffId(assigned.staff_id));
+                }
+
+                const body: {
+                  business_id: number;
+                  appointment_type: string;
+                  staff_id?: number;
+                  appointment_date: string;
+                  appointment_time: string;
+                  notes?: string;
+                  service_ids?: number[];
+                  subscription_id?: number;
+                } = {
+                  business_id: parseInt(businessId, 10),
+                  appointment_type: appointmentType,
+                  appointment_date: appointmentDate,
+                  appointment_time: appointmentTime,
+                  notes: note.trim() || undefined,
+                };
+                if (resolvedStaffId != null) {
+                  body.staff_id = resolvedStaffId;
+                }
+                if (appointmentType === "service" && serviceIds.length > 0) {
+                  body.service_ids = serviceIds;
+                }
+                if (
+                  appointmentType === "subscription" &&
+                  params.subscription_id != null &&
+                  params.subscription_id !== ""
+                ) {
+                  body.subscription_id = parseInt(params.subscription_id, 10);
+                }
+
                 const response = await ApiService.put<{
                   success: boolean;
                   message: string;
