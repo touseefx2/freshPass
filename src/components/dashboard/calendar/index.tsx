@@ -14,9 +14,7 @@ import {
   ActivityIndicator,
   Pressable,
   GestureResponderEvent,
-  InteractionManager,
 } from "react-native";
-import AppImage from "@/src/components/AppImage";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -31,7 +29,6 @@ import {
 import DashboardHeader from "@/src/components/DashboardHeader";
 import { MaterialIcons, Feather } from "@expo/vector-icons";
 import TimePickerModal from "@/src/components/timePickerModal";
-import OverlappingAppointmentsSheet from "@/src/components/OverlappingAppointmentsSheet";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -155,9 +152,11 @@ interface StaffLeave {
 }
 
 interface PositionedAppointment {
-  appointments: CalendarAppointment[];
+  appointment: CalendarAppointment;
   top: number;
   height: number;
+  column: number;
+  totalColumns: number;
 }
 
 interface BreakBlock {
@@ -172,9 +171,8 @@ const SLOT_INTERVAL_MINUTES = 30;
 const HOUR_HEIGHT = heightScale(60);
 const MIN_BLOCK_HEIGHT_COMPACT = heightScale(36);
 const MIN_BLOCK_HEIGHT_DETAILED = heightScale(40);
-const TIME_GUTTER_WIDTH = widthScale(38);
+const TIME_GUTTER_WIDTH = widthScale(44);
 const BLOCK_LINE_HEIGHT = moderateHeightScale(16);
-const BLOCK_AVATAR_SIZE = widthScale(18);
 const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
 const MONTH_CELL_HEIGHT = heightScale(60);
@@ -233,58 +231,76 @@ const resolveCustomerAvatar = (appointment: Appointment) => {
   return path ? `${base}/${path}` : fallback;
 };
 
-// Groups overlapping appointments into one block (+N) instead of side-by-side lanes
+// Google Calendar–style layout: overlapping appointments sit side-by-side in lanes
 const layoutDayAppointments = (
   dayAppointments: CalendarAppointment[],
   startHour: number,
   minBlockHeight: number,
 ): PositionedAppointment[] => {
-  const sorted = [...dayAppointments].sort(
-    (a, b) =>
-      a.start_minutes - b.start_minutes ||
-      a.duration_minutes - b.duration_minutes,
-  );
-
-  const positioned: PositionedAppointment[] = [];
-  let cluster: CalendarAppointment[] = [];
-  let clusterEnd = -1;
-
   const blockMinutes = (appointment: CalendarAppointment) =>
     Math.max(appointment.duration_minutes, SLOT_INTERVAL_MINUTES);
 
-  const flushCluster = () => {
-    if (cluster.length === 0) return;
+  const getEnd = (appointment: CalendarAppointment) =>
+    appointment.start_minutes + blockMinutes(appointment);
 
-    const startMinutes = Math.min(...cluster.map((item) => item.start_minutes));
-    const endMinutes = Math.max(
-      ...cluster.map((item) => item.start_minutes + blockMinutes(item)),
-    );
-    const offsetMinutes = startMinutes - startHour * 60;
+  const sorted = [...dayAppointments].sort(
+    (a, b) =>
+      a.start_minutes - b.start_minutes || getEnd(b) - getEnd(a),
+  );
 
-    positioned.push({
-      appointments: [...cluster],
-      top: (offsetMinutes / 60) * HOUR_HEIGHT,
-      height: Math.max(
-        ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT,
-        minBlockHeight,
-      ),
-    });
+  if (sorted.length === 0) return [];
 
-    cluster = [];
-    clusterEnd = -1;
-  };
+  // Build transitive overlap clusters
+  const clusters: CalendarAppointment[][] = [];
+  let cluster: CalendarAppointment[] = [];
+  let clusterEnd = -1;
 
   sorted.forEach((appointment) => {
     if (cluster.length > 0 && appointment.start_minutes >= clusterEnd) {
-      flushCluster();
+      clusters.push(cluster);
+      cluster = [];
+      clusterEnd = -1;
     }
     cluster.push(appointment);
-    clusterEnd = Math.max(
-      clusterEnd,
-      appointment.start_minutes + blockMinutes(appointment),
-    );
+    clusterEnd = Math.max(clusterEnd, getEnd(appointment));
   });
-  flushCluster();
+  if (cluster.length > 0) clusters.push(cluster);
+
+  const positioned: PositionedAppointment[] = [];
+
+  clusters.forEach((group) => {
+    // columnEnds[i] = end minutes of the last appointment placed in that lane
+    const columnEnds: number[] = [];
+    const assignments: { appointment: CalendarAppointment; column: number }[] =
+      [];
+
+    group.forEach((appointment) => {
+      let column = columnEnds.findIndex(
+        (end) => appointment.start_minutes >= end,
+      );
+      if (column === -1) {
+        column = columnEnds.length;
+        columnEnds.push(getEnd(appointment));
+      } else {
+        columnEnds[column] = getEnd(appointment);
+      }
+      assignments.push({ appointment, column });
+    });
+
+    const totalColumns = columnEnds.length;
+
+    assignments.forEach(({ appointment, column }) => {
+      const offsetMinutes = appointment.start_minutes - startHour * 60;
+      const duration = blockMinutes(appointment);
+      positioned.push({
+        appointment,
+        top: (offsetMinutes / 60) * HOUR_HEIGHT,
+        height: Math.max((duration / 60) * HOUR_HEIGHT, minBlockHeight),
+        column,
+        totalColumns,
+      });
+    });
+  });
 
   return positioned;
 };
@@ -503,9 +519,9 @@ const createStyles = (theme: Theme) =>
     hourLabel: {
       position: "absolute",
       right: moderateWidthScale(4),
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen6,
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     columnsArea: {
       flex: 1,
@@ -573,83 +589,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreenLight,
       lineHeight: BLOCK_LINE_HEIGHT,
       textTransform:"capitalize"
-    },
-    blockAvatar: {
-      alignSelf: "flex-start",
-      width: BLOCK_AVATAR_SIZE,
-      height: BLOCK_AVATAR_SIZE,
-      borderRadius: BLOCK_AVATAR_SIZE / 2,
-      backgroundColor: theme.emptyProfileImage,
-      borderWidth: 1,
-      borderColor: theme.white80,
-    },
-    stackOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(8),
-    },
-    stackBadge: {
-      position: "absolute",
-      top: moderateHeightScale(4),
-      right: moderateWidthScale(4),
-      paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(2),
-      borderRadius: moderateWidthScale(4),
-      backgroundColor: theme.darkGreen,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    stackBadgeText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-      textAlign: "center",
-    },
-    stackBadgeTextCompact: {
-      fontSize: fontSize.size9,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-      textAlign: "center",
-    },
-    blockDetailed: {
-      justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(10),
-    },
-    detailRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
-    },
-    detailAvatar: {
-      width: widthScale(32),
-      height: widthScale(32),
-      borderRadius: widthScale(16),
-      backgroundColor: theme.emptyProfileImage,
-    },
-    detailInfo: {
-      flex: 1,
-    },
-    detailTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    detailMeta: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
-    statusBadge: {
-      backgroundColor: theme.appointmentStatus,
-      paddingHorizontal: moderateWidthScale(6),
-      paddingVertical: moderateHeightScale(3),
-      borderRadius: moderateWidthScale(4),
-    },
-    statusBadgeText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.appointmentStatusText,
     },
     breakBlock: {
       position: "absolute",
@@ -1069,8 +1008,8 @@ const createStyles = (theme: Theme) =>
     },
     listCardPeriod: {
       fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     listCardContent: {
       flex: 1,
@@ -1176,12 +1115,6 @@ export default function CalendarScreen() {
   const [selectedLeave, setSelectedLeave] = useState<StaffLeave | null>(null);
   const [leaveDetailCancelling, setLeaveDetailCancelling] = useState(false);
   const [overlayAnchor, setOverlayAnchor] = useState(DEFAULT_OVERLAY_ANCHOR);
-  const [overlapSheetVisible, setOverlapSheetVisible] = useState(false);
-  const [overlapAppointments, setOverlapAppointments] = useState<
-    CalendarAppointment[]
-  >([]);
-  const [overlapSlotLabel, setOverlapSlotLabel] = useState("");
-  const pendingOverlapNavId = useRef<string | null>(null);
 
   const canManageLeaves = userRole === "staff" || userRole === "business";
   const currentDate = selectedDate.format("YYYY-MM-DD");
@@ -1644,37 +1577,6 @@ export default function CalendarScreen() {
     setLeaveDetailBoxVisible(false);
   };
 
-  const openOverlapSheet = (appointmentsList: CalendarAppointment[]) => {
-    closeOverlays();
-    const sorted = [...appointmentsList].sort(
-      (a, b) => a.start_minutes - b.start_minutes,
-    );
-    setOverlapAppointments(sorted);
-    setOverlapSlotLabel(formatMinutesLabel(sorted[0]?.start_minutes ?? 0));
-    setOverlapSheetVisible(true);
-  };
-
-  const closeOverlapSheet = () => {
-    setOverlapSheetVisible(false);
-    const pendingId = pendingOverlapNavId.current;
-    if (!pendingId) return;
-
-    // Navigate only after the sheet has fully closed (onClosed).
-    pendingOverlapNavId.current = null;
-    InteractionManager.runAfterInteractions(() => {
-      router.push({
-        pathname: "/(main)/bookingDetailsById",
-        params: { bookingId: pendingId },
-      });
-    });
-  };
-
-  const handleOverlapSelect = (appointmentId: string) => {
-    // Store id first, then close — navigation runs in closeOverlapSheet/onClosed.
-    pendingOverlapNavId.current = appointmentId;
-    setOverlapSheetVisible(false);
-  };
-
   const setAnchorFromEvent = useCallback((event: GestureResponderEvent) => {
     const { pageX, pageY } = event.nativeEvent;
     overlayContainerRef.current?.measureInWindow(
@@ -2086,88 +1988,24 @@ export default function CalendarScreen() {
     openApplyBox("break", snapped, day, event);
   };
 
-  const renderStackBlock = (positioned: PositionedAppointment) => {
-    const { appointments: stackAppointments } = positioned;
-    const extraCount = stackAppointments.length - 1;
-    const first = stackAppointments[0];
-    const cancelled = isCancelled(first);
-    const palette = cancelled ? cancelledPalette : getPalette(first.id);
-    const blockMinutes = Math.max(
-      first.duration_minutes,
-      SLOT_INTERVAL_MINUTES,
-    );
-    const top =
-      ((first.start_minutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT;
-    const height = Math.max(
-      (blockMinutes / 60) * HOUR_HEIGHT,
-      MIN_BLOCK_HEIGHT_COMPACT,
-    );
-
-    return (
-      <View
-        key={`stack-${first.id}-${extraCount}-${first.start_minutes}`}
-        style={[
-          styles.blockWrapper,
-          {
-            top,
-            height,
-            left: 0,
-            right: 0,
-            width: "100%",
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={[
-            styles.block,
-            { backgroundColor: palette.bg, borderLeftColor: palette.accent },
-          ]}
-          activeOpacity={0.85}
-          onPress={() => openOverlapSheet(stackAppointments)}
-        >
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.blockClient,
-              cancelled && { color: theme.red },
-            ]}
-          >
-            {first.client_name}
-          </Text>
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.blockService,
-              cancelled && styles.cancelledLabel,
-            ]}
-          >
-            {cancelled ? "CANCELLED" : first.title}
-          </Text>
-          <View style={styles.stackOverlay} pointerEvents="none">
-            <View style={styles.stackBadge}>
-              <Text style={styles.stackBadgeTextCompact}>
-                {t("moreAppointments", { count: extraCount })}
-              </Text>
-            </View>
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderCompactBlock = (
-    appointment: CalendarAppointment,
-    top: number,
-    height: number,
-  ) => {
+  const renderCompactBlock = (positioned: PositionedAppointment) => {
+    const { appointment, top, height, column, totalColumns } = positioned;
     const cancelled = isCancelled(appointment);
     const palette = cancelled ? cancelledPalette : getPalette(appointment.id);
+    const widthPercent = 100 / totalColumns;
+    const leftPercent = column * widthPercent;
+
     return (
       <View
         key={appointment.id}
         style={[
           styles.blockWrapper,
-          { top, height, left: 0, right: 0, width: "100%" },
+          {
+            top,
+            height,
+            left: `${leftPercent}%`,
+            width: `${widthPercent}%`,
+          },
         ]}
       >
         <TouchableOpacity
@@ -2201,66 +2039,8 @@ export default function CalendarScreen() {
     );
   };
 
-  const renderDetailCardContent = (appointment: CalendarAppointment) => (
-    <View style={styles.detailRow}>
-      <AppImage
-        uri={appointment.avatar_url}
-        style={styles.detailAvatar}
-        resizeMode="cover"
-      />
-      <View style={styles.detailInfo}>
-        <Text numberOfLines={1} style={styles.detailTitle}>
-          {appointment.title}
-        </Text>
-        <Text numberOfLines={1} style={styles.detailMeta}>
-          {formatMinutesLabel(appointment.start_minutes)} •{" "}
-          {appointment.duration} • {appointment.client_name}
-        </Text>
-      </View>
-      <View style={styles.statusBadge}>
-        <Text numberOfLines={1} style={styles.statusBadgeText}>
-          {appointment.status_label}
-        </Text>
-      </View>
-    </View>
-  );
-
-  const renderDetailBlock = (
-    appointment: CalendarAppointment,
-    top: number,
-    height: number,
-  ) => {
-    const palette = getPalette(appointment.id);
-    return (
-      <View
-        key={appointment.id}
-        style={[
-          styles.blockWrapper,
-          { top, height, left: 0, right: 0, width: "100%" },
-        ]}
-      >
-        <TouchableOpacity
-          style={[
-            styles.block,
-            styles.blockDetailed,
-            { backgroundColor: palette.bg, borderLeftColor: palette.accent },
-          ]}
-          activeOpacity={0.8}
-          onPress={() => openAppointment(appointment)}
-        >
-          {renderDetailCardContent(appointment)}
-        </TouchableOpacity>
-      </View>
-    );
-  };
-
-  const renderPositionedBlock = (positioned: PositionedAppointment) => {
-    if (positioned.appointments.length > 1) {
-      return renderStackBlock(positioned);
-    }
-    const appointment = positioned.appointments[0];
-    return renderCompactBlock(appointment, positioned.top, positioned.height);
-  };
+  const renderPositionedBlock = (positioned: PositionedAppointment) =>
+    renderCompactBlock(positioned);
 
   const renderListCard = (appointment: CalendarAppointment) => {
     const cancelled = isCancelled(appointment);
@@ -3099,27 +2879,6 @@ export default function CalendarScreen() {
           setApplyBoxTimePickerVisible(false);
           setApplyBoxTimePickerTarget(null);
         }}
-      />
-
-      <OverlappingAppointmentsSheet
-        visible={overlapSheetVisible}
-        onClose={closeOverlapSheet}
-        slotLabel={overlapSlotLabel}
-        appointments={overlapAppointments.map((appointment) => {
-          const palette = getApptPalette(appointment);
-          return {
-            id: appointment.id,
-            title: appointment.title,
-            clientName: appointment.originalAppointment.user,
-            avatarUrl: appointment.avatar_url,
-            timeLabel: formatMinutesLabel(appointment.start_minutes),
-            duration: appointment.duration,
-            statusLabel: appointment.status_label,
-            accent: palette.accent,
-            background: palette.bg,
-          };
-        })}
-        onSelect={handleOverlapSelect}
       />
     </View>
   );
