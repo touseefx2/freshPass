@@ -914,3 +914,72 @@ export const businessFollowersEndpoints = {
 export const reportsEndpoints = {
   reasons: `/api/reports/reasons`,
 };
+
+/**
+ * Product inventory endpoints
+ */
+export const productEndpoints = {
+  mine: (params?: {
+    category?: string;
+    stock?: string;
+    published?: string;
+    page?: number;
+    per_page?: number;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.category) q.append("category", params.category);
+    if (params?.stock) q.append("stock", params.stock);
+    if (params?.published) q.append("published", params.published);
+    if (params?.page != null) q.append("page", String(params.page));
+    if (params?.per_page != null) q.append("per_page", String(params.per_page));
+    const query = q.toString();
+    return `/api/products/mine${query ? `?${query}` : ""}`;
+  },
+  mineById: (id: string | number) => `/api/products/mine/${id}`,
+  create: `/api/products`,
+  update: (id: string | number) => `/api/products/${id}`,
+  delete: (id: string | number) => `/api/products/${id}`,
+  checkout: `/api/payment-sheet/product-checkout`,
+};
+
+/**
+ * Customer order endpoints
+ */
+export const orderEndpoints = {
+  list: (params?: {
+    status?: string;
+    per_page?: number;
+    page?: number;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.append("status", params.status);
+    if (params?.per_page != null) q.append("per_page", String(params.per_page));
+    if (params?.page != null) q.append("page", String(params.page));
+    const query = q.toString();
+    return `/api/orders${query ? `?${query}` : ""}`;
+  },
+  getById: (id: string | number) => `/api/orders/${id}`,
+  business: (params?: {
+    status?: string;
+    search?: string;
+    from?: string;
+    to?: string;
+    sort?: string;
+    per_page?: number;
+    page?: number;
+  }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.append("status", params.status);
+    if (params?.search) q.append("search", params.search);
+    if (params?.from) q.append("from", params.from);
+    if (params?.to) q.append("to", params.to);
+    if (params?.sort) q.append("sort", params.sort);
+    if (params?.per_page != null) q.append("per_page", String(params.per_page));
+    if (params?.page != null) q.append("page", String(params.page));
+    const query = q.toString();
+    return `/api/orders/business${query ? `?${query}` : ""}`;
+  },
+  businessById: (id: string | number) => `/api/orders/business/${id}`,
+  businessStats: `/api/orders/business/stats`,
+  updateStatus: (id: string | number) => `/api/orders/${id}/status`,
+};

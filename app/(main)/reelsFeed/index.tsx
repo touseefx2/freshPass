@@ -37,11 +37,7 @@ import * as SystemUI from "expo-system-ui";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { LeafLogo } from "@/assets/icons";
-import {
-  DEMO_SHOP_PRODUCT_ID,
-  STATIC_DEMO_PRODUCT,
-  formatShopPrice,
-} from "@/src/constants/demoShopProduct";
+import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -1086,10 +1082,10 @@ function ReelFeedItemBase({
     .filter(Boolean)
     .join(", ");
   const categoryName = reel.category?.name?.trim() || "";
-  // BACKEND_SWAP: replace STATIC_DEMO_PRODUCT with reel.attached_product ?? null
-  // (and hide the card when null). For now every customer reel shows the demo product.
-  const shopProduct = STATIC_DEMO_PRODUCT;
-  const productPrice = formatShopPrice(shopProduct.sellingPrice);
+  const shopProduct = reel.product ?? null;
+  const productPrice = shopProduct
+    ? formatShopPrice(shopProduct.sellingPrice)
+    : "";
   const router = useRouter();
 
   const distance =
@@ -1539,7 +1535,7 @@ function ReelFeedItemBase({
               onPress={() => {
                 router.push({
                   pathname: "/(main)/shop/productDetail" as any,
-                  params: { productId: DEMO_SHOP_PRODUCT_ID },
+                  params: { productId: shopProduct!.id },
                 });
               }}
             >

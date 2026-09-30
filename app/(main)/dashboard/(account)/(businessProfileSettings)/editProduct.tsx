@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -10,18 +10,22 @@ import StackHeader from "@/src/components/StackHeader";
 import ProductFormScreen, {
   type ProductFormDraft,
 } from "@/src/components/productFormScreen";
-import { updateProduct } from "@/src/state/slices/inventorySlice";
+import { updateProduct as updateProductRedux } from "@/src/state/slices/inventorySlice";
+import { updateProduct as updateProductApi } from "@/src/services/productService";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
 export default function EditProductScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { showBanner } = useNotificationContext();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const { id } = useLocalSearchParams<{ id?: string }>();
   const product = useAppSelector((s) =>
     s.inventory.products.find((p) => p.id === id),
   );
+  const [submitting, setSubmitting] = useState(false);
 
   const initial = useMemo((): ProductFormDraft | null => {
     if (!product) return null;
@@ -36,19 +40,33 @@ export default function EditProductScreen() {
   }, [product]);
 
   const handleSubmit = useCallback(
-    (draft: ProductFormDraft) => {
-      if (!product) return;
-      // BACKEND_SWAP: PUT/PATCH product API, then sync store
-      dispatch(
-        updateProduct({
-          ...product,
-          ...draft,
-          updatedAt: new Date().toISOString(),
-        }),
-      );
-      router.back();
+    async (draft: ProductFormDraft) => {
+      if (!product || submitting) return;
+      setSubmitting(true);
+      try {
+        const imageChanged =
+          draft.imageUri !== product.imageUri && draft.imageUri;
+        const imageFile = imageChanged
+          ? {
+              uri: draft.imageUri!,
+              name: `product-${Date.now()}.jpg`,
+              type: "image/jpeg",
+            }
+          : null;
+        const updated = await updateProductApi(product.id, draft, imageFile);
+        dispatch(updateProductRedux(updated));
+        router.back();
+      } catch (err: any) {
+        showBanner(
+          t("editProduct"),
+          err?.message || t("somethingWentWrong"),
+          "error",
+        );
+      } finally {
+        setSubmitting(false);
+      }
     },
-    [dispatch, product, router],
+    [dispatch, product, router, submitting, showBanner, t],
   );
 
   if (!product || !initial) {

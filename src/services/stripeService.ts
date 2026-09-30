@@ -459,4 +459,87 @@ export const fetchAiToolsPaymentSheetParams = async (
   }
 };
 
+// ── Product checkout ────────────────────────────────────────────────
+
+import { productEndpoints } from "./endpoints";
+import type { ShopShippingMethod } from "@/src/types/shopProduct";
+
+export interface ProductCheckoutItem {
+  product_id: number;
+  quantity: number;
+}
+
+export interface ProductCheckoutBody {
+  items: ProductCheckoutItem[];
+  shipping_method: ShopShippingMethod;
+  shipping_address?: {
+    fullName: string;
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+}
+
+export interface ProductCheckoutResult {
+  customerId: string;
+  customerSessionClientSecret: string;
+  paymentIntentClientSecret: string;
+  connectedAccountId: string;
+  currency: string;
+  orderId: number;
+  totals: {
+    subtotal: number;
+    shipping: number;
+    tax: number;
+    total: number;
+  };
+}
+
+interface ProductCheckoutApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    customerId: string;
+    customerSession: { client_secret: string };
+    paymentIntent: { id: string; client_secret: string };
+    connectedAccountId: string;
+    currency: string;
+    orderId: number;
+    totals: {
+      subtotal: number;
+      shipping: number;
+      tax: number;
+      total: number;
+    };
+  };
+}
+
+export const startProductCheckout = async (
+  body: ProductCheckoutBody,
+): Promise<ProductCheckoutResult> => {
+  const stripeHeaders = await getStripeModeHeaders();
+  const response = await ApiService.post<ProductCheckoutApiResponse>(
+    productEndpoints.checkout,
+    body,
+    { headers: stripeHeaders },
+  );
+
+  if (response.success && response.data) {
+    return {
+      customerId: response.data.customerId,
+      customerSessionClientSecret:
+        response.data.customerSession.client_secret,
+      paymentIntentClientSecret:
+        response.data.paymentIntent.client_secret,
+      connectedAccountId: response.data.connectedAccountId,
+      currency: response.data.currency,
+      orderId: response.data.orderId,
+      totals: response.data.totals,
+    };
+  }
+
+  throw new Error(response.message || "Failed to start product checkout");
+};
+
 export { StripeProvider, useStripe };

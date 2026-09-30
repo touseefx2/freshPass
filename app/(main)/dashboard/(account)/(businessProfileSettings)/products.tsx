@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,
@@ -24,13 +25,23 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
-import { removeProduct } from "@/src/state/slices/inventorySlice";
+import {
+  removeProduct,
+  setProducts,
+  updateProduct,
+} from "@/src/state/slices/inventorySlice";
 import {
   getStockFilterMatch,
   isLowStock,
   type ShopProduct,
   type ShopStockFilter,
 } from "@/src/types/shopProduct";
+import {
+  fetchMyProducts,
+  deleteProduct as deleteProductApi,
+  updateProduct as updateProductApi,
+} from "@/src/services/productService";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -196,12 +207,18 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       backgroundColor: theme.lightGreen05,
     },
+    loader: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
   });
 
 export default function ProductsInventoryScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { showBanner } = useNotificationContext();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -210,6 +227,22 @@ export default function ProductsInventoryScreen() {
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ShopStockFilter>("all");
+  const [loading, setLoading] = useState(true);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const { products: list } = await fetchMyProducts();
+      dispatch(setProducts(list));
+    } catch {
+      // keep existing Redux data on failure
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -233,7 +266,38 @@ export default function ProductsInventoryScreen() {
         {
           text: t("delete"),
           style: "destructive",
-          onPress: () => dispatch(removeProduct(product.id)),
+          onPress: async () => {
+            try {
+              await deleteProductApi(product.id);
+              dispatch(removeProduct(product.id));
+            } catch (err: any) {
+              const msg = err?.message || "";
+              if (msg.includes("completed orders")) {
+                Alert.alert(t("cannotDelete"), msg, [
+                  { text: t("cancel"), style: "cancel" },
+                  {
+                    text: t("unpublish"),
+                    onPress: async () => {
+                      try {
+                        const updated = await updateProductApi(product.id, {
+                          published: false,
+                        } as any);
+                        dispatch(updateProduct(updated));
+                      } catch {
+                        showBanner(
+                          t("products"),
+                          t("somethingWentWrong"),
+                          "error",
+                        );
+                      }
+                    },
+                  },
+                ]);
+              } else {
+                showBanner(t("products"), msg || t("somethingWentWrong"), "error");
+              }
+            }
+          },
         },
       ],
     );
@@ -282,7 +346,11 @@ export default function ProductsInventoryScreen() {
           })}
         </View>
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color={theme.darkGreen} />
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIconWrap}>
               <MaterialIcons

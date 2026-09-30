@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -33,6 +34,11 @@ import {
 import type { ShopShippingMethod } from "@/src/types/shopProduct";
 import { resolveShopProduct } from "@/src/utils/shopProductHelpers";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import {
+  useStripeAccount,
+  startProductCheckout,
+} from "@/src/services/stripeService";
+import { useStripe } from "@stripe/stripe-react-native";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -133,13 +139,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    mockNote: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.selectCard,
-      lineHeight: fontSize.size17,
-      marginBottom: moderateHeightScale(8),
-    },
     reviewCard: {
       borderRadius: moderateWidthScale(14),
       borderWidth: 1,
@@ -176,6 +175,7 @@ export default function ShopCheckoutScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const address = useAppSelector((s) => s.shopCart.address);
   const shippingMethod = useAppSelector((s) => s.shopCart.shippingMethod);
@@ -183,9 +183,7 @@ export default function ShopCheckoutScreen() {
   const inventory = useAppSelector((s) => s.inventory.products);
 
   const [step, setStep] = useState(1);
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvc, setCvc] = useState("");
+  const [paying, setPaying] = useState(false);
 
   const lines = useMemo(() => {
     return items
@@ -224,15 +222,17 @@ export default function ShopCheckoutScreen() {
   ];
 
   const validateShipping = () => {
-    if (
-      !address.fullName.trim() ||
-      !address.street.trim() ||
-      !address.city.trim() ||
-      !address.state.trim() ||
-      !address.zip.trim()
-    ) {
-      showBanner(t("checkout"), t("fillShippingAddress"), "warning");
-      return false;
+    if (shippingMethod !== "local_pickup") {
+      if (
+        !address.fullName.trim() ||
+        !address.street.trim() ||
+        !address.city.trim() ||
+        !address.state.trim() ||
+        !address.zip.trim()
+      ) {
+        showBanner(t("checkout"), t("fillShippingAddress"), "warning");
+        return false;
+      }
     }
     if (!shippingMethod) {
       showBanner(t("checkout"), t("selectShippingMethod"), "warning");
@@ -241,34 +241,81 @@ export default function ShopCheckoutScreen() {
     return true;
   };
 
-  const placeOrder = () => {
-    // BACKEND_SWAP: create order + Stripe PaymentSheet, then clear cart on success
-    const orderId = `FP${Date.now().toString().slice(-6)}`;
-    dispatch(setLastOrderId(orderId));
-    dispatch(clearCart());
-    dispatch(resetShopCheckout());
-    router.replace({
-      pathname: "/(main)/shop/orderConfirmed" as any,
-      params: { orderId },
-    });
+  const placeOrder = async () => {
+    if (paying) return;
+    setPaying(true);
+    try {
+      const checkoutItems = lines.map((l) => ({
+        product_id: Number(l.product.id),
+        quantity: l.item.quantity,
+      }));
+
+      const checkoutBody = {
+        items: checkoutItems,
+        shipping_method: shippingMethod!,
+        ...(shippingMethod !== "local_pickup"
+          ? { shipping_address: address }
+          : {}),
+      };
+
+      const result = await startProductCheckout(checkoutBody);
+
+      await useStripeAccount(result.connectedAccountId);
+
+      const { error: initError } = await initPaymentSheet({
+        merchantDisplayName: "FreshPass",
+        customerId: result.customerId,
+        customerSessionClientSecret: result.customerSessionClientSecret,
+        paymentIntentClientSecret: result.paymentIntentClientSecret,
+      });
+
+      if (initError) {
+        throw new Error(initError.message);
+      }
+
+      const { error: presentError } = await presentPaymentSheet();
+
+      await useStripeAccount(null);
+
+      if (presentError) {
+        if (presentError.code === "Canceled") {
+          return;
+        }
+        throw new Error(presentError.message);
+      }
+
+      const orderId = String(result.orderId);
+      dispatch(setLastOrderId(orderId));
+      dispatch(clearCart());
+      dispatch(resetShopCheckout());
+      router.replace({
+        pathname: "/(main)/shop/orderConfirmed" as any,
+        params: { orderId },
+      });
+    } catch (err: any) {
+      await useStripeAccount(null).catch(() => {});
+      showBanner(
+        t("checkout"),
+        err?.message || t("somethingWentWrong"),
+        "error",
+      );
+    } finally {
+      setPaying(false);
+    }
   };
 
-  const primaryLabel =
-    step === 1
-      ? t("continueToPayment")
-      : step === 2
-        ? t("continueToReview")
-        : t("placeOrder");
+  const stepLabels = [
+    { n: 1, label: t("shipping") },
+    { n: 2, label: t("review") },
+  ];
+
+  const primaryLabel = step === 1 ? t("continueToReview") : t("placeOrder");
 
   const onPrimary = () => {
     Keyboard.dismiss();
     if (step === 1) {
       if (!validateShipping()) return;
       setStep(2);
-      return;
-    }
-    if (step === 2) {
-      setStep(3);
       return;
     }
     placeOrder();
@@ -290,11 +337,7 @@ export default function ShopCheckoutScreen() {
         onScrollBeginDrag={Keyboard.dismiss}
       >
         <View style={styles.stepper}>
-          {[
-            { n: 1, label: t("shipping") },
-            { n: 2, label: t("payment") },
-            { n: 3, label: t("review") },
-          ].map((s) => (
+          {stepLabels.map((s) => (
             <View key={s.n} style={styles.stepItem}>
               <View
                 style={[
@@ -320,7 +363,7 @@ export default function ShopCheckoutScreen() {
           <View
             style={[
               styles.progressFill,
-              { width: widthScale(320) * (step / 3) },
+              { width: widthScale(320) * (step / 2) },
             ]}
           />
         </View>
@@ -414,54 +457,16 @@ export default function ShopCheckoutScreen() {
 
         {step === 2 ? (
           <>
-            <Text style={styles.sectionTitle}>{t("payment")}</Text>
-            <Text style={styles.mockNote}>{t("paymentMockNote")}</Text>
-            <FloatingInput
-              label={t("cardNumber")}
-              value={cardNumber}
-              onChangeText={setCardNumber}
-              placeholder="4242 4242 4242 4242"
-              keyboardType="number-pad"
-              showClearButton
-              onClear={() => setCardNumber("")}
-            />
-            <View style={styles.row2}>
-              <View style={styles.half}>
-                <FloatingInput
-                  label={t("expiry")}
-                  value={expiry}
-                  onChangeText={setExpiry}
-                  placeholder="MM/YY"
-                  showClearButton
-                  onClear={() => setExpiry("")}
-                />
-              </View>
-              <View style={styles.half}>
-                <FloatingInput
-                  label={t("cvc")}
-                  value={cvc}
-                  onChangeText={setCvc}
-                  placeholder="123"
-                  keyboardType="number-pad"
-                  secureTextEntry
-                  showClearButton
-                  onClear={() => setCvc("")}
-                />
-              </View>
-            </View>
-          </>
-        ) : null}
-
-        {step === 3 ? (
-          <>
             <Text style={styles.sectionTitle}>{t("review")}</Text>
             <View style={styles.reviewCard}>
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewKey}>{t("shippingAddress")}</Text>
-                <Text style={styles.reviewValue}>
-                  {`${address.fullName}\n${address.street}\n${address.city}, ${address.state} ${address.zip}`}
-                </Text>
-              </View>
+              {shippingMethod !== "local_pickup" ? (
+                <View style={styles.reviewRow}>
+                  <Text style={styles.reviewKey}>{t("shippingAddress")}</Text>
+                  <Text style={styles.reviewValue}>
+                    {`${address.fullName}\n${address.street}\n${address.city}, ${address.state} ${address.zip}`}
+                  </Text>
+                </View>
+              ) : null}
               <View style={styles.reviewRow}>
                 <Text style={styles.reviewKey}>{t("shippingMethod")}</Text>
                 <Text style={styles.reviewValue}>
@@ -498,7 +503,11 @@ export default function ShopCheckoutScreen() {
         ) : null}
 
         <View style={styles.actions}>
-          <Button title={primaryLabel} onPress={onPrimary} />
+          {paying ? (
+            <ActivityIndicator size="small" color={theme.darkGreen} />
+          ) : (
+            <Button title={primaryLabel} onPress={onPrimary} />
+          )}
         </View>
       </KeyboardAwareScrollView>
     </View>

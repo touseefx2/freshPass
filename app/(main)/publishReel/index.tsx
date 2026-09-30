@@ -28,6 +28,8 @@ import StackHeader from "@/src/components/StackHeader";
 import CustomToggle from "@/src/components/customToggle";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
+import { fetchMyProducts } from "@/src/services/productService";
+import type { ShopProduct } from "@/src/types/shopProduct";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import {
@@ -370,6 +372,9 @@ export default function PublishReelScreen() {
   const [lookTag, setLookTag] = useState("");
   const [promotionText, setPromotionText] = useState("");
   const [productTag, setProductTag] = useState("");
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [publishedProducts, setPublishedProducts] = useState<ShopProduct[]>([]);
+  const [showProductPicker, setShowProductPicker] = useState(false);
   const [availableNow, setAvailableNow] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(
     resolvedBusinessCategory?.id ?? null,
@@ -401,6 +406,17 @@ export default function PublishReelScreen() {
         setServices(svcData);
       } catch (error) {
         Logger.error("Failed to load publish reel services:", error);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { products } = await fetchMyProducts({ published: "1" });
+        setPublishedProducts(products);
+      } catch {
+        // non-critical
       }
     })();
   }, []);
@@ -446,6 +462,7 @@ export default function PublishReelScreen() {
         setLookTag(reel.look_tag || "");
         setPromotionText(reel.promotion_text || "");
         setProductTag(reel.product_tag || "");
+        if (reel.product_id) setSelectedProductId(reel.product_id);
         setAvailableNow(!!reel.available_now);
         userPickedCategoryRef.current = true;
         setCategoryId(reel.category?.id ?? resolvedBusinessCategory?.id ?? null);
@@ -614,6 +631,7 @@ export default function PublishReelScreen() {
     ...(lookTag.trim() ? { look_tag: lookTag.trim() } : {}),
     ...(promotionText.trim() ? { promotion_text: promotionText.trim() } : {}),
     ...(productTag.trim() ? { product_tag: productTag.trim() } : {}),
+    ...(selectedProductId != null ? { product_id: selectedProductId } : {}),
     available_now: availableNow,
     ...(publish ? { publish: true } : {}),
   });
@@ -631,6 +649,7 @@ export default function PublishReelScreen() {
           look_tag: lookTag.trim() || null,
           promotion_text: promotionText.trim() || null,
           product_tag: productTag.trim() || null,
+          product_id: selectedProductId,
           available_now: availableNow,
         });
         showBanner(t("success"), t("reelSaved"), "success", 2500);
@@ -669,6 +688,7 @@ export default function PublishReelScreen() {
           look_tag: lookTag.trim() || null,
           promotion_text: promotionText.trim() || null,
           product_tag: productTag.trim() || null,
+          product_id: selectedProductId,
           available_now: availableNow,
         });
         if (existing?.status !== "published") {
@@ -910,14 +930,117 @@ export default function PublishReelScreen() {
             <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
               {t("productTag")}
             </Text>
-            <TextInput
-              style={styles.input}
-              value={productTag}
-              onChangeText={setProductTag}
-              placeholder={t("productTagPlaceholder")}
-              placeholderTextColor={theme.lightGreen5}
-              maxLength={255}
-            />
+            {publishedProducts.length > 0 ? (
+              <>
+                <TouchableOpacity
+                  style={styles.input}
+                  onPress={() => setShowProductPicker(!showProductPicker)}
+                  activeOpacity={0.8}
+                >
+                  <Text
+                    style={{
+                      fontSize: fontSize.size14,
+                      fontFamily: fonts.fontRegular,
+                      color: selectedProductId
+                        ? theme.text
+                        : theme.lightGreen5,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {selectedProductId
+                      ? publishedProducts.find(
+                          (p) => Number(p.id) === selectedProductId,
+                        )?.name ?? t("selectProduct")
+                      : t("selectProduct")}
+                  </Text>
+                </TouchableOpacity>
+                {showProductPicker ? (
+                  <View
+                    style={{
+                      borderWidth: 1,
+                      borderColor: theme.lightGreen2,
+                      borderRadius: moderateWidthScale(12),
+                      backgroundColor: theme.white,
+                      marginTop: moderateHeightScale(4),
+                      maxHeight: moderateHeightScale(180),
+                    }}
+                  >
+                    <ScrollView nestedScrollEnabled>
+                      <TouchableOpacity
+                        style={{
+                          paddingVertical: moderateHeightScale(10),
+                          paddingHorizontal: moderateWidthScale(14),
+                          borderBottomWidth: 1,
+                          borderBottomColor: theme.lightGreen05,
+                        }}
+                        onPress={() => {
+                          setSelectedProductId(null);
+                          setProductTag("");
+                          setShowProductPicker(false);
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: fontSize.size13,
+                            fontFamily: fonts.fontRegular,
+                            color: theme.lightGreen5,
+                          }}
+                        >
+                          {t("none")}
+                        </Text>
+                      </TouchableOpacity>
+                      {publishedProducts.map((p) => (
+                        <TouchableOpacity
+                          key={p.id}
+                          style={{
+                            paddingVertical: moderateHeightScale(10),
+                            paddingHorizontal: moderateWidthScale(14),
+                            backgroundColor:
+                              Number(p.id) === selectedProductId
+                                ? theme.lightGreen05
+                                : undefined,
+                          }}
+                          onPress={() => {
+                            setSelectedProductId(Number(p.id));
+                            setProductTag(p.name);
+                            setShowProductPicker(false);
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: fontSize.size13,
+                              fontFamily: fonts.fontBold,
+                              color: theme.darkGreen,
+                            }}
+                            numberOfLines={1}
+                          >
+                            {p.name}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: fontSize.size11,
+                              fontFamily: fonts.fontRegular,
+                              color: theme.lightGreen5,
+                            }}
+                          >
+                            {p.brand} · ${p.sellingPrice.toFixed(2)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                ) : null}
+              </>
+            ) : (
+              <TextInput
+                style={styles.input}
+                value={productTag}
+                onChangeText={setProductTag}
+                placeholder={t("productTagPlaceholder")}
+                placeholderTextColor={theme.lightGreen5}
+                maxLength={255}
+              />
+            )}
           </View>
 
           <View style={styles.field}>

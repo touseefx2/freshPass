@@ -1,4 +1,5 @@
 import type { MediaVideo } from "@/src/types/media";
+import type { ShopProduct } from "@/src/types/shopProduct";
 
 export type ReelStatus = "draft" | "published" | "removed";
 
@@ -58,6 +59,8 @@ export type OwnerReel = {
   look_tag: string | null;
   promotion_text: string | null;
   product_tag: string | null;
+  product_id?: number | null;
+  product?: ShopProduct | null;
   available_now: boolean;
   published_at: string | null;
   category: ReelCategory | null;
@@ -78,6 +81,8 @@ export type FeedReel = {
   look_tag: string | null;
   promotion_text: string | null;
   product_tag: string | null;
+  product_id?: number | null;
+  product?: ShopProduct | null;
   available_now: boolean;
   published_at: string | null;
   video: ReelVideo;
@@ -206,6 +211,7 @@ export type CreateReelPayload = {
   look_tag?: string;
   promotion_text?: string;
   product_tag?: string;
+  product_id?: number | null;
   available_now?: boolean;
   publish?: boolean;
 };
@@ -218,6 +224,7 @@ export type UpdateReelPayload = {
   look_tag?: string | null;
   promotion_text?: string | null;
   product_tag?: string | null;
+  product_id?: number | null;
   available_now?: boolean;
 };
 
