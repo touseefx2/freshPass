@@ -70,8 +70,7 @@ const iosCompatiblePickerOptions =
       }
     : {};
 
-/** Still images uploaded as media assets use a short clip duration for templates. */
-const IMAGE_MEDIA_DURATION_SECONDS = 3;
+/** Still images uploaded as media assets — no duration_seconds on POST /api/media. */
 
 function slotAcceptsImage(field: ReelTemplateMediaField | undefined): boolean {
   return field?.accepted_types?.includes("image") ?? true;
@@ -960,7 +959,7 @@ export default function ReelTemplatesScreen() {
       // expo-image-picker reports video duration in seconds
       const durationSeconds = isVideo
         ? Math.max(1, Math.ceil(durationRaw))
-        : IMAGE_MEDIA_DURATION_SECONDS;
+        : 0;
 
       if (isVideo && durationSeconds > MAX_VIDEO_UPLOAD_SECONDS) {
         showBanner(
@@ -992,11 +991,14 @@ export default function ReelTemplatesScreen() {
               mimeType: mime || "image/jpeg",
               fileName: asset.fileName || "photo.jpg",
               sourceType,
-              durationSeconds: IMAGE_MEDIA_DURATION_SECONDS,
               width: asset.width,
               height: asset.height,
             });
-        const ready = await waitForMediaReady(uploaded.id);
+        // Images are ready immediately; videos may still need polling
+        const ready =
+          uploaded.status === "ready"
+            ? uploaded
+            : await waitForMediaReady(uploaded.id);
         assignMediaToSlot(ready, slotIndex);
       } catch (error: any) {
         Logger.error("Failed to upload media for template slot:", error);

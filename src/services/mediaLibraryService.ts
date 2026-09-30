@@ -194,6 +194,7 @@ export type UploadVideoParams = {
 
 /**
  * Upload a video with real byte progress via XMLHttpRequest.
+ * POST /api/media — multipart field `file` + required `duration_seconds`.
  */
 export function uploadVideo(
   params: UploadVideoParams,
@@ -225,7 +226,7 @@ export function uploadVideo(
         prepared.name || params.fileName || guessFileName(prepared.uri, mimeType);
 
       const formData = new FormData();
-      formData.append("video", {
+      formData.append("file", {
         uri: prepared.uri,
         type: mimeType,
         name: fileName,
@@ -275,6 +276,7 @@ export function uploadVideo(
           }
           const message =
             json?.message ||
+            (json as any)?.errors?.file?.[0] ||
             (json as any)?.errors?.video?.[0] ||
             `Upload failed (${xhr.status})`;
           const error = new Error(message);
@@ -309,15 +311,14 @@ export type UploadImageParams = {
   mimeType?: string | null;
   fileName?: string | null;
   sourceType: MediaUploadSourceType;
-  /** Still images used as short clips in Shotstack templates */
-  durationSeconds?: number;
   width?: number | null;
   height?: number | null;
 };
 
 /**
  * Upload a still image as a media asset (template slots with accepted_types: image).
- * POST /api/media with multipart field `image`.
+ * POST /api/media with multipart field `file` — no duration_seconds (MD: image support).
+ * Images return status `ready` immediately.
  */
 export function uploadImage(
   params: UploadImageParams,
@@ -347,20 +348,12 @@ export function uploadImage(
       const fileName = prepared.name || params.fileName || "photo.jpg";
 
       const formData = new FormData();
-      formData.append("image", {
+      formData.append("file", {
         uri: prepared.uri,
         type: mimeType,
         name: fileName,
       } as any);
       formData.append("source_type", params.sourceType);
-      const durationSeconds = Math.max(
-        1,
-        Math.min(
-          MAX_VIDEO_UPLOAD_SECONDS,
-          Math.round(params.durationSeconds ?? 3),
-        ),
-      );
-      formData.append("duration_seconds", String(durationSeconds));
       if (params.width != null) {
         formData.append("width", String(params.width));
       }
@@ -397,6 +390,7 @@ export function uploadImage(
           }
           const message =
             json?.message ||
+            (json as any)?.errors?.file?.[0] ||
             (json as any)?.errors?.image?.[0] ||
             (json as any)?.errors?.video?.[0] ||
             `Upload failed (${xhr.status})`;
