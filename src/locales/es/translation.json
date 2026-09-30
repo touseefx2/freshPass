@@ -1593,7 +1593,7 @@
   "configureTemplate": "Configure Template",
   "templateNotFound": "Template not found.",
   "mediaSlot": "Slot {{number}}",
-  "tapToSelectMedia": "Tap to select from library",
+  "tapToSelectMedia": "Tap to select media",
   "mediaSelected": "Media selected",
   "selectFromLibrary": "Select from library",
   "noReadyMediaInLibrary": "No ready videos in your library yet. Record or upload a video first.",
@@ -1626,5 +1626,12 @@
   "templateRequirements": "What’s required",
   "mediaAlreadySelected": "This video is already used in another slot. Pick a different one.",
   "reelQueued": "Queued…",
-  "reelGenerating": "Generating…"
+  "reelGenerating": "Generating…",
+  "fromAppMediaLibrary": "From App Media Library",
+  "fromAppMediaLibraryDesc": "Use videos already uploaded in your Media Library",
+  "pickYourStyle": "Pick your style",
+  "reelTemplatesIntroTitle": "Studio-ready reels",
+  "reelTemplatesIntroSubtitle": "Choose a template, drop in your media, and generate a polished reel in minutes.",
+  "selectTemplateHintTitle": "Choose a template",
+  "loadingTemplates": "Loading templates…"
 }
