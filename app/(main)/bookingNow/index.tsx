@@ -1801,6 +1801,7 @@ export default function BookingNow() {
   const [galleryImageUris, setGalleryImageUris] = useState<string[]>([]);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  const [continueLoading, setContinueLoading] = useState(false);
   const hasInitializedReschedulePreset = useRef(false);
   const hasScrolledToRescheduleSlot = useRef(false);
 
@@ -3737,7 +3738,9 @@ export default function BookingNow() {
         ) : (
           <Button
             title={t("continue")}
-            onPress={() => {
+            loading={continueLoading}
+            disabled={continueLoading}
+            onPress={async () => {
               const businessIdForCheckout = resolveBusinessIdParam(
                 resolveRouteParam(params.business_id),
                 reduxBusinessId,
@@ -3770,6 +3773,34 @@ export default function BookingNow() {
                   );
                   return;
                 }
+
+                if (selectedStaff === "anyone") {
+                  setContinueLoading(true);
+                  try {
+                    const assigned = await assignAnyoneStaff({
+                      business_id: parseInt(businessIdForCheckout, 10),
+                      service_ids: selectedSubscriptionServiceIds,
+                      date: selectedDate.format("YYYY-MM-DD"),
+                      start_time: selectedTimeSlot,
+                    });
+                    dispatch(setAssignedStaffId(assigned.staff_id));
+                  } catch (err: any) {
+                    showBanner(
+                      t("error"),
+                      err?.message ||
+                        err?.data?.message ||
+                        "No staff available for this time slot.",
+                      "error",
+                      4000,
+                    );
+                    return;
+                  } finally {
+                    setContinueLoading(false);
+                  }
+                } else {
+                  dispatch(setAssignedStaffId(null));
+                }
+
                 dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
                 dispatch(setSelectedTimeSlot(selectedTimeSlot));
                 dispatch(setSelectedNote(note));
@@ -3820,6 +3851,34 @@ export default function BookingNow() {
                 );
                 return;
               }
+
+              if (selectedStaff === "anyone") {
+                setContinueLoading(true);
+                try {
+                  const assigned = await assignAnyoneStaff({
+                    business_id: parseInt(businessIdForCheckout, 10),
+                    service_ids: selectedServices.map((s) => s.id),
+                    date: selectedDate.format("YYYY-MM-DD"),
+                    start_time: selectedTimeSlot,
+                  });
+                  dispatch(setAssignedStaffId(assigned.staff_id));
+                } catch (err: any) {
+                  showBanner(
+                    t("error"),
+                    err?.message ||
+                      err?.data?.message ||
+                      "No staff available for this time slot.",
+                    "error",
+                    4000,
+                  );
+                  return;
+                } finally {
+                  setContinueLoading(false);
+                }
+              } else {
+                dispatch(setAssignedStaffId(null));
+              }
+
               dispatch(setSelectedDate(selectedDate.format("YYYY-MM-DD")));
               dispatch(setSelectedTimeSlot(selectedTimeSlot));
               dispatch(setSelectedNote(note));

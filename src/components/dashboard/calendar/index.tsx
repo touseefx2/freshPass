@@ -1150,7 +1150,7 @@ export default function CalendarScreen() {
   }, [i18n.language]);
 
   const today = dayjs();
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>("day");
   const [selectedDate, setSelectedDate] = useState(today);
   const [week, setWeek] = useState(getWeekDays(today));
   const [appointments, setAppointments] = useState<CalendarAppointment[]>([]);
