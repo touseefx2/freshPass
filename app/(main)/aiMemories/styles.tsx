@@ -209,6 +209,44 @@ export const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen4,
     },
+    tabsRow: {
+      flexDirection: "row",
+      marginBottom: moderateHeightScale(16),
+      gap: moderateWidthScale(8),
+    },
+    loadingWithTabs: {
+      flex: 1,
+      paddingTop: moderateHeightScale(24),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    loadingSpinnerWrap: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tabButton: {
+      flex: 1,
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tabButtonActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    tabButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    tabButtonTextActive: {
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
     // Memories: date-wise section cards
     sectionCard: {
       borderRadius: moderateWidthScale(16),

@@ -123,6 +123,27 @@ export async function listMyReels(
   };
 }
 
+/** Reels grouped by creation date (`Y-m-d` keys, newest first). */
+export async function listMyReelsGroupedByDate(
+  page: number = 1,
+  perPage: number = REELS_MINE_PER_PAGE,
+): Promise<{
+  grouped: Record<string, OwnerReel[]>;
+  meta: PageMeta;
+}> {
+  const response = await ApiService.get<
+    Envelope<{ data: Record<string, OwnerReel[]>; meta: PageMeta }>
+  >(reelsEndpoints.mine({ page, per_page: perPage, group_by: "date" }));
+  return {
+    grouped: response?.data?.data ?? {},
+    meta: response?.data?.meta ?? {
+      per_page: perPage,
+      has_more: false,
+      current_page: page,
+    },
+  };
+}
+
 export async function getMyReel(id: number | string): Promise<OwnerReel> {
   const response = await ApiService.get<Envelope<OwnerReel>>(
     reelsEndpoints.mineById(id),

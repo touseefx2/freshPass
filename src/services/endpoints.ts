@@ -738,9 +738,11 @@ export const reelsEndpoints = {
     status?: string;
     page?: number;
     per_page?: number;
+    group_by?: string;
   }) => {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append("status", params.status);
+    if (params?.group_by) queryParams.append("group_by", params.group_by);
     if (params?.page != null)
       queryParams.append("page", params.page.toString());
     if (params?.per_page != null)

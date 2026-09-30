@@ -40,6 +40,10 @@ export interface MemoryItem {
   type?: "video" | "image";
   /** @deprecated Use url. */
   image_url?: string;
+  /** Cover thumbnail for video / reel items */
+  thumbnail_url?: string;
+  /** Shotstack reel id when item comes from /api/reels/mine */
+  reel_id?: number;
 }
 
 function getItemUrl(item: MemoryItem): string {

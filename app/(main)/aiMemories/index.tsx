@@ -19,6 +19,11 @@ import EmptyState from "@/src/components/emptyState";
 import MediaImage from "@/src/components/mediaImage";
 import { ApiService } from "@/src/services/api";
 import { memoriesEndpoints } from "@/src/services/endpoints";
+import {
+  listMyReelsGroupedByDate,
+  REELS_MINE_PER_PAGE,
+} from "@/src/services/reelsService";
+import type { OwnerReel } from "@/src/types/reels";
 
 export interface MemorySection {
   weekKey: string;
@@ -34,7 +39,13 @@ export interface MemoryItem {
   type?: "video" | "image";
   /** @deprecated Use url. Kept for backward compatibility. */
   image_url?: string;
+  /** Cover thumbnail for video / reel items */
+  thumbnail_url?: string;
+  /** Shotstack reel id when item comes from /api/reels/mine */
+  reel_id?: number;
 }
+
+type MemoriesTab = "memories" | "reels";
 
 const PER_PAGE = 20;
 
@@ -94,9 +105,47 @@ function formatDateLabel(dateStr: string): string {
   return `${y}/${m}/${d}`;
 }
 
+function dateKeyFromCreatedAt(createdAt?: string): string | null {
+  if (!createdAt) return null;
+  const match = createdAt.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] ?? null;
+}
+
+function reelToMemoryItem(reel: OwnerReel, dateKey: string): MemoryItem {
+  const video = reel.video as {
+    url?: string;
+    playback_url?: string;
+    thumbnail_url?: string | null;
+  } | null;
+  const videoUrl = video?.playback_url || video?.url || "";
+  const thumbnail = video?.thumbnail_url || "";
+  return {
+    date: dateKey,
+    url: videoUrl || thumbnail,
+    type: "video",
+    thumbnail_url: thumbnail || undefined,
+    image_url: thumbnail || undefined,
+    reel_id: reel.id,
+  };
+}
+
+function flattenGroupedReels(
+  grouped: Record<string, OwnerReel[]>,
+): MemoryItem[] {
+  const items: MemoryItem[] = [];
+  for (const [dateKey, reels] of Object.entries(grouped)) {
+    for (const reel of reels) {
+      const key = dateKeyFromCreatedAt(reel.created_at) || dateKey;
+      items.push(reelToMemoryItem(reel, key));
+    }
+  }
+  return items;
+}
+
 function groupByWeek(items: MemoryItem[]): MemorySection[] {
   const ungrouped = [...items].sort(
-    (a, b) => parseMemoryDate(a.date).getTime() - parseMemoryDate(b.date).getTime(),
+    (a, b) =>
+      parseMemoryDate(a.date).getTime() - parseMemoryDate(b.date).getTime(),
   );
   const sections: MemorySection[] = [];
 
@@ -135,59 +184,162 @@ export default function AiMemories() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
 
+  const [activeTab, setActiveTab] = useState<MemoriesTab>("memories");
+
   const [list, setList] = useState<MemoryItem[]>([]);
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [memoriesLoading, setMemoriesLoading] = useState(true);
+  const [memoriesLoadingMore, setMemoriesLoadingMore] = useState(false);
 
-  const sections = useMemo(() => groupByWeek(list), [list]);
+  const [reelsList, setReelsList] = useState<MemoryItem[]>([]);
+  const [reelsPage, setReelsPage] = useState(1);
+  const [reelsHasMore, setReelsHasMore] = useState(false);
+  const [reelsLoading, setReelsLoading] = useState(false);
+  const [reelsLoadingMore, setReelsLoadingMore] = useState(false);
+  const [reelsFetched, setReelsFetched] = useState(false);
+
+  const memorySections = useMemo(() => groupByWeek(list), [list]);
+  const reelSections = useMemo(() => groupByWeek(reelsList), [reelsList]);
+
+  const sections = activeTab === "memories" ? memorySections : reelSections;
+  const loading = activeTab === "memories" ? memoriesLoading : reelsLoading;
+  const loadingMore =
+    activeTab === "memories" ? memoriesLoadingMore : reelsLoadingMore;
+  const hasInitialData =
+    activeTab === "memories" ? list.length > 0 : reelsList.length > 0;
 
   const fetchMemories = useCallback(
     async (pageNum: number, append: boolean) => {
-      try {
-        if (append) setLoadingMore(true);
-        else setLoading(true);
-        const url = memoriesEndpoints.list({
-          page: pageNum,
-          per_page: PER_PAGE,
-        });
-        const res = await ApiService.get<MemoriesResponse>(url);
-        const rawData = res?.data ?? [];
-        const data = rawData.map((item: any) => ({
-          date: item.date,
-          url: item.url ?? item.image_url ?? "",
-          type: item.type,
-          image_url: item.image_url,
-        })) as MemoryItem[];
-        const currentPage = res?.current_page ?? pageNum;
-        const last = res?.last_page ?? 1;
-        setLastPage(last);
-        if (append) {
-          setList((prev) => [...prev, ...data]);
-          setPage(currentPage);
-        } else {
-          setList(data);
-          setPage(currentPage);
-        }
-      } catch {
-        if (!append) setList([]);
-      } finally {
-        setLoading(false);
-        setLoadingMore(false);
+      const url = memoriesEndpoints.list({
+        page: pageNum,
+        per_page: PER_PAGE,
+      });
+      const res = await ApiService.get<MemoriesResponse>(url);
+      const rawData = res?.data ?? [];
+      const data = rawData.map((item: any) => ({
+        date: item.date,
+        url: item.url ?? item.image_url ?? "",
+        type: item.type,
+        image_url: item.image_url,
+      })) as MemoryItem[];
+      const currentPage = res?.current_page ?? pageNum;
+      const last = res?.last_page ?? 1;
+      setLastPage(last);
+      if (append) {
+        setList((prev) => [...prev, ...data]);
+        setPage(currentPage);
+      } else {
+        setList(data);
+        setPage(currentPage);
       }
     },
     [],
   );
 
+  const fetchReels = useCallback(async (pageNum: number, append: boolean) => {
+    const { grouped, meta } = await listMyReelsGroupedByDate(
+      pageNum,
+      REELS_MINE_PER_PAGE,
+    );
+    const items = flattenGroupedReels(grouped);
+    setReelsHasMore(Boolean(meta.has_more));
+    setReelsPage(meta.current_page ?? pageNum);
+    if (append) {
+      setReelsList((prev) => {
+        const seen = new Set(
+          prev.map((i) => i.reel_id).filter((id): id is number => id != null),
+        );
+        const fresh = items.filter(
+          (i) => i.reel_id == null || !seen.has(i.reel_id),
+        );
+        return [...prev, ...fresh];
+      });
+    } else {
+      setReelsList(items);
+    }
+  }, []);
+
   useEffect(() => {
-    fetchMemories(1, false);
+    let cancelled = false;
+    (async () => {
+      setMemoriesLoading(true);
+      try {
+        await fetchMemories(1, false);
+      } catch {
+        if (!cancelled) setList([]);
+      } finally {
+        if (!cancelled) setMemoriesLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [fetchMemories]);
 
+  useEffect(() => {
+    if (activeTab !== "reels" || reelsFetched) return;
+    let cancelled = false;
+    (async () => {
+      setReelsLoading(true);
+      try {
+        await fetchReels(1, false);
+        if (!cancelled) setReelsFetched(true);
+      } catch {
+        if (!cancelled) {
+          setReelsList([]);
+          setReelsHasMore(false);
+          setReelsFetched(true);
+        }
+      } finally {
+        if (!cancelled) setReelsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, reelsFetched, fetchReels]);
+
   const handleEndReached = useCallback(() => {
-    if (loadingMore || loading || page >= lastPage) return;
-    fetchMemories(page + 1, true);
-  }, [loadingMore, loading, page, lastPage, fetchMemories]);
+    if (loadingMore || loading) return;
+
+    if (activeTab === "memories") {
+      if (page >= lastPage) return;
+      (async () => {
+        setMemoriesLoadingMore(true);
+        try {
+          await fetchMemories(page + 1, true);
+        } catch {
+          // keep existing list
+        } finally {
+          setMemoriesLoadingMore(false);
+        }
+      })();
+      return;
+    }
+
+    if (!reelsHasMore) return;
+    (async () => {
+      setReelsLoadingMore(true);
+      try {
+        await fetchReels(reelsPage + 1, true);
+      } catch {
+        // keep existing list
+      } finally {
+        setReelsLoadingMore(false);
+      }
+    })();
+  }, [
+    activeTab,
+    loadingMore,
+    loading,
+    page,
+    lastPage,
+    reelsHasMore,
+    reelsPage,
+    fetchMemories,
+    fetchReels,
+  ]);
 
   const handleSectionPress = useCallback(
     (section: MemorySection) => {
@@ -202,9 +354,15 @@ export default function AiMemories() {
   const renderSection = useCallback(
     ({ item }: { item: MemorySection }) => {
       const firstImageItem = item.items.find((i) => i.type === "image");
-      const firstImageUrl = firstImageItem
+      const firstVideoThumb = item.items.find(
+        (i) =>
+          i.type === "video" && Boolean(i.thumbnail_url || i.image_url),
+      );
+      const coverUrl = firstImageItem
         ? (firstImageItem.url ?? firstImageItem.image_url ?? "")
-        : "";
+        : (firstVideoThumb?.thumbnail_url ??
+          firstVideoThumb?.image_url ??
+          "");
       const hasOnlyVideos =
         item.items.length > 0 && !item.items.some((i) => i.type === "image");
       return (
@@ -214,9 +372,9 @@ export default function AiMemories() {
           activeOpacity={0.9}
         >
           <View style={styles.sectionCardImage}>
-            {firstImageUrl ? (
+            {coverUrl ? (
               <MediaImage
-                uri={firstImageUrl}
+                uri={coverUrl}
                 style={styles.sectionCardImageInner}
                 resizeMode="cover"
                 placeholderIcon={hasOnlyVideos ? "videocam" : "photo-library"}
@@ -254,26 +412,82 @@ export default function AiMemories() {
     [loadingMore, styles, theme.primary],
   );
 
-  const listEmpty = useMemo(
-    () =>
-      !loading && sections.length === 0 ? (
+  const listEmpty = useMemo(() => {
+    if (loading || sections.length > 0) return null;
+    if (activeTab === "reels") {
+      return (
         <EmptyState
-          icon="photo-library"
-          title={t("noMemoriesFound")}
-          subtitle={t("memoriesEmptySubtitle")}
+          icon="videocam"
+          title={t("noReelsYet")}
+          subtitle={t("memoriesReelsEmptySubtitle")}
           actionTitle={t("exploreAiTools")}
           onActionPress={() => router.back()}
         />
-      ) : null,
-    [loading, sections.length, t, router],
+      );
+    }
+    return (
+      <EmptyState
+        icon="photo-library"
+        title={t("noMemoriesFound")}
+        subtitle={t("memoriesEmptySubtitle")}
+        actionTitle={t("exploreAiTools")}
+        onActionPress={() => router.back()}
+      />
+    );
+  }, [loading, sections.length, activeTab, t, router]);
+
+  const renderTabs = useCallback(
+    () => (
+      <View style={styles.tabsRow}>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "memories" && styles.tabButtonActive,
+          ]}
+          onPress={() => setActiveTab("memories")}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "memories" && styles.tabButtonTextActive,
+            ]}
+          >
+            {t("memories")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "reels" && styles.tabButtonActive,
+          ]}
+          onPress={() => setActiveTab("reels")}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "reels" && styles.tabButtonTextActive,
+            ]}
+          >
+            {t("aiRequestsTabReels")}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    ),
+    [styles, activeTab, t],
   );
 
   const listHeader = useMemo(
-    () =>
-      sections.length > 0 ? (
-        <Text style={styles.listHint}>{t("memoriesListHint")}</Text>
-      ) : null,
-    [sections.length, styles.listHint, t],
+    () => (
+      <View>
+        {renderTabs()}
+        {sections.length > 0 ? (
+          <Text style={styles.listHint}>{t("memoriesListHint")}</Text>
+        ) : null}
+      </View>
+    ),
+    [renderTabs, sections.length, styles.listHint, t],
   );
 
   return (
@@ -294,11 +508,12 @@ export default function AiMemories() {
         }
         onRightPress={() => router.back()}
       />
-      {loading && list.length === 0 ? (
-        <View
-          style={[styles.emptyStateContainer, { justifyContent: "center" }]}
-        >
-          <ActivityIndicator size="small" color={theme.primary} />
+      {loading && !hasInitialData ? (
+        <View style={styles.loadingWithTabs}>
+          {renderTabs()}
+          <View style={styles.loadingSpinnerWrap}>
+            <ActivityIndicator size="small" color={theme.primary} />
+          </View>
         </View>
       ) : (
         <FlatList
