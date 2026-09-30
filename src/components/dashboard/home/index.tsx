@@ -35,7 +35,11 @@ import {
   BusinessStatus,
   canShowStaffManagement,
 } from "@/src/state/slices/userSlice";
-import { ApiService, checkInternetConnection } from "@/src/services/api";
+import {
+  ApiService,
+  checkInternetConnection,
+  isRequestCanceled,
+} from "@/src/services/api";
 import type { UserAffiliationFields } from "@/src/types/affiliation";
 import Logger from "@/src/services/logger";
 import {
@@ -136,6 +140,7 @@ export default function HomeScreen() {
       await dispatch(fetchUserStatus({ showError: true })).unwrap();
       return true;
     } catch (error: any) {
+      if (isRequestCanceled(error)) return false;
       showBanner(
         t("apiFailed"),
         error || t("failedToFetchBusinessStatus"),
@@ -227,6 +232,7 @@ export default function HomeScreen() {
         setDashboardStats(response.data);
       }
     } catch (error: any) {
+      if (isRequestCanceled(error)) return;
       showBanner(
         t("apiFailed"),
         error?.message || t("failedToFetchDashboardStats"),
@@ -290,6 +296,7 @@ export default function HomeScreen() {
         setStaffData(sortedStaff);
       }
     } catch (error: any) {
+      if (isRequestCanceled(error)) return;
       showBanner(
         t("apiFailed"),
         error?.message || t("failedToFetchStaffDetails"),
@@ -346,6 +353,7 @@ export default function HomeScreen() {
         setAppointmentsTotalCount(response.data.meta.total);
       }
     } catch (error: any) {
+      if (isRequestCanceled(error)) return;
       showBanner(
         t("apiFailed"),
         error?.message || t("failedToFetchAppointments"),
@@ -400,6 +408,7 @@ export default function HomeScreen() {
         setWorkHistoryTotalCount(response.data.meta.total);
       }
     } catch (error: any) {
+      if (isRequestCanceled(error)) return;
       showBanner(
         t("apiFailed"),
         error?.message || t("failedToFetchWorkHistory"),
@@ -433,6 +442,7 @@ export default function HomeScreen() {
         setAwaitingOutcomeData([]);
       }
     } catch (error: any) {
+      if (isRequestCanceled(error)) return;
       Logger.error("Awaiting outcome fetch error:", error);
       setAwaitingOutcomeData([]);
     } finally {
