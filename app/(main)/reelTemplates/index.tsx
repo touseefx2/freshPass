@@ -1037,11 +1037,10 @@ export default function ReelTemplatesScreen() {
 
   const closePipelineModal = useCallback(() => {
     setPipelineModal(INITIAL_HAIR_PIPELINE_STATE);
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/(main)/aiTools/toolList" as any);
-    }
+    router.replace({
+      pathname: "/aiRequests",
+      params: { tab: "reels" },
+    } as any);
   }, [router]);
 
   const mediaLabel =

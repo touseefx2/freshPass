@@ -1633,5 +1633,9 @@
   "reelTemplatesIntroTitle": "Studio-ready reels",
   "reelTemplatesIntroSubtitle": "Choose a template, drop in your media, and generate a polished reel in minutes.",
   "selectTemplateHintTitle": "Choose a template",
-  "loadingTemplates": "Loading templates…"
+  "loadingTemplates": "Loading templates…",
+  "aiRequestsTabTools": "Herramientas",
+  "aiRequestsTabReels": "Reels",
+  "noReelRequests": "Aún no hay generaciones de reels",
+  "reelRequestsEmptySubtitle": "Los reels que generes desde AI Tools aparecerán aquí con su estado."
 }

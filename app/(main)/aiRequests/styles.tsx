@@ -217,6 +217,38 @@ export const createStyles = (theme: Theme) =>
       textAlign: "center",
       marginBottom: moderateHeightScale(16),
     },
+    tabsRow: {
+      flexDirection: "row",
+      marginBottom: moderateHeightScale(16),
+      gap: moderateWidthScale(8),
+    },
+    tabButton: {
+      flex: 1,
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tabButtonActive: {
+      backgroundColor: theme.primary,
+      borderColor: theme.primary,
+    },
+    tabButtonText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    tabButtonTextActive: {
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    jobCardHighlighted: {
+      borderColor: theme.primary,
+      borderWidth: 2,
+    },
     sectionHeader: {
       paddingTop: moderateHeightScale(8),
       paddingBottom: moderateHeightScale(12),

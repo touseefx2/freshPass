@@ -29,6 +29,16 @@ import StackHeader from "@/src/components/StackHeader";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints, chatEndpoints } from "@/src/services/endpoints";
 import { importVideoFromAi } from "@/src/services/mediaLibraryService";
+import {
+  getGenerationStatus,
+  getMyReel,
+} from "@/src/services/reelsService";
+import type {
+  GenerationStatusResponse,
+  OwnerReel,
+  ReelVideo,
+} from "@/src/types/reels";
+import type { MediaVideo } from "@/src/types/media";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useDispatch } from "react-redux";
 import { useAppSelector } from "@/src/hooks/hooks";
@@ -213,6 +223,64 @@ const VIEW_KEYS = [
   { key: "right" as const, labelKey: "right" },
   { key: "back" as const, labelKey: "back" },
 ];
+
+/** Map Shotstack owner reel (+ optional status) into AI Result UI shape */
+function normalizeShotstackReel(
+  reel: OwnerReel,
+  status: GenerationStatusResponse | null,
+): NormalizedResult {
+  const genStatus =
+    status?.generation_status ?? reel.generation_status ?? "pending";
+
+  if (genStatus === "pending" || genStatus === "rendering") {
+    return { status: "processing", sections: [] };
+  }
+
+  if (genStatus === "failed") {
+    return {
+      status: "failed",
+      message:
+        status?.generation_error ?? reel.generation_error ?? undefined,
+      sections: [],
+    };
+  }
+
+  const video = reel.video as MediaVideo | ReelVideo;
+  const url =
+    status?.video_url ||
+    ("playback_url" in video ? video.playback_url : undefined) ||
+    ("url" in video ? (video as MediaVideo).url : undefined) ||
+    undefined;
+  const durationSeconds =
+    "duration_seconds" in video && video.duration_seconds != null
+      ? Number(video.duration_seconds)
+      : undefined;
+  const width = "width" in video ? video.width : null;
+  const height = "height" in video ? video.height : null;
+  const sizeBytes =
+    "size_bytes" in video ? (video as MediaVideo).size_bytes : null;
+  const resolution =
+    width != null && height != null ? `${width}x${height}` : undefined;
+
+  return {
+    status: "completed",
+    sections: [],
+    socialMedia: {
+      jobType: "generate_reel",
+      video: {
+        url,
+        duration: durationSeconds,
+        format: "instagram_reel",
+        resolution,
+        file_size_mb:
+          sizeBytes != null ? sizeBytes / (1024 * 1024) : undefined,
+      },
+      content: {
+        caption: reel.caption?.trim() || undefined,
+      },
+    },
+  };
+}
 
 const HAIR_PIPELINE_SECTION_KEYS: (keyof HairPipelineImages)[] = [
   "face_match",
@@ -693,10 +761,12 @@ export default function AiResults() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
     jobId?: string;
+    reelId?: string;
     returnTo?: string;
     fromNotification?: string;
   }>();
   const jobId = params.jobId;
+  const reelId = params.reelId;
   const fromBooking = params.returnTo === "booking";
   const fromChat = params.returnTo === "chat";
   const fromNotification = params.fromNotification === "1";
@@ -855,7 +925,7 @@ export default function AiResults() {
 
   const fetchStatus = useCallback(
     async (isPolling = false) => {
-      if (!jobId) {
+      if (!jobId && !reelId) {
         setError(t("missingJobId"));
         setLoading(false);
         setNormalized(null);
@@ -867,12 +937,22 @@ export default function AiResults() {
         setNormalized(null);
       }
       try {
-        const result = await ApiService.get<AiRequestByJobIdResponse>(
-          aiRequestsEndpoints.getByJobId(jobId),
-        );
-        const next = normalizeAiRequestResponse(result);
-        setNormalized(next);
-        setError(null);
+        if (reelId) {
+          const id = Number(reelId);
+          const [reel, gen] = await Promise.all([
+            getMyReel(id),
+            getGenerationStatus(id).catch(() => null),
+          ]);
+          setNormalized(normalizeShotstackReel(reel, gen));
+          setError(null);
+        } else if (jobId) {
+          const result = await ApiService.get<AiRequestByJobIdResponse>(
+            aiRequestsEndpoints.getByJobId(jobId),
+          );
+          const next = normalizeAiRequestResponse(result);
+          setNormalized(next);
+          setError(null);
+        }
       } catch (e: any) {
         const errMessage =
           e?.response?.data?.message ??
@@ -887,7 +967,7 @@ export default function AiResults() {
         setLoading(false);
       }
     },
-    [jobId, t],
+    [jobId, reelId, t],
   );
 
   useEffect(() => {
@@ -895,7 +975,13 @@ export default function AiResults() {
   }, [fetchStatus]);
 
   useEffect(() => {
-    if (!normalized || normalized.status !== "processing" || !jobId) return;
+    if (
+      !normalized ||
+      normalized.status !== "processing" ||
+      (!jobId && !reelId)
+    ) {
+      return;
+    }
     const poll = () => fetchStatus(true);
     pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
     return () => {
@@ -904,7 +990,7 @@ export default function AiResults() {
         pollRef.current = null;
       }
     };
-  }, [normalized?.status, jobId, fetchStatus]);
+  }, [normalized?.status, jobId, reelId, fetchStatus]);
 
   // Sync editable caption and complete post from API when social media result loads
   useEffect(() => {
@@ -950,9 +1036,17 @@ export default function AiResults() {
     [downloadMedia, normalized?.socialMedia?.jobType],
   );
 
-  /** R-19: save Generate Reel output to library, then open Publish Reel */
+  /** Classic AI reel: import video then publish. Shotstack: draft reel already exists. */
   const handlePublishAsReel = useCallback(async () => {
-    if (!jobId || publishingAsReel) return;
+    if (publishingAsReel) return;
+    if (reelId) {
+      router.push({
+        pathname: "/(main)/publishReel" as any,
+        params: { reelId: String(reelId) },
+      });
+      return;
+    }
+    if (!jobId) return;
     setPublishingAsReel(true);
     try {
       const video = await importVideoFromAi(jobId);
@@ -969,7 +1063,7 @@ export default function AiResults() {
     } finally {
       setPublishingAsReel(false);
     }
-  }, [jobId, publishingAsReel, router, showBanner, t]);
+  }, [jobId, reelId, publishingAsReel, router, showBanner, t]);
 
   const handleCopy = async (text: string) => {
     try {

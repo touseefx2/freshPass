@@ -1633,5 +1633,9 @@
   "reelTemplatesIntroTitle": "Studio-ready reels",
   "reelTemplatesIntroSubtitle": "Choose a template, drop in your media, and generate a polished reel in minutes.",
   "selectTemplateHintTitle": "Choose a template",
-  "loadingTemplates": "Loading templates…"
+  "loadingTemplates": "Loading templates…",
+  "aiRequestsTabTools": "الأدوات",
+  "aiRequestsTabReels": "الريلز",
+  "noReelRequests": "لا توجد عمليات إنشاء ريلز بعد",
+  "reelRequestsEmptySubtitle": "ستظهر هنا الريلز التي تنشئها من أدوات الذكاء الاصطناعي مع حالتها."
 }

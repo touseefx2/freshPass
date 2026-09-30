@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useRef } from "react";
+import React, { useMemo, useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,14 +16,18 @@ import StackHeader from "@/src/components/StackHeader";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints } from "@/src/services/endpoints";
+import { listMyReels, getGenerationStatus } from "@/src/services/reelsService";
+import type { OwnerReel, GenerationStatus } from "@/src/types/reels";
 import dayjs from "dayjs";
 import { MaterialIcons } from "@expo/vector-icons";
 import { moderateWidthScale } from "@/src/theme/dimensions";
 import RetryButton from "@/src/components/retryButton";
 import EmptyState from "@/src/components/emptyState";
+import Logger from "@/src/services/logger";
 
 const PER_PAGE = 20;
 const POLL_INTERVAL_MS = 10000;
+const REELS_POLL_MS = 8000;
 
 const HAIR_TRYON_JOB_TYPES = new Set([
   "generate_with_replicate",
@@ -63,11 +67,27 @@ type AiRequestsApiResponse = {
   };
 };
 
-type AiRequestSection = {
+type RequestTab = "tools" | "reels";
+
+/** Unified row for Tools jobs and Shotstack reels */
+type RequestListItem = {
+  key: string;
+  kind: "job" | "reel";
+  title: string;
+  /** UI status: completed | failed | processing */
+  status: string;
+  jobIdDisplay: string;
+  createdAt: string;
+  prompt?: string;
+  reelId?: number;
+  jobId?: string;
+};
+
+type RequestSection = {
   dayKey: string;
   title: string;
   count: number;
-  data: AiRequestJob[];
+  data: RequestListItem[];
 };
 
 function isHairTryonJob(job: AiRequestJob): boolean {
@@ -84,6 +104,17 @@ function filterJobsForRole(
 ): AiRequestJob[] {
   if (!shouldFilterHairTryon) return jobs;
   return jobs.filter(isHairTryonJob);
+}
+
+/** Shotstack-generated reels (listed on AI Requests → Reels) */
+function isShotstackGeneratedReel(reel: OwnerReel): boolean {
+  return reel.generation_status != null;
+}
+
+function mapGenerationToUiStatus(status: GenerationStatus | null | undefined): string {
+  if (status === "ready") return "completed";
+  if (status === "failed") return "failed";
+  return "processing";
 }
 
 function formatSectionDayLabel(dayKey: string, t: (key: string) => string): string {
@@ -103,32 +134,32 @@ function formatSectionDayLabel(dayKey: string, t: (key: string) => string): stri
 }
 
 function buildSections(
-  jobs: AiRequestJob[],
+  items: RequestListItem[],
   t: (key: string, options?: Record<string, unknown>) => string,
-): AiRequestSection[] {
-  const sectionsByDay = new Map<string, AiRequestJob[]>();
+): RequestSection[] {
+  const sectionsByDay = new Map<string, RequestListItem[]>();
   const orderedDayKeys: string[] = [];
 
-  for (const job of jobs) {
-    const dayKey = dayjs(job.created_at).format("YYYY-MM-DD");
+  for (const item of items) {
+    const dayKey = dayjs(item.createdAt).format("YYYY-MM-DD");
     if (!sectionsByDay.has(dayKey)) {
       sectionsByDay.set(dayKey, []);
       orderedDayKeys.push(dayKey);
     }
-    sectionsByDay.get(dayKey)!.push(job);
+    sectionsByDay.get(dayKey)!.push(item);
   }
 
   return orderedDayKeys.map((dayKey) => {
-    const dayJobs = sectionsByDay.get(dayKey) ?? [];
+    const dayItems = sectionsByDay.get(dayKey) ?? [];
     const dayLabel = formatSectionDayLabel(dayKey, t);
     return {
       dayKey,
       title: t("aiHistoryDayHeader", {
         date: dayLabel,
-        count: dayJobs.length,
+        count: dayItems.length,
       }),
-      count: dayJobs.length,
-      data: dayJobs,
+      count: dayItems.length,
+      data: dayItems,
     };
   });
 }
@@ -141,12 +172,54 @@ function formatTime(value: string): string {
   return value;
 }
 
+function jobToListItem(job: AiRequestJob): RequestListItem {
+  const jobType =
+    job.request_payload?.job_type ?? job.response?.job_type ?? "—";
+  const title =
+    typeof jobType === "string" ? jobType.replace(/_/g, " ") : String(jobType);
+  const promptRaw =
+    job.request_payload?.prompt ?? job.response?.prompt ?? "";
+  const prompt =
+    typeof promptRaw === "string"
+      ? promptRaw.trim()
+      : String(promptRaw ?? "").trim();
+
+  return {
+    key: `job-${job.job_id}`,
+    kind: "job",
+    title,
+    status: (job.status ?? "processing").toLowerCase(),
+    jobIdDisplay: job.job_id,
+    createdAt: job.created_at,
+    prompt: prompt.length > 0 ? prompt : undefined,
+    jobId: job.job_id,
+  };
+}
+
+function reelToListItem(
+  reel: OwnerReel,
+  generateReelLabel: string,
+): RequestListItem {
+  return {
+    key: `reel-${reel.id}`,
+    kind: "reel",
+    title: generateReelLabel,
+    status: mapGenerationToUiStatus(reel.generation_status),
+    jobIdDisplay: `reel_${reel.id}`,
+    createdAt: reel.created_at ?? reel.updated_at ?? new Date().toISOString(),
+    prompt: reel.caption?.trim() || undefined,
+    reelId: reel.id,
+  };
+}
+
 export default function AiRequests() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const params = useLocalSearchParams<{
     returnTo?: string;
     fromProcessingModal?: string;
+    tab?: string;
+    highlightReelId?: string;
   }>();
   const accessToken = useAppSelector((state) => state.user.accessToken);
   const isGuest = useAppSelector((state) => state.user.isGuest);
@@ -159,6 +232,17 @@ export default function AiRequests() {
   const headerTitle = isTryOnFlow ? t("tryOnList") : t("aiRequests");
   const shouldFilterHairTryon = isTryOnFlow || userRole !== "business";
   const canFetchHistory = Boolean(accessToken) && !isGuest;
+  const showReelsTab = !isTryOnFlow && userRole === "business";
+
+  const initialTab: RequestTab =
+    showReelsTab && params.tab === "reels" ? "reels" : "tools";
+  const [activeTab, setActiveTab] = useState<RequestTab>(initialTab);
+
+  useEffect(() => {
+    if (showReelsTab && params.tab === "reels") {
+      setActiveTab("reels");
+    }
+  }, [params.tab, showReelsTab]);
 
   const handleRobotPress = useCallback(() => {
     if (fromProcessingModal) {
@@ -174,6 +258,7 @@ export default function AiRequests() {
   }, [fromProcessingModal]);
 
   const [jobs, setJobs] = useState<AiRequestJob[]>([]);
+  const [reels, setReels] = useState<OwnerReel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -198,45 +283,30 @@ export default function AiRequests() {
       }
 
       if (!silent) {
-        if (append) {
-          setLoadingMore(true);
-        } else {
-          setLoading(true);
-        }
+        if (append) setLoadingMore(true);
+        else if (!refreshing) setLoading(true);
+        setLoadError(false);
       }
 
       try {
-        const response = await ApiService.get<AiRequestsApiResponse>(
+        const result = await ApiService.get<AiRequestsApiResponse>(
           aiRequestsEndpoints.list({ page, per_page: PER_PAGE }),
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-            },
-          },
         );
+        const raw = result?.data ?? [];
+        const filtered = filterJobsForRole(raw, shouldFilterHairTryon);
 
-        if (response?.data) {
-          const newData = filterJobsForRole(
-            response.data as AiRequestJob[],
-            shouldFilterHairTryon,
-          );
-          if (append) {
-            setJobs((prev) => [...prev, ...newData]);
-          } else {
-            setJobs(newData);
-          }
-          setCurrentPage(response.meta?.current_page ?? page);
-          const nextLink = response.links?.next;
-          setHasMore(!!nextLink);
-          setLoadError(false);
-        } else if (!append) {
-          setJobs([]);
-          setLoadError(false);
-        }
-      } catch {
-        if (!silent) {
-          setLoadError(true);
-        }
+        setJobs((prev) => {
+          if (!append) return filtered;
+          const existing = new Set(prev.map((j) => j.job_id));
+          return [...prev, ...filtered.filter((j) => !existing.has(j.job_id))];
+        });
+        setCurrentPage(page);
+        const nextUrl = result?.links?.next;
+        setHasMore(Boolean(nextUrl));
+        setLoadError(false);
+      } catch (error) {
+        Logger.error("Failed to load AI requests:", error);
+        if (!silent) setLoadError(true);
       } finally {
         if (!silent) {
           setLoading(false);
@@ -245,7 +315,67 @@ export default function AiRequests() {
         }
       }
     },
-    [accessToken, canFetchHistory, shouldFilterHairTryon],
+    [accessToken, canFetchHistory, refreshing, shouldFilterHairTryon],
+  );
+
+  const fetchReels = useCallback(
+    async (
+      page: number = 1,
+      append: boolean = false,
+      silent: boolean = false,
+    ) => {
+      if (!canFetchHistory || !accessToken || !showReelsTab) {
+        if (!silent) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
+        return;
+      }
+
+      if (!silent) {
+        if (append) setLoadingMore(true);
+        else if (!refreshing) setLoading(true);
+        setLoadError(false);
+      }
+
+      try {
+        const { reels: pageReels, meta } = await listMyReels(page, undefined, PER_PAGE);
+        const shotstackOnly = pageReels.filter(isShotstackGeneratedReel);
+
+        setReels((prev) => {
+          if (!append) return shotstackOnly;
+          const existing = new Set(prev.map((r) => r.id));
+          return [
+            ...prev,
+            ...shotstackOnly.filter((r) => !existing.has(r.id)),
+          ];
+        });
+        setCurrentPage(meta.current_page ?? page);
+        setHasMore(Boolean(meta.has_more));
+        setLoadError(false);
+      } catch (error) {
+        Logger.error("Failed to load Shotstack reels:", error);
+        if (!silent) setLoadError(true);
+      } finally {
+        if (!silent) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
+      }
+    },
+    [accessToken, canFetchHistory, refreshing, showReelsTab],
+  );
+
+  const fetchActive = useCallback(
+    (page: number = 1, append: boolean = false, silent: boolean = false) => {
+      if (activeTab === "reels") {
+        return fetchReels(page, append, silent);
+      }
+      return fetchJobs(page, append, silent);
+    },
+    [activeTab, fetchJobs, fetchReels],
   );
 
   useFocusEffect(
@@ -255,12 +385,14 @@ export default function AiRequests() {
         return;
       }
 
-      fetchJobs(1, false);
+      setCurrentPage(1);
+      setHasMore(true);
+      void fetchActive(1, false);
 
       const intervalId = setInterval(() => {
         if (isPollingRef.current || !canFetchHistory) return;
         isPollingRef.current = true;
-        fetchJobs(1, false, true).finally(() => {
+        fetchActive(1, false, true).finally(() => {
           isPollingRef.current = false;
         });
       }, POLL_INTERVAL_MS);
@@ -269,23 +401,87 @@ export default function AiRequests() {
         clearInterval(intervalId);
         isPollingRef.current = false;
       };
-    }, [canFetchHistory, fetchJobs]),
+    }, [canFetchHistory, fetchActive]),
   );
+
+  // Poll generation status for in-progress Shotstack reels
+  useEffect(() => {
+    if (activeTab !== "reels" || !showReelsTab) return;
+    const inProgress = reels.filter(
+      (r) =>
+        r.generation_status === "pending" ||
+        r.generation_status === "rendering",
+    );
+    if (inProgress.length === 0) return;
+
+    let cancelled = false;
+    const tick = async () => {
+      for (const reel of inProgress) {
+        try {
+          const status = await getGenerationStatus(reel.id);
+          if (cancelled) return;
+          setReels((prev) =>
+            prev.map((r) =>
+              r.id === reel.id
+                ? {
+                    ...r,
+                    generation_status: status.generation_status,
+                    generation_error: status.generation_error,
+                  }
+                : r,
+            ),
+          );
+        } catch (error) {
+          Logger.error(`Generation poll failed for reel ${reel.id}:`, error);
+        }
+      }
+    };
+
+    const id = setInterval(() => {
+      void tick();
+    }, REELS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [activeTab, reels, showReelsTab]);
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore || !canFetchHistory) return;
-    fetchJobs(currentPage + 1, true);
-  }, [loadingMore, hasMore, currentPage, fetchJobs, canFetchHistory]);
+    void fetchActive(currentPage + 1, true);
+  }, [loadingMore, hasMore, currentPage, fetchActive, canFetchHistory]);
 
   const handleRefresh = useCallback(() => {
     if (!canFetchHistory) return;
     setRefreshing(true);
-    fetchJobs(1, false);
-  }, [canFetchHistory, fetchJobs]);
+    void fetchActive(1, false);
+  }, [canFetchHistory, fetchActive]);
+
+  const handleTabChange = useCallback(
+    (tab: RequestTab) => {
+      if (tab === activeTab) return;
+      setActiveTab(tab);
+      setJobs([]);
+      setReels([]);
+      setCurrentPage(1);
+      setHasMore(true);
+      setLoading(true);
+      setLoadError(false);
+      // useFocusEffect re-runs when fetchActive identity changes with activeTab
+    },
+    [activeTab],
+  );
+
+  const listItems = useMemo((): RequestListItem[] => {
+    if (activeTab === "reels") {
+      return reels.map((r) => reelToListItem(r, t("generateReel")));
+    }
+    return jobs.map(jobToListItem);
+  }, [activeTab, jobs, reels, t]);
 
   const sections = useMemo(
-    () => buildSections(jobs, t),
-    [jobs, t],
+    () => buildSections(listItems, t),
+    [listItems, t],
   );
 
   const getStatusBadgeStyle = useCallback(
@@ -308,35 +504,54 @@ export default function AiRequests() {
     [colors],
   );
 
+  const formatStatusLabel = useCallback(
+    (status: string) => {
+      const s = (status ?? "").toLowerCase();
+      if (s === "completed") return t("completed");
+      if (s === "failed") return t("generationFailed");
+      if (s === "processing") return t("processingText").replace(/\.\.\.$/, "");
+      return status?.charAt(0).toUpperCase() + (status?.slice(1) ?? "");
+    },
+    [t],
+  );
+
   const renderItem = useCallback(
-    ({ item }: { item: AiRequestJob }) => {
-      const jobType =
-        item.request_payload?.job_type ?? item.response?.job_type ?? "—";
-      const jobTypeDisplay =
-        typeof jobType === "string" ? jobType.replace(/_/g, " ") : jobType;
-      const statusLabel =
-        item.status?.charAt(0).toUpperCase() + (item.status?.slice(1) ?? "");
+    ({ item }: { item: RequestListItem }) => {
       const statusBadgeStyle = getStatusBadgeStyle(item.status);
       const statusColor = getStatusTextColor(item.status);
-      const promptRaw =
-        item.request_payload?.prompt ?? item.response?.prompt ?? "";
-      const prompt =
-        typeof promptRaw === "string"
-          ? promptRaw.trim()
-          : String(promptRaw ?? "").trim();
+      const isHighlighted =
+        item.kind === "reel" &&
+        params.highlightReelId != null &&
+        String(item.reelId) === String(params.highlightReelId);
 
       return (
         <TouchableOpacity
-          style={[styles.jobCard, styles.shadow]}
+          style={[
+            styles.jobCard,
+            styles.shadow,
+            isHighlighted && styles.jobCardHighlighted,
+          ]}
           activeOpacity={0.7}
           onPress={() => {
-            router.push({
-              pathname: "/aiResults",
-              params: {
-                jobId: item.job_id,
-                ...(params.returnTo ? { returnTo: params.returnTo } : {}),
-              },
-            });
+            if (item.kind === "reel" && item.reelId != null) {
+              router.push({
+                pathname: "/aiResults",
+                params: {
+                  reelId: String(item.reelId),
+                  ...(params.returnTo ? { returnTo: params.returnTo } : {}),
+                },
+              });
+              return;
+            }
+            if (item.jobId) {
+              router.push({
+                pathname: "/aiResults",
+                params: {
+                  jobId: item.jobId,
+                  ...(params.returnTo ? { returnTo: params.returnTo } : {}),
+                },
+              });
+            }
           }}
         >
           <View style={styles.jobCardInner}>
@@ -348,13 +563,13 @@ export default function AiRequests() {
                   numberOfLines={1}
                   ellipsizeMode="middle"
                 >
-                  {jobTypeDisplay}
+                  {item.title}
                 </Text>
                 <View style={[styles.jobCardStatusBadge, statusBadgeStyle]}>
                   <Text
                     style={[styles.jobCardStatusText, { color: statusColor }]}
                   >
-                    {statusLabel}
+                    {formatStatusLabel(item.status)}
                   </Text>
                 </View>
               </View>
@@ -363,23 +578,23 @@ export default function AiRequests() {
                 numberOfLines={1}
                 ellipsizeMode="middle"
               >
-                {t("jobId")}: {item.job_id}
+                {t("jobId")}: {item.jobIdDisplay}
               </Text>
-              {prompt.length > 0 ? (
+              {item.prompt ? (
                 <View style={styles.jobCardPromptBlock}>
                   <Text
                     style={styles.jobCardPromptText}
                     numberOfLines={2}
                     ellipsizeMode="tail"
                   >
-                    {prompt}
+                    {item.prompt}
                   </Text>
                 </View>
               ) : null}
               <View style={styles.jobCardFooter}>
                 <Text style={styles.jobCardMetaLabel}>{t("aiHistoryTime")}</Text>
                 <Text style={styles.jobCardMetaValue} numberOfLines={1}>
-                  {formatTime(item.created_at)}
+                  {formatTime(item.createdAt)}
                 </Text>
               </View>
             </View>
@@ -387,13 +602,21 @@ export default function AiRequests() {
         </TouchableOpacity>
       );
     },
-    [styles, t, getStatusBadgeStyle, getStatusTextColor, params.returnTo],
+    [
+      styles,
+      t,
+      getStatusBadgeStyle,
+      getStatusTextColor,
+      formatStatusLabel,
+      params.returnTo,
+      params.highlightReelId,
+    ],
   );
 
-  const keyExtractor = useCallback((item: AiRequestJob) => item.job_id, []);
+  const keyExtractor = useCallback((item: RequestListItem) => item.key, []);
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: AiRequestSection }) => (
+    ({ section }: { section: RequestSection }) => (
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionHeaderText}>{section.title}</Text>
       </View>
@@ -410,26 +633,76 @@ export default function AiRequests() {
     );
   }, [loadingMore, styles.loadingFooter, theme.primary]);
 
-  const renderListHeader = useCallback(() => {
-    if (!loadError || jobs.length === 0) return null;
+  const renderTabs = useCallback(() => {
+    if (!showReelsTab) return null;
     return (
-      <View style={styles.errorBanner}>
-        <Text style={styles.errorBannerText}>{t("aiHistoryLoadError")}</Text>
-        <RetryButton
-          onPress={() => fetchJobs(1, false)}
-          loading={loading && !refreshing}
-        />
+      <View style={styles.tabsRow}>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "tools" && styles.tabButtonActive,
+          ]}
+          onPress={() => handleTabChange("tools")}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "tools" && styles.tabButtonTextActive,
+            ]}
+          >
+            {t("aiRequestsTabTools")}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === "reels" && styles.tabButtonActive,
+          ]}
+          onPress={() => handleTabChange("reels")}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === "reels" && styles.tabButtonTextActive,
+            ]}
+          >
+            {t("aiRequestsTabReels")}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }, [showReelsTab, styles, activeTab, handleTabChange, t]);
+
+  const renderListHeader = useCallback(() => {
+    const errorBanner =
+      loadError && listItems.length > 0 ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{t("aiHistoryLoadError")}</Text>
+          <RetryButton
+            onPress={() => void fetchActive(1, false)}
+            loading={loading && !refreshing}
+          />
+        </View>
+      ) : null;
+
+    return (
+      <View>
+        {renderTabs()}
+        {errorBanner}
       </View>
     );
   }, [
     loadError,
-    jobs.length,
+    listItems.length,
     styles.errorBanner,
     styles.errorBannerText,
     t,
-    fetchJobs,
+    fetchActive,
     loading,
     refreshing,
+    renderTabs,
   ]);
 
   const listEmptyComponent = useCallback(() => {
@@ -452,7 +725,19 @@ export default function AiRequests() {
           title={t("aiHistoryLoadErrorTitle")}
           subtitle={t("aiHistoryLoadError")}
           actionTitle={t("retry")}
-          onActionPress={() => fetchJobs(1, false)}
+          onActionPress={() => void fetchActive(1, false)}
+        />
+      );
+    }
+
+    if (activeTab === "reels") {
+      return (
+        <EmptyState
+          icon="movie-filter"
+          title={t("noReelRequests")}
+          subtitle={t("reelRequestsEmptySubtitle")}
+          actionTitle={t("exploreAiTools")}
+          onActionPress={() => router.back()}
         />
       );
     }
@@ -470,30 +755,10 @@ export default function AiRequests() {
         onActionPress={isTryOnFlow ? undefined : () => router.back()}
       />
     );
-  }, [loading, isGuest, loadError, isTryOnFlow, t, fetchJobs]);
+  }, [loading, isGuest, loadError, isTryOnFlow, activeTab, t, fetchActive]);
 
-  if (loading && jobs.length === 0 && !loadError && canFetchHistory) {
-    return (
-      <View style={styles.safeArea}>
-        <StackHeader
-          title={headerTitle}
-          rightIcon={
-            isTryOnFlow ? undefined : (
-              <MaterialIcons
-                name="smart-toy"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            )
-          }
-          onRightPress={handleRobotPress}
-        />
-        <View style={styles.listContent}>
-          <ActivityIndicator size="large" color={theme.primary} />
-        </View>
-      </View>
-    );
-  }
+  const showInitialLoader =
+    loading && listItems.length === 0 && !loadError && canFetchHistory;
 
   return (
     <View style={styles.safeArea}>
@@ -515,28 +780,35 @@ export default function AiRequests() {
         }
         onRightPress={handleRobotPress}
       />
-      <SectionList
-        sections={sections}
-        renderItem={renderItem}
-        renderSectionHeader={renderSectionHeader}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.4}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={listEmptyComponent}
-        ListHeaderComponent={renderListHeader}
-        stickySectionHeadersEnabled={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.primary}
-            colors={[theme.primary]}
-          />
-        }
-      />
+      {showInitialLoader ? (
+        <View style={styles.listContent}>
+          {renderTabs()}
+          <ActivityIndicator size="large" color={theme.primary} />
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={renderFooter}
+          ListEmptyComponent={listEmptyComponent}
+          ListHeaderComponent={renderListHeader}
+          stickySectionHeadersEnabled={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+            />
+          }
+        />
+      )}
     </View>
   );
 }

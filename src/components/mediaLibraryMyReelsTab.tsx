@@ -430,13 +430,24 @@ export default function MediaLibraryMyReelsTab({
           status,
           REELS_MINE_PER_PAGE,
         );
+        // Shotstack drafts / in-progress live on AI Requests → Reels, not Media Library
+        const libraryReels = pageReels.filter((r) => {
+          const gs = r.generation_status;
+          if (gs == null) return true;
+          if (gs === "pending" || gs === "rendering" || gs === "failed") {
+            return false;
+          }
+          // ready draft → AI Requests until published
+          if (gs === "ready" && r.status !== "published") return false;
+          return true;
+        });
         setReels((prev) =>
           append
             ? [
                 ...prev,
-                ...pageReels.filter((r) => !prev.some((x) => x.id === r.id)),
+                ...libraryReels.filter((r) => !prev.some((x) => x.id === r.id)),
               ]
-            : pageReels,
+            : libraryReels,
         );
         setPage(meta.current_page ?? pageToLoad);
         setHasMore(Boolean(meta.has_more));

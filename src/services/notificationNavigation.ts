@@ -165,7 +165,7 @@ function openOwnerReelsList(
  * - type "appointment_checkout" + subType appointment_checkout_failed → bookingNow (if business_id) or notification list — never appointment details
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
- * - type "reel_generation" + reel_id (business) → Account → Media Library / My Reels (highlight)
+ * - type "reel_generation" + reel_id (business) → aiResults for that Shotstack reel
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
  * - type "customer_subscription" + model_id (business role) → Profile → Customers → businessCustomerDetail
  * - type "subscription" (customer role) → Profile → Customer subscriptions
@@ -530,9 +530,7 @@ export function navigateFromNotificationData(
     }
   }
 
-  // Shotstack template reel finished (business only) — Media Library / My Reels
-  // MD: tap → My Reels with highlightReelId (ready or failed). Not AI Results.
-  // Chain: Profile/Account tab first, then Media Library (toolList without aiTools mode).
+  // Shotstack template reel finished (business only) → AI Result (same as airequest)
   if (type === "reel_generation") {
     const userRole = store.getState().user.userRole;
     const reelId = pickNumber(data, "reel_id", "model_id");
@@ -547,12 +545,23 @@ export function navigateFromNotificationData(
       return;
     }
 
-    openOwnerReelsList(router, {
-      fromInAppList: options?.fromInAppList,
-      highlightReelId: reelId,
-    });
+    const go = () => {
+      router.push({
+        pathname: "/aiResults",
+        params: { reelId: String(reelId), fromNotification: "1" },
+      });
+    };
+
+    if (options?.fromInAppList) {
+      if (router.canGoBack()) {
+        router.back();
+      }
+      setTimeout(go, AI_MEMORY_BACK_DELAY_MS);
+    } else {
+      go();
+    }
     Logger.log(
-      "------>navigateFromNotificationData (reel_generation) -> Account → Media Library / My Reels",
+      "------>navigateFromNotificationData (reel_generation) -> aiResults",
       { reel_id: reelId, status },
     );
     return;
