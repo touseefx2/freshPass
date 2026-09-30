@@ -2,7 +2,7 @@ import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { mediaEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
-import { prepareVideoForUpload } from "@/src/utils/prepareImageForUpload";
+import { prepareVideoForUpload, prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   MediaDeleteResponse,
   MediaItemResponse,
@@ -297,6 +297,128 @@ export function uploadVideo(
 
       // Large videos — allow up to 10 minutes
       xhr.timeout = 10 * 60 * 1000;
+      xhr.send(formData);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+export type UploadImageParams = {
+  uri: string;
+  mimeType?: string | null;
+  fileName?: string | null;
+  sourceType: MediaUploadSourceType;
+  /** Still images used as short clips in Shotstack templates */
+  durationSeconds?: number;
+  width?: number | null;
+  height?: number | null;
+};
+
+/**
+ * Upload a still image as a media asset (template slots with accepted_types: image).
+ * POST /api/media with multipart field `image`.
+ */
+export function uploadImage(
+  params: UploadImageParams,
+  onProgress?: (percent: number) => void,
+): Promise<MediaVideo> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const hasInternet = await checkInternetConnection();
+      if (!hasInternet) {
+        const error = new Error("No internet connection");
+        (error as any).isNoInternet = true;
+        reject(error);
+        return;
+      }
+
+      const accessToken = getAccessToken();
+      if (!accessToken) {
+        reject(new Error("Not authenticated"));
+        return;
+      }
+
+      const prepared = await prepareImageForUpload(
+        params.uri,
+        params.fileName?.replace(/\.[^.]+$/, "") || "template_image",
+      );
+      const mimeType = prepared.type || "image/jpeg";
+      const fileName = prepared.name || params.fileName || "photo.jpg";
+
+      const formData = new FormData();
+      formData.append("image", {
+        uri: prepared.uri,
+        type: mimeType,
+        name: fileName,
+      } as any);
+      formData.append("source_type", params.sourceType);
+      const durationSeconds = Math.max(
+        1,
+        Math.min(
+          MAX_VIDEO_UPLOAD_SECONDS,
+          Math.round(params.durationSeconds ?? 3),
+        ),
+      );
+      formData.append("duration_seconds", String(durationSeconds));
+      if (params.width != null) {
+        formData.append("width", String(params.width));
+      }
+      if (params.height != null) {
+        formData.append("height", String(params.height));
+      }
+
+      const baseUrl = BASE_URL.endsWith("/")
+        ? BASE_URL.slice(0, -1)
+        : BASE_URL;
+      const url = `${baseUrl}${mediaEndpoints.upload}`;
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+      xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+      xhr.setRequestHeader("Accept", "application/json");
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable || !onProgress) return;
+        const percent = Math.min(
+          100,
+          Math.round((event.loaded / event.total) * 100),
+        );
+        onProgress(percent);
+      };
+
+      xhr.onload = () => {
+        try {
+          const json = JSON.parse(xhr.responseText || "{}") as MediaItemResponse;
+          if (xhr.status >= 200 && xhr.status < 300 && json?.data) {
+            onProgress?.(100);
+            resolve(json.data);
+            return;
+          }
+          const message =
+            json?.message ||
+            (json as any)?.errors?.image?.[0] ||
+            (json as any)?.errors?.video?.[0] ||
+            `Upload failed (${xhr.status})`;
+          const error = new Error(message);
+          (error as any).status = xhr.status;
+          (error as any).response = json;
+          reject(error);
+        } catch (parseError) {
+          Logger.error("Failed to parse image upload response:", parseError);
+          reject(new Error(`Upload failed (${xhr.status})`));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error("Network error during upload"));
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error("Upload timed out"));
+      };
+
+      xhr.timeout = 5 * 60 * 1000;
       xhr.send(formData);
     } catch (error) {
       reject(error);

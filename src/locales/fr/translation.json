@@ -1637,5 +1637,14 @@
   "aiRequestsTabTools": "Outils",
   "aiRequestsTabReels": "Reels",
   "noReelRequests": "Aucune génération de reel pour le moment",
-  "reelRequestsEmptySubtitle": "Les reels générés depuis les outils IA apparaîtront ici avec leur statut."
+  "reelRequestsEmptySubtitle": "Les reels générés depuis les outils IA apparaîtront ici avec leur statut.",
+  "photosNeededImages": "{{count}} photos nécessaires",
+  "photosNeededImagesOne": "1 photo nécessaire",
+  "videosNeeded": "{{count}} vidéos nécessaires",
+  "videosNeededOne": "1 vidéo nécessaire",
+  "slotAcceptsPhoto": "Appuyez pour choisir une photo",
+  "slotAcceptsVideo": "Appuyez pour choisir une vidéo",
+  "slotAcceptsPhotoOrVideo": "Appuyez pour choisir une photo ou une vidéo",
+  "slotRequiresPhoto": "Cet emplacement n'accepte que des photos.",
+  "slotRequiresVideo": "Cet emplacement n'accepte que des vidéos (mp4, mov, m4v ou webm)."
 }

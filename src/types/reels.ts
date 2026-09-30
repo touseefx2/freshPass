@@ -315,6 +315,15 @@ export type ReportReason = {
 export const REPORT_REASONS_REQUIRING_NOTE = ["copyright", "other"];
 
 /** Shotstack reel templates (GET /api/reel-templates) */
+export type ReelTemplateMediaAcceptedType = "image" | "video";
+
+/** One media slot on a Shotstack template (phase2 accepted_types shape) */
+export type ReelTemplateMediaField = {
+  key: string;
+  label: string;
+  accepted_types: ReelTemplateMediaAcceptedType[];
+};
+
 export type ReelTemplate = {
   id: number;
   name: string;
@@ -324,13 +333,40 @@ export type ReelTemplate = {
   category: string;
   merge_fields: string[];
   text_fields: string[];
-  media_fields: string[];
+  /** New API: objects with accepted_types. Legacy: string keys. */
+  media_fields: ReelTemplateMediaField[] | string[];
   media_count: number;
   has_music: boolean;
   music_name: string | null;
   is_active: boolean;
   created_at: string;
 };
+
+/** Normalize legacy string[] or new object[] media_fields */
+export function normalizeReelTemplateMediaFields(
+  fields: ReelTemplate["media_fields"] | null | undefined,
+): ReelTemplateMediaField[] {
+  if (!fields?.length) return [];
+  return fields.map((field, index) => {
+    if (typeof field === "string") {
+      return {
+        key: field,
+        label: `Slot ${index + 1}`,
+        // Legacy templates had no type info; media upload is video-first
+        accepted_types: ["video", "image"],
+      };
+    }
+    const types = (field.accepted_types ?? []).filter(
+      (t): t is ReelTemplateMediaAcceptedType =>
+        t === "image" || t === "video",
+    );
+    return {
+      key: field.key,
+      label: field.label?.trim() || `Slot ${index + 1}`,
+      accepted_types: types.length > 0 ? types : ["image", "video"],
+    };
+  });
+}
 
 export type GenerateReelPayload = {
   template_id: number;

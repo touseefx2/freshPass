@@ -32,6 +32,7 @@ import Logger from "@/src/services/logger";
 import {
   listVideos,
   MAX_VIDEO_UPLOAD_SECONDS,
+  uploadImage,
   uploadVideo,
   waitForMediaReady,
 } from "@/src/services/mediaLibraryService";
@@ -53,7 +54,11 @@ import {
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import type { MediaUploadSourceType, MediaVideo } from "@/src/types/media";
-import type { ReelTemplate } from "@/src/types/reels";
+import type {
+  ReelTemplate,
+  ReelTemplateMediaField,
+} from "@/src/types/reels";
+import { normalizeReelTemplateMediaFields } from "@/src/types/reels";
 import { isLikelyVideoUri } from "@/src/utils/prepareImageForUpload";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -67,6 +72,48 @@ const iosCompatiblePickerOptions =
 
 /** Still images uploaded as media assets use a short clip duration for templates. */
 const IMAGE_MEDIA_DURATION_SECONDS = 3;
+
+function slotAcceptsImage(field: ReelTemplateMediaField | undefined): boolean {
+  return field?.accepted_types?.includes("image") ?? true;
+}
+
+function slotAcceptsVideo(field: ReelTemplateMediaField | undefined): boolean {
+  return field?.accepted_types?.includes("video") ?? true;
+}
+
+function mediaRequirementLabel(
+  fields: ReelTemplateMediaField[],
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const count = fields.length;
+  if (count === 0) return "";
+  const hasImage = fields.some((f) => f.accepted_types.includes("image"));
+  const hasVideo = fields.some((f) => f.accepted_types.includes("video"));
+  if (hasImage && !hasVideo) {
+    return count === 1
+      ? t("photosNeededImagesOne")
+      : t("photosNeededImages", { count });
+  }
+  if (hasVideo && !hasImage) {
+    return count === 1
+      ? t("videosNeededOne")
+      : t("videosNeeded", { count });
+  }
+  return count === 1
+    ? t("photosNeededOne")
+    : t("photosNeeded", { count });
+}
+
+function slotTypeHint(
+  field: ReelTemplateMediaField,
+  t: (key: string) => string,
+): string {
+  const hasImage = field.accepted_types.includes("image");
+  const hasVideo = field.accepted_types.includes("video");
+  if (hasImage && !hasVideo) return t("slotAcceptsPhoto");
+  if (hasVideo && !hasImage) return t("slotAcceptsVideo");
+  return t("slotAcceptsPhotoOrVideo");
+}
 
 type CategoryOption = { id: number; name: string };
 
@@ -262,6 +309,14 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(6),
+    },
+    sectionTitleSm: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(10),
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
     },
     section: {
       marginBottom: moderateHeightScale(18),
@@ -689,11 +744,24 @@ export default function ReelTemplatesScreen() {
     [selectedId, templates],
   );
 
+  const mediaFields = useMemo(
+    () => normalizeReelTemplateMediaFields(selected?.media_fields),
+    [selected?.media_fields],
+  );
+
+  const activeSlotField = useMemo(
+    () =>
+      mediaPickerSlot != null ? mediaFields[mediaPickerSlot] : undefined,
+    [mediaFields, mediaPickerSlot],
+  );
+
   const applyTemplate = useCallback(
     (template: ReelTemplate) => {
       setSelectedId(template.id);
       setDropdownOpen(false);
-      const count = template.media_count || template.media_fields?.length || 0;
+      const fields = normalizeReelTemplateMediaFields(template.media_fields);
+      const count =
+        template.media_count || fields.length || 0;
       setSelectedMedia(Array.from({ length: count }, () => null));
       const initialTexts: Record<string, string> = {};
       for (const field of template.text_fields || []) {
@@ -815,8 +883,15 @@ export default function ReelTemplatesScreen() {
 
   const openAppLibraryPicker = useCallback(async () => {
     const slotIndex = mediaPickerSlot;
+    const slotField =
+      slotIndex != null ? mediaFields[slotIndex] : activeSlotField;
     setSourcePickerVisible(false);
     if (slotIndex == null) return;
+    if (!slotAcceptsVideo(slotField)) {
+      showBanner(t("error"), t("slotRequiresPhoto"), "error", 3000);
+      setMediaPickerSlot(null);
+      return;
+    }
     setLibraryPickerVisible(true);
     setLoadingLibrary(true);
     try {
@@ -829,7 +904,14 @@ export default function ReelTemplatesScreen() {
     } finally {
       setLoadingLibrary(false);
     }
-  }, [closeLibraryPicker, mediaPickerSlot, showBanner, t]);
+  }, [
+    activeSlotField,
+    closeLibraryPicker,
+    mediaFields,
+    mediaPickerSlot,
+    showBanner,
+    t,
+  ]);
 
   const pickMedia = useCallback(
     (video: MediaVideo) => {
@@ -845,6 +927,7 @@ export default function ReelTemplatesScreen() {
     async (
       asset: ImagePicker.ImagePickerAsset,
       sourceType: MediaUploadSourceType,
+      slotField: ReelTemplateMediaField | undefined,
     ) => {
       if (mediaPickerSlot == null || !asset.uri) return;
 
@@ -857,6 +940,18 @@ export default function ReelTemplatesScreen() {
         asset.type === "video" ||
         mime.startsWith("video/") ||
         isLikelyVideoUri(asset.uri);
+
+      const acceptsImage = slotAcceptsImage(slotField);
+      const acceptsVideo = slotAcceptsVideo(slotField);
+
+      if (isVideo && !acceptsVideo) {
+        showBanner(t("error"), t("slotRequiresPhoto"), "error", 3500);
+        return;
+      }
+      if (!isVideo && !acceptsImage) {
+        showBanner(t("error"), t("slotRequiresVideo"), "error", 3500);
+        return;
+      }
 
       const durationRaw =
         typeof asset.duration === "number" && asset.duration > 0
@@ -879,19 +974,28 @@ export default function ReelTemplatesScreen() {
 
       setUploadingMedia(true);
       try {
-        const uploaded = await uploadVideo({
-          uri: asset.uri,
-          mimeType: mime || (isVideo ? "video/mp4" : "image/jpeg"),
-          fileName:
-            asset.fileName || (isVideo ? "video.mp4" : "photo.jpg"),
-          sourceType,
-          durationSeconds: Math.min(
-            MAX_VIDEO_UPLOAD_SECONDS,
-            durationSeconds,
-          ),
-          width: asset.width,
-          height: asset.height,
-        });
+        const uploaded = isVideo
+          ? await uploadVideo({
+              uri: asset.uri,
+              mimeType: mime || "video/mp4",
+              fileName: asset.fileName || "video.mp4",
+              sourceType,
+              durationSeconds: Math.min(
+                MAX_VIDEO_UPLOAD_SECONDS,
+                durationSeconds,
+              ),
+              width: asset.width,
+              height: asset.height,
+            })
+          : await uploadImage({
+              uri: asset.uri,
+              mimeType: mime || "image/jpeg",
+              fileName: asset.fileName || "photo.jpg",
+              sourceType,
+              durationSeconds: IMAGE_MEDIA_DURATION_SECONDS,
+              width: asset.width,
+              height: asset.height,
+            });
         const ready = await waitForMediaReady(uploaded.id);
         assignMediaToSlot(ready, slotIndex);
       } catch (error: any) {
@@ -910,6 +1014,7 @@ export default function ReelTemplatesScreen() {
   );
 
   const handleSelectFromGallery = useCallback(async () => {
+    const slotField = activeSlotField;
     setSourcePickerVisible(false);
     const hasPermission = await handleMediaLibraryPermission();
     if (!hasPermission) {
@@ -917,16 +1022,25 @@ export default function ReelTemplatesScreen() {
       return;
     }
 
+    const acceptsImage = slotAcceptsImage(slotField);
+    const acceptsVideo = slotAcceptsVideo(slotField);
+    const mediaTypes: ("images" | "videos")[] =
+      acceptsImage && acceptsVideo
+        ? ["images", "videos"]
+        : acceptsImage
+          ? ["images"]
+          : ["videos"];
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images", "videos"],
+        mediaTypes,
         allowsMultipleSelection: false,
         quality: 0.8,
         allowsEditing: false,
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedAsset(result.assets[0], "device");
+        await uploadPickedAsset(result.assets[0], "device", slotField);
       } else {
         setMediaPickerSlot(null);
       }
@@ -935,9 +1049,10 @@ export default function ReelTemplatesScreen() {
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
       setMediaPickerSlot(null);
     }
-  }, [showBanner, t, uploadPickedAsset]);
+  }, [activeSlotField, showBanner, t, uploadPickedAsset]);
 
   const handleSelectFromCamera = useCallback(async () => {
+    const slotField = activeSlotField;
     setSourcePickerVisible(false);
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) {
@@ -945,15 +1060,26 @@ export default function ReelTemplatesScreen() {
       return;
     }
 
+    const acceptsImage = slotAcceptsImage(slotField);
+    const acceptsVideo = slotAcceptsVideo(slotField);
+    // Prefer photo when slot allows images; otherwise record video
+    const mediaTypes =
+      acceptsImage
+        ? ImagePicker.MediaTypeOptions.Images
+        : ImagePicker.MediaTypeOptions.Videos;
+
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes,
         quality: 0.8,
         allowsEditing: false,
+        ...(acceptsVideo && !acceptsImage
+          ? { videoMaxDuration: MAX_VIDEO_UPLOAD_SECONDS }
+          : {}),
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedAsset(result.assets[0], "camera");
+        await uploadPickedAsset(result.assets[0], "camera", slotField);
       } else {
         setMediaPickerSlot(null);
       }
@@ -962,7 +1088,7 @@ export default function ReelTemplatesScreen() {
       showBanner(t("error"), t("failedToTakePhoto"), "error", 3000);
       setMediaPickerSlot(null);
     }
-  }, [showBanner, t, uploadPickedAsset]);
+  }, [activeSlotField, showBanner, t, uploadPickedAsset]);
 
   const canGenerate = useMemo(() => {
     if (!selected) return false;
@@ -981,7 +1107,7 @@ export default function ReelTemplatesScreen() {
       .map((m) => m?.id)
       .filter((id): id is number => id != null);
 
-    if (mediaIds.length !== selected.media_count) {
+    if (mediaIds.length !== mediaFields.length) {
       showBanner(t("error"), t("selectAllMediaSlots"), "error", 2500);
       return;
     }
@@ -1027,6 +1153,7 @@ export default function ReelTemplatesScreen() {
     canGenerate,
     caption,
     categoryId,
+    mediaFields.length,
     selected,
     selectedMedia,
     showBanner,
@@ -1044,11 +1171,7 @@ export default function ReelTemplatesScreen() {
   }, [router]);
 
   const mediaLabel =
-    selected == null
-      ? ""
-      : selected.media_count === 1
-        ? t("photosNeededOne")
-        : t("photosNeeded", { count: selected.media_count });
+    selected == null ? "" : mediaRequirementLabel(mediaFields, t);
 
   const musicLabel = selected
     ? formatMusicName(selected.music_name) || t("includesMusic")
@@ -1269,10 +1392,16 @@ export default function ReelTemplatesScreen() {
               <Text style={styles.sectionTitleSm}>{t("selectMedia")}</Text>
               <View style={styles.slotsRow}>
                 {selectedMedia.map((media, index) => {
-                  const filled = !!(media?.thumbnail_url || media?.playback_url);
+                  const field = mediaFields[index];
+                  const filled = !!(media?.thumbnail_url || media?.playback_url || media?.url);
+                  const thumbUri =
+                    media?.thumbnail_url ||
+                    media?.playback_url ||
+                    media?.url ||
+                    null;
                   return (
                     <TouchableOpacity
-                      key={`slot-${index}`}
+                      key={field?.key ?? `slot-${index}`}
                       style={[
                         styles.slotCard,
                         !filled && styles.slotCardEmpty,
@@ -1280,11 +1409,9 @@ export default function ReelTemplatesScreen() {
                       onPress={() => openSourcePicker(index)}
                       activeOpacity={0.85}
                     >
-                      {filled ? (
+                      {filled && thumbUri ? (
                         <Image
-                          source={{
-                            uri: media!.thumbnail_url || media!.playback_url!,
-                          }}
+                          source={{ uri: thumbUri }}
                           style={styles.slotThumb}
                         />
                       ) : (
@@ -1292,7 +1419,14 @@ export default function ReelTemplatesScreen() {
                           style={[styles.slotThumb, styles.slotThumbPlaceholder]}
                         >
                           <MaterialIcons
-                            name="add-photo-alternate"
+                            name={
+                              slotAcceptsImage(field) && !slotAcceptsVideo(field)
+                                ? "add-photo-alternate"
+                                : !slotAcceptsImage(field) &&
+                                    slotAcceptsVideo(field)
+                                  ? "videocam"
+                                  : "add-photo-alternate"
+                            }
                             size={moderateWidthScale(22)}
                             color={theme.buttonBack}
                           />
@@ -1300,12 +1434,14 @@ export default function ReelTemplatesScreen() {
                       )}
                       <View style={styles.slotTextCol}>
                         <Text style={styles.slotTitle}>
-                          {t("mediaSlot", { number: index + 1 })}
+                          {field?.label || t("mediaSlot", { number: index + 1 })}
                         </Text>
                         <Text style={styles.slotSub} numberOfLines={1}>
                           {media
                             ? media.original_name || t("mediaSelected")
-                            : t("tapToSelectMedia")}
+                            : field
+                              ? slotTypeHint(field, t)
+                              : t("tapToSelectMedia")}
                         </Text>
                       </View>
                       <View style={styles.slotChevron}>
@@ -1430,7 +1566,9 @@ export default function ReelTemplatesScreen() {
       <ModalizeBottomSheet
         visible={sourcePickerVisible}
         onClose={dismissSourcePicker}
-        title={t("selectMedia")}
+        title={
+          activeSlotField?.label || t("selectMedia")
+        }
       >
         <TouchableOpacity
           style={styles.optionItem}
@@ -1443,41 +1581,59 @@ export default function ReelTemplatesScreen() {
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>{t("fromGallery")}</Text>
+          <View style={styles.optionTextCol}>
+            <Text style={styles.optionTitle}>{t("fromGallery")}</Text>
+            <Text style={styles.optionDesc}>
+              {activeSlotField
+                ? slotTypeHint(activeSlotField, t)
+                : t("tapToSelectMedia")}
+            </Text>
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.optionItem}
+          style={[
+            styles.optionItem,
+            !slotAcceptsVideo(activeSlotField) && styles.optionItemLast,
+          ]}
           onPress={handleSelectFromCamera}
           activeOpacity={0.7}
         >
           <MaterialIcons
-            name="camera-alt"
+            name={
+              slotAcceptsImage(activeSlotField) ? "camera-alt" : "videocam"
+            }
             size={iconScale(24)}
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>{t("fromCamera")}</Text>
+          <Text style={styles.optionText}>
+            {slotAcceptsImage(activeSlotField)
+              ? t("fromCamera")
+              : t("recordVideo")}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.optionItem, styles.optionItemLast]}
-          onPress={openAppLibraryPicker}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons
-            name="video-library"
-            size={iconScale(24)}
-            color={theme.darkGreen}
-            style={styles.optionIcon}
-          />
-          <View style={styles.optionTextCol}>
-            <Text style={styles.optionTitle}>{t("fromAppMediaLibrary")}</Text>
-            <Text style={styles.optionDesc}>
-              {t("fromAppMediaLibraryDesc")}
-            </Text>
-          </View>
-        </TouchableOpacity>
+        {slotAcceptsVideo(activeSlotField) ? (
+          <TouchableOpacity
+            style={[styles.optionItem, styles.optionItemLast]}
+            onPress={openAppLibraryPicker}
+            activeOpacity={0.7}
+          >
+            <MaterialIcons
+              name="video-library"
+              size={iconScale(24)}
+              color={theme.darkGreen}
+              style={styles.optionIcon}
+            />
+            <View style={styles.optionTextCol}>
+              <Text style={styles.optionTitle}>{t("fromAppMediaLibrary")}</Text>
+              <Text style={styles.optionDesc}>
+                {t("fromAppMediaLibraryDesc")}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
       </ModalizeBottomSheet>
 
       <Modal

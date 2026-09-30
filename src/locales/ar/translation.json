@@ -1637,5 +1637,14 @@
   "aiRequestsTabTools": "الأدوات",
   "aiRequestsTabReels": "الريلز",
   "noReelRequests": "لا توجد عمليات إنشاء ريلز بعد",
-  "reelRequestsEmptySubtitle": "ستظهر هنا الريلز التي تنشئها من أدوات الذكاء الاصطناعي مع حالتها."
+  "reelRequestsEmptySubtitle": "ستظهر هنا الريلز التي تنشئها من أدوات الذكاء الاصطناعي مع حالتها.",
+  "photosNeededImages": "يلزم {{count}} صور",
+  "photosNeededImagesOne": "يلزم صورة واحدة",
+  "videosNeeded": "يلزم {{count}} فيديوهات",
+  "videosNeededOne": "يلزم فيديو واحد",
+  "slotAcceptsPhoto": "اضغط لاختيار صورة",
+  "slotAcceptsVideo": "اضغط لاختيار فيديو",
+  "slotAcceptsPhotoOrVideo": "اضغط لاختيار صورة أو فيديو",
+  "slotRequiresPhoto": "هذه الخانة تقبل الصور فقط.",
+  "slotRequiresVideo": "هذه الخانة تقبل الفيديو فقط (mp4 أو mov أو m4v أو webm)."
 }

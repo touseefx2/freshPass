@@ -1637,5 +1637,14 @@
   "aiRequestsTabTools": "ツール",
   "aiRequestsTabReels": "リール",
   "noReelRequests": "リール生成はまだありません",
-  "reelRequestsEmptySubtitle": "AIツールで生成したリールがステータス付きでここに表示されます。"
+  "reelRequestsEmptySubtitle": "AIツールで生成したリールがステータス付きでここに表示されます。",
+  "photosNeededImages": "写真が{{count}}枚必要です",
+  "photosNeededImagesOne": "写真が1枚必要です",
+  "videosNeeded": "動画が{{count}}本必要です",
+  "videosNeededOne": "動画が1本必要です",
+  "slotAcceptsPhoto": "タップして写真を選択",
+  "slotAcceptsVideo": "タップして動画を選択",
+  "slotAcceptsPhotoOrVideo": "タップして写真または動画を選択",
+  "slotRequiresPhoto": "このスロットは写真のみ受け付けます。",
+  "slotRequiresVideo": "このスロットは動画のみ受け付けます（mp4、mov、m4v、webm）。"
 }

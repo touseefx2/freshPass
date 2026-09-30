@@ -1637,5 +1637,14 @@
   "aiRequestsTabTools": "Herramientas",
   "aiRequestsTabReels": "Reels",
   "noReelRequests": "Aún no hay generaciones de reels",
-  "reelRequestsEmptySubtitle": "Los reels que generes desde AI Tools aparecerán aquí con su estado."
+  "reelRequestsEmptySubtitle": "Los reels que generes desde AI Tools aparecerán aquí con su estado.",
+  "photosNeededImages": "{{count}} fotos necesarias",
+  "photosNeededImagesOne": "1 foto necesaria",
+  "videosNeeded": "{{count}} vídeos necesarios",
+  "videosNeededOne": "1 vídeo necesario",
+  "slotAcceptsPhoto": "Toca para elegir una foto",
+  "slotAcceptsVideo": "Toca para elegir un vídeo",
+  "slotAcceptsPhotoOrVideo": "Toca para elegir una foto o un vídeo",
+  "slotRequiresPhoto": "Este espacio solo acepta fotos.",
+  "slotRequiresVideo": "Este espacio solo acepta vídeos (mp4, mov, m4v o webm)."
 }

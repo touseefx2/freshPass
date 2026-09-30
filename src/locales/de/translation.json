@@ -1637,5 +1637,14 @@
   "aiRequestsTabTools": "Tools",
   "aiRequestsTabReels": "Reels",
   "noReelRequests": "Noch keine Reel-Generierungen",
-  "reelRequestsEmptySubtitle": "Reels, die du mit KI-Tools erzeugst, erscheinen hier mit ihrem Status."
+  "reelRequestsEmptySubtitle": "Reels, die du mit KI-Tools erzeugst, erscheinen hier mit ihrem Status.",
+  "photosNeededImages": "{{count}} Fotos benötigt",
+  "photosNeededImagesOne": "1 Foto benötigt",
+  "videosNeeded": "{{count}} Videos benötigt",
+  "videosNeededOne": "1 Video benötigt",
+  "slotAcceptsPhoto": "Tippen, um ein Foto auszuwählen",
+  "slotAcceptsVideo": "Tippen, um ein Video auszuwählen",
+  "slotAcceptsPhotoOrVideo": "Tippen, um ein Foto oder Video auszuwählen",
+  "slotRequiresPhoto": "Dieser Slot akzeptiert nur Fotos.",
+  "slotRequiresVideo": "Dieser Slot akzeptiert nur Videos (mp4, mov, m4v oder webm)."
 }
