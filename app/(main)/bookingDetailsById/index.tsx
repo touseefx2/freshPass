@@ -1985,25 +1985,31 @@ export default function BookingDetailsById() {
           {/* Service / Plan card */}
           <View style={[styles.serviceCard, styles.cardShadow]}>
             <View style={styles.serviceCardRow}>
-              <AppImage
-                uri={
-                  booking.serviceImageUrl ||
-                  booking.businessLogoUrl ||
-                  getDefaultBusinessLogo() ||
-                  ""
-                }
-                style={styles.serviceImage}
-              />
+              <View style={styles.serviceIconWrap}>
+                <Ionicons
+                  name="cut-outline"
+                  size={moderateWidthScale(28)}
+                  color={theme.darkGreen}
+                />
+              </View>
               <View style={styles.serviceInfo}>
-                <Text style={styles.serviceTitle} numberOfLines={2}>
-                  {serviceCardTitle}
-                </Text>
-                {serviceCardSubtitle ? (
-                  <Text style={styles.serviceSubtitle} numberOfLines={2}>
-                    {serviceCardSubtitle}
+                <View style={styles.servicePriceRow}>
+                  <Text style={styles.serviceTitle} numberOfLines={2}>
+                    {serviceCardTitle}
                   </Text>
-                ) : null}
+                  <Text style={styles.servicePriceText}>
+                    {booking.price}
+                  </Text>
+                </View>
                 <View style={styles.tagsRow}>
+                  <View style={styles.tagPill}>
+                    <Ionicons
+                      name="time-outline"
+                      size={moderateWidthScale(11)}
+                      color={theme.darkGreen}
+                    />
+                    <Text style={styles.tagText}>{booking.duration}</Text>
+                  </View>
                   {isSubscription ? (
                     <View style={styles.tagPill}>
                       <Ionicons
@@ -2014,302 +2020,143 @@ export default function BookingDetailsById() {
                       <Text style={styles.tagText}>Plan</Text>
                     </View>
                   ) : null}
-                  {booking.membershipType &&
-                  booking.membershipType !== "---" &&
-                  isSubscription ? (
-                    <View style={styles.tagPill}>
-                      <Ionicons
-                        name="sparkles"
-                        size={moderateWidthScale(11)}
-                        color={theme.darkGreen}
-                      />
-                      <Text style={styles.tagText}>
-                        {booking.membershipType}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {!isSubscription &&
-                    (booking.serviceLabels ?? []).slice(0, 2).map((label) => (
-                      <View key={label} style={styles.tagPill}>
-                        <Ionicons
-                          name="leaf-outline"
-                          size={moderateWidthScale(11)}
-                          color={theme.darkGreen}
-                        />
-                        <Text style={styles.tagText}>{label}</Text>
-                      </View>
-                    ))}
-                  <View style={styles.tagPill}>
-                    <Ionicons
-                      name="time-outline"
-                      size={moderateWidthScale(11)}
-                      color={theme.darkGreen}
-                    />
-                    <Text style={styles.tagText}>{booking.duration}</Text>
-                  </View>
                 </View>
-                {serviceCardDescription ? (
-                  <Text style={styles.serviceDescription} numberOfLines={3}>
-                    {serviceCardDescription}
-                  </Text>
-                ) : null}
               </View>
             </View>
           </View>
 
-          <View style={styles.infoWrap}>
-            <View style={styles.infoGrid}>
-              <View style={styles.infoColumn}>
-                <View style={styles.infoIconCircle}>
-                  <Ionicons
-                    name="time"
-                    size={moderateWidthScale(12)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={styles.infoTextCol}>
-                  <Text style={styles.infoLabel} numberOfLines={1}>
-                    {t("duration")}
-                  </Text>
-                  <Text style={styles.infoValueDuration}>
-                    {booking.duration}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.infoColumn}>
-                <View style={styles.infoIconCircle}>
-                  <Ionicons
-                    name="calendar"
-                    size={moderateWidthScale(12)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={styles.infoTextCol}>
-                  <Text style={styles.infoLabel} numberOfLines={1}>
-                    Date & Time
-                  </Text>
-                  <Text style={styles.infoValue}>{dateLabel}</Text>
-                  {timeLabel ? (
-                    <Text style={styles.infoValueSecondary}>{timeLabel}</Text>
-                  ) : null}
-                </View>
-              </View>
-
-              <TouchableOpacity
-                style={styles.infoColumnPressable}
-                activeOpacity={0.7}
-                onPress={handlePersonPress}
-              >
-                <View style={styles.infoIconCircle}>
-                  <Ionicons
-                    name="person"
-                    size={moderateWidthScale(12)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={styles.infoTextCol}>
-                  <Text style={styles.infoLabel} numberOfLines={1}>
-                    {userRole === "customer" ? t("myBarber") : t("myCustomer")}
-                  </Text>
-                  <Text style={styles.infoValue}>{staffClientname}</Text>
-                </View>
-                <Ionicons
-                  name="chevron-forward"
-                  size={moderateWidthScale(11)}
-                  color={theme.lightGreen4}
-                  style={styles.infoChevron}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Assigned staff — business & staff roles, when a staff member is assigned.
-              Business can open staff detail (except owner); staff role is view-only. */}
-          {hasAssignedStaff && (
+          {/* Info rows list */}
+          <View style={styles.infoListCard}>
             <TouchableOpacity
-              style={[styles.assignedStaffRow, styles.cardShadow]}
-              activeOpacity={canOpenAssignedStaff ? 0.7 : 1}
-              onPress={
-                canOpenAssignedStaff ? handleAssignedStaffPress : undefined
-              }
-              disabled={!canOpenAssignedStaff}
-            >
-              <View style={styles.assignedStaffAvatar}>
-                {assignedStaffImageUri ? (
-                  <AppImage
-                    uri={assignedStaffImageUri}
-                    style={styles.assignedStaffAvatarImage}
-                  />
-                ) : (
-                  <PersonIcon
-                    width={moderateWidthScale(18)}
-                    height={moderateWidthScale(18)}
-                    color={theme.darkGreen}
-                  />
-                )}
-              </View>
-              <View style={styles.assignedStaffTextContainer}>
-                <Text style={styles.assignedStaffLabel}>
-                  {t("assignedStaff")}
-                </Text>
-                {assignedStaffDisplayName ? (
-                  <Text style={styles.assignedStaffName} numberOfLines={1}>
-                    {assignedStaffDisplayName}
-                  </Text>
-                ) : null}
-              </View>
-              {canOpenAssignedStaff ? (
-                <Ionicons
-                  name="chevron-forward"
-                  size={moderateWidthScale(14)}
-                  color={theme.lightGreen4}
-                />
-              ) : null}
-            </TouchableOpacity>
-          )}
-
-          {/* Location / Business */}
-          <View style={styles.locationCard}>
-            <TouchableOpacity
-              style={styles.locationTouchable}
+              style={styles.infoListRow}
               activeOpacity={0.7}
-              onPress={() => {
-                if (booking.businessId != null) {
-                  router.push({
-                    pathname: "/(main)/businessDetail",
-                    params: { business_id: booking.businessId.toString() },
-                  });
-                }
-              }}
-              disabled={booking.businessId == null}
+              onPress={handlePersonPress}
             >
-              <AppImage
-                uri={booking.businessLogoUrl}
-                style={styles.locationAvatar}
-              />
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationName} numberOfLines={1}>
-                  {booking.businessName}
-                </Text>
-                <View style={styles.locationAddressRow}>
-                  <Ionicons
-                    name="location-sharp"
-                    size={moderateWidthScale(12)}
-                    color={theme.lightGreen}
-                    style={styles.locationAddressPin}
-                  />
-                  <Text style={styles.locationAddress} numberOfLines={2}>
-                    {booking.businessAddress}
-                  </Text>
-                </View>
-                {!!booking.workingWithBusiness?.title && (
-                  <Text style={styles.locationAffiliation} numberOfLines={1}>
-                    {t("affiliatedWith")}{" "}
-                    <Text style={styles.locationAffiliationName}>
-                      {booking.workingWithBusiness.title}
-                    </Text>
-                  </Text>
-                )}
-              </View>
-            </TouchableOpacity>
-            {businessLatitude && businessLongitude ? (
-              <TouchableOpacity
-                style={styles.getDirectionsButton}
-                onPress={handleLocationPress}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="location-sharp"
-                  size={moderateWidthScale(12)}
+              <View style={styles.infoListIcon}>
+                <PersonIcon
+                  width={moderateWidthScale(16)}
+                  height={moderateWidthScale(16)}
                   color={theme.darkGreen}
                 />
-                <Text style={styles.getDirectionsText}>Get Directions</Text>
+              </View>
+              <Text style={styles.infoListLabel}>
+                {userRole === "customer" ? t("myBarber") : t("myCustomer")}
+              </Text>
+              <Text style={styles.infoListValue} numberOfLines={1}>
+                {staffClientname}
+              </Text>
+            </TouchableOpacity>
+
+            {hasAssignedStaff ? (
+              <TouchableOpacity
+                style={styles.infoListRow}
+                activeOpacity={canOpenAssignedStaff ? 0.7 : 1}
+                onPress={canOpenAssignedStaff ? handleAssignedStaffPress : undefined}
+                disabled={!canOpenAssignedStaff}
+              >
+                <View style={styles.infoListIcon}>
+                  <Ionicons
+                    name="person-circle-outline"
+                    size={moderateWidthScale(16)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+                <Text style={styles.infoListLabel}>{t("assignedStaff")}</Text>
+                <Text style={styles.infoListValue} numberOfLines={1}>
+                  {assignedStaffDisplayName || "---"}
+                </Text>
               </TouchableOpacity>
             ) : null}
-          </View>
 
-          {/* Chat + Support */}
-          <View style={styles.actionCardsRow}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.actionCard, styles.actionCardPrimary]}
-              onPress={handleContactPress}
-            >
-              <ContactIcon
-                width={moderateWidthScale(20)}
-                height={moderateWidthScale(20)}
-                color={theme.white}
-              />
-              <View style={styles.actionCardTextWrap}>
+            <View style={styles.infoListRow}>
+              <View style={styles.infoListIcon}>
+                <CalendarIcon
+                  width={moderateWidthScale(16)}
+                  height={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </View>
+              <Text style={styles.infoListLabel}>{t("date")}</Text>
+              <Text style={styles.infoListValue}>{dateLabel}</Text>
+            </View>
+
+            <View style={styles.infoListRow}>
+              <View style={styles.infoListIcon}>
+                <Ionicons
+                  name="time-outline"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </View>
+              <Text style={styles.infoListLabel}>{t("time")}</Text>
+              <Text style={styles.infoListValue}>
+                {timeLabel || booking.duration}
+              </Text>
+            </View>
+
+            <View style={styles.infoListRow}>
+              <View style={styles.infoListIcon}>
+                <Ionicons
+                  name="document-text-outline"
+                  size={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </View>
+              <Text style={styles.infoListLabel}>{t("appointmentStatus")}</Text>
+              <View
+                style={[
+                  styles.infoListBadge,
+                  { backgroundColor: getStatusBadgeStyle(booking.status).backgroundColor },
+                ]}
+              >
                 <Text
                   style={[
-                    styles.actionCardTitle,
-                    styles.actionCardTitlePrimary,
+                    styles.infoListBadgeText,
+                    { color: getStatusTextStyle(booking.status).color },
                   ]}
-                  numberOfLines={1}
                 >
-                  {userRole === "customer"
-                    ? "Business Chat"
-                    : "Customer Chat"}
-                </Text>
-                <Text
-                  style={[
-                    styles.actionCardSubtitle,
-                    styles.actionCardSubtitlePrimary,
-                  ]}
-                  numberOfLines={2}
-                >
-                  {userRole === "customer"
-                    ? "Message the business"
-                    : "Message your customer"}
+                  {getStatusLabel(booking.status, booking.user)}
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={moderateWidthScale(14)}
-                color={theme.white}
-                style={styles.actionCardChevron}
-              />
-            </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[styles.actionCard, styles.actionCardSecondary]}
-              onPress={handleSupportPress}
-            >
-              <SupportIcon
-                width={moderateWidthScale(20)}
-                height={moderateWidthScale(20)}
-                color={theme.buttonBack}
-              />
-              <View style={styles.actionCardTextWrap}>
+            <View style={[styles.infoListRow, styles.infoListRowLast]}>
+              <View style={styles.infoListIcon}>
+                <WalletIcon
+                  width={moderateWidthScale(16)}
+                  height={moderateWidthScale(16)}
+                  color={theme.darkGreen}
+                />
+              </View>
+              <Text style={styles.infoListLabel}>{t("paymentStatus")}</Text>
+              <View
+                style={[
+                  styles.infoListBadge,
+                  {
+                    backgroundColor:
+                      !booking.owesPayment && booking.paidAmount != null
+                        ? theme.apptMintBg
+                        : theme.orangeBrown30,
+                  },
+                ]}
+              >
                 <Text
                   style={[
-                    styles.actionCardTitle,
-                    styles.actionCardTitleSecondary,
+                    styles.infoListBadgeText,
+                    {
+                      color:
+                        !booking.owesPayment && booking.paidAmount != null
+                          ? theme.apptMintAccent
+                          : theme.selectCard,
+                    },
                   ]}
-                  numberOfLines={1}
                 >
-                  {t("support")}
-                </Text>
-                <Text
-                  style={[
-                    styles.actionCardSubtitle,
-                    styles.actionCardSubtitleSecondary,
-                  ]}
-                  numberOfLines={2}
-                >
-                  Get help from FreshPass
+                  {!booking.owesPayment && booking.paidAmount != null
+                    ? t("paidLabel")
+                    : t("payLaterLabel")}
                 </Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={moderateWidthScale(14)}
-                color={theme.buttonBack}
-                style={styles.actionCardChevron}
-              />
-            </TouchableOpacity>
+            </View>
           </View>
 
           {/* Try-on Images */}
@@ -2601,6 +2448,124 @@ export default function BookingDetailsById() {
               </View>
             </View>
           )}
+
+          {/* Chat */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.actionCard, styles.actionCardPrimary]}
+            onPress={handleContactPress}
+          >
+            <ContactIcon
+              width={moderateWidthScale(20)}
+              height={moderateWidthScale(20)}
+              color={theme.white}
+            />
+            <View style={styles.actionCardTextWrap}>
+              <Text
+                style={[
+                  styles.actionCardTitle,
+                  styles.actionCardTitlePrimary,
+                ]}
+                numberOfLines={1}
+              >
+                {userRole === "customer"
+                  ? "Business Chat"
+                  : "Customer Chat"}
+              </Text>
+              <Text
+                style={[
+                  styles.actionCardSubtitle,
+                  styles.actionCardSubtitlePrimary,
+                ]}
+                numberOfLines={2}
+              >
+                {userRole === "customer"
+                  ? "Message the business"
+                  : "Message your customer"}
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={moderateWidthScale(14)}
+              color={theme.white}
+              style={styles.actionCardChevron}
+            />
+          </TouchableOpacity>
+
+          {/* Location / Business */}
+          <View style={styles.locationCard}>
+            <TouchableOpacity
+              style={styles.locationTouchable}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (booking.businessId != null) {
+                  router.push({
+                    pathname: "/(main)/businessDetail",
+                    params: { business_id: booking.businessId.toString() },
+                  });
+                }
+              }}
+              disabled={booking.businessId == null}
+            >
+              <Ionicons
+                name="location-sharp"
+                size={moderateWidthScale(18)}
+                color={theme.red}
+              />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationName} numberOfLines={1}>
+                  {booking.businessName}
+                </Text>
+                <Text style={styles.locationAddress} numberOfLines={1}>
+                  {booking.businessAddress}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            {businessLatitude && businessLongitude ? (
+              <TouchableOpacity
+                style={styles.getDirectionsButton}
+                onPress={handleLocationPress}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.getDirectionsText}>Get Directions</Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={moderateWidthScale(12)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Support */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.actionCard, styles.actionCardSecondary]}
+            onPress={handleSupportPress}
+          >
+            <SupportIcon
+              width={moderateWidthScale(20)}
+              height={moderateWidthScale(20)}
+              color={theme.buttonBack}
+            />
+            <View style={styles.actionCardTextWrap}>
+              <Text
+                style={[
+                  styles.actionCardTitle,
+                  styles.actionCardTitleSecondary,
+                ]}
+                numberOfLines={1}
+              >
+                FreshPass Support
+              </Text>
+            </View>
+            <Ionicons
+              name="chevron-forward"
+              size={moderateWidthScale(14)}
+              color={theme.buttonBack}
+              style={styles.actionCardChevron}
+            />
+          </TouchableOpacity>
 
           {/* Paid tip receipt */}
           {userRole === "customer" && booking.tip && paidTipBreakdown && (

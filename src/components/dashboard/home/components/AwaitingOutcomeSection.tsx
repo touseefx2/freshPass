@@ -58,12 +58,38 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(6),
     },
     sectionHeader: {
-      marginBottom: moderateHeightScale(6),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(4),
+    },
+    headerLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
     },
     sectionTitle: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    countBadge: {
+      backgroundColor: theme.darkGreen,
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    countBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    viewAllText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.selectCard,
     },
     helpText: {
       fontSize: fontSize.size12,
@@ -75,6 +101,8 @@ const createStyles = (theme: Theme) =>
     card: {
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
       paddingHorizontal: moderateWidthScale(16),
       paddingVertical: moderateHeightScale(12),
       marginBottom: moderateHeightScale(12),
@@ -87,41 +115,76 @@ const createStyles = (theme: Theme) =>
       shadowRadius: 1.41,
       elevation: 2,
     },
-    cardTop: {
+    cardRow: {
       flexDirection: "row",
+      alignItems: "center",
       justifyContent: "space-between",
-    },
-    cardLeft: {
-      flex: 1,
-      gap: moderateHeightScale(7),
-      paddingRight: moderateWidthScale(8),
-    },
-    cardRight: {
-      alignItems: "flex-end",
-      justifyContent: "flex-start",
-      gap: moderateHeightScale(8),
-      maxWidth: "38%",
+      marginBottom: moderateHeightScale(6),
     },
     serviceName: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.black,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "uppercase",
+      flex: 1,
+    },
+    priceText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginLeft: moderateWidthScale(8),
     },
     infoRow: {
       flexDirection: "row",
       alignItems: "center",
+      marginBottom: moderateHeightScale(6),
     },
     infoText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginLeft: moderateWidthScale(6),
+      flexShrink: 1,
+    },
+    infoLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    staffRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(6),
+    },
+    staffRowLeft: {
+      flexDirection: "row",
+      alignItems: "center",
+      flex: 1,
+    },
+    statusSeparator: {
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+      paddingTop: moderateHeightScale(10),
+      marginTop: moderateHeightScale(6),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    footerGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    statusLabel: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      marginLeft: moderateWidthScale(2),
-      flexShrink: 1,
     },
     chip: {
       backgroundColor: theme.orangeBrown30,
       paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(4),
+      paddingVertical: moderateHeightScale(3),
       borderRadius: moderateWidthScale(4),
     },
     chipPaid: {
@@ -131,7 +194,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightBeige,
     },
     chipText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.selectCard,
     },
@@ -141,20 +204,10 @@ const createStyles = (theme: Theme) =>
     chipTextMembership: {
       color: theme.darkGreen,
     },
-    statusRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    staffText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      textAlign: "right",
-    },
     actionsRow: {
       flexDirection: "row",
       gap: moderateWidthScale(8),
-      marginTop: moderateHeightScale(12),
+      marginTop: moderateHeightScale(10),
       paddingTop: moderateHeightScale(10),
       borderTopWidth: 1,
       borderTopColor: theme.borderLight,
@@ -345,7 +398,18 @@ export default function AwaitingOutcomeSection({
   return (
     <View style={styles.container}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>{t("awaitingOutcome")}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.sectionTitle}>{t("awaitingOutcome")}</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{items.length}</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          onPress={() => router.push("/(main)/dashboard/(calendar)")}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.viewAllText}>{t("viewAll")} &gt;</Text>
+        </TouchableOpacity>
       </View>
       <Text style={styles.helpText}>{t("awaitingOutcomeHelp")}</Text>
 
@@ -360,7 +424,7 @@ export default function AwaitingOutcomeSection({
             !isMembership &&
             item.paymentMethod === "pay_later" &&
             !item.paidAt;
-          const chipLabel = isMembership
+          const paymentChipLabel = isMembership
             ? item.subscription || t("membershipsSection")
             : isPayLater
               ? t("payLaterLabel")
@@ -372,71 +436,95 @@ export default function AwaitingOutcomeSection({
               activeOpacity={0.7}
               onPress={() => openDetails(item.id)}
             >
-              <View style={styles.cardTop}>
-                <View style={styles.cardLeft}>
-                  <Text numberOfLines={1} style={styles.serviceName}>
-                    {formatServiceLabel(item)}
-                  </Text>
-                  <View style={styles.infoRow}>
-                    <PersonIcon
-                      width={moderateWidthScale(15)}
-                      height={moderateWidthScale(15)}
-                    />
-                    <Text numberOfLines={1} style={styles.infoText}>
-                      {item.user || "Customer"}
-                    </Text>
-                  </View>
-                  <View style={styles.infoRow}>
+              {/* Row 1: Service name + Price */}
+              <View style={styles.cardRow}>
+                <Text numberOfLines={1} style={styles.serviceName}>
+                  {formatServiceLabel(item)}
+                </Text>
+              </View>
+
+              {/* Row 2: Customer */}
+              <View style={styles.infoRow}>
+                <PersonIcon
+                  width={moderateWidthScale(15)}
+                  height={moderateWidthScale(15)}
+                  color={theme.darkGreen}
+                />
+                <Text numberOfLines={1} style={styles.infoText}>
+                  Customer: {item.user || "Customer"}
+                </Text>
+              </View>
+
+              {/* Row 3: Barber / Staff */}
+              {item.staffName ? (
+                <View style={styles.staffRow}>
+                  <View style={styles.staffRowLeft}>
                     <Ionicons
-                      name="time-outline"
-                      size={iconScale(15)}
+                      name="person-circle-outline"
+                      size={iconScale(16)}
                       color={theme.darkGreen}
                     />
                     <Text numberOfLines={1} style={styles.infoText}>
-                      {formatDateTime(
-                        item.appointmentDate,
-                        item.appointmentTime,
-                      )}
+                      Barber: {item.staffName}
                     </Text>
+                  </View>
+                  <Entypo
+                    name="chevron-small-right"
+                    size={iconScale(22)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+              ) : null}
+
+              {/* Row 4: Date/Time */}
+              <View style={styles.infoRow}>
+                <Ionicons
+                  name="time-outline"
+                  size={iconScale(16)}
+                  color={theme.darkGreen}
+                />
+                <Text numberOfLines={1} style={styles.infoText}>
+                  {formatDateTime(
+                    item.appointmentDate,
+                    item.appointmentTime,
+                  )}
+                </Text>
+              </View>
+
+              {/* Row 5: Status row with separator */}
+              <View style={styles.statusSeparator}>
+                <View style={styles.footerGroup}>
+                  <Text style={styles.statusLabel}>Appointment:</Text>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>{t("awaitingOutcome")}</Text>
                   </View>
                 </View>
-
-                <View style={styles.cardRight}>
-                  <View style={styles.statusRow}>
-                    <View
+                <View style={styles.footerGroup}>
+                  <Text style={styles.statusLabel}>Payment:</Text>
+                  <View
+                    style={[
+                      styles.chip,
+                      isMembership
+                        ? styles.chipMembership
+                        : !isPayLater && styles.chipPaid,
+                    ]}
+                  >
+                    <Text
                       style={[
-                        styles.chip,
+                        styles.chipText,
                         isMembership
-                          ? styles.chipMembership
-                          : !isPayLater && styles.chipPaid,
+                          ? styles.chipTextMembership
+                          : !isPayLater && styles.chipTextPaid,
                       ]}
+                      numberOfLines={1}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          isMembership
-                            ? styles.chipTextMembership
-                            : !isPayLater && styles.chipTextPaid,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {chipLabel}
-                      </Text>
-                    </View>
-                    <Entypo
-                      name="chevron-small-right"
-                      size={iconScale(22)}
-                      color={theme.darkGreen}
-                    />
-                  </View>
-                  {userRole === "business" && item.staffName ? (
-                    <Text numberOfLines={1} style={styles.staffText}>
-                      {item.staffName}
+                      {paymentChipLabel}
                     </Text>
-                  ) : null}
+                  </View>
                 </View>
               </View>
 
+              {/* Row 6: Action buttons */}
               {item.canMarkOutcome ? (
                 <View style={styles.actionsRow}>
                   <TouchableOpacity

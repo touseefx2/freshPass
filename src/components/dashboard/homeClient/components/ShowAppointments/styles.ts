@@ -11,101 +11,76 @@ import {
 export const createStyles = (theme: Theme) =>
   StyleSheet.create({
     appCard: {
-      height: heightScale(145),
+      height: heightScale(165),
     },
     appointmentsScroll: {
       paddingHorizontal: moderateWidthScale(20),
       gap: moderateWidthScale(12),
     },
     verifiedSalonCard: {
-      backgroundColor: theme.darkGreen,
+      backgroundColor: theme.white,
       borderRadius: moderateWidthScale(12),
       padding: moderateWidthScale(16),
-      height: heightScale(140),
+      height: heightScale(160),
       width: widthScale(310),
-      alignItems: "center",
       justifyContent: "center",
-      gap: moderateWidthScale(14),
-    },
-    verifiedCardTopRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-      width: "100%",
-    },
-    verifiedBadge: {
-      backgroundColor: theme.orangeBrown,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      alignSelf: "flex-start",
-    },
-    verifiedBadgeText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    dateTimeBadge: {
-      backgroundColor: theme.darkGreenLight,
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(999),
-      alignSelf: "flex-start",
-    },
-    dateTimeBadgeText: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
-    verifiedCardContent: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: moderateWidthScale(12),
-    },
-    verifiedCardImage: {
-      width: widthScale(67),
-      height: widthScale(67),
-      borderRadius: widthScale(67 / 2),
-      backgroundColor: theme.emptyProfileImage,
+      gap: moderateHeightScale(10),
       borderWidth: 1,
       borderColor: theme.borderLight,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      elevation: 2,
     },
-    verifiedCardTextContainer: {
-      flex: 1,
-      gap: moderateHeightScale(4),
-    },
-    salonName: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textTransform: "capitalize",
-    },
-    verifiedCardInfoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-    },
-    verifiedCardInfoRow2: {
+    verifiedCardTopRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       width: "100%",
     },
-    verifiedCardInfoText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white80,
-      marginLeft: moderateWidthScale(6),
+    verifiedBadge: {
+      backgroundColor: theme.orangeBrown30,
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(999),
     },
-    viewDetailLink: {
+    verifiedBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.selectCard,
+    },
+    dateTimeBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    verifiedCardImage: {
+      width: widthScale(28),
+      height: widthScale(28),
+      borderRadius: widthScale(14),
+      backgroundColor: theme.emptyProfileImage,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    salonName: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "uppercase",
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    verifiedCardInfoRow: {
       flexDirection: "row",
       alignItems: "center",
-      alignSelf: "flex-end",
-      gap: moderateWidthScale(4),
     },
-    viewDetailText: {
+    verifiedCardInfoText: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.orangeBrown,
+      color: theme.lightGreen,
+      marginLeft: moderateWidthScale(6),
+      flex: 1,
     },
     loadingContainer: {
       paddingVertical: moderateHeightScale(20),

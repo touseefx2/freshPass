@@ -54,51 +54,38 @@ export default function ShowAppointments({
           style={styles.verifiedSalonCard}
         >
           <View style={styles.verifiedCardTopRow}>
+            <Text numberOfLines={1} style={styles.salonName}>
+              {appointment.services}
+            </Text>
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedBadgeText}>
                 {appointment.badgeText}
               </Text>
             </View>
-            <View style={styles.dateTimeBadge}>
-              <Text style={styles.dateTimeBadgeText}>
-                {appointment.dateTime}
-              </Text>
-            </View>
           </View>
-          <View style={styles.verifiedCardContent}>
+          <Text style={styles.dateTimeBadgeText}>
+            {appointment.dateTime}
+          </Text>
+          <View style={styles.verifiedCardInfoRow}>
             <AppImage
               uri={appointment.staffImage}
               style={styles.verifiedCardImage}
-              iconSize={widthScale(28)}
-              iconColor={theme.white50}
+              iconSize={widthScale(14)}
+              iconColor={theme.lightGreen}
             />
-            <View style={styles.verifiedCardTextContainer}>
-              <Text numberOfLines={1} style={styles.salonName}>
-                {appointment.services}
-              </Text>
-              <View style={styles.verifiedCardInfoRow}>
-                <MonitorIcon
-                  width={widthScale(16)}
-                  height={heightScale(16)}
-                  color={theme.white80}
-                />
-                <Text style={styles.verifiedCardInfoText}>
-                  {appointment.membershipInfo}
-                </Text>
-              </View>
-              <View style={styles.verifiedCardInfoRow2}>
-                <View style={[styles.verifiedCardInfoRow, { width: "58%" }]}>
-                  <PersonIcon
-                    width={widthScale(16)}
-                    height={heightScale(16)}
-                    color={theme.white80}
-                  />
-                  <Text numberOfLines={1} style={styles.verifiedCardInfoText}>
-                    {appointment.staffName}
-                  </Text>
-                </View>
-              </View>
-            </View>
+            <Text numberOfLines={1} style={styles.verifiedCardInfoText}>
+              {appointment.staffName}
+            </Text>
+          </View>
+          <View style={styles.verifiedCardInfoRow}>
+            <MonitorIcon
+              width={widthScale(14)}
+              height={heightScale(14)}
+              color={theme.lightGreen}
+            />
+            <Text numberOfLines={1} style={styles.verifiedCardInfoText}>
+              {appointment.membershipInfo}
+            </Text>
           </View>
         </TouchableOpacity>
       ))}

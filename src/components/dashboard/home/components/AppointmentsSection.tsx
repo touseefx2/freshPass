@@ -57,13 +57,10 @@ const createStyles = (theme: Theme) =>
     currentAppointmentCard: {
       backgroundColor: theme.white,
       borderRadius: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(16),
-      height: moderateHeightScale(112),
       marginBottom: moderateHeightScale(12),
       shadowColor: theme.shadow,
-      flexDirection: "row",
-      justifyContent: "space-between",
-      paddingVertical: moderateHeightScale(10),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     shadow: {
       shadowOffset: {
@@ -74,51 +71,67 @@ const createStyles = (theme: Theme) =>
       shadowRadius: 1.41,
       elevation: 2,
     },
-    appointmentService: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.black,
+    cardBody: {
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(12),
+      gap: moderateHeightScale(8),
     },
-    appointmentPrice: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    appointmentServiceRow: {
-      marginBottom: moderateHeightScale(12),
-    },
-    appointmentInfoContainer: {
+    cardRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      width: "100%",
+    },
+    appointmentService: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "uppercase",
+      flex: 1,
+      marginRight: moderateWidthScale(8),
+    },
+    appointmentPrice: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
     },
     appointmentInfoRow: {
       flexDirection: "row",
       alignItems: "center",
-      width: "45%",
+      flex: 1,
     },
     appointmentInfoText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginLeft: moderateWidthScale(6),
+    },
+    cardFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    footerGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    footerLabel: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      marginLeft: moderateWidthScale(2),
     },
-    appointmentStatusRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "flex-end",
-    },
-    appointmentStatus: {
+    appointmentBadge: {
       backgroundColor: theme.orangeBrown30,
       paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(4),
+      paddingVertical: moderateHeightScale(3),
       borderRadius: moderateWidthScale(4),
-      flexDirection: "row",
-      alignItems: "center",
     },
-    appointmentStatusText: {
-      fontSize: fontSize.size12,
+    appointmentBadgeText: {
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.selectCard,
     },
@@ -154,9 +167,12 @@ export default function AppointmentsSection({
     time: string,
     totalMinutes?: number
   ) => {
-    const formattedDate = date; // Already formatted as "12/12/2025"
+    const dateObj = dayjs(date, "MM/DD/YYYY");
+    const formattedDate = dateObj.isValid()
+      ? dateObj.format("MMM D, YYYY")
+      : date;
     const timeObj = dayjs(`2025-01-01 ${time}`, "YYYY-MM-DD HH:mm");
-    const formattedTime = timeObj.format("h:mm a");
+    const formattedTime = timeObj.format("h:mm A");
 
     let durationText = "";
     if (totalMinutes) {
@@ -172,7 +188,7 @@ export default function AppointmentsSection({
       }
     }
 
-    return `${formattedDate} - ${formattedTime}${durationText}`;
+    return `${formattedDate} • ${formattedTime}${durationText}`;
   };
 
   // Format price
@@ -287,47 +303,56 @@ export default function AppointmentsSection({
               }}
               style={[styles.currentAppointmentCard, styles.shadow]}
             >
-              <View
-                style={{
-                  gap: moderateHeightScale(7),
-                  width: "58%",
-                }}
-              >
-                <Text numberOfLines={1} style={styles.appointmentService}>
-                  {getServiceTitles(firstAppointment)}
-                </Text>
-                <View style={styles.appointmentInfoContainer}>
-                  <View style={styles.appointmentInfoRow}>
-                    <SubscriptionTicketIcon
-                      width={moderateWidthScale(15)}
-                      height={moderateWidthScale(15)}
-                    />
-                    <Text numberOfLines={1} style={styles.appointmentInfoText}>
-                      {formatMembershipInfo(firstAppointment)}
-                    </Text>
-                  </View>
-                  <View style={styles.appointmentInfoRow}>
-                    <PersonIcon
-                      width={moderateWidthScale(15)}
-                      height={moderateWidthScale(15)}
-                    />
-                    <Text numberOfLines={1} style={styles.appointmentInfoText}>
-                      {firstAppointment.user}
-                    </Text>
-                  </View>
+              <View style={styles.cardBody}>
+                {/* Row 1: Service name + Price */}
+                <View style={styles.cardRow}>
+                  <Text numberOfLines={1} style={styles.appointmentService}>
+                    {getServiceTitles(firstAppointment)}
+                  </Text>
+                  <Text style={styles.appointmentPrice}>
+                    {formatPrice(firstAppointment)}
+                  </Text>
                 </View>
-                <View
-                  style={[
-                    styles.appointmentInfoRow,
-                    { alignItems: "baseline", width: "90%" },
-                  ]}
-                >
+
+                {/* Row 2: Customer */}
+                <View style={styles.appointmentInfoRow}>
+                  <PersonIcon
+                    width={moderateWidthScale(15)}
+                    height={moderateWidthScale(15)}
+                    color={theme.darkGreen}
+                  />
+                  <Text numberOfLines={1} style={styles.appointmentInfoText}>
+                    {t("customer")}: {firstAppointment.user}
+                  </Text>
+                </View>
+
+                {/* Row 3: Barber + chevron */}
+                <View style={styles.cardRow}>
+                  <View style={styles.appointmentInfoRow}>
+                    <Ionicons
+                      name="person-circle-outline"
+                      size={iconScale(16)}
+                      color={theme.darkGreen}
+                    />
+                    <Text numberOfLines={1} style={styles.appointmentInfoText}>
+                      {t("barber")}: {firstAppointment.staffName}
+                    </Text>
+                  </View>
+                  <Entypo
+                    name="chevron-small-right"
+                    size={iconScale(22)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+
+                {/* Row 4: Date / Time / Duration */}
+                <View style={styles.appointmentInfoRow}>
                   <Ionicons
                     name="time-outline"
                     size={iconScale(15)}
                     color={theme.darkGreen}
                   />
-                  <Text style={styles.appointmentInfoText}>
+                  <Text numberOfLines={1} style={styles.appointmentInfoText}>
                     {formatDateTime(
                       firstAppointment.appointmentDate,
                       firstAppointment.appointmentTime,
@@ -341,19 +366,12 @@ export default function AppointmentsSection({
                 </View>
               </View>
 
-              <View
-                style={{
-                  gap: moderateHeightScale(10),
-                  alignItems: "flex-end",
-                  width: "40%",
-                }}
-              >
-                <Text style={styles.appointmentPrice}>
-                  {formatPrice(firstAppointment)}
-                </Text>
-                <View style={styles.appointmentStatusRow}>
-                  <View style={[styles.appointmentStatus]}>
-                    <Text style={styles.appointmentStatusText}>
+              {/* Row 5: Footer with status + payment badges */}
+              <View style={styles.cardFooter}>
+                <View style={styles.footerGroup}>
+                  <Text style={styles.footerLabel}>{t("appointment")}:</Text>
+                  <View style={styles.appointmentBadge}>
+                    <Text style={styles.appointmentBadgeText}>
                       {firstAppointment.status === "scheduled"
                         ? t("onGoingApt")
                         : firstAppointment.status === "awaiting_outcome"
@@ -363,11 +381,17 @@ export default function AppointmentsSection({
                             : firstAppointment.status}
                     </Text>
                   </View>
-                  <Entypo
-                    name="chevron-small-right"
-                    size={iconScale(22)}
-                    color={theme.darkGreen}
-                  />
+                </View>
+                <View style={styles.footerGroup}>
+                  <Text style={styles.footerLabel}>{t("payment")}:</Text>
+                  <View style={styles.appointmentBadge}>
+                    <Text style={styles.appointmentBadgeText}>
+                      {firstAppointment.paidAmount &&
+                      parseFloat(firstAppointment.paidAmount) > 0
+                        ? t("paid")
+                        : t("payLater")}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
