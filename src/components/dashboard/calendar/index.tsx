@@ -326,7 +326,11 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       flex: 1,
-      gap: moderateWidthScale(4),
+      borderRadius: moderateWidthScale(8),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.secondary,
+      overflow: "hidden",
     },
     segment: {
       flex: 1,
@@ -334,11 +338,10 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       paddingHorizontal: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(12),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.secondary,
     },
     segmentActive: {
       backgroundColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(8),
     },
     segmentText: {
       fontSize: fontSize.size14,
@@ -577,14 +580,14 @@ const createStyles = (theme: Theme) =>
       lineHeight: BLOCK_LINE_HEIGHT,
     },
     blockClient: {
-      fontSize: fontSize.size9,
-      fontFamily: fonts.fontMedium,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       lineHeight: BLOCK_LINE_HEIGHT,
       textTransform:"capitalize"
     },
     blockService: {
-      fontSize: fontSize.size9,
+      fontSize: fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreenLight,
       lineHeight: BLOCK_LINE_HEIGHT,
@@ -991,6 +994,24 @@ const createStyles = (theme: Theme) =>
     cancelledLabel: {
       color: theme.red,
       fontFamily: fonts.fontBold,
+    },
+    overlapBadge: {
+      position: "absolute",
+      top: moderateHeightScale(2),
+      right: moderateWidthScale(2),
+      backgroundColor: theme.darkGreen,
+      borderRadius: moderateWidthScale(8),
+      minWidth: widthScale(18),
+      height: widthScale(18),
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: moderateWidthScale(4),
+    },
+    overlapBadgeText: {
+      fontSize: fontSize.size8,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      includeFontPadding: false,
     },
     listCardRow: {
       flexDirection: "row",
@@ -1992,8 +2013,27 @@ export default function CalendarScreen() {
     const { appointment, top, height, column, totalColumns } = positioned;
     const cancelled = isCancelled(appointment);
     const palette = cancelled ? cancelledPalette : getPalette(appointment.id);
-    const widthPercent = 100 / totalColumns;
-    const leftPercent = column * widthPercent;
+    const isCompact = viewMode === "week";
+    const hasOverlap = totalColumns > 1;
+
+    // Week view with overlaps: show only the first card at full width
+    // with a "+N" badge; tapping navigates to day view.
+    // Day view: classic Google Calendar side-by-side lanes.
+    if (isCompact && hasOverlap && column > 0) return null;
+
+    const widthPercent = (isCompact && hasOverlap) ? 100 : 100 / totalColumns;
+    const leftPercent = (isCompact && hasOverlap) ? 0 : column * widthPercent;
+    const extraCount = (isCompact && hasOverlap) ? totalColumns - 1 : 0;
+
+    const handlePress = () => {
+      if (isCompact && hasOverlap) {
+        const day = dayjs(appointment.date);
+        setSelectedDate(day);
+        setViewMode("day");
+      } else {
+        openAppointment(appointment);
+      }
+    };
 
     return (
       <View
@@ -2003,8 +2043,8 @@ export default function CalendarScreen() {
           {
             top,
             height,
-            left: `${leftPercent}%`,
-            width: `${widthPercent}%`,
+            left: `${leftPercent}%` as `${number}%`,
+            width: `${widthPercent}%` as `${number}%`,
           },
         ]}
       >
@@ -2014,13 +2054,14 @@ export default function CalendarScreen() {
             { backgroundColor: palette.bg, borderLeftColor: palette.accent },
           ]}
           activeOpacity={0.8}
-          onPress={() => openAppointment(appointment)}
+          onPress={handlePress}
         >
           <Text
             numberOfLines={1}
             style={[
               styles.blockClient,
               cancelled && { color: theme.red },
+              isCompact && { fontSize: fontSize.size9, fontFamily: fonts.fontMedium },
             ]}
           >
             {appointment.client_name}
@@ -2030,10 +2071,16 @@ export default function CalendarScreen() {
             style={[
               styles.blockService,
               cancelled && styles.cancelledLabel,
+              isCompact && { fontSize: fontSize.size9 },
             ]}
           >
             {cancelled ? "CANCELLED" : appointment.title}
           </Text>
+          {extraCount > 0 && (
+            <View style={styles.overlapBadge}>
+              <Text style={styles.overlapBadgeText}>+{extraCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
     );
