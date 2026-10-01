@@ -1013,6 +1013,65 @@ const createStyles = (theme: Theme) =>
       color: theme.white,
       includeFontPadding: false,
     },
+    overlapListDropdown: {
+      position: "absolute",
+      left: moderateWidthScale(16),
+      right: moderateWidthScale(16),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 8,
+      maxHeight: moderateHeightScale(340),
+      zIndex: 999,
+    },
+    overlapListHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(10),
+      paddingBottom: moderateHeightScale(8),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
+    },
+    overlapListTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    overlapListScroll: {
+      flexGrow: 0,
+    },
+    overlapListItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderLeftWidth: 3,
+      borderRadius: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(10),
+      marginBottom: moderateHeightScale(6),
+    },
+    overlapListName: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    overlapListService: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreenLight,
+      marginTop: moderateHeightScale(2),
+    },
+    overlapListTime: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      marginRight: moderateWidthScale(4),
+    },
     listCardRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -1119,6 +1178,10 @@ export default function CalendarScreen() {
   const [nowMinutes, setNowMinutes] = useState(
     today.hour() * 60 + today.minute(),
   );
+  const scrollToSlotRef = useRef<number | null>(null);
+  const [overlapListVisible, setOverlapListVisible] = useState(false);
+  const [overlapListItems, setOverlapListItems] = useState<CalendarAppointment[]>([]);
+  const [overlapListAnchorTop, setOverlapListAnchorTop] = useState(0);
   const [applyBoxVisible, setApplyBoxVisible] = useState(false);
   const [applyBoxDate, setApplyBoxDate] = useState(today);
   const [applyBoxType, setApplyBoxType] = useState<"leave" | "break">("leave");
@@ -1467,6 +1530,7 @@ export default function CalendarScreen() {
       if (!map[appointment.date]) map[appointment.date] = [];
       map[appointment.date].push(appointment);
     });
+
     return map;
   }, [appointments]);
 
@@ -1575,13 +1639,19 @@ export default function CalendarScreen() {
     ],
   );
 
-  // Bring the grid to the current time (or first appointment) of the visible day
+  // Bring the grid to the target slot (from week badge tap), current time, or first appointment
   useEffect(() => {
     if (viewMode === "month") return;
-    const firstAppointment = selectedDayAppointments[0];
-    const anchorMinutes = isTodayVisible
-      ? nowMinutes
-      : (firstAppointment?.start_minutes ?? 9 * 60);
+    let anchorMinutes: number;
+    if (scrollToSlotRef.current !== null) {
+      anchorMinutes = scrollToSlotRef.current;
+      scrollToSlotRef.current = null;
+    } else if (isTodayVisible) {
+      anchorMinutes = nowMinutes;
+    } else {
+      const firstAppointment = selectedDayAppointments[0];
+      anchorMinutes = firstAppointment?.start_minutes ?? 9 * 60;
+    }
     const offset =
       ((anchorMinutes - GRID_START_HOUR * 60) / 60) * HOUR_HEIGHT - HOUR_HEIGHT;
     const timeout = setTimeout(() => {
@@ -1596,6 +1666,7 @@ export default function CalendarScreen() {
   const closeOverlays = () => {
     setApplyBoxVisible(false);
     setLeaveDetailBoxVisible(false);
+    setOverlapListVisible(false);
   };
 
   const setAnchorFromEvent = useCallback((event: GestureResponderEvent) => {
@@ -2009,6 +2080,24 @@ export default function CalendarScreen() {
     openApplyBox("break", snapped, day, event);
   };
 
+  const MAX_DAY_LANES = 3;
+
+  const openOverlapList = (
+    dateStr: string,
+    startMinutes: number,
+    anchorTop: number,
+  ) => {
+    const dayAppts = appointmentsByDate[dateStr] ?? [];
+    const clusterAppts = dayAppts.filter((a) => {
+      const aEnd = a.start_minutes + Math.max(a.duration_minutes, SLOT_INTERVAL_MINUTES);
+      const bEnd = startMinutes + SLOT_INTERVAL_MINUTES;
+      return a.start_minutes < bEnd && aEnd > startMinutes;
+    }).sort((a, b) => a.start_minutes - b.start_minutes);
+    setOverlapListItems(clusterAppts);
+    setOverlapListAnchorTop(anchorTop);
+    setOverlapListVisible(true);
+  };
+
   const renderCompactBlock = (positioned: PositionedAppointment) => {
     const { appointment, top, height, column, totalColumns } = positioned;
     const cancelled = isCancelled(appointment);
@@ -2016,24 +2105,31 @@ export default function CalendarScreen() {
     const isCompact = viewMode === "week";
     const hasOverlap = totalColumns > 1;
 
-    // Week view: show only first card full-width with "+N" badge → tap goes to day view.
+    // Week view: show only first card full-width with "+N" badge → tap goes to day view & scrolls to slot.
     if (isCompact && hasOverlap && column > 0) return null;
 
-    // Day view: show ALL lanes side-by-side (Google Calendar style).
-    // Text shrinks automatically as lanes increase; every card stays tappable.
-    const visibleCols = (isCompact && hasOverlap) ? 1 : totalColumns;
+    // Day view: cap at MAX_DAY_LANES. Cards beyond that are hidden but accessible via "+N" popup.
+    if (!isCompact && column >= MAX_DAY_LANES) return null;
+
+    const visibleCols = isCompact && hasOverlap
+      ? 1
+      : Math.min(totalColumns, isCompact ? 1 : MAX_DAY_LANES);
     const widthPercent = 100 / visibleCols;
     const leftPercent = (isCompact && hasOverlap) ? 0 : column * widthPercent;
-    const extraCount = (isCompact && hasOverlap) ? totalColumns - 1 : 0;
 
-    // Shrink text when lanes get narrow (4+ overlaps in day view)
-    const isDense = !isCompact && totalColumns >= 4;
+    const dayOverflow = !isCompact && totalColumns > MAX_DAY_LANES;
+    const isLastVisibleLane = dayOverflow && column === MAX_DAY_LANES - 1;
+
+    let extraCount = 0;
+    if (isCompact && hasOverlap) {
+      extraCount = totalColumns - 1;
+    } else if (isLastVisibleLane) {
+      extraCount = totalColumns - MAX_DAY_LANES;
+    }
 
     const handlePress = () => {
-      if (isCompact && hasOverlap) {
-        const day = dayjs(appointment.date);
-        setSelectedDate(day);
-        setViewMode("day");
+      if ((isCompact && hasOverlap) || (isLastVisibleLane && extraCount > 0)) {
+        openOverlapList(appointment.date, appointment.start_minutes, top);
       } else {
         openAppointment(appointment);
       }
@@ -2056,7 +2152,6 @@ export default function CalendarScreen() {
           style={[
             styles.block,
             { backgroundColor: palette.bg, borderLeftColor: palette.accent },
-            isDense && { paddingHorizontal: moderateWidthScale(3), borderLeftWidth: 2 },
           ]}
           activeOpacity={0.8}
           onPress={handlePress}
@@ -2067,23 +2162,20 @@ export default function CalendarScreen() {
               styles.blockClient,
               cancelled && { color: theme.red },
               isCompact && { fontSize: fontSize.size9, fontFamily: fonts.fontMedium },
-              isDense && { fontSize: fontSize.size9 },
             ]}
           >
             {appointment.client_name}
           </Text>
-          {!isDense && (
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.blockService,
-                cancelled && styles.cancelledLabel,
-                isCompact && { fontSize: fontSize.size9 },
-              ]}
-            >
-              {cancelled ? "CANCELLED" : appointment.title}
-            </Text>
-          )}
+          <Text
+            numberOfLines={1}
+            style={[
+              styles.blockService,
+              cancelled && styles.cancelledLabel,
+              isCompact && { fontSize: fontSize.size9 },
+            ]}
+          >
+            {cancelled ? "CANCELLED" : appointment.title}
+          </Text>
           {extraCount > 0 && (
             <View style={styles.overlapBadge}>
               <Text style={styles.overlapBadgeText}>+{extraCount}</Text>
@@ -2902,6 +2994,79 @@ export default function CalendarScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
+                </Pressable>
+              </Pressable>
+            )}
+
+            {overlapListVisible && overlapListItems.length > 0 && (
+              <Pressable
+                style={styles.applyBoxOverlay}
+                onPress={() => setOverlapListVisible(false)}
+              >
+                <Pressable
+                  style={[
+                    styles.overlapListDropdown,
+                    { top: moderateHeightScale(60) },
+                  ]}
+                  onPress={(e) => e.stopPropagation()}
+                >
+                  <View style={styles.overlapListHeader}>
+                    <Text style={styles.overlapListTitle}>
+                      {overlapListItems.length} {t("appointments")}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => setOverlapListVisible(false)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      activeOpacity={0.7}
+                    >
+                      <MaterialIcons
+                        name="close"
+                        size={iconScale(18)}
+                        color={theme.text}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    style={styles.overlapListScroll}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {overlapListItems.map((appt) => {
+                      const apptCancelled = appt.originalAppointment?.status === "cancelled";
+                      const apptPalette = apptCancelled ? cancelledPalette : getPalette(appt.id);
+                      const hour = Math.floor(appt.start_minutes / 60);
+                      const minute = appt.start_minutes % 60;
+                      const timeLabel = `${hour % 12 || 12}:${minute.toString().padStart(2, "0")} ${hour >= 12 ? "PM" : "AM"}`;
+                      return (
+                        <TouchableOpacity
+                          key={appt.id}
+                          style={[
+                            styles.overlapListItem,
+                            { borderLeftColor: apptPalette.accent, backgroundColor: apptPalette.bg },
+                          ]}
+                          activeOpacity={0.7}
+                          onPress={() => {
+                            setOverlapListVisible(false);
+                            openAppointment(appt);
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text numberOfLines={1} style={[styles.overlapListName, apptCancelled && { color: theme.red }]}>
+                              {appt.originalAppointment?.user ?? appt.client_name}
+                            </Text>
+                            <Text numberOfLines={1} style={[styles.overlapListService, apptCancelled && styles.cancelledLabel]}>
+                              {apptCancelled ? "CANCELLED" : appt.title}
+                            </Text>
+                          </View>
+                          <Text style={styles.overlapListTime}>{timeLabel}</Text>
+                          <MaterialIcons
+                            name="chevron-right"
+                            size={iconScale(20)}
+                            color={theme.lightGreen}
+                          />
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
                 </Pressable>
               </Pressable>
             )}
