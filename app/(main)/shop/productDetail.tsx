@@ -158,6 +158,8 @@ export default function ProductDetailScreen() {
     );
   }
 
+  const outOfStock = product.trackInventory && product.inventoryCount <= 0;
+
   const goAvailability = () => {
     router.push({
       pathname: "/(main)/shop/checkAvailability" as any,
@@ -259,27 +261,39 @@ export default function ProductDetailScreen() {
         </View>
 
         <View style={styles.actions}>
-          <Button
-            title={t("addToCart")}
-            onPress={() => {
-              dispatch(addToCart({ productId: product.id, quantity: 1 }));
-              showBanner(t("addToCart"), t("addedToCart"), "success");
-              goAvailability();
-            }}
-            backgroundColor={theme.white}
-            textColor={theme.darkGreen}
-            containerStyle={{
-              borderWidth: 1,
-              borderColor: theme.buttonBack,
-            }}
-          />
-          <Button
-            title={t("buyNow")}
-            onPress={() => {
-              dispatch(seedBuyNow({ productId: product.id, quantity: 1 }));
-              goAvailability();
-            }}
-          />
+          {outOfStock ? (
+            <Button
+              title={t("outOfStock")}
+              onPress={() => {}}
+              disabled
+              backgroundColor={theme.lightGreen2}
+              textColor={theme.lightGreen5}
+            />
+          ) : (
+            <>
+              <Button
+                title={t("addToCart")}
+                onPress={() => {
+                  dispatch(addToCart({ productId: product.id, quantity: 1 }));
+                  showBanner(t("addToCart"), t("addedToCart"), "success");
+                  goAvailability();
+                }}
+                backgroundColor={theme.white}
+                textColor={theme.darkGreen}
+                containerStyle={{
+                  borderWidth: 1,
+                  borderColor: theme.buttonBack,
+                }}
+              />
+              <Button
+                title={t("buyNow")}
+                onPress={() => {
+                  dispatch(seedBuyNow({ productId: product.id, quantity: 1 }));
+                  goAvailability();
+                }}
+              />
+            </>
+          )}
         </View>
       </ScrollView>
     </View>

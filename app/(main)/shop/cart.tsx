@@ -27,6 +27,7 @@ import {
   setCartItemQuantity,
 } from "@/src/state/slices/shopCartSlice";
 import { resolveShopProduct } from "@/src/utils/shopProductHelpers";
+import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -150,6 +151,7 @@ export default function ShopCartScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { showBanner } = useNotificationContext();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -253,14 +255,28 @@ export default function ShopCartScreen() {
                     <Text style={styles.qtyText}>{item.quantity}</Text>
                     <TouchableOpacity
                       style={styles.qtyBtn}
-                      onPress={() =>
+                      onPress={() => {
+                        const maxQty =
+                          product.trackInventory
+                            ? product.inventoryCount
+                            : 10;
+                        if (item.quantity >= maxQty) {
+                          showBanner(
+                            t("yourCart"),
+                            t("maxQuantityReached", {
+                              count: maxQty,
+                            }),
+                            "warning",
+                          );
+                          return;
+                        }
                         dispatch(
                           setCartItemQuantity({
                             productId: product.id,
                             quantity: item.quantity + 1,
                           }),
-                        )
-                      }
+                        );
+                      }}
                     >
                       <MaterialIcons
                         name="add"
