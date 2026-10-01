@@ -19,7 +19,12 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { canShowStaffManagement } from "@/src/state/slices/userSlice";
+import {
+  canShowStaffManagement,
+  isBusinessSubscriptionActive,
+  isStripeOnboardingCompleted,
+} from "@/src/state/slices/userSlice";
+import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 
 const CARD_WIDTH_PERCENT = "49%";
 
@@ -42,7 +47,9 @@ type SettingKey =
   | "team"
   | "socialMedia"
   | "portfolio"
-  | "products";
+  | "products"
+  | "freshpassSubscription"
+  | "notificationSettings";
 
 type SettingItem = {
   key: SettingKey;
@@ -335,8 +342,12 @@ export default function BusinessProfileSettingsScreen() {
   const userRole = useAppSelector((state) => state.user.userRole);
   const showManageTeam = canShowStaffManagement(businessStatus);
   const isBusinessOwner = userRole === "business";
+  const showStripeBanner =
+    isBusinessOwner &&
+    businessStatus?.onboarding_completed === true &&
+    businessStatus?.stripe_onboarding_status === "pending";
 
-  const handleRowPress = (key: string) => {
+  const handleRowPress = async (key: string) => {
     if (key === "businessProfile") {
       router.push("./businessProfile");
     } else if (key === "description") {
@@ -359,6 +370,10 @@ export default function BusinessProfileSettingsScreen() {
       router.push("./products");
     } else if (key === "businessLocation") {
       router.push("./location");
+    } else if (key === "freshpassSubscription") {
+      router.push("/(main)/dashboard/(account)/subscription");
+    } else if (key === "notificationSettings") {
+      await openNotificationSettings();
     } else {
       Logger.log("Business profile setting pressed:", key);
     }
@@ -428,6 +443,20 @@ export default function BusinessProfileSettingsScreen() {
       title: t("productsInventory"),
       subtitle: t("productsInventoryCardSubtitle"),
     },
+    {
+      key: "notificationSettings",
+      title: t("notificationSettings"),
+      subtitle: t("notificationSettingsCardSubtitle"),
+    },
+    ...(!showStripeBanner
+      ? [
+          {
+            key: "freshpassSubscription" as const,
+            title: t("freshpassSubscription"),
+            subtitle: t("freshpassSubscriptionSubtitle"),
+          },
+        ]
+      : []),
   ];
 
   const getIconMeta = (
@@ -457,6 +486,10 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "image-outline", family: "community" };
       case "products":
         return { name: "inventory-2", family: "material" };
+      case "notificationSettings":
+        return { name: "notifications", family: "material" };
+      case "freshpassSubscription":
+        return { name: "crown", family: "community" };
       default:
         return { name: "settings", family: "material" };
     }
