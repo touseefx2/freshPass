@@ -49,7 +49,10 @@ type SettingKey =
   | "portfolio"
   | "products"
   | "freshpassSubscription"
-  | "notificationSettings";
+  | "notificationSettings"
+  | "affiliationRequests"
+  | "mediaLibrary"
+  | "aiTools";
 
 type SettingItem = {
   key: SettingKey;
@@ -374,6 +377,15 @@ export default function BusinessProfileSettingsScreen() {
       router.push("/(main)/dashboard/(account)/subscription");
     } else if (key === "notificationSettings") {
       await openNotificationSettings();
+    } else if (key === "affiliationRequests") {
+      router.push("./affiliationRequests");
+    } else if (key === "mediaLibrary") {
+      router.push("/(main)/aiTools/toolList");
+    } else if (key === "aiTools") {
+      router.push({
+        pathname: "/(main)/aiTools/toolList",
+        params: { mode: "aiTools" },
+      });
     } else {
       Logger.log("Business profile setting pressed:", key);
     }
@@ -443,10 +455,26 @@ export default function BusinessProfileSettingsScreen() {
       title: t("productsInventory"),
       subtitle: t("productsInventoryCardSubtitle"),
     },
+    ...(isBusinessOwner &&
+    businessStatus?.subscription_status === "active" &&
+    businessStatus?.subscription_is_single === false
+      ? [
+          {
+            key: "affiliationRequests" as const,
+            title: t("affiliationRequests"),
+            subtitle: t("affiliationRequestsCardSubtitle"),
+          },
+        ]
+      : []),
     {
-      key: "notificationSettings",
-      title: t("notificationSettings"),
-      subtitle: t("notificationSettingsCardSubtitle"),
+      key: "mediaLibrary" as const,
+      title: t("mediaLibrary"),
+      subtitle: t("mediaLibraryCardSubtitle"),
+    },
+    {
+      key: "aiTools" as const,
+      title: t("aiTools"),
+      subtitle: t("aiToolsCardSubtitle"),
     },
     ...(!showStripeBanner
       ? [
@@ -486,6 +514,12 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "image-outline", family: "community" };
       case "products":
         return { name: "inventory-2", family: "material" };
+      case "affiliationRequests":
+        return { name: "handshake", family: "community" };
+      case "mediaLibrary":
+        return { name: "video-library", family: "material" };
+      case "aiTools":
+        return { name: "smart-toy", family: "material" };
       case "notificationSettings":
         return { name: "notifications", family: "material" };
       case "freshpassSubscription":
