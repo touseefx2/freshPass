@@ -2016,14 +2016,18 @@ export default function CalendarScreen() {
     const isCompact = viewMode === "week";
     const hasOverlap = totalColumns > 1;
 
-    // Week view with overlaps: show only the first card at full width
-    // with a "+N" badge; tapping navigates to day view.
-    // Day view: classic Google Calendar side-by-side lanes.
+    // Week view: show only first card full-width with "+N" badge → tap goes to day view.
     if (isCompact && hasOverlap && column > 0) return null;
 
-    const widthPercent = (isCompact && hasOverlap) ? 100 : 100 / totalColumns;
+    // Day view: show ALL lanes side-by-side (Google Calendar style).
+    // Text shrinks automatically as lanes increase; every card stays tappable.
+    const visibleCols = (isCompact && hasOverlap) ? 1 : totalColumns;
+    const widthPercent = 100 / visibleCols;
     const leftPercent = (isCompact && hasOverlap) ? 0 : column * widthPercent;
     const extraCount = (isCompact && hasOverlap) ? totalColumns - 1 : 0;
+
+    // Shrink text when lanes get narrow (4+ overlaps in day view)
+    const isDense = !isCompact && totalColumns >= 4;
 
     const handlePress = () => {
       if (isCompact && hasOverlap) {
@@ -2052,6 +2056,7 @@ export default function CalendarScreen() {
           style={[
             styles.block,
             { backgroundColor: palette.bg, borderLeftColor: palette.accent },
+            isDense && { paddingHorizontal: moderateWidthScale(3), borderLeftWidth: 2 },
           ]}
           activeOpacity={0.8}
           onPress={handlePress}
@@ -2062,20 +2067,23 @@ export default function CalendarScreen() {
               styles.blockClient,
               cancelled && { color: theme.red },
               isCompact && { fontSize: fontSize.size9, fontFamily: fonts.fontMedium },
+              isDense && { fontSize: fontSize.size9 },
             ]}
           >
             {appointment.client_name}
           </Text>
-          <Text
-            numberOfLines={1}
-            style={[
-              styles.blockService,
-              cancelled && styles.cancelledLabel,
-              isCompact && { fontSize: fontSize.size9 },
-            ]}
-          >
-            {cancelled ? "CANCELLED" : appointment.title}
-          </Text>
+          {!isDense && (
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.blockService,
+                cancelled && styles.cancelledLabel,
+                isCompact && { fontSize: fontSize.size9 },
+              ]}
+            >
+              {cancelled ? "CANCELLED" : appointment.title}
+            </Text>
+          )}
           {extraCount > 0 && (
             <View style={styles.overlapBadge}>
               <Text style={styles.overlapBadgeText}>+{extraCount}</Text>
