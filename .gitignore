@@ -139,4 +139,7 @@ temp/
 
 # App specific
 app-example
+
+# Claude Code skill files
+.claude/
  
