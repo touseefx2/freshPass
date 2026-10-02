@@ -1,12 +1,9 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import { StyleSheet, View, ViewStyle } from "react-native";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
-import { fontSize, fonts } from "@/src/theme/fonts";
-import {
-  getBusinessCustomerInitials,
-  resolveBusinessCustomerAvatarUrl,
-} from "@/src/utils/businessCustomerDisplay";
+import { resolveBusinessCustomerAvatarUrl } from "@/src/utils/businessCustomerDisplay";
+import { getDefaultAvatarImage } from "@/src/services/remoteConfigService";
 import AppImage from "@/src/components/AppImage";
 
 type BusinessCustomerAvatarProps = {
@@ -18,11 +15,9 @@ type BusinessCustomerAvatarProps = {
 };
 
 export default function BusinessCustomerAvatar({
-  name,
   profileImageUrl,
   size,
   style,
-  textSize,
 }: BusinessCustomerAvatarProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -31,6 +26,8 @@ export default function BusinessCustomerAvatar({
     [profileImageUrl],
   );
 
+  const defaultAvatarUri = useMemo(() => getDefaultAvatarImage(), []);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -38,29 +35,24 @@ export default function BusinessCustomerAvatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: theme.lightGreen1,
           alignItems: "center",
           justifyContent: "center",
           overflow: "hidden",
-          borderWidth: 1,
-          borderColor: theme.borderLight,
         },
         image: {
           width: "100%",
           height: "100%",
         },
-        text: {
-          fontSize: textSize ?? fontSize.size14,
-          fontFamily: fonts.fontBold,
-          color: theme.darkGreen,
-        },
       }),
-    [theme, size, textSize],
+    [theme, size],
   );
 
-  const initialsFallback = (
+  const defaultFallback = (
     <View style={[styles.container, style]}>
-      <Text style={styles.text}>{getBusinessCustomerInitials(name)}</Text>
+      <AppImage
+        uri={defaultAvatarUri}
+        style={styles.image}
+      />
     </View>
   );
 
@@ -69,7 +61,7 @@ export default function BusinessCustomerAvatar({
       <AppImage
         uri={avatarUri}
         style={styles.image}
-        fallback={initialsFallback}
+        fallback={defaultFallback}
       />
     </View>
   );

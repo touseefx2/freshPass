@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect } from "react";
-import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, Platform } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTheme } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
@@ -37,38 +38,124 @@ const createStyles = (theme: Theme) =>
       textDecorationLine: "underline",
       textDecorationColor: theme.selectCard,
     },
+    card: {
+      flexDirection: "row",
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      overflow: "hidden",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.darkGreen,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: moderateWidthScale(6),
+        },
+        android: {
+          elevation: 3,
+          shadowColor: theme.darkGreen,
+        },
+      }),
+    },
+    cardAccent: {
+      width: moderateWidthScale(4),
+    },
+    accentScheduled: {
+      backgroundColor: theme.orangeBrown,
+    },
+    accentCompleted: {
+      backgroundColor: theme.buttonBack,
+    },
+    accentCancelled: {
+      backgroundColor: theme.red,
+    },
+    cardContent: {
+      flex: 1,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(12),
+    },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: moderateHeightScale(8),
+      gap: moderateWidthScale(8),
+    },
+    serviceName: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+      lineHeight: fontSize.size18,
+    },
+    priceText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.selectCard,
+      alignSelf: "flex-start",
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(4),
+    },
+    metaText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      textTransform: "capitalize",
+    },
+    bookingId: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      marginTop: moderateHeightScale(6),
+    },
+    statusBadge: {
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(20),
+      alignSelf: "flex-start",
+    },
+    statusBadgeScheduled: {
+      backgroundColor: theme.orangeBrown30,
+    },
+    statusBadgeCompleted: {
+      backgroundColor: theme.lightGreen1,
+    },
+    statusBadgeCancelled: {
+      backgroundColor: theme.lightRed,
+    },
+    statusText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      textTransform: "capitalize",
+    },
+    statusTextScheduled: {
+      color: theme.selectCard,
+    },
+    statusTextCompleted: {
+      color: theme.darkGreen,
+    },
+    statusTextCancelled: {
+      color: theme.red,
+    },
     workHistoryItem: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-    },
-    workHistoryService: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    workHistoryDate: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    bookingIdText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
-    workHistoryPrice: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
     },
     line: {
       width: "100%",
       height: 1,
       backgroundColor: theme.borderLight,
       marginVertical: moderateHeightScale(12),
+    },
+    cardGap: {
+      height: moderateHeightScale(10),
     },
     emptyStateContainer: {
       paddingVertical: moderateHeightScale(4),
@@ -128,6 +215,24 @@ export default function WorkHistory({
     return t("service");
   };
 
+  const getAccentStyle = (status: string) => {
+    if (status === "completed" || status === "complete") return styles.accentCompleted;
+    if (status === "cancelled") return styles.accentCancelled;
+    return styles.accentScheduled;
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    if (status === "completed" || status === "complete") return styles.statusBadgeCompleted;
+    if (status === "cancelled") return styles.statusBadgeCancelled;
+    return styles.statusBadgeScheduled;
+  };
+
+  const getStatusTextStyle = (status: string) => {
+    if (status === "completed" || status === "complete") return styles.statusTextCompleted;
+    if (status === "cancelled") return styles.statusTextCancelled;
+    return styles.statusTextScheduled;
+  };
+
   // Limit to first 5 items for display
   const displayedItems = data ? data.slice(0, 5) : [];
 
@@ -161,24 +266,47 @@ export default function WorkHistory({
                 });
               }}
             >
-              <View style={styles.workHistoryItem}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.workHistoryService}>
-                    {getServiceTitles(item)}
-                  </Text>
-                  <Text style={styles.workHistoryDate}>
-                    {formatDateTime(item.appointmentDate, item.appointmentTime)}
-                  </Text>
+              <View style={styles.card}>
+                <View style={[styles.cardAccent, getAccentStyle(item.status)]} />
+                <View style={styles.cardContent}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.serviceName} numberOfLines={2}>
+                      {getServiceTitles(item)}
+                    </Text>
+                    <Text style={styles.priceText}>
+                      {formatPrice(item.paidAmount ?? item.totalPrice)}
+                    </Text>
+                  </View>
+                  <View style={[styles.statusBadge, getStatusBadgeStyle(item.status), { marginBottom: moderateHeightScale(4) }]}>
+                    <Text style={[styles.statusText, getStatusTextStyle(item.status)]}>
+                      {item.status === "scheduled" ? t("onGoingApt") : item.status}
+                    </Text>
+                  </View>
+                  {!!item.user && (
+                    <View style={styles.metaRow}>
+                      <MaterialIcons name="person-outline" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                      <Text style={styles.metaText}>{item.user}</Text>
+                    </View>
+                  )}
+                  {!!item.staffName && (
+                    <View style={styles.metaRow}>
+                      <MaterialIcons name="content-cut" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                      <Text style={styles.metaText}>{item.staffName}</Text>
+                    </View>
+                  )}
+                  <View style={styles.metaRow}>
+                    <MaterialIcons name="schedule" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                    <Text style={styles.metaText}>
+                      {formatDateTime(item.appointmentDate, item.appointmentTime)}
+                    </Text>
+                  </View>
                   {!!item.id && (
-                    <Text style={styles.bookingIdText}>{`#FP${item.id}`}</Text>
+                    <Text style={styles.bookingId}>{`#FP${item.id}`}</Text>
                   )}
                 </View>
-                <Text style={styles.workHistoryPrice}>
-                  {formatPrice(item.paidAmount ?? item.totalPrice)}
-                </Text>
               </View>
             </TouchableOpacity>
-            {index < displayedItems.length - 1 && <View style={styles.line} />}
+            {index < displayedItems.length - 1 && <View style={styles.cardGap} />}
           </View>
         ))
       ) : (

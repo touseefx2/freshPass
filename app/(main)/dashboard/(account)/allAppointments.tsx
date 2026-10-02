@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Platform,
 } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -32,18 +34,112 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
     },
     contentContainer: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingTop: moderateHeightScale(16),
       paddingBottom: moderateHeightScale(24),
+      gap: moderateHeightScale(10),
     },
     emptyListContent: {
       flex: 1,
     },
-    appointmentItem: {
+    card: {
+      flexDirection: "row",
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      overflow: "hidden",
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.darkGreen,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: moderateWidthScale(6),
+        },
+        android: {
+          elevation: 3,
+          shadowColor: theme.darkGreen,
+        },
+      }),
+    },
+    cardAccent: {
+      width: moderateWidthScale(4),
+    },
+    accentScheduled: {
+      backgroundColor: theme.orangeBrown,
+    },
+    accentCompleted: {
+      backgroundColor: theme.buttonBack,
+    },
+    accentCancelled: {
+      backgroundColor: theme.red,
+    },
+    cardContent: {
+      flex: 1,
+      paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(12),
+    },
+    cardHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "flex-start",
+      marginBottom: moderateHeightScale(8),
+      gap: moderateWidthScale(8),
+    },
+    serviceName: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+      lineHeight: fontSize.size18,
+    },
+    statusBadge: {
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(20),
+      alignSelf: "flex-start",
+    },
+    statusBadgeScheduled: {
+      backgroundColor: theme.orangeBrown30,
+    },
+    statusBadgeCompleted: {
+      backgroundColor: theme.lightGreen1,
+    },
+    statusBadgeCancelled: {
+      backgroundColor: theme.lightRed,
+    },
+    statusText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+      textTransform: "capitalize",
+    },
+    statusTextScheduled: {
+      color: theme.selectCard,
+    },
+    statusTextCompleted: {
+      color: theme.darkGreen,
+    },
+    statusTextCancelled: {
+      color: theme.red,
+    },
+    metaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(4),
+    },
+    metaText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      textTransform: "capitalize",
+    },
+    bookingId: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen4,
+      marginTop: moderateHeightScale(6),
     },
     workHistoryItem: {
       flexDirection: "row",
@@ -51,64 +147,12 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       paddingVertical: moderateHeightScale(12),
     },
-    appointmentService: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-      textTransform: "capitalize",
-    },
-    appointmentDate: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      marginTop: moderateHeightScale(2),
-    },
-    bookingIdText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen6,
-      marginTop: moderateHeightScale(2),
-    },
-    appointmentStatus: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontBold,
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(3),
-      borderRadius: moderateWidthScale(4),
-      overflow: "hidden",
-      textTransform: "capitalize",
-    },
-    statusScheduled: {
-      backgroundColor: theme.orangeBrown30,
-      color: theme.selectCard,
-    },
-    statusCompleted: {
-      backgroundColor: theme.lightGreen1,
-      color: theme.darkGreen,
-    },
-    statusCancelled: {
-      backgroundColor: theme.lightRed,
-      color: theme.red,
-    },
     line: {
       height: 1,
       backgroundColor: theme.lightGreen1,
     },
     footerLoader: {
       paddingVertical: moderateHeightScale(20),
-    },
-    customerName: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
-      marginTop: moderateHeightScale(2),
-    },
-    staffName: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen6,
-      marginTop: moderateHeightScale(2),
     },
   });
 
@@ -149,10 +193,22 @@ export default function AllAppointmentsScreen() {
     return "Service";
   };
 
-  const getStatusStyle = (status: string) => {
-    if (status === "completed" || status === "complete") return styles.statusCompleted;
-    if (status === "cancelled") return styles.statusCancelled;
-    return styles.statusScheduled;
+  const getAccentStyle = (status: string) => {
+    if (status === "completed" || status === "complete") return styles.accentCompleted;
+    if (status === "cancelled") return styles.accentCancelled;
+    return styles.accentScheduled;
+  };
+
+  const getStatusBadgeStyle = (status: string) => {
+    if (status === "completed" || status === "complete") return styles.statusBadgeCompleted;
+    if (status === "cancelled") return styles.statusBadgeCancelled;
+    return styles.statusBadgeScheduled;
+  };
+
+  const getStatusTextStyle = (status: string) => {
+    if (status === "completed" || status === "complete") return styles.statusTextCompleted;
+    if (status === "cancelled") return styles.statusTextCancelled;
+    return styles.statusTextScheduled;
   };
 
   const fetchAppointments = useCallback(
@@ -218,48 +274,55 @@ export default function AllAppointmentsScreen() {
   }, [initialLoadComplete, loading, currentPage, hasMore, loadingMore, fetchAppointments]);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: Appointment; index: number }) => (
-      <View>
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => {
-            router.push({
-              pathname: "/(main)/bookingDetailsById",
-              params: { bookingId: String(item.id) },
-            });
-          }}
-        >
-          <View style={styles.appointmentItem}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.appointmentService}>
+    ({ item }: { item: Appointment }) => (
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => {
+          router.push({
+            pathname: "/(main)/bookingDetailsById",
+            params: { bookingId: String(item.id) },
+          });
+        }}
+      >
+        <View style={styles.card}>
+          <View style={[styles.cardAccent, getAccentStyle(item.status)]} />
+          <View style={styles.cardContent}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.serviceName} numberOfLines={2}>
                 {getServiceTitles(item)}
               </Text>
-              {!!item.user && (
-                <Text style={styles.customerName}>
-                  {item.user}
+              <View style={[styles.statusBadge, getStatusBadgeStyle(item.status)]}>
+                <Text style={[styles.statusText, getStatusTextStyle(item.status)]}>
+                  {item.status === "scheduled" ? t("onGoingApt") : item.status}
                 </Text>
-              )}
-              {!!item.staffName && (
-                <Text style={styles.staffName}>
-                  {t("barber")}: {item.staffName}
-                </Text>
-              )}
-              <Text style={styles.appointmentDate}>
+              </View>
+            </View>
+            {!!item.user && (
+              <View style={styles.metaRow}>
+                <MaterialIcons name="person-outline" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                <Text style={styles.metaText}>{item.user}</Text>
+              </View>
+            )}
+            {!!item.staffName && (
+              <View style={styles.metaRow}>
+                <MaterialIcons name="content-cut" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                <Text style={styles.metaText}>{item.staffName}</Text>
+              </View>
+            )}
+            <View style={styles.metaRow}>
+              <MaterialIcons name="schedule" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+              <Text style={styles.metaText}>
                 {formatDateTime(item.appointmentDate, item.appointmentTime)}
               </Text>
-              {!!item.id && (
-                <Text style={styles.bookingIdText}>{`#FP${item.id}`}</Text>
-              )}
             </View>
-            <Text style={[styles.appointmentStatus, getStatusStyle(item.status)]}>
-              {item.status === "scheduled" ? t("onGoingApt") : item.status}
-            </Text>
+            {!!item.id && (
+              <Text style={styles.bookingId}>{`#FP${item.id}`}</Text>
+            )}
           </View>
-        </TouchableOpacity>
-        {index < data.length - 1 && <View style={styles.line} />}
-      </View>
+        </View>
+      </TouchableOpacity>
     ),
-    [data.length, router, styles, t],
+    [router, styles, t, theme],
   );
 
   const renderFooter = useCallback(() => {
