@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -21,7 +21,6 @@ import { useRouter } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { appointmentsEndpoints } from "@/src/services/endpoints";
-import { UserRole } from "@/src/state/slices/userSlice";
 import StackHeader from "@/src/components/StackHeader";
 import { Skeleton } from "@/src/components/skeletons";
 import EmptyState from "@/src/components/emptyState";
@@ -37,86 +36,99 @@ const createStyles = (theme: Theme) =>
       paddingTop: moderateHeightScale(20),
       paddingBottom: moderateHeightScale(24),
     },
+    emptyListContent: {
+      flex: 1,
+    },
+    appointmentItem: {
+      paddingVertical: moderateHeightScale(12),
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
     workHistoryItem: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
       paddingVertical: moderateHeightScale(12),
     },
-    workHistoryService: {
+    appointmentService: {
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(4),
-    },
-    workHistoryDate: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    bookingIdText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
-    workHistoryPrice: {
-      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+      marginBottom: moderateHeightScale(4),
+      textTransform: "capitalize",
+    },
+    appointmentDate: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(2),
+    },
+    bookingIdText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen6,
+      marginTop: moderateHeightScale(2),
+    },
+    appointmentStatus: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(4),
+      overflow: "hidden",
+      textTransform: "capitalize",
+    },
+    statusScheduled: {
+      backgroundColor: theme.orangeBrown30,
+      color: theme.selectCard,
+    },
+    statusCompleted: {
+      backgroundColor: theme.lightGreen1,
+      color: theme.darkGreen,
+    },
+    statusCancelled: {
+      backgroundColor: theme.lightRed,
+      color: theme.red,
     },
     line: {
-      width: "100%",
       height: 1,
-      backgroundColor: theme.borderLight,
-    },
-    emptyListContent: {
-      flexGrow: 1,
-    },
-    loadingContainer: {
-      paddingVertical: moderateHeightScale(20),
-      alignItems: "center",
+      backgroundColor: theme.lightGreen1,
     },
     footerLoader: {
       paddingVertical: moderateHeightScale(20),
     },
+    customerName: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(2),
+    },
   });
 
-interface WorkHistoryListProps {
-  staffId?: number | null;
-  headerTitle?: string;
-}
-
-export default function WorkHistoryList({ staffId, headerTitle }: WorkHistoryListProps = {}) {
+export default function MyAppointmentsScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const userRole = useAppSelector((state) => state.user.userRole) as UserRole;
+  const staffId = useAppSelector(
+    (state) => state.user.businessStatus?.owner_as_staff?.staff_id ?? null,
+  );
 
   const [data, setData] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Format date and time
   const formatDateTime = (date: string, time: string) => {
-    const formattedDate = date;
     const timeObj = dayjs(`2025-01-01 ${time}`, "YYYY-MM-DD HH:mm");
     const formattedTime = timeObj.format("h:mm a");
-    return `${formattedDate} - ${formattedTime}`;
+    return `${date} - ${formattedTime}`;
   };
 
-  // Format price
-  const formatPrice = (amount: string) => {
-    return `$${parseFloat(amount).toFixed(2)}`;
-  };
-
-  // Get service titles
   const getServiceTitles = (appointment: Appointment) => {
     if (
       appointment.appointmentType === "subscription" &&
@@ -134,17 +146,19 @@ export default function WorkHistoryList({ staffId, headerTitle }: WorkHistoryLis
     return "Service";
   };
 
-  const fetchWorkHistory = useCallback(
+  const getStatusStyle = (status: string) => {
+    if (status === "completed" || status === "complete") return styles.statusCompleted;
+    if (status === "cancelled") return styles.statusCancelled;
+    return styles.statusScheduled;
+  };
+
+  const fetchAppointments = useCallback(
     async (page: number, append: boolean = false) => {
       try {
-        if (page === 1) {
-          setLoading(true);
-        } else {
-          setLoadingMore(true);
-        }
+        if (page === 1) setLoading(true);
+        else setLoadingMore(true);
 
-        let params: {
-          status?: string;
+        const params: {
           per_page: number;
           direction: string;
           page: number;
@@ -152,21 +166,8 @@ export default function WorkHistoryList({ staffId, headerTitle }: WorkHistoryLis
         } = {
           per_page: 16,
           direction: "desc",
-          page: page,
+          page,
         };
-
-        // For staff role, fetch completed appointments
-        if (userRole === "staff") {
-          params.status = "without_scheduled";
-        }
-        // For client role, fetch past appointments
-        else if (userRole === "customer") {
-          params.status = "without_scheduled";
-        }
-        // For business, fetch without_scheduled (past appointments)
-        else {
-          params.status = "without_scheduled";
-        }
 
         if (staffId) {
           params.staff_id = staffId;
@@ -192,84 +193,70 @@ export default function WorkHistoryList({ staffId, headerTitle }: WorkHistoryLis
           } else {
             setData(response.data.data);
           }
-          setTotalCount(response.data.meta.total);
           setCurrentPage(response.data.meta.current_page);
           setHasMore(
             response.data.meta.current_page < response.data.meta.last_page,
           );
-
-          // Mark initial load as complete after first page loads
-          if (page === 1) {
-            setInitialLoadComplete(true);
-          }
+          if (page === 1) setInitialLoadComplete(true);
         }
       } catch (error: any) {
-        Logger.error("Failed to fetch work history:", error);
+        Logger.error("Failed to fetch appointments:", error);
       } finally {
         setLoading(false);
         setLoadingMore(false);
       }
     },
-    [userRole, staffId],
+    [staffId],
   );
 
   useEffect(() => {
-    fetchWorkHistory(1);
-  }, [fetchWorkHistory]);
+    fetchAppointments(1);
+  }, [fetchAppointments]);
 
   const handleLoadMore = useCallback(() => {
-    // Only load more if initial load is complete, not currently loading, and has more data
     if (initialLoadComplete && !loading && !loadingMore && hasMore) {
-      const nextPage = currentPage + 1;
-      setCurrentPage(nextPage);
-      fetchWorkHistory(nextPage, true);
+      fetchAppointments(currentPage + 1, true);
     }
-  }, [
-    initialLoadComplete,
-    loading,
-    currentPage,
-    hasMore,
-    loadingMore,
-    fetchWorkHistory,
-  ]);
+  }, [initialLoadComplete, loading, currentPage, hasMore, loadingMore, fetchAppointments]);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: Appointment; index: number }) => {
-      return (
-        <View>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => {
-              router.push({
-                pathname: "/(main)/bookingDetailsById",
-                params: {
-                  bookingId: String(item.id),
-                },
-              });
-            }}
-          >
-            <View style={styles.workHistoryItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.workHistoryService}>
-                  {getServiceTitles(item)}
-                </Text>
-                <Text style={styles.workHistoryDate}>
-                  {formatDateTime(item.appointmentDate, item.appointmentTime)}
-                </Text>
-                {!!item.id && (
-                  <Text style={styles.bookingIdText}>{`#FP${item.id}`}</Text>
-                )}
-              </View>
-              <Text style={styles.workHistoryPrice}>
-                {formatPrice(item.paidAmount ?? item.totalPrice)}
+    ({ item, index }: { item: Appointment; index: number }) => (
+      <View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            router.push({
+              pathname: "/(main)/bookingDetailsById",
+              params: { bookingId: String(item.id) },
+            });
+          }}
+        >
+          <View style={styles.appointmentItem}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.appointmentService}>
+                {getServiceTitles(item)}
               </Text>
+              {!!item.user && (
+                <Text style={styles.customerName}>
+                  {item.user}
+                </Text>
+              )}
+              <Text style={styles.appointmentDate}>
+                {formatDateTime(item.appointmentDate, item.appointmentTime)}
+              </Text>
+              {!!item.id && (
+                <Text style={styles.bookingIdText}>{`#FP${item.id}`}</Text>
+              )}
             </View>
-          </TouchableOpacity>
-          {index < data.length - 1 && <View style={styles.line} />}
-        </View>
-      );
-    },
-    [data.length, router, styles],
+            <Text style={[styles.appointmentStatus, getStatusStyle(item.status)]}>
+              {item.status === "scheduled" ? t("onGoingApt") : item.status}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        {index < data.length - 1 && <View style={styles.line} />}
+      </View>
+    ),
+    [data.length, router, styles, t],
   );
 
   const renderFooter = useCallback(() => {
@@ -291,16 +278,16 @@ export default function WorkHistoryList({ staffId, headerTitle }: WorkHistoryLis
     }
     return (
       <EmptyState
-        icon="history"
-        title={t("noWorkHistoryFound")}
-        subtitle={t("workHistoryEmptySubtitle")}
+        icon="event-note"
+        title={t("appointmentsEmptyTitle")}
+        subtitle={t("appointmentsEmptySubtitle")}
       />
     );
   }, [loading, styles, t]);
 
   return (
     <View style={styles.container}>
-      <StackHeader title={headerTitle || t("workHistory")} />
+      <StackHeader title={t("myAppointments")} />
       <FlatList
         data={data}
         renderItem={renderItem}

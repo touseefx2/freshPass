@@ -308,10 +308,10 @@ export default function BarberProfileScreen() {
         router.push("./staffWorkImages");
         break;
       case "appointments":
-        router.push("/(main)/dashboard/(calendar)" as any);
+        router.push("./myAppointments");
         break;
       case "workHistory":
-        router.push("/(main)/dashboard/(home)/workHistory" as any);
+        router.push("./myWorkHistory");
         break;
       case "customers":
         router.push("./customers");
@@ -340,7 +340,7 @@ export default function BarberProfileScreen() {
     { key: "workingHours", title: t("myWorkingHours") },
     { key: "portfolio", title: t("myPortfolio") },
     { key: "appointments", title: t("myAppointments") },
-    { key: "workHistory", title: t("workHistory") },
+    { key: "workHistory", title: t("myWorkHistory") },
     { key: "customers", title: t("myCustomers") },
     { key: "followers", title: t("myFollowers") },
     { key: "viewPublicProfile", title: t("viewPublicProfile") },

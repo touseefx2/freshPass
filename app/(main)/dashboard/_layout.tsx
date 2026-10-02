@@ -306,6 +306,26 @@ export default function DashboardLayout() {
     Array.isArray(segments) &&
     segments.includes("(account)") &&
     segments.includes("followers");
+  const isBarberProfileScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("barberProfile");
+  const isMyAppointmentsScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("myAppointments");
+  const isMyWorkHistoryScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("myWorkHistory");
+  const isAllAppointmentsScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("allAppointments");
+  const isAllWorkHistoryScreen =
+    Array.isArray(segments) &&
+    segments.includes("(account)") &&
+    segments.includes("allWorkHistory");
   // Check if we should hide the AI chat button and tab bar on certain screens
   const shouldHideAiChat =
     isUserReviewsScreen ||
@@ -333,7 +353,12 @@ export default function DashboardLayout() {
     isSearchScreen ||
     isFavoritesScreen ||
     isCustomersScreen ||
-    isFollowersScreen;
+    isFollowersScreen ||
+    isBarberProfileScreen ||
+    isMyAppointmentsScreen ||
+    isMyWorkHistoryScreen ||
+    isAllAppointmentsScreen ||
+    isAllWorkHistoryScreen;
 
   useEffect(() => {
     if (shouldHideAiChat && createMenuOpen) {

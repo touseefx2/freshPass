@@ -52,7 +52,9 @@ type SettingKey =
   | "notificationSettings"
   | "affiliationRequests"
   | "mediaLibrary"
-  | "aiTools";
+  | "aiTools"
+  | "allAppointments"
+  | "allWorkHistory";
 
 type SettingItem = {
   key: SettingKey;
@@ -377,6 +379,10 @@ export default function BusinessProfileSettingsScreen() {
       router.push("/(main)/dashboard/(account)/subscription");
     } else if (key === "notificationSettings") {
       await openNotificationSettings();
+    } else if (key === "allAppointments") {
+      router.push("/(main)/dashboard/(account)/allAppointments" as any);
+    } else if (key === "allWorkHistory") {
+      router.push("/(main)/dashboard/(account)/allWorkHistory" as any);
     } else if (key === "affiliationRequests") {
       router.push("./affiliationRequests");
     } else if (key === "mediaLibrary") {
@@ -440,6 +446,16 @@ export default function BusinessProfileSettingsScreen() {
           },
         ]
       : []),
+    {
+      key: "allAppointments" as const,
+      title: t("allAppointments"),
+      subtitle: t("allAppointmentsCardSubtitle"),
+    },
+    {
+      key: "allWorkHistory" as const,
+      title: t("allWorkHistory"),
+      subtitle: t("allWorkHistoryCardSubtitle"),
+    },
     {
       key: "socialMedia",
       title: t("yourSocialMedia"),
@@ -514,6 +530,10 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "image-outline", family: "community" };
       case "products":
         return { name: "inventory-2", family: "material" };
+      case "allAppointments":
+        return { name: "event-note", family: "material" };
+      case "allWorkHistory":
+        return { name: "history", family: "material" };
       case "affiliationRequests":
         return { name: "handshake", family: "community" };
       case "mediaLibrary":
