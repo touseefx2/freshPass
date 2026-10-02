@@ -1,11 +1,11 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import Logger from "@/src/services/logger";
 import {
   StyleSheet,
   Text,
   View,
   ScrollView,
-  Pressable,
+  TouchableOpacity,
   Platform,
 } from "react-native";
 import { useTranslation } from "react-i18next";
@@ -54,7 +54,8 @@ type SettingKey =
   | "mediaLibrary"
   | "aiTools"
   | "allAppointments"
-  | "allWorkHistory";
+  | "allWorkHistory"
+  | "viewBusinessProfile";
 
 type SettingItem = {
   key: SettingKey;
@@ -81,7 +82,6 @@ function SettingCard({
   styles: ReturnType<typeof createStyles>;
   iconVariant: IconVariant;
 }) {
-  const [pressed, setPressed] = useState(false);
   const iconSize = moderateWidthScale(26);
   const thickness = moderateHeightScale(2.5);
   const radius = moderateWidthScale(16);
@@ -97,31 +97,18 @@ function SettingCard({
     iconVariant === "cream" ? theme.darkGreen : theme.white;
 
   return (
-    <Pressable
+    <TouchableOpacity
       onPress={onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
+      activeOpacity={0.7}
       style={styles.gridItem}
     >
-      <View
-        style={[
-          styles.cardShadowWrap,
-          pressed && styles.cardShadowWrapPressed,
-        ]}
-      >
+      <View style={styles.cardShadowWrap}>
         <View
           style={[
             styles.cardBase,
             {
               borderRadius: radius,
-              paddingBottom: pressed ? moderateHeightScale(1) : thickness,
-              transform: [
-                {
-                  translateY: pressed
-                    ? thickness - moderateHeightScale(1)
-                    : 0,
-                },
-              ],
+              paddingBottom: thickness,
             },
           ]}
         >
@@ -167,7 +154,7 @@ function SettingCard({
           </View>
         </View>
       </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
@@ -343,8 +330,10 @@ export default function BusinessProfileSettingsScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
-  const businessStatus = useAppSelector((state) => state.user.businessStatus);
-  const userRole = useAppSelector((state) => state.user.userRole);
+  const user = useAppSelector((state) => state.user);
+  const businessStatus = user.businessStatus;
+  const userRole = user.userRole;
+  const businessId = user.business_id;
   const showManageTeam = canShowStaffManagement(businessStatus);
   const isBusinessOwner = userRole === "business";
   const showStripeBanner =
@@ -352,7 +341,7 @@ export default function BusinessProfileSettingsScreen() {
     businessStatus?.onboarding_completed === true &&
     businessStatus?.stripe_onboarding_status === "pending";
 
-  const handleRowPress = async (key: string) => {
+  const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {
       router.push("./businessProfile");
     } else if (key === "description") {
@@ -378,7 +367,7 @@ export default function BusinessProfileSettingsScreen() {
     } else if (key === "freshpassSubscription") {
       router.push("/(main)/dashboard/(account)/subscription");
     } else if (key === "notificationSettings") {
-      await openNotificationSettings();
+      openNotificationSettings();
     } else if (key === "allAppointments") {
       router.push("/(main)/dashboard/(account)/allAppointments" as any);
     } else if (key === "allWorkHistory") {
@@ -392,6 +381,14 @@ export default function BusinessProfileSettingsScreen() {
         pathname: "/(main)/aiTools/toolList",
         params: { mode: "aiTools" },
       });
+    } else if (key === "viewBusinessProfile") {
+      const bid = businessId ?? businessStatus?.business_id;
+      if (bid) {
+        router.push({
+          pathname: "/(main)/businessDetail",
+          params: { business_id: bid.toString(), viewMode: "true" },
+        } as any);
+      }
     } else {
       Logger.log("Business profile setting pressed:", key);
     }
@@ -501,6 +498,11 @@ export default function BusinessProfileSettingsScreen() {
           },
         ]
       : []),
+    {
+      key: "viewBusinessProfile" as const,
+      title: t("viewBusinessProfile"),
+      subtitle: t("viewBusinessProfileSubtitle"),
+    },
   ];
 
   const getIconMeta = (
@@ -544,6 +546,8 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "notifications", family: "material" };
       case "freshpassSubscription":
         return { name: "crown", family: "community" };
+      case "viewBusinessProfile":
+        return { name: "visibility", family: "material" };
       default:
         return { name: "settings", family: "material" };
     }

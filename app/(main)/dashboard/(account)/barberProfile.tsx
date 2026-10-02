@@ -320,11 +320,11 @@ export default function BarberProfileScreen() {
         router.push("./followers");
         break;
       case "viewPublicProfile": {
-        const businessId = user.business_id;
-        if (businessId) {
+        const staffId = user.businessStatus?.owner_as_staff?.staff_id;
+        if (staffId) {
           router.push({
-            pathname: "/(main)/businessDetail",
-            params: { business_id: businessId.toString() },
+            pathname: "/(main)/staffDetail",
+            params: { id: staffId.toString(), viewMode: "true" },
           } as any);
         }
         break;

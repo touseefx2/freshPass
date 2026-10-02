@@ -10,6 +10,7 @@ import {
   Alert,
   Linking,
   Pressable,
+  Platform,
 } from "react-native";
 import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
@@ -45,6 +46,10 @@ import type {
 import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
+import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
 
 type ActionIconType = "message" | "call" | "email";
 
@@ -235,6 +240,41 @@ const createStyles = (theme: Theme) =>
     container: {
       flex: 1,
       backgroundColor: theme.background,
+    },
+    viewerModeBanner: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 20,
+      overflow: "hidden",
+      paddingHorizontal: moderateWidthScale(16),
+      paddingBottom: moderateHeightScale(6),
+    },
+    viewerModeBannerBlur: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    viewerModeBannerOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.lightGreen5,
+    },
+    viewerModeBannerContent: {
+      minHeight: VIEWER_BANNER_CONTENT_HEIGHT,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(12),
+    },
+    viewerModeBannerText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    viewerModeExitText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.green,
     },
     loaderContainer: {
       flex: 1,
@@ -828,8 +868,10 @@ export default function StaffDetail() {
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const { showBanner } = useNotificationContext();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ id?: string; viewMode?: string }>();
   const staffId = params.id;
+  const isViewMode = params.viewMode === "true";
   const user = useAppSelector((state: any) => state.user);
   const isBusinessRole = user?.userRole?.toLowerCase() === "business";
   const ownerStaffId = user?.businessStatus?.owner_as_staff?.staff_id ?? null;
@@ -1288,7 +1330,7 @@ export default function StaffDetail() {
         title=""
         showLine={false}
         rightIcon={
-          isBusinessRole ? (
+          isBusinessRole && !isViewMode ? (
             <View style={styles.headerRightIcons}>
               {isOwnerStaff ? (
                 <TouchableOpacity
@@ -1330,6 +1372,35 @@ export default function StaffDetail() {
           ) : undefined
         }
       />
+      {isViewMode && (
+        <View
+          style={[
+            styles.viewerModeBanner,
+            { paddingTop: insets.top + moderateHeightScale(2) },
+          ]}
+          pointerEvents="box-none"
+        >
+          {Platform.OS === "ios" ? (
+            <BlurView
+              intensity={18}
+              tint="dark"
+              style={styles.viewerModeBannerBlur}
+            />
+          ) : null}
+          <View style={styles.viewerModeBannerOverlay} />
+          <View style={styles.viewerModeBannerContent}>
+            <Text style={styles.viewerModeBannerText} numberOfLines={1}>
+              {t("viewingAsViewer")}
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.viewerModeExitText}>{t("exitViewAs")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.scrollContent}
@@ -1416,12 +1487,13 @@ export default function StaffDetail() {
               </View>
             </View>
 
-            <View style={styles.actionsRow}>
+            <View style={[styles.actionsRow, isViewMode && { opacity: 0.45 }]}>
               {!hideSelfStaffMessage && data?.user?.id != null ? (
                 <Staff3DActionButton
                   label={t("message") || "Message"}
                   icon="message"
                   onPress={handleChatPress}
+                  disabled={isViewMode}
                   theme={theme}
                 />
               ) : null}
@@ -1431,6 +1503,7 @@ export default function StaffDetail() {
                   label={t("call") || "Call"}
                   icon="call"
                   onPress={handleCallNow}
+                  disabled={isViewMode}
                   theme={theme}
                 />
               ) : null}
@@ -1439,7 +1512,7 @@ export default function StaffDetail() {
                 label={t("email") || "Email"}
                 icon="email"
                 onPress={handleEmailNow}
-                disabled={!data.email}
+                disabled={isViewMode || !data.email}
                 theme={theme}
               />
             </View>

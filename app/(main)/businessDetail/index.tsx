@@ -1428,7 +1428,9 @@ export default function BusinessDetailScreen() {
     business_id?: string;
     reel_id?: string;
     scroll_to?: string;
+    viewMode?: string;
   }>();
+  const isViewMode = params.viewMode === "true";
   const attributionReelId = params.reel_id
     ? Number(params.reel_id)
     : null;
