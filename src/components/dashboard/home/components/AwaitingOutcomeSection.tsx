@@ -69,7 +69,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(8),
     },
     sectionTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -122,14 +122,14 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(6),
     },
     serviceName: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textTransform: "uppercase",
       flex: 1,
     },
     priceText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginLeft: moderateWidthScale(8),
@@ -140,14 +140,14 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(6),
     },
     infoText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
       marginLeft: moderateWidthScale(6),
       flexShrink: 1,
     },
     infoLabel: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
@@ -261,11 +261,15 @@ function formatServiceLabel(item: AwaitingOutcomeAppointment): string {
 }
 
 function formatDateTime(date: string, time: string): string {
+  const dateObj = dayjs(date, "MM/DD/YYYY");
+  const formattedDate = dateObj.isValid()
+    ? dateObj.format("MMM D, YYYY")
+    : date;
   const timeObj = dayjs(`2025-01-01 ${time}`, "YYYY-MM-DD HH:mm");
-  if (timeObj.isValid()) {
-    return `${date} - ${timeObj.format("h:mm a")}`;
-  }
-  return `${date} - ${time}`;
+  const formattedTime = timeObj.isValid()
+    ? timeObj.format("h:mm A")
+    : time;
+  return `${formattedDate} • ${formattedTime}`;
 }
 
 export default function AwaitingOutcomeSection({

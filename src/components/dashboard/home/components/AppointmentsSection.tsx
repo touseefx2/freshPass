@@ -26,7 +26,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(12),
     },
     sectionTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -82,7 +82,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
     },
     appointmentService: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textTransform: "uppercase",
@@ -90,7 +90,7 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateWidthScale(8),
     },
     appointmentPrice: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -100,7 +100,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     appointmentInfoText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
       marginLeft: moderateWidthScale(6),

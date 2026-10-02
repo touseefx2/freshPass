@@ -1078,6 +1078,20 @@ export default function BookingDetailsById() {
     }
   };
 
+  const monthsFull = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
   const monthsShort = [
     "Jan",
     "Feb",
@@ -1102,15 +1116,37 @@ export default function BookingDetailsById() {
       const [month, day, year] = booking.appointmentDate.split("/").map(Number);
       const [hours, minutes] = booking.appointmentTime.split(":").map(Number);
       const dateObj = new Date(year, month - 1, day, hours, minutes);
-      let hours12 = dateObj.getHours();
-      const ampm = hours12 >= 12 ? "PM" : "AM";
-      hours12 = hours12 % 12;
-      hours12 = hours12 ? hours12 : 12;
-      const minutesStr = dateObj.getMinutes().toString().padStart(2, "0");
-      return {
-        dateLabel: `${daysShort[dateObj.getDay()]}, ${monthsShort[dateObj.getMonth()]} ${day}`,
-        timeLabel: `${hours12}:${minutesStr} ${ampm}`,
-      };
+
+      const dateLabel = `${monthsFull[dateObj.getMonth()]} ${day}, ${year}`;
+
+      let startHours12 = dateObj.getHours();
+      const startAmpm = startHours12 >= 12 ? "PM" : "AM";
+      startHours12 = startHours12 % 12 || 12;
+      const startMinStr = dateObj.getMinutes().toString().padStart(2, "0");
+
+      let durationMinutes = 0;
+      if (booking.duration) {
+        const hMatch = booking.duration.match(/(\d+)h/);
+        const mMatch = booking.duration.match(/(\d+)m/);
+        if (hMatch) durationMinutes += parseInt(hMatch[1]) * 60;
+        if (mMatch) durationMinutes += parseInt(mMatch[1]);
+      }
+
+      let timeLabel = `${startHours12}:${startMinStr} ${startAmpm}`;
+      if (durationMinutes > 0) {
+        const endDate = new Date(dateObj.getTime() + durationMinutes * 60000);
+        let endHours12 = endDate.getHours();
+        const endAmpm = endHours12 >= 12 ? "PM" : "AM";
+        endHours12 = endHours12 % 12 || 12;
+        const endMinStr = endDate.getMinutes().toString().padStart(2, "0");
+        if (startAmpm === endAmpm) {
+          timeLabel = `${startHours12}:${startMinStr} – ${endHours12}:${endMinStr} ${endAmpm}`;
+        } else {
+          timeLabel = `${startHours12}:${startMinStr} ${startAmpm} – ${endHours12}:${endMinStr} ${endAmpm}`;
+        }
+      }
+
+      return { dateLabel, timeLabel };
     } catch {
       return { dateLabel: booking.dateTime ?? "---", timeLabel: "" };
     }

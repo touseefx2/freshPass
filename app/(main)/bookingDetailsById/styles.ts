@@ -69,7 +69,7 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightRed,
     },
     statusText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
     },
     statusTextOngoing: {
@@ -149,7 +149,7 @@ export const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(4),
     },
     serviceTitle: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textTransform: "uppercase",
@@ -160,7 +160,7 @@ export const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
     },
     servicePriceText: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size19,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -207,8 +207,8 @@ export const createStyles = (theme: Theme) =>
     infoListRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(16),
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
       gap: moderateWidthScale(12),
@@ -222,24 +222,24 @@ export const createStyles = (theme: Theme) =>
     },
     infoListLabel: {
       flex: 1,
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
     infoListValue: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      maxWidth: "50%",
+      maxWidth: "55%",
       textAlign: "right",
     },
     infoListBadge: {
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(6),
     },
     infoListBadgeText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
     },
     infoWrap: {
@@ -360,7 +360,7 @@ export const createStyles = (theme: Theme) =>
       paddingRight: moderateWidthScale(4),
     },
     locationName: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textTransform: "capitalize",
@@ -376,10 +376,10 @@ export const createStyles = (theme: Theme) =>
     },
     locationAddress: {
       flex: 1,
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      lineHeight: fontSize.size15,
+      lineHeight: fontSize.size16,
     },
     locationAffiliation: {
       fontSize: fontSize.size11,
@@ -403,7 +403,7 @@ export const createStyles = (theme: Theme) =>
       marginLeft: moderateWidthScale(2),
     },
     getDirectionsText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
@@ -433,7 +433,7 @@ export const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(2),
     },
     actionCardTitle: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
     },
     actionCardTitlePrimary: {
@@ -485,17 +485,17 @@ export const createStyles = (theme: Theme) =>
       minWidth: 0,
     },
     paymentLabel: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
     paymentTitle: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     paymentSubtitle: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
@@ -511,7 +511,7 @@ export const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(4),
     },
     paymentAmount: {
-      fontSize: fontSize.size20,
+      fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -1011,12 +1011,12 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.white,
       borderWidth: 1.5,
       borderColor: theme.darkGreen,
-      borderRadius: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      minHeight: heightScale(52),
+      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(15),
+      minHeight: heightScale(54),
     },
     bottomOutlineButtonText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
@@ -1029,12 +1029,12 @@ export const createStyles = (theme: Theme) =>
       backgroundColor: theme.white,
       borderWidth: 1.5,
       borderColor: theme.red,
-      borderRadius: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      minHeight: heightScale(52),
+      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(15),
+      minHeight: heightScale(54),
     },
     bottomCancelButtonText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.red,
     },
