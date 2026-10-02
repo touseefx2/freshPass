@@ -207,7 +207,7 @@ export const createStyles = (theme: Theme) =>
     infoListRow: {
       flexDirection: "row",
       alignItems: "center",
-      paddingVertical: moderateHeightScale(16),
+      paddingVertical: moderateHeightScale(11),
       paddingHorizontal: moderateWidthScale(16),
       borderBottomWidth: 1,
       borderBottomColor: theme.borderLight,
@@ -221,21 +221,24 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
     },
     infoListLabel: {
-      flex: 1,
+      width: "42%",
       fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
+      fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
     infoListValue: {
+      flex: 1,
       fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      maxWidth: "55%",
-      textAlign: "right",
+      textAlign: "left",
+    },
+    infoListValueName: {
+      textTransform: "capitalize",
     },
     infoListBadge: {
       paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(5),
+      paddingVertical: moderateHeightScale(4),
       borderRadius: moderateWidthScale(6),
     },
     infoListBadgeText: {

@@ -2078,7 +2078,7 @@ export default function BookingDetailsById() {
               <Text style={styles.infoListLabel}>
                 {userRole === "customer" ? t("myBarber") : t("myCustomer")}
               </Text>
-              <Text style={styles.infoListValue} numberOfLines={1}>
+              <Text style={[styles.infoListValue, styles.infoListValueName]} numberOfLines={1}>
                 {staffClientname}
               </Text>
             </TouchableOpacity>
@@ -2098,7 +2098,7 @@ export default function BookingDetailsById() {
                   />
                 </View>
                 <Text style={styles.infoListLabel}>{t("assignedStaff")}</Text>
-                <Text style={styles.infoListValue} numberOfLines={1}>
+                <Text style={[styles.infoListValue, styles.infoListValueName]} numberOfLines={1}>
                   {assignedStaffDisplayName || "---"}
                 </Text>
               </TouchableOpacity>
