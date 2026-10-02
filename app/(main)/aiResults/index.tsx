@@ -2315,7 +2315,17 @@ export default function AiResults() {
   return (
     <View style={styles.safeArea}>
       <StackHeader
-        title={t("aiResults")}
+        title={
+          normalized?.socialMedia?.jobType === "generate_reel" || reelId
+            ? t("yourReel")
+            : normalized?.socialMedia?.jobType === "generate_post"
+              ? t("yourPost")
+              : normalized?.socialMedia?.jobType === "generate_collage"
+                ? t("yourCollage")
+                : normalized?.requestPayload
+                  ? t("yourHairstyleTryOn")
+                  : t("aiResults")
+        }
         rightIcon={
           <View
             style={{

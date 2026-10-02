@@ -43,10 +43,12 @@ type BarberSettingKey =
 type BarberSettingItem = {
   key: BarberSettingKey;
   title: string;
+  subtitle?: string;
 };
 
 function BarberCard({
   title,
+  subtitle,
   iconName,
   iconFamily = "material",
   onPress,
@@ -55,6 +57,7 @@ function BarberCard({
   iconVariant,
 }: {
   title: string;
+  subtitle?: string;
   iconName: string;
   iconFamily?: IconFamily;
   onPress: () => void;
@@ -137,9 +140,16 @@ function BarberCard({
               )}
             </View>
 
-            <Text style={styles.cardTitle} numberOfLines={3}>
-              {title}
-            </Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.cardTitle} numberOfLines={3}>
+                {title}
+              </Text>
+              {!!subtitle && (
+                <Text style={styles.cardSubtitle} numberOfLines={2}>
+                  {subtitle}
+                </Text>
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -280,11 +290,17 @@ const createStyles = (theme: Theme) =>
       }),
     },
     cardTitle: {
-      flex: 1,
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       lineHeight: fontSize.size17,
+    },
+    cardSubtitle: {
+      fontSize: fontSize.size9,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen6,
+      lineHeight: fontSize.size12,
+      marginTop: moderateHeightScale(2),
     },
   });
 
@@ -338,7 +354,7 @@ export default function BarberProfileScreen() {
   const settings: BarberSettingItem[] = [
     { key: "contact", title: t("contactInformation") },
     { key: "workingHours", title: t("myWorkingHours") },
-    { key: "portfolio", title: t("myPortfolio") },
+    { key: "portfolio", title: t("myPortfolio"), subtitle: t("portfolioCardSubtitle") },
     { key: "appointments", title: t("myAppointments") },
     { key: "workHistory", title: t("myWorkHistory") },
     { key: "customers", title: t("myCustomers") },
@@ -397,6 +413,7 @@ export default function BarberProfileScreen() {
               <BarberCard
                 key={setting.key}
                 title={setting.title}
+                subtitle={setting.subtitle}
                 iconName={iconMeta.name}
                 iconFamily={iconMeta.family}
                 onPress={() => handlePress(setting.key)}
