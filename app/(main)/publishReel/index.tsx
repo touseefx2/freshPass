@@ -462,7 +462,8 @@ export default function PublishReelScreen() {
         setLookTag(reel.look_tag || "");
         setPromotionText(reel.promotion_text || "");
         setProductTag(reel.product_tag || "");
-        if (reel.product_id) setSelectedProductId(reel.product_id);
+        const pid = reel.product_id ?? reel.product?.id ?? null;
+        if (pid) setSelectedProductId(Number(pid));
         setAvailableNow(!!reel.available_now);
         userPickedCategoryRef.current = true;
         setCategoryId(reel.category?.id ?? resolvedBusinessCategory?.id ?? null);
