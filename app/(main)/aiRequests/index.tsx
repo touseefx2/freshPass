@@ -533,11 +533,22 @@ export default function AiRequests() {
           ]}
           activeOpacity={0.7}
           onPress={() => {
+            const titleLower = item.title.toLowerCase();
+            const resultType = item.kind === "reel"
+              ? "reel"
+              : titleLower.includes("hair") || titleLower.includes("replicate")
+                ? "hairTryon"
+                : titleLower.includes("collage")
+                  ? "collage"
+                  : titleLower.includes("post")
+                    ? "post"
+                    : "reel";
             if (item.kind === "reel" && item.reelId != null) {
               router.push({
                 pathname: "/aiResults",
                 params: {
                   reelId: String(item.reelId),
+                  resultType,
                   ...(params.returnTo ? { returnTo: params.returnTo } : {}),
                 },
               });
@@ -548,6 +559,7 @@ export default function AiRequests() {
                 pathname: "/aiResults",
                 params: {
                   jobId: item.jobId,
+                  resultType,
                   ...(params.returnTo ? { returnTo: params.returnTo } : {}),
                 },
               });

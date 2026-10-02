@@ -764,6 +764,7 @@ export default function AiResults() {
     reelId?: string;
     returnTo?: string;
     fromNotification?: string;
+    resultType?: string;
   }>();
   const jobId = params.jobId;
   const reelId = params.reelId;
@@ -2316,15 +2317,23 @@ export default function AiResults() {
     <View style={styles.safeArea}>
       <StackHeader
         title={
-          normalized?.socialMedia?.jobType === "generate_reel" || reelId
+          (params.resultType === "reel" || reelId)
             ? t("yourReel")
-            : normalized?.socialMedia?.jobType === "generate_post"
+            : params.resultType === "post"
               ? t("yourPost")
-              : normalized?.socialMedia?.jobType === "generate_collage"
+              : params.resultType === "collage"
                 ? t("yourCollage")
-                : normalized?.requestPayload
+                : params.resultType === "hairTryon"
                   ? t("yourHairstyleTryOn")
-                  : t("aiResults")
+                  : normalized?.socialMedia?.jobType === "generate_reel"
+                    ? t("yourReel")
+                    : normalized?.socialMedia?.jobType === "generate_post"
+                      ? t("yourPost")
+                      : normalized?.socialMedia?.jobType === "generate_collage"
+                        ? t("yourCollage")
+                        : normalized?.requestPayload
+                          ? t("yourHairstyleTryOn")
+                          : t("aiResults")
         }
         rightIcon={
           <View
