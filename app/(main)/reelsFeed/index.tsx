@@ -38,6 +38,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { LeafLogo } from "@/assets/icons";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
+import { setShopProduct } from "@/src/state/slices/shopCartSlice";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -1082,6 +1083,7 @@ function ReelFeedItemBase({
     .filter(Boolean)
     .join(", ");
   const categoryName = reel.category?.name?.trim() || "";
+  const dispatch = useAppDispatch();
   const shopProduct = reel.product ?? null;
   const productPrice = shopProduct
     ? formatShopPrice(shopProduct.sellingPrice)
@@ -1533,6 +1535,7 @@ function ReelFeedItemBase({
               style={styles.shopBtn}
               activeOpacity={0.85}
               onPress={() => {
+                dispatch(setShopProduct(shopProduct!));
                 router.push({
                   pathname: "/(main)/shop/productDetail" as any,
                   params: { productId: shopProduct!.id },

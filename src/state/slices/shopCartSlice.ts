@@ -1,19 +1,18 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type {
-  ShopCartItem,
+  ShopProduct,
   ShopShippingAddress,
   ShopShippingMethod,
 } from "@/src/types/shopProduct";
-import {
-  FREE_SHIPPING_THRESHOLD,
-  MOCK_TAX_RATE,
-  STANDARD_SHIPPING_PRICE,
-} from "@/src/types/shopProduct";
 
+/**
+ * Customer product purchase. The product comes from the reel feed
+ * (`reel.product`), so customers never read the owner's inventory.
+ */
 export interface ShopCartState {
-  items: ShopCartItem[];
+  product: ShopProduct | null;
+  quantity: number;
   shippingMethod: ShopShippingMethod | null;
-  checkedZip: string | null;
   address: ShopShippingAddress;
   lastOrderId: string | null;
 }
@@ -27,9 +26,9 @@ const emptyAddress: ShopShippingAddress = {
 };
 
 const initialState: ShopCartState = {
-  items: [],
+  product: null,
+  quantity: 1,
   shippingMethod: null,
-  checkedZip: null,
   address: emptyAddress,
   lastOrderId: null,
 };
@@ -38,71 +37,21 @@ const shopCartSlice = createSlice({
   name: "shopCart",
   initialState,
   reducers: {
-    addToCart: (
-      state,
-      action: PayloadAction<{ productId: string; quantity?: number }>,
-    ) => {
-      const qty = Math.max(1, action.payload.quantity ?? 1);
-      const existing = state.items.find(
-        (i) => i.productId === action.payload.productId,
-      );
-      if (existing) {
-        existing.quantity += qty;
-      } else {
-        state.items.push({
-          productId: action.payload.productId,
-          quantity: qty,
-        });
+    setShopProduct: (state, action: PayloadAction<ShopProduct>) => {
+      if (state.product?.id !== action.payload.id) {
+        state.quantity = 1;
+        state.shippingMethod = null;
       }
+      state.product = action.payload;
     },
-    setCartItemQuantity: (
-      state,
-      action: PayloadAction<{ productId: string; quantity: number }>,
-    ) => {
-      const qty = Math.max(0, action.payload.quantity);
-      if (qty === 0) {
-        state.items = state.items.filter(
-          (i) => i.productId !== action.payload.productId,
-        );
-        return;
-      }
-      const existing = state.items.find(
-        (i) => i.productId === action.payload.productId,
-      );
-      if (existing) {
-        existing.quantity = qty;
-      } else {
-        state.items.push({
-          productId: action.payload.productId,
-          quantity: qty,
-        });
-      }
-    },
-    removeFromCart: (state, action: PayloadAction<string>) => {
-      state.items = state.items.filter((i) => i.productId !== action.payload);
-    },
-    clearCart: (state) => {
-      state.items = [];
-    },
-    seedBuyNow: (
-      state,
-      action: PayloadAction<{ productId: string; quantity?: number }>,
-    ) => {
-      state.items = [
-        {
-          productId: action.payload.productId,
-          quantity: Math.max(1, action.payload.quantity ?? 1),
-        },
-      ];
+    setShopQuantity: (state, action: PayloadAction<number>) => {
+      state.quantity = Math.max(1, action.payload);
     },
     setShippingMethod: (
       state,
       action: PayloadAction<ShopShippingMethod | null>,
     ) => {
       state.shippingMethod = action.payload;
-    },
-    setCheckedZip: (state, action: PayloadAction<string | null>) => {
-      state.checkedZip = action.payload;
     },
     setShippingAddress: (
       state,
@@ -114,54 +63,20 @@ const shopCartSlice = createSlice({
       state.lastOrderId = action.payload;
     },
     resetShopCheckout: (state) => {
+      state.product = null;
+      state.quantity = 1;
       state.shippingMethod = null;
-      state.checkedZip = null;
-      state.address = emptyAddress;
     },
   },
 });
 
 export const {
-  addToCart,
-  setCartItemQuantity,
-  removeFromCart,
-  clearCart,
-  seedBuyNow,
+  setShopProduct,
+  setShopQuantity,
   setShippingMethod,
-  setCheckedZip,
   setShippingAddress,
   setLastOrderId,
   resetShopCheckout,
 } = shopCartSlice.actions;
-
-export function computeShippingCost(
-  subtotal: number,
-  method: ShopShippingMethod | null,
-  productShippingPrice = STANDARD_SHIPPING_PRICE,
-  freeOver = FREE_SHIPPING_THRESHOLD,
-): number {
-  if (!method || method === "local_pickup") return 0;
-  if (method === "free_over") {
-    return subtotal >= freeOver ? 0 : productShippingPrice;
-  }
-  return productShippingPrice;
-}
-
-export function computeOrderTotals(
-  subtotal: number,
-  method: ShopShippingMethod | null,
-  productShippingPrice = STANDARD_SHIPPING_PRICE,
-  freeOver = FREE_SHIPPING_THRESHOLD,
-) {
-  const shipping = computeShippingCost(
-    subtotal,
-    method,
-    productShippingPrice,
-    freeOver,
-  );
-  const tax = Math.round(subtotal * MOCK_TAX_RATE * 100) / 100;
-  const total = Math.round((subtotal + shipping + tax) * 100) / 100;
-  return { subtotal, shipping, tax, total };
-}
 
 export default shopCartSlice.reducer;

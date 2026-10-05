@@ -1,12 +1,18 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import type { ShopProduct } from "@/src/types/shopProduct";
+import type {
+  ShopDeliveryOptions,
+  ShopProduct,
+} from "@/src/types/shopProduct";
 
 export interface InventoryState {
   products: ShopProduct[];
+  /** Salon-level delivery options (owner). Null until fetched. */
+  deliveryOptions: ShopDeliveryOptions | null;
 }
 
 const initialState: InventoryState = {
   products: [],
+  deliveryOptions: null,
 };
 
 const inventorySlice = createSlice({
@@ -26,11 +32,17 @@ const inventorySlice = createSlice({
       state.products = state.products.filter((p) => p.id !== action.payload);
     },
     setProducts: (state, action: PayloadAction<ShopProduct[]>) => {
-      // BACKEND_SWAP: replace local list with API response
       state.products = action.payload;
+    },
+    setDeliveryOptions: (
+      state,
+      action: PayloadAction<ShopDeliveryOptions | null>,
+    ) => {
+      state.deliveryOptions = action.payload;
     },
     clearInventory: (state) => {
       state.products = [];
+      state.deliveryOptions = null;
     },
   },
 });
@@ -40,6 +52,7 @@ export const {
   updateProduct,
   removeProduct,
   setProducts,
+  setDeliveryOptions,
   clearInventory,
 } = inventorySlice.actions;
 

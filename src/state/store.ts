@@ -114,9 +114,9 @@ const inventoryPersistConfig = {
 };
 
 const shopCartPersistConfig = {
-  key: "shopCart",
+  key: "shopCheckout",
   storage: LocalStorageAdapter,
-  whitelist: ["items", "shippingMethod", "checkedZip", "address", "lastOrderId"],
+  whitelist: ["address"],
 };
 
 const persistedInventoryReducer = persistReducer(
@@ -138,8 +138,8 @@ const rootReducer = combineReducers({
   chat: chatReducer, // AI Chat state (not persisted)
   categories: categoriesReducer, // Categories state (not persisted)
   download: downloadReducer, // Global download loader (not persisted)
-  inventory: persistedInventoryReducer, // Business in-store products (UI-only until API)
-  shopCart: persistedShopCartReducer, // Product cart / checkout draft (UI-only)
+  inventory: persistedInventoryReducer, // Business in-store products + salon delivery options
+  shopCart: persistedShopCartReducer, // Customer product checkout (product being bought, saved address)
 });
 
 // ✅ No root-level persistence needed - general is already persisted with nested config

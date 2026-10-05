@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -27,9 +27,11 @@ import Button from "@/src/components/button";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   removeProduct,
+  setDeliveryOptions,
   setProducts,
   updateProduct,
 } from "@/src/state/slices/inventorySlice";
+import { describeDelivery } from "@/src/utils/shopProductHelpers";
 import {
   getStockFilterMatch,
   isLowStock,
@@ -38,6 +40,7 @@ import {
 } from "@/src/types/shopProduct";
 import {
   fetchMyProducts,
+  fetchDeliveryOptions,
   deleteProduct as deleteProductApi,
   updateProduct as updateProductApi,
 } from "@/src/services/productService";
@@ -52,6 +55,39 @@ const createStyles = (theme: Theme) =>
     content: {
       flex: 1,
       paddingHorizontal: moderateWidthScale(20),
+    },
+    deliveryCard: {
+      marginTop: moderateHeightScale(8),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+    },
+    deliveryCardWarning: {
+      borderColor: theme.selectCard,
+      backgroundColor: theme.orangeBrown015,
+    },
+    deliveryText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    deliveryEdit: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
+    },
+    draftBadge: {
+      backgroundColor: theme.lightGreen05,
+    },
+    draftBadgeText: {
+      color: theme.lightGreen5,
     },
     searchWrap: {
       marginTop: moderateHeightScale(8),
@@ -224,6 +260,8 @@ export default function ProductsInventoryScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const products = useAppSelector((s) => s.inventory.products);
+  const delivery = useAppSelector((s) => s.inventory.deliveryOptions);
+  const deliveryLines = describeDelivery(delivery, t);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ShopStockFilter>("all");
@@ -243,6 +281,14 @@ export default function ProductsInventoryScreen() {
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchDeliveryOptions()
+        .then((options) => dispatch(setDeliveryOptions(options)))
+        .catch(() => {});
+    }, [dispatch]),
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -281,7 +327,7 @@ export default function ProductsInventoryScreen() {
                       try {
                         const updated = await updateProductApi(product.id, {
                           published: false,
-                        } as any);
+                        });
                         dispatch(updateProduct(updated));
                       } catch {
                         showBanner(
@@ -313,6 +359,30 @@ export default function ProductsInventoryScreen() {
     <View style={styles.container}>
       <StackHeader title={t("productsInventory")} />
       <View style={styles.content}>
+        {delivery ? (
+          <TouchableOpacity
+            style={[
+              styles.deliveryCard,
+              !delivery.configured && styles.deliveryCardWarning,
+            ]}
+            activeOpacity={0.85}
+            onPress={() => router.push("./deliveryOptions" as any)}
+          >
+            <MaterialIcons
+              name={delivery.configured ? "local-shipping" : "warning-amber"}
+              size={moderateWidthScale(20)}
+              color={delivery.configured ? theme.darkGreen : theme.selectCard}
+            />
+            <Text style={styles.deliveryText} numberOfLines={2}>
+              {delivery.configured
+                ? deliveryLines.map((l) => l.label).join(" · ")
+                : t("deliveryNotSetHint")}
+            </Text>
+            <Text style={styles.deliveryEdit}>
+              {delivery.configured ? t("edit") : t("setUp")}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         <View style={styles.searchWrap}>
           <MaterialIcons
             name="search"
@@ -431,7 +501,13 @@ export default function ProductsInventoryScreen() {
                   <Text style={styles.cardMeta}>
                     {t("qtyInStock", { count: item.inventoryCount })}
                   </Text>
-                  {isLowStock(item) ? (
+                  {!item.published ? (
+                    <View style={[styles.badge, styles.draftBadge]}>
+                      <Text style={[styles.badgeText, styles.draftBadgeText]}>
+                        {t("draft")}
+                      </Text>
+                    </View>
+                  ) : isLowStock(item) ? (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{t("lowStock")}</Text>
                     </View>

@@ -1,4 +1,16 @@
-export type ShopShippingMethod = "standard" | "free_over" | "local_pickup";
+export type ShopShippingMethod = "standard" | "local_pickup";
+
+/** Salon-level delivery setting. Shipping is charged once per order. */
+export type ShopDeliveryShipping = "none" | "paid" | "free";
+
+export interface ShopDeliveryOptions {
+  shipping: ShopDeliveryShipping;
+  shippingPrice: number | null;
+  pickupAvailable: boolean;
+  configured: boolean;
+  /** Owner endpoint only: ready-made "charged once per order" text. */
+  note?: string;
+}
 
 export type ShopProductCategory =
   | "Hair Styling"
@@ -23,14 +35,13 @@ export interface ShopProduct {
   description: string;
   imageUri: string | null;
   sellingPrice: number;
-  cost: number | null;
+  /** Only present for the salon owner; missing for customers. */
+  cost?: number | null;
   inventoryCount: number;
   lowStockAlertEnabled: boolean;
   lowStockThreshold: number;
   trackInventory: boolean;
-  shippingPrice: number;
-  freeShippingOver: number;
-  pickupAvailable: boolean;
+  delivery?: ShopDeliveryOptions | null;
   published: boolean;
   createdAt: string;
   updatedAt: string;
@@ -58,11 +69,6 @@ export function getStockFilterMatch(
   return isLowStock(product);
 }
 
-export interface ShopCartItem {
-  productId: string;
-  quantity: number;
-}
-
 export interface ShopShippingAddress {
   fullName: string;
   street: string;
@@ -71,13 +77,15 @@ export interface ShopShippingAddress {
   zip: string;
 }
 
-export interface ShopOrderTotals {
-  subtotal: number;
-  shipping: number;
-  tax: number;
-  total: number;
+export function canShip(delivery?: ShopDeliveryOptions | null): boolean {
+  return delivery?.shipping === "paid" || delivery?.shipping === "free";
 }
 
-export const MOCK_TAX_RATE = 0.06;
-export const STANDARD_SHIPPING_PRICE = 5.99;
-export const FREE_SHIPPING_THRESHOLD = 50;
+/** Shipping charged once per order; pickup is always free. */
+export function getShippingCost(
+  delivery: ShopDeliveryOptions | null | undefined,
+  method: ShopShippingMethod | null,
+): number {
+  if (method !== "standard" || delivery?.shipping !== "paid") return 0;
+  return delivery.shippingPrice ?? 0;
+}

@@ -18,7 +18,7 @@ export default function AddProductScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = useCallback(
-    async (draft: ProductFormDraft) => {
+    async (draft: ProductFormDraft, publish: boolean) => {
       if (submitting) return;
       setSubmitting(true);
       try {
@@ -30,7 +30,7 @@ export default function AddProductScreen() {
                 type: "image/jpeg",
               }
             : null;
-        const product = await createProduct(draft, imageFile);
+        const product = await createProduct(draft, publish, imageFile);
         dispatch(addProduct(product));
         router.back();
       } catch (err: any) {
@@ -50,6 +50,7 @@ export default function AddProductScreen() {
     <ProductFormScreen
       mode="add"
       initial={createEmptyProductDraft()}
+      submitting={submitting}
       onSubmit={handleSubmit}
     />
   );

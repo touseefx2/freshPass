@@ -34,13 +34,14 @@ export default function EditProductScreen() {
       createdAt: _c,
       updatedAt: _u,
       published: _p,
+      delivery: _d,
       ...draft
     } = product;
     return draft;
   }, [product]);
 
   const handleSubmit = useCallback(
-    async (draft: ProductFormDraft) => {
+    async (draft: ProductFormDraft, publish: boolean) => {
       if (!product || submitting) return;
       setSubmitting(true);
       try {
@@ -53,7 +54,12 @@ export default function EditProductScreen() {
               type: "image/jpeg",
             }
           : null;
-        const updated = await updateProductApi(product.id, draft, imageFile);
+        // Live products keep their status; drafts publish or stay drafts.
+        const updated = await updateProductApi(
+          product.id,
+          product.published ? draft : { ...draft, published: publish },
+          imageFile,
+        );
         dispatch(updateProductRedux(updated));
         router.back();
       } catch (err: any) {
@@ -94,6 +100,12 @@ export default function EditProductScreen() {
   }
 
   return (
-    <ProductFormScreen mode="edit" initial={initial} onSubmit={handleSubmit} />
+    <ProductFormScreen
+      mode="edit"
+      initial={initial}
+      published={product.published}
+      submitting={submitting}
+      onSubmit={handleSubmit}
+    />
   );
 }

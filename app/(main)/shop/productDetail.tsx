@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -22,9 +22,13 @@ import AppImage from "@/src/components/AppImage";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
-import { addToCart, seedBuyNow } from "@/src/state/slices/shopCartSlice";
-import { resolveShopProduct } from "@/src/utils/shopProductHelpers";
-import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import {
+  setShippingMethod,
+  setShopQuantity,
+} from "@/src/state/slices/shopCartSlice";
+import { describeDelivery } from "@/src/utils/shopProductHelpers";
+
+const MAX_QTY_PER_ITEM = 10;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -54,19 +58,6 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       height: "100%",
     },
-    wishBtn: {
-      position: "absolute",
-      top: moderateHeightScale(12),
-      right: moderateWidthScale(16),
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.white,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-    },
     body: {
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(16),
@@ -88,18 +79,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       marginTop: moderateHeightScale(4),
     },
-    ratingRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
-      marginTop: moderateHeightScale(4),
-    },
-    ratingText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.selectCard,
-      marginLeft: moderateWidthScale(4),
-    },
     description: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
@@ -119,6 +98,42 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       flex: 1,
     },
+    qtyRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      marginTop: moderateHeightScale(16),
+    },
+    qtyLabel: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    qtyBtn: {
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+    },
+    qtyBtnDisabled: { opacity: 0.4 },
+    qtyText: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      minWidth: moderateWidthScale(24),
+      textAlign: "center",
+    },
+    notice: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.selectCard,
+      textAlign: "center",
+    },
     empty: {
       flex: 1,
       alignItems: "center",
@@ -137,15 +152,14 @@ export default function ProductDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { showBanner } = useNotificationContext();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
   const { productId } = useLocalSearchParams<{ productId?: string }>();
-  const inventory = useAppSelector((s) => s.inventory.products);
-  const product = resolveShopProduct(productId, inventory);
-  const [liked, setLiked] = useState(false);
+  const shopProduct = useAppSelector((s) => s.shopCart.product);
+  const quantity = useAppSelector((s) => s.shopCart.quantity);
+  const product = shopProduct && shopProduct.id === productId ? shopProduct : null;
 
   if (!product) {
     return (
@@ -159,13 +173,11 @@ export default function ProductDetailScreen() {
   }
 
   const outOfStock = product.trackInventory && product.inventoryCount <= 0;
-
-  const goAvailability = () => {
-    router.push({
-      pathname: "/(main)/shop/checkAvailability" as any,
-      params: { productId: product.id },
-    });
-  };
+  const takingOrders = !!product.delivery?.configured;
+  const maxQty = product.trackInventory
+    ? Math.min(product.inventoryCount, MAX_QTY_PER_ITEM)
+    : MAX_QTY_PER_ITEM;
+  const deliveryLines = describeDelivery(product.delivery, t);
 
   return (
     <View style={styles.container}>
@@ -192,17 +204,6 @@ export default function ProductDetailScreen() {
               color={theme.darkGreen}
             />
           )}
-          <TouchableOpacity
-            style={styles.wishBtn}
-            onPress={() => setLiked((v) => !v)}
-            activeOpacity={0.85}
-          >
-            <MaterialIcons
-              name={liked ? "favorite" : "favorite-border"}
-              size={moderateWidthScale(22)}
-              color={liked ? theme.red : theme.darkGreen}
-            />
-          </TouchableOpacity>
         </View>
 
         <View style={styles.body}>
@@ -211,89 +212,66 @@ export default function ProductDetailScreen() {
           <Text style={styles.price}>
             {formatShopPrice(product.sellingPrice)}
           </Text>
-          <View style={styles.ratingRow}>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <MaterialIcons
-                key={i}
-                name={i <= 4 ? "star" : "star-half"}
-                size={moderateWidthScale(16)}
-                color={theme.selectCard}
-              />
-            ))}
-            <Text style={styles.ratingText}>
-              {t("reviewsCount", { rating: "4.8", count: 124 })}
-            </Text>
-          </View>
           {!!product.description && (
             <Text style={styles.description}>{product.description}</Text>
           )}
 
-          <View style={styles.bullet}>
-            <MaterialIcons
-              name="local-shipping"
-              size={moderateWidthScale(18)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.bulletText}>{t("shipsToYourLocation")}</Text>
-          </View>
-          <View style={styles.bullet}>
-            <MaterialIcons
-              name="card-giftcard"
-              size={moderateWidthScale(18)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.bulletText}>
-              {t("freeShippingOver", {
-                amount: formatShopPrice(product.freeShippingOver),
-              })}
-            </Text>
-          </View>
-          {product.pickupAvailable ? (
-            <View style={styles.bullet}>
+          {deliveryLines.map((line) => (
+            <View key={line.label} style={styles.bullet}>
               <MaterialIcons
-                name="storefront"
+                name={line.icon}
                 size={moderateWidthScale(18)}
                 color={theme.buttonBack}
               />
-              <Text style={styles.bulletText}>{t("localPickupAvailable")}</Text>
+              <Text style={styles.bulletText}>{line.label}</Text>
+            </View>
+          ))}
+
+          {takingOrders && !outOfStock ? (
+            <View style={styles.qtyRow}>
+              <Text style={styles.qtyLabel}>{t("quantity")}</Text>
+              <TouchableOpacity
+                style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
+                disabled={quantity <= 1}
+                onPress={() => dispatch(setShopQuantity(quantity - 1))}
+              >
+                <MaterialIcons
+                  name="remove"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+              <Text style={styles.qtyText}>{quantity}</Text>
+              <TouchableOpacity
+                style={[
+                  styles.qtyBtn,
+                  quantity >= maxQty && styles.qtyBtnDisabled,
+                ]}
+                disabled={quantity >= maxQty}
+                onPress={() => dispatch(setShopQuantity(quantity + 1))}
+              >
+                <MaterialIcons
+                  name="add"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
             </View>
           ) : null}
         </View>
 
         <View style={styles.actions}>
-          {outOfStock ? (
-            <Button
-              title={t("outOfStock")}
-              onPress={() => {}}
-              disabled
-              backgroundColor={theme.lightGreen2}
-              textColor={theme.lightGreen5}
-            />
-          ) : (
-            <>
-              <Button
-                title={t("addToCart")}
-                onPress={() => {
-                  dispatch(addToCart({ productId: product.id, quantity: 1 }));
-                  showBanner(t("addToCart"), t("addedToCart"), "success");
-                  goAvailability();
-                }}
-                backgroundColor={theme.white}
-                textColor={theme.darkGreen}
-                containerStyle={{
-                  borderWidth: 1,
-                  borderColor: theme.buttonBack,
-                }}
-              />
-              <Button
-                title={t("buyNow")}
-                onPress={() => {
-                  dispatch(seedBuyNow({ productId: product.id, quantity: 1 }));
-                  goAvailability();
-                }}
-              />
-            </>
-          )}
+          {!takingOrders ? (
+            <Text style={styles.notice}>{t("salonNotTakingOrders")}</Text>
+          ) : null}
+          <Button
+            title={outOfStock ? t("outOfStock") : t("buyNow")}
+            disabled={outOfStock || !takingOrders}
+            onPress={() => {
+              dispatch(setShippingMethod(null));
+              router.push("/(main)/shop/checkout" as any);
+            }}
+          />
         </View>
       </ScrollView>
     </View>

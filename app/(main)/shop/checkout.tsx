@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -19,20 +19,23 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
+import AppImage from "@/src/components/AppImage";
+import { MaterialIcons } from "@expo/vector-icons";
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import FloatingInput from "@/src/components/floatingInput";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
-  clearCart,
-  computeOrderTotals,
   resetShopCheckout,
   setLastOrderId,
   setShippingAddress,
   setShippingMethod,
 } from "@/src/state/slices/shopCartSlice";
-import type { ShopShippingMethod } from "@/src/types/shopProduct";
-import { resolveShopProduct } from "@/src/utils/shopProductHelpers";
+import {
+  canShip,
+  getShippingCost,
+  type ShopShippingMethod,
+} from "@/src/types/shopProduct";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import {
   useStripeAccount,
@@ -52,46 +55,36 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(12),
       gap: moderateHeightScale(10),
     },
-    stepper: {
+    summaryCard: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(8),
-    },
-    stepItem: { alignItems: "center", flex: 1, gap: moderateHeightScale(6) },
-    stepCircle: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
+      gap: moderateWidthScale(12),
+      padding: moderateWidthScale(12),
       borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.lightGreen2,
+      borderWidth: 1,
+      borderColor: theme.lightGreen2,
+      backgroundColor: theme.white,
+    },
+    thumb: {
+      width: widthScale(56),
+      height: widthScale(56),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen05,
       alignItems: "center",
       justifyContent: "center",
-    },
-    stepCircleActive: { backgroundColor: theme.buttonBack },
-    stepCircleDone: { backgroundColor: theme.darkGreen },
-    stepNum: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-    },
-    stepLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
-      textAlign: "center",
-    },
-    stepLabelActive: { color: theme.darkGreen },
-    progressTrack: {
-      height: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(2),
-      backgroundColor: theme.lightGreen2,
-      marginBottom: moderateHeightScale(12),
       overflow: "hidden",
     },
-    progressFill: {
-      height: "100%",
-      backgroundColor: theme.selectCard,
-      borderRadius: moderateWidthScale(2),
+    thumbImage: { width: "100%", height: "100%" },
+    summaryName: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    summaryMeta: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(2),
     },
     sectionTitle: {
       fontSize: fontSize.size16,
@@ -139,6 +132,16 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    optionPrice: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    taxNote: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+    },
     reviewCard: {
       borderRadius: moderateWidthScale(14),
       borderWidth: 1,
@@ -179,86 +182,98 @@ export default function ShopCheckoutScreen() {
 
   const address = useAppSelector((s) => s.shopCart.address);
   const shippingMethod = useAppSelector((s) => s.shopCart.shippingMethod);
-  const items = useAppSelector((s) => s.shopCart.items);
-  const inventory = useAppSelector((s) => s.inventory.products);
+  const product = useAppSelector((s) => s.shopCart.product);
+  const quantity = useAppSelector((s) => s.shopCart.quantity);
 
-  const [step, setStep] = useState(1);
   const [paying, setPaying] = useState(false);
 
-  const lines = useMemo(() => {
-    return items
-      .map((item) => {
-        const product = resolveShopProduct(item.productId, inventory);
-        if (!product) return null;
-        return { item, product };
-      })
-      .filter(Boolean) as {
-      item: (typeof items)[0];
-      product: NonNullable<ReturnType<typeof resolveShopProduct>>;
-    }[];
-  }, [items, inventory]);
+  const delivery = product?.delivery;
+  const shippingLabel =
+    delivery?.shipping === "free"
+      ? t("free")
+      : formatShopPrice(delivery?.shippingPrice ?? 0);
 
-  const subtotal = lines.reduce(
-    (sum, l) => sum + l.product.sellingPrice * l.item.quantity,
-    0,
-  );
-  const shippingProduct = lines[0]?.product;
-  const totals = computeOrderTotals(
-    subtotal,
-    shippingMethod,
-    shippingProduct?.shippingPrice,
-    shippingProduct?.freeShippingOver,
-  );
-
-  const methodOptions: { key: ShopShippingMethod; label: string }[] = [
-    { key: "standard", label: t("standardShipping") },
-    {
-      key: "free_over",
-      label: t("freeShippingOption", {
-        amount: formatShopPrice(shippingProduct?.freeShippingOver ?? 50),
-      }),
-    },
-    { key: "local_pickup", label: t("localPickup") },
+  // Only offer what the salon has turned on.
+  const methodOptions: {
+    key: ShopShippingMethod;
+    label: string;
+    priceLabel: string;
+  }[] = [
+    ...(canShip(delivery)
+      ? [
+          {
+            key: "standard" as const,
+            label: t("shipToMe"),
+            priceLabel: shippingLabel,
+          },
+        ]
+      : []),
+    ...(delivery?.pickupAvailable
+      ? [
+          {
+            key: "local_pickup" as const,
+            label: t("pickupAtSalon"),
+            priceLabel: t("free"),
+          },
+        ]
+      : []),
   ];
 
-  const validateShipping = () => {
-    if (shippingMethod !== "local_pickup") {
-      if (
-        !address.fullName.trim() ||
+  const firstMethod = methodOptions[0]?.key ?? null;
+  const methodOffered = methodOptions.some((m) => m.key === shippingMethod);
+  useEffect(() => {
+    if (!methodOffered && firstMethod) {
+      dispatch(setShippingMethod(firstMethod));
+    }
+  }, [dispatch, firstMethod, methodOffered]);
+
+  if (!product || !delivery?.configured) {
+    return (
+      <View style={styles.container}>
+        <StackHeader title={t("checkout")} />
+        <View style={[styles.content, styles.contentContainer]}>
+          <Text style={styles.taxNote}>
+            {product ? t("salonNotTakingOrders") : t("productNotFound")}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  const isShipping = shippingMethod === "standard";
+  const subtotal = product.sellingPrice * quantity;
+  const shipping = getShippingCost(delivery, shippingMethod);
+  const totalBeforeTax = Math.round((subtotal + shipping) * 100) / 100;
+
+  const validate = () => {
+    if (!shippingMethod) {
+      showBanner(t("checkout"), t("selectShippingMethod"), "warning");
+      return false;
+    }
+    if (
+      isShipping &&
+      (!address.fullName.trim() ||
         !address.street.trim() ||
         !address.city.trim() ||
         !address.state.trim() ||
-        !address.zip.trim()
-      ) {
-        showBanner(t("checkout"), t("fillShippingAddress"), "warning");
-        return false;
-      }
-    }
-    if (!shippingMethod) {
-      showBanner(t("checkout"), t("selectShippingMethod"), "warning");
+        !address.zip.trim())
+    ) {
+      showBanner(t("checkout"), t("fillShippingAddress"), "warning");
       return false;
     }
     return true;
   };
 
   const placeOrder = async () => {
-    if (paying) return;
+    Keyboard.dismiss();
+    if (paying || !validate()) return;
     setPaying(true);
     try {
-      const checkoutItems = lines.map((l) => ({
-        product_id: Number(l.product.id),
-        quantity: l.item.quantity,
-      }));
-
-      const checkoutBody = {
-        items: checkoutItems,
+      const result = await startProductCheckout({
+        items: [{ product_id: Number(product.id), quantity }],
         shipping_method: shippingMethod!,
-        ...(shippingMethod !== "local_pickup"
-          ? { shipping_address: address }
-          : {}),
-      };
-
-      const result = await startProductCheckout(checkoutBody);
+        ...(isShipping ? { shipping_address: address } : {}),
+      });
 
       await useStripeAccount(result.connectedAccountId);
 
@@ -286,7 +301,6 @@ export default function ShopCheckoutScreen() {
 
       const orderId = String(result.orderId);
       dispatch(setLastOrderId(orderId));
-      dispatch(clearCart());
       dispatch(resetShopCheckout());
       router.replace({
         pathname: "/(main)/shop/orderConfirmed" as any,
@@ -294,31 +308,20 @@ export default function ShopCheckoutScreen() {
       });
     } catch (err: any) {
       await useStripeAccount(null).catch(() => {});
+      const fieldErrors = err?.data?.errors as
+        | Record<string, string[]>
+        | undefined;
+      const first = fieldErrors
+        ? Object.values(fieldErrors).flat()[0]
+        : undefined;
       showBanner(
         t("checkout"),
-        err?.message || t("somethingWentWrong"),
+        first || err?.message || t("somethingWentWrong"),
         "error",
       );
     } finally {
       setPaying(false);
     }
-  };
-
-  const stepLabels = [
-    { n: 1, label: t("shipping") },
-    { n: 2, label: t("review") },
-  ];
-
-  const primaryLabel = step === 1 ? t("continueToReview") : t("placeOrder");
-
-  const onPrimary = () => {
-    Keyboard.dismiss();
-    if (step === 1) {
-      if (!validateShipping()) return;
-      setStep(2);
-      return;
-    }
-    placeOrder();
   };
 
   return (
@@ -336,41 +339,64 @@ export default function ShopCheckoutScreen() {
         extraKeyboardSpace={moderateHeightScale(24)}
         onScrollBeginDrag={Keyboard.dismiss}
       >
-        <View style={styles.stepper}>
-          {stepLabels.map((s) => (
-            <View key={s.n} style={styles.stepItem}>
-              <View
-                style={[
-                  styles.stepCircle,
-                  step === s.n && styles.stepCircleActive,
-                  step > s.n && styles.stepCircleDone,
-                ]}
-              >
-                <Text style={styles.stepNum}>{s.n}</Text>
-              </View>
-              <Text
-                style={[
-                  styles.stepLabel,
-                  step === s.n && styles.stepLabelActive,
-                ]}
-              >
-                {s.label}
-              </Text>
-            </View>
-          ))}
-        </View>
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: widthScale(320) * (step / 2) },
-            ]}
-          />
+        <View style={styles.summaryCard}>
+          <View style={styles.thumb}>
+            {product.imageUri ? (
+              <AppImage
+                uri={product.imageUri}
+                style={styles.thumbImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons
+                name="shopping-bag"
+                size={moderateWidthScale(24)}
+                color={theme.darkGreen}
+              />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.summaryName} numberOfLines={2}>
+              {product.name}
+            </Text>
+            <Text style={styles.summaryMeta}>
+              {`${quantity} × ${formatShopPrice(product.sellingPrice)}`}
+            </Text>
+          </View>
         </View>
 
-        {step === 1 ? (
+        <Text style={[styles.sectionTitle, { marginTop: moderateHeightScale(8) }]}>
+          {t("delivery")}
+        </Text>
+        {methodOptions.map((opt) => {
+          const selected = shippingMethod === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              style={[styles.optionRow, selected && styles.optionRowSelected]}
+              onPress={() => dispatch(setShippingMethod(opt.key))}
+            >
+              <View
+                style={[
+                  styles.radioOuter,
+                  selected && styles.radioOuterSelected,
+                ]}
+              >
+                {selected ? <View style={styles.radioInner} /> : null}
+              </View>
+              <Text style={styles.optionTitle}>{opt.label}</Text>
+              <Text style={styles.optionPrice}>{opt.priceLabel}</Text>
+            </Pressable>
+          );
+        })}
+
+        {isShipping ? (
           <>
-            <Text style={styles.sectionTitle}>{t("shippingAddress")}</Text>
+            <Text
+              style={[styles.sectionTitle, { marginTop: moderateHeightScale(12) }]}
+            >
+              {t("shippingAddress")}
+            </Text>
             <FloatingInput
               label={t("fullName")}
               value={address.fullName}
@@ -395,8 +421,6 @@ export default function ShopCheckoutScreen() {
                     dispatch(setShippingAddress({ city: v }))
                   }
                   autoCapitalize="words"
-                  showClearButton
-                  onClear={() => dispatch(setShippingAddress({ city: "" }))}
                 />
               </View>
               <View style={styles.half}>
@@ -407,8 +431,6 @@ export default function ShopCheckoutScreen() {
                     dispatch(setShippingAddress({ state: v }))
                   }
                   autoCapitalize="characters"
-                  showClearButton
-                  onClear={() => dispatch(setShippingAddress({ state: "" }))}
                 />
               </View>
             </View>
@@ -417,96 +439,35 @@ export default function ShopCheckoutScreen() {
               value={address.zip}
               onChangeText={(v) => dispatch(setShippingAddress({ zip: v }))}
               keyboardType="number-pad"
-              showClearButton
-              onClear={() => dispatch(setShippingAddress({ zip: "" }))}
             />
+          </>
+        ) : null}
 
-            <Text
-              style={[
-                styles.sectionTitle,
-                { marginTop: moderateHeightScale(12) },
-              ]}
-            >
-              {t("shippingMethod")}
+        <View style={[styles.reviewCard, { marginTop: moderateHeightScale(12) }]}>
+          <View style={styles.reviewRow}>
+            <Text style={styles.reviewKey}>{t("subtotal")}</Text>
+            <Text style={styles.reviewValue}>{formatShopPrice(subtotal)}</Text>
+          </View>
+          <View style={styles.reviewRow}>
+            <Text style={styles.reviewKey}>{t("shipping")}</Text>
+            <Text style={styles.reviewValue}>
+              {shipping > 0 ? formatShopPrice(shipping) : t("free")}
             </Text>
-            {methodOptions.map((opt) => {
-              const selected = shippingMethod === opt.key;
-              return (
-                <Pressable
-                  key={opt.key}
-                  style={[
-                    styles.optionRow,
-                    selected && styles.optionRowSelected,
-                  ]}
-                  onPress={() => dispatch(setShippingMethod(opt.key))}
-                >
-                  <View
-                    style={[
-                      styles.radioOuter,
-                      selected && styles.radioOuterSelected,
-                    ]}
-                  >
-                    {selected ? <View style={styles.radioInner} /> : null}
-                  </View>
-                  <Text style={styles.optionTitle}>{opt.label}</Text>
-                </Pressable>
-              );
-            })}
-          </>
-        ) : null}
-
-        {step === 2 ? (
-          <>
-            <Text style={styles.sectionTitle}>{t("review")}</Text>
-            <View style={styles.reviewCard}>
-              {shippingMethod !== "local_pickup" ? (
-                <View style={styles.reviewRow}>
-                  <Text style={styles.reviewKey}>{t("shippingAddress")}</Text>
-                  <Text style={styles.reviewValue}>
-                    {`${address.fullName}\n${address.street}\n${address.city}, ${address.state} ${address.zip}`}
-                  </Text>
-                </View>
-              ) : null}
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewKey}>{t("shippingMethod")}</Text>
-                <Text style={styles.reviewValue}>
-                  {methodOptions.find((m) => m.key === shippingMethod)?.label ??
-                    "—"}
-                </Text>
-              </View>
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewKey}>{t("subtotal")}</Text>
-                <Text style={styles.reviewValue}>
-                  {formatShopPrice(totals.subtotal)}
-                </Text>
-              </View>
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewKey}>{t("shipping")}</Text>
-                <Text style={styles.reviewValue}>
-                  {formatShopPrice(totals.shipping)}
-                </Text>
-              </View>
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewKey}>{t("tax")}</Text>
-                <Text style={styles.reviewValue}>
-                  {formatShopPrice(totals.tax)}
-                </Text>
-              </View>
-              <View style={styles.reviewRow}>
-                <Text style={styles.reviewKey}>{t("total")}</Text>
-                <Text style={styles.reviewValue}>
-                  {formatShopPrice(totals.total)}
-                </Text>
-              </View>
-            </View>
-          </>
-        ) : null}
+          </View>
+          <View style={styles.reviewRow}>
+            <Text style={styles.reviewKey}>{t("total")}</Text>
+            <Text style={styles.reviewValue}>
+              {formatShopPrice(totalBeforeTax)}
+            </Text>
+          </View>
+          <Text style={styles.taxNote}>{t("taxAddedAtPayment")}</Text>
+        </View>
 
         <View style={styles.actions}>
           {paying ? (
             <ActivityIndicator size="small" color={theme.darkGreen} />
           ) : (
-            <Button title={primaryLabel} onPress={onPrimary} />
+            <Button title={t("continueToPayment")} onPress={placeOrder} />
           )}
         </View>
       </KeyboardAwareScrollView>

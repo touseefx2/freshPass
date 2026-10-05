@@ -1,6 +1,10 @@
 import { ApiService } from "./api";
 import { productEndpoints, orderEndpoints } from "./endpoints";
-import type { ShopProduct } from "@/src/types/shopProduct";
+import type {
+  ShopDeliveryOptions,
+  ShopDeliveryShipping,
+  ShopProduct,
+} from "@/src/types/shopProduct";
 import type { ProductFormDraft } from "@/src/components/productFormScreen";
 import Logger from "./logger";
 
@@ -62,6 +66,7 @@ export async function fetchProductById(
 
 export async function createProduct(
   draft: ProductFormDraft,
+  published: boolean,
   imageFile?: { uri: string; name: string; type: string } | null,
 ): Promise<ShopProduct> {
   const formData = new FormData();
@@ -78,10 +83,7 @@ export async function createProduct(
   );
   formData.append("low_stock_threshold", String(draft.lowStockThreshold));
   formData.append("track_inventory", draft.trackInventory ? "1" : "0");
-  formData.append("shipping_price", String(draft.shippingPrice));
-  formData.append("free_shipping_over", String(draft.freeShippingOver));
-  formData.append("pickup_available", draft.pickupAvailable ? "1" : "0");
-  formData.append("published", "1");
+  formData.append("published", published ? "1" : "0");
 
   if (imageFile) {
     formData.append("image", {
@@ -105,7 +107,7 @@ export async function createProduct(
 
 export async function updateProduct(
   id: string | number,
-  draft: Partial<ProductFormDraft>,
+  draft: Partial<ProductFormDraft> & { published?: boolean },
   imageFile?: { uri: string; name: string; type: string } | null,
 ): Promise<ShopProduct> {
   const formData = new FormData();
@@ -131,12 +133,8 @@ export async function updateProduct(
     formData.append("low_stock_threshold", String(draft.lowStockThreshold));
   if (draft.trackInventory != null)
     formData.append("track_inventory", draft.trackInventory ? "1" : "0");
-  if (draft.shippingPrice != null)
-    formData.append("shipping_price", String(draft.shippingPrice));
-  if (draft.freeShippingOver != null)
-    formData.append("free_shipping_over", String(draft.freeShippingOver));
-  if (draft.pickupAvailable != null)
-    formData.append("pickup_available", draft.pickupAvailable ? "1" : "0");
+  if (draft.published != null)
+    formData.append("published", draft.published ? "1" : "0");
 
   if (imageFile) {
     formData.append("image", {
@@ -167,11 +165,33 @@ export async function deleteProduct(id: string | number): Promise<void> {
   }
 }
 
-export async function publishProduct(
-  id: string | number,
-  published: boolean,
-): Promise<ShopProduct> {
-  return updateProduct(id, {} as any).then(() =>
-    fetchProductById(id),
+interface DeliveryOptionsResponse {
+  success: boolean;
+  message: string;
+  data: ShopDeliveryOptions;
+}
+
+export async function fetchDeliveryOptions(): Promise<ShopDeliveryOptions> {
+  const response = await ApiService.get<DeliveryOptionsResponse>(
+    productEndpoints.deliveryOptions,
   );
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error(response.message || "Failed to fetch delivery options");
+}
+
+export async function updateDeliveryOptions(body: {
+  shipping: ShopDeliveryShipping;
+  shipping_price?: number;
+  pickup_available: boolean;
+}): Promise<ShopDeliveryOptions> {
+  const response = await ApiService.put<DeliveryOptionsResponse>(
+    productEndpoints.deliveryOptions,
+    body,
+  );
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error(response.message || "Failed to save delivery options");
 }

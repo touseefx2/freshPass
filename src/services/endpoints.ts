@@ -931,6 +931,7 @@ export const productEndpoints = {
   update: (id: string | number) => `/api/products/${id}`,
   delete: (id: string | number) => `/api/products/${id}`,
   checkout: `/api/payment-sheet/product-checkout`,
+  deliveryOptions: `/api/business/delivery-options`,
 };
 
 /**
