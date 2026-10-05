@@ -10,6 +10,7 @@ import type {
   MediaLimitsResponse,
   MediaListMeta,
   MediaListResponse,
+  MediaUploadPurpose,
   MediaUploadSourceType,
   MediaVideo,
 } from "@/src/types/media";
@@ -181,15 +182,20 @@ export async function deleteVideos(
 /** Backend rejects videos longer than this (POST /api/media). */
 export const MAX_VIDEO_UPLOAD_SECONDS = 30;
 
+/** Raw videos for AI Auto Reels (`purpose=auto_reel_source`) may be up to 3 minutes. */
+export const MAX_AUTO_REEL_SOURCE_SECONDS = 180;
+
 export type UploadVideoParams = {
   uri: string;
   mimeType?: string | null;
   fileName?: string | null;
   sourceType: MediaUploadSourceType;
-  /** Required by API — integer seconds, max 30 */
+  /** Required by API — integer seconds, max 30 (180 for auto_reel_source) */
   durationSeconds: number;
   width?: number | null;
   height?: number | null;
+  /** Auto reel source videos are hidden from the library and allow 3 minutes */
+  purpose?: MediaUploadPurpose;
 };
 
 /**
@@ -232,12 +238,16 @@ export function uploadVideo(
         name: fileName,
       } as any);
       formData.append("source_type", params.sourceType);
+      if (params.purpose) {
+        formData.append("purpose", params.purpose);
+      }
+      const maxSeconds =
+        params.purpose === "auto_reel_source"
+          ? MAX_AUTO_REEL_SOURCE_SECONDS
+          : MAX_VIDEO_UPLOAD_SECONDS;
       const durationSeconds = Math.max(
         1,
-        Math.min(
-          MAX_VIDEO_UPLOAD_SECONDS,
-          Math.round(params.durationSeconds),
-        ),
+        Math.min(maxSeconds, Math.round(params.durationSeconds)),
       );
       formData.append("duration_seconds", String(durationSeconds));
       if (params.width != null) {
@@ -275,6 +285,7 @@ export function uploadVideo(
             return;
           }
           const message =
+            (json as any)?.errors?.duration_seconds?.[0] ||
             json?.message ||
             (json as any)?.errors?.file?.[0] ||
             (json as any)?.errors?.video?.[0] ||

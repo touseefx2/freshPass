@@ -713,21 +713,31 @@ export const mediaEndpoints = {
 };
 
 /**
- * Shotstack reel template endpoints
+ * Shotstack reel template endpoints (legacy reels still report generation status)
  */
 export const reelTemplateEndpoints = {
-  list: (params?: { category?: string; per_page?: number }) => {
-    const queryParams = new URLSearchParams();
-    if (params?.category) queryParams.append("category", params.category);
-    if (params?.per_page != null)
-      queryParams.append("per_page", String(params.per_page));
-    const query = queryParams.toString();
-    return `/api/reel-templates${query ? `?${query}` : ""}`;
-  },
-  getById: (id: number | string) => `/api/reel-templates/${id}`,
-  generate: `/api/reels/generate`,
   generationStatus: (reelId: number | string) =>
     `/api/reels/${reelId}/generation-status`,
+};
+
+/**
+ * AI Auto Reels — raw video (≤ 3 min) + template → draft reel (≤ 30 s)
+ */
+export const autoReelEndpoints = {
+  templates: `/api/auto-reels/templates`,
+  create: `/api/auto-reels`,
+  list: (params?: { page?: number; per_page?: number; status?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.page != null)
+      queryParams.append("page", params.page.toString());
+    if (params?.per_page != null)
+      queryParams.append("per_page", params.per_page.toString());
+    if (params?.status) queryParams.append("status", params.status);
+    const query = queryParams.toString();
+    return `/api/auto-reels${query ? `?${query}` : ""}`;
+  },
+  getById: (id: number | string) => `/api/auto-reels/${id}`,
+  retry: (id: number | string) => `/api/auto-reels/${id}/retry`,
 };
 
 /**

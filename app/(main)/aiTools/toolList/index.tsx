@@ -171,7 +171,7 @@ export default function ToolList() {
   };
 
   const handleFeaturePress = (featureId: string, paramTitle: string) => {
-    // Shotstack templates replace the old AI generate-reel endpoint
+    // AI Auto Reels (raw video + template) replace the old AI generate-reel endpoint
     if (featureId === "generateReel") {
       router.push("/(main)/reelTemplates" as any);
       return;

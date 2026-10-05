@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
-  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -11,17 +10,15 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as VideoThumbnails from "expo-video-thumbnails";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import Button from "@/src/components/button";
-import HairPipelineProcessingModal, {
-  INITIAL_HAIR_PIPELINE_STATE,
-  type HairPipelineModalState,
-} from "@/src/components/HairPipelineProcessingModal";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -30,19 +27,18 @@ import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import {
-  listVideos,
-  MAX_VIDEO_UPLOAD_SECONDS,
-  uploadImage,
+  getMediaLimits,
+  getVideo,
+  MAX_AUTO_REEL_SOURCE_SECONDS,
   uploadVideo,
-  waitForMediaReady,
 } from "@/src/services/mediaLibraryService";
 import {
   handleCameraPermission,
   handleMediaLibraryPermission,
 } from "@/src/services/mediaPermissionService";
 import {
-  generateReelFromTemplate,
-  listReelTemplates,
+  createAutoReel,
+  listAutoReelTemplates,
 } from "@/src/services/reelsService";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import { Theme } from "@/src/theme/colors";
@@ -53,14 +49,8 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
-import type { MediaUploadSourceType, MediaVideo } from "@/src/types/media";
-import type {
-  ReelTemplate,
-  ReelTemplateMediaField,
-} from "@/src/types/reels";
-import { normalizeReelTemplateMediaFields } from "@/src/types/reels";
-import { isLikelyVideoUri } from "@/src/utils/prepareImageForUpload";
-import { LinearGradient } from "expo-linear-gradient";
+import type { MediaUploadSourceType } from "@/src/types/media";
+import type { AutoReelTemplate } from "@/src/types/reels";
 
 const iosCompatiblePickerOptions =
   Platform.OS === "ios"
@@ -70,59 +60,70 @@ const iosCompatiblePickerOptions =
       }
     : {};
 
-/** Still images uploaded as media assets — no duration_seconds on POST /api/media. */
-
-function slotAcceptsImage(field: ReelTemplateMediaField | undefined): boolean {
-  return field?.accepted_types?.includes("image") ?? true;
-}
-
-function slotAcceptsVideo(field: ReelTemplateMediaField | undefined): boolean {
-  return field?.accepted_types?.includes("video") ?? true;
-}
-
-function mediaRequirementLabel(
-  fields: ReelTemplateMediaField[],
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  const count = fields.length;
-  if (count === 0) return "";
-  const hasImage = fields.some((f) => f.accepted_types.includes("image"));
-  const hasVideo = fields.some((f) => f.accepted_types.includes("video"));
-  if (hasImage && !hasVideo) {
-    return count === 1
-      ? t("photosNeededImagesOne")
-      : t("photosNeededImages", { count });
-  }
-  if (hasVideo && !hasImage) {
-    return count === 1
-      ? t("videosNeededOne")
-      : t("videosNeeded", { count });
-  }
-  return count === 1
-    ? t("photosNeededOne")
-    : t("photosNeeded", { count });
-}
-
-function slotTypeHint(
-  field: ReelTemplateMediaField,
-  t: (key: string) => string,
-): string {
-  const hasImage = field.accepted_types.includes("image");
-  const hasVideo = field.accepted_types.includes("video");
-  if (hasImage && !hasVideo) return t("slotAcceptsPhoto");
-  if (hasVideo && !hasImage) return t("slotAcceptsVideo");
-  return t("slotAcceptsPhotoOrVideo");
-}
+const CAPTION_MAX = 2200;
 
 type CategoryOption = { id: number; name: string };
+type ServiceOption = { id: number; name: string };
 
-const TEXT_FIELD_LABELS: Record<string, string> = {
-  business_name: "businessNameField",
-  tagline: "taglineField",
-  deal_text: "dealTextField",
-  service_name: "serviceNameField",
-  product_name: "productNameField",
+/** Raw video uploaded with purpose=auto_reel_source */
+type SourceVideo = {
+  id: number;
+  name: string | null;
+  durationSeconds: number | null;
+  thumbnailUri: string | null;
 };
+
+/** First 422 message for a field, e.g. errors.reel[0] */
+function fieldError(error: any, field: string): string | null {
+  const value = error?.data?.errors?.[field];
+  if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  return null;
+}
+
+function formatDuration(seconds: number | null): string {
+  if (seconds == null || !Number.isFinite(seconds)) return "";
+  const total = Math.max(0, Math.round(seconds));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+type Styles = ReturnType<typeof createStyles>;
+
+/** Numbered section header; turns into a check once the step is complete */
+function StepHeader({
+  index,
+  title,
+  done,
+  meta,
+  styles,
+  theme,
+}: {
+  index: number;
+  title: string;
+  done: boolean;
+  meta?: string;
+  styles: Styles;
+  theme: Theme;
+}) {
+  return (
+    <View style={styles.stepHeader} accessibilityRole="header">
+      <View style={[styles.stepBadge, done && styles.stepBadgeDone]}>
+        {done ? (
+          <MaterialIcons
+            name="check"
+            size={moderateWidthScale(14)}
+            color={theme.white}
+          />
+        ) : (
+          <Text style={styles.stepBadgeText}>{index}</Text>
+        )}
+      </View>
+      <Text style={styles.stepTitle}>{title}</Text>
+      {meta ? <Text style={styles.stepMeta}>{meta}</Text> : null}
+    </View>
+  );
+}
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -134,11 +135,6 @@ const createStyles = (theme: Theme) =>
     content: {
       paddingTop: moderateHeightScale(14),
       paddingBottom: moderateHeightScale(32),
-    },
-    loader: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
     },
     heroShadow: {
       marginHorizontal: moderateWidthScale(20),
@@ -198,6 +194,70 @@ const createStyles = (theme: Theme) =>
       color: theme.white80,
       lineHeight: fontSize.size16,
     },
+    quotaBanner: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(14),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.lightGreen07,
+    },
+    quotaBannerLow: {
+      borderColor: theme.orangeBrown30,
+      backgroundColor: theme.orangeBrown015,
+    },
+    quotaBannerEmpty: {
+      borderColor: theme.lightRedBorder,
+      backgroundColor: theme.lightRed,
+    },
+    stepHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginBottom: moderateHeightScale(10),
+    },
+    stepBadge: {
+      width: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      borderRadius: moderateWidthScale(11),
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: theme.lightGreen4,
+      backgroundColor: theme.white,
+    },
+    stepBadgeDone: {
+      borderColor: theme.buttonBack,
+      backgroundColor: theme.buttonBack,
+    },
+    stepBadgeText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    stepTitle: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    stepMeta: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    quotaText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size16,
+    },
     pickerBlock: {
       paddingHorizontal: moderateWidthScale(20),
       marginBottom: moderateHeightScale(8),
@@ -249,7 +309,7 @@ const createStyles = (theme: Theme) =>
     dropdownList: {
       borderTopWidth: 1,
       borderTopColor: theme.borderLight,
-      maxHeight: moderateHeightScale(220),
+      maxHeight: moderateHeightScale(280),
     },
     dropdownListState: {
       borderTopWidth: 1,
@@ -284,7 +344,7 @@ const createStyles = (theme: Theme) =>
     dropdownOption: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
       paddingHorizontal: moderateWidthScale(14),
       paddingVertical: moderateHeightScale(12),
       borderBottomWidth: StyleSheet.hairlineWidth,
@@ -293,29 +353,37 @@ const createStyles = (theme: Theme) =>
     dropdownOptionActive: {
       backgroundColor: theme.lightGreen07,
     },
-    dropdownOptionText: {
+    dropdownOptionThumb: {
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    dropdownOptionTextCol: {
       flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    dropdownOptionText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
-      paddingRight: moderateWidthScale(8),
     },
     dropdownOptionTextActive: {
       fontFamily: fonts.fontBold,
+    },
+    dropdownOptionDesc: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     label: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(6),
-    },
-    sectionTitleSm: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(10),
-      textTransform: "uppercase",
-      letterSpacing: 0.4,
     },
     section: {
       marginBottom: moderateHeightScale(18),
@@ -342,6 +410,18 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(14),
       gap: moderateHeightScale(10),
       overflow: "hidden",
+    },
+    templatePreview: {
+      width: "100%",
+      height: moderateHeightScale(150),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+    },
+    templateDesc: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size18,
     },
     reqHeader: {
       flexDirection: "row",
@@ -419,9 +499,6 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       lineHeight: fontSize.size18,
     },
-    slotsRow: {
-      gap: moderateHeightScale(10),
-    },
     slotCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -472,6 +549,18 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    slotProgressTrack: {
+      height: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen015,
+      overflow: "hidden",
+      marginTop: moderateHeightScale(6),
+    },
+    slotProgressFill: {
+      height: "100%",
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.buttonBack,
+    },
     slotChevron: {
       width: moderateWidthScale(28),
       height: moderateWidthScale(28),
@@ -511,6 +600,7 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.borderLight,
       backgroundColor: theme.white,
       overflow: "hidden",
+      marginBottom: moderateHeightScale(14),
     },
     categoryRow: {
       flexDirection: "row",
@@ -536,6 +626,31 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
     },
+    chipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(8),
+    },
+    chip: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.lightGreen015,
+    },
+    chipActive: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    chipText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    chipTextActive: {
+      color: theme.buttonText,
+    },
     footer: {
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(12),
@@ -543,77 +658,20 @@ const createStyles = (theme: Theme) =>
       borderTopWidth: 1,
       borderTopColor: theme.borderLight,
       backgroundColor: theme.background,
+      gap: moderateHeightScale(8),
     },
-    emptyWrap: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(32),
-    },
-    emptyTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(6),
-    },
-    emptySubtitle: {
-      fontSize: fontSize.size13,
+    footerHint: {
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
+      lineHeight: fontSize.size16,
     },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: theme.borderDark,
-      justifyContent: "flex-end",
-    },
-    modalSheet: {
-      maxHeight: "75%",
-      backgroundColor: theme.white,
-      borderTopLeftRadius: moderateWidthScale(20),
-      borderTopRightRadius: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(20),
-    },
-    modalHeader: {
+    footerHintRow: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(14),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-    },
-    modalTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    mediaGrid: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingTop: moderateHeightScale(12),
-      gap: moderateWidthScale(8),
-    },
-    mediaCell: {
-      width: "31%",
-      aspectRatio: 9 / 16,
-      borderRadius: moderateWidthScale(10),
-      overflow: "hidden",
-      backgroundColor: theme.lightGreen07,
-    },
-    mediaCellImage: {
-      width: "100%",
-      height: "100%",
-    },
-    mediaEmpty: {
-      padding: moderateWidthScale(24),
-      alignItems: "center",
-    },
-    mediaEmptyText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(4),
     },
     optionItem: {
       flexDirection: "row",
@@ -627,12 +685,6 @@ const createStyles = (theme: Theme) =>
     },
     optionIcon: {
       marginRight: moderateWidthScale(16),
-    },
-    optionText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      flex: 1,
     },
     optionTitle: {
       fontSize: fontSize.size15,
@@ -648,27 +700,7 @@ const createStyles = (theme: Theme) =>
     optionTextCol: {
       flex: 1,
     },
-    uploadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.borderDark,
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 20,
-      gap: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(24),
-    },
-    uploadingText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-      textAlign: "center",
-    },
   });
-
-function formatMusicName(name: string | null): string {
-  if (!name?.trim()) return "";
-  return name.replace(/\.(mp3|wav|m4a|aac)$/i, "").replace(/-/g, " ");
-}
 
 export default function ReelTemplatesScreen() {
   const { colors } = useTheme();
@@ -680,9 +712,9 @@ export default function ReelTemplatesScreen() {
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
 
-  const businessName = useAppSelector(
-    (s) => s.user.business_name || s.user.businessStatus?.business_name || "",
-  );
+  // Set when coming back from a failed auto reel ("Try another template")
+  const params = useLocalSearchParams<{ sourceMediaAssetId?: string }>();
+
   const businessStatus = useAppSelector((s) => s.user.businessStatus);
   const completeProfileCategory = useAppSelector(
     (s) => s.completeProfile.businessCategory,
@@ -705,16 +737,13 @@ export default function ReelTemplatesScreen() {
     selectBsnsCategory,
   ]);
 
-  const [templates, setTemplates] = useState<ReelTemplate[]>([]);
+  const [templates, setTemplates] = useState<AutoReelTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const [texts, setTexts] = useState<Record<string, string>>({});
-  const [selectedMedia, setSelectedMedia] = useState<(MediaVideo | null)[]>(
-    [],
-  );
+  const [sourceVideo, setSourceVideo] = useState<SourceVideo | null>(null);
   const [caption, setCaption] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(
     resolvedBusinessCategory?.id ?? null,
@@ -726,76 +755,101 @@ export default function ReelTemplatesScreen() {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const userPickedCategoryRef = useRef(false);
+  const [services, setServices] = useState<ServiceOption[]>([]);
+  const [serviceId, setServiceId] = useState<number | null>(null);
+  const [reelsRemaining, setReelsRemaining] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [mediaPickerSlot, setMediaPickerSlot] = useState<number | null>(null);
   const [sourcePickerVisible, setSourcePickerVisible] = useState(false);
-  const [libraryPickerVisible, setLibraryPickerVisible] = useState(false);
-  const [libraryVideos, setLibraryVideos] = useState<MediaVideo[]>([]);
-  const [loadingLibrary, setLoadingLibrary] = useState(false);
-  const [uploadingMedia, setUploadingMedia] = useState(false);
-  const [pipelineModal, setPipelineModal] = useState<HairPipelineModalState>(
-    INITIAL_HAIR_PIPELINE_STATE,
-  );
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
 
   const selected = useMemo(
     () => templates.find((item) => item.id === selectedId) ?? null,
     [selectedId, templates],
   );
 
-  const mediaFields = useMemo(
-    () => normalizeReelTemplateMediaFields(selected?.media_fields),
-    [selected?.media_fields],
-  );
-
-  const activeSlotField = useMemo(
-    () =>
-      mediaPickerSlot != null ? mediaFields[mediaPickerSlot] : undefined,
-    [mediaFields, mediaPickerSlot],
-  );
-
-  const applyTemplate = useCallback(
-    (template: ReelTemplate) => {
-      setSelectedId(template.id);
-      setDropdownOpen(false);
-      const fields = normalizeReelTemplateMediaFields(template.media_fields);
-      const count =
-        template.media_count || fields.length || 0;
-      setSelectedMedia(Array.from({ length: count }, () => null));
-      const initialTexts: Record<string, string> = {};
-      for (const field of template.text_fields || []) {
-        initialTexts[field] = field === "business_name" ? businessName : "";
-      }
-      setTexts(initialTexts);
-    },
-    [businessName],
-  );
+  const applyTemplate = useCallback((template: AutoReelTemplate) => {
+    setSelectedId(template.id);
+    setDropdownOpen(false);
+  }, []);
 
   const loadTemplates = useCallback(async () => {
     setLoadingTemplates(true);
     setTemplatesError(null);
     try {
-      const data = await listReelTemplates();
-      const active = data.filter((item) => item.is_active !== false);
-      setTemplates(active);
-      if (active.length === 1) {
-        applyTemplate(active[0]);
-      }
+      const data = await listAutoReelTemplates();
+      setTemplates(data);
+      setSelectedId((prev) => {
+        if (prev != null && data.some((item) => item.id === prev)) return prev;
+        return data.length === 1 ? data[0].id : null;
+      });
     } catch (error: any) {
-      Logger.error("Failed to load reel templates:", error);
+      Logger.error("Failed to load auto reel templates:", error);
       setTemplates([]);
-      setTemplatesError(
-        error?.message || t("failedToLoadTemplates"),
-      );
+      setTemplatesError(error?.message || t("failedToLoadTemplates"));
     } finally {
       setLoadingTemplates(false);
     }
-  }, [applyTemplate, t]);
+  }, [t]);
 
   useEffect(() => {
     void loadTemplates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadTemplates]);
+
+  // Monthly limit is shared with staff — warn before starting
+  useEffect(() => {
+    getMediaLimits({ force: true })
+      .then((limits) => {
+        if (typeof limits.reels_remaining_this_month === "number") {
+          setReelsRemaining(limits.reels_remaining_this_month);
+        }
+      })
+      .catch((error) => {
+        Logger.error("Failed to load media limits for auto reel:", error);
+      });
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const svcRes = await ApiService.get<{
+          success: boolean;
+          data?: ServiceOption[] | { data?: ServiceOption[] };
+        }>(businessEndpoints.services);
+        const svcData = Array.isArray(svcRes?.data)
+          ? svcRes.data
+          : Array.isArray((svcRes?.data as any)?.data)
+            ? (svcRes.data as any).data
+            : [];
+        setServices(svcData);
+      } catch (error) {
+        Logger.error("Failed to load auto reel services:", error);
+      }
+    })();
+  }, []);
+
+  // Reuse the already-uploaded raw video when retrying with another template
+  useEffect(() => {
+    const id = params.sourceMediaAssetId
+      ? Number(params.sourceMediaAssetId)
+      : null;
+    if (!id) return;
+    setSourceVideo({ id, name: null, durationSeconds: null, thumbnailUri: null });
+    getVideo(id)
+      .then((video) => {
+        setSourceVideo((prev) =>
+          prev?.id === id
+            ? {
+                id,
+                name: video.original_name,
+                durationSeconds: video.duration_seconds,
+                thumbnailUri: video.thumbnail_url,
+              }
+            : prev,
+        );
+      })
+      .catch(() => {});
+  }, [params.sourceMediaAssetId]);
 
   useEffect(() => {
     if (resolvedBusinessCategory?.id != null) return;
@@ -808,14 +862,6 @@ export default function ReelTemplatesScreen() {
     setCategoryId(resolvedBusinessCategory.id);
     setCategoryName(resolvedBusinessCategory.name ?? "");
   }, [resolvedBusinessCategory]);
-
-  const fieldLabel = useCallback(
-    (field: string) => {
-      const key = TEXT_FIELD_LABELS[field];
-      return key ? t(key) : field.replace(/_/g, " ");
-    },
-    [t],
-  );
 
   const loadCategories = useCallback(async () => {
     if (categories.length > 0) return categories;
@@ -845,163 +891,57 @@ export default function ReelTemplatesScreen() {
     if (!showCategoryPicker) await loadCategories();
   }, [loadCategories, showCategoryPicker]);
 
-  const openSourcePicker = useCallback((slotIndex: number) => {
-    setMediaPickerSlot(slotIndex);
-    setSourcePickerVisible(true);
-  }, []);
+  const uploadPickedVideo = useCallback(
+    async (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
+      if (!asset.uri) return;
 
-  const dismissSourcePicker = useCallback(() => {
-    setSourcePickerVisible(false);
-    setMediaPickerSlot(null);
-  }, []);
-
-  const closeLibraryPicker = useCallback(() => {
-    setLibraryPickerVisible(false);
-    setMediaPickerSlot(null);
-    setLibraryVideos([]);
-  }, []);
-
-  const assignMediaToSlot = useCallback(
-    (video: MediaVideo, slotIndex: number) => {
-      const alreadyUsed = selectedMedia.some(
-        (m, idx) => m?.id === video.id && idx !== slotIndex,
-      );
-      if (alreadyUsed) {
-        showBanner(t("error"), t("mediaAlreadySelected"), "error", 2500);
-        return false;
-      }
-      setSelectedMedia((prev) => {
-        const next = [...prev];
-        next[slotIndex] = video;
-        return next;
-      });
-      return true;
-    },
-    [selectedMedia, showBanner, t],
-  );
-
-  const openAppLibraryPicker = useCallback(async () => {
-    const slotIndex = mediaPickerSlot;
-    const slotField =
-      slotIndex != null ? mediaFields[slotIndex] : activeSlotField;
-    setSourcePickerVisible(false);
-    if (slotIndex == null) return;
-    if (!slotAcceptsVideo(slotField)) {
-      showBanner(t("error"), t("slotRequiresPhoto"), "error", 3000);
-      setMediaPickerSlot(null);
-      return;
-    }
-    setLibraryPickerVisible(true);
-    setLoadingLibrary(true);
-    try {
-      const { videos } = await listVideos(1, 60, "ready");
-      setLibraryVideos(videos.filter((v) => v.status === "ready"));
-    } catch (error) {
-      Logger.error("Failed to load media library:", error);
-      showBanner(t("error"), t("failedToLoadVideos"), "error", 3000);
-      closeLibraryPicker();
-    } finally {
-      setLoadingLibrary(false);
-    }
-  }, [
-    activeSlotField,
-    closeLibraryPicker,
-    mediaFields,
-    mediaPickerSlot,
-    showBanner,
-    t,
-  ]);
-
-  const pickMedia = useCallback(
-    (video: MediaVideo) => {
-      if (mediaPickerSlot == null) return;
-      if (assignMediaToSlot(video, mediaPickerSlot)) {
-        closeLibraryPicker();
-      }
-    },
-    [assignMediaToSlot, closeLibraryPicker, mediaPickerSlot],
-  );
-
-  const uploadPickedAsset = useCallback(
-    async (
-      asset: ImagePicker.ImagePickerAsset,
-      sourceType: MediaUploadSourceType,
-      slotField: ReelTemplateMediaField | undefined,
-    ) => {
-      if (mediaPickerSlot == null || !asset.uri) return;
-
-      const slotIndex = mediaPickerSlot;
-      setSourcePickerVisible(false);
-      setMediaPickerSlot(null);
-
-      const mime = (asset as { mimeType?: string }).mimeType ?? "";
-      const isVideo =
-        asset.type === "video" ||
-        mime.startsWith("video/") ||
-        isLikelyVideoUri(asset.uri);
-
-      const acceptsImage = slotAcceptsImage(slotField);
-      const acceptsVideo = slotAcceptsVideo(slotField);
-
-      if (isVideo && !acceptsVideo) {
-        showBanner(t("error"), t("slotRequiresPhoto"), "error", 3500);
-        return;
-      }
-      if (!isVideo && !acceptsImage) {
-        showBanner(t("error"), t("slotRequiresVideo"), "error", 3500);
-        return;
-      }
-
-      const durationRaw =
+      // expo-image-picker reports video duration in milliseconds
+      const durationMs =
         typeof asset.duration === "number" && asset.duration > 0
           ? asset.duration
           : 0;
-      // expo-image-picker reports video duration in seconds
-      const durationSeconds = isVideo
-        ? Math.max(1, Math.ceil(durationRaw))
-        : 0;
+      const durationSeconds = Math.max(1, Math.ceil(durationMs / 1000));
 
-      if (isVideo && durationSeconds > MAX_VIDEO_UPLOAD_SECONDS) {
-        showBanner(
-          t("error"),
-          t("videoTooLong", { max_seconds: MAX_VIDEO_UPLOAD_SECONDS }),
-          "error",
-          3000,
-        );
+      if (durationSeconds > MAX_AUTO_REEL_SOURCE_SECONDS) {
+        showBanner(t("error"), t("autoReelVideoTooLong"), "error", 3500);
         return;
       }
 
-      setUploadingMedia(true);
+      let localThumb: string | null = null;
       try {
-        const uploaded = isVideo
-          ? await uploadVideo({
-              uri: asset.uri,
-              mimeType: mime || "video/mp4",
-              fileName: asset.fileName || "video.mp4",
-              sourceType,
-              durationSeconds: Math.min(
-                MAX_VIDEO_UPLOAD_SECONDS,
-                durationSeconds,
-              ),
-              width: asset.width,
-              height: asset.height,
-            })
-          : await uploadImage({
-              uri: asset.uri,
-              mimeType: mime || "image/jpeg",
-              fileName: asset.fileName || "photo.jpg",
-              sourceType,
-              width: asset.width,
-              height: asset.height,
-            });
-        // Images are ready immediately; videos may still need polling
-        const ready =
-          uploaded.status === "ready"
-            ? uploaded
-            : await waitForMediaReady(uploaded.id);
-        assignMediaToSlot(ready, slotIndex);
+        const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, {
+          time: 0,
+          quality: 0.6,
+        });
+        localThumb = thumb.uri;
+      } catch {
+        // Thumbnail is cosmetic only
+      }
+
+      setUploadPercent(0);
+      try {
+        const mime = (asset as { mimeType?: string }).mimeType ?? "";
+        const uploaded = await uploadVideo(
+          {
+            uri: asset.uri,
+            mimeType: mime || "video/mp4",
+            fileName: asset.fileName || "video.mp4",
+            sourceType,
+            durationSeconds,
+            width: asset.width,
+            height: asset.height,
+            purpose: "auto_reel_source",
+          },
+          (percent) => setUploadPercent(percent),
+        );
+        setSourceVideo({
+          id: uploaded.id,
+          name: uploaded.original_name || asset.fileName || null,
+          durationSeconds: uploaded.duration_seconds ?? durationSeconds,
+          thumbnailUri: localThumb || uploaded.thumbnail_url,
+        });
       } catch (error: any) {
-        Logger.error("Failed to upload media for template slot:", error);
+        Logger.error("Failed to upload auto reel source video:", error);
         showBanner(
           t("error"),
           error?.message || t("failedToUploadVideo"),
@@ -1009,176 +949,129 @@ export default function ReelTemplatesScreen() {
           3500,
         );
       } finally {
-        setUploadingMedia(false);
+        setUploadPercent(null);
       }
     },
-    [assignMediaToSlot, mediaPickerSlot, showBanner, t],
+    [showBanner, t],
   );
 
   const handleSelectFromGallery = useCallback(async () => {
-    const slotField = activeSlotField;
     setSourcePickerVisible(false);
     const hasPermission = await handleMediaLibraryPermission();
-    if (!hasPermission) {
-      setMediaPickerSlot(null);
-      return;
-    }
-
-    const acceptsImage = slotAcceptsImage(slotField);
-    const acceptsVideo = slotAcceptsVideo(slotField);
-    const mediaTypes: ("images" | "videos")[] =
-      acceptsImage && acceptsVideo
-        ? ["images", "videos"]
-        : acceptsImage
-          ? ["images"]
-          : ["videos"];
-
+    if (!hasPermission) return;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes,
+        mediaTypes: ["videos"],
         allowsMultipleSelection: false,
-        quality: 0.8,
+        quality: 1,
         allowsEditing: false,
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedAsset(result.assets[0], "device", slotField);
-      } else {
-        setMediaPickerSlot(null);
+        await uploadPickedVideo(result.assets[0], "device");
       }
     } catch (error) {
-      Logger.error("Error selecting media from gallery:", error);
+      Logger.error("Error selecting auto reel video from gallery:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
-      setMediaPickerSlot(null);
     }
-  }, [activeSlotField, showBanner, t, uploadPickedAsset]);
+  }, [showBanner, t, uploadPickedVideo]);
 
-  const handleSelectFromCamera = useCallback(async () => {
-    const slotField = activeSlotField;
+  const handleRecordVideo = useCallback(async () => {
     setSourcePickerVisible(false);
     const hasPermission = await handleCameraPermission();
-    if (!hasPermission) {
-      setMediaPickerSlot(null);
-      return;
-    }
-
-    const acceptsImage = slotAcceptsImage(slotField);
-    const acceptsVideo = slotAcceptsVideo(slotField);
-    // Prefer photo when slot allows images; otherwise record video
-    const mediaTypes =
-      acceptsImage
-        ? ImagePicker.MediaTypeOptions.Images
-        : ImagePicker.MediaTypeOptions.Videos;
-
+    if (!hasPermission) return;
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes,
-        quality: 0.8,
+        mediaTypes: ["videos"],
+        quality: 1,
         allowsEditing: false,
-        ...(acceptsVideo && !acceptsImage
-          ? { videoMaxDuration: MAX_VIDEO_UPLOAD_SECONDS }
-          : {}),
+        videoMaxDuration: MAX_AUTO_REEL_SOURCE_SECONDS,
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedAsset(result.assets[0], "camera", slotField);
-      } else {
-        setMediaPickerSlot(null);
+        await uploadPickedVideo(result.assets[0], "camera");
       }
     } catch (error) {
-      Logger.error("Error taking photo for template slot:", error);
-      showBanner(t("error"), t("failedToTakePhoto"), "error", 3000);
-      setMediaPickerSlot(null);
+      Logger.error("Error recording auto reel video:", error);
+      showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [activeSlotField, showBanner, t, uploadPickedAsset]);
+  }, [showBanner, t, uploadPickedVideo]);
 
-  const canGenerate = useMemo(() => {
-    if (!selected) return false;
-    if (!caption.trim()) return false;
-    if (!categoryId) return false;
-    if (selectedMedia.length === 0 || selectedMedia.some((m) => !m)) {
-      return false;
-    }
-    return true;
-  }, [caption, categoryId, selected, selectedMedia]);
+  const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
+  const fewReelsLeft =
+    reelsRemaining != null && reelsRemaining > 0 && reelsRemaining <= 2;
+
+  const canGenerate =
+    !!selected && !!sourceVideo && !!categoryId && !noReelsLeft;
 
   const handleGenerate = useCallback(async () => {
-    if (!selected || !canGenerate || submitting || !categoryId) return;
-
-    const mediaIds = selectedMedia
-      .map((m) => m?.id)
-      .filter((id): id is number => id != null);
-
-    if (mediaIds.length !== mediaFields.length) {
-      showBanner(t("error"), t("selectAllMediaSlots"), "error", 2500);
-      return;
-    }
+    if (!selected || !sourceVideo || !categoryId || submitting) return;
 
     setSubmitting(true);
     try {
-      const textsPayload: Record<string, string> = {};
-      for (const field of selected.text_fields || []) {
-        const value = (texts[field] || "").trim();
-        if (value) textsPayload[field] = value;
-      }
-
-      const result = await generateReelFromTemplate({
+      const trimmedCaption = caption.trim();
+      const autoReel = await createAutoReel({
+        media_asset_id: sourceVideo.id,
         template_id: selected.id,
-        media_asset_ids: mediaIds,
-        texts: textsPayload,
         category_id: categoryId,
-        caption: caption.trim(),
-        music_asset_id: null,
+        ...(serviceId ? { service_id: serviceId } : {}),
+        ...(trimmedCaption ? { caption: trimmedCaption } : {}),
       });
-
-      // Same success popup as Generate Post / Collage — notify when ready.
-      setPipelineModal({
-        visible: true,
-        jobId: String(result.reel_id),
-        jobType: "Generate Reel",
-        estimatedMinutes: 2,
-        progress: 0,
-        imageUri: null,
-        complete: false,
+      router.replace({
+        pathname: "/(main)/autoReel" as any,
+        params: { autoReelId: String(autoReel.id) },
       });
     } catch (error: any) {
-      Logger.error("Failed to start reel generation:", error);
+      Logger.error("Failed to start auto reel:", error);
+      const mediaError = fieldError(error, "media_asset_id");
+      const templateError = fieldError(error, "template_id");
+      if (mediaError) {
+        // Video is gone / not an auto reel source — ask for a fresh upload
+        setSourceVideo(null);
+      }
+      if (templateError) {
+        // Admin may have turned it off — refresh the list
+        void loadTemplates();
+      }
       const message =
-        error?.response?.data?.message ||
+        fieldError(error, "reel") ||
+        fieldError(error, "auto_reel") ||
+        mediaError ||
+        templateError ||
+        fieldError(error, "category_id") ||
+        fieldError(error, "service_id") ||
+        fieldError(error, "caption") ||
         error?.message ||
         t("failedToStartGeneration");
-      showBanner(t("error"), message, "error", 3500);
+      showBanner(t("error"), message, "error", 4000);
     } finally {
       setSubmitting(false);
     }
   }, [
-    canGenerate,
     caption,
     categoryId,
-    mediaFields.length,
+    loadTemplates,
+    router,
     selected,
-    selectedMedia,
+    serviceId,
     showBanner,
+    sourceVideo,
     submitting,
     t,
-    texts,
   ]);
 
-  const closePipelineModal = useCallback(() => {
-    setPipelineModal(INITIAL_HAIR_PIPELINE_STATE);
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/(main)/aiTools/toolList" as any);
-    }
-  }, [router]);
+  const isHaircut = selected?.kind === "haircut";
 
-  const mediaLabel =
-    selected == null ? "" : mediaRequirementLabel(mediaFields, t);
-
-  const musicLabel = selected
-    ? formatMusicName(selected.music_name) || t("includesMusic")
-    : "";
+  // Tell the barber what is still missing instead of a silent disabled button
+  const missingHint = !selected
+    ? null
+    : uploadPercent != null
+      ? t("autoReelWaitForUpload")
+      : !sourceVideo
+        ? t("autoReelNeedVideo")
+        : !categoryId
+          ? t("autoReelNeedCategory")
+          : null;
 
   return (
     <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
@@ -1220,9 +1113,9 @@ export default function ReelTemplatesScreen() {
                   />
                 </View>
                 <View style={styles.heroTextCol}>
-                  <Text style={styles.heroTitle}>{t("reelTemplatesIntroTitle")}</Text>
+                  <Text style={styles.heroTitle}>{t("autoReelIntroTitle")}</Text>
                   <Text style={styles.heroSubtitle}>
-                    {t("reelTemplatesIntroSubtitle")}
+                    {t("autoReelIntroSubtitle")}
                   </Text>
                 </View>
               </View>
@@ -1230,14 +1123,61 @@ export default function ReelTemplatesScreen() {
           </View>
         </View>
 
+        {reelsRemaining != null ? (
+          <View
+            style={[
+              styles.quotaBanner,
+              fewReelsLeft && styles.quotaBannerLow,
+              noReelsLeft && styles.quotaBannerEmpty,
+            ]}
+            accessibilityRole={noReelsLeft ? "alert" : undefined}
+          >
+            <MaterialIcons
+              name={
+                noReelsLeft
+                  ? "block"
+                  : fewReelsLeft
+                    ? "warning-amber"
+                    : "info-outline"
+              }
+              size={moderateWidthScale(18)}
+              color={
+                noReelsLeft
+                  ? theme.red
+                  : fewReelsLeft
+                    ? theme.orangeBrown
+                    : theme.buttonBack
+              }
+            />
+            <Text style={styles.quotaText}>
+              {noReelsLeft
+                ? t("autoReelNoReelsLeft")
+                : t("autoReelReelsLeft", { count: reelsRemaining })}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.pickerBlock}>
-          <Text style={styles.label}>{t("selectTemplate")}</Text>
+          <StepHeader
+            index={1}
+            title={t("selectTemplate")}
+            done={!!selected}
+            styles={styles}
+            theme={theme}
+          />
           <View style={styles.dropdownShadow}>
             <View style={styles.dropdownShell}>
               <TouchableOpacity
                 style={styles.dropdownRow}
                 onPress={() => setDropdownOpen((open) => !open)}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  selected
+                    ? `${t("selectTemplate")}: ${selected.name}`
+                    : t("selectTemplatePlaceholder")
+                }
+                accessibilityState={{ expanded: dropdownOpen }}
               >
                 <View style={styles.dropdownIconWrap}>
                   <MaterialIcons
@@ -1313,16 +1253,48 @@ export default function ReelTemplatesScreen() {
                           ]}
                           onPress={() => applyTemplate(item)}
                           activeOpacity={0.85}
+                          accessibilityRole="button"
+                          accessibilityLabel={item.name}
+                          accessibilityHint={item.description ?? undefined}
+                          accessibilityState={{ selected: active }}
                         >
-                          <Text
-                            style={[
-                              styles.dropdownOptionText,
-                              active && styles.dropdownOptionTextActive,
-                            ]}
-                            numberOfLines={2}
-                          >
-                            {item.name}
-                          </Text>
+                          <View style={styles.dropdownOptionThumb}>
+                            {item.preview_image_url ? (
+                              <Image
+                                source={{ uri: item.preview_image_url }}
+                                style={{ width: "100%", height: "100%" }}
+                              />
+                            ) : (
+                              <MaterialIcons
+                                name={
+                                  item.kind === "haircut"
+                                    ? "content-cut"
+                                    : "auto-awesome"
+                                }
+                                size={moderateWidthScale(18)}
+                                color={theme.buttonBack}
+                              />
+                            )}
+                          </View>
+                          <View style={styles.dropdownOptionTextCol}>
+                            <Text
+                              style={[
+                                styles.dropdownOptionText,
+                                active && styles.dropdownOptionTextActive,
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {item.name}
+                            </Text>
+                            {item.description ? (
+                              <Text
+                                style={styles.dropdownOptionDesc}
+                                numberOfLines={2}
+                              >
+                                {item.description}
+                              </Text>
+                            ) : null}
+                          </View>
                           {active ? (
                             <MaterialIcons
                               name="check"
@@ -1344,6 +1316,18 @@ export default function ReelTemplatesScreen() {
           <>
             <View style={styles.reqShadow}>
               <View style={styles.reqCard}>
+                {selected.preview_image_url ? (
+                  <Image
+                    source={{ uri: selected.preview_image_url }}
+                    style={styles.templatePreview}
+                    resizeMode="cover"
+                  />
+                ) : null}
+                {selected.description ? (
+                  <Text style={styles.templateDesc}>
+                    {selected.description}
+                  </Text>
+                ) : null}
                 <View style={styles.reqHeader}>
                   <View style={styles.reqIconBadge}>
                     <MaterialIcons
@@ -1357,145 +1341,152 @@ export default function ReelTemplatesScreen() {
                 <View style={styles.reqChips}>
                   <View style={styles.reqChip}>
                     <MaterialIcons
-                      name="photo-library"
+                      name="videocam"
                       size={moderateWidthScale(14)}
                       color={theme.buttonBack}
                     />
-                    <Text style={styles.reqChipText}>{mediaLabel}</Text>
+                    <Text style={styles.reqChipText}>
+                      {t("autoReelReqVideo")}
+                    </Text>
                   </View>
-                  {(selected.text_fields?.length ?? 0) > 0 ? (
-                    <View style={styles.reqChip}>
-                      <MaterialIcons
-                        name="text-fields"
-                        size={moderateWidthScale(14)}
-                        color={theme.buttonBack}
-                      />
-                      <Text style={styles.reqChipText} numberOfLines={2}>
-                        {selected.text_fields.map(fieldLabel).join(" · ")}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {selected.has_music ? (
-                    <View style={styles.reqChip}>
-                      <MaterialIcons
-                        name="music-note"
-                        size={moderateWidthScale(14)}
-                        color={theme.buttonBack}
-                      />
-                      <Text style={styles.reqChipText} numberOfLines={1}>
-                        {musicLabel}
-                      </Text>
-                    </View>
-                  ) : null}
+                  <View style={styles.reqChip}>
+                    <MaterialIcons
+                      name="timer"
+                      size={moderateWidthScale(14)}
+                      color={theme.buttonBack}
+                    />
+                    <Text style={styles.reqChipText}>
+                      {t("autoReelReqLength")}
+                    </Text>
+                  </View>
+                  <View style={styles.reqChip}>
+                    <MaterialIcons
+                      name="graphic-eq"
+                      size={moderateWidthScale(14)}
+                      color={theme.buttonBack}
+                    />
+                    <Text style={styles.reqChipText}>
+                      {t("autoReelReqAudio")}
+                    </Text>
+                  </View>
+                  <View style={styles.reqChip}>
+                    <MaterialIcons
+                      name="toll"
+                      size={moderateWidthScale(14)}
+                      color={theme.buttonBack}
+                    />
+                    <Text style={styles.reqChipText}>
+                      {t("autoReelReqNoCredits")}
+                    </Text>
+                  </View>
                 </View>
+                {isHaircut ? (
+                  <Text style={styles.templateDesc}>
+                    {t("autoReelHaircutHint")}
+                  </Text>
+                ) : null}
               </View>
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitleSm}>{t("selectMedia")}</Text>
-              <View style={styles.slotsRow}>
-                {selectedMedia.map((media, index) => {
-                  const field = mediaFields[index];
-                  const filled = !!(media?.thumbnail_url || media?.playback_url || media?.url);
-                  const thumbUri =
-                    media?.thumbnail_url ||
-                    media?.playback_url ||
-                    media?.url ||
-                    null;
-                  return (
-                    <TouchableOpacity
-                      key={field?.key ?? `slot-${index}`}
-                      style={[
-                        styles.slotCard,
-                        !filled && styles.slotCardEmpty,
-                      ]}
-                      onPress={() => openSourcePicker(index)}
-                      activeOpacity={0.85}
-                    >
-                      {filled && thumbUri ? (
-                        <Image
-                          source={{ uri: thumbUri }}
-                          style={styles.slotThumb}
-                        />
-                      ) : (
+              <StepHeader
+                index={2}
+                title={t("autoReelRawVideo")}
+                done={!!sourceVideo && uploadPercent == null}
+                meta={t("autoReelMaxThreeMin")}
+                styles={styles}
+                theme={theme}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.slotCard,
+                  !sourceVideo && uploadPercent == null && styles.slotCardEmpty,
+                ]}
+                onPress={() => setSourcePickerVisible(true)}
+                activeOpacity={0.85}
+                disabled={uploadPercent != null}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  sourceVideo
+                    ? t("autoReelChangeVideo")
+                    : t("autoReelPickVideo")
+                }
+                accessibilityHint={t("autoReelPickVideoHint")}
+                accessibilityState={{ disabled: uploadPercent != null }}
+              >
+                {uploadPercent == null && sourceVideo?.thumbnailUri ? (
+                  <Image
+                    source={{ uri: sourceVideo.thumbnailUri }}
+                    style={styles.slotThumb}
+                  />
+                ) : (
+                  <View style={[styles.slotThumb, styles.slotThumbPlaceholder]}>
+                    {uploadPercent != null ? (
+                      <ActivityIndicator size="small" color={theme.buttonBack} />
+                    ) : (
+                      <MaterialIcons
+                        name={sourceVideo ? "check-circle" : "video-call"}
+                        size={moderateWidthScale(22)}
+                        color={theme.buttonBack}
+                      />
+                    )}
+                  </View>
+                )}
+                <View style={styles.slotTextCol}>
+                  {uploadPercent != null ? (
+                    <View accessibilityLiveRegion="polite">
+                      <Text style={styles.slotTitle} numberOfLines={1}>
+                        {t("autoReelUploading", { percent: uploadPercent })}
+                      </Text>
+                      <View style={styles.slotProgressTrack}>
                         <View
-                          style={[styles.slotThumb, styles.slotThumbPlaceholder]}
-                        >
-                          <MaterialIcons
-                            name={
-                              slotAcceptsImage(field) && !slotAcceptsVideo(field)
-                                ? "add-photo-alternate"
-                                : !slotAcceptsImage(field) &&
-                                    slotAcceptsVideo(field)
-                                  ? "videocam"
-                                  : "add-photo-alternate"
-                            }
-                            size={moderateWidthScale(22)}
-                            color={theme.buttonBack}
-                          />
-                        </View>
-                      )}
-                      <View style={styles.slotTextCol}>
-                        <Text style={styles.slotTitle}>
-                          {field?.label || t("mediaSlot", { number: index + 1 })}
-                        </Text>
-                        <Text style={styles.slotSub} numberOfLines={1}>
-                          {media
-                            ? media.original_name || t("mediaSelected")
-                            : field
-                              ? slotTypeHint(field, t)
-                              : t("tapToSelectMedia")}
-                        </Text>
-                      </View>
-                      <View style={styles.slotChevron}>
-                        <MaterialIcons
-                          name="chevron-right"
-                          size={moderateWidthScale(18)}
-                          color={theme.darkGreen}
+                          style={[
+                            styles.slotProgressFill,
+                            { width: `${uploadPercent}%` },
+                          ]}
                         />
                       </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {(selected.text_fields?.length ?? 0) > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitleSm}>{t("customText")}</Text>
-                {selected.text_fields.map((field) => (
-                  <View key={field}>
-                    <Text style={styles.label}>{fieldLabel(field)}</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={texts[field] || ""}
-                      onChangeText={(value) =>
-                        setTexts((prev) => ({ ...prev, [field]: value }))
-                      }
-                      placeholder={fieldLabel(field)}
-                      placeholderTextColor={theme.lightGreen5}
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={styles.slotTitle} numberOfLines={1}>
+                        {sourceVideo
+                          ? sourceVideo.name || t("autoReelVideoAdded")
+                          : t("autoReelPickVideo")}
+                      </Text>
+                      <Text style={styles.slotSub} numberOfLines={1}>
+                        {sourceVideo
+                          ? [
+                              formatDuration(sourceVideo.durationSeconds),
+                              t("autoReelChangeVideo"),
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : t("autoReelPickVideoHint")}
+                      </Text>
+                    </>
+                  )}
+                </View>
+                {uploadPercent == null ? (
+                  <View style={styles.slotChevron}>
+                    <MaterialIcons
+                      name={sourceVideo ? "swap-horiz" : "add"}
+                      size={moderateWidthScale(18)}
+                      color={theme.darkGreen}
                     />
                   </View>
-                ))}
-              </View>
-            ) : null}
+                ) : null}
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitleSm}>
-                {t("caption")}{" "}
-                <Text style={{ color: theme.selectCard }}>*</Text>
-              </Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={caption}
-                onChangeText={(v) => setCaption(v.slice(0, 2200))}
-                placeholder={t("captionPlaceholder")}
-                placeholderTextColor={theme.lightGreen5}
-                multiline
-                maxLength={2200}
+              <StepHeader
+                index={3}
+                title={t("autoReelStepDetails")}
+                done={!!categoryId}
+                styles={styles}
+                theme={theme}
               />
-              <Text style={styles.charCount}>{caption.length}/2200</Text>
-
               <Text style={styles.label}>
                 {t("category")}{" "}
                 <Text style={{ color: theme.selectCard }}>*</Text>
@@ -1505,6 +1496,11 @@ export default function ReelTemplatesScreen() {
                   style={styles.categoryRow}
                   onPress={openCategoryPicker}
                   activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("category")}: ${
+                    categoryName || t("selectCategory")
+                  }`}
+                  accessibilityState={{ expanded: showCategoryPicker }}
                 >
                   <Text style={styles.categoryText}>
                     {categoryName || t("selectCategory")}
@@ -1513,9 +1509,7 @@ export default function ReelTemplatesScreen() {
                     <ActivityIndicator size="small" color={theme.buttonBack} />
                   ) : (
                     <MaterialIcons
-                      name={
-                        showCategoryPicker ? "expand-less" : "expand-more"
-                      }
+                      name={showCategoryPicker ? "expand-less" : "expand-more"}
                       size={moderateWidthScale(22)}
                       color={theme.lightGreen}
                     />
@@ -1525,6 +1519,8 @@ export default function ReelTemplatesScreen() {
                   ? categories.map((cat) => (
                       <TouchableOpacity
                         key={cat.id}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: cat.id === categoryId }}
                         style={styles.categoryOption}
                         onPress={() => {
                           userPickedCategoryRef.current = true;
@@ -1538,6 +1534,74 @@ export default function ReelTemplatesScreen() {
                     ))
                   : null}
               </View>
+
+              {services.length > 0 ? (
+                <>
+                  <Text style={styles.label}>{t("serviceOptional")}</Text>
+                  <View
+                    style={[
+                      styles.chipRow,
+                      { marginBottom: moderateHeightScale(14) },
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={[
+                        styles.chip,
+                        serviceId == null && styles.chipActive,
+                      ]}
+                      onPress={() => setServiceId(null)}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: serviceId == null }}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          serviceId == null && styles.chipTextActive,
+                        ]}
+                      >
+                        {t("none")}
+                      </Text>
+                    </TouchableOpacity>
+                    {services.map((svc) => (
+                      <TouchableOpacity
+                        key={svc.id}
+                        style={[
+                          styles.chip,
+                          serviceId === svc.id && styles.chipActive,
+                        ]}
+                        onPress={() => setServiceId(svc.id)}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: serviceId === svc.id }}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            serviceId === svc.id && styles.chipTextActive,
+                          ]}
+                        >
+                          {svc.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              ) : null}
+
+              <Text style={styles.label}>{t("autoReelCaptionOptional")}</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={caption}
+                onChangeText={(v) => setCaption(v.slice(0, CAPTION_MAX))}
+                placeholder={t("captionPlaceholder")}
+                placeholderTextColor={theme.lightGreen5}
+                multiline
+                maxLength={CAPTION_MAX}
+              />
+              <Text style={styles.charCount}>
+                {caption.length}/{CAPTION_MAX}
+              </Text>
             </View>
           </>
         ) : (
@@ -1558,20 +1622,30 @@ export default function ReelTemplatesScreen() {
       {selected ? (
         <View style={styles.footer}>
           <Button
-            title={t("generateReel")}
+            title={t("autoReelMakeReel")}
             onPress={handleGenerate}
-            disabled={!canGenerate || submitting}
+            disabled={!canGenerate || submitting || uploadPercent != null}
             loading={submitting}
           />
+          {missingHint ? (
+            <View style={styles.footerHintRow}>
+              <MaterialIcons
+                name="info-outline"
+                size={moderateWidthScale(13)}
+                color={theme.lightGreen}
+              />
+              <Text style={styles.footerHint}>{missingHint}</Text>
+            </View>
+          ) : (
+            <Text style={styles.footerHint}>{t("autoReelTimeHint")}</Text>
+          )}
         </View>
       ) : null}
 
       <ModalizeBottomSheet
         visible={sourcePickerVisible}
-        onClose={dismissSourcePicker}
-        title={
-          activeSlotField?.label || t("selectMedia")
-        }
+        onClose={() => setSourcePickerVisible(false)}
+        title={t("autoReelRawVideo")}
       >
         <TouchableOpacity
           style={styles.optionItem}
@@ -1579,145 +1653,35 @@ export default function ReelTemplatesScreen() {
           activeOpacity={0.7}
         >
           <MaterialIcons
-            name="photo-library"
+            name="video-library"
             size={iconScale(24)}
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
           <View style={styles.optionTextCol}>
             <Text style={styles.optionTitle}>{t("fromGallery")}</Text>
-            <Text style={styles.optionDesc}>
-              {activeSlotField
-                ? slotTypeHint(activeSlotField, t)
-                : t("tapToSelectMedia")}
-            </Text>
+            <Text style={styles.optionDesc}>{t("autoReelPickVideoHint")}</Text>
           </View>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[
-            styles.optionItem,
-            !slotAcceptsVideo(activeSlotField) && styles.optionItemLast,
-          ]}
-          onPress={handleSelectFromCamera}
+          style={[styles.optionItem, styles.optionItemLast]}
+          onPress={handleRecordVideo}
           activeOpacity={0.7}
         >
           <MaterialIcons
-            name={
-              slotAcceptsImage(activeSlotField) ? "camera-alt" : "videocam"
-            }
+            name="videocam"
             size={iconScale(24)}
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>
-            {slotAcceptsImage(activeSlotField)
-              ? t("fromCamera")
-              : t("recordVideo")}
-          </Text>
+          <View style={styles.optionTextCol}>
+            <Text style={styles.optionTitle}>{t("recordVideo")}</Text>
+            <Text style={styles.optionDesc}>{t("autoReelPickVideoHint")}</Text>
+          </View>
         </TouchableOpacity>
-
-        {slotAcceptsVideo(activeSlotField) ? (
-          <TouchableOpacity
-            style={[styles.optionItem, styles.optionItemLast]}
-            onPress={openAppLibraryPicker}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons
-              name="video-library"
-              size={iconScale(24)}
-              color={theme.darkGreen}
-              style={styles.optionIcon}
-            />
-            <View style={styles.optionTextCol}>
-              <Text style={styles.optionTitle}>{t("fromAppMediaLibrary")}</Text>
-              <Text style={styles.optionDesc}>
-                {t("fromAppMediaLibraryDesc")}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ) : null}
       </ModalizeBottomSheet>
 
-      <Modal
-        visible={libraryPickerVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={closeLibraryPicker}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t("fromAppMediaLibrary")}</Text>
-              <TouchableOpacity onPress={closeLibraryPicker}>
-                <MaterialIcons
-                  name="close"
-                  size={moderateWidthScale(24)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            </View>
-            {loadingLibrary ? (
-              <View style={styles.loader}>
-                <ActivityIndicator color={theme.buttonBack} />
-              </View>
-            ) : libraryVideos.length === 0 ? (
-              <View style={styles.mediaEmpty}>
-                <Text style={styles.mediaEmptyText}>
-                  {t("noReadyMediaInLibrary")}
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={libraryVideos}
-                keyExtractor={(item) => String(item.id)}
-                numColumns={3}
-                contentContainerStyle={styles.mediaGrid}
-                columnWrapperStyle={{ gap: moderateWidthScale(8) }}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.mediaCell}
-                    onPress={() => pickMedia(item)}
-                    activeOpacity={0.85}
-                  >
-                    {item.thumbnail_url ? (
-                      <Image
-                        source={{ uri: item.thumbnail_url }}
-                        style={styles.mediaCellImage}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.mediaCellImage,
-                          styles.slotThumbPlaceholder,
-                        ]}
-                      >
-                        <MaterialIcons
-                          name="videocam"
-                          size={moderateWidthScale(24)}
-                          color={theme.lightGreen}
-                        />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
-
-      {uploadingMedia ? (
-        <View style={styles.uploadingOverlay} pointerEvents="auto">
-          <ActivityIndicator size="large" color={theme.white} />
-          <Text style={styles.uploadingText}>{t("uploadingVideo")}</Text>
-        </View>
-      ) : null}
-
-      <HairPipelineProcessingModal
-        state={pipelineModal}
-        onClose={closePipelineModal}
-      />
     </View>
   );
 }

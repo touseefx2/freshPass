@@ -20,10 +20,10 @@ import MediaImage from "@/src/components/mediaImage";
 import { ApiService } from "@/src/services/api";
 import { memoriesEndpoints } from "@/src/services/endpoints";
 import {
-  listMyReelsGroupedByDate,
-  REELS_MINE_PER_PAGE,
+  AUTO_REELS_PER_PAGE,
+  listAutoReels,
 } from "@/src/services/reelsService";
-import type { OwnerReel } from "@/src/types/reels";
+import type { AutoReel } from "@/src/types/reels";
 
 export interface MemorySection {
   weekKey: string;
@@ -41,7 +41,7 @@ export interface MemoryItem {
   image_url?: string;
   /** Cover thumbnail for video / reel items */
   thumbnail_url?: string;
-  /** Shotstack reel id when item comes from /api/reels/mine */
+  /** Draft/published reel id when item comes from a ready auto reel */
   reel_id?: number;
 }
 
@@ -111,33 +111,22 @@ function dateKeyFromCreatedAt(createdAt?: string): string | null {
   return match?.[1] ?? null;
 }
 
-function reelToMemoryItem(reel: OwnerReel, dateKey: string): MemoryItem {
-  const video = reel.video as {
-    url?: string;
-    playback_url?: string;
-    thumbnail_url?: string | null;
-  } | null;
-  const videoUrl = video?.playback_url || video?.url || "";
-  const thumbnail = video?.thumbnail_url || "";
-  return {
-    date: dateKey,
-    url: videoUrl || thumbnail,
-    type: "video",
-    thumbnail_url: thumbnail || undefined,
-    image_url: thumbnail || undefined,
-    reel_id: reel.id,
-  };
-}
-
-function flattenGroupedReels(
-  grouped: Record<string, OwnerReel[]>,
-): MemoryItem[] {
+/** Ready auto reels → memory items (skips ones whose draft was deleted) */
+function autoReelsToMemoryItems(autoReels: AutoReel[]): MemoryItem[] {
   const items: MemoryItem[] = [];
-  for (const [dateKey, reels] of Object.entries(grouped)) {
-    for (const reel of reels) {
-      const key = dateKeyFromCreatedAt(reel.created_at) || dateKey;
-      items.push(reelToMemoryItem(reel, key));
-    }
+  for (const autoReel of autoReels) {
+    const video = autoReel.reel?.video;
+    const dateKey = dateKeyFromCreatedAt(autoReel.created_at);
+    if (!video?.playback_url || !dateKey) continue;
+    const thumbnail = video.thumbnail_url || "";
+    items.push({
+      date: dateKey,
+      url: video.playback_url,
+      type: "video",
+      thumbnail_url: thumbnail || undefined,
+      image_url: thumbnail || undefined,
+      reel_id: autoReel.reel_id ?? autoReel.reel?.id,
+    });
   }
   return items;
 }
@@ -238,11 +227,12 @@ export default function AiMemories() {
   );
 
   const fetchReels = useCallback(async (pageNum: number, append: boolean) => {
-    const { grouped, meta } = await listMyReelsGroupedByDate(
+    const { autoReels, meta } = await listAutoReels(
       pageNum,
-      REELS_MINE_PER_PAGE,
+      "ready",
+      AUTO_REELS_PER_PAGE,
     );
-    const items = flattenGroupedReels(grouped);
+    const items = autoReelsToMemoryItems(autoReels);
     setReelsHasMore(Boolean(meta.has_more));
     setReelsPage(meta.current_page ?? pageNum);
     if (append) {

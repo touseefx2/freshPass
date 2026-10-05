@@ -25,6 +25,8 @@ export type MediaVideo = {
   created_at: string;
   /** Reel that uses this video, or null */
   reel_id?: number | null;
+  /** `auto_reel_source` for raw AI Auto Reel uploads (hidden from the library) */
+  purpose?: MediaUploadPurpose | null;
 };
 
 export type MediaListMeta = {
@@ -63,6 +65,8 @@ export type MediaDeleteResponse = {
 
 export type MediaUploadSourceType = "camera" | "device";
 
+export type MediaUploadPurpose = "auto_reel_source";
+
 /** GET /api/media/limits — reel length + AI caps */
 export type MediaLimits = {
   max_seconds: number;
@@ -71,6 +75,8 @@ export type MediaLimits = {
   ai_max_seconds_per_clip: number;
   ai_transition_seconds: number;
   ai_max_images: number;
+  /** Shared business quota (owner + staff); auto reels count toward it */
+  reels_remaining_this_month?: number | null;
 };
 
 export type MediaLimitsResponse = {

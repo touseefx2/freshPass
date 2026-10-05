@@ -1,5 +1,6 @@
 import { ApiService } from "@/src/services/api";
 import {
+  autoReelEndpoints,
   myLooksEndpoints,
   reelTemplateEndpoints,
   reelsEndpoints,
@@ -9,10 +10,11 @@ import {
 import Logger from "@/src/services/logger";
 import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
+  AutoReel,
+  AutoReelTemplate,
+  CreateAutoReelPayload,
   CreateReelPayload,
   FeedReel,
-  GenerateReelPayload,
-  GenerateReelResponse,
   GenerationStatusResponse,
   LikeResponse,
   MyLookListItem,
@@ -23,7 +25,6 @@ import type {
   ReelEventType,
   ReelLookResponse,
   ReelPerformanceStats,
-  ReelTemplate,
   ReelTryOnStartResponse,
   ReelTryOnStatusResponse,
   ReportReason,
@@ -45,37 +46,66 @@ type Envelope<T> = {
   data: T;
 };
 
-/** List active Shotstack reel templates (optional category filter). */
-export async function listReelTemplates(
-  category?: string,
-): Promise<ReelTemplate[]> {
-  const response = await ApiService.get<Envelope<ReelTemplate[]>>(
-    reelTemplateEndpoints.list({ category }),
+export const AUTO_REELS_PER_PAGE = 20;
+
+/** Active auto-reel templates, already in display order. Admins change them often — don't cache. */
+export async function listAutoReelTemplates(): Promise<AutoReelTemplate[]> {
+  const response = await ApiService.get<Envelope<AutoReelTemplate[]>>(
+    autoReelEndpoints.templates,
   );
   return response?.data ?? [];
 }
 
-export async function getReelTemplate(
-  id: number | string,
-): Promise<ReelTemplate> {
-  const response = await ApiService.get<Envelope<ReelTemplate>>(
-    reelTemplateEndpoints.getById(id),
+/** POST /api/auto-reels → 202 with status "pending". */
+export async function createAutoReel(
+  payload: CreateAutoReelPayload,
+): Promise<AutoReel> {
+  const response = await ApiService.post<Envelope<AutoReel>>(
+    autoReelEndpoints.create,
+    payload,
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Template not found");
+    throw new Error(response?.message || "Failed to start auto reel");
   }
   return response.data;
 }
 
-export async function generateReelFromTemplate(
-  payload: GenerateReelPayload,
-): Promise<GenerateReelResponse> {
-  const response = await ApiService.post<Envelope<GenerateReelResponse>>(
-    reelTemplateEndpoints.generate,
-    payload,
+export async function getAutoReel(id: number | string): Promise<AutoReel> {
+  const response = await ApiService.get<Envelope<AutoReel>>(
+    autoReelEndpoints.getById(id),
   );
   if (!response?.data) {
-    throw new Error(response?.message || "Failed to start generation");
+    throw new Error(response?.message || "Auto reel not found");
+  }
+  return response.data;
+}
+
+/** Business's auto reels, newest first. */
+export async function listAutoReels(
+  page: number = 1,
+  status?: string,
+  perPage: number = AUTO_REELS_PER_PAGE,
+): Promise<{ autoReels: AutoReel[]; meta: PageMeta }> {
+  const response = await ApiService.get<
+    Envelope<{ data: AutoReel[]; meta: PageMeta }>
+  >(autoReelEndpoints.list({ page, per_page: perPage, status }));
+  return {
+    autoReels: response?.data?.data ?? [],
+    meta: response?.data?.meta ?? {
+      per_page: perPage,
+      has_more: false,
+      current_page: page,
+    },
+  };
+}
+
+/** Only for failed auto reels. Counts toward the monthly reel limit again. */
+export async function retryAutoReel(id: number | string): Promise<AutoReel> {
+  const response = await ApiService.post<Envelope<AutoReel>>(
+    autoReelEndpoints.retry(id),
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to retry auto reel");
   }
   return response.data;
 }
@@ -115,27 +145,6 @@ export async function listMyReels(
   >(reelsEndpoints.mine({ page, per_page: perPage, status }));
   return {
     reels: response?.data?.data ?? [],
-    meta: response?.data?.meta ?? {
-      per_page: perPage,
-      has_more: false,
-      current_page: page,
-    },
-  };
-}
-
-/** Reels grouped by creation date (`Y-m-d` keys, newest first). */
-export async function listMyReelsGroupedByDate(
-  page: number = 1,
-  perPage: number = REELS_MINE_PER_PAGE,
-): Promise<{
-  grouped: Record<string, OwnerReel[]>;
-  meta: PageMeta;
-}> {
-  const response = await ApiService.get<
-    Envelope<{ data: Record<string, OwnerReel[]>; meta: PageMeta }>
-  >(reelsEndpoints.mine({ page, per_page: perPage, group_by: "date" }));
-  return {
-    grouped: response?.data?.data ?? {},
     meta: response?.data?.meta ?? {
       per_page: perPage,
       has_more: false,

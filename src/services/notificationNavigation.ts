@@ -166,6 +166,7 @@ function openOwnerReelsList(
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "reel_generation" + reel_id (business) → aiResults for that Shotstack reel
+ * - type "auto_reel" + auto_reel_id (business/staff) → autoReel (ready: preview + publish draft; failed: error + retry)
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
  * - type "customer_subscription" + model_id (business role) → Profile → Customers → businessCustomerDetail
  * - type "subscription" (customer role) → Profile → Customer subscriptions
@@ -564,6 +565,56 @@ export function navigateFromNotificationData(
       "------>navigateFromNotificationData (reel_generation) -> aiResults",
       { reel_id: reelId, status },
     );
+    return;
+  }
+
+  // AI Auto Reel finished (ready / failed) — separate from reel_generation
+  if (type === "auto_reel") {
+    const userRole = store.getState().user.userRole;
+    const autoReelId = pickNumber(data, "auto_reel_id", "model_id");
+    const reelId = pickNumber(data, "reel_id");
+    const status =
+      typeof data.status === "string" ? data.status.toLowerCase() : "";
+
+    if (
+      (userRole !== "business" && userRole !== "staff") ||
+      (autoReelId == null && reelId == null)
+    ) {
+      Logger.log("------>navigateFromNotificationData (auto_reel) -> skipped", {
+        userRole,
+        autoReelId,
+        reelId,
+      });
+      return;
+    }
+
+    const go = () => {
+      if (autoReelId != null) {
+        router.push({
+          pathname: "/(main)/autoReel" as any,
+          params: { autoReelId: String(autoReelId) },
+        });
+        return;
+      }
+      router.push({
+        pathname: "/(main)/publishReel" as any,
+        params: { reelId: String(reelId) },
+      });
+    };
+
+    if (options?.fromInAppList) {
+      if (router.canGoBack()) {
+        router.back();
+      }
+      setTimeout(go, AI_MEMORY_BACK_DELAY_MS);
+    } else {
+      go();
+    }
+    Logger.log("------>navigateFromNotificationData (auto_reel) -> autoReel", {
+      auto_reel_id: autoReelId,
+      reel_id: reelId,
+      status,
+    });
     return;
   }
 

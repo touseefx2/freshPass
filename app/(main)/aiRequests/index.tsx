@@ -16,8 +16,12 @@ import StackHeader from "@/src/components/StackHeader";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints } from "@/src/services/endpoints";
-import { listMyReels, getGenerationStatus } from "@/src/services/reelsService";
-import type { OwnerReel, GenerationStatus } from "@/src/types/reels";
+import { getAutoReel, listAutoReels } from "@/src/services/reelsService";
+import {
+  isAutoReelInProgress,
+  type AutoReel,
+  type AutoReelStatus,
+} from "@/src/types/reels";
 import dayjs from "dayjs";
 import { MaterialIcons } from "@expo/vector-icons";
 import { moderateWidthScale } from "@/src/theme/dimensions";
@@ -27,7 +31,8 @@ import Logger from "@/src/services/logger";
 
 const PER_PAGE = 20;
 const POLL_INTERVAL_MS = 10000;
-const REELS_POLL_MS = 8000;
+/** Auto reels: poll in-progress items every 5 s (auto-reel guide) */
+const REELS_POLL_MS = 5000;
 
 const HAIR_TRYON_JOB_TYPES = new Set([
   "generate_with_replicate",
@@ -69,17 +74,18 @@ type AiRequestsApiResponse = {
 
 type RequestTab = "tools" | "reels";
 
-/** Unified row for Tools jobs and Shotstack reels */
+/** Unified row for Tools jobs and AI auto reels */
 type RequestListItem = {
   key: string;
-  kind: "job" | "reel";
+  kind: "job" | "autoReel";
   title: string;
   /** UI status: completed | failed | processing */
   status: string;
   jobIdDisplay: string;
   createdAt: string;
   prompt?: string;
-  reelId?: number;
+  autoReelId?: number;
+  reelId?: number | null;
   jobId?: string;
 };
 
@@ -106,12 +112,7 @@ function filterJobsForRole(
   return jobs.filter(isHairTryonJob);
 }
 
-/** Shotstack-generated reels (listed on AI Requests → Reels) */
-function isShotstackGeneratedReel(reel: OwnerReel): boolean {
-  return reel.generation_status != null;
-}
-
-function mapGenerationToUiStatus(status: GenerationStatus | null | undefined): string {
+function mapAutoReelToUiStatus(status: AutoReelStatus | null | undefined): string {
   if (status === "ready") return "completed";
   if (status === "failed") return "failed";
   return "processing";
@@ -196,19 +197,25 @@ function jobToListItem(job: AiRequestJob): RequestListItem {
   };
 }
 
-function reelToListItem(
-  reel: OwnerReel,
-  generateReelLabel: string,
+function autoReelToListItem(
+  autoReel: AutoReel,
+  fallbackTitle: string,
 ): RequestListItem {
+  const detail =
+    autoReel.status === "failed"
+      ? autoReel.error_message
+      : autoReel.reel?.caption;
   return {
-    key: `reel-${reel.id}`,
-    kind: "reel",
-    title: generateReelLabel,
-    status: mapGenerationToUiStatus(reel.generation_status),
-    jobIdDisplay: `reel_${reel.id}`,
-    createdAt: reel.created_at ?? reel.updated_at ?? new Date().toISOString(),
-    prompt: reel.caption?.trim() || undefined,
-    reelId: reel.id,
+    key: `auto-reel-${autoReel.id}`,
+    kind: "autoReel",
+    title: autoReel.template?.name || fallbackTitle,
+    status: mapAutoReelToUiStatus(autoReel.status),
+    jobIdDisplay: `auto_reel_${autoReel.id}`,
+    createdAt:
+      autoReel.created_at ?? autoReel.updated_at ?? new Date().toISOString(),
+    prompt: detail?.trim() || undefined,
+    autoReelId: autoReel.id,
+    reelId: autoReel.reel_id,
   };
 }
 
@@ -220,6 +227,7 @@ export default function AiRequests() {
     fromProcessingModal?: string;
     tab?: string;
     highlightReelId?: string;
+    highlightAutoReelId?: string;
   }>();
   const accessToken = useAppSelector((state) => state.user.accessToken);
   const isGuest = useAppSelector((state) => state.user.isGuest);
@@ -258,7 +266,7 @@ export default function AiRequests() {
   }, [fromProcessingModal]);
 
   const [jobs, setJobs] = useState<AiRequestJob[]>([]);
-  const [reels, setReels] = useState<OwnerReel[]>([]);
+  const [reels, setReels] = useState<AutoReel[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -340,22 +348,22 @@ export default function AiRequests() {
       }
 
       try {
-        const { reels: pageReels, meta } = await listMyReels(page, undefined, PER_PAGE);
-        const shotstackOnly = pageReels.filter(isShotstackGeneratedReel);
+        const { autoReels, meta } = await listAutoReels(
+          page,
+          undefined,
+          PER_PAGE,
+        );
 
         setReels((prev) => {
-          if (!append) return shotstackOnly;
+          if (!append) return autoReels;
           const existing = new Set(prev.map((r) => r.id));
-          return [
-            ...prev,
-            ...shotstackOnly.filter((r) => !existing.has(r.id)),
-          ];
+          return [...prev, ...autoReels.filter((r) => !existing.has(r.id))];
         });
         setCurrentPage(meta.current_page ?? page);
         setHasMore(Boolean(meta.has_more));
         setLoadError(false);
       } catch (error) {
-        Logger.error("Failed to load Shotstack reels:", error);
+        Logger.error("Failed to load auto reels:", error);
         if (!silent) setLoadError(true);
       } finally {
         if (!silent) {
@@ -404,35 +412,23 @@ export default function AiRequests() {
     }, [canFetchHistory, fetchActive]),
   );
 
-  // Poll generation status for in-progress Shotstack reels
+  // Poll status for in-progress auto reels
   useEffect(() => {
     if (activeTab !== "reels" || !showReelsTab) return;
-    const inProgress = reels.filter(
-      (r) =>
-        r.generation_status === "pending" ||
-        r.generation_status === "rendering",
-    );
+    const inProgress = reels.filter((r) => isAutoReelInProgress(r.status));
     if (inProgress.length === 0) return;
 
     let cancelled = false;
     const tick = async () => {
       for (const reel of inProgress) {
         try {
-          const status = await getGenerationStatus(reel.id);
+          const latest = await getAutoReel(reel.id);
           if (cancelled) return;
           setReels((prev) =>
-            prev.map((r) =>
-              r.id === reel.id
-                ? {
-                    ...r,
-                    generation_status: status.generation_status,
-                    generation_error: status.generation_error,
-                  }
-                : r,
-            ),
+            prev.map((r) => (r.id === reel.id ? latest : r)),
           );
         } catch (error) {
-          Logger.error(`Generation poll failed for reel ${reel.id}:`, error);
+          Logger.error(`Auto reel poll failed for ${reel.id}:`, error);
         }
       }
     };
@@ -474,7 +470,7 @@ export default function AiRequests() {
 
   const listItems = useMemo((): RequestListItem[] => {
     if (activeTab === "reels") {
-      return reels.map((r) => reelToListItem(r, t("generateReel")));
+      return reels.map((r) => autoReelToListItem(r, t("autoReelTitle")));
     }
     return jobs.map(jobToListItem);
   }, [activeTab, jobs, reels, t]);
@@ -520,9 +516,12 @@ export default function AiRequests() {
       const statusBadgeStyle = getStatusBadgeStyle(item.status);
       const statusColor = getStatusTextColor(item.status);
       const isHighlighted =
-        item.kind === "reel" &&
-        params.highlightReelId != null &&
-        String(item.reelId) === String(params.highlightReelId);
+        item.kind === "autoReel" &&
+        ((params.highlightAutoReelId != null &&
+          String(item.autoReelId) === String(params.highlightAutoReelId)) ||
+          (params.highlightReelId != null &&
+            item.reelId != null &&
+            String(item.reelId) === String(params.highlightReelId)));
 
       return (
         <TouchableOpacity
@@ -533,27 +532,22 @@ export default function AiRequests() {
           ]}
           activeOpacity={0.7}
           onPress={() => {
+            if (item.kind === "autoReel" && item.autoReelId != null) {
+              router.push({
+                pathname: "/(main)/autoReel" as any,
+                params: { autoReelId: String(item.autoReelId) },
+              });
+              return;
+            }
             const titleLower = item.title.toLowerCase();
-            const resultType = item.kind === "reel"
-              ? "reel"
-              : titleLower.includes("hair") || titleLower.includes("replicate")
+            const resultType =
+              titleLower.includes("hair") || titleLower.includes("replicate")
                 ? "hairTryon"
                 : titleLower.includes("collage")
                   ? "collage"
                   : titleLower.includes("post")
                     ? "post"
                     : "reel";
-            if (item.kind === "reel" && item.reelId != null) {
-              router.push({
-                pathname: "/aiResults",
-                params: {
-                  reelId: String(item.reelId),
-                  resultType,
-                  ...(params.returnTo ? { returnTo: params.returnTo } : {}),
-                },
-              });
-              return;
-            }
             if (item.jobId) {
               router.push({
                 pathname: "/aiResults",
@@ -622,6 +616,7 @@ export default function AiRequests() {
       formatStatusLabel,
       params.returnTo,
       params.highlightReelId,
+      params.highlightAutoReelId,
     ],
   );
 

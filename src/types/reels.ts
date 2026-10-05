@@ -314,74 +314,7 @@ export type ReportReason = {
 /** Reasons that need a note before the report can be submitted. */
 export const REPORT_REASONS_REQUIRING_NOTE = ["copyright", "other"];
 
-/** Shotstack reel templates (GET /api/reel-templates) */
-export type ReelTemplateMediaAcceptedType = "image" | "video";
-
-/** One media slot on a Shotstack template (phase2 accepted_types shape) */
-export type ReelTemplateMediaField = {
-  key: string;
-  label: string;
-  accepted_types: ReelTemplateMediaAcceptedType[];
-};
-
-export type ReelTemplate = {
-  id: number;
-  name: string;
-  slug: string;
-  preview_video_url: string | null;
-  thumbnail_url: string | null;
-  category: string;
-  merge_fields: string[];
-  text_fields: string[];
-  /** New API: objects with accepted_types. Legacy: string keys. */
-  media_fields: ReelTemplateMediaField[] | string[];
-  media_count: number;
-  has_music: boolean;
-  music_name: string | null;
-  is_active: boolean;
-  created_at: string;
-};
-
-/** Normalize legacy string[] or new object[] media_fields */
-export function normalizeReelTemplateMediaFields(
-  fields: ReelTemplate["media_fields"] | null | undefined,
-): ReelTemplateMediaField[] {
-  if (!fields?.length) return [];
-  return fields.map((field, index) => {
-    if (typeof field === "string") {
-      return {
-        key: field,
-        label: `Slot ${index + 1}`,
-        // Legacy templates had no type info; media upload is video-first
-        accepted_types: ["video", "image"],
-      };
-    }
-    const types = (field.accepted_types ?? []).filter(
-      (t): t is ReelTemplateMediaAcceptedType =>
-        t === "image" || t === "video",
-    );
-    return {
-      key: field.key,
-      label: field.label?.trim() || `Slot ${index + 1}`,
-      accepted_types: types.length > 0 ? types : ["image", "video"],
-    };
-  });
-}
-
-export type GenerateReelPayload = {
-  template_id: number;
-  media_asset_ids: number[];
-  texts: Record<string, string>;
-  category_id: number;
-  caption: string;
-  music_asset_id?: number | null;
-};
-
-export type GenerateReelResponse = {
-  reel_id: number;
-  generation_status: "pending";
-};
-
+/** Legacy Shotstack generation state on older owner reels */
 export type GenerationStatus =
   | "pending"
   | "rendering"
@@ -395,3 +328,89 @@ export type GenerationStatusResponse = {
   video_url: string | null;
   progress: number | null;
 };
+
+/** AI Auto Reels — GET /api/auto-reels/templates */
+export type AutoReelTemplateKind = "haircut" | "custom";
+
+export type AutoReelTemplate = {
+  id: number;
+  name: string;
+  description: string | null;
+  preview_image_url: string | null;
+  kind: AutoReelTemplateKind;
+};
+
+export type AutoReelStatus =
+  | "pending"
+  | "analyzing"
+  | "rendering"
+  | "ready"
+  | "failed";
+
+export type AutoReelRenderStatus =
+  | "queued"
+  | "fetching"
+  | "rendering"
+  | "saving"
+  | "done";
+
+export type AutoReelErrorCode =
+  | "not_suitable"
+  | "not_found"
+  | "too_many_moments"
+  | "source_too_long"
+  | "source_missing"
+  | "analysis_failed"
+  | "render_failed"
+  | "store_failed";
+
+/** Draft reel attached to a ready auto reel */
+export type AutoReelDraft = {
+  id: number;
+  status: ReelStatus;
+  caption: string | null;
+  category: ReelCategory | null;
+  service: ReelService | null;
+  video: {
+    id: number;
+    playback_url: string;
+    thumbnail_url: string | null;
+    duration_seconds: number | null;
+  } | null;
+};
+
+export type AutoReel = {
+  id: number;
+  status: AutoReelStatus;
+  template: Pick<AutoReelTemplate, "id" | "name" | "kind"> | null;
+  error_code: AutoReelErrorCode | string | null;
+  error_message: string | null;
+  render_status: AutoReelRenderStatus | null;
+  has_before: boolean | null;
+  has_reveal: boolean | null;
+  total_seconds: number | null;
+  source_media_asset_id: number | null;
+  reel_id: number | null;
+  reel: AutoReelDraft | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateAutoReelPayload = {
+  media_asset_id: number;
+  template_id: number;
+  category_id: number;
+  service_id?: number;
+  caption?: string;
+};
+
+export function isAutoReelInProgress(status: AutoReelStatus | null | undefined) {
+  return status === "pending" || status === "analyzing" || status === "rendering";
+}
+
+/** Failures where POST /retry is worth offering (server-side problems). */
+export const AUTO_REEL_RETRYABLE_ERRORS: readonly string[] = [
+  "analysis_failed",
+  "render_failed",
+  "store_failed",
+];
