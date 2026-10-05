@@ -7,7 +7,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { useTheme } from "@/src/hooks/hooks";
+import { useTheme, useAppSelector } from "@/src/hooks/hooks";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -388,6 +388,12 @@ export default function StaffAvailabilityScreen() {
   const styles = useMemo(() => createStyles(theme), [colors]);
   const router = useRouter();
   const { showBanner } = useNotificationContext();
+  const userRole = useAppSelector((state) => state.user.userRole);
+  const ownerStaffId = useAppSelector(
+    (state) => state.user.businessStatus?.owner_as_staff?.staff_id ?? null,
+  );
+  // Business owner editing their own staff hours (Pro plan, owner-as-staff)
+  const isOwnerAsStaff = userRole === "business" && !!ownerStaffId;
   const [loading, setLoading] = useState(true);
   const [businessHours, setBusinessHours] = useState<BusinessHours>({});
   // This will always hold the "staff" hours (what comes from API or what user sets
@@ -780,14 +786,24 @@ export default function StaffAvailabilityScreen() {
         },
       };
 
-      Logger.log("route : ", staffEndpoints.profile);
-      Logger.log("requestBody : ", requestBody);
-
-      const response = await ApiService.post<{
+      type SaveResponse = {
         success: boolean;
         message: string;
         data?: any;
-      }>(staffEndpoints.profile, requestBody, config);
+      };
+
+      // Owner saves their own staff record by id; staff use their profile endpoint
+      const response = isOwnerAsStaff
+        ? await ApiService.put<SaveResponse>(
+            staffEndpoints.update(ownerStaffId!),
+            requestBody,
+            config,
+          )
+        : await ApiService.post<SaveResponse>(
+            staffEndpoints.profile,
+            requestBody,
+            config,
+          );
 
       if (response.success) {
         showBanner(
@@ -808,9 +824,18 @@ export default function StaffAvailabilityScreen() {
       }
     } catch (error: any) {
       Logger.error("Failed to update availability:", error);
+      // 422: show the first field error (messages are user-facing)
+      const fieldErrors =
+        error?.data?.errors ?? error?.response?.data?.errors;
+      const firstFieldError =
+        fieldErrors && typeof fieldErrors === "object"
+          ? (Object.values(fieldErrors)[0] as string[] | undefined)?.[0]
+          : undefined;
       showBanner(
         t("error"),
-        error.message || t("failedToUpdateAvailabilityTryAgain"),
+        firstFieldError ||
+          error.message ||
+          t("failedToUpdateAvailabilityTryAgain"),
         "error",
         3000,
       );
