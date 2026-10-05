@@ -67,6 +67,15 @@ import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import { canAddStaffMembers, isSoloSubscription } from "@/src/state/slices/userSlice";
 import { setBusinessPlansModalVisible, setBusinessPlansModalBusinessOnly } from "@/src/state/slices/generalSlice";
 import { getDefaultHoursFromBounds } from "@/src/utils/businessHoursBounds";
+import { MonthlyReelsStepper } from "@/src/components/MonthlyReels";
+import {
+  fetchMonthlyReelLimits,
+  findStaffReelLimit,
+  formatReelsResetDate,
+  maxAssignableForStaff,
+  setStaffMonthlyReelLimit,
+} from "@/src/services/monthlyReelsService";
+import type { MediaLimits } from "@/src/types/media";
 
 const DAYS = [
   "Monday",
@@ -657,6 +666,10 @@ type AddStaffParams = {
   active?: string;
   working_hours?: string;
   invitation_token?: string | null;
+  /** "1" when editing the owner's own staff row (takes no reel number) */
+  is_owner?: string;
+  /** Pre-fill from the staff details; "" = none given */
+  monthly_reel_limit?: string;
 };
 
 export default function AddStaffScreen() {
@@ -742,6 +755,51 @@ export default function AddStaffScreen() {
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(false);
+
+  // Monthly reels — owner gives each staff member part of the business's 12
+  const showMonthlyReels =
+    isEditMode && userRole === "business" && params.is_owner !== "1";
+  const initialReelLimit = (() => {
+    const n = Number(params.monthly_reel_limit);
+    return params.monthly_reel_limit && Number.isFinite(n) ? n : 0;
+  })();
+  const [reelLimit, setReelLimit] = useState(initialReelLimit);
+  const [savedReelLimit, setSavedReelLimit] = useState(initialReelLimit);
+  const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
+  const [reelLimitsLoading, setReelLimitsLoading] = useState(false);
+  const [reelLimitError, setReelLimitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!showMonthlyReels || !params.id) return;
+    let cancelled = false;
+    setReelLimitsLoading(true);
+    fetchMonthlyReelLimits()
+      .then((limits) => {
+        if (cancelled) return;
+        setReelLimits(limits);
+        const row = findStaffReelLimit(limits, params.id);
+        if (row) {
+          const current = row.monthly_reel_limit ?? 0;
+          setReelLimit(current);
+          setSavedReelLimit(current);
+        }
+      })
+      .catch((error) => {
+        Logger.error("Failed to load monthly reel limits:", error);
+      })
+      .finally(() => {
+        if (!cancelled) setReelLimitsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showMonthlyReels, params.id]);
+
+  const staffReelRow = useMemo(
+    () => findStaffReelLimit(reelLimits, params.id),
+    [reelLimits, params.id],
+  );
+  const reelLimitMax = maxAssignableForStaff(reelLimits, savedReelLimit);
   const [businessHours, setBusinessHours] = useState<Record<string, DayData>>(
     () => {
       const init: Record<string, DayData> = {};
@@ -1295,6 +1353,22 @@ export default function AddStaffScreen() {
     setIsSubmitting(true);
     try {
       if (isEditMode) {
+        // Save the reel number first so a 422 (over 12) stops before other changes
+        if (showMonthlyReels && params.id && reelLimit !== savedReelLimit) {
+          try {
+            await setStaffMonthlyReelLimit(params.id, reelLimit);
+            setSavedReelLimit(reelLimit);
+            setReelLimitError(null);
+          } catch (error: any) {
+            const message =
+              error?.data?.errors?.monthly_reel_limit?.[0] ||
+              error?.message ||
+              t("monthlyReelsSaveFailed");
+            setReelLimitError(message);
+            showBanner(t("error"), message, "error", 4000);
+            return;
+          }
+        }
         const formData = new FormData();
         if (userRole === "business" && params.id) {
           formData.append("staff_id", params.id);
@@ -1430,6 +1504,9 @@ export default function AddStaffScreen() {
     showBanner,
     t,
     dispatch,
+    showMonthlyReels,
+    reelLimit,
+    savedReelLimit,
   ]);
 
   return (
@@ -1626,6 +1703,33 @@ export default function AddStaffScreen() {
             <Text style={styles.toggleTitle}>Active</Text>
           </View>
         )}
+
+        {showMonthlyReels ? (
+          <View style={{ marginBottom: moderateHeightScale(24) }}>
+            <MonthlyReelsStepper
+              value={reelLimit}
+              onChange={(value) => {
+                setReelLimit(value);
+                setReelLimitError(null);
+              }}
+              max={reelLimitMax}
+              used={staffReelRow?.reels_used_this_month ?? 0}
+              freeToGive={
+                typeof reelLimits?.unassigned === "number"
+                  ? Math.max(
+                      0,
+                      reelLimits.unassigned - (reelLimit - savedReelLimit),
+                    )
+                  : null
+              }
+              resetLabel={formatReelsResetDate(
+                reelLimits?.monthly_reels_reset_on,
+              )}
+              loading={reelLimitsLoading}
+              error={reelLimitError}
+            />
+          </View>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Working hours</Text>
 

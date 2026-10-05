@@ -44,6 +44,16 @@ import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateEmail } from "@/src/services/validationService";
 import {
+  BusinessReelsSummaryCard,
+  StaffReelUsageInline,
+} from "@/src/components/MonthlyReels";
+import {
+  fetchMonthlyReelLimits,
+  findStaffReelLimit,
+  formatReelsResetDate,
+} from "@/src/services/monthlyReelsService";
+import type { MediaLimits } from "@/src/types/media";
+import {
   disableOwnerAsStaff,
   enableOwnerAsStaff,
 } from "@/src/services/ownerAsStaffService";
@@ -401,6 +411,7 @@ export default function ManageTeamScreen() {
   const ownerEnabled = businessStatus?.owner_as_staff?.enabled === true;
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
@@ -446,6 +457,11 @@ export default function ManageTeamScreen() {
             is_business_owner?: boolean;
           }>;
         }>(staffEndpoints.list()).catch(() => null),
+        fetchMonthlyReelLimits()
+          .then(setReelLimits)
+          .catch((error) => {
+            Logger.error("Failed to load monthly reel limits:", error);
+          }),
       ]);
 
       if (moduleResponse.success && moduleResponse.data?.staff) {
@@ -822,11 +838,24 @@ export default function ManageTeamScreen() {
               </View>
             ) : (
               <>
+                {reelLimits?.staff_reel_limits ? (
+                  <View style={{ marginBottom: moderateHeightScale(16) }}>
+                    <BusinessReelsSummaryCard
+                      limits={reelLimits}
+                      resetLabel={formatReelsResetDate(
+                        reelLimits.monthly_reels_reset_on,
+                      )}
+                    />
+                  </View>
+                ) : null}
                 <Text style={styles.invitationsTitle}>
                   {t("invitationsSend")}
                 </Text>
                 {teamMembers.map((member) => {
                   const owner = isOwnerMember(member);
+                  const reelRow = owner
+                    ? null
+                    : findStaffReelLimit(reelLimits, member.id);
                   return (
                     <React.Fragment key={member.id}>
                       <View style={styles.memberCard}>
@@ -852,6 +881,12 @@ export default function ManageTeamScreen() {
                                 {member.email}
                               </Text>
                             )}
+                            {reelRow ? (
+                              <StaffReelUsageInline
+                                limit={reelRow.monthly_reel_limit}
+                                used={reelRow.reels_used_this_month}
+                              />
+                            ) : null}
                           </View>
                           {!owner ? (
                             <Text style={styles.memberStatus}>

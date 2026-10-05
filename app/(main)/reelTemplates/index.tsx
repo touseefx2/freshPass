@@ -40,6 +40,10 @@ import {
   createAutoReel,
   listAutoReelTemplates,
 } from "@/src/services/reelsService";
+import {
+  formatReelsResetDate,
+  monthlyReelsBlockedMessage,
+} from "@/src/services/monthlyReelsService";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -758,6 +762,10 @@ export default function ReelTemplatesScreen() {
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [reelsRemaining, setReelsRemaining] = useState<number | null>(null);
+  const [quotaBlockedMessage, setQuotaBlockedMessage] = useState<string | null>(
+    null,
+  );
+  const [quotaResetLabel, setQuotaResetLabel] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [sourcePickerVisible, setSourcePickerVisible] = useState(false);
@@ -803,11 +811,13 @@ export default function ReelTemplatesScreen() {
         if (typeof limits.reels_remaining_this_month === "number") {
           setReelsRemaining(limits.reels_remaining_this_month);
         }
+        setQuotaBlockedMessage(monthlyReelsBlockedMessage(limits, t));
+        setQuotaResetLabel(formatReelsResetDate(limits.monthly_reels_reset_on));
       })
       .catch((error) => {
         Logger.error("Failed to load media limits for auto reel:", error);
       });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     (async () => {
@@ -1151,8 +1161,15 @@ export default function ReelTemplatesScreen() {
             />
             <Text style={styles.quotaText}>
               {noReelsLeft
-                ? t("autoReelNoReelsLeft")
-                : t("autoReelReelsLeft", { count: reelsRemaining })}
+                ? quotaBlockedMessage || t("autoReelNoReelsLeft")
+                : [
+                    t("autoReelReelsLeft", { count: reelsRemaining }),
+                    quotaResetLabel
+                      ? t("monthlyReelsResets", { date: quotaResetLabel })
+                      : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
             </Text>
           </View>
         ) : null}

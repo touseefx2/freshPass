@@ -47,6 +47,13 @@ import {
   getDefaultAvatarImage,
 } from "@/src/services/remoteConfigService";
 import { BlurView } from "expo-blur";
+import { StaffReelUsageCard } from "@/src/components/MonthlyReels";
+import {
+  fetchMonthlyReelLimits,
+  findStaffReelLimit,
+  formatReelsResetDate,
+} from "@/src/services/monthlyReelsService";
+import type { MediaLimits } from "@/src/types/media";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const VIEWER_BANNER_CONTENT_HEIGHT = moderateHeightScale(28);
@@ -806,6 +813,8 @@ export interface StaffDetailData {
   invitation_status?: string;
   is_owner?: boolean;
   is_business_owner?: boolean;
+  /** Owner-given share of the business's monthly reels (null = none) */
+  monthly_reel_limit?: number | null;
   completed_appointments_count: number;
   leaves?: StaffLeave[];
   business: {
@@ -860,6 +869,17 @@ function getTodayDayName(): string {
   return days[new Date().getDay()];
 }
 
+function isOwnerStaffRecord(
+  data: StaffDetailData,
+  ownerStaffId?: number | null,
+): boolean {
+  return (
+    data.is_owner === true ||
+    data.is_business_owner === true ||
+    (ownerStaffId != null && data.id === ownerStaffId)
+  );
+}
+
 export default function StaffDetail() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -884,6 +904,7 @@ export default function StaffDetail() {
   const [workImagesTotal, setWorkImagesTotal] = useState(0);
   const dataRef = React.useRef<StaffDetailData | null>(null);
   dataRef.current = data;
+  const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
 
   useEffect(() => {
     setData(null);
@@ -958,11 +979,22 @@ export default function StaffDetail() {
     }
   }, [staffId]);
 
+  // Owner only: monthly reel usage per staff member
+  const fetchReelLimits = useCallback(async () => {
+    if (!isBusinessRole || isViewMode) return;
+    try {
+      setReelLimits(await fetchMonthlyReelLimits());
+    } catch (err) {
+      Logger.error("Failed to load monthly reel limits:", err);
+    }
+  }, [isBusinessRole, isViewMode]);
+
   useFocusEffect(
     useCallback(() => {
       fetchStaffDetails();
       fetchWorkImages();
-    }, [fetchStaffDetails, fetchWorkImages]),
+      void fetchReelLimits();
+    }, [fetchStaffDetails, fetchWorkImages, fetchReelLimits]),
   );
 
   const handleOpenWorkImage = useCallback(
@@ -1011,6 +1043,9 @@ export default function StaffDetail() {
         profile_image_url: editProfileImageUrl,
         active: data.active ? "1" : "0",
         working_hours: JSON.stringify(data.user?.working_hours ?? []),
+        is_owner: isOwnerStaffRecord(data, ownerStaffId) ? "1" : "0",
+        monthly_reel_limit:
+          data.monthly_reel_limit != null ? String(data.monthly_reel_limit) : "",
         ...(data.invitation_token
           ? { invitation_token: data.invitation_token }
           : {}),
@@ -1270,10 +1305,10 @@ export default function StaffDetail() {
   const todayDay = getTodayDayName();
   const openDaysCount = sortedHours.filter((wh) => !wh.closed).length;
   const leaveCount = data.leaves?.length ?? 0;
-  const isOwnerStaff =
-    data.is_owner === true ||
-    data.is_business_owner === true ||
-    (ownerStaffId != null && data.id === ownerStaffId);
+  const isOwnerStaff = isOwnerStaffRecord(data, ownerStaffId);
+  const staffReelRow = findStaffReelLimit(reelLimits, data.id);
+  const showReelUsage =
+    isBusinessRole && !isViewMode && !isOwnerStaff && reelLimits != null;
   // Business role viewing their own self-added staff profile → hide chat message row only
   const hideSelfStaffMessage = isBusinessRole && isOwnerStaff;
   const showPendingInvite =
@@ -1550,6 +1585,17 @@ export default function StaffDetail() {
                 )}
               </TouchableOpacity>
             </View>
+          </View>
+        ) : null}
+
+        {showReelUsage ? (
+          <View style={styles.sectionContainer}>
+            <StaffReelUsageCard
+              limit={staffReelRow?.monthly_reel_limit ?? data.monthly_reel_limit ?? null}
+              used={staffReelRow?.reels_used_this_month ?? 0}
+              resetLabel={formatReelsResetDate(reelLimits?.monthly_reels_reset_on)}
+              onChangePress={handleEditPress}
+            />
           </View>
         ) : null}
 

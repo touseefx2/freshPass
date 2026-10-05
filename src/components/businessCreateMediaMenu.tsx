@@ -43,6 +43,7 @@ import {
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
 import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
+import { monthlyReelsBlockedMessage } from "@/src/services/monthlyReelsService";
 
 const androidBlurMethod =
   Platform.OS === "android" ? ("dimezisBlurView" as const) : ("none" as const);
@@ -211,7 +212,8 @@ export default function BusinessCreateMediaMenu({
 
   useEffect(() => {
     if (!visible && !reelPickerVisible) return;
-    void getMediaLimits()
+    // Force: monthly reel counters change with every reel posted
+    void getMediaLimits({ force: true })
       .then(setLimits)
       .catch((error) => {
         Logger.error("Failed to load media limits:", error);
@@ -223,6 +225,15 @@ export default function BusinessCreateMediaMenu({
     setReelPickerVisible(false);
     onClose();
   }, [onClose]);
+
+  /** Monthly reels (12 per business, shared with staff) — warn before starting */
+  const ensureMonthlyReelsLeft = useCallback((): boolean => {
+    const blocked = monthlyReelsBlockedMessage(limits, t);
+    if (!blocked) return true;
+    closeAll();
+    showBanner(t("monthlyReelsLimitTitle"), blocked, "error", 5000);
+    return false;
+  }, [closeAll, limits, showBanner, t]);
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus);
@@ -236,8 +247,8 @@ export default function BusinessCreateMediaMenu({
       setBuyPlanModalVisible(true);
       return false;
     }
-    return true;
-  }, [businessStatus, closeAll, dispatch]);
+    return ensureMonthlyReelsLeft();
+  }, [businessStatus, closeAll, dispatch, ensureMonthlyReelsLeft]);
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -410,9 +421,10 @@ export default function BusinessCreateMediaMenu({
       setBuyPlanModalVisible(true);
       return;
     }
+    if (!ensureMonthlyReelsLeft()) return;
     // Keep parent `visible` true so center tab stays as X while picker is open.
     setReelPickerVisible(true);
-  }, [businessStatus, closeAll, dispatch]);
+  }, [businessStatus, closeAll, dispatch, ensureMonthlyReelsLeft]);
 
   const handleMenuAction = useCallback(
     (action: CreateMenuAction) => {

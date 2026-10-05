@@ -661,7 +661,12 @@ export default function PublishReelScreen() {
       }
       leaveAfterSuccess();
     } catch (error: any) {
+      // Monthly reel limit (12 per business, shared with staff) → 422 on `reel`
       const msg =
+        error?.data?.errors?.reel?.[0] ||
+        error?.data?.errors?.caption?.[0] ||
+        error?.data?.errors?.media_asset_id?.[0] ||
+        error?.data?.errors?.category_id?.[0] ||
         error?.response?.data?.errors?.caption?.[0] ||
         error?.response?.data?.errors?.media_asset_id?.[0] ||
         error?.response?.data?.errors?.category_id?.[0] ||
@@ -705,6 +710,8 @@ export default function PublishReelScreen() {
       leaveAfterSuccess();
     } catch (error: any) {
       const msg =
+        error?.data?.errors?.reel?.[0] ||
+        error?.data?.errors?.media_asset_id?.[0] ||
         error?.response?.data?.errors?.media_asset_id?.[0] ||
         error?.response?.data?.errors?.reel?.[0] ||
         error?.response?.data?.message ||

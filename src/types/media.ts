@@ -75,8 +75,32 @@ export type MediaLimits = {
   ai_max_seconds_per_clip: number;
   ai_transition_seconds: number;
   ai_max_images: number;
-  /** Shared business quota (owner + staff); auto reels count toward it */
+  /** How many reels this user can still make (capped by what the business has left) */
   reels_remaining_this_month?: number | null;
+  /** 12 a month for the whole business (owner + staff) */
+  max_reels_per_month?: number | null;
+  business_reels_used_this_month?: number | null;
+  business_reels_remaining_this_month?: number | null;
+  monthly_reel_role?: "owner" | "staff" | null;
+  /** Staff: number the owner gave them (0 = none). Owner: 12 minus what's given to staff. */
+  your_monthly_reel_limit?: number | null;
+  your_reels_used_this_month?: number | null;
+  /** e.g. "2026-11-01" */
+  monthly_reels_reset_on?: string | null;
+  /** Owner only */
+  assigned_to_staff?: number | null;
+  unassigned?: number | null;
+  staff_reel_limits?: StaffReelLimit[] | null;
+};
+
+/** Owner-only row in GET /api/media/limits → staff_reel_limits */
+export type StaffReelLimit = {
+  staff_id: number;
+  user_id: number;
+  name: string;
+  /** null = none given (cannot post reels) */
+  monthly_reel_limit: number | null;
+  reels_used_this_month: number;
 };
 
 export type MediaLimitsResponse = {
