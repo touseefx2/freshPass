@@ -118,6 +118,25 @@ function mapAutoReelToUiStatus(status: AutoReelStatus | null | undefined): strin
   return "processing";
 }
 
+/**
+ * Silent refresh only re-reads page 1 — update those rows in place (and add
+ * new ones on top) instead of dropping the pages the user already scrolled to.
+ */
+function mergeRefreshedFirstPage<T>(
+  prev: T[],
+  fresh: T[],
+  keyOf: (item: T) => string | number,
+): T[] {
+  if (prev.length <= fresh.length) return fresh;
+  const freshByKey = new Map(fresh.map((item) => [keyOf(item), item]));
+  const prevKeys = new Set(prev.map(keyOf));
+  const added = fresh.filter((item) => !prevKeys.has(keyOf(item)));
+  return [
+    ...added,
+    ...prev.map((item) => freshByKey.get(keyOf(item)) ?? item),
+  ];
+}
+
 function formatSectionDayLabel(dayKey: string, t: (key: string) => string): string {
   const sectionDate = dayjs(dayKey);
   if (!sectionDate.isValid()) return dayKey;
@@ -304,13 +323,18 @@ export default function AiRequests() {
         const filtered = filterJobsForRole(raw, shouldFilterHairTryon);
 
         setJobs((prev) => {
+          if (silent && !append && page === 1) {
+            return mergeRefreshedFirstPage(prev, filtered, (j) => j.job_id);
+          }
           if (!append) return filtered;
           const existing = new Set(prev.map((j) => j.job_id));
           return [...prev, ...filtered.filter((j) => !existing.has(j.job_id))];
         });
-        setCurrentPage(page);
-        const nextUrl = result?.links?.next;
-        setHasMore(Boolean(nextUrl));
+        // A silent page-1 refresh must not reset paging the user already did
+        if (!silent) {
+          setCurrentPage(page);
+          setHasMore(Boolean(result?.links?.next));
+        }
         setLoadError(false);
       } catch (error) {
         Logger.error("Failed to load AI requests:", error);
@@ -355,12 +379,17 @@ export default function AiRequests() {
         );
 
         setReels((prev) => {
+          if (silent && !append && page === 1) {
+            return mergeRefreshedFirstPage(prev, autoReels, (r) => r.id);
+          }
           if (!append) return autoReels;
           const existing = new Set(prev.map((r) => r.id));
           return [...prev, ...autoReels.filter((r) => !existing.has(r.id))];
         });
-        setCurrentPage(meta.current_page ?? page);
-        setHasMore(Boolean(meta.has_more));
+        if (!silent) {
+          setCurrentPage(meta.current_page ?? page);
+          setHasMore(Boolean(meta.has_more));
+        }
         setLoadError(false);
       } catch (error) {
         Logger.error("Failed to load auto reels:", error);
@@ -412,35 +441,45 @@ export default function AiRequests() {
     }, [canFetchHistory, fetchActive]),
   );
 
-  // Poll status for in-progress auto reels
-  useEffect(() => {
-    if (activeTab !== "reels" || !showReelsTab) return;
-    const inProgress = reels.filter((r) => isAutoReelInProgress(r.status));
-    if (inProgress.length === 0) return;
+  // In-progress auto reel ids, read by the poll without re-arming it on every update
+  const inProgressIdsRef = useRef<number[]>([]);
+  inProgressIdsRef.current = reels
+    .filter((r) => isAutoReelInProgress(r.status))
+    .map((r) => r.id);
 
-    let cancelled = false;
-    const tick = async () => {
-      for (const reel of inProgress) {
-        try {
-          const latest = await getAutoReel(reel.id);
-          if (cancelled) return;
-          setReels((prev) =>
-            prev.map((r) => (r.id === reel.id ? latest : r)),
-          );
-        } catch (error) {
-          Logger.error(`Auto reel poll failed for ${reel.id}:`, error);
-        }
-      }
-    };
-
-    const id = setInterval(() => {
-      void tick();
-    }, REELS_POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [activeTab, reels, showReelsTab]);
+  // Poll in-progress auto reels every 5 s — only while this screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab !== "reels" || !showReelsTab) return;
+      let cancelled = false;
+      let running = false;
+      const tick = async () => {
+        const ids = inProgressIdsRef.current;
+        if (running || ids.length === 0) return;
+        running = true;
+        const settled = await Promise.allSettled(ids.map((id) => getAutoReel(id)));
+        running = false;
+        if (cancelled) return;
+        const latestById = new Map<number, AutoReel>();
+        settled.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            latestById.set(ids[index], result.value);
+          } else {
+            Logger.error(`Auto reel poll failed for ${ids[index]}:`, result.reason);
+          }
+        });
+        if (latestById.size === 0) return;
+        setReels((prev) => prev.map((r) => latestById.get(r.id) ?? r));
+      };
+      const id = setInterval(() => {
+        void tick();
+      }, REELS_POLL_MS);
+      return () => {
+        cancelled = true;
+        clearInterval(id);
+      };
+    }, [activeTab, showReelsTab]),
+  );
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore || !canFetchHistory) return;

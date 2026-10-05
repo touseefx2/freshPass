@@ -40,6 +40,7 @@ import {
 } from "@/src/types/reels";
 
 const POLL_INTERVAL_MS = 5000;
+const ELAPSED_HIDE_AFTER_SECONDS = 60 * 60;
 
 const STEPS: { status: AutoReelStatus; labelKey: string }[] = [
   { status: "pending", labelKey: "autoReelStepQueued" },
@@ -360,6 +361,8 @@ export default function AutoReelScreen() {
   const [retrying, setRetrying] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [discarding, setDiscarding] = useState(false);
+  // created_at stays the original time after a retry — time the retry locally
+  const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
 
   const status = autoReel?.status ?? null;
@@ -373,13 +376,17 @@ export default function AutoReelScreen() {
     return () => clearInterval(id);
   }, [inProgress]);
   const elapsedLabel = useMemo(() => {
-    const started = autoReel?.created_at ? Date.parse(autoReel.created_at) : NaN;
+    const started =
+      retryStartedAt ??
+      (autoReel?.created_at ? Date.parse(autoReel.created_at) : NaN);
     if (!Number.isFinite(started)) return null;
     const total = Math.max(0, Math.floor((now - started) / 1000));
+    // A job takes minutes; an hour+ means it was retried elsewhere — don't mislead
+    if (total > ELAPSED_HIDE_AFTER_SECONDS) return null;
     const m = Math.floor(total / 60);
     const sec = total % 60;
     return `${m}:${String(sec).padStart(2, "0")}`;
-  }, [autoReel?.created_at, now]);
+  }, [autoReel?.created_at, now, retryStartedAt]);
 
   const fetchOnce = useCallback(async () => {
     if (!autoReelId || inFlightRef.current) return;
@@ -431,6 +438,7 @@ export default function AutoReelScreen() {
     setRetrying(true);
     try {
       const data = await retryAutoReel(autoReelId);
+      setRetryStartedAt(Date.now());
       setAutoReel(data);
     } catch (error: any) {
       Logger.error("Failed to retry auto reel:", error);
@@ -489,24 +497,41 @@ export default function AutoReelScreen() {
     });
   }, [reelId, router]);
 
+  const reelStatus = autoReel?.reel?.status ?? null;
+  const isDraft = reelStatus === "draft";
+  const isPublished = reelStatus === "published";
+
   const handleDiscard = useCallback(() => {
     if (!reelId || discarding) return;
-    Alert.alert(t("discard"), t("autoReelDiscardConfirm"), [
+    // A published reel is live in the feed — say so before deleting it
+    const title = isDraft ? t("discard") : t("deleteReel");
+    const message = isPublished
+      ? t("autoReelDeletePublishedConfirm")
+      : isDraft
+        ? t("autoReelDiscardConfirm")
+        : t("autoReelDeleteConfirm");
+    Alert.alert(title, message, [
       { text: t("cancel"), style: "cancel" },
       {
-        text: t("discard"),
+        text: isDraft ? t("discard") : t("delete"),
         style: "destructive",
         onPress: async () => {
           setDiscarding(true);
           try {
             await deleteReel(reelId);
-            showBanner(t("success"), t("reelDiscarded"), "success", 2000);
+            showBanner(
+              t("success"),
+              isDraft ? t("reelDiscarded") : t("reelDeleted"),
+              "success",
+              2000,
+            );
             leaveScreen();
           } catch (error: any) {
             Logger.error("Failed to discard auto reel:", error);
             showBanner(
               t("error"),
-              error?.message || t("failedToDiscardReel"),
+              error?.message ||
+                (isDraft ? t("failedToDiscardReel") : t("failedToDeleteReel")),
               "error",
               3000,
             );
@@ -516,7 +541,7 @@ export default function AutoReelScreen() {
         },
       },
     ]);
-  }, [discarding, leaveScreen, reelId, showBanner, t]);
+  }, [discarding, isDraft, isPublished, leaveScreen, reelId, showBanner, t]);
 
   const templateName = autoReel
     ? autoReel.template?.name || t("autoReelTemplateRemoved")
@@ -759,16 +784,32 @@ export default function AutoReelScreen() {
     const videoUrl = autoReel?.reel?.video?.playback_url ?? null;
     const isHaircut = autoReel?.template?.kind === "haircut";
     const busy = publishing || discarding || !reelId;
+    // The draft can be published (here or via Edit details), removed by admin, or deleted
+    const reelGone = !autoReel?.reel;
+    const isRemoved = reelStatus === "removed";
+    const statusChip = isPublished
+      ? { icon: "public" as const, label: t("published") }
+      : isRemoved
+        ? { icon: "block" as const, label: t("removed") }
+        : isDraft
+          ? { icon: "edit-note" as const, label: t("draft") }
+          : null;
     return (
       <View>
         {videoUrl ? <ReadyPreview uri={videoUrl} /> : null}
         <Text style={styles.statusTitle} accessibilityLiveRegion="polite">
-          {t("reelReady")}
+          {isPublished ? t("autoReelPublishedTitle") : t("reelReady")}
         </Text>
         <Text
           style={[styles.statusSubtitle, { marginTop: moderateHeightScale(4) }]}
         >
-          {t("autoReelReadyHint")}
+          {reelGone
+            ? t("autoReelDraftDeleted")
+            : isPublished
+              ? t("autoReelPublishedHint")
+              : isRemoved
+                ? t("autoReelRemovedHint")
+                : t("autoReelReadyHint")}
         </Text>
         <View style={styles.readyMetaRow}>
           {templateName ? (
@@ -795,14 +836,16 @@ export default function AutoReelScreen() {
               </Text>
             </View>
           ) : null}
-          <View style={styles.metaChip}>
-            <MaterialIcons
-              name="edit-note"
-              size={moderateWidthScale(13)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.metaChipText}>{t("draft")}</Text>
-          </View>
+          {statusChip ? (
+            <View style={styles.metaChip}>
+              <MaterialIcons
+                name={statusChip.icon}
+                size={moderateWidthScale(13)}
+                color={theme.buttonBack}
+              />
+              <Text style={styles.metaChipText}>{statusChip.label}</Text>
+            </View>
+          ) : null}
         </View>
         {isHaircut && autoReel?.has_before === false ? (
           <View style={styles.note}>
@@ -824,38 +867,48 @@ export default function AutoReelScreen() {
             <Text style={styles.noteText}>{t("autoReelMissingReveal")}</Text>
           </View>
         ) : null}
+        {reelGone ? null : (
         <View style={styles.actions}>
-          <Button
-            title={t("publish")}
-            onPress={handlePublish}
-            loading={publishing}
-            disabled={busy}
-          />
-          <TouchableOpacity
-            style={[styles.secondaryButton, busy && { opacity: 0.5 }]}
-            onPress={handleEditDetails}
-            disabled={busy}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: busy }}
-          >
-            <MaterialIcons
-              name="edit"
-              size={moderateWidthScale(18)}
-              color={theme.darkGreen}
+          {isDraft ? (
+            <Button
+              title={t("publish")}
+              onPress={handlePublish}
+              loading={publishing}
+              disabled={busy}
             />
-            <Text style={styles.secondaryButtonText}>
-              {t("autoReelEditDetails")}
-            </Text>
-          </TouchableOpacity>
+          ) : null}
+          {/* Removed reels can't be edited (422) — only deleted */}
+          {!isRemoved ? (
+            <TouchableOpacity
+              style={[styles.secondaryButton, busy && { opacity: 0.5 }]}
+              onPress={handleEditDetails}
+              disabled={busy}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: busy }}
+            >
+              <MaterialIcons
+                name="edit"
+                size={moderateWidthScale(18)}
+                color={theme.darkGreen}
+              />
+              <Text style={styles.secondaryButtonText}>
+                {t("autoReelEditDetails")}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
             style={[styles.dangerButton, busy && { opacity: 0.5 }]}
             onPress={handleDiscard}
             disabled={busy}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={t("discard")}
-            accessibilityHint={t("autoReelDiscardConfirm")}
+            accessibilityLabel={isDraft ? t("discard") : t("deleteReel")}
+            accessibilityHint={
+              isPublished
+                ? t("autoReelDeletePublishedConfirm")
+                : t("autoReelDiscardConfirm")
+            }
             accessibilityState={{ disabled: busy, busy: discarding }}
           >
             {discarding ? (
@@ -867,9 +920,12 @@ export default function AutoReelScreen() {
                 color={theme.red}
               />
             )}
-            <Text style={styles.dangerButtonText}>{t("discard")}</Text>
+            <Text style={styles.dangerButtonText}>
+              {isDraft ? t("discard") : t("deleteReel")}
+            </Text>
           </TouchableOpacity>
         </View>
+        )}
       </View>
     );
   };

@@ -1786,5 +1786,15 @@
   "monthlyReelsStaffNoneGiven": "今月はオーナーからリールが割り当てられていません。月間リールの設定を依頼してください。",
   "monthlyReelsStaffUsedAll": "今月の{{limit}}本を使い切りました。オーナーに追加を依頼するか、{{date}}までお待ちください。",
   "monthlyReelsOwnerUsedUnassigned": "今月、スタッフに割り当てていない{{limit}}本を使い切りました。スタッフの月間リールを減らして空けるか、{{date}}までお待ちください。",
-  "monthlyReelsLimitTitle": "月間リールの上限に達しました"
+  "monthlyReelsLimitTitle": "月間リールの上限に達しました",
+  "autoReelPublishedTitle": "リールを公開中です",
+  "autoReelPublishedHint": "フィードに公開されています。詳細は引き続き編集できます。",
+  "autoReelRemovedHint": "このリールはFreshPassにより削除されたため、編集・公開できません。削除は可能です。",
+  "autoReelDraftDeleted": "このリールの下書きは削除されました。",
+  "autoReelDeletePublishedConfirm": "このリールは公開中です。削除すると全員のフィードから消えます。元に戻せません。",
+  "autoReelDeleteConfirm": "このリールを削除しますか？元に戻せません。",
+  "autoReelPreparing": "動画を準備中… {{percent}}%",
+  "autoReelVideoTooLarge": "この動画は200MBを超えています。トリミングするか短く撮り直してください。",
+  "monthlyReelsLoadFailed": "月間リールを読み込めませんでした。",
+  "monthlyReelsSavedNote": "月間リールは保存されましたが、その他の変更は保存されていません。"
 }

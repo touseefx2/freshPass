@@ -1786,5 +1786,15 @@
   "monthlyReelsStaffNoneGiven": "Le propriétaire ne vous a attribué aucun reel ce mois-ci. Demandez-lui de définir vos reels mensuels.",
   "monthlyReelsStaffUsedAll": "Vous avez utilisé vos {{limit}} reels ce mois-ci. Demandez-en plus au propriétaire ou attendez le {{date}}.",
   "monthlyReelsOwnerUsedUnassigned": "Vous avez utilisé les {{limit}} reels non attribués à votre personnel ce mois-ci. Réduisez ceux d’un membre pour en libérer, ou attendez le {{date}}.",
-  "monthlyReelsLimitTitle": "Limite mensuelle de reels atteinte"
+  "monthlyReelsLimitTitle": "Limite mensuelle de reels atteinte",
+  "autoReelPublishedTitle": "Votre reel est en ligne",
+  "autoReelPublishedHint": "Il est publié dans le fil. Vous pouvez encore modifier ses détails.",
+  "autoReelRemovedHint": "Ce reel a été retiré par FreshPass et ne peut être ni modifié ni publié. Vous pouvez le supprimer.",
+  "autoReelDraftDeleted": "Le brouillon de ce reel a été supprimé.",
+  "autoReelDeletePublishedConfirm": "Ce reel est en ligne. Le supprimer le retire du fil pour tout le monde. Action irréversible.",
+  "autoReelDeleteConfirm": "Supprimer ce reel ? Action irréversible.",
+  "autoReelPreparing": "Préparation de la vidéo… {{percent}} %",
+  "autoReelVideoTooLarge": "Cette vidéo dépasse 200 Mo. Coupez-la ou enregistrez-en une plus courte.",
+  "monthlyReelsLoadFailed": "Impossible de charger les reels mensuels.",
+  "monthlyReelsSavedNote": "Les reels mensuels ont été enregistrés, mais pas les autres modifications."
 }

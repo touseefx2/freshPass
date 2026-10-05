@@ -31,7 +31,10 @@ import {
   getVideo,
   MAX_AUTO_REEL_SOURCE_SECONDS,
   uploadVideo,
+  VideoTooLargeError,
 } from "@/src/services/mediaLibraryService";
+import { measureVideoDurationSeconds } from "@/src/utils/videoDuration";
+import { extractVideoThumbnail } from "@/src/utils/videoThumbnailCache";
 import {
   handleCameraPermission,
   handleMediaLibraryPermission,
@@ -770,6 +773,10 @@ export default function ReelTemplatesScreen() {
 
   const [sourcePickerVisible, setSourcePickerVisible] = useState(false);
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
+  // Compression runs first on long clips — show it instead of "Uploading 0%"
+  const [uploadPhase, setUploadPhase] = useState<"preparing" | "uploading">(
+    "uploading",
+  );
 
   const selected = useMemo(
     () => templates.find((item) => item.id === selectedId) ?? null,
@@ -846,14 +853,20 @@ export default function ReelTemplatesScreen() {
     if (!id) return;
     setSourceVideo({ id, name: null, durationSeconds: null, thumbnailUri: null });
     getVideo(id)
-      .then((video) => {
+      .then(async (video) => {
+        // Raw auto reel sources get no server poster — grab the first frame
+        const thumbnailUri =
+          video.thumbnail_url ||
+          (video.playback_url
+            ? await extractVideoThumbnail(video.id, video.playback_url)
+            : null);
         setSourceVideo((prev) =>
           prev?.id === id
             ? {
                 id,
                 name: video.original_name,
                 durationSeconds: video.duration_seconds,
-                thumbnailUri: video.thumbnail_url,
+                thumbnailUri,
               }
             : prev,
         );
@@ -905,12 +918,22 @@ export default function ReelTemplatesScreen() {
     async (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
       if (!asset.uri) return;
 
-      // expo-image-picker reports video duration in milliseconds
-      const durationMs =
+      // expo-image-picker reports video duration in milliseconds; some Android
+      // gallery items report none — measure it instead of guessing
+      let lengthSeconds =
         typeof asset.duration === "number" && asset.duration > 0
-          ? asset.duration
-          : 0;
-      const durationSeconds = Math.max(1, Math.ceil(durationMs / 1000));
+          ? asset.duration / 1000
+          : null;
+      if (lengthSeconds == null) {
+        lengthSeconds = await measureVideoDurationSeconds(asset.uri);
+      }
+      // Round (not ceil): a camera clip capped at 180 s often reports 180.03 s
+      const durationSeconds =
+        lengthSeconds != null
+          ? Math.max(1, Math.round(lengthSeconds))
+          : // Still unknown: the server reads the real length after start and
+            // fails with source_too_long if it's over 3 minutes
+            MAX_AUTO_REEL_SOURCE_SECONDS;
 
       if (durationSeconds > MAX_AUTO_REEL_SOURCE_SECONDS) {
         showBanner(t("error"), t("autoReelVideoTooLong"), "error", 3500);
@@ -928,6 +951,7 @@ export default function ReelTemplatesScreen() {
         // Thumbnail is cosmetic only
       }
 
+      setUploadPhase("preparing");
       setUploadPercent(0);
       try {
         const mime = (asset as { mimeType?: string }).mimeType ?? "";
@@ -941,25 +965,34 @@ export default function ReelTemplatesScreen() {
             width: asset.width,
             height: asset.height,
             purpose: "auto_reel_source",
+            onCompressProgress: (percent) => setUploadPercent(percent),
           },
-          (percent) => setUploadPercent(percent),
+          (percent) => {
+            setUploadPhase("uploading");
+            setUploadPercent(percent);
+          },
         );
         setSourceVideo({
           id: uploaded.id,
           name: uploaded.original_name || asset.fileName || null,
-          durationSeconds: uploaded.duration_seconds ?? durationSeconds,
+          durationSeconds:
+            uploaded.duration_seconds ??
+            (lengthSeconds != null ? durationSeconds : null),
           thumbnailUri: localThumb || uploaded.thumbnail_url,
         });
       } catch (error: any) {
         Logger.error("Failed to upload auto reel source video:", error);
         showBanner(
           t("error"),
-          error?.message || t("failedToUploadVideo"),
+          error instanceof VideoTooLargeError
+            ? t("autoReelVideoTooLarge")
+            : error?.message || t("failedToUploadVideo"),
           "error",
-          3500,
+          4000,
         );
       } finally {
         setUploadPercent(null);
+        setUploadPhase("uploading");
       }
     },
     [showBanner, t],
@@ -1453,7 +1486,9 @@ export default function ReelTemplatesScreen() {
                   {uploadPercent != null ? (
                     <View accessibilityLiveRegion="polite">
                       <Text style={styles.slotTitle} numberOfLines={1}>
-                        {t("autoReelUploading", { percent: uploadPercent })}
+                        {uploadPhase === "preparing"
+                          ? t("autoReelPreparing", { percent: uploadPercent })
+                          : t("autoReelUploading", { percent: uploadPercent })}
                       </Text>
                       <View style={styles.slotProgressTrack}>
                         <View

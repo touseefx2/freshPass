@@ -1843,5 +1843,15 @@
   "monthlyReelsStaffNoneGiven": "Your business owner has not given you any reels to post this month. Ask them to set your monthly reels.",
   "monthlyReelsStaffUsedAll": "You have used your {{limit}} reels this month. Ask your business owner for more, or wait until {{date}}.",
   "monthlyReelsOwnerUsedUnassigned": "You have used the {{limit}} reels not given to your staff this month. Lower a staff member’s monthly reels to free some up, or wait until {{date}}.",
-  "monthlyReelsLimitTitle": "Monthly reel limit reached"
+  "monthlyReelsLimitTitle": "Monthly reel limit reached",
+  "autoReelPublishedTitle": "Your reel is live",
+  "autoReelPublishedHint": "It’s published in the feed. You can still edit its details.",
+  "autoReelRemovedHint": "This reel was removed by FreshPass and can’t be edited or published. You can delete it.",
+  "autoReelDraftDeleted": "The draft for this reel was deleted.",
+  "autoReelDeletePublishedConfirm": "This reel is live. Deleting it removes it from the feed for everyone. This can’t be undone.",
+  "autoReelDeleteConfirm": "Delete this reel? This can’t be undone.",
+  "autoReelPreparing": "Preparing video… {{percent}}%",
+  "autoReelVideoTooLarge": "This video is larger than 200 MB. Trim it or record a shorter one.",
+  "monthlyReelsLoadFailed": "Couldn’t load monthly reels.",
+  "monthlyReelsSavedNote": "Monthly reels were saved, but the other changes weren’t."
 }

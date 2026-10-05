@@ -227,14 +227,22 @@ export default function AiMemories() {
   );
 
   const fetchReels = useCallback(async (pageNum: number, append: boolean) => {
-    const { autoReels, meta } = await listAutoReels(
-      pageNum,
+    // Ready auto reels whose draft was deleted map to nothing; keep paging
+    // so an all-skipped page doesn't leave the tab looking empty
+    let page = pageNum;
+    let { autoReels, meta } = await listAutoReels(
+      page,
       "ready",
       AUTO_REELS_PER_PAGE,
     );
-    const items = autoReelsToMemoryItems(autoReels);
+    let items = autoReelsToMemoryItems(autoReels);
+    for (let extra = 0; items.length === 0 && meta.has_more && extra < 5; extra++) {
+      page = (meta.current_page ?? page) + 1;
+      ({ autoReels, meta } = await listAutoReels(page, "ready", AUTO_REELS_PER_PAGE));
+      items = autoReelsToMemoryItems(autoReels);
+    }
     setReelsHasMore(Boolean(meta.has_more));
-    setReelsPage(meta.current_page ?? pageNum);
+    setReelsPage(meta.current_page ?? page);
     if (append) {
       setReelsList((prev) => {
         const seen = new Set(

@@ -768,32 +768,35 @@ export default function AddStaffScreen() {
   const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
   const [reelLimitsLoading, setReelLimitsLoading] = useState(false);
   const [reelLimitError, setReelLimitError] = useState<string | null>(null);
+  // Without fresh limits we don't know the real saved number — don't allow edits
+  const [reelLimitsLoadFailed, setReelLimitsLoadFailed] = useState(false);
+  const reelLimitDirtyRef = useRef(false);
+
+  const loadReelLimits = useCallback(async () => {
+    if (!showMonthlyReels || !params.id) return;
+    setReelLimitsLoading(true);
+    setReelLimitsLoadFailed(false);
+    try {
+      const limits = await fetchMonthlyReelLimits();
+      setReelLimits(limits);
+      const row = findStaffReelLimit(limits, params.id);
+      if (row) {
+        const current = row.monthly_reel_limit ?? 0;
+        setSavedReelLimit(current);
+        // Keep an in-progress edit; otherwise show the server value
+        if (!reelLimitDirtyRef.current) setReelLimit(current);
+      }
+    } catch (error) {
+      Logger.error("Failed to load monthly reel limits:", error);
+      setReelLimitsLoadFailed(true);
+    } finally {
+      setReelLimitsLoading(false);
+    }
+  }, [showMonthlyReels, params.id]);
 
   useEffect(() => {
-    if (!showMonthlyReels || !params.id) return;
-    let cancelled = false;
-    setReelLimitsLoading(true);
-    fetchMonthlyReelLimits()
-      .then((limits) => {
-        if (cancelled) return;
-        setReelLimits(limits);
-        const row = findStaffReelLimit(limits, params.id);
-        if (row) {
-          const current = row.monthly_reel_limit ?? 0;
-          setReelLimit(current);
-          setSavedReelLimit(current);
-        }
-      })
-      .catch((error) => {
-        Logger.error("Failed to load monthly reel limits:", error);
-      })
-      .finally(() => {
-        if (!cancelled) setReelLimitsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [showMonthlyReels, params.id]);
+    void loadReelLimits();
+  }, [loadReelLimits]);
 
   const staffReelRow = useMemo(
     () => findStaffReelLimit(reelLimits, params.id),
@@ -1351,14 +1354,27 @@ export default function AddStaffScreen() {
       return;
     }
     setIsSubmitting(true);
+    // Set when the reel number saved but the rest of the edit may still fail
+    let reelLimitSaved = false;
+    const withReelNote = (message: string) =>
+      reelLimitSaved ? `${t("monthlyReelsSavedNote")} ${message}` : message;
     try {
       if (isEditMode) {
         // Save the reel number first so a 422 (over 12) stops before other changes
-        if (showMonthlyReels && params.id && reelLimit !== savedReelLimit) {
+        if (
+          showMonthlyReels &&
+          params.id &&
+          !reelLimitsLoadFailed &&
+          reelLimit !== savedReelLimit
+        ) {
           try {
             await setStaffMonthlyReelLimit(params.id, reelLimit);
             setSavedReelLimit(reelLimit);
             setReelLimitError(null);
+            reelLimitSaved = true;
+            reelLimitDirtyRef.current = false;
+            // "Free to give" and the max depend on the new split
+            void loadReelLimits();
           } catch (error: any) {
             const message =
               error?.data?.errors?.monthly_reel_limit?.[0] ||
@@ -1416,10 +1432,12 @@ export default function AddStaffScreen() {
         } else {
           showBanner(
             "Error",
-            (response as any)?.message ||
-              "Failed to update staff. Please try again.",
+            withReelNote(
+              (response as any)?.message ||
+                "Failed to update staff. Please try again.",
+            ),
             "error",
-            3000,
+            4000,
           );
         }
       } else {
@@ -1473,12 +1491,14 @@ export default function AddStaffScreen() {
       );
       showBanner(
         "Error",
-        error?.message ||
-          (isEditMode
-            ? "Failed to update staff. Please try again."
-            : "Failed to invite staff. Please try again."),
+        withReelNote(
+          error?.message ||
+            (isEditMode
+              ? "Failed to update staff. Please try again."
+              : "Failed to invite staff. Please try again."),
+        ),
         "error",
-        3000,
+        4000,
       );
     } finally {
       setIsSubmitting(false);
@@ -1507,6 +1527,8 @@ export default function AddStaffScreen() {
     showMonthlyReels,
     reelLimit,
     savedReelLimit,
+    reelLimitsLoadFailed,
+    loadReelLimits,
   ]);
 
   return (
@@ -1709,6 +1731,7 @@ export default function AddStaffScreen() {
             <MonthlyReelsStepper
               value={reelLimit}
               onChange={(value) => {
+                reelLimitDirtyRef.current = true;
                 setReelLimit(value);
                 setReelLimitError(null);
               }}
@@ -1727,6 +1750,8 @@ export default function AddStaffScreen() {
               )}
               loading={reelLimitsLoading}
               error={reelLimitError}
+              loadFailed={reelLimitsLoadFailed}
+              onRetryLoad={() => void loadReelLimits()}
             />
           </View>
         ) : null}

@@ -210,15 +210,29 @@ export default function BusinessCreateMediaMenu({
     }
   }, [visible]);
 
+  // Monthly counters change with every reel — only gate on numbers fetched
+  // for this opening of the menu (stale ones could wrongly block, e.g. after reset)
+  const [monthlyLimitsFresh, setMonthlyLimitsFresh] = useState(false);
+
   useEffect(() => {
-    if (!visible && !reelPickerVisible) return;
-    // Force: monthly reel counters change with every reel posted
+    if (!visible) {
+      setMonthlyLimitsFresh(false);
+      return;
+    }
+    let cancelled = false;
     void getMediaLimits({ force: true })
-      .then(setLimits)
+      .then((data) => {
+        if (cancelled) return;
+        setLimits(data);
+        setMonthlyLimitsFresh(true);
+      })
       .catch((error) => {
         Logger.error("Failed to load media limits:", error);
       });
-  }, [visible, reelPickerVisible]);
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
 
   /** Close both speed-dial and reel picker; keeps center tab as +. */
   const closeAll = useCallback(() => {
@@ -228,12 +242,14 @@ export default function BusinessCreateMediaMenu({
 
   /** Monthly reels (12 per business, shared with staff) — warn before starting */
   const ensureMonthlyReelsLeft = useCallback((): boolean => {
+    // Not loaded yet → let it through; the server still answers 422 on `reel`
+    if (!monthlyLimitsFresh) return true;
     const blocked = monthlyReelsBlockedMessage(limits, t);
     if (!blocked) return true;
     closeAll();
     showBanner(t("monthlyReelsLimitTitle"), blocked, "error", 5000);
     return false;
-  }, [closeAll, limits, showBanner, t]);
+  }, [closeAll, limits, monthlyLimitsFresh, showBanner, t]);
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus);

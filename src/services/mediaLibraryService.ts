@@ -1,3 +1,4 @@
+import * as FileSystem from "expo-file-system/legacy";
 import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { mediaEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
@@ -185,6 +186,26 @@ export const MAX_VIDEO_UPLOAD_SECONDS = 30;
 /** Raw videos for AI Auto Reels (`purpose=auto_reel_source`) may be up to 3 minutes. */
 export const MAX_AUTO_REEL_SOURCE_SECONDS = 180;
 
+/** Server rejects video uploads over 200 MB (nginx answers > 210 MB with HTML 413). */
+export const MAX_VIDEO_UPLOAD_BYTES = 200 * 1024 * 1024;
+
+/** Thrown before upload, or on 413 / non-JSON responses, so the UI can say "too large". */
+export class VideoTooLargeError extends Error {
+  isTooLarge = true;
+  constructor() {
+    super("This video is larger than 200 MB. Trim it or record a shorter one.");
+  }
+}
+
+async function getLocalFileSize(uri: string): Promise<number | null> {
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    return info.exists && typeof info.size === "number" ? info.size : null;
+  } catch {
+    return null;
+  }
+}
+
 export type UploadVideoParams = {
   uri: string;
   mimeType?: string | null;
@@ -196,6 +217,8 @@ export type UploadVideoParams = {
   height?: number | null;
   /** Auto reel source videos are hidden from the library and allow 3 minutes */
   purpose?: MediaUploadPurpose;
+  /** Client-side compression progress (0–100), before the upload starts */
+  onCompressProgress?: (percent: number) => void;
 };
 
 /**
@@ -226,7 +249,14 @@ export function uploadVideo(
       const prepared = await prepareVideoForUpload(params.uri, {
         fileName: params.fileName,
         mimeType: params.mimeType,
+        onProgress: params.onCompressProgress,
       });
+      // Compression can fail and fall back to the original — check before sending
+      const preparedSize = await getLocalFileSize(prepared.uri);
+      if (preparedSize != null && preparedSize > MAX_VIDEO_UPLOAD_BYTES) {
+        reject(new VideoTooLargeError());
+        return;
+      }
       const mimeType = prepared.type || guessMimeType(prepared.uri, params.mimeType);
       const fileName =
         prepared.name || params.fileName || guessFileName(prepared.uri, mimeType);
@@ -277,6 +307,11 @@ export function uploadVideo(
       };
 
       xhr.onload = () => {
+        // nginx rejects > 210 MB with an HTML 413 page before the API sees it
+        if (xhr.status === 413) {
+          reject(new VideoTooLargeError());
+          return;
+        }
         try {
           const json = JSON.parse(xhr.responseText || "{}") as MediaItemResponse;
           if (xhr.status >= 200 && xhr.status < 300 && json?.data) {
@@ -296,6 +331,11 @@ export function uploadVideo(
           reject(error);
         } catch (parseError) {
           Logger.error("Failed to parse media upload response:", parseError);
+          // Non-JSON 4xx = proxy body-size rejection (backend guidance)
+          if (xhr.status >= 400 && xhr.status < 500) {
+            reject(new VideoTooLargeError());
+            return;
+          }
           reject(new Error(`Upload failed (${xhr.status})`));
         }
       };

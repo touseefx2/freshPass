@@ -227,6 +227,9 @@ type StepperProps = {
   resetLabel: string | null;
   loading?: boolean;
   error?: string | null;
+  /** Limits couldn't be loaded — the saved number is unknown, so editing is off */
+  loadFailed?: boolean;
+  onRetryLoad?: () => void;
 };
 
 /** Edit Staff → how many of the business's monthly reels this staff member gets. */
@@ -239,14 +242,17 @@ export function MonthlyReelsStepper({
   resetLabel,
   loading,
   error,
+  loadFailed,
+  onRetryLoad,
 }: StepperProps) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
 
-  const canDecrease = !loading && value > 0;
-  const canIncrease = !loading && value < max;
+  const locked = !!loading || !!loadFailed;
+  const canDecrease = !locked && value > 0;
+  const canIncrease = !locked && value < max;
 
   const helper = [
     freeToGive != null ? t("monthlyReelsFreeToGive", { count: freeToGive }) : null,
@@ -312,7 +318,7 @@ export function MonthlyReelsStepper({
           {loading ? (
             <ActivityIndicator size="small" color={theme.buttonBack} />
           ) : (
-            <Text style={styles.value}>{value}</Text>
+            <Text style={styles.value}>{loadFailed ? "–" : value}</Text>
           )}
           <Text style={styles.valueUnit}>{t("monthlyReelsPerMonth")}</Text>
         </View>
@@ -334,7 +340,29 @@ export function MonthlyReelsStepper({
         </TouchableOpacity>
       </View>
 
-      {helper ? (
+      {loadFailed ? (
+        <View style={styles.helperRow} accessibilityRole="alert">
+          <MaterialIcons
+            name="error-outline"
+            size={moderateWidthScale(14)}
+            color={theme.red}
+          />
+          <Text style={[styles.helperText, styles.errorText]}>
+            {t("monthlyReelsLoadFailed")}
+          </Text>
+          {onRetryLoad ? (
+            <TouchableOpacity
+              onPress={onRetryLoad}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.actionText}>{t("retry")}</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+
+      {helper && !loadFailed ? (
         <View style={styles.helperRow}>
           <MaterialIcons
             name="info-outline"
@@ -345,7 +373,7 @@ export function MonthlyReelsStepper({
         </View>
       ) : null}
 
-      {used > 0 ? (
+      {used > 0 && !loadFailed ? (
         <View style={{ gap: moderateHeightScale(6) }}>
           <Text style={styles.helperText}>
             {t("monthlyReelsUsedOf", { used, limit: value })}
@@ -354,7 +382,7 @@ export function MonthlyReelsStepper({
         </View>
       ) : null}
 
-      {!loading && value === 0 ? (
+      {locked ? null : value === 0 ? (
         <View style={styles.helperRow}>
           <MaterialIcons
             name="block"
@@ -365,7 +393,7 @@ export function MonthlyReelsStepper({
             {t("monthlyReelsZeroHint")}
           </Text>
         </View>
-      ) : !loading && value < used ? (
+      ) : value < used ? (
         <View style={styles.helperRow}>
           <MaterialIcons
             name="warning-amber"

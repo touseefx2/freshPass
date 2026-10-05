@@ -1786,5 +1786,15 @@
   "monthlyReelsStaffNoneGiven": "Dein Inhaber hat dir diesen Monat keine Reels gegeben. Bitte ihn, deine monatlichen Reels festzulegen.",
   "monthlyReelsStaffUsedAll": "Du hast deine {{limit}} Reels diesen Monat genutzt. Frag deinen Inhaber nach mehr oder warte bis {{date}}.",
   "monthlyReelsOwnerUsedUnassigned": "Du hast die {{limit}} nicht vergebenen Reels diesen Monat genutzt. Senke die Reels eines Teammitglieds, um welche freizugeben, oder warte bis {{date}}.",
-  "monthlyReelsLimitTitle": "Monatliches Reel-Limit erreicht"
+  "monthlyReelsLimitTitle": "Monatliches Reel-Limit erreicht",
+  "autoReelPublishedTitle": "Dein Reel ist live",
+  "autoReelPublishedHint": "Es ist im Feed veröffentlicht. Du kannst die Details weiter bearbeiten.",
+  "autoReelRemovedHint": "Dieses Reel wurde von FreshPass entfernt und kann nicht bearbeitet oder veröffentlicht werden. Du kannst es löschen.",
+  "autoReelDraftDeleted": "Der Entwurf dieses Reels wurde gelöscht.",
+  "autoReelDeletePublishedConfirm": "Dieses Reel ist live. Beim Löschen verschwindet es für alle aus dem Feed. Das kann nicht rückgängig gemacht werden.",
+  "autoReelDeleteConfirm": "Dieses Reel löschen? Das kann nicht rückgängig gemacht werden.",
+  "autoReelPreparing": "Video wird vorbereitet… {{percent}} %",
+  "autoReelVideoTooLarge": "Dieses Video ist größer als 200 MB. Kürze es oder nimm ein kürzeres auf.",
+  "monthlyReelsLoadFailed": "Monatliche Reels konnten nicht geladen werden.",
+  "monthlyReelsSavedNote": "Die monatlichen Reels wurden gespeichert, die anderen Änderungen nicht."
 }

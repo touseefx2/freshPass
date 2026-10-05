@@ -1786,5 +1786,15 @@
   "monthlyReelsStaffNoneGiven": "لم يمنحك صاحب النشاط أي ريلز للنشر هذا الشهر. اطلب منه تحديد ريلزك الشهرية.",
   "monthlyReelsStaffUsedAll": "لقد استخدمت ريلزك الـ{{limit}} هذا الشهر. اطلب المزيد من صاحب النشاط أو انتظر حتى {{date}}.",
   "monthlyReelsOwnerUsedUnassigned": "لقد استخدمت الريلز الـ{{limit}} غير الممنوحة لموظفيك هذا الشهر. خفّض ريلز أحد الموظفين لتحرير بعضها، أو انتظر حتى {{date}}.",
-  "monthlyReelsLimitTitle": "تم بلوغ الحد الشهري للريلز"
+  "monthlyReelsLimitTitle": "تم بلوغ الحد الشهري للريلز",
+  "autoReelPublishedTitle": "الريل منشور الآن",
+  "autoReelPublishedHint": "تم نشره في الخلاصة. لا يزال بإمكانك تعديل تفاصيله.",
+  "autoReelRemovedHint": "أزالت FreshPass هذا الريل ولا يمكن تعديله أو نشره. يمكنك حذفه.",
+  "autoReelDraftDeleted": "تم حذف مسودة هذا الريل.",
+  "autoReelDeletePublishedConfirm": "هذا الريل منشور. حذفه يزيله من الخلاصة للجميع. لا يمكن التراجع عن ذلك.",
+  "autoReelDeleteConfirm": "حذف هذا الريل؟ لا يمكن التراجع عن ذلك.",
+  "autoReelPreparing": "جارٍ تجهيز الفيديو… {{percent}}%",
+  "autoReelVideoTooLarge": "حجم هذا الفيديو أكبر من 200 ميغابايت. قصّه أو سجّل فيديو أقصر.",
+  "monthlyReelsLoadFailed": "تعذر تحميل الريلز الشهرية.",
+  "monthlyReelsSavedNote": "تم حفظ الريلز الشهرية، لكن لم تُحفظ التغييرات الأخرى."
 }

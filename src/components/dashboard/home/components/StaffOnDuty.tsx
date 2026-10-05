@@ -434,6 +434,8 @@ const createStyles = (theme: Theme) =>
   });
 
 export interface StaffData {
+  /** Owner-given share of the business's monthly reels (null = none) */
+  monthly_reel_limit?: number | null;
   id: number;
   user_id: number;
   name: string;
@@ -678,6 +680,10 @@ export default function StaffOnDuty({ data, callApi }: StaffOnDutyProps) {
         profile_image_url: editProfileImageUrl,
         active: staff.active ? "1" : "0",
         working_hours: JSON.stringify(staff.user?.working_hours ?? []),
+        // The owner card can't be edited from here, so this is always a staff row
+        is_owner: "0",
+        monthly_reel_limit:
+          staff.monthly_reel_limit != null ? String(staff.monthly_reel_limit) : "",
         ...(staff.invitation_token
           ? { invitation_token: staff.invitation_token }
           : {}),
