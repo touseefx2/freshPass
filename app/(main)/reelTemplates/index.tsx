@@ -841,20 +841,30 @@ export default function ReelTemplatesScreen() {
     void loadTemplates();
   }, [loadTemplates]);
 
-  // Monthly limit is shared with staff — warn before starting
-  useEffect(() => {
-    getMediaLimits({ force: true })
-      .then((limits) => {
-        if (typeof limits.reels_remaining_this_month === "number") {
-          setReelsRemaining(limits.reels_remaining_this_month);
-        }
-        setQuotaBlockedMessage(monthlyReelsBlockedMessage(limits, t));
-        setQuotaResetLabel(formatReelsResetDate(limits.monthly_reels_reset_on));
-      })
-      .catch((error) => {
-        Logger.error("Failed to load media limits for auto reel:", error);
-      });
+  // Monthly limit (owner + staff). Loaded on open; "Make my reel" loads it
+  // first if it isn't known yet. Returns the blocked message, "" when the user
+  // can post, or null when the limit couldn't be loaded.
+  const limitsLoadedRef = useRef(false);
+  const loadReelLimits = useCallback(async (): Promise<string | null> => {
+    try {
+      const limits = await getMediaLimits({ force: true });
+      const blocked = monthlyReelsBlockedMessage(limits, t);
+      if (typeof limits.reels_remaining_this_month === "number") {
+        setReelsRemaining(limits.reels_remaining_this_month);
+      }
+      setQuotaBlockedMessage(blocked);
+      setQuotaResetLabel(formatReelsResetDate(limits.monthly_reels_reset_on));
+      limitsLoadedRef.current = true;
+      return blocked ?? "";
+    } catch (error) {
+      Logger.error("Failed to load media limits for auto reel:", error);
+      return null;
+    }
   }, [t]);
+
+  useEffect(() => {
+    void loadReelLimits();
+  }, [loadReelLimits]);
 
   useEffect(() => {
     if (userRole !== "staff") return;
@@ -1123,18 +1133,27 @@ export default function ReelTemplatesScreen() {
 
   const handleGenerate = useCallback(async () => {
     if (!selected || !sourceVideo || !categoryId || submitting) return;
+
+    setSubmitting(true);
+    // Limit not known yet (still loading / failed on open) → load it before going on
+    let blocked: string | null = noReelsLeft
+      ? quotaBlockedMessage || t("autoReelNoReelsLeft")
+      : "";
+    if (!limitsLoadedRef.current) {
+      blocked = await loadReelLimits();
+      if (blocked == null) {
+        setSubmitting(false);
+        showBanner(t("error"), t("monthlyReelsLoadFailed"), "error", 4000);
+        return;
+      }
+    }
     // No reels left → say so before uploading anything
-    if (noReelsLeft) {
-      showBanner(
-        t("monthlyReelsLimitTitle"),
-        quotaBlockedMessage || t("autoReelNoReelsLeft"),
-        "error",
-        5000,
-      );
+    if (blocked) {
+      setSubmitting(false);
+      showBanner(t("monthlyReelsLimitTitle"), blocked, "error", 5000);
       return;
     }
 
-    setSubmitting(true);
     try {
       // 1. Upload only if this video isn't on the server yet
       const mediaId = sourceVideo.id ?? (await uploadSelectedVideo(sourceVideo));
@@ -1187,6 +1206,7 @@ export default function ReelTemplatesScreen() {
   }, [
     caption,
     categoryId,
+    loadReelLimits,
     loadTemplates,
     noReelsLeft,
     quotaBlockedMessage,

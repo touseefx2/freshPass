@@ -1825,7 +1825,6 @@
   "monthlyReelsPerMonth": "reels / month",
   "monthlyReelsFreeToGive": "{{count}} still free to give",
   "monthlyReelsResets": "Resets {{date}}",
-  "monthlyReelsChecking": "Checking your monthly reels…",
   "monthlyReelsLoadFailed": "Couldn’t load monthly reels.",
   "monthlyReelsUsedOf": "Posted this month: {{used}} of {{limit}}",
   "monthlyReelsZeroHint": "With 0, this staff member can’t post reels.",

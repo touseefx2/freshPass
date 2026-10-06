@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect, useRef, useState } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import {
   ScrollView,
   View,
@@ -8,7 +8,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { moderateWidthScale } from "@/src/theme/dimensions";
@@ -31,13 +31,6 @@ import { setUserDetails } from "@/src/state/slices/userSlice";
 import {
   getTutorialVideoTryonUri,
 } from "@/src/services/remoteConfigService";
-import {
-  fetchMonthlyReelLimits,
-  formatReelsResetDate,
-  monthlyReelsBlockedMessage,
-} from "@/src/services/monthlyReelsService";
-import Logger from "@/src/services/logger";
-import type { MediaLimits } from "@/src/types/media";
 
 
 interface TutorialInlineVideoProps {}
@@ -111,11 +104,6 @@ export default function ToolList() {
     !canManageBusinessReels || params.mode === "aiTools" || isCustomer;
 
   const [tutorialVideoActive, setTutorialVideoActive] = useState(false);
-  const [reelLimits, setReelLimits] = useState<MediaLimits | null>(null);
-  const [reelLimitsStatus, setReelLimitsStatus] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
-  const hasReelLimitsRef = useRef(false);
 
   const styles = useMemo(() => createStyles(colors as Theme), [colors]);
   const theme = colors as Theme;
@@ -173,52 +161,6 @@ export default function ToolList() {
   useEffect(() => {
     fetchQuota();
   }, []);
-
-  // Staff: their monthly reel number decides whether Generate Reel is open.
-  // Refocus refreshes quietly once a number is showing.
-  const loadReelLimits = useCallback(async (silent: boolean) => {
-    if (!silent) setReelLimitsStatus("loading");
-    try {
-      setReelLimits(await fetchMonthlyReelLimits());
-      hasReelLimitsRef.current = true;
-      setReelLimitsStatus("ready");
-    } catch (error) {
-      Logger.error("Failed to load monthly reel limits:", error);
-      if (!silent) setReelLimitsStatus("error");
-    }
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!isStaff) return;
-      void loadReelLimits(hasReelLimitsRef.current);
-    }, [isStaff, loadReelLimits]),
-  );
-
-  const staffReelLine = useMemo(() => {
-    if (!isStaff || !reelLimits) return null;
-    const blocked = monthlyReelsBlockedMessage(reelLimits, t);
-    if (blocked) return { text: blocked, blocked: true };
-    if (typeof reelLimits.reels_remaining_this_month !== "number") return null;
-    const date = formatReelsResetDate(reelLimits.monthly_reels_reset_on);
-    return {
-      text: [
-        t("monthlyReelsYouCanPost", {
-          count: reelLimits.reels_remaining_this_month,
-        }),
-        date ? t("monthlyReelsResets", { date }) : null,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-      blocked: false,
-    };
-  }, [isStaff, reelLimits, t]);
-
-  // First load: Generate Reel waits (lightly dimmed) until the number is known.
-  // A used-up limit closes it; a failed fetch leaves it open (reel templates +
-  // server check the limit again).
-  const reelLimitsPending = reelLimitsStatus === "loading" && !staffReelLine;
-  const canGenerateReel = !reelLimitsPending && !staffReelLine?.blocked;
 
   const fetchQuota = async () => {
     try {
@@ -485,73 +427,14 @@ export default function ToolList() {
         </View>
       </View>
 
-      {reelLimitsStatus === "loading" && !staffReelLine ? (
-        <View style={styles.reelLimitRow} accessibilityLiveRegion="polite">
-          <ActivityIndicator size="small" color={theme.selectCard} />
-          <Text style={[styles.reelLimitText, styles.reelLimitTextMuted]}>
-            {t("monthlyReelsChecking")}
-          </Text>
-        </View>
-      ) : null}
-
-      {reelLimitsStatus === "error" ? (
-        <View style={styles.reelLimitRow} accessibilityLiveRegion="polite">
-          <MaterialIcons
-            name="error-outline"
-            size={moderateWidthScale(16)}
-            color={theme.red}
-          />
-          <Text style={[styles.reelLimitText, { color: theme.red }]}>
-            {t("monthlyReelsLoadFailed")}
-          </Text>
-          <TouchableOpacity
-            onPress={() => void loadReelLimits(false)}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={t("retry")}
-          >
-            <MaterialIcons
-              name="refresh"
-              size={moderateWidthScale(20)}
-              color={theme.darkGreen}
-            />
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      {staffReelLine && reelLimitsStatus !== "error" ? (
-        <View style={styles.reelLimitRow} accessibilityLiveRegion="polite">
-          <MaterialIcons
-            name={staffReelLine.blocked ? "block" : "movie-filter"}
-            size={moderateWidthScale(16)}
-            color={staffReelLine.blocked ? theme.red : theme.selectCard}
-          />
-          <Text
-            style={[
-              styles.reelLimitText,
-              staffReelLine.blocked && { color: theme.red },
-            ]}
-          >
-            {staffReelLine.text}
-          </Text>
-        </View>
-      ) : null}
-
       <View style={styles.featuresContainer}>
-        <View
-          style={[
-            styles.featureShadow,
-            reelLimitsPending && styles.featurePending,
-            staffReelLine?.blocked && styles.featureDisabled,
-          ]}
-        >
+        {/* Monthly reel limit is checked on Reel Templates (before Make my reel) */}
+        <View style={styles.featureShadow}>
           <TouchableOpacity
             style={styles.featureBox}
             onPress={() => handleFeaturePress("generateReel", "Generate Reel")}
-            disabled={!canGenerateReel}
             activeOpacity={0.82}
             accessibilityRole="button"
-            accessibilityState={{ disabled: !canGenerateReel }}
           >
             <LinearGradient
               colors={[

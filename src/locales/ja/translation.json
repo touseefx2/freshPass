@@ -1768,7 +1768,6 @@
   "monthlyReelsPerMonth": "本 / 月",
   "monthlyReelsFreeToGive": "残り{{count}}本を割り当て可能",
   "monthlyReelsResets": "{{date}}にリセット",
-  "monthlyReelsChecking": "今月のリール数を確認中…",
   "monthlyReelsLoadFailed": "月間リールを読み込めませんでした。",
   "monthlyReelsUsedOf": "今月の投稿：{{limit}}本中{{used}}本",
   "monthlyReelsZeroHint": "0の場合、このスタッフはリールを投稿できません。",
