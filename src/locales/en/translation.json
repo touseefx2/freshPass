@@ -115,6 +115,8 @@
   "processingTrial": "Processing trial...",
   "accountSettings": "Account settings",
   "manageAccountPreferences": "Manage your account and preferences",
+  "staffWorksAt": "Works at",
+  "staffWorksAtHint": "Opens the business profile",
   "profilePageTitle": "Profile",
   "profilePageSubtitle": "Your barber profile and business, separated.",
   "myBarberProfile": "My Barber Profile",

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -35,6 +35,11 @@ import {
   isBusinessSubscriptionActive,
   isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
+import { Image } from "expo-image";
+import {
+  fetchStaffBusinessSummary,
+  type StaffBusinessSummary,
+} from "@/src/services/staffBusinessService";
 
 const CARD_WIDTH_PERCENT = "48%";
 
@@ -47,6 +52,94 @@ function getIconVariant(index: number): IconVariant {
 }
 
 /* ── Grid card used by non-business roles ── */
+/** Staff: the business they work for (name from the store, logo + category from the API). */
+function StaffBusinessCard({
+  name,
+  summary,
+  loading,
+  onPress,
+  theme,
+  styles,
+}: {
+  name: string;
+  summary: StaffBusinessSummary | null;
+  loading: boolean;
+  onPress?: () => void;
+  theme: Theme;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const { t } = useTranslation();
+  const [pressed, setPressed] = useState(false);
+  const category = summary?.category?.name;
+  const label = [t("staffWorksAt"), name, category].filter(Boolean).join(", ");
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      accessibilityRole={onPress ? "button" : "summary"}
+      accessibilityLabel={label}
+      accessibilityHint={onPress ? t("staffWorksAtHint") : undefined}
+      style={[
+        styles.cardShadowWrap,
+        styles.worksAtShadow,
+        pressed && styles.cardShadowWrapPressed,
+      ]}
+    >
+      <View style={[styles.worksAtCard, pressed && styles.worksAtCardPressed]}>
+        <View style={styles.worksAtLogo}>
+          {summary?.logoUrl ? (
+            <Image
+              source={{ uri: summary.logoUrl }}
+              style={styles.worksAtLogoImage}
+              contentFit="cover"
+              transition={150}
+              accessible={false}
+            />
+          ) : (
+            <MaterialIcons
+              name="storefront"
+              size={moderateWidthScale(24)}
+              color={theme.white}
+            />
+          )}
+        </View>
+
+        <View style={styles.worksAtBody}>
+          <Text style={styles.worksAtOverline}>{t("staffWorksAt")}</Text>
+          <Text style={styles.worksAtName} numberOfLines={1}>
+            {name}
+          </Text>
+          {category ? (
+            <View style={styles.worksAtChip}>
+              <MaterialIcons
+                name="sell"
+                size={moderateWidthScale(12)}
+                color={theme.selectCard}
+              />
+              <Text style={styles.worksAtChipText} numberOfLines={1}>
+                {category}
+              </Text>
+            </View>
+          ) : loading ? (
+            <View style={styles.worksAtChipPlaceholder} />
+          ) : null}
+        </View>
+
+        {onPress ? (
+          <MaterialIcons
+            name="chevron-right"
+            size={moderateWidthScale(22)}
+            color={theme.lightGreen}
+          />
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
 function ProfileSettingCard({
   title,
   iconName,
@@ -428,6 +521,80 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(8),
     },
 
+    /* ── Staff: works-at card ── */
+    worksAtShadow: {
+      marginTop: moderateHeightScale(6),
+    },
+    worksAtCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1,
+      borderColor: theme.lightGreen1,
+      backgroundColor: theme.background,
+    },
+    worksAtCardPressed: {
+      backgroundColor: theme.orangeBrown015,
+    },
+    worksAtLogo: {
+      width: moderateWidthScale(52),
+      height: moderateWidthScale(52),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.darkGreen,
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    },
+    worksAtLogoImage: {
+      width: "100%",
+      height: "100%",
+    },
+    worksAtBody: {
+      flex: 1,
+      minWidth: 0,
+      gap: moderateHeightScale(3),
+    },
+    worksAtOverline: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    worksAtName: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    worksAtChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: moderateWidthScale(4),
+      maxWidth: "100%",
+      marginTop: moderateHeightScale(2),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.orangeBrown015,
+    },
+    worksAtChipText: {
+      flexShrink: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    worksAtChipPlaceholder: {
+      width: moderateWidthScale(72),
+      height: moderateHeightScale(20),
+      marginTop: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen1,
+    },
+
     /* ── Grid (non-business roles) ── */
     gridContainer: {
       marginTop: moderateHeightScale(14),
@@ -662,6 +829,29 @@ export default function AccountScreen() {
   const userRole = user.userRole;
   const isGuest = user.isGuest;
   const isCustomer = user.userRole === "customer";
+  const isStaff = userRole === "staff" && !isGuest;
+  const [staffBusiness, setStaffBusiness] =
+    useState<StaffBusinessSummary | null>(null);
+  const [staffBusinessLoading, setStaffBusinessLoading] = useState(isStaff);
+
+  useEffect(() => {
+    if (!isStaff) return;
+    let active = true;
+    setStaffBusinessLoading(true);
+    fetchStaffBusinessSummary(user.business_id)
+      .then((data) => {
+        if (active) setStaffBusiness(data);
+      })
+      .catch((error) => {
+        Logger.error("Failed to load staff business:", error);
+      })
+      .finally(() => {
+        if (active) setStaffBusinessLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isStaff, user.business_id]);
   const isBusiness = userRole === "business" && !isGuest;
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
   const showStripeBanner =
@@ -1034,6 +1224,29 @@ export default function AccountScreen() {
             {t("manageAccountPreferences")}
           </Text>
         </View>
+
+        {isStaff && (staffBusiness?.name || user.business_name) ? (
+          <StaffBusinessCard
+            name={staffBusiness?.name || user.business_name || ""}
+            summary={staffBusiness}
+            loading={staffBusinessLoading}
+            onPress={
+              user.business_id || staffBusiness?.id
+                ? () =>
+                    router.push({
+                      pathname: "/(main)/businessDetail",
+                      params: {
+                        business_id: String(
+                          user.business_id || staffBusiness?.id,
+                        ),
+                      },
+                    } as any)
+                : undefined
+            }
+            theme={theme}
+            styles={styles}
+          />
+        ) : null}
 
         <View style={styles.gridContainer}>
           {rows.map((row, index) => {

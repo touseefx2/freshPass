@@ -1,5 +1,6 @@
 import { ApiService } from "@/src/services/api";
-import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
+import { businessEndpoints } from "@/src/services/endpoints";
+import { resolveStaffBusinessId } from "@/src/services/staffBusinessService";
 
 export type ReelServiceOption = { id: number; name: string; price?: string | number };
 
@@ -16,34 +17,6 @@ function pickList(res: any): ReelServiceOption[] {
  * Owner: their active services. Staff: the owner's business services via the
  * public `GET /api/services?business_id=` (business id from status, else staff details).
  */
-async function resolveStaffBusinessId(
-  businessId?: number | null,
-): Promise<number | null> {
-  if (businessId) return businessId;
-  const details = await ApiService.get<{ data?: { business_id?: number } }>(
-    staffEndpoints.profile,
-  );
-  return details?.data?.business_id ?? null;
-}
-
-/**
- * Staff: the category of the business they work for, so new reels default to it
- * (owners read theirs from business status).
- */
-export async function fetchStaffBusinessCategory(
-  businessId?: number | null,
-): Promise<{ id: number; name: string } | null> {
-  const id = await resolveStaffBusinessId(businessId);
-  if (!id) return null;
-  const response = await ApiService.get<{
-    data?: { business?: { category?: { id?: number; name?: string } | null } };
-  }>(businessEndpoints.businessDetails(id));
-  const category = response?.data?.business?.category;
-  return category?.id != null
-    ? { id: category.id, name: category.name ?? "" }
-    : null;
-}
-
 export async function fetchReelServiceOptions(params: {
   userRole?: string | null;
   businessId?: number | null;

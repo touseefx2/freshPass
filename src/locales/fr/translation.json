@@ -112,6 +112,8 @@
   "businessPlanSubscribe": "S'abonner au forfait",
   "accountSettings": "Paramètres du compte",
   "manageAccountPreferences": "Gérez votre compte et vos préférences",
+  "staffWorksAt": "Travaille chez",
+  "staffWorksAtHint": "Ouvre le profil de l'établissement",
   "profilePageTitle": "Profile",
   "profilePageSubtitle": "Your barber profile and business, separated.",
   "myBarberProfile": "My Barber Profile",

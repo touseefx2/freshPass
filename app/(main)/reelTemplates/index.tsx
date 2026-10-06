@@ -27,7 +27,8 @@ import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
-import { fetchReelServiceOptions, fetchStaffBusinessCategory } from "@/src/services/reelServicesOptions";
+import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
+import { fetchStaffBusinessCategory } from "@/src/services/staffBusinessService";
 import {
   getMediaLimits,
   getVideo,

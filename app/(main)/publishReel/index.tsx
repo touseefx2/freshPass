@@ -32,7 +32,8 @@ import { fetchMyProducts } from "@/src/services/productService";
 import type { ShopProduct } from "@/src/types/shopProduct";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
-import { fetchReelServiceOptions, fetchStaffBusinessCategory } from "@/src/services/reelServicesOptions";
+import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
+import { fetchStaffBusinessCategory } from "@/src/services/staffBusinessService";
 import {
   createReel,
   getMyReel,
