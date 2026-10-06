@@ -3,6 +3,7 @@ import { ApiService, checkInternetConnection } from "@/src/services/api";
 import { mediaEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
+import { getVideoMetaData } from "react-native-compressor";
 import { prepareVideoForUpload, prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   MediaDeleteResponse,
@@ -197,6 +198,46 @@ export class VideoTooLargeError extends Error {
   }
 }
 
+/**
+ * Size of the file actually being uploaded, as shown on the phone. Compression
+ * caps the longest side at 1920, so the picked asset's size (e.g. 4K) is wrong
+ * for the uploaded file. Orientation follows the picked asset (portrait stays
+ * width < height) in case the compressed file stores a rotation flag instead.
+ */
+async function resolveUploadDimensions(
+  preparedUri: string,
+  originalUri: string,
+  original: { width?: number | null; height?: number | null },
+): Promise<{ width?: number; height?: number }> {
+  const fallback = {
+    width: original.width ?? undefined,
+    height: original.height ?? undefined,
+  };
+  // Sent as-is (small file or compression skipped/failed) — original size is right
+  if (preparedUri === originalUri) return fallback;
+  try {
+    const meta = await getVideoMetaData(preparedUri);
+    let width = Math.round(Number(meta?.width));
+    let height = Math.round(Number(meta?.height));
+    if (!(width > 0 && height > 0)) return fallback;
+    const originalPortrait =
+      original.width != null &&
+      original.height != null &&
+      original.width < original.height;
+    const originalLandscape =
+      original.width != null &&
+      original.height != null &&
+      original.width > original.height;
+    if ((originalPortrait && width > height) || (originalLandscape && width < height)) {
+      [width, height] = [height, width];
+    }
+    return { width, height };
+  } catch (error) {
+    Logger.warn("Could not read compressed video size:", error);
+    return fallback;
+  }
+}
+
 async function getLocalFileSize(uri: string): Promise<number | null> {
   try {
     const info = await FileSystem.getInfoAsync(uri);
@@ -280,11 +321,12 @@ export function uploadVideo(
         Math.min(maxSeconds, Math.round(params.durationSeconds)),
       );
       formData.append("duration_seconds", String(durationSeconds));
-      if (params.width != null) {
-        formData.append("width", String(params.width));
+      const dims = await resolveUploadDimensions(prepared.uri, params.uri, params);
+      if (dims.width != null) {
+        formData.append("width", String(dims.width));
       }
-      if (params.height != null) {
-        formData.append("height", String(params.height));
+      if (dims.height != null) {
+        formData.append("height", String(dims.height));
       }
 
       const baseUrl = BASE_URL.endsWith("/")

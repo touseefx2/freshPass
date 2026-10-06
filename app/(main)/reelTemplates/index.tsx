@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Platform,
@@ -10,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -74,8 +75,22 @@ type CategoryOption = { id: number; name: string };
 type ServiceOption = { id: number; name: string };
 
 /** Raw video uploaded with purpose=auto_reel_source */
+/** File picked on the phone — uploaded only when "Make my reel" is tapped */
+type PickedVideoFile = {
+  uri: string;
+  mimeType: string;
+  fileName: string;
+  sourceType: MediaUploadSourceType;
+  durationSeconds: number;
+  width?: number;
+  height?: number;
+};
+
 type SourceVideo = {
-  id: number;
+  /** Server media id (purpose=auto_reel_source) once uploaded, or reused from "Try another template" */
+  id: number | null;
+  /** Picked file still to upload; null when the video only exists on the server */
+  local: PickedVideoFile | null;
   name: string | null;
   durationSeconds: number | null;
   thumbnailUri: string | null;
@@ -850,7 +865,13 @@ export default function ReelTemplatesScreen() {
       ? Number(params.sourceMediaAssetId)
       : null;
     if (!id) return;
-    setSourceVideo({ id, name: null, durationSeconds: null, thumbnailUri: null });
+    setSourceVideo({
+      id,
+      local: null,
+      name: null,
+      durationSeconds: null,
+      thumbnailUri: null,
+    });
     getVideo(id)
       .then(async (video) => {
         // Raw auto reel sources get no server poster — grab the first frame
@@ -863,6 +884,7 @@ export default function ReelTemplatesScreen() {
           prev?.id === id
             ? {
                 id,
+                local: null,
                 name: video.original_name,
                 durationSeconds: video.duration_seconds,
                 thumbnailUri,
@@ -913,7 +935,8 @@ export default function ReelTemplatesScreen() {
     if (!showCategoryPicker) await loadCategories();
   }, [loadCategories, showCategoryPicker]);
 
-  const uploadPickedVideo = useCallback(
+  /** Pick = select only. Upload happens on "Make my reel" (no wasted uploads). */
+  const selectPickedVideo = useCallback(
     async (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
       if (!asset.uri) return;
 
@@ -950,49 +973,23 @@ export default function ReelTemplatesScreen() {
         // Thumbnail is cosmetic only
       }
 
-      setUploadPhase("preparing");
-      setUploadPercent(0);
-      try {
-        const mime = (asset as { mimeType?: string }).mimeType ?? "";
-        const uploaded = await uploadVideo(
-          {
-            uri: asset.uri,
-            mimeType: mime || "video/mp4",
-            fileName: asset.fileName || "video.mp4",
-            sourceType,
-            durationSeconds,
-            width: asset.width,
-            height: asset.height,
-            purpose: "auto_reel_source",
-            onCompressProgress: (percent) => setUploadPercent(percent),
-          },
-          (percent) => {
-            setUploadPhase("uploading");
-            setUploadPercent(percent);
-          },
-        );
-        setSourceVideo({
-          id: uploaded.id,
-          name: uploaded.original_name || asset.fileName || null,
-          durationSeconds:
-            uploaded.duration_seconds ??
-            (lengthSeconds != null ? durationSeconds : null),
-          thumbnailUri: localThumb || uploaded.thumbnail_url,
-        });
-      } catch (error: any) {
-        Logger.error("Failed to upload auto reel source video:", error);
-        showBanner(
-          t("error"),
-          error instanceof VideoTooLargeError
-            ? t("autoReelVideoTooLarge")
-            : error?.message || t("failedToUploadVideo"),
-          "error",
-          4000,
-        );
-      } finally {
-        setUploadPercent(null);
-        setUploadPhase("uploading");
-      }
+      const mime = (asset as { mimeType?: string }).mimeType ?? "";
+      // A new pick replaces any earlier upload — that id is no longer used
+      setSourceVideo({
+        id: null,
+        local: {
+          uri: asset.uri,
+          mimeType: mime || "video/mp4",
+          fileName: asset.fileName || "video.mp4",
+          sourceType,
+          durationSeconds,
+          width: asset.width || undefined,
+          height: asset.height || undefined,
+        },
+        name: asset.fileName || null,
+        durationSeconds: lengthSeconds != null ? durationSeconds : null,
+        thumbnailUri: localThumb,
+      });
     },
     [showBanner, t],
   );
@@ -1010,13 +1007,13 @@ export default function ReelTemplatesScreen() {
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedVideo(result.assets[0], "device");
+        await selectPickedVideo(result.assets[0], "device");
       }
     } catch (error) {
       Logger.error("Error selecting auto reel video from gallery:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [showBanner, t, uploadPickedVideo]);
+  }, [showBanner, t, selectPickedVideo]);
 
   const handleRecordVideo = useCallback(async () => {
     setSourcePickerVisible(false);
@@ -1031,34 +1028,110 @@ export default function ReelTemplatesScreen() {
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedVideo(result.assets[0], "camera");
+        await selectPickedVideo(result.assets[0], "camera");
       }
     } catch (error) {
       Logger.error("Error recording auto reel video:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [showBanner, t, uploadPickedVideo]);
+  }, [showBanner, t, selectPickedVideo]);
 
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
   const fewReelsLeft =
     reelsRemaining != null && reelsRemaining > 0 && reelsRemaining <= 2;
 
   const canGenerate =
-    !!selected && !!sourceVideo && !!categoryId && !noReelsLeft;
+    !!selected &&
+    !!sourceVideo &&
+    (sourceVideo.id != null || sourceVideo.local != null) &&
+    !!categoryId &&
+    !noReelsLeft;
+
+  /** Upload the picked file (compress → POST /api/media) and keep its id. */
+  const uploadSelectedVideo = useCallback(
+    async (video: SourceVideo): Promise<number | null> => {
+      const local = video.local;
+      if (!local) return null;
+      setUploadPhase("preparing");
+      setUploadPercent(0);
+      try {
+        const uploaded = await uploadVideo(
+          {
+            uri: local.uri,
+            mimeType: local.mimeType,
+            fileName: local.fileName,
+            sourceType: local.sourceType,
+            durationSeconds: local.durationSeconds,
+            width: local.width,
+            height: local.height,
+            purpose: "auto_reel_source",
+            onCompressProgress: (percent) => setUploadPercent(percent),
+          },
+          (percent) => {
+            setUploadPhase("uploading");
+            setUploadPercent(percent);
+          },
+        );
+        // Save the id at once: if the start fails, the next tap won't upload again
+        setSourceVideo((prev) =>
+          prev?.local === local
+            ? {
+                ...prev,
+                id: uploaded.id,
+                durationSeconds:
+                  uploaded.duration_seconds ?? prev.durationSeconds,
+              }
+            : prev,
+        );
+        return uploaded.id;
+      } catch (error: any) {
+        Logger.error("Failed to upload auto reel source video:", error);
+        showBanner(
+          t("error"),
+          error instanceof VideoTooLargeError
+            ? t("autoReelVideoTooLarge")
+            : error?.message || t("failedToUploadVideo"),
+          "error",
+          4000,
+        );
+        return null;
+      } finally {
+        setUploadPercent(null);
+        setUploadPhase("uploading");
+      }
+    },
+    [showBanner, t],
+  );
 
   const handleGenerate = useCallback(async () => {
     if (!selected || !sourceVideo || !categoryId || submitting) return;
+    // No reels left → say so before uploading anything
+    if (noReelsLeft) {
+      showBanner(
+        t("monthlyReelsLimitTitle"),
+        quotaBlockedMessage || t("autoReelNoReelsLeft"),
+        "error",
+        5000,
+      );
+      return;
+    }
 
     setSubmitting(true);
     try {
+      // 1. Upload only if this video isn't on the server yet
+      const mediaId = sourceVideo.id ?? (await uploadSelectedVideo(sourceVideo));
+      if (mediaId == null) return;
+
+      // 2. Start the auto reel
       const trimmedCaption = caption.trim();
       const autoReel = await createAutoReel({
-        media_asset_id: sourceVideo.id,
+        media_asset_id: mediaId,
         template_id: selected.id,
         category_id: categoryId,
         ...(serviceId ? { service_id: serviceId } : {}),
         ...(trimmedCaption ? { caption: trimmedCaption } : {}),
       });
+      // 3. Status screen (polling + auto_reel push as before)
       router.replace({
         pathname: "/(main)/autoReel" as any,
         params: { autoReelId: String(autoReel.id) },
@@ -1068,13 +1141,17 @@ export default function ReelTemplatesScreen() {
       const mediaError = fieldError(error, "media_asset_id");
       const templateError = fieldError(error, "template_id");
       if (mediaError) {
-        // Video is gone / not an auto reel source — ask for a fresh upload
-        setSourceVideo(null);
+        // Server can't use that upload — drop the id so the next tap uploads
+        // the picked file again (or asks for a video if there's no local file)
+        setSourceVideo((prev) =>
+          prev?.local ? { ...prev, id: null } : null,
+        );
       }
       if (templateError) {
         // Admin may have turned it off — refresh the list
         void loadTemplates();
       }
+      // Any other 422 (e.g. `reel` monthly limit) keeps the uploaded id
       const message =
         fieldError(error, "reel") ||
         fieldError(error, "auto_reel") ||
@@ -1093,6 +1170,8 @@ export default function ReelTemplatesScreen() {
     caption,
     categoryId,
     loadTemplates,
+    noReelsLeft,
+    quotaBlockedMessage,
     router,
     selected,
     serviceId,
@@ -1100,15 +1179,37 @@ export default function ReelTemplatesScreen() {
     sourceVideo,
     submitting,
     t,
+    uploadSelectedVideo,
   ]);
 
   const isHaircut = selected?.kind === "haircut";
+
+  // Compress + upload of a 3-minute video can take a minute — the screen must
+  // stay open until it finishes, so confirm before leaving mid-upload
+  const navigation = useNavigation();
+  const uploadingRef = useRef(false);
+  uploadingRef.current = uploadPercent != null;
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
+      if (!uploadingRef.current) return;
+      event.preventDefault();
+      Alert.alert(t("autoReelLeaveUploadTitle"), t("autoReelLeaveUploadMessage"), [
+        { text: t("autoReelKeepUploading"), style: "cancel" },
+        {
+          text: t("autoReelLeave"),
+          style: "destructive",
+          onPress: () => navigation.dispatch(event.data.action),
+        },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation, t]);
 
   // Tell the barber what is still missing instead of a silent disabled button
   const missingHint = !selected
     ? null
     : uploadPercent != null
-      ? t("autoReelWaitForUpload")
+      ? t("autoReelKeepOpenWhileUploading")
       : !sourceVideo
         ? t("autoReelNeedVideo")
         : !categoryId
@@ -1453,7 +1554,7 @@ export default function ReelTemplatesScreen() {
                 ]}
                 onPress={() => setSourcePickerVisible(true)}
                 activeOpacity={0.85}
-                disabled={uploadPercent != null}
+                disabled={uploadPercent != null || submitting}
                 accessibilityRole="button"
                 accessibilityLabel={
                   sourceVideo
@@ -1461,7 +1562,9 @@ export default function ReelTemplatesScreen() {
                     : t("autoReelPickVideo")
                 }
                 accessibilityHint={t("autoReelPickVideoHint")}
-                accessibilityState={{ disabled: uploadPercent != null }}
+                accessibilityState={{
+                  disabled: uploadPercent != null || submitting,
+                }}
               >
                 {uploadPercent == null && sourceVideo?.thumbnailUri ? (
                   <Image
@@ -1509,7 +1612,10 @@ export default function ReelTemplatesScreen() {
                         {sourceVideo
                           ? [
                               formatDuration(sourceVideo.durationSeconds),
-                              t("autoReelChangeVideo"),
+                              // Make clear nothing is uploaded until the tap
+                              sourceVideo.id == null
+                                ? t("autoReelUploadsOnMake")
+                                : t("autoReelChangeVideo"),
                             ]
                               .filter(Boolean)
                               .join(" · ")

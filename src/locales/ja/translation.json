@@ -1798,5 +1798,11 @@
   "monthlyReelsLoadFailed": "月間リールを読み込めませんでした。",
   "monthlyReelsSavedNote": "月間リールは保存されましたが、その他の変更は保存されていません。",
   "aiReelRequests": "AIリールのリクエスト",
-  "monthlyReelsYouCanPost": "今月はあと{{count}}本投稿できます"
+  "monthlyReelsYouCanPost": "今月はあと{{count}}本投稿できます",
+  "autoReelUploadsOnMake": "「リールを作成」をタップするとアップロードされます",
+  "autoReelKeepOpenWhileUploading": "アップロードが終わるまでこの画面を開いたままにしてください",
+  "autoReelLeaveUploadTitle": "アップロード中",
+  "autoReelLeaveUploadMessage": "今離れるとリールは作成されません。アップロード完了まで待ちますか？",
+  "autoReelKeepUploading": "とどまる",
+  "autoReelLeave": "離れる"
 }

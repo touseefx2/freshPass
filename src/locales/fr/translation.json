@@ -1798,5 +1798,11 @@
   "monthlyReelsLoadFailed": "Impossible de charger les reels mensuels.",
   "monthlyReelsSavedNote": "Les reels mensuels ont été enregistrés, mais pas les autres modifications.",
   "aiReelRequests": "Demandes de reels IA",
-  "monthlyReelsYouCanPost": "Vous pouvez publier encore {{count}} reels ce mois-ci"
+  "monthlyReelsYouCanPost": "Vous pouvez publier encore {{count}} reels ce mois-ci",
+  "autoReelUploadsOnMake": "Importée quand vous touchez Créer mon reel",
+  "autoReelKeepOpenWhileUploading": "Gardez cet écran ouvert jusqu’à la fin de l’importation",
+  "autoReelLeaveUploadTitle": "Importation en cours",
+  "autoReelLeaveUploadMessage": "Si vous quittez maintenant, votre reel ne sera pas créé. Rester jusqu’à la fin de l’importation ?",
+  "autoReelKeepUploading": "Rester",
+  "autoReelLeave": "Quitter"
 }

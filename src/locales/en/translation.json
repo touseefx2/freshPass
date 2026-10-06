@@ -1855,5 +1855,11 @@
   "monthlyReelsLoadFailed": "Couldn’t load monthly reels.",
   "monthlyReelsSavedNote": "Monthly reels were saved, but the other changes weren’t.",
   "aiReelRequests": "AI reel requests",
-  "monthlyReelsYouCanPost": "You can post {{count}} more reels this month"
+  "monthlyReelsYouCanPost": "You can post {{count}} more reels this month",
+  "autoReelUploadsOnMake": "Uploads when you tap Make my reel",
+  "autoReelKeepOpenWhileUploading": "Keep this screen open until the upload finishes",
+  "autoReelLeaveUploadTitle": "Upload in progress",
+  "autoReelLeaveUploadMessage": "If you leave now, your reel won’t be made. Stay until the upload finishes?",
+  "autoReelKeepUploading": "Stay",
+  "autoReelLeave": "Leave"
 }

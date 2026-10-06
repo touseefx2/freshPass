@@ -1798,5 +1798,11 @@
   "monthlyReelsLoadFailed": "Monatliche Reels konnten nicht geladen werden.",
   "monthlyReelsSavedNote": "Die monatlichen Reels wurden gespeichert, die anderen Änderungen nicht.",
   "aiReelRequests": "KI-Reel-Anfragen",
-  "monthlyReelsYouCanPost": "Du kannst diesen Monat noch {{count}} Reels posten"
+  "monthlyReelsYouCanPost": "Du kannst diesen Monat noch {{count}} Reels posten",
+  "autoReelUploadsOnMake": "Wird hochgeladen, wenn du auf Mein Reel erstellen tippst",
+  "autoReelKeepOpenWhileUploading": "Lass diesen Bildschirm offen, bis der Upload fertig ist",
+  "autoReelLeaveUploadTitle": "Upload läuft",
+  "autoReelLeaveUploadMessage": "Wenn du jetzt gehst, wird dein Reel nicht erstellt. Bis zum Ende des Uploads bleiben?",
+  "autoReelKeepUploading": "Bleiben",
+  "autoReelLeave": "Verlassen"
 }

@@ -1798,5 +1798,11 @@
   "monthlyReelsLoadFailed": "تعذر تحميل الريلز الشهرية.",
   "monthlyReelsSavedNote": "تم حفظ الريلز الشهرية، لكن لم تُحفظ التغييرات الأخرى.",
   "aiReelRequests": "طلبات ريلز الذكاء الاصطناعي",
-  "monthlyReelsYouCanPost": "يمكنك نشر {{count}} ريلز إضافية هذا الشهر"
+  "monthlyReelsYouCanPost": "يمكنك نشر {{count}} ريلز إضافية هذا الشهر",
+  "autoReelUploadsOnMake": "يُرفع عند الضغط على أنشئ الريل",
+  "autoReelKeepOpenWhileUploading": "أبقِ هذه الشاشة مفتوحة حتى يكتمل الرفع",
+  "autoReelLeaveUploadTitle": "الرفع قيد التقدم",
+  "autoReelLeaveUploadMessage": "إذا غادرت الآن فلن يُنشأ الريل. هل تبقى حتى يكتمل الرفع؟",
+  "autoReelKeepUploading": "البقاء",
+  "autoReelLeave": "مغادرة"
 }
