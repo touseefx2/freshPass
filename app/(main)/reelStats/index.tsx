@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -162,8 +162,12 @@ export default function ReelStatsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; mine?: string }>();
   const reelId = params.id ? Number(params.id) : null;
+  // Owner's "My reels" → only their own; staff always get their own from the server
+  const userRole = useAppSelector((s) => s.user.userRole);
+  const mineOnly = params.mine === "1";
+  const isOwnStats = mineOnly || userRole === "staff";
 
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<ReelPerformanceStats | null>(null);
@@ -175,7 +179,7 @@ export default function ReelStatsScreen() {
     try {
       const data = reelId
         ? await getReelStats(reelId)
-        : await getBusinessReelStats();
+        : await getBusinessReelStats(mineOnly);
       setStats(data);
     } catch (error: any) {
       Logger.error("Failed to load reel stats:", error);
@@ -188,7 +192,7 @@ export default function ReelStatsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [reelId, showBanner, t]);
+  }, [mineOnly, reelId, showBanner, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -216,7 +220,13 @@ export default function ReelStatsScreen() {
     return (
       <View style={styles.safeArea}>
         <StackHeader
-          title={reelId ? t("reelPerformance") : t("businessReelPerformance")}
+          title={
+            reelId
+              ? t("reelPerformance")
+              : isOwnStats
+                ? t("myReelPerformance")
+                : t("businessReelPerformance")
+          }
         />
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.darkGreen} />
@@ -228,7 +238,13 @@ export default function ReelStatsScreen() {
   return (
     <View style={styles.safeArea}>
       <StackHeader
-        title={reelId ? t("reelPerformance") : t("businessReelPerformance")}
+        title={
+            reelId
+              ? t("reelPerformance")
+              : isOwnStats
+                ? t("myReelPerformance")
+                : t("businessReelPerformance")
+          }
       />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.chipsRow}>

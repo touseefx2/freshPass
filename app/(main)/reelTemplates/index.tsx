@@ -815,10 +815,10 @@ export default function ReelTemplatesScreen() {
     try {
       const data = await listAutoReelTemplates();
       setTemplates(data);
-      setSelectedId((prev) => {
-        if (prev != null && data.some((item) => item.id === prev)) return prev;
-        return data.length === 1 ? data[0].id : null;
-      });
+      // User always picks the template themselves, even when there's only one
+      setSelectedId((prev) =>
+        prev != null && data.some((item) => item.id === prev) ? prev : null,
+      );
     } catch (error: any) {
       Logger.error("Failed to load auto reel templates:", error);
       setTemplates([]);

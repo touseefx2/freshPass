@@ -204,9 +204,12 @@ export async function deleteReel(id: number | string): Promise<void> {
   await ApiService.delete(reelsEndpoints.delete(id));
 }
 
-export async function getBusinessReelStats(): Promise<ReelPerformanceStats> {
+/** `mine` = only the caller's reels (owner's "My reels"); staff always get their own. */
+export async function getBusinessReelStats(
+  mine: boolean = false,
+): Promise<ReelPerformanceStats> {
   const response = await ApiService.get<Envelope<ReelPerformanceStats>>(
-    reelsEndpoints.mineStats,
+    reelsEndpoints.mineStats({ mine }),
   );
   if (!response?.data) {
     throw new Error(response?.message || "Failed to load stats");

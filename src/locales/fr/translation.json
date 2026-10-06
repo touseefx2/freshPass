@@ -1767,7 +1767,7 @@
   "monthlyReelsFreeToGive": "{{count}} encore disponibles à attribuer",
   "monthlyReelsResets": "Réinitialisation le {{date}}",
   "monthlyReelsChecking": "Vérification de vos reels du mois…",
-  "monthlyReelsLoadFailed": "Impossible de charger vos reels du mois.",
+  "monthlyReelsLoadFailed": "Impossible de charger les reels mensuels.",
   "monthlyReelsUsedOf": "Publiés ce mois-ci : {{used}} sur {{limit}}",
   "monthlyReelsZeroHint": "Avec 0, ce membre ne peut pas publier de reels.",
   "monthlyReelsBelowUsedHint": "Déjà {{used}} publiés ce mois-ci. Rien n’est annulé ; il ne pourra simplement plus en publier.",
@@ -1797,7 +1797,6 @@
   "autoReelDeleteConfirm": "Supprimer ce reel ? Action irréversible.",
   "autoReelPreparing": "Préparation de la vidéo… {{percent}} %",
   "autoReelVideoTooLarge": "Cette vidéo dépasse 200 Mo. Coupez-la ou enregistrez-en une plus courte.",
-  "monthlyReelsLoadFailed": "Impossible de charger les reels mensuels.",
   "monthlyReelsSavedNote": "Les reels mensuels ont été enregistrés, mais pas les autres modifications.",
   "aiReelRequests": "Demandes de reels IA",
   "monthlyReelsYouCanPost": "Vous pouvez publier encore {{count}} reels ce mois-ci",
@@ -1811,5 +1810,6 @@
   "reelsScopeAll": "Toute l’entreprise",
   "reelViewOnly": "Lecture seule",
   "reelViewOnlyHint": "Vous ne pouvez modifier que les reels que vous avez créés.",
-  "autoReelViewOnlyHint": "Seule la personne qui a lancé ce reel peut le relancer, le publier, le modifier ou le supprimer."
+  "autoReelViewOnlyHint": "Seule la personne qui a lancé ce reel peut le relancer, le publier, le modifier ou le supprimer.",
+  "myReelPerformance": "Performance de mes reels"
 }

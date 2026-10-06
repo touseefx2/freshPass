@@ -1767,7 +1767,7 @@
   "monthlyReelsFreeToGive": "残り{{count}}本を割り当て可能",
   "monthlyReelsResets": "{{date}}にリセット",
   "monthlyReelsChecking": "今月のリール数を確認中…",
-  "monthlyReelsLoadFailed": "今月のリール数を読み込めませんでした。",
+  "monthlyReelsLoadFailed": "月間リールを読み込めませんでした。",
   "monthlyReelsUsedOf": "今月の投稿：{{limit}}本中{{used}}本",
   "monthlyReelsZeroHint": "0の場合、このスタッフはリールを投稿できません。",
   "monthlyReelsBelowUsedHint": "今月はすでに{{used}}本投稿済みです。取り消されませんが、これ以上は投稿できません。",
@@ -1797,7 +1797,6 @@
   "autoReelDeleteConfirm": "このリールを削除しますか？元に戻せません。",
   "autoReelPreparing": "動画を準備中… {{percent}}%",
   "autoReelVideoTooLarge": "この動画は200MBを超えています。トリミングするか短く撮り直してください。",
-  "monthlyReelsLoadFailed": "月間リールを読み込めませんでした。",
   "monthlyReelsSavedNote": "月間リールは保存されましたが、その他の変更は保存されていません。",
   "aiReelRequests": "AIリールのリクエスト",
   "monthlyReelsYouCanPost": "今月はあと{{count}}本投稿できます",
@@ -1811,5 +1810,6 @@
   "reelsScopeAll": "ビジネス全体",
   "reelViewOnly": "閲覧のみ",
   "reelViewOnlyHint": "変更できるのは自分が作成したリールのみです。",
-  "autoReelViewOnlyHint": "このリールを再試行・公開・編集・削除できるのは、作成した本人のみです。"
+  "autoReelViewOnlyHint": "このリールを再試行・公開・編集・削除できるのは、作成した本人のみです。",
+  "myReelPerformance": "自分のリールのパフォーマンス"
 }

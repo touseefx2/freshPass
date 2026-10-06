@@ -1824,7 +1824,7 @@
   "monthlyReelsFreeToGive": "{{count}} still free to give",
   "monthlyReelsResets": "Resets {{date}}",
   "monthlyReelsChecking": "Checking your monthly reels…",
-  "monthlyReelsLoadFailed": "Couldn't load your monthly reels.",
+  "monthlyReelsLoadFailed": "Couldn’t load monthly reels.",
   "monthlyReelsUsedOf": "Posted this month: {{used}} of {{limit}}",
   "monthlyReelsZeroHint": "With 0, this staff member can’t post reels.",
   "monthlyReelsBelowUsedHint": "They already posted {{used}} this month. Nothing is undone; they just can’t post more.",
@@ -1854,7 +1854,6 @@
   "autoReelDeleteConfirm": "Delete this reel? This can’t be undone.",
   "autoReelPreparing": "Preparing video… {{percent}}%",
   "autoReelVideoTooLarge": "This video is larger than 200 MB. Trim it or record a shorter one.",
-  "monthlyReelsLoadFailed": "Couldn’t load monthly reels.",
   "monthlyReelsSavedNote": "Monthly reels were saved, but the other changes weren’t.",
   "aiReelRequests": "AI reel requests",
   "monthlyReelsYouCanPost": "You can post {{count}} more reels this month",
@@ -1868,5 +1867,6 @@
   "reelsScopeAll": "All business",
   "reelViewOnly": "View only",
   "reelViewOnlyHint": "You can only change reels you created.",
-  "autoReelViewOnlyHint": "Only the person who started this reel can retry, publish, edit or delete it."
+  "autoReelViewOnlyHint": "Only the person who started this reel can retry, publish, edit or delete it.",
+  "myReelPerformance": "My reel performance"
 }

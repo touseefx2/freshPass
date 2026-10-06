@@ -468,16 +468,15 @@ export default function MediaLibraryMyReelsTab({
     Math.max(insets.bottom, moderateHeightScale(12)) +
     moderateHeightScale(FAB_BOTTOM_EXTRA);
 
+  // Card matches the list: owner "My reels" → mine=1; staff always get their own
   const fetchSummary = useCallback(async () => {
-    // Business-wide numbers — /reels/mine/stats has no "mine" filter, so not for staff
-    if (isStaff) return;
     try {
-      const stats = await getBusinessReelStats();
+      const stats = await getBusinessReelStats(!isStaff && scope === "mine");
       setSummary(stats);
     } catch (error) {
       Logger.error("Failed to load business reel stats:", error);
     }
-  }, [isStaff]);
+  }, [isStaff, scope]);
 
   const fetchPage = useCallback(
     async (pageToLoad: number, append: boolean) => {
@@ -1231,11 +1230,15 @@ export default function MediaLibraryMyReelsTab({
 
   return (
     <View style={styles.root}>
-      {isStaff ? null : (
       <TouchableOpacity
         style={styles.statsCard}
         activeOpacity={0.85}
-        onPress={() => router.push("/(main)/reelStats" as any)}
+        onPress={() =>
+          router.push({
+            pathname: "/(main)/reelStats" as any,
+            params: scope === "mine" ? { mine: "1" } : {},
+          })
+        }
       >
         <View style={styles.statsMain}>
           <View style={styles.statsTitleRow}>
@@ -1275,7 +1278,6 @@ export default function MediaLibraryMyReelsTab({
           color={theme.lightGreen}
         />
       </TouchableOpacity>
-      )}
 
       {limitMessage ? (
         <View style={styles.tipRow}>

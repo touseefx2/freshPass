@@ -232,6 +232,9 @@ export const createStyles = (theme: Theme) =>
     reelLimitTextMuted: {
       color: theme.lightGreen,
     },
+    featurePending: {
+      opacity: 0.7,
+    },
     featureDisabled: {
       opacity: 0.45,
     },

@@ -779,7 +779,9 @@ export const reelsEndpoints = {
   publish: (id: number | string) => `/api/reels/${id}/publish`,
   unpublish: (id: number | string) => `/api/reels/${id}/unpublish`,
   delete: (id: number | string) => `/api/reels/${id}`,
-  mineStats: `/api/reels/mine/stats`,
+  /** Owner: whole business, or own with mine. Staff: always their own. */
+  mineStats: (params?: { mine?: boolean }) =>
+    `/api/reels/mine/stats${params?.mine ? "?mine=1" : ""}`,
   mineReelStats: (id: number | string) => `/api/reels/mine/${id}/stats`,
   categories: `/api/reels/categories`,
   /** R-24: category dwell — call once when leaving a category */

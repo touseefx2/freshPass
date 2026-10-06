@@ -214,9 +214,11 @@ export default function ToolList() {
     };
   }, [isStaff, reelLimits, t]);
 
-  // Only a known used-up limit closes Generate Reel; while loading or after a
-  // failed fetch it stays open (reel templates + server check the limit again)
-  const canGenerateReel = !staffReelLine?.blocked;
+  // First load: Generate Reel waits (lightly dimmed) until the number is known.
+  // A used-up limit closes it; a failed fetch leaves it open (reel templates +
+  // server check the limit again).
+  const reelLimitsPending = reelLimitsStatus === "loading" && !staffReelLine;
+  const canGenerateReel = !reelLimitsPending && !staffReelLine?.blocked;
 
   const fetchQuota = async () => {
     try {
@@ -539,7 +541,8 @@ export default function ToolList() {
         <View
           style={[
             styles.featureShadow,
-            !canGenerateReel && styles.featureDisabled,
+            reelLimitsPending && styles.featurePending,
+            staffReelLine?.blocked && styles.featureDisabled,
           ]}
         >
           <TouchableOpacity

@@ -1767,7 +1767,7 @@
   "monthlyReelsFreeToGive": "{{count}} متاحة للتوزيع",
   "monthlyReelsResets": "يُعاد التعيين في {{date}}",
   "monthlyReelsChecking": "جارٍ التحقق من الريلز الشهرية…",
-  "monthlyReelsLoadFailed": "تعذّر تحميل الريلز الشهرية.",
+  "monthlyReelsLoadFailed": "تعذر تحميل الريلز الشهرية.",
   "monthlyReelsUsedOf": "المنشور هذا الشهر: {{used}} من {{limit}}",
   "monthlyReelsZeroHint": "عند 0 لا يمكن لهذا الموظف نشر ريلز.",
   "monthlyReelsBelowUsedHint": "نشر بالفعل {{used}} هذا الشهر. لن يُلغى شيء، لكنه لن يستطيع نشر المزيد.",
@@ -1797,7 +1797,6 @@
   "autoReelDeleteConfirm": "حذف هذا الريل؟ لا يمكن التراجع عن ذلك.",
   "autoReelPreparing": "جارٍ تجهيز الفيديو… {{percent}}%",
   "autoReelVideoTooLarge": "حجم هذا الفيديو أكبر من 200 ميغابايت. قصّه أو سجّل فيديو أقصر.",
-  "monthlyReelsLoadFailed": "تعذر تحميل الريلز الشهرية.",
   "monthlyReelsSavedNote": "تم حفظ الريلز الشهرية، لكن لم تُحفظ التغييرات الأخرى.",
   "aiReelRequests": "طلبات ريلز الذكاء الاصطناعي",
   "monthlyReelsYouCanPost": "يمكنك نشر {{count}} ريلز إضافية هذا الشهر",
@@ -1811,5 +1810,6 @@
   "reelsScopeAll": "كل النشاط التجاري",
   "reelViewOnly": "عرض فقط",
   "reelViewOnlyHint": "يمكنك تعديل الريلز التي أنشأتها فقط.",
-  "autoReelViewOnlyHint": "فقط من بدأ هذا الريل يمكنه إعادة المحاولة أو نشره أو تعديله أو حذفه."
+  "autoReelViewOnlyHint": "فقط من بدأ هذا الريل يمكنه إعادة المحاولة أو نشره أو تعديله أو حذفه.",
+  "myReelPerformance": "أداء ريلزي"
 }
