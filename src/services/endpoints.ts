@@ -748,6 +748,8 @@ export const autoReelEndpoints = {
   },
   getById: (id: number | string) => `/api/auto-reels/${id}`,
   retry: (id: number | string) => `/api/auto-reels/${id}/retry`,
+  /** Make (or re-publish) the reel from a finished auto reel */
+  publish: (id: number | string) => `/api/auto-reels/${id}/publish`,
 };
 
 /**

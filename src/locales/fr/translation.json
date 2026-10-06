@@ -1795,7 +1795,7 @@
   "autoReelRenderRendering": "Assemblage des clips",
   "autoReelRenderSaving": "Enregistrement de votre reel",
   "autoReelRenderDone": "Finalisation",
-  "autoReelReadyHint": "Il est enregistré en brouillon. Prévisualisez-le, puis publiez-le quand vous êtes prêt.",
+  "autoReelReadyHint": "Prévisualisez-le, puis touchez Publier le reel quand vous êtes prêt. Rien n’est publié avant.",
   "autoReelSeconds": "{{seconds}} s",
   "autoReelMissingBefore": "Aucun plan « avant » trouvé, le reel utilise donc les autres moments.",
   "autoReelMissingReveal": "Aucun plan du résultat final trouvé, le reel utilise donc les autres moments.",
@@ -1865,5 +1865,6 @@
   "reelViewOnlyHint": "Vous ne pouvez modifier que les reels que vous avez créés.",
   "autoReelViewOnlyHint": "Seule la personne qui a lancé ce reel peut le relancer, le publier, le modifier ou le supprimer.",
   "myReelPerformance": "Performance de mes reels",
-  "autoReelTemplate": "Modèle"
+  "autoReelTemplate": "Modèle",
+  "autoReelNotPublished": "Non publié"
 }

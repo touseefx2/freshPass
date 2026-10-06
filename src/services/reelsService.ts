@@ -13,6 +13,7 @@ import type {
   AutoReel,
   AutoReelTemplate,
   CreateAutoReelPayload,
+  PublishAutoReelPayload,
   CreateReelPayload,
   FeedReel,
   GenerationStatusResponse,
@@ -107,6 +108,25 @@ export async function retryAutoReel(id: number | string): Promise<AutoReel> {
   );
   if (!response?.data) {
     throw new Error(response?.message || "Failed to retry auto reel");
+  }
+  return response.data;
+}
+
+/**
+ * Publish a finished auto reel as a reel. Body is optional — fields left out
+ * use the values chosen when the auto reel was started. Doesn't count toward
+ * the monthly limit (already counted when made). Returns the auto reel with `reel` set.
+ */
+export async function publishAutoReel(
+  id: number | string,
+  payload: PublishAutoReelPayload = {},
+): Promise<AutoReel> {
+  const response = await ApiService.post<Envelope<AutoReel>>(
+    autoReelEndpoints.publish(id),
+    payload,
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to publish reel");
   }
   return response.data;
 }

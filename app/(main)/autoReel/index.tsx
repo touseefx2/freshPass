@@ -27,7 +27,7 @@ import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import { createStyles as createResultStyles } from "../aiResults/styles";
 import {
   getAutoReel,
-  publishReel,
+  publishAutoReel,
   retryAutoReel,
 } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
@@ -43,6 +43,7 @@ import {
   isAutoReelInProgress,
   type AutoReel,
   type AutoReelStatus,
+  autoReelVideo,
 } from "@/src/types/reels";
 
 const POLL_INTERVAL_MS = 5000;
@@ -433,14 +434,6 @@ export default function AutoReelScreen() {
     }, [autoReelId, fetchOnce, inProgress, loadError]),
   );
 
-  const leaveScreen = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/(main)/dashboard" as any);
-    }
-  }, [router]);
-
   // Robot icon: back to the AI Tools screen — pop to it when it's in the stack
   // (Generate Reel / AI Requests), otherwise open it (e.g. from a push)
   const handleRobotPress = useCallback(() => {
@@ -492,27 +485,28 @@ export default function AutoReelScreen() {
     router.replace("/(main)/reelTemplates" as any);
   }, [router]);
 
-  const reelId = autoReel?.reel_id ?? autoReel?.reel?.id ?? null;
-
+  // No draft is made any more: publishing creates the reel from the AI result
   const handlePublish = useCallback(async () => {
-    if (!reelId || publishing) return;
+    if (!autoReelId || publishing) return;
     setPublishing(true);
     try {
-      await publishReel(reelId);
+      const data = await publishAutoReel(autoReelId);
+      setAutoReel(data);
       showBanner(t("success"), t("reelPublished"), "success", 2500);
-      leaveScreen();
     } catch (error: any) {
       Logger.error("Failed to publish auto reel:", error);
-      showBanner(
-        t("error"),
-        error?.message || t("failedToPublishReel"),
-        "error",
-        3000,
-      );
+      const message =
+        fieldError(error, "auto_reel") ||
+        fieldError(error, "caption") ||
+        fieldError(error, "category_id") ||
+        fieldError(error, "service_id") ||
+        error?.message ||
+        t("failedToPublishReel");
+      showBanner(t("error"), message, "error", 4000);
     } finally {
       setPublishing(false);
     }
-  }, [leaveScreen, publishing, reelId, showBanner, t]);
+  }, [autoReelId, publishing, showBanner, t]);
 
 
   // Staff may only retry / publish / edit / delete what they started (403 otherwise)
@@ -775,10 +769,12 @@ export default function AutoReelScreen() {
   };
 
   const renderReady = () => {
-    const videoUrl = autoReel?.reel?.video?.playback_url ?? null;
+    const video = autoReelVideo(autoReel);
+    const videoUrl = video?.playback_url ?? null;
     const isHaircut = autoReel?.template?.kind === "haircut";
-    const reelGone = !autoReel?.reel;
     const isRemoved = reelStatus === "removed";
+    // Not published yet (no reel), or its reel was unpublished back to draft
+    const canPublish = canChange && !isPublished && !isRemoved && !!videoUrl;
     const downloading = !!videoUrl && downloadingUrl === videoUrl;
     const statusLabel = isPublished
       ? t("published")
@@ -786,7 +782,7 @@ export default function AutoReelScreen() {
         ? t("removed")
         : isDraft
           ? t("draft")
-          : null;
+          : t("autoReelNotPublished");
 
     return (
       <View>
@@ -817,11 +813,11 @@ export default function AutoReelScreen() {
                 )}
               </TouchableOpacity>
               {/* Publish the draft (only the creator can; published shows its state) */}
-              {canChange && isDraft ? (
+              {canPublish ? (
                 <TouchableOpacity
                   style={rs.publishReelChip}
                   onPress={handlePublish}
-                  disabled={publishing || !reelId}
+                  disabled={publishing}
                   activeOpacity={0.7}
                   accessibilityRole="button"
                   accessibilityLabel={t("publish")}
@@ -867,7 +863,7 @@ export default function AutoReelScreen() {
         <View style={rs.section}>
           <Text style={rs.sectionTitleUppercase}>{t("videoDetails")}</Text>
           <View style={rs.videoDetailsGrid}>
-            {autoReel?.total_seconds != null ? (
+            {(autoReel?.total_seconds ?? video?.duration_seconds) != null ? (
               <View style={rs.videoDetailCard}>
                 <View style={rs.videoDetailIconContainer}>
                   <MaterialIcons
@@ -879,7 +875,9 @@ export default function AutoReelScreen() {
                 <View style={rs.videoDetailContent}>
                   <Text style={rs.videoDetailLabel}>{t("duration")}</Text>
                   <Text style={rs.videoDetailValue}>
-                    {autoReel.total_seconds.toFixed(1)}s
+                    {Number(
+                      autoReel?.total_seconds ?? video?.duration_seconds,
+                    ).toFixed(1)}s
                   </Text>
                 </View>
               </View>
@@ -919,16 +917,7 @@ export default function AutoReelScreen() {
           </View>
         </View>
 
-        {reelGone ? (
-          <View style={styles.note}>
-            <MaterialIcons
-              name="info-outline"
-              size={moderateWidthScale(16)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.noteText}>{t("autoReelDraftDeleted")}</Text>
-          </View>
-        ) : isDraft ? (
+        {canPublish ? (
           <View style={styles.note}>
             <MaterialIcons
               name="info-outline"
@@ -967,7 +956,7 @@ export default function AutoReelScreen() {
             <Text style={styles.noteText}>{t("autoReelMissingReveal")}</Text>
           </View>
         ) : null}
-        {!canChange && !reelGone ? renderViewOnlyNote() : null}
+        {!canChange ? renderViewOnlyNote() : null}
       </View>
     );
   };

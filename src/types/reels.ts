@@ -396,6 +396,12 @@ export type AutoReel = {
   has_reveal: boolean | null;
   total_seconds: number | null;
   source_media_asset_id: number | null;
+  /**
+   * The finished video (set once `ready`). Play this — the reel is only made
+   * when the user publishes. Older results fall back to their draft's video.
+   */
+  video?: AutoReelVideo | null;
+  /** Reel made from it: null until published, null again if that reel is deleted */
   reel_id: number | null;
   reel: AutoReelDraft | null;
   /** User id of whoever started it */
@@ -405,6 +411,44 @@ export type AutoReel = {
   created_at: string;
   updated_at: string;
 };
+
+/** Finished auto reel video (MediaAssetResource subset) */
+export type AutoReelVideo = {
+  id: number;
+  playback_url: string;
+  thumbnail_url: string | null;
+  duration_seconds: number | null;
+  width?: number | null;
+  height?: number | null;
+};
+
+/** POST /api/auto-reels/{id}/publish — every field optional (start values are reused) */
+export type PublishAutoReelPayload = {
+  caption?: string;
+  category_id?: number;
+  service_id?: number | null;
+  look_tag?: string | null;
+  promotion_text?: string | null;
+  product_tag?: string | null;
+  product_id?: number | null;
+  available_now?: boolean;
+};
+
+/** Video to play/download: the auto reel's own video, else an older result's draft video */
+export function autoReelVideo(
+  autoReel: Pick<AutoReel, "video" | "reel"> | null | undefined,
+): AutoReelVideo | null {
+  if (autoReel?.video?.playback_url) return autoReel.video;
+  const draftVideo = autoReel?.reel?.video;
+  return draftVideo?.playback_url
+    ? {
+        id: draftVideo.id,
+        playback_url: draftVideo.playback_url,
+        thumbnail_url: draftVideo.thumbnail_url,
+        duration_seconds: draftVideo.duration_seconds,
+      }
+    : null;
+}
 
 export type CreateAutoReelPayload = {
   media_asset_id: number;

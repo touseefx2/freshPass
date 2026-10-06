@@ -1795,7 +1795,7 @@
   "autoReelRenderRendering": "クリップを結合中",
   "autoReelRenderSaving": "リールを保存中",
   "autoReelRenderDone": "仕上げ中",
-  "autoReelReadyHint": "下書きとして保存されました。プレビューして、納得したら公開しましょう。",
+  "autoReelReadyHint": "プレビューして、よければ「リールを公開」をタップしてください。それまでは投稿されません。",
   "autoReelSeconds": "{{seconds}}秒",
   "autoReelMissingBefore": "ビフォーのシーンが見つからなかったため、他のシーンで作成しました。",
   "autoReelMissingReveal": "仕上がりのシーンが見つからなかったため、他のシーンで作成しました。",
@@ -1865,5 +1865,6 @@
   "reelViewOnlyHint": "変更できるのは自分が作成したリールのみです。",
   "autoReelViewOnlyHint": "このリールを再試行・公開・編集・削除できるのは、作成した本人のみです。",
   "myReelPerformance": "自分のリールのパフォーマンス",
-  "autoReelTemplate": "テンプレート"
+  "autoReelTemplate": "テンプレート",
+  "autoReelNotPublished": "未公開"
 }

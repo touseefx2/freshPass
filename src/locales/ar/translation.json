@@ -1795,7 +1795,7 @@
   "autoReelRenderRendering": "جارٍ دمج المقاطع",
   "autoReelRenderSaving": "جارٍ حفظ الريل",
   "autoReelRenderDone": "جارٍ الإنهاء",
-  "autoReelReadyHint": "تم حفظه كمسودة. عاينه ثم انشره عندما تكون راضيًا.",
+  "autoReelReadyHint": "عاينه ثم اضغط نشر الريل عندما تكون راضيًا. لا يُنشر شيء قبل ذلك.",
   "autoReelSeconds": "{{seconds}} ث",
   "autoReelMissingBefore": "لم يتم العثور على لقطة قبل القص، لذلك يستخدم الريل اللحظات الأخرى.",
   "autoReelMissingReveal": "لم يتم العثور على لقطة للنتيجة النهائية، لذلك يستخدم الريل اللحظات الأخرى.",
@@ -1865,5 +1865,6 @@
   "reelViewOnlyHint": "يمكنك تعديل الريلز التي أنشأتها فقط.",
   "autoReelViewOnlyHint": "فقط من بدأ هذا الريل يمكنه إعادة المحاولة أو نشره أو تعديله أو حذفه.",
   "myReelPerformance": "أداء ريلزي",
-  "autoReelTemplate": "القالب"
+  "autoReelTemplate": "القالب",
+  "autoReelNotPublished": "غير منشور"
 }

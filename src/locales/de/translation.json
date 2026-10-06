@@ -1795,7 +1795,7 @@
   "autoReelRenderRendering": "Clips werden zusammengefügt",
   "autoReelRenderSaving": "Dein Reel wird gespeichert",
   "autoReelRenderDone": "Wird abgeschlossen",
-  "autoReelReadyHint": "Es ist als Entwurf gespeichert. Sieh es dir an und veröffentliche es, wenn du zufrieden bist.",
+  "autoReelReadyHint": "Sieh es dir an und tippe auf Reel veröffentlichen, wenn du zufrieden bist. Vorher wird nichts gepostet.",
   "autoReelSeconds": "{{seconds}} s",
   "autoReelMissingBefore": "Kein Vorher-Bild gefunden, daher nutzt das Reel die anderen Momente.",
   "autoReelMissingReveal": "Kein Bild vom fertigen Look gefunden, daher nutzt das Reel die anderen Momente.",
@@ -1865,5 +1865,6 @@
   "reelViewOnlyHint": "Du kannst nur Reels ändern, die du erstellt hast.",
   "autoReelViewOnlyHint": "Nur wer dieses Reel gestartet hat, kann es wiederholen, veröffentlichen, bearbeiten oder löschen.",
   "myReelPerformance": "Performance meiner Reels",
-  "autoReelTemplate": "Vorlage"
+  "autoReelTemplate": "Vorlage",
+  "autoReelNotPublished": "Nicht veröffentlicht"
 }

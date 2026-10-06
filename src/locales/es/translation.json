@@ -1795,7 +1795,7 @@
   "autoReelRenderRendering": "Uniendo los clips",
   "autoReelRenderSaving": "Guardando tu reel",
   "autoReelRenderDone": "Finalizando",
-  "autoReelReadyHint": "Se guardó como borrador. Revísalo y publícalo cuando quieras.",
+  "autoReelReadyHint": "Revísalo y toca Publicar reel cuando quieras. No se publica nada hasta entonces.",
   "autoReelSeconds": "{{seconds}} s",
   "autoReelMissingBefore": "No se encontró una toma del antes, así que el reel usa los otros momentos.",
   "autoReelMissingReveal": "No se encontró una toma del resultado final, así que el reel usa los otros momentos.",
@@ -1865,5 +1865,6 @@
   "reelViewOnlyHint": "Solo puedes cambiar los reels que creaste.",
   "autoReelViewOnlyHint": "Solo quien inició este reel puede reintentarlo, publicarlo, editarlo o borrarlo.",
   "myReelPerformance": "Rendimiento de mis reels",
-  "autoReelTemplate": "Plantilla"
+  "autoReelTemplate": "Plantilla",
+  "autoReelNotPublished": "Sin publicar"
 }

@@ -1852,7 +1852,7 @@
   "autoReelRenderRendering": "Putting the clips together",
   "autoReelRenderSaving": "Saving your reel",
   "autoReelRenderDone": "Finishing up",
-  "autoReelReadyHint": "It’s saved as a draft. Preview it, then publish when you’re happy.",
+  "autoReelReadyHint": "Preview it, then tap Publish reel when you’re happy. Nothing is posted until you do.",
   "autoReelSeconds": "{{seconds}}s",
   "autoReelMissingBefore": "No before shot was found, so the reel uses the other moments.",
   "autoReelMissingReveal": "No finished-look shot was found, so the reel uses the other moments.",
@@ -1922,5 +1922,6 @@
   "reelViewOnlyHint": "You can only change reels you created.",
   "autoReelViewOnlyHint": "Only the person who started this reel can retry, publish, edit or delete it.",
   "myReelPerformance": "My reel performance",
-  "autoReelTemplate": "Template"
+  "autoReelTemplate": "Template",
+  "autoReelNotPublished": "Not published"
 }

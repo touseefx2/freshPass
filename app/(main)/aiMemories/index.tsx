@@ -23,7 +23,7 @@ import {
   AUTO_REELS_PER_PAGE,
   listAutoReels,
 } from "@/src/services/reelsService";
-import type { AutoReel } from "@/src/types/reels";
+import { autoReelVideo, type AutoReel } from "@/src/types/reels";
 
 export interface MemorySection {
   weekKey: string;
@@ -111,11 +111,11 @@ function dateKeyFromCreatedAt(createdAt?: string): string | null {
   return match?.[1] ?? null;
 }
 
-/** Ready auto reels → memory items (skips ones whose draft was deleted) */
+/** Ready auto reels → memory items (video is on the auto reel; older ones on their draft) */
 function autoReelsToMemoryItems(autoReels: AutoReel[]): MemoryItem[] {
   const items: MemoryItem[] = [];
   for (const autoReel of autoReels) {
-    const video = autoReel.reel?.video;
+    const video = autoReelVideo(autoReel);
     const dateKey = dateKeyFromCreatedAt(autoReel.created_at);
     if (!video?.playback_url || !dateKey) continue;
     const thumbnail = video.thumbnail_url || "";
