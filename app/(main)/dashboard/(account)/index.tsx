@@ -1230,19 +1230,20 @@ export default function AccountScreen() {
             name={staffBusiness?.name || user.business_name || ""}
             summary={staffBusiness}
             loading={staffBusinessLoading}
-            onPress={
-              user.business_id || staffBusiness?.id
-                ? () =>
-                    router.push({
-                      pathname: "/(main)/businessDetail",
-                      params: {
-                        business_id: String(
-                          user.business_id || staffBusiness?.id,
-                        ),
-                      },
-                    } as any)
-                : undefined
-            }
+            // Tap to open the business profile — off for now (no onPress = no chevron, not tappable)
+            // onPress={
+            //   user.business_id || staffBusiness?.id
+            //     ? () =>
+            //         router.push({
+            //           pathname: "/(main)/businessDetail",
+            //           params: {
+            //             business_id: String(
+            //               user.business_id || staffBusiness?.id,
+            //             ),
+            //           },
+            //         } as any)
+            //     : undefined
+            // }
             theme={theme}
             styles={styles}
           />
