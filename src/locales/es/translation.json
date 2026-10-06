@@ -1766,6 +1766,8 @@
   "monthlyReelsPerMonth": "reels / mes",
   "monthlyReelsFreeToGive": "{{count}} aún disponibles para asignar",
   "monthlyReelsResets": "Se reinicia el {{date}}",
+  "monthlyReelsChecking": "Comprobando tus reels del mes…",
+  "monthlyReelsLoadFailed": "No se pudieron cargar tus reels del mes.",
   "monthlyReelsUsedOf": "Publicados este mes: {{used}} de {{limit}}",
   "monthlyReelsZeroHint": "Con 0, este miembro no puede publicar reels.",
   "monthlyReelsBelowUsedHint": "Ya publicó {{used}} este mes. No se deshace nada; solo no podrá publicar más.",

@@ -1766,6 +1766,8 @@
   "monthlyReelsPerMonth": "ريل / شهر",
   "monthlyReelsFreeToGive": "{{count}} متاحة للتوزيع",
   "monthlyReelsResets": "يُعاد التعيين في {{date}}",
+  "monthlyReelsChecking": "جارٍ التحقق من الريلز الشهرية…",
+  "monthlyReelsLoadFailed": "تعذّر تحميل الريلز الشهرية.",
   "monthlyReelsUsedOf": "المنشور هذا الشهر: {{used}} من {{limit}}",
   "monthlyReelsZeroHint": "عند 0 لا يمكن لهذا الموظف نشر ريلز.",
   "monthlyReelsBelowUsedHint": "نشر بالفعل {{used}} هذا الشهر. لن يُلغى شيء، لكنه لن يستطيع نشر المزيد.",

@@ -262,9 +262,11 @@ export default function AiRequests() {
   // Auto reels list is business-wide for owner and staff
   const showReelsTab =
     !isTryOnFlow && (userRole === "business" || userRole === "staff");
+  // Staff only have reels in AI Tools, so no Tools/Reels switch for them
+  const reelsOnly = showReelsTab && userRole === "staff";
 
   const initialTab: RequestTab =
-    showReelsTab && params.tab === "reels" ? "reels" : "tools";
+    reelsOnly || (showReelsTab && params.tab === "reels") ? "reels" : "tools";
   const [activeTab, setActiveTab] = useState<RequestTab>(initialTab);
 
   useEffect(() => {
@@ -684,7 +686,7 @@ export default function AiRequests() {
   }, [loadingMore, styles.loadingFooter, theme.primary]);
 
   const renderTabs = useCallback(() => {
-    if (!showReelsTab) return null;
+    if (!showReelsTab || reelsOnly) return null;
     return (
       <View style={styles.tabsRow}>
         <TouchableOpacity
@@ -723,7 +725,7 @@ export default function AiRequests() {
         </TouchableOpacity>
       </View>
     );
-  }, [showReelsTab, styles, activeTab, handleTabChange, t]);
+  }, [showReelsTab, reelsOnly, styles, activeTab, handleTabChange, t]);
 
   const renderListHeader = useCallback(() => {
     const errorBanner =

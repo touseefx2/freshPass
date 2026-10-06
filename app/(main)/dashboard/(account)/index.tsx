@@ -793,11 +793,6 @@ export default function AccountScreen() {
       router.push(isCustomer ? "./subscriptionCustomer" : "./subscription");
     } else if (key === "mediaLibrary") {
       router.push("/(main)/aiTools/toolList");
-    } else if (key === "aiReelRequests") {
-      router.push({
-        pathname: "/(main)/aiRequests",
-        params: { tab: "reels" },
-      } as any);
     } else if (key === "aiTools") {
       router.push({
         pathname: "/(main)/aiTools/toolList",
@@ -862,8 +857,6 @@ export default function AccountScreen() {
         return { name: "handshake", family: "community" };
       case "mediaLibrary":
         return { name: "video-library", family: "material" };
-      case "aiReelRequests":
-        return { name: "movie-filter", family: "material" };
       case "aiTools":
         return { name: "smart-toy", family: "material" };
       case "rules":
@@ -989,7 +982,8 @@ export default function AccountScreen() {
           { key: "uploadWork", title: t("uploadYourWork") },
           // Staff post reels for the business within the owner's monthly number
           { key: "mediaLibrary", title: t("mediaLibrary") },
-          { key: "aiReelRequests", title: t("aiReelRequests") },
+          // AI reel requests + generate reel live inside AI Tools
+          { key: "aiTools", title: t("aiTools") },
         ]
       : []),
     ...(isCustomer

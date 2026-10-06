@@ -212,6 +212,29 @@ export const createStyles = (theme: Theme) =>
       textAlign: "center",
       letterSpacing: 0.15,
     },
+    reelLimitRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(10),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.orangeBrown015,
+    },
+    reelLimitText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size16,
+    },
+    reelLimitTextMuted: {
+      color: theme.lightGreen,
+    },
+    featureDisabled: {
+      opacity: 0.45,
+    },
     footerContainer: {
       paddingVertical: moderateHeightScale(44),
       paddingHorizontal: moderateWidthScale(20),

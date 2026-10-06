@@ -1766,6 +1766,8 @@
   "monthlyReelsPerMonth": "Reels / Monat",
   "monthlyReelsFreeToGive": "{{count}} noch frei zu vergeben",
   "monthlyReelsResets": "Zurückgesetzt am {{date}}",
+  "monthlyReelsChecking": "Monatliche Reels werden geprüft…",
+  "monthlyReelsLoadFailed": "Monatliche Reels konnten nicht geladen werden.",
   "monthlyReelsUsedOf": "Diesen Monat gepostet: {{used}} von {{limit}}",
   "monthlyReelsZeroHint": "Bei 0 kann dieses Teammitglied keine Reels posten.",
   "monthlyReelsBelowUsedHint": "Diesen Monat schon {{used}} gepostet. Nichts wird rückgängig gemacht, nur keine weiteren Posts.",

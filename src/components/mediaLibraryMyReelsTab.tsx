@@ -642,9 +642,9 @@ export default function MediaLibraryMyReelsTab({
     [limits, t],
   );
 
-  // This user's monthly reels (owner: what isn't given to staff; staff: their number)
+  // This user's monthly reels (owner: what isn't given to staff). Staff see theirs in AI Tools.
   const monthlyLine = useMemo(() => {
-    if (!monthlyLimitsFresh || !limits) return null;
+    if (isStaff || !monthlyLimitsFresh || !limits) return null;
     const blocked = monthlyReelsBlockedMessage(limits, t);
     if (blocked) return { text: blocked, blocked: true };
     if (typeof limits.reels_remaining_this_month !== "number") return null;
@@ -658,7 +658,7 @@ export default function MediaLibraryMyReelsTab({
         .join(" · "),
       blocked: false,
     };
-  }, [limits, monthlyLimitsFresh, t]);
+  }, [isStaff, limits, monthlyLimitsFresh, t]);
 
   const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
@@ -1455,6 +1455,7 @@ export default function MediaLibraryMyReelsTab({
             </View>
             <Text style={styles.fabMenuOptionLabel}>{t("uploadVideo")}</Text>
           </TouchableOpacity>
+          {isStaff ? null : (
           <TouchableOpacity
             style={styles.fabMenuOption}
             onPress={onAutoReelPress}
@@ -1473,6 +1474,7 @@ export default function MediaLibraryMyReelsTab({
               {t("autoReelIntroTitle")}
             </Text>
           </TouchableOpacity>
+          )}
         </View>
       ) : null}
 
