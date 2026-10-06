@@ -1796,5 +1796,7 @@
   "autoReelPreparing": "Video wird vorbereitet… {{percent}} %",
   "autoReelVideoTooLarge": "Dieses Video ist größer als 200 MB. Kürze es oder nimm ein kürzeres auf.",
   "monthlyReelsLoadFailed": "Monatliche Reels konnten nicht geladen werden.",
-  "monthlyReelsSavedNote": "Die monatlichen Reels wurden gespeichert, die anderen Änderungen nicht."
+  "monthlyReelsSavedNote": "Die monatlichen Reels wurden gespeichert, die anderen Änderungen nicht.",
+  "aiReelRequests": "KI-Reel-Anfragen",
+  "monthlyReelsYouCanPost": "Du kannst diesen Monat noch {{count}} Reels posten"
 }

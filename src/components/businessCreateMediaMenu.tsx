@@ -184,6 +184,7 @@ export default function BusinessCreateMediaMenu({
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
+  const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
 
   const [limits, setLimits] = useState<MediaLimits | null>(null);
@@ -252,7 +253,7 @@ export default function BusinessCreateMediaMenu({
   }, [closeAll, limits, monthlyLimitsFresh, showBanner, t]);
 
   const ensureCanUploadReel = useCallback((): boolean => {
-    const gate = getReelUploadGate(businessStatus);
+    const gate = getReelUploadGate(businessStatus, userRole);
     if (gate === "stripe") {
       closeAll();
       dispatch(setStripeConnectModalVisible(true));
@@ -264,7 +265,7 @@ export default function BusinessCreateMediaMenu({
       return false;
     }
     return ensureMonthlyReelsLeft();
-  }, [businessStatus, closeAll, dispatch, ensureMonthlyReelsLeft]);
+  }, [businessStatus, userRole, closeAll, dispatch, ensureMonthlyReelsLeft]);
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -426,7 +427,7 @@ export default function BusinessCreateMediaMenu({
   }, [closeAll, ensureCanUploadReel, router]);
 
   const openReelPicker = useCallback(() => {
-    const gate = getReelUploadGate(businessStatus);
+    const gate = getReelUploadGate(businessStatus, userRole);
     if (gate === "stripe") {
       closeAll();
       dispatch(setStripeConnectModalVisible(true));
@@ -440,7 +441,7 @@ export default function BusinessCreateMediaMenu({
     if (!ensureMonthlyReelsLeft()) return;
     // Keep parent `visible` true so center tab stays as X while picker is open.
     setReelPickerVisible(true);
-  }, [businessStatus, closeAll, dispatch, ensureMonthlyReelsLeft]);
+  }, [businessStatus, userRole, closeAll, dispatch, ensureMonthlyReelsLeft]);
 
   const handleMenuAction = useCallback(
     (action: CreateMenuAction) => {

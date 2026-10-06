@@ -1796,5 +1796,7 @@
   "autoReelPreparing": "Préparation de la vidéo… {{percent}} %",
   "autoReelVideoTooLarge": "Cette vidéo dépasse 200 Mo. Coupez-la ou enregistrez-en une plus courte.",
   "monthlyReelsLoadFailed": "Impossible de charger les reels mensuels.",
-  "monthlyReelsSavedNote": "Les reels mensuels ont été enregistrés, mais pas les autres modifications."
+  "monthlyReelsSavedNote": "Les reels mensuels ont été enregistrés, mais pas les autres modifications.",
+  "aiReelRequests": "Demandes de reels IA",
+  "monthlyReelsYouCanPost": "Vous pouvez publier encore {{count}} reels ce mois-ci"
 }

@@ -1796,5 +1796,7 @@
   "autoReelPreparing": "動画を準備中… {{percent}}%",
   "autoReelVideoTooLarge": "この動画は200MBを超えています。トリミングするか短く撮り直してください。",
   "monthlyReelsLoadFailed": "月間リールを読み込めませんでした。",
-  "monthlyReelsSavedNote": "月間リールは保存されましたが、その他の変更は保存されていません。"
+  "monthlyReelsSavedNote": "月間リールは保存されましたが、その他の変更は保存されていません。",
+  "aiReelRequests": "AIリールのリクエスト",
+  "monthlyReelsYouCanPost": "今月はあと{{count}}本投稿できます"
 }

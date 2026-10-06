@@ -1769,7 +1769,9 @@ export default function ReelsFeedScreen() {
   }>();
   const isPreviewMode = params.mode === "preview";
   /** Business Media Library → own published reels (vertical only, no report / category swipe). */
-  const isOwnerMode = params.mode === "owner" && isBusiness;
+  // Staff manage the business's reels too (backend: any reel in their business)
+  const isOwnerMode =
+    params.mode === "owner" && (isBusiness || user.userRole === "staff");
   const shouldOpenComments = params.open_comments === "1";
   const initialTab: "for_you" | "following" =
     params.tab === "following" ? "following" : "for_you";

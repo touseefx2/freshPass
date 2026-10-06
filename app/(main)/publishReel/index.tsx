@@ -32,6 +32,7 @@ import { fetchMyProducts } from "@/src/services/productService";
 import type { ShopProduct } from "@/src/types/shopProduct";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
+import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
 import {
   createReel,
   getMyReel,
@@ -298,6 +299,11 @@ export default function PublishReelScreen() {
   const dispatch = useAppDispatch();
   const { showBanner } = useNotificationContext();
   const businessStatus = useAppSelector((s) => s.user.businessStatus);
+  const userRole = useAppSelector((s) => s.user.userRole);
+  // Staff: their owner's business (services list is read per business)
+  const userBusinessId = useAppSelector(
+    (s) => s.user.business_id ?? s.user.businessStatus?.business_id ?? null,
+  );
   const completeProfileCategory = useAppSelector(
     (s) => s.completeProfile.businessCategory,
   );
@@ -393,22 +399,14 @@ export default function PublishReelScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const svcRes = await ApiService.get<{
-          success: boolean;
-          data?: ServiceOption[] | { data?: ServiceOption[] };
-        }>(businessEndpoints.services);
-
-        const svcData = Array.isArray(svcRes?.data)
-          ? svcRes.data
-          : Array.isArray((svcRes?.data as any)?.data)
-            ? (svcRes.data as any).data
-            : [];
-        setServices(svcData);
+        setServices(
+          await fetchReelServiceOptions({ userRole, businessId: userBusinessId }),
+        );
       } catch (error) {
         Logger.error("Failed to load publish reel services:", error);
       }
     })();
-  }, []);
+  }, [userRole, userBusinessId]);
 
   useEffect(() => {
     (async () => {

@@ -259,7 +259,9 @@ export default function AiRequests() {
   const headerTitle = isTryOnFlow ? t("tryOnList") : t("aiRequests");
   const shouldFilterHairTryon = isTryOnFlow || userRole !== "business";
   const canFetchHistory = Boolean(accessToken) && !isGuest;
-  const showReelsTab = !isTryOnFlow && userRole === "business";
+  // Auto reels list is business-wide for owner and staff
+  const showReelsTab =
+    !isTryOnFlow && (userRole === "business" || userRole === "staff");
 
   const initialTab: RequestTab =
     showReelsTab && params.tab === "reels" ? "reels" : "tools";

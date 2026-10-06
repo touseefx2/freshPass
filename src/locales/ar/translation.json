@@ -1796,5 +1796,7 @@
   "autoReelPreparing": "جارٍ تجهيز الفيديو… {{percent}}%",
   "autoReelVideoTooLarge": "حجم هذا الفيديو أكبر من 200 ميغابايت. قصّه أو سجّل فيديو أقصر.",
   "monthlyReelsLoadFailed": "تعذر تحميل الريلز الشهرية.",
-  "monthlyReelsSavedNote": "تم حفظ الريلز الشهرية، لكن لم تُحفظ التغييرات الأخرى."
+  "monthlyReelsSavedNote": "تم حفظ الريلز الشهرية، لكن لم تُحفظ التغييرات الأخرى.",
+  "aiReelRequests": "طلبات ريلز الذكاء الاصطناعي",
+  "monthlyReelsYouCanPost": "يمكنك نشر {{count}} ريلز إضافية هذا الشهر"
 }

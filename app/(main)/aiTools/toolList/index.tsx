@@ -15,6 +15,7 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import MediaLibraryMyReelsTab from "@/src/components/mediaLibraryMyReelsTab";
+import { canManageReels } from "@/src/utils/reelUploadGate";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -96,8 +97,10 @@ export default function ToolList() {
 
   const isCustomer = userRole === "customer";
   const isBusiness = userRole === "business";
+  // Owner and staff both manage the business's reels (staff within their monthly number)
+  const canManageBusinessReels = canManageReels(userRole);
   const showAiTools =
-    !isBusiness || params.mode === "aiTools" || isCustomer;
+    !canManageBusinessReels || params.mode === "aiTools" || isCustomer;
 
   const [tutorialVideoActive, setTutorialVideoActive] = useState(false);
 
@@ -382,7 +385,7 @@ export default function ToolList() {
     <View style={styles.safeArea}>
       <StackHeader title={headerTitle} />
 
-      {isBusiness && !showAiTools ? (
+      {canManageBusinessReels && !showAiTools ? (
         <MediaLibraryMyReelsTab highlightReelId={params.highlightReelId} />
       ) : (
         <ScrollView

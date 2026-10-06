@@ -86,6 +86,9 @@ export const businessEndpoints = {
   serviceTemplates: (categoryId: number) =>
     `/api/service-templates?category_id=${categoryId}`,
   services: `/api/services?status=active`,
+  /** Public read of a business's services — staff use this for their owner's business */
+  servicesForBusiness: (businessId: number | string) =>
+    `/api/services?business_id=${businessId}`,
   profile: `/api/business/profile`,
   businesses: (categoryIds?: number | number[]) => {
     if (categoryIds) {

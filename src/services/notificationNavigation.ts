@@ -538,7 +538,7 @@ export function navigateFromNotificationData(
     const status =
       typeof data.status === "string" ? data.status.toLowerCase() : "";
 
-    if (userRole !== "business" || reelId == null) {
+    if ((userRole !== "business" && userRole !== "staff") || reelId == null) {
       Logger.log(
         "------>navigateFromNotificationData (reel_generation) -> skipped",
         { userRole, reelId },

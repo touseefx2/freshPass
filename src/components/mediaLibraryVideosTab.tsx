@@ -150,6 +150,7 @@ export default function MediaLibraryVideosTab() {
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
+  const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector(
     (state) => state.user.businessStatus,
   );
@@ -291,7 +292,7 @@ export default function MediaLibraryVideosTab() {
   );
 
   const ensureCanUploadReel = useCallback((): boolean => {
-    const gate = getReelUploadGate(businessStatus);
+    const gate = getReelUploadGate(businessStatus, userRole);
     if (gate === "stripe") {
       dispatch(setStripeConnectModalVisible(true));
       return false;
@@ -301,7 +302,7 @@ export default function MediaLibraryVideosTab() {
       return false;
     }
     return true;
-  }, [businessStatus, dispatch]);
+  }, [businessStatus, userRole, dispatch]);
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
