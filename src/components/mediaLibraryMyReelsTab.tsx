@@ -446,10 +446,11 @@ export default function MediaLibraryMyReelsTab({
   const listRef = useRef<FlatList<OwnerReel>>(null);
 
   const [filter, setFilter] = useState<StatusFilter>("all");
-  // "My reels" (mine=1) vs the whole business. Staff start on their own.
-  const [scope, setScope] = useState<"mine" | "all">(
-    userRole === "staff" ? "mine" : "all",
-  );
+  // Staff only ever see their own reels here; the owner can switch
+  // between "My reels" (mine=1) and the whole business
+  const isStaff = userRole === "staff";
+  const [ownerScope, setOwnerScope] = useState<"mine" | "all">("all");
+  const scope: "mine" | "all" = isStaff ? "mine" : ownerScope;
   const [reels, setReels] = useState<OwnerReel[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -468,13 +469,15 @@ export default function MediaLibraryMyReelsTab({
     moderateHeightScale(FAB_BOTTOM_EXTRA);
 
   const fetchSummary = useCallback(async () => {
+    // Business-wide numbers — /reels/mine/stats has no "mine" filter, so not for staff
+    if (isStaff) return;
     try {
       const stats = await getBusinessReelStats();
       setSummary(stats);
     } catch (error) {
       Logger.error("Failed to load business reel stats:", error);
     }
-  }, []);
+  }, [isStaff]);
 
   const fetchPage = useCallback(
     async (pageToLoad: number, append: boolean) => {
@@ -1228,6 +1231,7 @@ export default function MediaLibraryMyReelsTab({
 
   return (
     <View style={styles.root}>
+      {isStaff ? null : (
       <TouchableOpacity
         style={styles.statsCard}
         activeOpacity={0.85}
@@ -1271,6 +1275,7 @@ export default function MediaLibraryMyReelsTab({
           color={theme.lightGreen}
         />
       </TouchableOpacity>
+      )}
 
       {limitMessage ? (
         <View style={styles.tipRow}>
@@ -1298,6 +1303,7 @@ export default function MediaLibraryMyReelsTab({
         </View>
       ) : null}
 
+      {isStaff ? null : (
       <View style={styles.scopeTrack} accessibilityRole="tablist">
         {(["mine", "all"] as const).map((key) => {
           const active = scope === key;
@@ -1305,7 +1311,7 @@ export default function MediaLibraryMyReelsTab({
             <TouchableOpacity
               key={key}
               style={[styles.scopeSeg, active && styles.scopeSegActive]}
-              onPress={() => setScope(key)}
+              onPress={() => setOwnerScope(key)}
               activeOpacity={0.8}
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
@@ -1325,6 +1331,7 @@ export default function MediaLibraryMyReelsTab({
           );
         })}
       </View>
+      )}
 
       <View style={styles.filterTrack}>
         {filters.map((key) => (
