@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
@@ -29,7 +30,8 @@ import CustomToggle from "@/src/components/customToggle";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
 import { fetchMyProducts } from "@/src/services/productService";
-import type { ShopProduct } from "@/src/types/shopProduct";
+import { isInStock, type ShopProduct } from "@/src/types/shopProduct";
+import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
@@ -169,6 +171,109 @@ const createStyles = (theme: Theme) =>
     categoryOptionTextActive: {
       fontFamily: fonts.fontBold,
     },
+    productPickerWrap: {
+      borderTopWidth: 1,
+      borderTopColor: theme.lightGreen015,
+      maxHeight: moderateHeightScale(300),
+    },
+    productThumbSmall: {
+      width: moderateWidthScale(36),
+      height: moderateWidthScale(36),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen07,
+    },
+    productThumbEmpty: {
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    productOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.lightGreen015,
+    },
+    productThumb: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen07,
+    },
+    productDimmed: {
+      opacity: 0.45,
+    },
+    productTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(2),
+    },
+    productName: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    productMeta: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    productBadge: {
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(999),
+    },
+    productBadgeHidden: {
+      backgroundColor: theme.lightGreen07,
+    },
+    productBadgeStock: {
+      backgroundColor: theme.orangeBrown01,
+    },
+    productBadgeText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontBold,
+    },
+    productBadgeTextHidden: {
+      color: theme.lightGreen,
+    },
+    productBadgeTextStock: {
+      color: theme.orangeBrownText,
+    },
+    productEmpty: {
+      alignItems: "center",
+      gap: moderateHeightScale(6),
+      paddingVertical: moderateHeightScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+    },
+    productEmptyIcon: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: moderateHeightScale(2),
+    },
+    productEmptyTitle: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    productEmptyText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size17,
+    },
+    productHelper: {
+      marginTop: moderateHeightScale(6),
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size16,
+    },
     chipRow: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -302,6 +407,8 @@ export default function PublishReelScreen() {
   const { showBanner } = useNotificationContext();
   const businessStatus = useAppSelector((s) => s.user.businessStatus);
   const userRole = useAppSelector((s) => s.user.userRole);
+  // Staff have no product inventory yet — hidden until the backend supports it
+  const canLinkProduct = userRole !== "staff";
   // Staff: their owner's business (services list is read per business)
   const userBusinessId = useAppSelector(
     (s) => s.user.business_id ?? s.user.businessStatus?.business_id ?? null,
@@ -389,7 +496,10 @@ export default function PublishReelScreen() {
   const [promotionText, setPromotionText] = useState("");
   const [productTag, setProductTag] = useState("");
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [publishedProducts, setPublishedProducts] = useState<ShopProduct[]>([]);
+  /** The user's inventory — only published products can be linked */
+  const [products, setProducts] = useState<ShopProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [availableNow, setAvailableNow] = useState(false);
   const [categoryId, setCategoryId] = useState<number | null>(
@@ -427,16 +537,37 @@ export default function PublishReelScreen() {
     })();
   }, [userRole, userBusinessId]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { products } = await fetchMyProducts({ published: "1" });
-        setPublishedProducts(products);
-      } catch {
-        // non-critical
-      }
-    })();
+  const loadProducts = useCallback(async () => {
+    setProductsError(false);
+    try {
+      const { products: list } = await fetchMyProducts({ per_page: 100 });
+      // Shop-ready products first; hidden ones stay listed so the user sees why
+      setProducts(
+        [...list].sort((a, b) => Number(b.published) - Number(a.published)),
+      );
+    } catch (error) {
+      Logger.error("Failed to load products for reel:", error);
+      setProductsError(true);
+    } finally {
+      setProductsLoading(false);
+    }
   }, []);
+
+  // Also on return — products may have been added in Products & Inventory
+  useFocusEffect(
+    useCallback(() => {
+      if (canLinkProduct) void loadProducts();
+    }, [canLinkProduct, loadProducts]),
+  );
+
+  // Editing: the reel's linked product may be missing from the list (e.g. deleted)
+  const selectedProduct =
+    selectedProductId == null
+      ? null
+      : (products.find((p) => Number(p.id) === selectedProductId) ??
+        (existing?.product && Number(existing.product.id) === selectedProductId
+          ? existing.product
+          : null));
 
   // New reel: ensure business status (and thus category) is available.
   useEffect(() => {
@@ -957,122 +1088,223 @@ export default function PublishReelScreen() {
             />
           </View>
 
-          <View style={styles.field}>
-            <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
-              {t("productTag")}
-            </Text>
-            {publishedProducts.length > 0 ? (
-              <>
+          {canLinkProduct ? (
+            <View style={styles.field}>
+              <Text style={[styles.label, { marginBottom: moderateHeightScale(8) }]}>
+                {t("productTag")}
+              </Text>
+              <View style={styles.categoryShell}>
                 <TouchableOpacity
-                  style={styles.input}
-                  onPress={() => setShowProductPicker(!showProductPicker)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.75}
+                  onPress={() => setShowProductPicker((open) => !open)}
+                  style={styles.categoryRow}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("productTag")}
+                  accessibilityValue={{ text: selectedProduct?.name || productTag || t("none") }}
+                  accessibilityState={{ expanded: showProductPicker }}
                 >
-                  <Text
-                    style={{
-                      fontSize: fontSize.size14,
-                      fontFamily: fonts.fontRegular,
-                      color: selectedProductId
-                        ? theme.text
-                        : theme.lightGreen5,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {selectedProductId
-                      ? publishedProducts.find(
-                          (p) => Number(p.id) === selectedProductId,
-                        )?.name ?? t("selectProduct")
-                      : t("selectProduct")}
-                  </Text>
+                  {selectedProduct?.imageUri ? (
+                    <Image
+                      source={{ uri: selectedProduct.imageUri }}
+                      style={styles.productThumbSmall}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View style={[styles.productThumbSmall, styles.productThumbEmpty]}>
+                      <MaterialIcons
+                        name="inventory-2"
+                        size={moderateWidthScale(16)}
+                        color={theme.buttonBack}
+                      />
+                    </View>
+                  )}
+                  <View style={styles.categoryTextCol}>
+                    <Text style={styles.categoryMeta}>
+                      {showProductPicker
+                        ? t("hideProducts")
+                        : selectedProduct || productTag
+                          ? t("changeProduct")
+                          : t("linkProduct")}
+                    </Text>
+                    <Text style={styles.categoryValue} numberOfLines={1}>
+                      {selectedProduct?.name || productTag || t("none")}
+                    </Text>
+                  </View>
+                  <MaterialIcons
+                    name={showProductPicker ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                    size={moderateWidthScale(22)}
+                    color={theme.lightGreen}
+                  />
                 </TouchableOpacity>
+
                 {showProductPicker ? (
-                  <View
-                    style={{
-                      borderWidth: 1,
-                      borderColor: theme.lightGreen2,
-                      borderRadius: moderateWidthScale(12),
-                      backgroundColor: theme.white,
-                      marginTop: moderateHeightScale(4),
-                      maxHeight: moderateHeightScale(180),
-                    }}
+                  <ScrollView
+                    style={styles.productPickerWrap}
+                    nestedScrollEnabled
+                    keyboardShouldPersistTaps="handled"
                   >
-                    <ScrollView nestedScrollEnabled>
+                    {productsLoading ? (
+                      <View style={styles.categoryLoading}>
+                        <ActivityIndicator size="small" color={theme.darkGreen} />
+                      </View>
+                    ) : productsError ? (
                       <TouchableOpacity
-                        style={{
-                          paddingVertical: moderateHeightScale(10),
-                          paddingHorizontal: moderateWidthScale(14),
-                          borderBottomWidth: 1,
-                          borderBottomColor: theme.lightGreen05,
-                        }}
+                        style={styles.productEmpty}
                         onPress={() => {
-                          setSelectedProductId(null);
-                          setProductTag("");
-                          setShowProductPicker(false);
+                          setProductsLoading(true);
+                          void loadProducts();
                         }}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
                       >
-                        <Text
-                          style={{
-                            fontSize: fontSize.size13,
-                            fontFamily: fonts.fontRegular,
-                            color: theme.lightGreen5,
-                          }}
-                        >
-                          {t("none")}
+                        <MaterialIcons
+                          name="refresh"
+                          size={moderateWidthScale(22)}
+                          color={theme.buttonBack}
+                        />
+                        <Text style={styles.productEmptyTitle}>
+                          {t("productsLoadFailed")}
                         </Text>
+                        <Text style={styles.productEmptyText}>{t("tapToRetry")}</Text>
                       </TouchableOpacity>
-                      {publishedProducts.map((p) => (
+                    ) : products.length === 0 ? (
+                      <View style={styles.productEmpty}>
+                        <View style={styles.productEmptyIcon}>
+                          <MaterialIcons
+                            name="inventory-2"
+                            size={moderateWidthScale(22)}
+                            color={theme.buttonBack}
+                          />
+                        </View>
+                        <Text style={styles.productEmptyTitle}>
+                          {t("noInventoryProducts")}
+                        </Text>
+                        <Text style={styles.productEmptyText}>
+                          {userRole === "business"
+                            ? t("noInventoryProductsHintOwner")
+                            : t("noInventoryProductsHintStaff")}
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
                         <TouchableOpacity
-                          key={p.id}
-                          style={{
-                            paddingVertical: moderateHeightScale(10),
-                            paddingHorizontal: moderateWidthScale(14),
-                            backgroundColor:
-                              Number(p.id) === selectedProductId
-                                ? theme.lightGreen05
-                                : undefined,
-                          }}
+                          style={[
+                            styles.categoryOption,
+                            !selectedProductId && !productTag && styles.categoryOptionActive,
+                          ]}
                           onPress={() => {
-                            setSelectedProductId(Number(p.id));
-                            setProductTag(p.name);
+                            setSelectedProductId(null);
+                            setProductTag("");
                             setShowProductPicker(false);
                           }}
+                          activeOpacity={0.7}
                         >
-                          <Text
-                            style={{
-                              fontSize: fontSize.size13,
-                              fontFamily: fonts.fontBold,
-                              color: theme.darkGreen,
-                            }}
-                            numberOfLines={1}
-                          >
-                            {p.name}
-                          </Text>
-                          <Text
-                            style={{
-                              fontSize: fontSize.size11,
-                              fontFamily: fonts.fontRegular,
-                              color: theme.lightGreen5,
-                            }}
-                          >
-                            {p.brand} · ${p.sellingPrice.toFixed(2)}
-                          </Text>
+                          <Text style={styles.categoryOptionText}>{t("none")}</Text>
+                          {!selectedProductId && !productTag ? (
+                            <MaterialIcons
+                              name="check"
+                              size={moderateWidthScale(18)}
+                              color={theme.darkGreen}
+                            />
+                          ) : null}
                         </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
+                        {products.map((p) => {
+                          const active = Number(p.id) === selectedProductId;
+                          const hidden = !p.published;
+                          const outOfStock = !hidden && !isInStock(p);
+                          return (
+                            <TouchableOpacity
+                              key={p.id}
+                              style={[
+                                styles.productOption,
+                                active && styles.categoryOptionActive,
+                              ]}
+                              onPress={() => {
+                                setSelectedProductId(Number(p.id));
+                                setProductTag(p.name);
+                                setShowProductPicker(false);
+                              }}
+                              // Hidden from the shop → nothing for customers to buy
+                              disabled={hidden}
+                              activeOpacity={0.7}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: active, disabled: hidden }}
+                            >
+                              {p.imageUri ? (
+                                <Image
+                                  source={{ uri: p.imageUri }}
+                                  style={[styles.productThumb, hidden && styles.productDimmed]}
+                                  contentFit="cover"
+                                />
+                              ) : (
+                                <View
+                                  style={[
+                                    styles.productThumb,
+                                    styles.productThumbEmpty,
+                                    hidden && styles.productDimmed,
+                                  ]}
+                                >
+                                  <MaterialIcons
+                                    name="inventory-2"
+                                    size={moderateWidthScale(18)}
+                                    color={theme.buttonBack}
+                                  />
+                                </View>
+                              )}
+                              <View style={[styles.productTextCol, hidden && styles.productDimmed]}>
+                                <Text
+                                  style={[
+                                    styles.productName,
+                                    active && styles.categoryOptionTextActive,
+                                  ]}
+                                  numberOfLines={1}
+                                >
+                                  {p.name}
+                                </Text>
+                                <Text style={styles.productMeta} numberOfLines={1}>
+                                  {[p.brand, formatShopPrice(p.sellingPrice)]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                </Text>
+                              </View>
+                              {hidden || outOfStock ? (
+                                <View
+                                  style={[
+                                    styles.productBadge,
+                                    hidden ? styles.productBadgeHidden : styles.productBadgeStock,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.productBadgeText,
+                                      hidden ? styles.productBadgeTextHidden : styles.productBadgeTextStock,
+                                    ]}
+                                  >
+                                    {hidden ? t("productHiddenFromShop") : t("outOfStock")}
+                                  </Text>
+                                </View>
+                              ) : active ? (
+                                <MaterialIcons
+                                  name="check"
+                                  size={moderateWidthScale(18)}
+                                  color={theme.darkGreen}
+                                />
+                              ) : null}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </>
+                    )}
+                  </ScrollView>
                 ) : null}
-              </>
-            ) : (
-              <TextInput
-                style={styles.input}
-                value={productTag}
-                onChangeText={setProductTag}
-                placeholder={t("productTagPlaceholder")}
-                placeholderTextColor={theme.lightGreen5}
-                maxLength={255}
-              />
-            )}
-          </View>
+              </View>
+              <Text style={styles.productHelper}>
+                {products.some((p) => !p.published)
+                  ? t("productTagHelperHidden")
+                  : t("productTagHelper")}
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.field}>
             <View style={styles.switchRow}>
