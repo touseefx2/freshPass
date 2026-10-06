@@ -15,6 +15,7 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import MediaLibraryMyReelsTab from "@/src/components/mediaLibraryMyReelsTab";
+import ReelTypePicker, { type ReelType } from "@/src/components/ReelTypePicker";
 import { canManageReels } from "@/src/utils/reelUploadGate";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -174,10 +175,20 @@ export default function ToolList() {
     } catch {}
   };
 
+  // "Generate Reel" opens a choice: Shotstack template reel or AI auto reel
+  const [reelTypeOpen, setReelTypeOpen] = useState(false);
+  const handleReelTypeSelect = (type: ReelType) => {
+    setReelTypeOpen(false);
+    router.push(
+      (type === "template"
+        ? "/(main)/templateReels"
+        : "/(main)/reelTemplates") as any,
+    );
+  };
+
   const handleFeaturePress = (featureId: string, paramTitle: string) => {
-    // AI Auto Reels (raw video + template) replace the old AI generate-reel endpoint
     if (featureId === "generateReel") {
-      router.push("/(main)/reelTemplates" as any);
+      setReelTypeOpen((open) => !open);
       return;
     }
     router.push({
@@ -342,6 +353,11 @@ export default function ToolList() {
                   }
                 }}
                 activeOpacity={0.82}
+                accessibilityState={
+                  feature.id === "generateReel"
+                    ? { expanded: reelTypeOpen }
+                    : undefined
+                }
               >
                 <LinearGradient
                   colors={[
@@ -377,6 +393,10 @@ export default function ToolList() {
           );
         })}
       </View>
+
+      {isBusiness ? (
+        <ReelTypePicker visible={reelTypeOpen} onSelect={handleReelTypeSelect} />
+      ) : null}
     </>
   );
 
@@ -435,6 +455,7 @@ export default function ToolList() {
             onPress={() => handleFeaturePress("generateReel", "Generate Reel")}
             activeOpacity={0.82}
             accessibilityRole="button"
+            accessibilityState={{ expanded: reelTypeOpen }}
           >
             <LinearGradient
               colors={[
@@ -466,6 +487,8 @@ export default function ToolList() {
           </TouchableOpacity>
         </View>
       </View>
+
+      <ReelTypePicker visible={reelTypeOpen} onSelect={handleReelTypeSelect} />
     </>
   );
 

@@ -409,12 +409,6 @@ export default function BusinessCreateMediaMenu({
     t,
   ]);
 
-  const handleGenerateFromTemplate = useCallback(() => {
-    if (!ensureCanUploadReel()) return;
-    closeAll();
-    router.push("/(main)/reelTemplates" as any);
-  }, [closeAll, ensureCanUploadReel, router]);
-
   const openReelPicker = useCallback(() => {
     const gate = getReelUploadGate(businessStatus, userRole);
     if (gate === "stripe") {
@@ -548,7 +542,6 @@ export default function BusinessCreateMediaMenu({
         onClose={closeAll}
         onRecordPress={handleRecord}
         onUploadPress={handleUpload}
-        onGenerateFromTemplatePress={handleGenerateFromTemplate}
         bottomOffset={reelPickerBottom}
         tabBarClearance={tabBarClearance}
       />

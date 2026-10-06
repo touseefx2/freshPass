@@ -16,6 +16,8 @@ import type {
   PublishAutoReelPayload,
   CreateReelPayload,
   FeedReel,
+  GenerateReelPayload,
+  GenerateReelResponse,
   GenerationStatusResponse,
   LikeResponse,
   MyLookListItem,
@@ -26,6 +28,7 @@ import type {
   ReelEventType,
   ReelLookResponse,
   ReelPerformanceStats,
+  ReelTemplate,
   ReelTryOnStartResponse,
   ReelTryOnStatusResponse,
   ReportReason,
@@ -46,6 +49,30 @@ type Envelope<T> = {
   message?: string;
   data: T;
 };
+
+/** Active Shotstack reel templates (optional category filter). */
+export async function listReelTemplates(
+  category?: string,
+): Promise<ReelTemplate[]> {
+  const response = await ApiService.get<Envelope<ReelTemplate[]>>(
+    reelTemplateEndpoints.list({ category }),
+  );
+  return response?.data ?? [];
+}
+
+/** POST /api/reels/generate — counts toward the monthly reel limit (422 on `reel`). */
+export async function generateReelFromTemplate(
+  payload: GenerateReelPayload,
+): Promise<GenerateReelResponse> {
+  const response = await ApiService.post<Envelope<GenerateReelResponse>>(
+    reelTemplateEndpoints.generate,
+    payload,
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to start generation");
+  }
+  return response.data;
+}
 
 export const AUTO_REELS_PER_PAGE = 20;
 

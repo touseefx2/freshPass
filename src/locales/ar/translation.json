@@ -1868,5 +1868,12 @@
   "autoReelTemplate": "القالب",
   "autoReelNotPublished": "غير منشور",
   "reelTooShortTitle": "الفيديو قصير جدًا",
-  "reelTooShortMessage": "يجب ألا تقل مدة الفيديو عن {{min_seconds}} ثوانٍ. مدة هذا الفيديو {{length}}. وسّع حدود القص أو أضف مقطعًا آخر."
+  "reelTooShortMessage": "يجب ألا تقل مدة الفيديو عن {{min_seconds}} ثوانٍ. مدة هذا الفيديو {{length}}. وسّع حدود القص أو أضف مقطعًا آخر.",
+  "reelTypeHeading": "كيف تريد إنشاءه؟",
+  "reelTypeTemplateTitle": "ريل بقالب",
+  "reelTypeTemplateDesc": "اختر قالبًا جاهزًا وأضف صورك أو فيديوهاتك ونصًا.",
+  "reelTypeAutoTitle": "ريل تلقائي بالذكاء الاصطناعي",
+  "reelTypeAutoDesc": "ارفع فيديو خامًا واحدًا. يجد الذكاء الاصطناعي أفضل اللحظات ويقص الريل.",
+  "reelTypeStart": "ابدأ",
+  "videoTooLong": "يجب ألا تزيد مدة الفيديو عن {{max_seconds}} ثانية."
 }

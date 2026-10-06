@@ -1868,5 +1868,12 @@
   "autoReelTemplate": "Plantilla",
   "autoReelNotPublished": "Sin publicar",
   "reelTooShortTitle": "Video demasiado corto",
-  "reelTooShortMessage": "Los videos deben durar al menos {{min_seconds}} segundos. Este dura {{length}}. Amplía el recorte o añade otro clip."
+  "reelTooShortMessage": "Los videos deben durar al menos {{min_seconds}} segundos. Este dura {{length}}. Amplía el recorte o añade otro clip.",
+  "reelTypeHeading": "¿Cómo quieres crearlo?",
+  "reelTypeTemplateTitle": "Reel con plantilla",
+  "reelTypeTemplateDesc": "Elige una plantilla lista y añade tus fotos o videos y texto.",
+  "reelTypeAutoTitle": "Reel automático IA",
+  "reelTypeAutoDesc": "Sube un video sin editar. La IA encuentra los mejores momentos y crea tu reel.",
+  "reelTypeStart": "Empezar",
+  "videoTooLong": "El video debe durar {{max_seconds}} segundos o menos."
 }

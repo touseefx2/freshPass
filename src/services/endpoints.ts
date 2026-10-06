@@ -716,9 +716,19 @@ export const mediaEndpoints = {
 };
 
 /**
- * Shotstack reel template endpoints (legacy reels still report generation status)
+ * Shotstack template reels — pick a template, fill its media/text slots, render
  */
 export const reelTemplateEndpoints = {
+  list: (params?: { category?: string; per_page?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.category) queryParams.append("category", params.category);
+    if (params?.per_page != null)
+      queryParams.append("per_page", String(params.per_page));
+    const query = queryParams.toString();
+    return `/api/reel-templates${query ? `?${query}` : ""}`;
+  },
+  getById: (id: number | string) => `/api/reel-templates/${id}`,
+  generate: `/api/reels/generate`,
   generationStatus: (reelId: number | string) =>
     `/api/reels/${reelId}/generation-status`,
 };

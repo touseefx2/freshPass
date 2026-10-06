@@ -902,7 +902,7 @@ export default function MediaLibraryMyReelsTab({
               {
                 text: t("tryAgain"),
                 onPress: () =>
-                  router.push("/(main)/reelTemplates" as any),
+                  router.push("/(main)/templateReels" as any),
               },
             ],
           );

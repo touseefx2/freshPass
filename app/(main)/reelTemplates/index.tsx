@@ -1385,7 +1385,7 @@ export default function ReelTemplatesScreen() {
 
   return (
     <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
-      <StackHeader title={t("reelTemplates")} />
+      <StackHeader title={t("autoReelIntroTitle")} />
 
       <KeyboardAwareScrollView
         style={styles.flex}

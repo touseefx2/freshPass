@@ -16,11 +16,18 @@ import StackHeader from "@/src/components/StackHeader";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { ApiService } from "@/src/services/api";
 import { aiRequestsEndpoints } from "@/src/services/endpoints";
-import { getAutoReel, listAutoReels } from "@/src/services/reelsService";
+import {
+  getAutoReel,
+  getGenerationStatus,
+  listAutoReels,
+  listMyReels,
+} from "@/src/services/reelsService";
 import {
   isAutoReelInProgress,
   type AutoReel,
   type AutoReelStatus,
+  type GenerationStatus,
+  type OwnerReel,
 } from "@/src/types/reels";
 import dayjs from "dayjs";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -77,7 +84,7 @@ type RequestTab = "tools" | "reels";
 /** Unified row for Tools jobs and AI auto reels */
 type RequestListItem = {
   key: string;
-  kind: "job" | "autoReel";
+  kind: "job" | "autoReel" | "templateReel";
   title: string;
   /** UI status: completed | failed | processing */
   status: string;
@@ -110,6 +117,23 @@ function filterJobsForRole(
 ): AiRequestJob[] {
   if (!shouldFilterHairTryon) return jobs;
   return jobs.filter(isHairTryonJob);
+}
+
+/** Shotstack template reels (they carry a generation_status) */
+function isTemplateGeneratedReel(reel: OwnerReel): boolean {
+  return reel.generation_status != null;
+}
+
+function isTemplateReelInProgress(status: GenerationStatus | null | undefined) {
+  return status === "pending" || status === "rendering";
+}
+
+function mapGenerationToUiStatus(
+  status: GenerationStatus | null | undefined,
+): string {
+  if (status === "ready") return "completed";
+  if (status === "failed") return "failed";
+  return "processing";
 }
 
 function mapAutoReelToUiStatus(status: AutoReelStatus | null | undefined): string {
@@ -238,6 +262,24 @@ function autoReelToListItem(
   };
 }
 
+function templateReelToListItem(
+  reel: OwnerReel,
+  title: string,
+): RequestListItem {
+  const detail =
+    reel.generation_status === "failed" ? reel.generation_error : reel.caption;
+  return {
+    key: `template-reel-${reel.id}`,
+    kind: "templateReel",
+    title,
+    status: mapGenerationToUiStatus(reel.generation_status),
+    jobIdDisplay: `reel_${reel.id}`,
+    createdAt: reel.created_at ?? reel.updated_at ?? new Date().toISOString(),
+    prompt: detail?.trim() || undefined,
+    reelId: reel.id,
+  };
+}
+
 export default function AiRequests() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -290,6 +332,10 @@ export default function AiRequests() {
 
   const [jobs, setJobs] = useState<AiRequestJob[]>([]);
   const [reels, setReels] = useState<AutoReel[]>([]);
+  const [templateReels, setTemplateReels] = useState<OwnerReel[]>([]);
+  // Reels tab pages two lists (auto reels + template reels) independently
+  const autoPagingRef = useRef({ page: 0, hasMore: true });
+  const templatePagingRef = useRef({ page: 0, hasMore: true });
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -376,29 +422,75 @@ export default function AiRequests() {
       }
 
       try {
-        // "AI reel requests" = only what this user started (owner or staff)
-        const { autoReels, meta } = await listAutoReels(
-          page,
-          undefined,
-          PER_PAGE,
-          true,
-        );
+        // Only what this user started (owner or staff): AI auto reels and
+        // Shotstack template reels, merged by time below
+        const firstPage = !append;
+        const auto = autoPagingRef.current;
+        const tpl = templatePagingRef.current;
+        const autoPage = firstPage ? 1 : auto.page + 1;
+        const tplPage = firstPage ? 1 : tpl.page + 1;
+        const [autoResult, tplResult] = await Promise.allSettled([
+          firstPage || auto.hasMore
+            ? listAutoReels(autoPage, undefined, PER_PAGE, true)
+            : Promise.resolve(null),
+          firstPage || tpl.hasMore
+            ? listMyReels(tplPage, undefined, PER_PAGE, true)
+            : Promise.resolve(null),
+        ]);
+        if (autoResult.status === "rejected" && tplResult.status === "rejected") {
+          throw autoResult.reason;
+        }
 
-        setReels((prev) => {
-          if (silent && !append && page === 1) {
-            return mergeRefreshedFirstPage(prev, autoReels, (r) => r.id);
+        if (autoResult.status === "fulfilled" && autoResult.value) {
+          const { autoReels, meta } = autoResult.value;
+          if (!silent || !firstPage) {
+            autoPagingRef.current = {
+              page: meta.current_page ?? autoPage,
+              hasMore: Boolean(meta.has_more),
+            };
           }
-          if (!append) return autoReels;
-          const existing = new Set(prev.map((r) => r.id));
-          return [...prev, ...autoReels.filter((r) => !existing.has(r.id))];
-        });
+          setReels((prev) => {
+            if (silent && firstPage) {
+              return mergeRefreshedFirstPage(prev, autoReels, (r) => r.id);
+            }
+            if (firstPage) return autoReels;
+            const existing = new Set(prev.map((r) => r.id));
+            return [...prev, ...autoReels.filter((r) => !existing.has(r.id))];
+          });
+        } else if (autoResult.status === "rejected") {
+          Logger.error("Failed to load auto reels:", autoResult.reason);
+        }
+
+        if (tplResult.status === "fulfilled" && tplResult.value) {
+          const { reels: pageReels, meta } = tplResult.value;
+          const generated = pageReels.filter(isTemplateGeneratedReel);
+          if (!silent || !firstPage) {
+            templatePagingRef.current = {
+              page: meta.current_page ?? tplPage,
+              hasMore: Boolean(meta.has_more),
+            };
+          }
+          setTemplateReels((prev) => {
+            if (silent && firstPage) {
+              return mergeRefreshedFirstPage(prev, generated, (r) => r.id);
+            }
+            if (firstPage) return generated;
+            const existing = new Set(prev.map((r) => r.id));
+            return [...prev, ...generated.filter((r) => !existing.has(r.id))];
+          });
+        } else if (tplResult.status === "rejected") {
+          Logger.error("Failed to load template reels:", tplResult.reason);
+        }
+
         if (!silent) {
-          setCurrentPage(meta.current_page ?? page);
-          setHasMore(Boolean(meta.has_more));
+          setCurrentPage(page);
+          setHasMore(
+            autoPagingRef.current.hasMore || templatePagingRef.current.hasMore,
+          );
         }
         setLoadError(false);
       } catch (error) {
-        Logger.error("Failed to load auto reels:", error);
+        Logger.error("Failed to load reel requests:", error);
         if (!silent) setLoadError(true);
       } finally {
         if (!silent) {
@@ -447,10 +539,14 @@ export default function AiRequests() {
     }, [canFetchHistory, fetchActive]),
   );
 
-  // In-progress auto reel ids, read by the poll without re-arming it on every update
+  // In-progress ids, read by the poll without re-arming it on every update
   const inProgressIdsRef = useRef<number[]>([]);
   inProgressIdsRef.current = reels
     .filter((r) => isAutoReelInProgress(r.status))
+    .map((r) => r.id);
+  const templateInProgressIdsRef = useRef<number[]>([]);
+  templateInProgressIdsRef.current = templateReels
+    .filter((r) => isTemplateReelInProgress(r.generation_status))
     .map((r) => r.id);
 
   // Poll in-progress auto reels every 5 s — only while this screen is focused
@@ -461,9 +557,13 @@ export default function AiRequests() {
       let running = false;
       const tick = async () => {
         const ids = inProgressIdsRef.current;
-        if (running || ids.length === 0) return;
+        const tplIds = templateInProgressIdsRef.current;
+        if (running || (ids.length === 0 && tplIds.length === 0)) return;
         running = true;
-        const settled = await Promise.allSettled(ids.map((id) => getAutoReel(id)));
+        const [settled, tplSettled] = await Promise.all([
+          Promise.allSettled(ids.map((id) => getAutoReel(id))),
+          Promise.allSettled(tplIds.map((id) => getGenerationStatus(id))),
+        ]);
         running = false;
         if (cancelled) return;
         const latestById = new Map<number, AutoReel>();
@@ -474,8 +574,34 @@ export default function AiRequests() {
             Logger.error(`Auto reel poll failed for ${ids[index]}:`, result.reason);
           }
         });
-        if (latestById.size === 0) return;
-        setReels((prev) => prev.map((r) => latestById.get(r.id) ?? r));
+        if (latestById.size > 0) {
+          setReels((prev) => prev.map((r) => latestById.get(r.id) ?? r));
+        }
+        const tplById = new Map<
+          number,
+          { generation_status: GenerationStatus; generation_error: string | null }
+        >();
+        tplSettled.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            tplById.set(tplIds[index], {
+              generation_status: result.value.generation_status,
+              generation_error: result.value.generation_error,
+            });
+          } else {
+            Logger.error(
+              `Template reel poll failed for ${tplIds[index]}:`,
+              result.reason,
+            );
+          }
+        });
+        if (tplById.size > 0) {
+          setTemplateReels((prev) =>
+            prev.map((r) => {
+              const latest = tplById.get(r.id);
+              return latest ? { ...r, ...latest } : r;
+            }),
+          );
+        }
       };
       const id = setInterval(() => {
         void tick();
@@ -504,6 +630,7 @@ export default function AiRequests() {
       setActiveTab(tab);
       setJobs([]);
       setReels([]);
+      setTemplateReels([]);
       setCurrentPage(1);
       setHasMore(true);
       setLoading(true);
@@ -515,10 +642,18 @@ export default function AiRequests() {
 
   const listItems = useMemo((): RequestListItem[] => {
     if (activeTab === "reels") {
-      return reels.map((r) => autoReelToListItem(r, t("autoReelTitle")));
+      // Both kinds in one list, newest first
+      return [
+        ...reels.map((r) => autoReelToListItem(r, t("autoReelTitle"))),
+        ...templateReels.map((r) =>
+          templateReelToListItem(r, t("reelTypeTemplateTitle")),
+        ),
+      ].sort(
+        (a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf(),
+      );
     }
     return jobs.map(jobToListItem);
-  }, [activeTab, jobs, reels, t]);
+  }, [activeTab, jobs, reels, templateReels, t]);
 
   const sections = useMemo(
     () => buildSections(listItems, t),
@@ -561,12 +696,13 @@ export default function AiRequests() {
       const statusBadgeStyle = getStatusBadgeStyle(item.status);
       const statusColor = getStatusTextColor(item.status);
       const isHighlighted =
-        item.kind === "autoReel" &&
-        ((params.highlightAutoReelId != null &&
+        (item.kind === "autoReel" &&
+          params.highlightAutoReelId != null &&
           String(item.autoReelId) === String(params.highlightAutoReelId)) ||
-          (params.highlightReelId != null &&
-            item.reelId != null &&
-            String(item.reelId) === String(params.highlightReelId)));
+        (item.kind !== "job" &&
+          params.highlightReelId != null &&
+          item.reelId != null &&
+          String(item.reelId) === String(params.highlightReelId));
 
       return (
         <TouchableOpacity
@@ -581,6 +717,18 @@ export default function AiRequests() {
               router.push({
                 pathname: "/(main)/autoReel" as any,
                 params: { autoReelId: String(item.autoReelId) },
+              });
+              return;
+            }
+            // Shotstack template reel → AI Results (status, preview, publish)
+            if (item.kind === "templateReel" && item.reelId != null) {
+              router.push({
+                pathname: "/aiResults",
+                params: {
+                  reelId: String(item.reelId),
+                  resultType: "reel",
+                  ...(params.returnTo ? { returnTo: params.returnTo } : {}),
+                },
               });
               return;
             }

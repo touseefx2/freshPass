@@ -1925,5 +1925,12 @@
   "autoReelTemplate": "Template",
   "autoReelNotPublished": "Not published",
   "reelTooShortTitle": "Video too short",
-  "reelTooShortMessage": "Videos must be at least {{min_seconds}} seconds long. This one is {{length}}. Drag the trim handles out or add another clip."
+  "reelTooShortMessage": "Videos must be at least {{min_seconds}} seconds long. This one is {{length}}. Drag the trim handles out or add another clip.",
+  "reelTypeHeading": "How do you want to make it?",
+  "reelTypeTemplateTitle": "Template reel",
+  "reelTypeTemplateDesc": "Pick a ready-made template, add your photos or videos and text.",
+  "reelTypeAutoTitle": "AI auto reel",
+  "reelTypeAutoDesc": "Upload one raw video. AI finds the best moments and cuts your reel.",
+  "reelTypeStart": "Start",
+  "videoTooLong": "Video must be {{max_seconds}} seconds or shorter."
 }
