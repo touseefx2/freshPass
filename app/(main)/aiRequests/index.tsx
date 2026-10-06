@@ -216,6 +216,20 @@ function formatTime(value: string): string {
   return value;
 }
 
+type IconName = React.ComponentProps<typeof MaterialIcons>["name"];
+
+/** Icon for a row — display only, same type mapping the press handler uses. */
+function requestIcon(item: RequestListItem): IconName {
+  if (item.kind === "autoReel") return "movie-filter";
+  if (item.kind === "templateReel") return "dashboard-customize";
+  const title = item.title.toLowerCase();
+  if (title.includes("hair") || title.includes("replicate")) return "content-cut";
+  if (title.includes("collage")) return "grid-view";
+  if (title.includes("post")) return "image";
+  if (title.includes("reel")) return "videocam";
+  return "auto-awesome";
+}
+
 function jobToListItem(job: AiRequestJob): RequestListItem {
   const jobType =
     job.request_payload?.job_type ?? job.response?.job_type ?? "—";
@@ -673,12 +687,19 @@ export default function AiRequests() {
   const getStatusTextColor = useCallback(
     (status: string) => {
       const s = (status ?? "").toLowerCase();
-      if (s === "completed") return (colors as Theme).primary;
+      if (s === "completed") return (colors as Theme).buttonBack;
       if (s === "failed") return (colors as Theme).red;
-      return (colors as Theme).borderDark;
+      return (colors as Theme).orangeBrownText;
     },
     [colors],
   );
+
+  const getStatusIcon = useCallback((status: string): IconName => {
+    const s = (status ?? "").toLowerCase();
+    if (s === "completed") return "check-circle";
+    if (s === "failed") return "error-outline";
+    return "schedule";
+  }, []);
 
   const formatStatusLabel = useCallback(
     (status: string) => {
@@ -711,7 +732,9 @@ export default function AiRequests() {
             styles.shadow,
             isHighlighted && styles.jobCardHighlighted,
           ]}
-          activeOpacity={0.7}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`${item.title}, ${formatStatusLabel(item.status)}, ${formatTime(item.createdAt)}`}
           onPress={() => {
             if (item.kind === "autoReel" && item.autoReelId != null) {
               router.push({
@@ -753,25 +776,52 @@ export default function AiRequests() {
             }
           }}
         >
-          <View style={styles.jobCardInner}>
-            <View style={styles.jobCardAccent} />
-            <View style={styles.jobCardContent}>
-              <View style={styles.jobCardTopRow}>
-                <Text
-                  style={styles.jobCardTypeTitle}
-                  numberOfLines={1}
-                  ellipsizeMode="middle"
-                >
-                  {item.title}
+          <View style={styles.jobCardIcon}>
+            <MaterialIcons
+              name={requestIcon(item)}
+              size={moderateWidthScale(22)}
+              color={theme.darkGreen}
+            />
+          </View>
+          <View style={styles.jobCardContent}>
+            <View style={styles.jobCardTopRow}>
+              <Text
+                style={styles.jobCardTypeTitle}
+                numberOfLines={1}
+                ellipsizeMode="middle"
+              >
+                {item.title}
+              </Text>
+              <View style={[styles.jobCardStatusBadge, statusBadgeStyle]}>
+                <MaterialIcons
+                  name={getStatusIcon(item.status)}
+                  size={moderateWidthScale(12)}
+                  color={statusColor}
+                />
+                <Text style={[styles.jobCardStatusText, { color: statusColor }]}>
+                  {formatStatusLabel(item.status)}
                 </Text>
-                <View style={[styles.jobCardStatusBadge, statusBadgeStyle]}>
-                  <Text
-                    style={[styles.jobCardStatusText, { color: statusColor }]}
-                  >
-                    {formatStatusLabel(item.status)}
-                  </Text>
-                </View>
               </View>
+            </View>
+            {item.prompt ? (
+              <Text
+                style={styles.jobCardPromptText}
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
+                {item.prompt}
+              </Text>
+            ) : null}
+            <View style={styles.jobCardFooter}>
+              <MaterialIcons
+                name="access-time"
+                size={moderateWidthScale(13)}
+                color={theme.lightGreen}
+              />
+              <Text style={styles.jobCardMetaValue} numberOfLines={1}>
+                {formatTime(item.createdAt)}
+              </Text>
+              <Text style={styles.jobCardMetaDot}>·</Text>
               <Text
                 style={styles.jobCardJobIdMuted}
                 numberOfLines={1}
@@ -779,23 +829,11 @@ export default function AiRequests() {
               >
                 {t("jobId")}: {item.jobIdDisplay}
               </Text>
-              {item.prompt ? (
-                <View style={styles.jobCardPromptBlock}>
-                  <Text
-                    style={styles.jobCardPromptText}
-                    numberOfLines={2}
-                    ellipsizeMode="tail"
-                  >
-                    {item.prompt}
-                  </Text>
-                </View>
-              ) : null}
-              <View style={styles.jobCardFooter}>
-                <Text style={styles.jobCardMetaLabel}>{t("aiHistoryTime")}</Text>
-                <Text style={styles.jobCardMetaValue} numberOfLines={1}>
-                  {formatTime(item.createdAt)}
-                </Text>
-              </View>
+              <MaterialIcons
+                name="chevron-right"
+                size={moderateWidthScale(20)}
+                color={theme.lightGreen5}
+              />
             </View>
           </View>
         </TouchableOpacity>
@@ -804,8 +842,10 @@ export default function AiRequests() {
     [
       styles,
       t,
+      theme,
       getStatusBadgeStyle,
       getStatusTextColor,
+      getStatusIcon,
       formatStatusLabel,
       params.returnTo,
       params.highlightReelId,
@@ -817,26 +857,33 @@ export default function AiRequests() {
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: RequestSection }) => (
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionHeaderText}>{section.title}</Text>
+      <View style={styles.sectionHeader} accessibilityRole="header">
+        <Text style={styles.sectionHeaderText}>
+          {formatSectionDayLabel(section.dayKey, t)}
+        </Text>
+        <View style={styles.sectionCountChip}>
+          <Text style={styles.sectionCountText}>
+            {t("aiHistoryCount", { count: section.count })}
+          </Text>
+        </View>
       </View>
     ),
-    [styles.sectionHeader, styles.sectionHeaderText],
+    [styles, t],
   );
 
   const renderFooter = useCallback(() => {
     if (!loadingMore) return null;
     return (
       <View style={styles.loadingFooter}>
-        <ActivityIndicator size="small" color={theme.primary} />
+        <ActivityIndicator size="small" color={theme.buttonBack} />
       </View>
     );
-  }, [loadingMore, styles.loadingFooter, theme.primary]);
+  }, [loadingMore, styles.loadingFooter, theme.buttonBack]);
 
   const renderTabs = useCallback(() => {
     if (!showReelsTab || reelsOnly) return null;
     return (
-      <View style={styles.tabsRow}>
+      <View style={styles.tabsRow} accessibilityRole="tablist">
         <TouchableOpacity
           style={[
             styles.tabButton,
@@ -844,6 +891,8 @@ export default function AiRequests() {
           ]}
           onPress={() => handleTabChange("tools")}
           activeOpacity={0.7}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "tools" }}
         >
           <Text
             style={[
@@ -861,6 +910,8 @@ export default function AiRequests() {
           ]}
           onPress={() => handleTabChange("reels")}
           activeOpacity={0.7}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "reels" }}
         >
           <Text
             style={[
@@ -878,8 +929,15 @@ export default function AiRequests() {
   const renderListHeader = useCallback(() => {
     const errorBanner =
       loadError && listItems.length > 0 ? (
-        <View style={styles.errorBanner}>
-          <Text style={styles.errorBannerText}>{t("aiHistoryLoadError")}</Text>
+        <View style={styles.errorBanner} accessibilityRole="alert">
+          <View style={styles.errorBannerRow}>
+            <MaterialIcons
+              name="wifi-off"
+              size={moderateWidthScale(18)}
+              color={theme.red}
+            />
+            <Text style={styles.errorBannerText}>{t("aiHistoryLoadError")}</Text>
+          </View>
           <RetryButton
             onPress={() => void fetchActive(1, false)}
             loading={loading && !refreshing}
@@ -897,7 +955,9 @@ export default function AiRequests() {
     loadError,
     listItems.length,
     styles.errorBanner,
+    styles.errorBannerRow,
     styles.errorBannerText,
+    theme.red,
     t,
     fetchActive,
     loading,
@@ -983,7 +1043,7 @@ export default function AiRequests() {
       {showInitialLoader ? (
         <View style={styles.listContent}>
           {renderTabs()}
-          <ActivityIndicator size="large" color={theme.primary} />
+          <ActivityIndicator size="large" color={theme.buttonBack} />
         </View>
       ) : (
         <SectionList
@@ -1003,8 +1063,8 @@ export default function AiRequests() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={theme.primary}
-              colors={[theme.primary]}
+              tintColor={theme.buttonBack}
+              colors={[theme.buttonBack]}
             />
           }
         />

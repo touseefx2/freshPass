@@ -3,7 +3,6 @@ import { StyleSheet } from "react-native";
 import {
   moderateHeightScale,
   moderateWidthScale,
-  heightScale,
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 
@@ -13,210 +12,15 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.background,
     },
-    scrollContent: {
+    listContent: {
       flexGrow: 1,
-      paddingVertical: moderateHeightScale(24),
+      paddingTop: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
-    },
-    headerContainer: {
-      alignItems: "center",
-    },
-    headerButton: {
-      width: "100%",
-      borderRadius: moderateWidthScale(12),
-      overflow: "hidden",
-    },
-    headerGradient: {
-      paddingVertical: moderateHeightScale(16),
-      paddingHorizontal: moderateWidthScale(24),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    headerTitle: {
-      fontSize: fontSize.size20,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textAlign: "center",
-    },
-    featuresContainer: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(16),
-    },
-    featureBox: {
-      width: "45%",
-      height: heightScale(140),
-      borderRadius: moderateWidthScale(16),
-      overflow: "hidden",
-    },
-    gradientContainer: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(12),
-      gap: moderateHeightScale(12),
-    },
-    iconContainer: {
-      width: moderateWidthScale(56),
-      height: moderateWidthScale(56),
-      borderRadius: moderateWidthScale(28),
-      backgroundColor: "transparent",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    featureTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      textAlign: "center",
-    },
-    jobCard: {
-      flexDirection: "row",
-      backgroundColor: theme.white80,
-      borderRadius: moderateWidthScale(16),
-      marginBottom: moderateHeightScale(16),
-      minHeight: heightScale(116),
-      overflow: "hidden",
-    },
-    shadow: {
-      shadowColor: theme.shadow,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 4,
-      elevation: 4,
-    },
-    jobCardInner: {
-      flex: 1,
-      flexDirection: "row",
-    },
-    jobCardAccent: {
-      width: moderateWidthScale(4),
-      backgroundColor: theme.primary,
-      borderTopLeftRadius: moderateWidthScale(16),
-      borderBottomLeftRadius: moderateWidthScale(16),
-    },
-    jobCardContent: {
-      flex: 1,
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(16),
-      paddingRight: moderateWidthScale(18),
-      justifyContent: "space-between",
-    },
-    jobCardHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(8),
-      gap: moderateWidthScale(8),
-    },
-    jobCardId: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.text,
-      flex: 1,
-    },
-    jobCardTypeTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.primary,
-      textTransform: "capitalize",
-      flex: 1,
-    },
-    jobCardJobIdMuted: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
-    jobCardStatusBadge: {
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(20),
-      minWidth: moderateWidthScale(72),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    jobCardStatusBadgeCompleted: {
-      backgroundColor: theme.secondary,
-    },
-    jobCardStatusBadgeFailed: {
-      backgroundColor: theme.appointmentStatus,
-    },
-    jobCardStatusBadgeProcessing: {
-      backgroundColor: theme.grey15,
-    },
-    jobCardStatusText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-    },
-    jobCardTypeRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: moderateHeightScale(8),
-    },
-    jobCardLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.borderMedium,
-      marginRight: moderateWidthScale(4),
-    },
-    jobCardTypeValue: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.primary,
-    },
-    jobCardMetaRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: moderateHeightScale(6),
-      gap: moderateWidthScale(20),
-    },
-    jobCardMetaItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      flex: 1,
-    },
-    jobCardMetaLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    jobCardMetaValue: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.text,
-      marginLeft: moderateWidthScale(4),
-    },
-    jobCardImageWrap: {
-      width: heightScale(72),
-      height: heightScale(72),
-      borderRadius: moderateWidthScale(10),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      overflow: "hidden",
-      backgroundColor: theme.lightGreen2,
-    },
-    jobCardImage: {
-      width: "100%",
-      height: "100%",
-    },
-    jobCardPrompt: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-    },
-    tabsRow: {
-      flexDirection: "row",
-      marginBottom: moderateHeightScale(16),
-      gap: moderateWidthScale(8),
+      paddingBottom: moderateHeightScale(48),
     },
     loadingWithTabs: {
       flex: 1,
-      paddingTop: moderateHeightScale(24),
+      paddingTop: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
     },
     loadingSpinnerWrap: {
@@ -224,19 +28,31 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    tabButton: {
-      flex: 1,
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(12),
+    loadingFooter: {
+      paddingVertical: moderateHeightScale(16),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    // ── Segmented tabs ──────────────────────────────────────────────
+    tabsRow: {
+      flexDirection: "row",
+      padding: moderateWidthScale(4),
+      marginBottom: moderateHeightScale(14),
+      borderRadius: moderateWidthScale(14),
       backgroundColor: theme.white,
       borderWidth: 1,
       borderColor: theme.borderLight,
+    },
+    tabButton: {
+      flex: 1,
+      minHeight: moderateHeightScale(40),
+      borderRadius: moderateWidthScale(10),
       alignItems: "center",
       justifyContent: "center",
     },
     tabButtonActive: {
-      backgroundColor: theme.primary,
-      borderColor: theme.primary,
+      backgroundColor: theme.buttonBack,
     },
     tabButtonText: {
       fontSize: fontSize.size14,
@@ -245,22 +61,51 @@ export const createStyles = (theme: Theme) =>
     },
     tabButtonTextActive: {
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.buttonText,
     },
-    // Memories: date-wise section cards
+
+    // ── How cards are grouped ───────────────────────────────────────
+    listHintRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(8),
+      padding: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(18),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen07,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+    },
+    listHint: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size18,
+    },
+
+    // ── Week card ───────────────────────────────────────────────────
+    sectionCardShadow: {
+      marginBottom: moderateHeightScale(18),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.white,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(6) },
+      shadowOpacity: 0.12,
+      shadowRadius: moderateWidthScale(14),
+      elevation: 4,
+    },
     sectionCard: {
-      borderRadius: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(22),
       overflow: "hidden",
-      marginBottom: moderateHeightScale(20),
-      backgroundColor: theme.lightGreen2,
+      backgroundColor: theme.lightGreen07,
       borderWidth: 1,
       borderColor: theme.borderLight,
     },
     sectionCardImage: {
       width: "100%",
-      aspectRatio: 16 / 10,
-      backgroundColor: theme.lightGreen2,
-      position: "relative",
+      aspectRatio: 4 / 3,
+      backgroundColor: theme.lightGreen07,
     },
     sectionCardImageInner: {
       ...StyleSheet.absoluteFillObject,
@@ -270,55 +115,74 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    sectionCardOverlay: {
+    sectionCardIconCircle: {
+      width: moderateWidthScale(68),
+      height: moderateWidthScale(68),
+      borderRadius: moderateWidthScale(34),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sectionCardScrim: {
       position: "absolute",
-      bottom: 0,
       left: 0,
       right: 0,
-      paddingVertical: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(16),
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      bottom: 0,
+      height: "55%",
     },
-    sectionCardTitle: {
-      fontSize: fontSize.size18,
+    sectionCardCount: {
+      position: "absolute",
+      top: moderateHeightScale(12),
+      right: moderateWidthScale(12),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(9),
+      paddingVertical: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+    },
+    sectionCardCountText: {
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
+    sectionCardOverlay: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      flexDirection: "row",
+      alignItems: "flex-end",
+      gap: moderateWidthScale(12),
+      paddingHorizontal: moderateWidthScale(16),
+      paddingBottom: moderateHeightScale(16),
+    },
+    sectionCardTextCol: {
+      flex: 1,
+      gap: moderateHeightScale(4),
+    },
+    sectionCardTitle: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    sectionCardDateRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+    },
     sectionCardDate: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.white,
-      marginTop: moderateHeightScale(2),
-      opacity: 0.9,
+      fontFamily: fonts.fontMedium,
+      color: theme.white85,
     },
-    listHint: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
-      marginBottom: moderateHeightScale(16),
-      lineHeight: moderateHeightScale(20),
-    },
-    listContent: {
-      flexGrow: 1,
-      paddingVertical: moderateHeightScale(24),
-      paddingHorizontal: moderateWidthScale(20),
-      paddingBottom: moderateHeightScale(48),
-    },
-    loadingFooter: {
-      paddingVertical: moderateHeightScale(16),
+    sectionCardArrow: {
+      width: moderateWidthScale(38),
+      height: moderateWidthScale(38),
+      borderRadius: moderateWidthScale(19),
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
-    },
-    emptyStateContainer: {
-      flexGrow: 1,
-      paddingVertical: moderateHeightScale(48),
-      paddingHorizontal: moderateWidthScale(20),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    emptyStateText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
     },
   });

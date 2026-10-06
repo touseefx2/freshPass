@@ -8,6 +8,7 @@ import {
   StatusBar,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/hooks/hooks";
@@ -369,39 +370,76 @@ export default function AiMemories() {
           "");
       const hasOnlyVideos =
         item.items.length > 0 && !item.items.some((i) => i.type === "image");
+      const countLabel = t("memoriesItemCount", { count: item.items.length });
       return (
-        <TouchableOpacity
-          style={styles.sectionCard}
-          onPress={() => handleSectionPress(item)}
-          activeOpacity={0.9}
-        >
-          <View style={styles.sectionCardImage}>
-            {coverUrl ? (
-              <MediaImage
-                uri={coverUrl}
-                style={styles.sectionCardImageInner}
-                resizeMode="cover"
-                placeholderIcon={hasOnlyVideos ? "videocam" : "photo-library"}
-                iconSize={moderateWidthScale(48)}
+        <View style={styles.sectionCardShadow}>
+          <TouchableOpacity
+            style={styles.sectionCard}
+            onPress={() => handleSectionPress(item)}
+            activeOpacity={0.9}
+            accessibilityRole="button"
+            accessibilityLabel={`${t("happyWeekend")}, ${item.weekRange}, ${countLabel}`}
+          >
+            <View style={styles.sectionCardImage}>
+              {coverUrl ? (
+                <MediaImage
+                  uri={coverUrl}
+                  style={styles.sectionCardImageInner}
+                  resizeMode="cover"
+                  placeholderIcon={hasOnlyVideos ? "videocam" : "photo-library"}
+                  iconSize={moderateWidthScale(40)}
+                />
+              ) : (
+                <View style={styles.sectionCardIconPlaceholder}>
+                  <View style={styles.sectionCardIconCircle}>
+                    <MaterialIcons
+                      name={hasOnlyVideos ? "videocam" : "photo-library"}
+                      size={moderateWidthScale(30)}
+                      color={theme.buttonBack}
+                    />
+                  </View>
+                </View>
+              )}
+              {/* Fade into the caption so text stays readable on any photo */}
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.72)"]}
+                style={styles.sectionCardScrim}
+                pointerEvents="none"
               />
-            ) : (
-              <View style={styles.sectionCardIconPlaceholder}>
+              <View style={styles.sectionCardCount}>
                 <MaterialIcons
                   name={hasOnlyVideos ? "videocam" : "photo-library"}
-                  size={moderateWidthScale(48)}
-                  color={theme.lightGreen4}
+                  size={moderateWidthScale(13)}
+                  color={theme.white}
                 />
+                <Text style={styles.sectionCardCountText}>{countLabel}</Text>
               </View>
-            )}
-          </View>
-          <View style={styles.sectionCardOverlay}>
-            <Text style={styles.sectionCardTitle}>{t("happyWeekend")}</Text>
-            <Text style={styles.sectionCardDate}>{item.weekRange}</Text>
-          </View>
-        </TouchableOpacity>
+              <View style={styles.sectionCardOverlay}>
+                <View style={styles.sectionCardTextCol}>
+                  <Text style={styles.sectionCardTitle}>{t("happyWeekend")}</Text>
+                  <View style={styles.sectionCardDateRow}>
+                    <MaterialIcons
+                      name="calendar-today"
+                      size={moderateWidthScale(12)}
+                      color={theme.white85}
+                    />
+                    <Text style={styles.sectionCardDate}>{item.weekRange}</Text>
+                  </View>
+                </View>
+                <View style={styles.sectionCardArrow}>
+                  <MaterialIcons
+                    name="arrow-forward"
+                    size={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </View>
       );
     },
-    [styles, handleSectionPress, t, theme.lightGreen4],
+    [styles, handleSectionPress, t, theme],
   );
 
   const keyExtractor = useCallback((item: MemorySection) => item.weekKey, []);
@@ -410,10 +448,10 @@ export default function AiMemories() {
     () =>
       loadingMore ? (
         <View style={styles.loadingFooter}>
-          <ActivityIndicator size="small" color={theme.primary} />
+          <ActivityIndicator size="small" color={theme.buttonBack} />
         </View>
       ) : null,
-    [loadingMore, styles, theme.primary],
+    [loadingMore, styles, theme.buttonBack],
   );
 
   const listEmpty = useMemo(() => {
@@ -442,7 +480,7 @@ export default function AiMemories() {
 
   const renderTabs = useCallback(
     () => (
-      <View style={styles.tabsRow}>
+      <View style={styles.tabsRow} accessibilityRole="tablist">
         <TouchableOpacity
           style={[
             styles.tabButton,
@@ -450,6 +488,8 @@ export default function AiMemories() {
           ]}
           onPress={() => setActiveTab("memories")}
           activeOpacity={0.7}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "memories" }}
         >
           <Text
             style={[
@@ -467,6 +507,8 @@ export default function AiMemories() {
           ]}
           onPress={() => setActiveTab("reels")}
           activeOpacity={0.7}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeTab === "reels" }}
         >
           <Text
             style={[
@@ -487,11 +529,18 @@ export default function AiMemories() {
       <View>
         {renderTabs()}
         {sections.length > 0 ? (
-          <Text style={styles.listHint}>{t("memoriesListHint")}</Text>
+          <View style={styles.listHintRow}>
+            <MaterialIcons
+              name="info-outline"
+              size={moderateWidthScale(16)}
+              color={theme.lightGreen}
+            />
+            <Text style={styles.listHint}>{t("memoriesListHint")}</Text>
+          </View>
         ) : null}
       </View>
     ),
-    [renderTabs, sections.length, styles.listHint, t],
+    [renderTabs, sections.length, styles, t, theme.lightGreen],
   );
 
   return (
@@ -516,7 +565,7 @@ export default function AiMemories() {
         <View style={styles.loadingWithTabs}>
           {renderTabs()}
           <View style={styles.loadingSpinnerWrap}>
-            <ActivityIndicator size="small" color={theme.primary} />
+            <ActivityIndicator size="large" color={theme.buttonBack} />
           </View>
         </View>
       ) : (
