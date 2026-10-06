@@ -23,6 +23,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
+import ReelVideoShareSheet from "@/src/components/ReelVideoShareSheet";
 // Same look as the AI Results screen (download row, player, video details)
 import { createStyles as createResultStyles } from "../aiResults/styles";
 import {
@@ -370,6 +371,7 @@ export default function AutoReelScreen() {
   const [retrying, setRetrying] = useState(false);
   const userRole = useAppSelector((s) => s.user.userRole);
   const [publishing, setPublishing] = useState(false);
+  const [shareVisible, setShareVisible] = useState(false);
   // created_at stays the original time after a retry — time the retry locally
   const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
@@ -852,6 +854,20 @@ export default function AutoReelScreen() {
                   </Text>
                 </View>
               ) : null}
+              {/* Same share as AI Results: in-app contact or native share sheet */}
+              <TouchableOpacity
+                style={rs.reelShareIconButton}
+                onPress={() => setShareVisible(true)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t("share")}
+              >
+                <MaterialIcons
+                  name="share"
+                  size={moderateWidthScale(20)}
+                  color={theme.white}
+                />
+              </TouchableOpacity>
             </View>
           </View>
         ) : null}
@@ -1001,6 +1017,11 @@ export default function AutoReelScreen() {
           renderProgress()
         )}
       </ScrollView>
+      <ReelVideoShareSheet
+        visible={shareVisible}
+        onClose={() => setShareVisible(false)}
+        videoUrl={autoReelVideo(autoReel)?.playback_url ?? null}
+      />
     </View>
   );
 }
