@@ -12,7 +12,7 @@
       "supportsTablet": true,
       "requireFullScreen": true,
       "bundleIdentifier": "com.freshpass",
-      "buildNumber": "84",
+      "buildNumber": "85",
       "googleServicesFile": "./GoogleService-Info.plist",
       "associatedDomains": [
         "applinks:getfreshpass.com"
@@ -55,7 +55,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.freshpass",
-      "versionCode": 84,
+      "versionCode": 85,
       "allowBackup": false,
       "config": {
         "googleMaps": {
