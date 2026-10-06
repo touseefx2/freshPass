@@ -1876,5 +1876,10 @@
   "reelTypeAutoDesc": "Lade ein Rohvideo hoch. Die KI findet die besten Momente und schneidet dein Reel.",
   "reelTypeStart": "Starten",
   "videoTooLong": "Das Video darf höchstens {{max_seconds}} Sekunden lang sein.",
-  "autoReelCompressing": "Video wird komprimiert… {{percent}} %"
+  "autoReelCompressing": "Video wird komprimiert… {{percent}} %",
+  "templateCompressingProgress": "Video {{current}} von {{total}} wird komprimiert… {{percent}} %",
+  "templateUploadingProgress": "Lade {{current}} von {{total}} hoch… {{percent}} %",
+  "templateTrimSubtitle": "Vorlagen-Videos dürfen bis zu {{max_seconds}} Sekunden lang sein. Kürze es hier und mach weiter.",
+  "editorLengthRequired": "Erforderliche Länge: {{min}} – {{max}}. Dein Video ist {{length}} lang. Kürze es, um fortzufahren.",
+  "exportKeepAppOpen": "Bitte lass die App geöffnet. Zurückgehen oder die App schließen bricht den Vorgang ab."
 }

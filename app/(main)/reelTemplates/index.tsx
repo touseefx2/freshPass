@@ -29,7 +29,6 @@ import HairPipelineProcessingModal, {
   INITIAL_HAIR_PIPELINE_STATE,
   type HairPipelineModalState,
 } from "@/src/components/HairPipelineProcessingModal";
-import AutoReelTrimPromptModal from "@/src/components/autoReelTrimPromptModal";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -1018,12 +1017,6 @@ export default function ReelTemplatesScreen() {
     fromSelected: boolean;
   } | null>(null);
 
-  /** Too-long pick waiting on the trim prompt */
-  const [trimPrompt, setTrimPrompt] = useState<{
-    asset: ImagePicker.ImagePickerAsset;
-    sourceType: MediaUploadSourceType;
-    durationSeconds: number;
-  } | null>(null);
 
   /** Open the reel editor in "save" mode, capped at the auto reel source limit. */
   const openTrimEditor = useCallback(
@@ -1075,10 +1068,10 @@ export default function ReelTemplatesScreen() {
             MAX_AUTO_REEL_SOURCE_SECONDS;
 
       if (durationSeconds > MAX_AUTO_REEL_SOURCE_SECONDS) {
-        // Offer to trim it in the editor instead of a dead-end error.
-        // iOS: let the picker finish dismissing before presenting the modal.
+        // Straight to the editor: full original video, trim panel open,
+        // required length on top (iOS: let the picker finish closing first)
         setTimeout(
-          () => setTrimPrompt({ asset, sourceType, durationSeconds }),
+          () => openTrimEditor(asset, sourceType),
           Platform.OS === "ios" ? 350 : 0,
         );
         return;
@@ -1113,19 +1106,10 @@ export default function ReelTemplatesScreen() {
         thumbnailUri: localThumb,
       });
     },
-    [],
+    [openTrimEditor],
   );
 
-  const handleTrimPromptTrim = useCallback(() => {
-    if (!trimPrompt) return;
-    setTrimPrompt(null);
-    openTrimEditor(trimPrompt.asset, trimPrompt.sourceType);
-  }, [openTrimEditor, trimPrompt]);
 
-  const handleTrimPromptChooseAnother = useCallback(() => {
-    setTrimPrompt(null);
-    setSourcePickerVisible(true);
-  }, []);
 
   /** Trim / edit the video that's already selected (any length). */
   const handleEditSelectedVideo = useCallback(() => {
@@ -1193,7 +1177,6 @@ export default function ReelTemplatesScreen() {
         mediaTypes: ["videos"],
         quality: 1,
         allowsEditing: false,
-        videoMaxDuration: MAX_AUTO_REEL_SOURCE_SECONDS,
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
@@ -2061,14 +2044,6 @@ export default function ReelTemplatesScreen() {
         </TouchableOpacity>
       </ModalizeBottomSheet>
 
-      <AutoReelTrimPromptModal
-        visible={trimPrompt != null}
-        durationSeconds={trimPrompt?.durationSeconds ?? 0}
-        maxSeconds={MAX_AUTO_REEL_SOURCE_SECONDS}
-        onTrim={handleTrimPromptTrim}
-        onChooseAnother={handleTrimPromptChooseAnother}
-        onClose={() => setTrimPrompt(null)}
-      />
     </View>
   );
 }

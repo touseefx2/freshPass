@@ -1876,5 +1876,10 @@
   "reelTypeAutoDesc": "未編集の動画を1本アップロード。AIが見どころを見つけてリールにします。",
   "reelTypeStart": "開始",
   "videoTooLong": "動画は{{max_seconds}}秒以内にしてください。",
-  "autoReelCompressing": "動画を圧縮中… {{percent}}%"
+  "autoReelCompressing": "動画を圧縮中… {{percent}}%",
+  "templateCompressingProgress": "動画を圧縮中 {{current}}/{{total}}… {{percent}}%",
+  "templateUploadingProgress": "アップロード中 {{current}}/{{total}}… {{percent}}%",
+  "templateTrimSubtitle": "テンプレート用の動画は最大{{max_seconds}}秒です。ここでトリミングして続けましょう。",
+  "editorLengthRequired": "必要な長さ：{{min}}〜{{max}}。この動画は{{length}}です。トリミングして続けてください。",
+  "exportKeepAppOpen": "アプリを開いたままにしてください。戻るかアプリを閉じるとキャンセルされます。"
 }

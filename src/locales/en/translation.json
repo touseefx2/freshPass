@@ -1933,5 +1933,10 @@
   "reelTypeAutoDesc": "Upload one raw video. AI finds the best moments and cuts your reel.",
   "reelTypeStart": "Start",
   "videoTooLong": "Video must be {{max_seconds}} seconds or shorter.",
-  "autoReelCompressing": "Compressing video… {{percent}}%"
+  "autoReelCompressing": "Compressing video… {{percent}}%",
+  "templateCompressingProgress": "Compressing video {{current}} of {{total}}… {{percent}}%",
+  "templateUploadingProgress": "Uploading {{current}} of {{total}}… {{percent}}%",
+  "templateTrimSubtitle": "Template videos can be up to {{max_seconds}} seconds. Trim it here and keep going.",
+  "editorLengthRequired": "Required length: {{min}} – {{max}}. Your video is {{length}}. Trim it to continue.",
+  "exportKeepAppOpen": "Please keep the app open. Going back or closing the app will cancel it."
 }

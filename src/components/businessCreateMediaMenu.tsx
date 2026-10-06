@@ -351,7 +351,7 @@ export default function BusinessCreateMediaMenu({
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["videos"],
         quality: 1,
-        videoMaxDuration: seconds,
+        // No length cap: a long recording opens in the editor to trim
         ...(Platform.OS === "ios" && {
           preferredAssetRepresentationMode:
             ImagePicker.UIImagePickerPreferredAssetRepresentationMode

@@ -195,6 +195,8 @@ type Props = {
   onTrim: () => void;
   onChooseAnother: () => void;
   onClose: () => void;
+  /** Overrides the auto reel wording (e.g. template slots, 30 s) */
+  subtitle?: string;
 };
 
 /** Too-long raw video: show how far over the limit it is and offer the trimmer. */
@@ -205,6 +207,7 @@ export default function AutoReelTrimPromptModal({
   onTrim,
   onChooseAnother,
   onClose,
+  subtitle,
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -257,7 +260,9 @@ export default function AutoReelTrimPromptModal({
           <Text style={styles.title} accessibilityRole="header">
             {t("autoReelTrimTitle")}
           </Text>
-          <Text style={styles.subtitle}>{t("autoReelTrimSubtitle")}</Text>
+          <Text style={styles.subtitle}>
+            {subtitle ?? t("autoReelTrimSubtitle")}
+          </Text>
 
           <View style={styles.meter}>
             <View style={styles.meterRow}>

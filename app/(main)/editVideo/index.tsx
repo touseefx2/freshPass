@@ -304,6 +304,28 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       marginBottom: moderateHeightScale(16),
     },
+    lengthNotice: {
+      position: "absolute",
+      left: moderateWidthScale(16),
+      right: moderateWidthScale(16),
+      zIndex: 19,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(8),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.darkGreen,
+    },
+    lengthNoticeText: {
+      flex: 1,
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+      lineHeight: fontSize.size16,
+    },
     topBar: {
       position: "absolute",
       top: 0,
@@ -726,6 +748,15 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
+    progressHint: {
+      marginTop: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(40),
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.white80,
+      textAlign: "center",
+      lineHeight: fontSize.size16,
+    },
   });
 
 export default function EditVideoScreen() {
@@ -748,6 +779,8 @@ export default function EditVideoScreen() {
     /** "save" → export, save to gallery and hand back to the opener (no publish). */
     mode?: string;
     requestId?: string;
+    /** "reel" → save mode for a reel-length clip (template slots): reel wording, not auto reel */
+    limitContext?: string;
   }>();
 
   const isSaveMode = params.mode === "save" && !!params.requestId;
@@ -819,6 +852,11 @@ export default function EditVideoScreen() {
 
   const maxClipMs = Math.max(MIN_CLIP_MS, Math.round(maxSeconds * 1000));
   const totalMs = totalClipsMs(clips);
+  // Outside the allowed length (e.g. a long recording) — shown on top until it fits
+  const lengthOutOfRange =
+    clips.length > 0 &&
+    (totalMs > maxSeconds * 1000 + 50 ||
+      totalMs < MIN_REEL_SECONDS * 1000 - 50);
   const mutedClipCount = clips.filter((c) => c.muted).length;
   /** "Mute original audio" (Music panel) = every clip's own sound is off. */
   const allClipsMuted = clips.length > 0 && mutedClipCount === clips.length;
@@ -1042,8 +1080,10 @@ export default function EditVideoScreen() {
         setPreviewReady(true);
         setPlaying(true);
         loadThumbnail(first);
+        // Over the limit — open the trimmer on the full original video straight away
+        // (normal reel, template slot and auto reel alike); the top notice says
+        // what length is needed and Next / Save re-checks it.
         if (clipLengthMs(first) > clipCap) {
-          // Over the limit — open the trimmer on it straight away
           setActiveTool("trim");
           setEditingClipId(first.id);
         }
@@ -2125,7 +2165,7 @@ export default function EditVideoScreen() {
     if (clipSeconds > maxSeconds + 0.05) {
       Alert.alert(
         t("reelTrimRequiredTitle"),
-        isSaveMode
+        isSaveMode && params.limitContext !== "reel"
           ? t("autoReelTrimRequiredMessage", {
               length: formatVideoDuration(clipSeconds),
               max: formatVideoDuration(maxSeconds),
@@ -2248,6 +2288,7 @@ export default function EditVideoScreen() {
     });
   }, [
     aspect,
+    params.limitContext,
     canvasSize.height,
     canvasSize.width,
     clips,
@@ -2622,6 +2663,29 @@ export default function EditVideoScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+      {lengthOutOfRange ? (
+        <View
+          style={[
+            styles.lengthNotice,
+            { top: insets.top + moderateHeightScale(62) },
+          ]}
+          pointerEvents="none"
+          accessibilityLiveRegion="polite"
+        >
+          <MaterialIcons
+            name="content-cut"
+            size={moderateWidthScale(16)}
+            color={theme.orangeBrown}
+          />
+          <Text style={styles.lengthNoticeText}>
+            {t("editorLengthRequired", {
+              min: formatVideoDuration(MIN_REEL_SECONDS),
+              max: formatVideoDuration(maxSeconds),
+              length: formatVideoDuration(totalMs / 1000),
+            })}
+          </Text>
+        </View>
+      ) : null}
       {overlayText.trim() ? (
         <View
           style={[
@@ -3172,6 +3236,7 @@ export default function EditVideoScreen() {
               ? t("savingVideo")
               : `${t("exportingVideo")} ${exportProgress}%`}
           </Text>
+          <Text style={styles.progressHint}>{t("exportKeepAppOpen")}</Text>
         </View>
       ) : null}
     </View>

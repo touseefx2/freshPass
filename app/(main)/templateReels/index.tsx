@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Platform,
@@ -10,7 +11,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import * as VideoThumbnails from "expo-video-thumbnails";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -22,6 +24,11 @@ import HairPipelineProcessingModal, {
   type HairPipelineModalState,
 } from "@/src/components/HairPipelineProcessingModal";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
+import {
+  createEditRequestId,
+  takeEditedVideo,
+} from "@/src/components/videoEditor/editorHandoff";
+import { measureVideoDurationSeconds } from "@/src/utils/videoDuration";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -33,6 +40,7 @@ import {
   MAX_VIDEO_UPLOAD_SECONDS,
   uploadImage,
   uploadVideo,
+  VideoTooLargeError,
   waitForMediaReady,
 } from "@/src/services/mediaLibraryService";
 import {
@@ -119,6 +127,27 @@ function slotTypeHint(
 }
 
 type CategoryOption = { id: number; name: string };
+
+/** File picked for a slot — uploaded only when "Generate Reel" is tapped */
+type SlotFile = {
+  uri: string;
+  mimeType: string;
+  fileName: string;
+  sourceType: MediaUploadSourceType;
+  isVideo: boolean;
+  /** Videos only (≤ 30 s) */
+  durationSeconds?: number;
+  width?: number;
+  height?: number;
+};
+
+type SlotItem = {
+  local: SlotFile;
+  /** Set as soon as this slot's upload succeeds, so a retry skips it */
+  mediaId: number | null;
+  previewUri: string | null;
+  name: string | null;
+};
 
 const TEXT_FIELD_LABELS: Record<string, string> = {
   business_name: "businessNameField",
@@ -575,6 +604,32 @@ const createStyles = (theme: Theme) =>
       borderTopWidth: 1,
       borderTopColor: theme.borderLight,
       backgroundColor: theme.background,
+      gap: moderateHeightScale(8),
+    },
+    uploadProgressBlock: {
+      gap: moderateHeightScale(6),
+    },
+    uploadProgressText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    uploadProgressTrack: {
+      height: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen015,
+      overflow: "hidden",
+    },
+    uploadProgressFill: {
+      height: "100%",
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.buttonBack,
+    },
+    uploadProgressHint: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
     },
     emptyWrap: {
       flex: 1,
@@ -627,21 +682,6 @@ const createStyles = (theme: Theme) =>
     },
     optionTextCol: {
       flex: 1,
-    },
-    uploadingOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.borderDark,
-      alignItems: "center",
-      justifyContent: "center",
-      zIndex: 20,
-      gap: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(24),
-    },
-    uploadingText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-      textAlign: "center",
     },
   });
 
@@ -704,9 +744,7 @@ export default function ReelTemplatesScreen() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const [texts, setTexts] = useState<Record<string, string>>({});
-  const [selectedMedia, setSelectedMedia] = useState<(MediaVideo | null)[]>(
-    [],
-  );
+  const [selectedMedia, setSelectedMedia] = useState<(SlotItem | null)[]>([]);
   const [caption, setCaption] = useState("");
   const [categoryId, setCategoryId] = useState<number | null>(
     resolvedBusinessCategory?.id ?? null,
@@ -728,7 +766,19 @@ export default function ReelTemplatesScreen() {
 
   const [mediaPickerSlot, setMediaPickerSlot] = useState<number | null>(null);
   const [sourcePickerVisible, setSourcePickerVisible] = useState(false);
-  const [uploadingMedia, setUploadingMedia] = useState(false);
+  // Upload progress while "Generate Reel" sends the slot files (one at a time)
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+    percent: number;
+    phase: "compressing" | "uploading";
+  } | null>(null);
+  // Video sent to the editor for a slot; its trimmed copy comes back on focus
+  const editRequestRef = useRef<{
+    id: string;
+    sourceType: MediaUploadSourceType;
+    slotIndex: number;
+  } | null>(null);
   const [pipelineModal, setPipelineModal] = useState<HairPipelineModalState>(
     INITIAL_HAIR_PIPELINE_STATE,
   );
@@ -881,38 +931,43 @@ export default function ReelTemplatesScreen() {
   }, []);
 
 
-  const assignMediaToSlot = useCallback(
-    (video: MediaVideo, slotIndex: number) => {
-      const alreadyUsed = selectedMedia.some(
-        (m, idx) => m?.id === video.id && idx !== slotIndex,
-      );
-      if (alreadyUsed) {
-        showBanner(t("error"), t("mediaAlreadySelected"), "error", 2500);
-        return false;
-      }
-      setSelectedMedia((prev) => {
-        const next = [...prev];
-        next[slotIndex] = video;
-        return next;
+  /** Too-long slot video → editor (trim panel open on the full video), capped at 30 s. */
+  const openTrimEditor = useCallback(
+    (
+      asset: ImagePicker.ImagePickerAsset,
+      sourceType: MediaUploadSourceType,
+      slotIndex: number,
+    ) => {
+      const requestId = createEditRequestId();
+      editRequestRef.current = { id: requestId, sourceType, slotIndex };
+      router.push({
+        pathname: "/(main)/editVideo" as any,
+        params: {
+          uri: encodeURIComponent(asset.uri),
+          mimeType: (asset as { mimeType?: string }).mimeType || "video/mp4",
+          fileName: asset.fileName || "video.mp4",
+          sourceType,
+          maxSeconds: String(MAX_VIDEO_UPLOAD_SECONDS),
+          ...(asset.width ? { width: String(asset.width) } : {}),
+          ...(asset.height ? { height: String(asset.height) } : {}),
+          mode: "save",
+          requestId,
+          limitContext: "reel",
+        },
       });
-      return true;
     },
-    [selectedMedia, showBanner, t],
+    [router],
   );
 
-
-
-  const uploadPickedAsset = useCallback(
+  /** Pick = select only (local preview). Uploads happen on "Generate Reel". */
+  const selectPickedAsset = useCallback(
     async (
       asset: ImagePicker.ImagePickerAsset,
       sourceType: MediaUploadSourceType,
+      slotIndex: number,
       slotField: ReelTemplateMediaField | undefined,
     ) => {
-      if (mediaPickerSlot == null || !asset.uri) return;
-
-      const slotIndex = mediaPickerSlot;
-      setSourcePickerVisible(false);
-      setMediaPickerSlot(null);
+      if (!asset.uri) return;
 
       const mime = (asset as { mimeType?: string }).mimeType ?? "";
       const isVideo =
@@ -920,84 +975,113 @@ export default function ReelTemplatesScreen() {
         mime.startsWith("video/") ||
         isLikelyVideoUri(asset.uri);
 
-      const acceptsImage = slotAcceptsImage(slotField);
-      const acceptsVideo = slotAcceptsVideo(slotField);
-
-      if (isVideo && !acceptsVideo) {
+      if (isVideo && !slotAcceptsVideo(slotField)) {
         showBanner(t("error"), t("slotRequiresPhoto"), "error", 3500);
         return;
       }
-      if (!isVideo && !acceptsImage) {
+      if (!isVideo && !slotAcceptsImage(slotField)) {
         showBanner(t("error"), t("slotRequiresVideo"), "error", 3500);
         return;
       }
 
-      const durationRaw =
-        typeof asset.duration === "number" && asset.duration > 0
-          ? asset.duration
-          : 0;
-      // expo-image-picker reports video duration in seconds
-      const durationSeconds = isVideo
-        ? Math.max(1, Math.ceil(durationRaw))
-        : 0;
-
-      if (isVideo && durationSeconds > MAX_VIDEO_UPLOAD_SECONDS) {
-        showBanner(
-          t("error"),
-          t("videoTooLong", { max_seconds: MAX_VIDEO_UPLOAD_SECONDS }),
-          "error",
-          3000,
-        );
+      // One file can't fill two slots (server counts duplicate ids once)
+      const alreadyUsed = selectedMedia.some(
+        (m, idx) => idx !== slotIndex && m?.local.uri === asset.uri,
+      );
+      if (alreadyUsed) {
+        showBanner(t("error"), t("mediaAlreadySelected"), "error", 2500);
         return;
       }
 
-      setUploadingMedia(true);
-      try {
-        const uploaded = isVideo
-          ? await uploadVideo({
-              uri: asset.uri,
-              mimeType: mime || "video/mp4",
-              fileName: asset.fileName || "video.mp4",
-              sourceType,
-              durationSeconds: Math.min(
-                MAX_VIDEO_UPLOAD_SECONDS,
-                durationSeconds,
-              ),
-              width: asset.width,
-              height: asset.height,
-            })
-          : await uploadImage({
-              uri: asset.uri,
-              mimeType: mime || "image/jpeg",
-              fileName: asset.fileName || "photo.jpg",
-              sourceType,
-              width: asset.width,
-              height: asset.height,
-            });
-        // Images are ready immediately; videos may still need polling
-        const ready =
-          uploaded.status === "ready"
-            ? uploaded
-            : await waitForMediaReady(uploaded.id);
-        assignMediaToSlot(ready, slotIndex);
-      } catch (error: any) {
-        Logger.error("Failed to upload media for template slot:", error);
-        showBanner(
-          t("error"),
-          error?.message || t("failedToUploadVideo"),
-          "error",
-          3500,
-        );
-      } finally {
-        setUploadingMedia(false);
+      let durationSeconds: number | undefined;
+      let previewUri: string | null = isVideo ? null : asset.uri;
+      if (isVideo) {
+        // expo-image-picker reports milliseconds; measure when it's missing
+        const lengthSeconds =
+          typeof asset.duration === "number" && asset.duration > 0
+            ? asset.duration / 1000
+            : await measureVideoDurationSeconds(asset.uri);
+        durationSeconds = Math.max(1, Math.round(lengthSeconds ?? 0));
+        if (durationSeconds > MAX_VIDEO_UPLOAD_SECONDS) {
+          // Straight to the editor: full original video, trim panel open,
+          // required length on top (iOS: let the picker finish closing first)
+          setTimeout(
+            () => openTrimEditor(asset, sourceType, slotIndex),
+            Platform.OS === "ios" ? 350 : 0,
+          );
+          return;
+        }
+        try {
+          const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, {
+            time: 0,
+            quality: 0.6,
+          });
+          previewUri = thumb.uri;
+        } catch {
+          // Thumbnail is cosmetic only
+        }
       }
+
+      // A new pick replaces this slot's file and any earlier upload id
+      setSelectedMedia((prev) => {
+        const next = [...prev];
+        next[slotIndex] = {
+          local: {
+            uri: asset.uri,
+            mimeType: mime || (isVideo ? "video/mp4" : "image/jpeg"),
+            fileName: asset.fileName || (isVideo ? "video.mp4" : "photo.jpg"),
+            sourceType,
+            isVideo,
+            durationSeconds,
+            width: asset.width || undefined,
+            height: asset.height || undefined,
+          },
+          mediaId: null,
+          previewUri,
+          name: asset.fileName || null,
+        };
+        return next;
+      });
     },
-    [assignMediaToSlot, mediaPickerSlot, showBanner, t],
+    [openTrimEditor, selectedMedia, showBanner, t],
+  );
+
+
+  // Back from the editor: put the trimmed copy in the slot like a fresh pick
+  useFocusEffect(
+    useCallback(() => {
+      const request = editRequestRef.current;
+      const result = takeEditedVideo(request?.id ?? null);
+      if (!request || !result) return;
+      editRequestRef.current = null;
+      void selectPickedAsset(
+        {
+          uri: result.uri,
+          duration: result.durationMs,
+          fileName: result.fileName,
+          mimeType: result.mimeType,
+          width: result.width,
+          height: result.height,
+          type: "video",
+        } as ImagePicker.ImagePickerAsset,
+        request.sourceType,
+        request.slotIndex,
+        mediaFields[request.slotIndex],
+      );
+      if (result.savedToGallery) {
+        showBanner(t("success"), t("editedVideoSaved"), "success", 3000);
+      } else if (result.edited) {
+        showBanner(t("autoReelTrimTitle"), t("editedVideoNotSaved"), "warning", 4000);
+      }
+    }, [mediaFields, selectPickedAsset, showBanner, t]),
   );
 
   const handleSelectFromGallery = useCallback(async () => {
     const slotField = activeSlotField;
+    const slotIndex = mediaPickerSlot;
     setSourcePickerVisible(false);
+    setMediaPickerSlot(null);
+    if (slotIndex == null) return;
     const hasPermission = await handleMediaLibraryPermission();
     if (!hasPermission) {
       setMediaPickerSlot(null);
@@ -1022,7 +1106,7 @@ export default function ReelTemplatesScreen() {
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedAsset(result.assets[0], "device", slotField);
+        await selectPickedAsset(result.assets[0], "device", slotIndex, slotField);
       } else {
         setMediaPickerSlot(null);
       }
@@ -1031,11 +1115,14 @@ export default function ReelTemplatesScreen() {
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
       setMediaPickerSlot(null);
     }
-  }, [activeSlotField, showBanner, t, uploadPickedAsset]);
+  }, [activeSlotField, mediaPickerSlot, selectPickedAsset, showBanner, t]);
 
   const handleSelectFromCamera = useCallback(async () => {
     const slotField = activeSlotField;
+    const slotIndex = mediaPickerSlot;
     setSourcePickerVisible(false);
+    setMediaPickerSlot(null);
+    if (slotIndex == null) return;
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) {
       setMediaPickerSlot(null);
@@ -1043,8 +1130,7 @@ export default function ReelTemplatesScreen() {
     }
 
     const acceptsImage = slotAcceptsImage(slotField);
-    const acceptsVideo = slotAcceptsVideo(slotField);
-    // Prefer photo when slot allows images; otherwise record video
+    // Prefer photo when slot allows images; otherwise record video (no length cap)
     const mediaTypes =
       acceptsImage
         ? ImagePicker.MediaTypeOptions.Images
@@ -1055,13 +1141,10 @@ export default function ReelTemplatesScreen() {
         mediaTypes,
         quality: 0.8,
         allowsEditing: false,
-        ...(acceptsVideo && !acceptsImage
-          ? { videoMaxDuration: MAX_VIDEO_UPLOAD_SECONDS }
-          : {}),
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        await uploadPickedAsset(result.assets[0], "camera", slotField);
+        await selectPickedAsset(result.assets[0], "camera", slotIndex, slotField);
       } else {
         setMediaPickerSlot(null);
       }
@@ -1070,7 +1153,7 @@ export default function ReelTemplatesScreen() {
       showBanner(t("error"), t("failedToTakePhoto"), "error", 3000);
       setMediaPickerSlot(null);
     }
-  }, [activeSlotField, showBanner, t, uploadPickedAsset]);
+  }, [activeSlotField, mediaPickerSlot, selectPickedAsset, showBanner, t]);
 
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
   const fewReelsLeft =
@@ -1090,23 +1173,117 @@ export default function ReelTemplatesScreen() {
   const handleGenerate = useCallback(async () => {
     if (!selected || !canGenerate || submitting || !categoryId) return;
 
-    const mediaIds = selectedMedia
-      .map((m) => m?.id)
-      .filter((id): id is number => id != null);
-
-    if (mediaIds.length !== mediaFields.length) {
+    const slots = selectedMedia;
+    if (slots.length !== mediaFields.length || slots.some((m) => !m)) {
       showBanner(t("error"), t("selectAllMediaSlots"), "error", 2500);
       return;
     }
 
     setSubmitting(true);
     try {
-      // Fresh monthly limit check before starting (server still answers 422 on `reel`)
+      // Fresh monthly limit check before anything is uploaded
       const blocked = await loadReelLimits();
       if (blocked) {
         showBanner(t("monthlyReelsLimitTitle"), blocked, "error", 5000);
         return;
       }
+
+      // 1. Upload each slot that has no media id yet, in order
+      const mediaIds: number[] = [];
+      const pending = slots.filter((m) => m && m.mediaId == null).length;
+      let done = 0;
+      for (let index = 0; index < slots.length; index++) {
+        const slot = slots[index]!;
+        if (slot.mediaId != null) {
+          mediaIds.push(slot.mediaId);
+          continue;
+        }
+        done += 1;
+        const current = done;
+        const file = slot.local;
+        setUploadProgress({
+          current,
+          total: pending,
+          percent: 0,
+          phase: file.isVideo ? "compressing" : "uploading",
+        });
+        let uploaded: MediaVideo;
+        try {
+          uploaded = file.isVideo
+            ? await uploadVideo(
+                {
+                  uri: file.uri,
+                  mimeType: file.mimeType,
+                  fileName: file.fileName,
+                  sourceType: file.sourceType,
+                  durationSeconds: Math.min(
+                    MAX_VIDEO_UPLOAD_SECONDS,
+                    file.durationSeconds ?? MAX_VIDEO_UPLOAD_SECONDS,
+                  ),
+                  width: file.width,
+                  height: file.height,
+                  // One bar per file: compressing 0–40, uploading 40–100
+                  onCompressProgress: (percent) =>
+                    setUploadProgress({
+                      current,
+                      total: pending,
+                      percent: Math.round(percent * 0.4),
+                      phase: "compressing",
+                    }),
+                },
+                (percent) =>
+                  setUploadProgress({
+                    current,
+                    total: pending,
+                    percent: Math.round(40 + percent * 0.6),
+                    phase: "uploading",
+                  }),
+              )
+            : await uploadImage(
+                {
+                  uri: file.uri,
+                  mimeType: file.mimeType,
+                  fileName: file.fileName,
+                  sourceType: file.sourceType,
+                  width: file.width,
+                  height: file.height,
+                },
+                (percent) =>
+                  setUploadProgress({
+                    current,
+                    total: pending,
+                    percent,
+                    phase: "uploading",
+                  }),
+              );
+          // Uploads come back ready; keep the fallback for anything still processing
+          if (uploaded.status !== "ready") {
+            uploaded = await waitForMediaReady(uploaded.id);
+          }
+        } catch (error: any) {
+          Logger.error("Failed to upload template slot file:", error);
+          showBanner(
+            t("error"),
+            error instanceof VideoTooLargeError
+              ? t("autoReelVideoTooLarge")
+              : error?.message || t("failedToUploadVideo"),
+            "error",
+            4000,
+          );
+          return;
+        }
+        // Save the id at once — a retry only uploads the slots still missing one
+        const uploadedId = uploaded.id;
+        setSelectedMedia((prev) => {
+          const next = [...prev];
+          if (next[index]?.local === file) {
+            next[index] = { ...next[index]!, mediaId: uploadedId };
+          }
+          return next;
+        });
+        mediaIds.push(uploadedId);
+      }
+      setUploadProgress(null);
 
       const textsPayload: Record<string, string> = {};
       for (const field of selected.text_fields || []) {
@@ -1143,6 +1320,12 @@ export default function ReelTemplatesScreen() {
       };
       const reelLimitError = fieldError("reel");
       if (reelLimitError) void loadReelLimits();
+      // Server refused the files — next tap uploads every slot again
+      if (fieldError("media_asset_ids")) {
+        setSelectedMedia((prev) =>
+          prev.map((m) => (m ? { ...m, mediaId: null } : m)),
+        );
+      }
       const message =
         reelLimitError ||
         fieldError("template_id") ||
@@ -1153,6 +1336,7 @@ export default function ReelTemplatesScreen() {
         t("failedToStartGeneration");
       showBanner(t("error"), message, "error", 4000);
     } finally {
+      setUploadProgress(null);
       setSubmitting(false);
     }
   }, [
@@ -1168,6 +1352,26 @@ export default function ReelTemplatesScreen() {
     t,
     texts,
   ]);
+
+  // The screen must stay open until the uploads finish
+  const navigation = useNavigation();
+  const uploadingRef = useRef(false);
+  uploadingRef.current = uploadProgress != null;
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
+      if (!uploadingRef.current) return;
+      event.preventDefault();
+      Alert.alert(t("autoReelLeaveUploadTitle"), t("autoReelLeaveUploadMessage"), [
+        { text: t("autoReelKeepUploading"), style: "cancel" },
+        {
+          text: t("autoReelLeave"),
+          style: "destructive",
+          onPress: () => navigation.dispatch(event.data.action),
+        },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation, t]);
 
   const closePipelineModal = useCallback(() => {
     setPipelineModal(INITIAL_HAIR_PIPELINE_STATE);
@@ -1438,12 +1642,8 @@ export default function ReelTemplatesScreen() {
               <View style={styles.slotsRow}>
                 {selectedMedia.map((media, index) => {
                   const field = mediaFields[index];
-                  const filled = !!(media?.thumbnail_url || media?.playback_url || media?.url);
-                  const thumbUri =
-                    media?.thumbnail_url ||
-                    media?.playback_url ||
-                    media?.url ||
-                    null;
+                  const filled = !!media;
+                  const thumbUri = media?.previewUri ?? null;
                   return (
                     <TouchableOpacity
                       key={field?.key ?? `slot-${index}`}
@@ -1453,6 +1653,7 @@ export default function ReelTemplatesScreen() {
                       ]}
                       onPress={() => openSourcePicker(index)}
                       activeOpacity={0.85}
+                      disabled={submitting}
                     >
                       {filled && thumbUri ? (
                         <Image
@@ -1483,7 +1684,14 @@ export default function ReelTemplatesScreen() {
                         </Text>
                         <Text style={styles.slotSub} numberOfLines={1}>
                           {media
-                            ? media.original_name || t("mediaSelected")
+                            ? [
+                                media.name || t("mediaSelected"),
+                                media.local.isVideo && media.local.durationSeconds
+                                  ? `0:${String(media.local.durationSeconds).padStart(2, "0")}`
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")
                             : field
                               ? slotTypeHint(field, t)
                               : t("tapToSelectMedia")}
@@ -1599,12 +1807,41 @@ export default function ReelTemplatesScreen() {
 
       {selected ? (
         <View style={styles.footer}>
+          {uploadProgress ? (
+            <View style={styles.uploadProgressBlock} accessibilityLiveRegion="polite">
+              <Text style={styles.uploadProgressText}>
+                {t(
+                  uploadProgress.phase === "compressing"
+                    ? "templateCompressingProgress"
+                    : "templateUploadingProgress",
+                  {
+                    current: uploadProgress.current,
+                    total: uploadProgress.total,
+                    percent: uploadProgress.percent,
+                  },
+                )}
+              </Text>
+              <View style={styles.uploadProgressTrack}>
+                <View
+                  style={[
+                    styles.uploadProgressFill,
+                    { width: `${uploadProgress.percent}%` },
+                  ]}
+                />
+              </View>
+            </View>
+          ) : null}
           <Button
             title={t("generateReel")}
             onPress={handleGenerate}
             disabled={!canGenerate || submitting}
             loading={submitting}
           />
+          {uploadProgress ? (
+            <Text style={styles.uploadProgressHint}>
+              {t("autoReelKeepOpenWhileUploading")}
+            </Text>
+          ) : null}
         </View>
       ) : null}
 
@@ -1659,12 +1896,6 @@ export default function ReelTemplatesScreen() {
       </ModalizeBottomSheet>
 
 
-      {uploadingMedia ? (
-        <View style={styles.uploadingOverlay} pointerEvents="auto">
-          <ActivityIndicator size="large" color={theme.white} />
-          <Text style={styles.uploadingText}>{t("uploadingVideo")}</Text>
-        </View>
-      ) : null}
 
       <HairPipelineProcessingModal
         state={pipelineModal}

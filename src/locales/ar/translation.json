@@ -1876,5 +1876,10 @@
   "reelTypeAutoDesc": "ارفع فيديو خامًا واحدًا. يجد الذكاء الاصطناعي أفضل اللحظات ويقص الريل.",
   "reelTypeStart": "ابدأ",
   "videoTooLong": "يجب ألا تزيد مدة الفيديو عن {{max_seconds}} ثانية.",
-  "autoReelCompressing": "جارٍ ضغط الفيديو… {{percent}}%"
+  "autoReelCompressing": "جارٍ ضغط الفيديو… {{percent}}%",
+  "templateCompressingProgress": "جارٍ ضغط الفيديو {{current}} من {{total}}… {{percent}}%",
+  "templateUploadingProgress": "جارٍ رفع {{current}} من {{total}}… {{percent}}%",
+  "templateTrimSubtitle": "يمكن أن تصل مدة فيديوهات القالب إلى {{max_seconds}} ثانية. قصّه هنا وتابع.",
+  "editorLengthRequired": "المدة المطلوبة: {{min}} – {{max}}. مدة الفيديو {{length}}. قصّه للمتابعة.",
+  "exportKeepAppOpen": "يُرجى إبقاء التطبيق مفتوحًا. الرجوع أو إغلاق التطبيق سيلغي العملية."
 }

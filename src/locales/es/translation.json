@@ -1876,5 +1876,10 @@
   "reelTypeAutoDesc": "Sube un video sin editar. La IA encuentra los mejores momentos y crea tu reel.",
   "reelTypeStart": "Empezar",
   "videoTooLong": "El video debe durar {{max_seconds}} segundos o menos.",
-  "autoReelCompressing": "Comprimiendo video… {{percent}}%"
+  "autoReelCompressing": "Comprimiendo video… {{percent}}%",
+  "templateCompressingProgress": "Comprimiendo video {{current}} de {{total}}… {{percent}}%",
+  "templateUploadingProgress": "Subiendo {{current}} de {{total}}… {{percent}}%",
+  "templateTrimSubtitle": "Los videos de plantilla pueden durar hasta {{max_seconds}} segundos. Recórtalo aquí y continúa.",
+  "editorLengthRequired": "Duración requerida: {{min}} – {{max}}. Tu video dura {{length}}. Recórtalo para continuar.",
+  "exportKeepAppOpen": "Mantén la app abierta. Si vuelves atrás o cierras la app, se cancelará."
 }

@@ -1876,5 +1876,10 @@
   "reelTypeAutoDesc": "Importez une vidéo brute. L’IA trouve les meilleurs moments et monte votre reel.",
   "reelTypeStart": "Commencer",
   "videoTooLong": "La vidéo doit durer {{max_seconds}} secondes ou moins.",
-  "autoReelCompressing": "Compression de la vidéo… {{percent}} %"
+  "autoReelCompressing": "Compression de la vidéo… {{percent}} %",
+  "templateCompressingProgress": "Compression de la vidéo {{current}} sur {{total}}… {{percent}} %",
+  "templateUploadingProgress": "Importation {{current}} sur {{total}}… {{percent}} %",
+  "templateTrimSubtitle": "Les vidéos de modèle peuvent durer jusqu’à {{max_seconds}} secondes. Coupez-la ici et continuez.",
+  "editorLengthRequired": "Durée requise : {{min}} – {{max}}. Votre vidéo dure {{length}}. Coupez-la pour continuer.",
+  "exportKeepAppOpen": "Gardez l’application ouverte. Revenir en arrière ou fermer l’application l’annulera."
 }
