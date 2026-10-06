@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Keyboard,
@@ -17,6 +18,7 @@ import type { TextInput as TextInputType } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CloseIcon } from "@/assets/icons";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -30,7 +32,8 @@ import {
   addProgressListener,
   createProject,
   exportProject,
-  getVideoInfo,
+  makeClipId,
+  type OverlayClip,
   type Project,
 } from "expo-media-edit";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -51,12 +54,45 @@ import {
   getCachedMediaLimits,
   getMediaLimits,
 } from "@/src/services/mediaLibraryService";
+import {
+  handleCameraPermission,
+  handleMediaLibraryPermission,
+} from "@/src/services/mediaPermissionService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
+import ClipTimeline from "@/src/components/videoEditor/clipTimeline";
+import ClipEditor from "@/src/components/videoEditor/clipEditor";
+import StickerLayer, {
+  type StickerTransformPatch,
+} from "@/src/components/videoEditor/stickerLayer";
+import StickerPanel from "@/src/components/videoEditor/stickerPanel";
+import { deliverEditedVideo } from "@/src/components/videoEditor/editorHandoff";
+import { saveLocalVideoToGallery } from "@/src/services/downloadMediaService";
+import {
+  MAX_EDITOR_CLIPS,
+  MAX_EDITOR_STICKERS,
+  MAX_IMAGE_STICKERS,
+  MIN_CLIP_MS,
+  STICKER_SIZE_RANGE,
+  buildVideoTrackClips,
+  clampStickerSize,
+  clipLengthMs,
+  clipOffsetMs,
+  clipThumbnail,
+  normalizeDegrees,
+  prepareEditorClip,
+  prepareStickerImage,
+  sourceFilmstrip,
+  splitClip,
+  stickerToOverlay,
+  totalClipsMs,
+  type EditorClip,
+  type EditorSticker,
+} from "@/src/components/videoEditor/editorModel";
 
 type AspectPreset = "original" | "portrait" | "square" | "landscape";
-type EditorTool = "trim" | "crop" | "music" | "text" | null;
+type EditorTool = "trim" | "crop" | "music" | "text" | "sticker" | null;
 type OverlaySize = "S" | "M" | "L";
 type OverlayColorKey =
   | "white"
@@ -69,8 +105,8 @@ type OverlayColorKey =
   | "black";
 
 type EditorSnapshot = {
-  trimStartMs: number;
-  trimEndMs: number;
+  clips: EditorClip[];
+  stickers: EditorSticker[];
   aspect: AspectPreset;
   muteOriginal: boolean;
   musicUri: string | null;
@@ -165,10 +201,27 @@ function getCanvasSize(
 }
 
 const STABLE_CLIP_IDS = {
-  video: "clip-video",
   music: "clip-music",
   text: "clip-text",
 } as const;
+
+/** Fan new stickers out a little so they don't stack exactly. */
+function stickerSpawnPos(count: number): { x: number; y: number } {
+  const step = ((count % 5) - 2) * 0.06;
+  return { x: 0.5 + step, y: 0.4 + step };
+}
+
+type PlayerSlot = 0 | 1;
+const otherSlot = (slot: PlayerSlot): PlayerSlot => (slot === 0 ? 1 : 0);
+
+/** iOS needs the "Compatible" representation so HEVC / slo-mo clips open in AVFoundation. */
+const IOS_PICKER_COMPAT =
+  Platform.OS === "ios"
+    ? {
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+      }
+    : {};
 
 const OVERLAY_POS_MIN = 0.16;
 const OVERLAY_POS_MAX = 0.88;
@@ -307,9 +360,8 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    video: {
-      width: "100%",
-      height: "100%",
+    videoLayer: {
+      ...StyleSheet.absoluteFillObject,
     },
     playOverlay: {
       ...StyleSheet.absoluteFillObject,
@@ -693,7 +745,12 @@ export default function EditVideoScreen() {
     maxSeconds?: string;
     width?: string;
     height?: string;
+    /** "save" → export, save to gallery and hand back to the opener (no publish). */
+    mode?: string;
+    requestId?: string;
   }>();
+
+  const isSaveMode = params.mode === "save" && !!params.requestId;
 
   const paramUri = params.uri ? decodeURIComponent(params.uri) : "";
   const sourceType = (
@@ -705,14 +762,18 @@ export default function EditVideoScreen() {
       ? paramMaxSeconds
       : getCachedMediaLimits()?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
-  const [sourceUri, setSourceUri] = useState("");
+  const [clips, setClips] = useState<EditorClip[]>([]);
+  /** Clip open in the trim tool's single-clip view; null = clips overview. */
+  const [editingClipId, setEditingClipId] = useState<string | null>(null);
+  const [thumbs, setThumbs] = useState<Record<string, string | null>>({});
+  /** Trimmer frames per source file (split clips share one). */
+  const [filmstrips, setFilmstrips] = useState<
+    Record<string, (string | null)[]>
+  >({});
+  const [addingClips, setAddingClips] = useState(false);
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [maxSeconds, setMaxSeconds] = useState(initialMaxSeconds);
-  const [durationMs, setDurationMs] = useState(5000);
-  const [trimStartMs, setTrimStartMs] = useState(0);
-  const [trimEndMs, setTrimEndMs] = useState(5000);
   const [aspect, setAspect] = useState<AspectPreset>("original");
-  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const [muteOriginal, setMuteOriginal] = useState(false);
   const [musicUri, setMusicUri] = useState<string | null>(null);
   const [musicName, setMusicName] = useState<string | null>(null);
@@ -728,6 +789,11 @@ export default function EditVideoScreen() {
   const [overlayMono, setOverlayMono] = useState(false);
   const [overlayBgColorKey, setOverlayBgColorKey] =
     useState<OverlayColorKey | null>(null);
+  const [stickers, setStickers] = useState<EditorSticker[]>([]);
+  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(
+    null,
+  );
+  const [addingSticker, setAddingSticker] = useState(false);
   const [textColorTarget, setTextColorTarget] =
     useState<TextColorTarget>("text");
   const [draggingText, setDraggingText] = useState(false);
@@ -741,16 +807,47 @@ export default function EditVideoScreen() {
   const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [savingToGallery, setSavingToGallery] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [activeSlot, setActiveSlot] = useState<PlayerSlot>(0);
 
   const trimHistoryPushedRef = useRef(false);
   const textHistoryPushedRef = useRef(false);
   const textInputRef = useRef<TextInputType>(null);
   const musicSoundRef = useRef<Audio.Sound | null>(null);
-  const trimStartRef = useRef(trimStartMs);
-  const trimEndRef = useRef(trimEndMs);
-  trimStartRef.current = trimStartMs;
-  trimEndRef.current = trimEndMs;
+
+  const maxClipMs = Math.max(MIN_CLIP_MS, Math.round(maxSeconds * 1000));
+  const totalMs = totalClipsMs(clips);
+  const editingIndex = clips.findIndex((c) => c.id === editingClipId);
+  const editingClip: EditorClip | null =
+    editingIndex >= 0 ? clips[editingIndex] : null;
+  const selectedSticker =
+    stickers.find((s) => s.id === selectedStickerId) ?? null;
+  // Trim panel previews only the clip being trimmed; otherwise the whole reel plays.
+  const focusIndex =
+    activeTool === "trim" && editingClip ? editingIndex : null;
+
+  // ── Preview engine refs (two players → gapless hand-off between clips)
+  const clipsRef = useRef(clips);
+  clipsRef.current = clips;
+  const editingClipIdRef = useRef<string | null>(null);
+  editingClipIdRef.current = editingClip?.id ?? null;
+  const focusIndexRef = useRef<number | null>(focusIndex);
+  focusIndexRef.current = focusIndex;
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
+  const activeSlotRef = useRef<PlayerSlot>(0);
+  const activeIndexRef = useRef(0);
+  const slotUriRef = useRef<(string | null)[]>([null, null]);
+  const preloadRef = useRef<{
+    slot: PlayerSlot;
+    index: number;
+    clipId: string;
+  } | null>(null);
+  const engineGenRef = useRef(0);
+  const engineLoadingRef = useRef(false);
+  const scrubbingRef = useRef(false);
+  const filmstripLoadingRef = useRef(new Set<string>());
 
   const dismissKeyboard = useCallback(() => {
     Keyboard.dismiss();
@@ -774,10 +871,13 @@ export default function EditVideoScreen() {
     };
   }, []);
 
-  const player = useVideoPlayer(paramUri || "", (p) => {
+  const setupPlayer = useCallback((p: { loop: boolean; timeUpdateEventInterval: number }) => {
     p.loop = false;
     p.timeUpdateEventInterval = 0.1;
-  });
+  }, []);
+  const playerA = useVideoPlayer(null, setupPlayer);
+  const playerB = useVideoPlayer(null, setupPlayer);
+  const players = useMemo(() => [playerA, playerB] as const, [playerA, playerB]);
 
   const resolveOverlayColor = useCallback(
     (key: OverlayColorKey) => theme[key] as string,
@@ -786,8 +886,8 @@ export default function EditVideoScreen() {
 
   const currentSnapshot = useCallback(
     (): EditorSnapshot => ({
-      trimStartMs,
-      trimEndMs,
+      clips,
+      stickers,
       aspect,
       muteOriginal,
       musicUri,
@@ -805,6 +905,7 @@ export default function EditVideoScreen() {
     }),
     [
       aspect,
+      clips,
       musicName,
       musicUri,
       musicVolume,
@@ -818,19 +919,18 @@ export default function EditVideoScreen() {
       overlayText,
       overlayX,
       overlayY,
-      trimEndMs,
-      trimStartMs,
+      stickers,
     ],
   );
 
-  const pushHistory = useCallback(() => {
-    const snap = currentSnapshot();
+  /** Push a snapshot taken earlier (e.g. before an async picker resolved). */
+  const pushSnapshot = useCallback((snap: EditorSnapshot) => {
     setHistory((prev) => {
       const last = prev[prev.length - 1];
       if (
         last &&
-        last.trimStartMs === snap.trimStartMs &&
-        last.trimEndMs === snap.trimEndMs &&
+        last.clips === snap.clips &&
+        last.stickers === snap.stickers &&
         last.aspect === snap.aspect &&
         last.muteOriginal === snap.muteOriginal &&
         last.musicUri === snap.musicUri &&
@@ -850,22 +950,19 @@ export default function EditVideoScreen() {
       }
       return [...prev.slice(-29), snap];
     });
-  }, [currentSnapshot]);
+  }, []);
 
-  const seekToTrimStart = useCallback(() => {
-    try {
-      player.currentTime = Math.max(0, trimStartRef.current / 1000);
-      setPreviewTimeMs(0);
-    } catch {}
-  }, [player]);
+  const pushHistory = useCallback(() => {
+    pushSnapshot(currentSnapshot());
+  }, [currentSnapshot, pushSnapshot]);
 
   const handleUndo = useCallback(() => {
     setHistory((prev) => {
       if (prev.length === 0) return prev;
       const next = [...prev];
       const snap = next.pop()!;
-      setTrimStartMs(snap.trimStartMs);
-      setTrimEndMs(snap.trimEndMs);
+      setClips(snap.clips);
+      setStickers(snap.stickers);
       setAspect(snap.aspect);
       setMuteOriginal(snap.muteOriginal);
       setMusicUri(snap.musicUri);
@@ -883,8 +980,6 @@ export default function EditVideoScreen() {
       return next;
     });
   }, []);
-
-  const maxClipMs = Math.max(500, Math.round(maxSeconds * 1000));
 
   useEffect(() => {
     let cancelled = false;
@@ -907,6 +1002,12 @@ export default function EditVideoScreen() {
     };
   }, [paramMaxSeconds]);
 
+  const loadThumbnail = useCallback((clip: EditorClip) => {
+    void clipThumbnail(clip).then((uri) => {
+      if (uri) setThumbs((prev) => ({ ...prev, [clip.id]: uri }));
+    });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -914,40 +1015,45 @@ export default function EditVideoScreen() {
         setLoadingInfo(false);
         return;
       }
+      const clipCap = Math.max(
+        MIN_CLIP_MS,
+        Math.round(
+          (Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
+            ? paramMaxSeconds
+            : getCachedMediaLimits()?.max_seconds ??
+              REEL_LIMIT_FALLBACK.max_seconds) * 1000,
+        ),
+      );
       try {
-        const localUri = await ensureLocalMediaFileUri(
-          paramUri,
-          (params.fileName || "video.mp4").split(".").pop() || "mp4",
-        );
-        if (cancelled) return;
-        setSourceUri(localUri);
-        await player.replaceAsync(localUri);
-        const info = await getVideoInfo(localUri);
-        if (cancelled) return;
-        const dur = Math.max(500, info.durationMs || 5000);
-        const clipCap = Math.max(
-          500,
-          Math.round(
-            (Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
-              ? paramMaxSeconds
-              : getCachedMediaLimits()?.max_seconds ??
-                REEL_LIMIT_FALLBACK.max_seconds) * 1000,
-          ),
-        );
-        setDurationMs(dur);
-        setTrimStartMs(0);
-        setTrimEndMs(Math.min(dur, clipCap));
-        setVideoSize({
-          width: Math.max(0, info.width || 0),
-          height: Math.max(0, info.height || 0),
+        const first = await prepareEditorClip({
+          uri: paramUri,
+          fileName: params.fileName,
+          sourceType,
+          budgetMs: clipCap,
         });
+        if (cancelled) return;
+        clipsRef.current = [first];
+        setClips([first]);
         setAspect("original");
         setPreviewReady(true);
         setPlaying(true);
+        loadThumbnail(first);
       } catch (error) {
         Logger.error("prepare video for edit failed:", error);
         if (!cancelled) {
-          setSourceUri(paramUri);
+          // Keep "upload as-is" possible even when metadata can't be read.
+          const fallback: EditorClip = {
+            id: makeClipId("clip"),
+            uri: paramUri,
+            sourceDurationMs: clipCap,
+            trimStartMs: 0,
+            trimEndMs: clipCap,
+            width: Number(params.width) || 0,
+            height: Number(params.height) || 0,
+            sourceType,
+          };
+          clipsRef.current = [fallback];
+          setClips([fallback]);
           setPreviewReady(true);
         }
         showBanner(t("error"), t("failedToLoadVideoForEdit"), "error", 3000);
@@ -958,81 +1064,364 @@ export default function EditVideoScreen() {
     return () => {
       cancelled = true;
     };
-  }, [paramUri, params.fileName, paramMaxSeconds, player, showBanner, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramUri, params.fileName, paramMaxSeconds, showBanner, t]);
+
+  // Account limit can arrive late (or shrink) — trim from the end to fit.
+  useEffect(() => {
+    setClips((prev) => {
+      let over = totalClipsMs(prev) - maxClipMs;
+      if (over <= 0) return prev;
+      const next = [...prev];
+      for (let i = next.length - 1; i >= 0 && over > 0; i--) {
+        const c = next[i];
+        const shrink = Math.min(over, clipLengthMs(c) - MIN_CLIP_MS);
+        if (shrink > 0) {
+          next[i] = { ...c, trimEndMs: c.trimEndMs - shrink };
+          over -= shrink;
+        }
+      }
+      return next;
+    });
+  }, [maxClipMs]);
+
+  // ── Preview engine ────────────────────────────────────────────────
+  // expo-video plays one source per player, so clips are previewed back
+  // to back on two players: the inactive one is preloaded + seeked to the
+  // next clip's trim start, then the views swap at the boundary. Export is
+  // a single native composition (expo-media-edit), so it has no seams.
+
+  const ensureSlotSource = useCallback(
+    async (slot: PlayerSlot, uri: string) => {
+      if (slotUriRef.current[slot] === uri) return;
+      slotUriRef.current[slot] = uri;
+      try {
+        await players[slot].replaceAsync(uri);
+      } catch (error) {
+        slotUriRef.current[slot] = null;
+        throw error;
+      }
+    },
+    [players],
+  );
+
+  const preloadNext = useCallback(
+    async (gen: number) => {
+      const list = clipsRef.current;
+      if (focusIndexRef.current != null || list.length < 2) return;
+      const nextIndex = (activeIndexRef.current + 1) % list.length;
+      const clip = list[nextIndex];
+      const slot = otherSlot(activeSlotRef.current);
+      try {
+        players[slot].pause();
+        await ensureSlotSource(slot, clip.uri);
+        if (gen !== engineGenRef.current) return;
+        players[slot].pause();
+        players[slot].currentTime = clip.trimStartMs / 1000;
+        preloadRef.current = { slot, index: nextIndex, clipId: clip.id };
+      } catch (error) {
+        Logger.error("Preload next clip failed:", error);
+      }
+    },
+    [ensureSlotSource, players],
+  );
+
+  const startAt = useCallback(
+    async (index: number) => {
+      const gen = ++engineGenRef.current;
+      preloadRef.current = null;
+      const list = clipsRef.current;
+      const clip = list[index];
+      if (!clip) return;
+      const slot = activeSlotRef.current;
+      const p = players[slot];
+      engineLoadingRef.current = true;
+      try {
+        players[otherSlot(slot)].pause();
+        await ensureSlotSource(slot, clip.uri);
+        if (gen !== engineGenRef.current) return;
+        activeIndexRef.current = index;
+        p.currentTime = clip.trimStartMs / 1000;
+        if (playingRef.current) p.play();
+        else p.pause();
+        setPreviewTimeMs(
+          focusIndexRef.current != null ? 0 : clipOffsetMs(list, index),
+        );
+      } catch (error) {
+        Logger.error("Preview clip load failed:", error);
+        return;
+      } finally {
+        if (gen === engineGenRef.current) engineLoadingRef.current = false;
+      }
+      void preloadNext(gen);
+    },
+    [ensureSlotSource, players, preloadNext],
+  );
+
+  const advance = useCallback(() => {
+    const list = clipsRef.current;
+    const slot = activeSlotRef.current;
+    const focus = focusIndexRef.current;
+    const idx = activeIndexRef.current;
+
+    if (focus != null || list.length < 2) {
+      const clip = list[focus ?? idx] ?? list[0];
+      if (!clip) return;
+      try {
+        players[slot].currentTime = clip.trimStartMs / 1000;
+        if (playingRef.current) players[slot].play();
+      } catch {}
+      setPreviewTimeMs(0);
+      return;
+    }
+
+    const nextIndex = (idx + 1) % list.length;
+    const pre = preloadRef.current;
+    if (
+      pre &&
+      pre.index === nextIndex &&
+      pre.slot !== slot &&
+      list[nextIndex]?.id === pre.clipId
+    ) {
+      const gen = ++engineGenRef.current;
+      preloadRef.current = null;
+      activeSlotRef.current = pre.slot;
+      activeIndexRef.current = nextIndex;
+      setActiveSlot(pre.slot);
+      try {
+        if (playingRef.current) players[pre.slot].play();
+        players[slot].pause();
+      } catch {}
+      setPreviewTimeMs(clipOffsetMs(list, nextIndex));
+      void preloadNext(gen);
+      return;
+    }
+
+    // Next clip not ready yet — fall back to loading it on the active player.
+    try {
+      players[slot].pause();
+    } catch {}
+    void startAt(nextIndex);
+  }, [players, preloadNext, startAt]);
 
   useEffect(() => {
-    setTrimEndMs((end) => {
-      const start = trimStartRef.current;
-      if (end - start <= maxClipMs) return end;
-      return Math.min(durationMs, start + maxClipMs);
+    const subs = players.flatMap((p, i) => {
+      const slot = i as PlayerSlot;
+      return [
+        p.addListener("timeUpdate", ({ currentTime }) => {
+          if (
+            slot !== activeSlotRef.current ||
+            engineLoadingRef.current ||
+            scrubbingRef.current
+          ) {
+            return;
+          }
+          const list = clipsRef.current;
+          const idx = activeIndexRef.current;
+          const clip = list[idx];
+          if (!clip) return;
+          const ms = Math.max(0, currentTime * 1000);
+          if (ms >= clip.trimEndMs - 40) {
+            advance();
+            return;
+          }
+          if (ms < clip.trimStartMs - 40) {
+            try {
+              p.currentTime = clip.trimStartMs / 1000;
+            } catch {}
+            return;
+          }
+          const local = ms - clip.trimStartMs;
+          setPreviewTimeMs(
+            focusIndexRef.current != null
+              ? local
+              : clipOffsetMs(list, idx) + local,
+          );
+        }),
+        p.addListener("playToEnd", () => {
+          if (slot !== activeSlotRef.current || engineLoadingRef.current) {
+            return;
+          }
+          advance();
+        }),
+      ];
     });
-  }, [durationMs, maxClipMs]);
-
-  const onTrimStartChange = useCallback(
-    (value: number) => {
-      const minStart = Math.max(0, trimEndRef.current - maxClipMs);
-      const next = Math.min(
-        Math.max(value, minStart),
-        Math.max(0, trimEndRef.current - 500),
-      );
-      setTrimStartMs(next);
-    },
-    [maxClipMs],
-  );
-
-  const onTrimEndChange = useCallback(
-    (value: number) => {
-      const maxEnd = Math.min(durationMs, trimStartRef.current + maxClipMs);
-      const next = Math.max(
-        Math.min(value, maxEnd),
-        Math.min(durationMs, trimStartRef.current + 500),
-      );
-      setTrimEndMs(next);
-    },
-    [durationMs, maxClipMs],
-  );
+    return () => subs.forEach((s) => s.remove());
+  }, [advance, players]);
 
   // Play / pause + mute
   useEffect(() => {
     try {
-      player.muted = muteOriginal;
-      if (playing) {
-        player.play();
-      } else {
-        player.pause();
+      players.forEach((p) => {
+        p.muted = muteOriginal;
+      });
+      players[otherSlot(activeSlot)].pause();
+      if (playing && !engineLoadingRef.current) {
+        players[activeSlot].play();
+      } else if (!playing) {
+        players[activeSlot].pause();
       }
     } catch {}
-  }, [muteOriginal, player, playing]);
+  }, [activeSlot, muteOriginal, players, playing]);
 
-  // Live trim window: loop inside [start, end]
+  // (Re)start playback when the clip list / trims / focus change.
+  const clipsKey = clips
+    .map((c) => `${c.id}:${c.uri}:${c.trimStartMs}:${c.trimEndMs}`)
+    .join("|");
   useEffect(() => {
-    const sub = player.addListener("timeUpdate", ({ currentTime }) => {
-      const ms = Math.max(0, currentTime * 1000);
-      const start = trimStartRef.current;
-      const end = trimEndRef.current;
-      if (ms < start - 40) {
-        try {
-          player.currentTime = start / 1000;
-        } catch {}
-        setPreviewTimeMs(0);
+    if (!previewReady || scrubbingRef.current) return;
+    if (clipsRef.current.length === 0) return;
+    // Single-clip view loops that clip; the overview plays the reel from the top.
+    void startAt(focusIndex ?? 0);
+  }, [clipsKey, focusIndex, previewReady, startAt]);
+
+  const scrubTo = useCallback(
+    (ms: number) => {
+      try {
+        players[activeSlotRef.current].currentTime = Math.max(0, ms) / 1000;
+      } catch {}
+    },
+    [players],
+  );
+
+  /** Move one trim handle of the selected clip, keeping the reel within the account limit. */
+  const updateSelectedTrim = useCallback(
+    (edge: "start" | "end", value: number) => {
+      const list = clipsRef.current;
+      const idx = list.findIndex((c) => c.id === editingClipIdRef.current);
+      const clip = list[idx];
+      if (!clip) return;
+      const budget = maxClipMs - (totalClipsMs(list) - clipLengthMs(clip));
+      let next: EditorClip;
+      if (edge === "start") {
+        const minStart = Math.max(0, clip.trimEndMs - budget);
+        const start = Math.round(
+          Math.min(
+            Math.max(value, minStart),
+            Math.max(0, clip.trimEndMs - MIN_CLIP_MS),
+          ),
+        );
+        if (start === clip.trimStartMs) return;
+        next = { ...clip, trimStartMs: start };
+        scrubTo(start);
+      } else {
+        const maxEnd = Math.min(clip.sourceDurationMs, clip.trimStartMs + budget);
+        const end = Math.round(
+          Math.max(
+            Math.min(value, maxEnd),
+            Math.min(clip.sourceDurationMs, clip.trimStartMs + MIN_CLIP_MS),
+          ),
+        );
+        if (end === clip.trimEndMs) return;
+        next = { ...clip, trimEndMs: end };
+        scrubTo(Math.max(clip.trimStartMs, end - 60));
+      }
+      const updated = [...list];
+      updated[idx] = next;
+      clipsRef.current = updated;
+      setClips(updated);
+    },
+    [maxClipMs, scrubTo],
+  );
+
+  const onTrimSlideStart = useCallback(() => {
+    dismissKeyboard();
+    if (!trimHistoryPushedRef.current) {
+      pushHistory();
+      trimHistoryPushedRef.current = true;
+    }
+    scrubbingRef.current = true;
+    setPlaying(false);
+  }, [dismissKeyboard, pushHistory]);
+
+  const onTrimSlideComplete = useCallback(() => {
+    trimHistoryPushedRef.current = false;
+    scrubbingRef.current = false;
+    playingRef.current = true;
+    setPlaying(true);
+    void startAt(focusIndexRef.current ?? 0);
+  }, [startAt]);
+
+  // Playhead in SOURCE ms of the clip open in the single-clip view.
+  const playheadSourceMs =
+    editingClip && focusIndex != null
+      ? editingClip.trimStartMs + previewTimeMs
+      : null;
+
+  const onScrubBegin = useCallback(() => {
+    dismissKeyboard();
+    scrubbingRef.current = true;
+    setPlaying(false);
+  }, [dismissKeyboard]);
+
+  const onScrub = useCallback(
+    (ms: number) => {
+      const clip = clipsRef.current.find(
+        (c) => c.id === editingClipIdRef.current,
+      );
+      if (!clip) return;
+      scrubTo(ms);
+      setPreviewTimeMs(Math.max(0, ms - clip.trimStartMs));
+    },
+    [scrubTo],
+  );
+
+  // Stay paused on the scrubbed frame (Instagram-style) so Split lands there.
+  const onScrubEnd = useCallback(() => {
+    scrubbingRef.current = false;
+  }, []);
+
+  const splitSelectedClip = useCallback(
+    (id: string) => {
+      const list = clipsRef.current;
+      const index = list.findIndex((c) => c.id === id);
+      const clip = list[index];
+      if (!clip || playheadSourceMs == null) return;
+      if (list.length >= MAX_EDITOR_CLIPS) {
+        showBanner(
+          t("trimVideo"),
+          t("clipsLimitReached", { max: MAX_EDITOR_CLIPS }),
+          "warning",
+          3000,
+        );
         return;
       }
-      if (ms >= end - 40) {
-        try {
-          player.currentTime = start / 1000;
-        } catch {}
-        setPreviewTimeMs(0);
+      const parts = splitClip(clip, playheadSourceMs);
+      if (!parts) {
+        // Playhead too close to an edge — say how to fix it instead of a dead button.
+        showBanner(t("splitClip"), t("splitClipHint"), "info", 3500);
         return;
       }
-      setPreviewTimeMs(ms - start);
-    });
-    return () => sub.remove();
-  }, [player]);
+      pushHistory();
+      const next = [...list];
+      next.splice(index, 1, ...parts);
+      clipsRef.current = next;
+      setClips(next);
+      loadThumbnail(parts[1]);
+      // Back to the overview so both halves are visible as separate clips.
+      setEditingClipId(null);
+      showBanner(t("splitClip"), t("clipSplitDone"), "success", 2500);
+    },
+    [loadThumbnail, playheadSourceMs, pushHistory, showBanner, t],
+  );
 
-  // When trim handles change, jump playhead into the new window
+  // Load trimmer frames for the open clip's file (once per file).
+  const selectedUri = editingClip?.uri;
+  const selectedSourceMs = editingClip?.sourceDurationMs ?? 0;
   useEffect(() => {
-    seekToTrimStart();
-  }, [seekToTrimStart, trimStartMs, trimEndMs]);
+    if (activeTool !== "trim" || !selectedUri || exporting) return;
+    if (filmstrips[selectedUri] || filmstripLoadingRef.current.has(selectedUri)) {
+      return;
+    }
+    filmstripLoadingRef.current.add(selectedUri);
+    void sourceFilmstrip(selectedUri, selectedSourceMs)
+      .then((frames) => {
+        setFilmstrips((prev) => ({ ...prev, [selectedUri]: frames }));
+      })
+      .finally(() => {
+        filmstripLoadingRef.current.delete(selectedUri);
+      });
+  }, [activeTool, exporting, filmstrips, selectedSourceMs, selectedUri]);
 
   // Background music preview (live)
   useEffect(() => {
@@ -1088,23 +1477,31 @@ export default function EditVideoScreen() {
     })();
   }, [musicVolume, playing]);
 
+  const firstClip = clips[0];
+  const videoSize = useMemo(
+    () => ({
+      width: firstClip?.width ?? 0,
+      height: firstClip?.height ?? 0,
+    }),
+    [firstClip?.height, firstClip?.width],
+  );
+
+  const canvasSize = useMemo(
+    () => getCanvasSize(aspect, videoSize.width, videoSize.height),
+    [aspect, videoSize.height, videoSize.width],
+  );
+
   const project: Project | null = useMemo(() => {
-    if (!sourceUri || trimEndMs <= trimStartMs) return null;
-    const clipDuration = trimEndMs - trimStartMs;
-    const canvas = getCanvasSize(aspect, videoSize.width, videoSize.height);
+    if (clips.length === 0) return null;
+    const videoClips = buildVideoTrackClips(clips, muteOriginal);
+    const reelDuration =
+      videoClips[videoClips.length - 1]?.timelineRange.endMs ?? 0;
+    if (reelDuration <= 0) return null;
     const tracks: Project["tracks"] = [
       {
         kind: "video",
         id: "v",
-        clips: [
-          {
-            id: STABLE_CLIP_IDS.video,
-            sourceUri,
-            sourceRange: { startMs: trimStartMs, endMs: trimEndMs },
-            timelineRange: { startMs: 0, endMs: clipDuration },
-            originalVolume: muteOriginal ? 0 : 1,
-          },
-        ],
+        clips: videoClips,
       },
     ];
 
@@ -1116,8 +1513,8 @@ export default function EditVideoScreen() {
           {
             id: STABLE_CLIP_IDS.music,
             sourceUri: musicUri,
-            sourceRange: { startMs: 0, endMs: clipDuration },
-            timelineRange: { startMs: 0, endMs: clipDuration },
+            sourceRange: { startMs: 0, endMs: reelDuration },
+            timelineRange: { startMs: 0, endMs: reelDuration },
             volume: musicVolume,
             trimToVideo: true,
           },
@@ -1125,53 +1522,57 @@ export default function EditVideoScreen() {
       });
     }
 
+    // Order = z-order on export: stickers first, caption on top (same as preview).
+    const overlayItems: OverlayClip[] = stickers.map((s) =>
+      stickerToOverlay(s, canvasSize),
+    );
+
     if (overlayText.trim()) {
       const exportText = sanitizeOverlayText(overlayText);
       if (exportText) {
         const hasBg = !!overlayBgColorKey;
-        tracks.push({
-          kind: "overlay",
-          id: "o",
-          items: [
-            {
-              id: STABLE_CLIP_IDS.text,
-              kind: "text",
-              content: exportText,
-              x: overlayX,
-              y: overlayY,
-              anchor: "center",
-              textAlign: "center",
-              paddingX: hasBg ? 18 : 10,
-              paddingY: hasBg ? 10 : 6,
-              fontSize: OVERLAY_EXPORT_FONT[overlaySize],
-              color: toExportHexColor(resolveOverlayColor(overlayColorKey)),
-              fontWeight: overlayBold ? "bold" : "normal",
-              fontStyle: overlayItalic ? "italic" : "normal",
-              fontFamily: overlayMono ? "monospace" : "system",
-              ...(hasBg
-                ? {
-                    backgroundColor: toExportHexColor(
-                      resolveOverlayColor(overlayBgColorKey),
-                    ),
-                    cornerRadius: 12,
-                  }
-                : {}),
-              // Avoid CATextLayer shadow + masksToBounds combo — crashes some iOS builds
-            },
-          ],
+        overlayItems.push({
+          id: STABLE_CLIP_IDS.text,
+          kind: "text",
+          content: exportText,
+          x: overlayX,
+          y: overlayY,
+          anchor: "center",
+          textAlign: "center",
+          paddingX: hasBg ? 18 : 10,
+          paddingY: hasBg ? 10 : 6,
+          fontSize: OVERLAY_EXPORT_FONT[overlaySize],
+          color: toExportHexColor(resolveOverlayColor(overlayColorKey)),
+          fontWeight: overlayBold ? "bold" : "normal",
+          fontStyle: overlayItalic ? "italic" : "normal",
+          fontFamily: overlayMono ? "monospace" : "system",
+          ...(hasBg
+            ? {
+                backgroundColor: toExportHexColor(
+                  resolveOverlayColor(overlayBgColorKey),
+                ),
+                cornerRadius: 12,
+              }
+            : {}),
+          // Avoid CATextLayer shadow + masksToBounds combo — crashes some iOS builds
         });
       }
     }
 
+    if (overlayItems.length > 0) {
+      tracks.push({ kind: "overlay", id: "o", items: overlayItems });
+    }
+
     return createProject({
       id: "freshpass-edit-session",
-      canvasSize: canvas,
+      canvasSize,
       // Explicit fps avoids undefined → native 0 timescale black exports.
       fps: 30,
       tracks,
     });
   }, [
-    aspect,
+    canvasSize,
+    clips,
     musicUri,
     musicVolume,
     muteOriginal,
@@ -1185,11 +1586,7 @@ export default function EditVideoScreen() {
     overlayX,
     overlayY,
     resolveOverlayColor,
-    sourceUri,
-    trimEndMs,
-    trimStartMs,
-    videoSize.height,
-    videoSize.width,
+    stickers,
   ]);
 
   const pickMusic = useCallback(async () => {
@@ -1215,10 +1612,437 @@ export default function EditVideoScreen() {
     }
   }, [pushHistory, showBanner, t]);
 
-  const handleNextToPublish = useCallback(async () => {
-    if (!project || exporting || !sourceUri) return;
+  // ── Clips: add (gallery / camera), reorder, remove ────────────────
 
-    const clipSeconds = (trimEndMs - trimStartMs) / 1000;
+  /** Returns a reason the user can't add another clip, or null. */
+  const clipAddBlocker = useCallback((): string | null => {
+    const list = clipsRef.current;
+    if (list.length >= MAX_EDITOR_CLIPS) {
+      return t("clipsLimitReached", { max: MAX_EDITOR_CLIPS });
+    }
+    if (maxClipMs - totalClipsMs(list) < MIN_CLIP_MS) {
+      return t("clipsNoTimeLeft", { max_seconds: maxSeconds });
+    }
+    return null;
+  }, [maxClipMs, maxSeconds, t]);
+
+  const appendClips = useCallback(
+    async (
+      assets: ImagePicker.ImagePickerAsset[],
+      type: MediaUploadSourceType,
+      snap: EditorSnapshot,
+    ) => {
+      setAddingClips(true);
+      const added: EditorClip[] = [];
+      let failed = 0;
+      let outOfTime = 0;
+      let shortened = false;
+      let budget = maxClipMs - totalClipsMs(clipsRef.current);
+      for (const asset of assets) {
+        if (!asset.uri) continue;
+        if (clipsRef.current.length + added.length >= MAX_EDITOR_CLIPS) break;
+        if (budget < MIN_CLIP_MS) {
+          outOfTime += 1;
+          continue;
+        }
+        try {
+          const clip = await prepareEditorClip({
+            uri: asset.uri,
+            fileName: asset.fileName,
+            sourceType: type,
+            budgetMs: budget,
+          });
+          if (clip.trimEndMs < clip.sourceDurationMs) shortened = true;
+          budget -= clipLengthMs(clip);
+          added.push(clip);
+        } catch (error) {
+          Logger.error("Add clip failed:", error);
+          failed += 1;
+        }
+      }
+      setAddingClips(false);
+
+      if (added.length > 0) {
+        pushSnapshot(snap);
+        const next = [...clipsRef.current, ...added];
+        clipsRef.current = next;
+        setClips(next);
+        added.forEach(loadThumbnail);
+      }
+
+      if (failed > 0) {
+        showBanner(t("error"), t("failedToAddClip"), "error", 3000);
+      } else if (outOfTime > 0) {
+        showBanner(
+          t("trimVideo"),
+          t("clipsNoTimeLeft", { max_seconds: maxSeconds }),
+          "warning",
+          4000,
+        );
+      } else if (shortened) {
+        showBanner(
+          t("trimVideo"),
+          t("clipsShortenedToFit", { max_seconds: maxSeconds }),
+          "info",
+          3500,
+        );
+      }
+    },
+    [loadThumbnail, maxClipMs, maxSeconds, pushSnapshot, showBanner, t],
+  );
+
+  const addClipsFromGallery = useCallback(async () => {
+    dismissKeyboard();
+    const blocked = clipAddBlocker();
+    if (blocked) {
+      showBanner(t("trimVideo"), blocked, "warning", 3500);
+      return;
+    }
+    const hasPermission = await handleMediaLibraryPermission();
+    if (!hasPermission) return;
+    const snap = currentSnapshot();
+    setPlaying(false);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["videos"],
+        allowsMultipleSelection: true,
+        orderedSelection: true,
+        selectionLimit: Math.max(1, MAX_EDITOR_CLIPS - clipsRef.current.length),
+        quality: 1,
+        ...IOS_PICKER_COMPAT,
+      });
+      if (!result.canceled && result.assets?.length) {
+        await appendClips(result.assets, "device", snap);
+      }
+    } catch (error) {
+      Logger.error("Pick clips failed:", error);
+      showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
+    } finally {
+      setPlaying(true);
+    }
+  }, [
+    appendClips,
+    clipAddBlocker,
+    currentSnapshot,
+    dismissKeyboard,
+    showBanner,
+    t,
+  ]);
+
+  const addClipFromCamera = useCallback(async () => {
+    dismissKeyboard();
+    const blocked = clipAddBlocker();
+    if (blocked) {
+      showBanner(t("trimVideo"), blocked, "warning", 3500);
+      return;
+    }
+    const hasPermission = await handleCameraPermission();
+    if (!hasPermission) return;
+    const remainingMs = maxClipMs - totalClipsMs(clipsRef.current);
+    const snap = currentSnapshot();
+    setPlaying(false);
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["videos"],
+        quality: 1,
+        videoMaxDuration: Math.max(1, Math.floor(remainingMs / 1000)),
+        ...IOS_PICKER_COMPAT,
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        await appendClips([result.assets[0]], "camera", snap);
+      }
+    } catch (error) {
+      Logger.error("Record clip failed:", error);
+      showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
+    } finally {
+      setPlaying(true);
+    }
+  }, [
+    appendClips,
+    clipAddBlocker,
+    currentSnapshot,
+    dismissKeyboard,
+    maxClipMs,
+    showBanner,
+    t,
+  ]);
+
+  const moveClip = useCallback(
+    (id: string, direction: -1 | 1) => {
+      const list = clipsRef.current;
+      const from = list.findIndex((c) => c.id === id);
+      const to = from + direction;
+      if (from < 0 || to < 0 || to >= list.length) return;
+      pushHistory();
+      const next = [...list];
+      [next[from], next[to]] = [next[to], next[from]];
+      setClips(next);
+    },
+    [pushHistory],
+  );
+
+  const removeClip = useCallback(
+    (id: string) => {
+      const list = clipsRef.current;
+      if (list.length <= 1) return;
+      const index = list.findIndex((c) => c.id === id);
+      if (index < 0) return;
+      pushHistory();
+      setClips(list.filter((c) => c.id !== id));
+      if (editingClipIdRef.current === id) setEditingClipId(null);
+    },
+    [pushHistory],
+  );
+
+  /** Drag-to-reorder result from the clips overview. */
+  const reorderClips = useCallback(
+    (orderedIds: string[]) => {
+      const list = clipsRef.current;
+      const byId = new Map(list.map((c) => [c.id, c]));
+      const next = orderedIds
+        .map((id) => byId.get(id))
+        .filter((c): c is EditorClip => !!c);
+      if (
+        next.length !== list.length ||
+        next.every((c, i) => c.id === list[i].id)
+      ) {
+        return;
+      }
+      pushHistory();
+      clipsRef.current = next;
+      setClips(next);
+    },
+    [pushHistory],
+  );
+
+  /** "+" tile → native chooser (action sheet on iOS, dialog on Android). */
+  const openAddClipChooser = useCallback(() => {
+    dismissKeyboard();
+    const blocked = clipAddBlocker();
+    if (blocked) {
+      showBanner(t("trimVideo"), blocked, "warning", 3500);
+      return;
+    }
+    const gallery = () => void addClipsFromGallery();
+    const camera = () => void addClipFromCamera();
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: t("addClip"),
+          options: [t("clipsGallery"), t("clipsCamera"), t("cancel")],
+          cancelButtonIndex: 2,
+        },
+        (i) => {
+          if (i === 0) gallery();
+          else if (i === 1) camera();
+        },
+      );
+      return;
+    }
+    Alert.alert(
+      t("addClip"),
+      undefined,
+      [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("clipsCamera"), onPress: camera },
+        { text: t("clipsGallery"), onPress: gallery },
+      ],
+      { cancelable: true },
+    );
+  }, [
+    addClipFromCamera,
+    addClipsFromGallery,
+    clipAddBlocker,
+    dismissKeyboard,
+    showBanner,
+    t,
+  ]);
+
+  // ── Stickers ──────────────────────────────────────────────────────
+
+  const addEmojiSticker = useCallback(
+    (emoji: string) => {
+      if (stickers.length >= MAX_EDITOR_STICKERS) {
+        showBanner(
+          t("stickers"),
+          t("stickerLimitReached", { max: MAX_EDITOR_STICKERS }),
+          "warning",
+          3000,
+        );
+        return;
+      }
+      pushHistory();
+      const sticker: EditorSticker = {
+        id: makeClipId("sticker"),
+        kind: "emoji",
+        emoji,
+        ...stickerSpawnPos(stickers.length),
+        size: STICKER_SIZE_RANGE.emoji.initial,
+        rotation: 0,
+      };
+      setStickers((prev) => [...prev, sticker]);
+      setSelectedStickerId(sticker.id);
+    },
+    [pushHistory, showBanner, stickers.length, t],
+  );
+
+  const imageStickerCount = stickers.filter((s) => s.kind === "image").length;
+
+  const addPhotoSticker = useCallback(async () => {
+    dismissKeyboard();
+    if (stickers.length >= MAX_EDITOR_STICKERS) {
+      showBanner(
+        t("stickers"),
+        t("stickerLimitReached", { max: MAX_EDITOR_STICKERS }),
+        "warning",
+        3000,
+      );
+      return;
+    }
+    if (imageStickerCount >= MAX_IMAGE_STICKERS) {
+      showBanner(
+        t("stickers"),
+        t("photoStickerLimitReached", { max: MAX_IMAGE_STICKERS }),
+        "warning",
+        3000,
+      );
+      return;
+    }
+    const hasPermission = await handleMediaLibraryPermission();
+    if (!hasPermission) return;
+    const snap = currentSnapshot();
+    const count = stickers.length;
+    setAddingSticker(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: false,
+        quality: 1,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const prepared = await prepareStickerImage(result.assets[0]);
+      pushSnapshot(snap);
+      const sticker: EditorSticker = {
+        id: makeClipId("sticker"),
+        kind: "image",
+        uri: prepared.uri,
+        aspect: prepared.width / Math.max(1, prepared.height),
+        ...stickerSpawnPos(count),
+        size: STICKER_SIZE_RANGE.image.initial,
+        rotation: 0,
+      };
+      setStickers((prev) => [...prev, sticker]);
+      setSelectedStickerId(sticker.id);
+    } catch (error) {
+      Logger.error("Add photo sticker failed:", error);
+      showBanner(t("error"), t("failedToAddSticker"), "error", 3000);
+    } finally {
+      setAddingSticker(false);
+    }
+  }, [
+    currentSnapshot,
+    dismissKeyboard,
+    imageStickerCount,
+    pushSnapshot,
+    showBanner,
+    stickers.length,
+    t,
+  ]);
+
+  const selectSticker = useCallback(
+    (id: string | null) => {
+      setSelectedStickerId(id);
+      if (id) {
+        dismissKeyboard();
+        setActiveTool("sticker");
+      }
+    },
+    [dismissKeyboard],
+  );
+
+  const beginStickerTransform = useCallback(() => {
+    pushHistory();
+  }, [pushHistory]);
+
+  const commitStickerTransform = useCallback(
+    (id: string, patch: StickerTransformPatch) => {
+      setStickers((prev) =>
+        prev.map((s) =>
+          s.id === id
+            ? {
+                ...s,
+                x: patch.x,
+                y: patch.y,
+                size: clampStickerSize(s.kind, patch.size),
+                rotation: normalizeDegrees(patch.rotation),
+              }
+            : s,
+        ),
+      );
+    },
+    [],
+  );
+
+  const resizeSelectedSticker = useCallback(
+    (size: number) => {
+      if (!selectedStickerId) return;
+      setStickers((prev) =>
+        prev.map((s) =>
+          s.id === selectedStickerId
+            ? { ...s, size: clampStickerSize(s.kind, size) }
+            : s,
+        ),
+      );
+    },
+    [selectedStickerId],
+  );
+
+  const rotateSelectedSticker = useCallback(
+    (degrees: number) => {
+      if (!selectedStickerId) return;
+      pushHistory();
+      setStickers((prev) =>
+        prev.map((s) =>
+          s.id === selectedStickerId
+            ? { ...s, rotation: normalizeDegrees(s.rotation + degrees) }
+            : s,
+        ),
+      );
+    },
+    [pushHistory, selectedStickerId],
+  );
+
+  const removeSelectedSticker = useCallback(() => {
+    if (!selectedStickerId) return;
+    pushHistory();
+    setStickers((prev) => prev.filter((s) => s.id !== selectedStickerId));
+    setSelectedStickerId(null);
+  }, [pushHistory, selectedStickerId]);
+
+  // ── Export → publish ──────────────────────────────────────────────
+
+  /** Stop the engine and unload both players (iOS export can't share the file with AVPlayer). */
+  const releasePlayers = useCallback(async () => {
+    engineGenRef.current += 1;
+    engineLoadingRef.current = true;
+    preloadRef.current = null;
+    try {
+      players.forEach((p) => p.pause());
+    } catch {}
+    await Promise.all(
+      players.map((p) => p.replaceAsync(null).catch(() => undefined)),
+    );
+    slotUriRef.current = [null, null];
+  }, [players]);
+
+  const restorePreview = useCallback(() => {
+    void startAt(focusIndexRef.current ?? 0);
+  }, [startAt]);
+
+  const handleNextToPublish = useCallback(async () => {
+    if (!project || exporting || clips.length === 0) return;
+
+    const clipSeconds = totalMs / 1000;
     if (clipSeconds > maxSeconds + 0.05) {
       Alert.alert(
         t("reelTrimRequiredTitle"),
@@ -1233,26 +2057,24 @@ export default function EditVideoScreen() {
 
     dismissKeyboard();
     setPlaying(false);
-    try {
-      player.pause();
-    } catch {}
-    try {
-      // Release the AVPlayer item so export can open the same file safely on iOS
-      await player.replaceAsync(null);
-    } catch {}
+    playingRef.current = false;
+    await releasePlayers();
     try {
       await musicSoundRef.current?.pauseAsync();
     } catch {}
 
+    const single = clips.length === 1 ? clips[0] : null;
     const hasEdits =
+      !single ||
       aspect !== "original" ||
       !!musicUri ||
       muteOriginal ||
       !!overlayText.trim() ||
-      trimStartMs > 0 ||
-      trimEndMs < durationMs;
+      stickers.length > 0 ||
+      single.trimStartMs > 0 ||
+      single.trimEndMs < single.sourceDurationMs;
 
-    let videoUri = sourceUri;
+    let videoUri = clips[0].uri;
     let fileName = params.fileName || "video.mp4";
     let mimeType = params.mimeType || "video/mp4";
 
@@ -1279,10 +2101,7 @@ export default function EditVideoScreen() {
           "error",
           3500,
         );
-        // Restore preview source after failed export
-        try {
-          if (sourceUri) await player.replaceAsync(sourceUri);
-        } catch {}
+        restorePreview();
         return;
       } finally {
         try {
@@ -1291,22 +2110,43 @@ export default function EditVideoScreen() {
         setExporting(false);
         setExportProgress(0);
       }
-    } else {
-      try {
-        if (sourceUri) await player.replaceAsync(sourceUri);
-      } catch {}
+    }
+    if (isSaveMode && params.requestId) {
+      // Keep a copy on the phone, then hand the file back — no publish here.
+      let savedToGallery = false;
+      if (hasEdits) {
+        setSavingToGallery(true);
+        savedToGallery = await saveLocalVideoToGallery(videoUri);
+        setSavingToGallery(false);
+      }
+      deliverEditedVideo({
+        requestId: params.requestId,
+        uri: videoUri,
+        fileName: hasEdits ? "edited-video.mp4" : fileName,
+        mimeType,
+        durationMs: Math.round(totalMs),
+        width: hasEdits ? canvasSize.width : Math.round(videoSize.width),
+        height: hasEdits ? canvasSize.height : Math.round(videoSize.height),
+        edited: hasEdits,
+        savedToGallery,
+      });
+      router.back();
+      return;
     }
 
-    const clipDurationSeconds = Math.max(
-      1,
-      Math.round((trimEndMs - trimStartMs) / 1000),
-    );
-    const widthParam =
-      params.width ||
-      (videoSize.width > 0 ? String(Math.round(videoSize.width)) : undefined);
-    const heightParam =
-      params.height ||
-      (videoSize.height > 0 ? String(Math.round(videoSize.height)) : undefined);
+    // Reload (paused) so the preview is back if the user returns from publish.
+    restorePreview();
+
+    const clipDurationSeconds = Math.max(1, Math.round(totalMs / 1000));
+    // Exported file has the canvas size; an untouched upload keeps the source size.
+    const widthParam = hasEdits
+      ? String(canvasSize.width)
+      : params.width ||
+        (videoSize.width > 0 ? String(Math.round(videoSize.width)) : undefined);
+    const heightParam = hasEdits
+      ? String(canvasSize.height)
+      : params.height ||
+        (videoSize.height > 0 ? String(Math.round(videoSize.height)) : undefined);
 
     router.push({
       pathname: "/(main)/publishReel" as any,
@@ -1322,9 +2162,12 @@ export default function EditVideoScreen() {
     });
   }, [
     aspect,
+    canvasSize.height,
+    canvasSize.width,
+    clips,
     dismissKeyboard,
-    durationMs,
     exporting,
+    isSaveMode,
     maxSeconds,
     musicUri,
     muteOriginal,
@@ -1332,16 +2175,17 @@ export default function EditVideoScreen() {
     params.fileName,
     params.height,
     params.mimeType,
+    params.requestId,
     params.width,
-    player,
     project,
+    releasePlayers,
+    restorePreview,
     router,
     showBanner,
     sourceType,
-    sourceUri,
+    stickers.length,
     t,
-    trimEndMs,
-    trimStartMs,
+    totalMs,
     videoSize.height,
     videoSize.width,
   ]);
@@ -1349,9 +2193,14 @@ export default function EditVideoScreen() {
   const toggleTool = useCallback(
     (tool: EditorTool) => {
       dismissKeyboard();
-      setActiveTool((prev) => (prev === tool ? null : tool));
+      const next = activeTool === tool ? null : tool;
+      // Sticker selection only means something while the sticker tool is open.
+      if (next !== "sticker") setSelectedStickerId(null);
+      // Trim always opens on the clips overview.
+      setEditingClipId(null);
+      setActiveTool(next);
     },
-    [dismissKeyboard],
+    [activeTool, dismissKeyboard],
   );
 
   const onPreviewLayout = useCallback((e: LayoutChangeEvent) => {
@@ -1373,6 +2222,16 @@ export default function EditVideoScreen() {
         getAspectRatio(aspect, videoSize.width, videoSize.height),
       ),
     [aspect, previewSize.height, previewSize.width, videoSize.height, videoSize.width],
+  );
+
+  const stickerFrame = useMemo(
+    () => ({
+      left: Math.max(0, (previewSize.width - frameSize.width) / 2),
+      top: Math.max(0, (previewSize.height - frameSize.height) / 2),
+      width: frameSize.width,
+      height: frameSize.height,
+    }),
+    [frameSize.height, frameSize.width, previewSize.height, previewSize.width],
   );
 
   const posX = useSharedValue(overlayX);
@@ -1485,7 +2344,7 @@ export default function EditVideoScreen() {
     top: frameTop.value + posY.value * frameH.value - boxH.value / 2,
   }));
 
-  const busy = exporting;
+  const busy = exporting || savingToGallery;
   const canUndo = history.length > 0;
   const tools: {
     key: Exclude<EditorTool, null>;
@@ -1496,7 +2355,18 @@ export default function EditVideoScreen() {
     { key: "crop", icon: "crop", label: t("aspectRatio") },
     { key: "music", icon: "music-note", label: t("backgroundMusic") },
     { key: "text", icon: "text-fields", label: t("overlayText") },
+    { key: "sticker", icon: "emoji-emotions", label: t("stickers") },
   ];
+
+  const editingClipBudget = editingClip
+    ? maxClipMs - (totalMs - clipLengthMs(editingClip))
+    : 0;
+  const badgeTotalMs =
+    focusIndex != null && editingClip ? clipLengthMs(editingClip) : totalMs;
+  const badgePrefix =
+    focusIndex != null && clips.length > 1
+      ? `${t("clipLabel", { index: editingIndex + 1, count: clips.length })} · `
+      : "";
 
   if (!paramUri) {
     return (
@@ -1536,13 +2406,26 @@ export default function EditVideoScreen() {
               { width: frameSize.width, height: frameSize.height },
             ]}
           >
-            <VideoView
-              player={player}
-              style={styles.video}
-              contentFit={aspect === "original" ? "contain" : "cover"}
-              nativeControls={false}
-              pointerEvents="none"
-            />
+            {players.map((p, slot) => (
+              <VideoView
+                key={slot}
+                player={p}
+                style={[
+                  styles.videoLayer,
+                  { opacity: slot === activeSlot ? 1 : 0 },
+                ]}
+                // Multi-clip export aspect-fills every clip into the frame.
+                contentFit={
+                  aspect === "original" && clips.length === 1
+                    ? "contain"
+                    : "cover"
+                }
+                nativeControls={false}
+                // TextureView respects opacity; SurfaceView ignores it on Android.
+                surfaceType="textureView"
+                pointerEvents="none"
+              />
+            ))}
 
             <View style={styles.playOverlay} pointerEvents="box-none">
               <TouchableOpacity
@@ -1554,6 +2437,8 @@ export default function EditVideoScreen() {
                   setPlaying((p) => !p);
                 }}
                 hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={playing ? t("pause") : t("play")}
               >
                 <MaterialIcons
                   name={playing ? "pause" : "play-arrow"}
@@ -1565,8 +2450,8 @@ export default function EditVideoScreen() {
 
             <View style={styles.timeBadge} pointerEvents="none">
               <Text style={styles.timeText}>
-                {formatMs(previewTimeMs)} /{" "}
-                {formatMs(Math.max(0, trimEndMs - trimStartMs))}
+                {badgePrefix}
+                {formatMs(previewTimeMs)} / {formatMs(badgeTotalMs)}
               </Text>
             </View>
           </View>
@@ -1581,6 +2466,19 @@ export default function EditVideoScreen() {
           />
         ) : null}
       </View>
+
+      <StickerLayer
+        stickers={stickers}
+        selectedId={selectedSticker?.id ?? null}
+        frame={stickerFrame}
+        bottomInset={Math.max(dockHeight, 0) + keyboardHeight}
+        editing={activeTool === "sticker"}
+        disabled={busy}
+        selectionColor={theme.selectCard}
+        onSelect={selectSticker}
+        onBeginTransform={beginStickerTransform}
+        onCommit={commitStickerTransform}
+      />
 
       <View
         style={[
@@ -1622,18 +2520,22 @@ export default function EditVideoScreen() {
           </TouchableOpacity>
         </View>
         <TouchableOpacity
-          style={styles.nextBtn}
+          style={[
+            styles.nextBtn,
+            (addingClips || addingSticker) && styles.topBtnDisabled,
+          ]}
           onPress={() => {
             dismissKeyboard();
             void handleNextToPublish();
           }}
-          disabled={busy || !project}
+          disabled={busy || !project || addingClips || addingSticker}
           activeOpacity={0.85}
         >
-          <Text style={styles.nextText}>{t("exportAndUpload")}</Text>
+          <Text style={styles.nextText}>
+            {isSaveMode ? t("saveVideo") : t("exportAndUpload")}
+          </Text>
         </TouchableOpacity>
       </View>
-
       {overlayText.trim() ? (
         <View
           style={[
@@ -1723,64 +2625,53 @@ export default function EditVideoScreen() {
               ]}
               onPress={dismissKeyboard}
             >
-              {activeTool === "trim" ? (
+              {activeTool === "trim" && editingClip ? (
+                <ClipEditor
+                  clip={editingClip}
+                  index={editingIndex}
+                  count={clips.length}
+                  frames={filmstrips[editingClip.uri]}
+                  maxLengthMs={editingClipBudget}
+                  playheadMs={playheadSourceMs}
+                  disabled={busy}
+                  onDone={() => setEditingClipId(null)}
+                  onSplit={() => splitSelectedClip(editingClip.id)}
+                  onMove={(direction) => moveClip(editingClip.id, direction)}
+                  onRemove={() => removeClip(editingClip.id)}
+                  onTrimBegin={onTrimSlideStart}
+                  onTrimChange={updateSelectedTrim}
+                  onTrimEnd={onTrimSlideComplete}
+                  onScrubBegin={onScrubBegin}
+                  onScrub={onScrub}
+                  onScrubEnd={onScrubEnd}
+                />
+              ) : null}
+
+              {activeTool === "trim" && !editingClip ? (
                 <>
-                  <Text style={styles.panelTitle}>{t("trimVideo")}</Text>
-                  <Text style={styles.panelHint}>
-                    {t("trimRangeHint", {
-                      start: formatMs(trimStartMs),
-                      end: formatMs(trimEndMs),
-                    })}
-                  </Text>
-                  <Text style={styles.panelHint}>
-                    {t("reelTrimMaxHint", { max_seconds: maxSeconds })}
-                  </Text>
-                  <Text style={styles.label}>{t("trimStart")}</Text>
-                  <Slider
-                    minimumValue={Math.max(0, trimEndMs - maxClipMs)}
-                    maximumValue={Math.max(0, trimEndMs - 500)}
-                    value={trimStartMs}
-                    onSlidingStart={() => {
-                      dismissKeyboard();
-                      if (!trimHistoryPushedRef.current) {
-                        pushHistory();
-                        trimHistoryPushedRef.current = true;
-                      }
-                      setPlaying(false);
-                    }}
-                    onValueChange={onTrimStartChange}
-                    onSlidingComplete={() => {
-                      trimHistoryPushedRef.current = false;
-                      setPlaying(true);
-                    }}
-                    minimumTrackTintColor={theme.selectCard}
-                    maximumTrackTintColor={theme.white15}
-                    thumbTintColor={theme.selectCard}
+                  <ClipTimeline
+                    clips={clips}
+                    thumbs={thumbs}
+                    totalMs={totalMs}
+                    maxMs={maxClipMs}
+                    canAdd={
+                      clips.length < MAX_EDITOR_CLIPS &&
+                      maxClipMs - totalMs >= MIN_CLIP_MS
+                    }
+                    adding={addingClips}
                     disabled={busy}
+                    formatMs={formatMs}
+                    onOpen={setEditingClipId}
+                    onAdd={openAddClipChooser}
+                    onRemove={removeClip}
+                    onMove={moveClip}
+                    onReorder={reorderClips}
                   />
-                  <Text style={styles.label}>{t("trimEnd")}</Text>
-                  <Slider
-                    minimumValue={Math.min(durationMs, trimStartMs + 500)}
-                    maximumValue={Math.min(durationMs, trimStartMs + maxClipMs)}
-                    value={trimEndMs}
-                    onSlidingStart={() => {
-                      dismissKeyboard();
-                      if (!trimHistoryPushedRef.current) {
-                        pushHistory();
-                        trimHistoryPushedRef.current = true;
-                      }
-                      setPlaying(false);
-                    }}
-                    onValueChange={onTrimEndChange}
-                    onSlidingComplete={() => {
-                      trimHistoryPushedRef.current = false;
-                      setPlaying(true);
-                    }}
-                    minimumTrackTintColor={theme.selectCard}
-                    maximumTrackTintColor={theme.white15}
-                    thumbTintColor={theme.selectCard}
-                    disabled={busy}
-                  />
+                  {maxClipMs - totalMs < MIN_CLIP_MS ? (
+                    <Text style={styles.panelHint}>
+                      {t("reelTrimMaxHint", { max_seconds: maxSeconds })}
+                    </Text>
+                  ) : null}
                 </>
               ) : null}
 
@@ -2127,6 +3018,22 @@ export default function EditVideoScreen() {
                   ) : null}
                 </View>
               ) : null}
+
+              {activeTool === "sticker" ? (
+                <StickerPanel
+                  selected={selectedSticker}
+                  canAdd={stickers.length < MAX_EDITOR_STICKERS}
+                  canAddPhoto={imageStickerCount < MAX_IMAGE_STICKERS}
+                  addingPhoto={addingSticker}
+                  disabled={busy}
+                  onAddEmoji={addEmojiSticker}
+                  onAddPhoto={() => void addPhotoSticker()}
+                  onSizeStart={pushHistory}
+                  onSizeChange={resizeSelectedSticker}
+                  onRotateBy={rotateSelectedSticker}
+                  onRemove={removeSelectedSticker}
+                />
+              ) : null}
             </Pressable>
           ) : null}
 
@@ -2166,7 +3073,9 @@ export default function EditVideoScreen() {
         <View style={styles.busyOverlay}>
           <ActivityIndicator size="large" color={theme.white} />
           <Text style={styles.progressText}>
-            {`${t("exportingVideo")} ${exportProgress}%`}
+            {savingToGallery
+              ? t("savingVideo")
+              : `${t("exportingVideo")} ${exportProgress}%`}
           </Text>
         </View>
       ) : null}

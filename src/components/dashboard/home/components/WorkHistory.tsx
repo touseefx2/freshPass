@@ -93,7 +93,7 @@ const createStyles = (theme: Theme) =>
     priceText: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
-      color: theme.selectCard,
+      color: theme.orangeBrownText,
       alignSelf: "flex-start",
     },
     metaRow: {
@@ -103,15 +103,15 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(4),
     },
     metaText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
+      color: theme.lightGreen,
       textTransform: "capitalize",
     },
     bookingId: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen4,
+      color: theme.lightGreen,
       marginTop: moderateHeightScale(6),
     },
     statusBadge: {
@@ -130,12 +130,12 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.lightRed,
     },
     statusText: {
-      fontSize: fontSize.size10,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       textTransform: "capitalize",
     },
     statusTextScheduled: {
-      color: theme.selectCard,
+      color: theme.orangeBrownText,
     },
     statusTextCompleted: {
       color: theme.darkGreen,
@@ -188,7 +188,7 @@ export default function WorkHistory({
   const formatDateTime = (date: string, time: string) => {
     const formattedDate = date; // Already formatted as "12/12/2025"
     const timeObj = dayjs(`2025-01-01 ${time}`, "YYYY-MM-DD HH:mm");
-    const formattedTime = timeObj.format("h:mm a");
+    const formattedTime = timeObj.format("h:mm A");
     return `${formattedDate} - ${formattedTime}`;
   };
 
@@ -284,18 +284,18 @@ export default function WorkHistory({
                   </View>
                   {!!item.user && (
                     <View style={styles.metaRow}>
-                      <MaterialIcons name="person-outline" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                      <MaterialIcons name="person-outline" size={moderateWidthScale(14)} color={theme.lightGreen} />
                       <Text style={styles.metaText}>{item.user}</Text>
                     </View>
                   )}
                   {!!item.staffName && (
                     <View style={styles.metaRow}>
-                      <MaterialIcons name="content-cut" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                      <MaterialIcons name="content-cut" size={moderateWidthScale(14)} color={theme.lightGreen} />
                       <Text style={styles.metaText}>{item.staffName}</Text>
                     </View>
                   )}
                   <View style={styles.metaRow}>
-                    <MaterialIcons name="schedule" size={moderateWidthScale(14)} color={theme.lightGreen5} />
+                    <MaterialIcons name="schedule" size={moderateWidthScale(14)} color={theme.lightGreen} />
                     <Text style={styles.metaText}>
                       {formatDateTime(item.appointmentDate, item.appointmentTime)}
                     </Text>

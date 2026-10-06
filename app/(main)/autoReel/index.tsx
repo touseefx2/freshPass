@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,7 +9,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useVideoPlayer, VideoView } from "expo-video";
 import Button from "@/src/components/button";
@@ -18,15 +17,16 @@ import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
+import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
+// Same look as the AI Results screen (download row, player, video details)
+import { createStyles as createResultStyles } from "../aiResults/styles";
 import {
-  deleteReel,
   getAutoReel,
   publishReel,
   retryAutoReel,
 } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
 import {
-  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -250,42 +250,6 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: fontSize.size17,
     },
-    previewWrap: {
-      alignSelf: "center",
-      width: "78%",
-      aspectRatio: 9 / 16,
-      maxHeight: heightScale(460),
-      borderRadius: moderateWidthScale(18),
-      overflow: "hidden",
-      backgroundColor: theme.black,
-      marginBottom: moderateHeightScale(16),
-    },
-    previewVideo: {
-      width: "100%",
-      height: "100%",
-    },
-    readyMetaRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      justifyContent: "center",
-      gap: moderateWidthScale(8),
-      marginTop: moderateHeightScale(10),
-      marginBottom: moderateHeightScale(14),
-    },
-    metaChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(20),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(5),
-    },
-    metaChipText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
     actions: {
       gap: moderateHeightScale(10),
       marginTop: moderateHeightScale(8),
@@ -306,42 +270,77 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    dangerButton: {
-      flexDirection: "row",
-      gap: moderateWidthScale(6),
-      alignSelf: "center",
-      alignItems: "center",
-      justifyContent: "center",
-      minHeight: moderateHeightScale(44),
-      paddingHorizontal: moderateWidthScale(16),
-      marginTop: moderateHeightScale(6),
-    },
-    dangerButtonText: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.red,
-    },
   });
 
-function ReadyPreview({ uri }: { uri: string }) {
-  const { colors } = useTheme();
-  const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+type ResultStyles = ReturnType<typeof createResultStyles>;
+
+function ResultVideoPlayerInner({
+  uri,
+  rs,
+  theme,
+}: {
+  uri: string;
+  rs: ResultStyles;
+  theme: Theme;
+}) {
+  const { t } = useTranslation();
+  const [ready, setReady] = useState(false);
   const player = useVideoPlayer(uri, (p) => {
-    p.loop = true;
-    p.muted = false;
-    p.play();
+    p.loop = false;
   });
-
   return (
-    <View style={styles.previewWrap}>
-      <VideoView
-        style={styles.previewVideo}
-        player={player}
-        contentFit="contain"
-        nativeControls
-      />
+    <View style={rs.videoContainer}>
+      <View style={StyleSheet.absoluteFill}>
+        <VideoView
+          player={player}
+          style={rs.video}
+          contentFit="contain"
+          nativeControls
+          onFirstFrameRender={async () => {
+            if (!ready) {
+              await player.play();
+              setTimeout(() => setReady(true), 200);
+            }
+          }}
+        />
+      </View>
+      {!ready ? (
+        <View style={rs.videoLoadingOverlay}>
+          <ActivityIndicator size="small" color={theme.white} />
+          <Text style={rs.videoLoadingText}>{t("loading")}</Text>
+        </View>
+      ) : null}
     </View>
+  );
+}
+
+/** Poster with a play button until tapped — same as AI Results */
+function ResultVideoPlayer({
+  uri,
+  rs,
+  theme,
+}: {
+  uri: string;
+  rs: ResultStyles;
+  theme: Theme;
+}) {
+  const { t } = useTranslation();
+  const [show, setShow] = useState(false);
+  if (show) return <ResultVideoPlayerInner uri={uri} rs={rs} theme={theme} />;
+  return (
+    <TouchableOpacity
+      style={rs.videoPlaceholder}
+      onPress={() => setShow(true)}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={t("viewReel")}
+    >
+      <Feather
+        name="play-circle"
+        size={moderateWidthScale(72)}
+        color={theme.white}
+      />
+    </TouchableOpacity>
   );
 }
 
@@ -349,6 +348,8 @@ export default function AutoReelScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const rs = useMemo(() => createResultStyles(theme), [theme]);
+  const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -362,7 +363,6 @@ export default function AutoReelScreen() {
   const [retrying, setRetrying] = useState(false);
   const userRole = useAppSelector((s) => s.user.userRole);
   const [publishing, setPublishing] = useState(false);
-  const [discarding, setDiscarding] = useState(false);
   // created_at stays the original time after a retry — time the retry locally
   const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
@@ -491,13 +491,6 @@ export default function AutoReelScreen() {
     }
   }, [leaveScreen, publishing, reelId, showBanner, t]);
 
-  const handleEditDetails = useCallback(() => {
-    if (!reelId) return;
-    router.push({
-      pathname: "/(main)/publishReel" as any,
-      params: { reelId: String(reelId) },
-    });
-  }, [reelId, router]);
 
   // Staff may only retry / publish / edit / delete what they started (403 otherwise)
   const canChange = canChangeReel(autoReel, userRole);
@@ -505,47 +498,6 @@ export default function AutoReelScreen() {
   const isDraft = reelStatus === "draft";
   const isPublished = reelStatus === "published";
 
-  const handleDiscard = useCallback(() => {
-    if (!reelId || discarding) return;
-    // A published reel is live in the feed — say so before deleting it
-    const title = isDraft ? t("discard") : t("deleteReel");
-    const message = isPublished
-      ? t("autoReelDeletePublishedConfirm")
-      : isDraft
-        ? t("autoReelDiscardConfirm")
-        : t("autoReelDeleteConfirm");
-    Alert.alert(title, message, [
-      { text: t("cancel"), style: "cancel" },
-      {
-        text: isDraft ? t("discard") : t("delete"),
-        style: "destructive",
-        onPress: async () => {
-          setDiscarding(true);
-          try {
-            await deleteReel(reelId);
-            showBanner(
-              t("success"),
-              isDraft ? t("reelDiscarded") : t("reelDeleted"),
-              "success",
-              2000,
-            );
-            leaveScreen();
-          } catch (error: any) {
-            Logger.error("Failed to discard auto reel:", error);
-            showBanner(
-              t("error"),
-              error?.message ||
-                (isDraft ? t("failedToDiscardReel") : t("failedToDeleteReel")),
-              "error",
-              3000,
-            );
-          } finally {
-            setDiscarding(false);
-          }
-        },
-      },
-    ]);
-  }, [discarding, isDraft, isPublished, leaveScreen, reelId, showBanner, t]);
 
   const templateName = autoReel
     ? autoReel.template?.name || t("autoReelTemplateRemoved")
@@ -802,70 +754,176 @@ export default function AutoReelScreen() {
   const renderReady = () => {
     const videoUrl = autoReel?.reel?.video?.playback_url ?? null;
     const isHaircut = autoReel?.template?.kind === "haircut";
-    const busy = publishing || discarding || !reelId;
-    // The draft can be published (here or via Edit details), removed by admin, or deleted
     const reelGone = !autoReel?.reel;
     const isRemoved = reelStatus === "removed";
-    const statusChip = isPublished
-      ? { icon: "public" as const, label: t("published") }
+    const downloading = !!videoUrl && downloadingUrl === videoUrl;
+    const statusLabel = isPublished
+      ? t("published")
       : isRemoved
-        ? { icon: "block" as const, label: t("removed") }
+        ? t("removed")
         : isDraft
-          ? { icon: "edit-note" as const, label: t("draft") }
+          ? t("draft")
           : null;
+
     return (
       <View>
-        {videoUrl ? <ReadyPreview uri={videoUrl} /> : null}
-        <Text style={styles.statusTitle} accessibilityLiveRegion="polite">
-          {isPublished ? t("autoReelPublishedTitle") : t("reelReady")}
-        </Text>
-        <Text
-          style={[styles.statusSubtitle, { marginTop: moderateHeightScale(4) }]}
-        >
-          {reelGone
-            ? t("autoReelDraftDeleted")
-            : isPublished
-              ? t("autoReelPublishedHint")
-              : isRemoved
-                ? t("autoReelRemovedHint")
-                : t("autoReelReadyHint")}
-        </Text>
-        <View style={styles.readyMetaRow}>
-          {templateName ? (
-            <View style={styles.metaChip}>
-              <MaterialIcons
-                name="movie-filter"
-                size={moderateWidthScale(13)}
-                color={theme.buttonBack}
-              />
-              <Text style={styles.metaChipText}>{templateName}</Text>
+        {videoUrl ? (
+          <View style={rs.reelActionsBlock}>
+            <View style={rs.headerContainer}>
+              <TouchableOpacity
+                style={rs.downloadButtonPrimary}
+                onPress={() => downloadMedia(videoUrl, { isVideo: true })}
+                disabled={downloading}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t("download")}
+              >
+                {downloading ? (
+                  <ActivityIndicator size="small" color={theme.white} />
+                ) : (
+                  <>
+                    <Feather
+                      name="download"
+                      size={moderateWidthScale(16)}
+                      color={theme.white}
+                    />
+                    <Text style={rs.downloadButtonPrimaryText} numberOfLines={1}>
+                      {t("download")}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              {/* Publish the draft (only the creator can; published shows its state) */}
+              {canChange && isDraft ? (
+                <TouchableOpacity
+                  style={rs.publishReelChip}
+                  onPress={handlePublish}
+                  disabled={publishing || !reelId}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("publish")}
+                >
+                  {publishing ? (
+                    <ActivityIndicator size="small" color={theme.buttonBack} />
+                  ) : (
+                    <>
+                      <MaterialIcons
+                        name="video-library"
+                        size={moderateWidthScale(16)}
+                        color={theme.buttonBack}
+                      />
+                      <Text style={rs.publishReelChipText} numberOfLines={1}>
+                        {t("publishReel")}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              ) : isPublished ? (
+                <View
+                  style={[rs.publishReelChip, { opacity: 0.7 }]}
+                  accessibilityLabel={t("published")}
+                >
+                  <MaterialIcons
+                    name="check-circle"
+                    size={moderateWidthScale(16)}
+                    color={theme.buttonBack}
+                  />
+                  <Text style={rs.publishReelChipText} numberOfLines={1}>
+                    {t("published")}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-          ) : null}
-          {autoReel?.total_seconds != null ? (
-            <View style={styles.metaChip}>
-              <MaterialIcons
-                name="timer"
-                size={moderateWidthScale(13)}
-                color={theme.buttonBack}
-              />
-              <Text style={styles.metaChipText}>
-                {t("autoReelSeconds", {
-                  seconds: Math.round(autoReel.total_seconds * 10) / 10,
-                })}
-              </Text>
-            </View>
-          ) : null}
-          {statusChip ? (
-            <View style={styles.metaChip}>
-              <MaterialIcons
-                name={statusChip.icon}
-                size={moderateWidthScale(13)}
-                color={theme.buttonBack}
-              />
-              <Text style={styles.metaChipText}>{statusChip.label}</Text>
-            </View>
-          ) : null}
+          </View>
+        ) : null}
+
+        {videoUrl ? (
+          <ResultVideoPlayer uri={videoUrl} rs={rs} theme={theme} />
+        ) : null}
+
+        <View style={rs.section}>
+          <Text style={rs.sectionTitleUppercase}>{t("videoDetails")}</Text>
+          <View style={rs.videoDetailsGrid}>
+            {autoReel?.total_seconds != null ? (
+              <View style={rs.videoDetailCard}>
+                <View style={rs.videoDetailIconContainer}>
+                  <MaterialIcons
+                    name="timer"
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={rs.videoDetailContent}>
+                  <Text style={rs.videoDetailLabel}>{t("duration")}</Text>
+                  <Text style={rs.videoDetailValue}>
+                    {autoReel.total_seconds.toFixed(1)}s
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+            {templateName ? (
+              <View style={rs.videoDetailCard}>
+                <View style={rs.videoDetailIconContainer}>
+                  <MaterialIcons
+                    name="movie-filter"
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={rs.videoDetailContent}>
+                  <Text style={rs.videoDetailLabel}>{t("autoReelTemplate")}</Text>
+                  <Text style={rs.videoDetailValue} numberOfLines={2}>
+                    {templateName}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+            {statusLabel ? (
+              <View style={rs.videoDetailCard}>
+                <View style={rs.videoDetailIconContainer}>
+                  <MaterialIcons
+                    name={isPublished ? "public" : isRemoved ? "block" : "edit-note"}
+                    size={moderateWidthScale(20)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={rs.videoDetailContent}>
+                  <Text style={rs.videoDetailLabel}>{t("status")}</Text>
+                  <Text style={rs.videoDetailValue}>{statusLabel}</Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
         </View>
+
+        {reelGone ? (
+          <View style={styles.note}>
+            <MaterialIcons
+              name="info-outline"
+              size={moderateWidthScale(16)}
+              color={theme.buttonBack}
+            />
+            <Text style={styles.noteText}>{t("autoReelDraftDeleted")}</Text>
+          </View>
+        ) : isDraft ? (
+          <View style={styles.note}>
+            <MaterialIcons
+              name="info-outline"
+              size={moderateWidthScale(16)}
+              color={theme.buttonBack}
+            />
+            <Text style={styles.noteText}>{t("autoReelReadyHint")}</Text>
+          </View>
+        ) : isRemoved ? (
+          <View style={styles.note}>
+            <MaterialIcons
+              name="block"
+              size={moderateWidthScale(16)}
+              color={theme.buttonBack}
+            />
+            <Text style={styles.noteText}>{t("autoReelRemovedHint")}</Text>
+          </View>
+        ) : null}
         {isHaircut && autoReel?.has_before === false ? (
           <View style={styles.note}>
             <MaterialIcons
@@ -887,65 +945,6 @@ export default function AutoReelScreen() {
           </View>
         ) : null}
         {!canChange && !reelGone ? renderViewOnlyNote() : null}
-        {reelGone || !canChange ? null : (
-        <View style={styles.actions}>
-          {isDraft ? (
-            <Button
-              title={t("publish")}
-              onPress={handlePublish}
-              loading={publishing}
-              disabled={busy}
-            />
-          ) : null}
-          {/* Removed reels can't be edited (422) — only deleted */}
-          {!isRemoved ? (
-            <TouchableOpacity
-              style={[styles.secondaryButton, busy && { opacity: 0.5 }]}
-              onPress={handleEditDetails}
-              disabled={busy}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: busy }}
-            >
-              <MaterialIcons
-                name="edit"
-                size={moderateWidthScale(18)}
-                color={theme.darkGreen}
-              />
-              <Text style={styles.secondaryButtonText}>
-                {t("autoReelEditDetails")}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity
-            style={[styles.dangerButton, busy && { opacity: 0.5 }]}
-            onPress={handleDiscard}
-            disabled={busy}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={isDraft ? t("discard") : t("deleteReel")}
-            accessibilityHint={
-              isPublished
-                ? t("autoReelDeletePublishedConfirm")
-                : t("autoReelDiscardConfirm")
-            }
-            accessibilityState={{ disabled: busy, busy: discarding }}
-          >
-            {discarding ? (
-              <ActivityIndicator size="small" color={theme.red} />
-            ) : (
-              <MaterialIcons
-                name="delete-outline"
-                size={moderateWidthScale(18)}
-                color={theme.red}
-              />
-            )}
-            <Text style={styles.dangerButtonText}>
-              {isDraft ? t("discard") : t("deleteReel")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        )}
       </View>
     );
   };

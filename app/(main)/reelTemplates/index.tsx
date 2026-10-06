@@ -11,7 +11,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -51,6 +56,10 @@ import {
   monthlyReelsBlockedMessage,
 } from "@/src/services/monthlyReelsService";
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
+import {
+  createEditRequestId,
+  takeEditedVideo,
+} from "@/src/components/videoEditor/editorHandoff";
 import { Theme } from "@/src/theme/colors";
 import {
   iconScale,
@@ -963,6 +972,35 @@ export default function ReelTemplatesScreen() {
     if (!showCategoryPicker) await loadCategories();
   }, [loadCategories, showCategoryPicker]);
 
+  // Too-long pick sent to the editor; its trimmed copy comes back on focus.
+  const editRequestRef = useRef<{
+    id: string;
+    sourceType: MediaUploadSourceType;
+  } | null>(null);
+
+  /** Open the reel editor in "save" mode, capped at the auto reel source limit. */
+  const openTrimEditor = useCallback(
+    (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
+      const requestId = createEditRequestId();
+      editRequestRef.current = { id: requestId, sourceType };
+      router.push({
+        pathname: "/(main)/editVideo" as any,
+        params: {
+          uri: encodeURIComponent(asset.uri),
+          mimeType: asset.mimeType || "video/mp4",
+          fileName: asset.fileName || "video.mp4",
+          sourceType,
+          maxSeconds: String(MAX_AUTO_REEL_SOURCE_SECONDS),
+          ...(asset.width ? { width: String(asset.width) } : {}),
+          ...(asset.height ? { height: String(asset.height) } : {}),
+          mode: "save",
+          requestId,
+        },
+      });
+    },
+    [router],
+  );
+
   /** Pick = select only. Upload happens on "Make my reel" (no wasted uploads). */
   const selectPickedVideo = useCallback(
     async (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
@@ -986,7 +1024,18 @@ export default function ReelTemplatesScreen() {
             MAX_AUTO_REEL_SOURCE_SECONDS;
 
       if (durationSeconds > MAX_AUTO_REEL_SOURCE_SECONDS) {
-        showBanner(t("error"), t("autoReelVideoTooLong"), "error", 3500);
+        // Offer to trim it in the editor instead of a dead-end error.
+        Alert.alert(
+          t("autoReelTrimTitle"),
+          t("autoReelTrimMessage", { length: formatDuration(durationSeconds) }),
+          [
+            { text: t("cancel"), style: "cancel" },
+            {
+              text: t("autoReelTrimAction"),
+              onPress: () => openTrimEditor(asset, sourceType),
+            },
+          ],
+        );
         return;
       }
 
@@ -1019,7 +1068,34 @@ export default function ReelTemplatesScreen() {
         thumbnailUri: localThumb,
       });
     },
-    [showBanner, t],
+    [openTrimEditor, t],
+  );
+
+  // Back from the editor: select its trimmed copy like a fresh pick.
+  useFocusEffect(
+    useCallback(() => {
+      const request = editRequestRef.current;
+      const result = takeEditedVideo(request?.id ?? null);
+      if (!request || !result) return;
+      editRequestRef.current = null;
+      void selectPickedVideo(
+        {
+          uri: result.uri,
+          duration: result.durationMs,
+          fileName: result.fileName,
+          mimeType: result.mimeType,
+          width: result.width,
+          height: result.height,
+          type: "video",
+        } as ImagePicker.ImagePickerAsset,
+        request.sourceType,
+      );
+      if (result.savedToGallery) {
+        showBanner(t("success"), t("editedVideoSaved"), "success", 3000);
+      } else if (result.edited) {
+        showBanner(t("autoReelTrimTitle"), t("editedVideoNotSaved"), "warning", 4000);
+      }
+    }, [selectPickedVideo, showBanner, t]),
   );
 
   const handleSelectFromGallery = useCallback(async () => {

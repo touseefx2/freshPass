@@ -50,6 +50,8 @@ export const themes = {
     lightRed30: "rgba(186, 26, 26, 0.28)",
     lightRedBorder: "rgba(186, 26, 26, 0.45)",
     selectCard: "#BC6C25",
+    // Darker selectCard for small text on cream / orange chips (WCAG AA)
+    orangeBrownText: "#8F4E16",
     mapCircleFill: "rgba(221, 161, 94, 0.3)",
     shadow: "#000",
     cardLocBackground: "rgba(96, 108, 56, 0.3)",

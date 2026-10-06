@@ -3,6 +3,23 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 
 /**
+ * Saves a file that is already on the device (file://) to the gallery.
+ * Asks for write-only access, so no read permission prompt.
+ * @returns true when saved, false when denied or failed
+ */
+export async function saveLocalVideoToGallery(uri: string): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+  try {
+    const { status } = await MediaLibrary.requestPermissionsAsync(true);
+    if (status !== "granted") return false;
+    await MediaLibrary.saveToLibraryAsync(uri);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Downloads media from URL and saves to device gallery (Android/iOS).
  * On web, opens the URL in browser.
  * @param uri - Remote URL of image or video

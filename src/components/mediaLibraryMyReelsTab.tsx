@@ -58,10 +58,6 @@ import {
   REEL_LIMIT_FALLBACK,
 } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
-import {
-  formatReelsResetDate,
-  monthlyReelsBlockedMessage,
-} from "@/src/services/monthlyReelsService";
 
 const FAB_SIZE = 56;
 const FAB_BOTTOM_EXTRA = 56;
@@ -138,37 +134,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
       lineHeight: fontSize.size16,
-    },
-    scopeTrack: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(10),
-      flexDirection: "row",
-      gap: moderateWidthScale(8),
-    },
-    scopeSeg: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(6),
-      minHeight: moderateHeightScale(40),
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-    },
-    scopeSegActive: {
-      backgroundColor: theme.darkGreen,
-      borderColor: theme.darkGreen,
-    },
-    scopeSegText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    scopeSegTextActive: {
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
     },
     viewOnlyChip: {
       flexDirection: "row",
@@ -446,11 +411,6 @@ export default function MediaLibraryMyReelsTab({
   const listRef = useRef<FlatList<OwnerReel>>(null);
 
   const [filter, setFilter] = useState<StatusFilter>("all");
-  // Staff only ever see their own reels here; the owner can switch
-  // between "My reels" (mine=1) and the whole business
-  const isStaff = userRole === "staff";
-  const [ownerScope, setOwnerScope] = useState<"mine" | "all">("all");
-  const scope: "mine" | "all" = isStaff ? "mine" : ownerScope;
   const [reels, setReels] = useState<OwnerReel[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -458,7 +418,6 @@ export default function MediaLibraryMyReelsTab({
   const [loadingMore, setLoadingMore] = useState(false);
   const [summary, setSummary] = useState<ReelPerformanceStats | null>(null);
   const [fabOpen, setFabOpen] = useState(false);
-  const [monthlyLimitsFresh, setMonthlyLimitsFresh] = useState(false);
   const [limits, setLimits] = useState<MediaLimits | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
 
@@ -468,15 +427,15 @@ export default function MediaLibraryMyReelsTab({
     Math.max(insets.bottom, moderateHeightScale(12)) +
     moderateHeightScale(FAB_BOTTOM_EXTRA);
 
-  // Card matches the list: owner "My reels" → mine=1; staff always get their own
+  // Everyone (owner and staff) sees only their own reels here — card matches the list
   const fetchSummary = useCallback(async () => {
     try {
-      const stats = await getBusinessReelStats(!isStaff && scope === "mine");
+      const stats = await getBusinessReelStats(true);
       setSummary(stats);
     } catch (error) {
       Logger.error("Failed to load business reel stats:", error);
     }
-  }, [isStaff, scope]);
+  }, []);
 
   const fetchPage = useCallback(
     async (pageToLoad: number, append: boolean) => {
@@ -488,7 +447,7 @@ export default function MediaLibraryMyReelsTab({
           pageToLoad,
           status,
           REELS_MINE_PER_PAGE,
-          scope === "mine",
+          true,
         );
         // Shotstack drafts / in-progress live on AI Requests → Reels, not Media Library
         const libraryReels = pageReels.filter((r) => {
@@ -525,15 +484,13 @@ export default function MediaLibraryMyReelsTab({
         setLoadingMore(false);
       }
     },
-    [filter, scope, showBanner, t],
+    [filter, showBanner, t],
   );
 
   const fetchLimits = useCallback(async () => {
     try {
-      // Forced: monthly reel counters change with every reel posted
-      const data = await getMediaLimits({ force: true });
+      const data = await getMediaLimits();
       setLimits(data);
-      setMonthlyLimitsFresh(true);
     } catch (error) {
       Logger.error("Failed to load media limits:", error);
     }
@@ -620,16 +577,8 @@ export default function MediaLibraryMyReelsTab({
       setBuyPlanModalVisible(true);
       return false;
     }
-    // Monthly reels (12 per business; staff use the owner's number for them)
-    if (monthlyLimitsFresh) {
-      const blocked = monthlyReelsBlockedMessage(limits, t);
-      if (blocked) {
-        showBanner(t("monthlyReelsLimitTitle"), blocked, "error", 5000);
-        return false;
-      }
-    }
     return true;
-  }, [businessStatus, userRole, dispatch, limits, monthlyLimitsFresh, showBanner, t]);
+  }, [businessStatus, userRole, dispatch]);
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -641,23 +590,6 @@ export default function MediaLibraryMyReelsTab({
     [limits, t],
   );
 
-  // This user's monthly reels (owner: what isn't given to staff). Staff see theirs in AI Tools.
-  const monthlyLine = useMemo(() => {
-    if (isStaff || !monthlyLimitsFresh || !limits) return null;
-    const blocked = monthlyReelsBlockedMessage(limits, t);
-    if (blocked) return { text: blocked, blocked: true };
-    if (typeof limits.reels_remaining_this_month !== "number") return null;
-    const date = formatReelsResetDate(limits.monthly_reels_reset_on);
-    return {
-      text: [
-        t("monthlyReelsYouCanPost", { count: limits.reels_remaining_this_month }),
-        date ? t("monthlyReelsResets", { date }) : null,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-      blocked: false,
-    };
-  }, [isStaff, limits, monthlyLimitsFresh, t]);
 
   const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
@@ -795,10 +727,6 @@ export default function MediaLibraryMyReelsTab({
     void handleUpload();
   }, [handleUpload]);
 
-  const onAutoReelPress = useCallback(() => {
-    setFabOpen(false);
-    router.push("/(main)/reelTemplates" as any);
-  }, [router]);
 
   const confirmDelete = useCallback(
     (reel: OwnerReel) => {
@@ -1236,7 +1164,7 @@ export default function MediaLibraryMyReelsTab({
         onPress={() =>
           router.push({
             pathname: "/(main)/reelStats" as any,
-            params: scope === "mine" ? { mine: "1" } : {},
+            params: { mine: "1" },
           })
         }
       >
@@ -1290,50 +1218,7 @@ export default function MediaLibraryMyReelsTab({
         </View>
       ) : null}
 
-      {monthlyLine ? (
-        <View style={styles.tipRow} accessibilityLiveRegion="polite">
-          <MaterialIcons
-            name={monthlyLine.blocked ? "block" : "movie-filter"}
-            size={moderateWidthScale(16)}
-            color={monthlyLine.blocked ? theme.red : theme.selectCard}
-          />
-          <Text
-            style={[styles.tipText, monthlyLine.blocked && { color: theme.red }]}
-          >
-            {monthlyLine.text}
-          </Text>
-        </View>
-      ) : null}
 
-      {isStaff ? null : (
-      <View style={styles.scopeTrack} accessibilityRole="tablist">
-        {(["mine", "all"] as const).map((key) => {
-          const active = scope === key;
-          return (
-            <TouchableOpacity
-              key={key}
-              style={[styles.scopeSeg, active && styles.scopeSegActive]}
-              onPress={() => setOwnerScope(key)}
-              activeOpacity={0.8}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-            >
-              <MaterialIcons
-                name={key === "mine" ? "person" : "groups"}
-                size={moderateWidthScale(15)}
-                color={active ? theme.buttonText : theme.darkGreen}
-              />
-              <Text
-                style={[styles.scopeSegText, active && styles.scopeSegTextActive]}
-                numberOfLines={1}
-              >
-                {key === "mine" ? t("reelsScopeMine") : t("reelsScopeAll")}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      )}
 
       <View style={styles.filterTrack}>
         {filters.map((key) => (
@@ -1457,26 +1342,6 @@ export default function MediaLibraryMyReelsTab({
             </View>
             <Text style={styles.fabMenuOptionLabel}>{t("uploadVideo")}</Text>
           </TouchableOpacity>
-          {isStaff ? null : (
-          <TouchableOpacity
-            style={styles.fabMenuOption}
-            onPress={onAutoReelPress}
-            activeOpacity={0.9}
-            accessibilityRole="button"
-            accessibilityLabel={t("autoReelIntroTitle")}
-          >
-            <View style={styles.fabMenuOptionIcon}>
-              <MaterialIcons
-                name="movie-filter"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            </View>
-            <Text style={styles.fabMenuOptionLabel}>
-              {t("autoReelIntroTitle")}
-            </Text>
-          </TouchableOpacity>
-          )}
         </View>
       ) : null}
 
