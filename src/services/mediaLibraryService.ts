@@ -4,6 +4,7 @@ import { mediaEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
 import { getVideoMetaData } from "react-native-compressor";
+import { UploadCancelledError } from "@/src/utils/uploadCancel";
 import { prepareVideoForUpload, prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   MediaDeleteResponse,
@@ -260,6 +261,8 @@ export type UploadVideoParams = {
   purpose?: MediaUploadPurpose;
   /** Client-side compression progress (0–100), before the upload starts */
   onCompressProgress?: (percent: number) => void;
+  /** Abort → stops compression / the upload and rejects with UploadCancelledError */
+  signal?: AbortSignal;
 };
 
 /**
@@ -291,7 +294,12 @@ export function uploadVideo(
         fileName: params.fileName,
         mimeType: params.mimeType,
         onProgress: params.onCompressProgress,
+        signal: params.signal,
       });
+      if (params.signal?.aborted) {
+        reject(new UploadCancelledError());
+        return;
+      }
       // Compression can fail and fall back to the original — check before sending
       const preparedSize = await getLocalFileSize(prepared.uri);
       if (preparedSize != null && preparedSize > MAX_VIDEO_UPLOAD_BYTES) {
@@ -392,6 +400,14 @@ export function uploadVideo(
 
       // Large videos — allow up to 10 minutes
       xhr.timeout = 10 * 60 * 1000;
+      const onAbort = () => xhr.abort();
+      params.signal?.addEventListener("abort", onAbort);
+      xhr.onloadend = () => params.signal?.removeEventListener("abort", onAbort);
+      xhr.onabort = () => reject(new UploadCancelledError());
+      if (params.signal?.aborted) {
+        reject(new UploadCancelledError());
+        return;
+      }
       xhr.send(formData);
     } catch (error) {
       reject(error);
@@ -406,6 +422,8 @@ export type UploadImageParams = {
   sourceType: MediaUploadSourceType;
   width?: number | null;
   height?: number | null;
+  /** Abort → stops the upload and rejects with UploadCancelledError */
+  signal?: AbortSignal;
 };
 
 /**
@@ -433,6 +451,10 @@ export function uploadImage(
         return;
       }
 
+      if (params.signal?.aborted) {
+        reject(new UploadCancelledError());
+        return;
+      }
       const prepared = await prepareImageForUpload(
         params.uri,
         params.fileName?.replace(/\.[^.]+$/, "") || "template_image",
@@ -506,6 +528,14 @@ export function uploadImage(
       };
 
       xhr.timeout = 5 * 60 * 1000;
+      const onAbort = () => xhr.abort();
+      params.signal?.addEventListener("abort", onAbort);
+      xhr.onloadend = () => params.signal?.removeEventListener("abort", onAbort);
+      xhr.onabort = () => reject(new UploadCancelledError());
+      if (params.signal?.aborted) {
+        reject(new UploadCancelledError());
+        return;
+      }
       xhr.send(formData);
     } catch (error) {
       reject(error);

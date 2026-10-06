@@ -6,6 +6,11 @@ import {
   getRealPath,
 } from "react-native-compressor";
 import Logger from "@/src/services/logger";
+import {
+  isUploadCancelled,
+  throwIfAborted,
+  UploadCancelledError,
+} from "@/src/utils/uploadCancel";
 
 export type PreparedImageFile = {
   uri: string;
@@ -218,8 +223,11 @@ export async function prepareVideoForUpload(
     fileName?: string | null;
     mimeType?: string | null;
     onProgress?: (percent: number) => void;
+    /** Abort → stops compression and throws UploadCancelledError (no original-file fallback) */
+    signal?: AbortSignal;
   },
 ): Promise<PreparedVideoFile> {
+  throwIfAborted(options?.signal);
   const mimeType = guessVideoMimeType(uri, options?.mimeType);
   const fileName =
     options?.fileName || guessVideoFileName(uri, mimeType);
@@ -236,13 +244,24 @@ export async function prepareVideoForUpload(
       // Continue with original URI
     }
 
-    const compressed = await CompressorVideo.compress(
+    let cancellationId: string | null = null;
+    const onAbort = () => {
+      if (cancellationId) CompressorVideo.cancelCompression(cancellationId);
+    };
+    options?.signal?.addEventListener("abort", onAbort);
+    let compressed: string;
+    try {
+      compressed = await CompressorVideo.compress(
       inputUri,
       {
         compressionMethod: "manual",
         maxSize: VIDEO_MAX_SIZE,
         bitrate: VIDEO_BITRATE,
         minimumFileSizeForCompress: VIDEO_MIN_FILE_SIZE_MB,
+        getCancellationId: (id: string) => {
+          cancellationId = id;
+          if (options?.signal?.aborted) CompressorVideo.cancelCompression(id);
+        },
       },
       (progress) => {
         // Library reports 0–1
@@ -253,6 +272,10 @@ export async function prepareVideoForUpload(
         options?.onProgress?.(percent);
       },
     );
+    } finally {
+      options?.signal?.removeEventListener("abort", onAbort);
+    }
+    throwIfAborted(options?.signal);
 
     const outUri = ensureFileUri(compressed);
     const outMime = guessVideoMimeType(outUri, mimeType);
@@ -266,6 +289,10 @@ export async function prepareVideoForUpload(
       name: options?.fileName || outName,
     };
   } catch (error) {
+    // Cancelled on purpose — don't fall back to uploading the original
+    if (options?.signal?.aborted || isUploadCancelled(error)) {
+      throw new UploadCancelledError();
+    }
     Logger.warn(
       "Video compressor failed, uploading original file:",
       error,

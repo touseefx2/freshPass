@@ -49,6 +49,7 @@ import {
   formatVideoDuration,
   measureVideoDurationSeconds,
 } from "@/src/utils/videoDuration";
+import { isUploadCancelled } from "@/src/utils/uploadCancel";
 import { extractVideoThumbnail } from "@/src/utils/videoThumbnailCache";
 import {
   handleCameraPermission,
@@ -1201,7 +1202,7 @@ export default function ReelTemplatesScreen() {
 
   /** Upload the picked file (compress → POST /api/media) and keep its id. */
   const uploadSelectedVideo = useCallback(
-    async (video: SourceVideo): Promise<number | null> => {
+    async (video: SourceVideo, signal?: AbortSignal): Promise<number | null> => {
       const local = video.local;
       if (!local) return null;
       setUploadPhase("preparing");
@@ -1217,6 +1218,7 @@ export default function ReelTemplatesScreen() {
             width: local.width,
             height: local.height,
             purpose: "auto_reel_source",
+            signal,
             onCompressProgress: (percent) =>
               setUploadPercent(Math.round(percent * COMPRESS_SHARE)),
           },
@@ -1240,6 +1242,8 @@ export default function ReelTemplatesScreen() {
         );
         return uploaded.id;
       } catch (error: any) {
+        // Left the screen mid-upload — cancelled on purpose, nothing to report
+        if (isUploadCancelled(error)) return null;
         Logger.error("Failed to upload auto reel source video:", error);
         showBanner(
           t("error"),
@@ -1257,6 +1261,11 @@ export default function ReelTemplatesScreen() {
     },
     [showBanner, t],
   );
+
+  // Cancels the running upload when the user leaves mid-upload
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  // Screen gone (any way) → stop an upload that's still running
+  useEffect(() => () => uploadAbortRef.current?.abort(), []);
 
   const handleGenerate = useCallback(async () => {
     if (!selected || !sourceVideo || !categoryId || submitting) return;
@@ -1281,10 +1290,16 @@ export default function ReelTemplatesScreen() {
       return;
     }
 
+    // Cancelled when the user leaves mid-upload ("Leave" / screen closed)
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
     try {
       // 1. Upload only if this video isn't on the server yet
-      const mediaId = sourceVideo.id ?? (await uploadSelectedVideo(sourceVideo));
-      if (mediaId == null) return;
+      const mediaId =
+        sourceVideo.id ??
+        (await uploadSelectedVideo(sourceVideo, controller.signal));
+      // Left before it finished → don't start the reel (nothing is counted)
+      if (mediaId == null || controller.signal.aborted) return;
 
       // 2. Start the auto reel
       const trimmedCaption = caption.trim();
@@ -1305,6 +1320,7 @@ export default function ReelTemplatesScreen() {
         estimatedMinutes: 3,
       });
     } catch (error: any) {
+      if (controller.signal.aborted || isUploadCancelled(error)) return;
       Logger.error("Failed to start auto reel:", error);
       const mediaError = fieldError(error, "media_asset_id");
       const templateError = fieldError(error, "template_id");
@@ -1366,7 +1382,11 @@ export default function ReelTemplatesScreen() {
         {
           text: t("autoReelLeave"),
           style: "destructive",
-          onPress: () => navigation.dispatch(event.data.action),
+          // Really cancel: stop compression / upload, no reel is started
+          onPress: () => {
+            uploadAbortRef.current?.abort();
+            navigation.dispatch(event.data.action);
+          },
         },
       ]);
     });

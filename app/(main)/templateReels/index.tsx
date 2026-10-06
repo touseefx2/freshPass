@@ -29,6 +29,7 @@ import {
   takeEditedVideo,
 } from "@/src/components/videoEditor/editorHandoff";
 import { measureVideoDurationSeconds } from "@/src/utils/videoDuration";
+import { isUploadCancelled } from "@/src/utils/uploadCancel";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -1170,6 +1171,11 @@ export default function ReelTemplatesScreen() {
     return true;
   }, [caption, categoryId, noReelsLeft, selected, selectedMedia]);
 
+  // Cancels the running uploads when the user leaves mid-upload
+  const uploadAbortRef = useRef<AbortController | null>(null);
+  // Screen gone (any way) → stop uploads that are still running
+  useEffect(() => () => uploadAbortRef.current?.abort(), []);
+
   const handleGenerate = useCallback(async () => {
     if (!selected || !canGenerate || submitting || !categoryId) return;
 
@@ -1180,6 +1186,9 @@ export default function ReelTemplatesScreen() {
     }
 
     setSubmitting(true);
+    // Cancelled when the user leaves mid-upload ("Leave" / screen closed)
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
     try {
       // Fresh monthly limit check before anything is uploaded
       const blocked = await loadReelLimits();
@@ -1222,6 +1231,7 @@ export default function ReelTemplatesScreen() {
                   ),
                   width: file.width,
                   height: file.height,
+                  signal: controller.signal,
                   // One bar per file: compressing 0–40, uploading 40–100
                   onCompressProgress: (percent) =>
                     setUploadProgress({
@@ -1247,6 +1257,7 @@ export default function ReelTemplatesScreen() {
                   sourceType: file.sourceType,
                   width: file.width,
                   height: file.height,
+                  signal: controller.signal,
                 },
                 (percent) =>
                   setUploadProgress({
@@ -1261,6 +1272,8 @@ export default function ReelTemplatesScreen() {
             uploaded = await waitForMediaReady(uploaded.id);
           }
         } catch (error: any) {
+          // Left the screen mid-upload — cancelled on purpose, nothing to report
+          if (isUploadCancelled(error) || controller.signal.aborted) return;
           Logger.error("Failed to upload template slot file:", error);
           showBanner(
             t("error"),
@@ -1284,6 +1297,8 @@ export default function ReelTemplatesScreen() {
         mediaIds.push(uploadedId);
       }
       setUploadProgress(null);
+      // Left before generate → don't start the reel (nothing is counted)
+      if (controller.signal.aborted) return;
 
       const textsPayload: Record<string, string> = {};
       for (const field of selected.text_fields || []) {
@@ -1311,6 +1326,7 @@ export default function ReelTemplatesScreen() {
         complete: false,
       });
     } catch (error: any) {
+      if (controller.signal.aborted || isUploadCancelled(error)) return;
       Logger.error("Failed to start reel generation:", error);
       const fieldError = (field: string): string | null => {
         const value = error?.data?.errors?.[field];
@@ -1366,7 +1382,11 @@ export default function ReelTemplatesScreen() {
         {
           text: t("autoReelLeave"),
           style: "destructive",
-          onPress: () => navigation.dispatch(event.data.action),
+          // Really cancel: stop compression / uploads, no reel is generated
+          onPress: () => {
+            uploadAbortRef.current?.abort();
+            navigation.dispatch(event.data.action);
+          },
         },
       ]);
     });
