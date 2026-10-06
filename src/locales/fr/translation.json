@@ -1866,5 +1866,7 @@
   "autoReelViewOnlyHint": "Seule la personne qui a lancé ce reel peut le relancer, le publier, le modifier ou le supprimer.",
   "myReelPerformance": "Performance de mes reels",
   "autoReelTemplate": "Modèle",
-  "autoReelNotPublished": "Non publié"
+  "autoReelNotPublished": "Non publié",
+  "reelTooShortTitle": "Vidéo trop courte",
+  "reelTooShortMessage": "Les vidéos doivent durer au moins {{min_seconds}} secondes. Celle-ci dure {{length}}. Élargissez le découpage ou ajoutez un autre clip."
 }

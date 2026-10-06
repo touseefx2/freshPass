@@ -1923,5 +1923,7 @@
   "autoReelViewOnlyHint": "Only the person who started this reel can retry, publish, edit or delete it.",
   "myReelPerformance": "My reel performance",
   "autoReelTemplate": "Template",
-  "autoReelNotPublished": "Not published"
+  "autoReelNotPublished": "Not published",
+  "reelTooShortTitle": "Video too short",
+  "reelTooShortMessage": "Videos must be at least {{min_seconds}} seconds long. This one is {{length}}. Drag the trim handles out or add another clip."
 }

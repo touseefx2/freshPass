@@ -1866,5 +1866,7 @@
   "autoReelViewOnlyHint": "Solo quien inició este reel puede reintentarlo, publicarlo, editarlo o borrarlo.",
   "myReelPerformance": "Rendimiento de mis reels",
   "autoReelTemplate": "Plantilla",
-  "autoReelNotPublished": "Sin publicar"
+  "autoReelNotPublished": "Sin publicar",
+  "reelTooShortTitle": "Video demasiado corto",
+  "reelTooShortMessage": "Los videos deben durar al menos {{min_seconds}} segundos. Este dura {{length}}. Amplía el recorte o añade otro clip."
 }

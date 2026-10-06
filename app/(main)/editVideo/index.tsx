@@ -61,7 +61,7 @@ import {
 } from "@/src/services/mediaPermissionService";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
-import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
+import { MIN_REEL_SECONDS, REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
 import ClipTimeline from "@/src/components/videoEditor/clipTimeline";
 import ClipEditor from "@/src/components/videoEditor/clipEditor";
 import StickerLayer, {
@@ -2106,6 +2106,22 @@ export default function EditVideoScreen() {
 
     // Over the limit (reel limit, or the auto reel source limit in save mode)
     const clipSeconds = totalMs / 1000;
+
+    // Too short — normal reel (Next) and auto reel (Save) both need 3 s.
+    // Small tolerance: phones report lengths a few ms off.
+    if (clipSeconds < MIN_REEL_SECONDS - 0.05) {
+      Alert.alert(
+        t("reelTooShortTitle"),
+        t("reelTooShortMessage", {
+          min_seconds: MIN_REEL_SECONDS,
+          length: formatVideoDuration(clipSeconds),
+        }),
+      );
+      setActiveTool("trim");
+      if (clips.length === 1) setEditingClipId(clips[0].id);
+      return;
+    }
+
     if (clipSeconds > maxSeconds + 0.05) {
       Alert.alert(
         t("reelTrimRequiredTitle"),

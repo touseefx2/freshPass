@@ -1866,5 +1866,7 @@
   "autoReelViewOnlyHint": "فقط من بدأ هذا الريل يمكنه إعادة المحاولة أو نشره أو تعديله أو حذفه.",
   "myReelPerformance": "أداء ريلزي",
   "autoReelTemplate": "القالب",
-  "autoReelNotPublished": "غير منشور"
+  "autoReelNotPublished": "غير منشور",
+  "reelTooShortTitle": "الفيديو قصير جدًا",
+  "reelTooShortMessage": "يجب ألا تقل مدة الفيديو عن {{min_seconds}} ثوانٍ. مدة هذا الفيديو {{length}}. وسّع حدود القص أو أضف مقطعًا آخر."
 }

@@ -1866,5 +1866,7 @@
   "autoReelViewOnlyHint": "このリールを再試行・公開・編集・削除できるのは、作成した本人のみです。",
   "myReelPerformance": "自分のリールのパフォーマンス",
   "autoReelTemplate": "テンプレート",
-  "autoReelNotPublished": "未公開"
+  "autoReelNotPublished": "未公開",
+  "reelTooShortTitle": "動画が短すぎます",
+  "reelTooShortMessage": "動画は{{min_seconds}}秒以上必要です。この動画は{{length}}です。トリムを広げるか、別のクリップを追加してください。"
 }

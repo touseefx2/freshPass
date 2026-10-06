@@ -1866,5 +1866,7 @@
   "autoReelViewOnlyHint": "Nur wer dieses Reel gestartet hat, kann es wiederholen, veröffentlichen, bearbeiten oder löschen.",
   "myReelPerformance": "Performance meiner Reels",
   "autoReelTemplate": "Vorlage",
-  "autoReelNotPublished": "Nicht veröffentlicht"
+  "autoReelNotPublished": "Nicht veröffentlicht",
+  "reelTooShortTitle": "Video zu kurz",
+  "reelTooShortMessage": "Videos müssen mindestens {{min_seconds}} Sekunden lang sein. Dieses ist {{length}}. Zieh die Trim-Griffe weiter auf oder füge einen weiteren Clip hinzu."
 }

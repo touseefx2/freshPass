@@ -7,6 +7,9 @@ export type ReelEstimateItem = {
   durationMs?: number;
 };
 
+/** Shortest video allowed on Next (normal reel) / Save (auto reel) in the editor. */
+export const MIN_REEL_SECONDS = 3;
+
 /** Defaults when GET /api/media/limits has not resolved or failed. */
 export const REEL_LIMIT_FALLBACK = {
   max_seconds: 30,
