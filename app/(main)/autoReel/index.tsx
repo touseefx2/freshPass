@@ -7,7 +7,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -352,6 +357,7 @@ export default function AutoReelScreen() {
   const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const { t } = useTranslation();
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
 
@@ -434,6 +440,23 @@ export default function AutoReelScreen() {
       router.replace("/(main)/dashboard" as any);
     }
   }, [router]);
+
+  // Robot icon: back to the AI Tools screen — pop to it when it's in the stack
+  // (Generate Reel / AI Requests), otherwise open it (e.g. from a push)
+  const handleRobotPress = useCallback(() => {
+    const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
+    const toolListIndex = routes.findLastIndex((r) =>
+      r.name.startsWith("aiTools/toolList"),
+    );
+    if (toolListIndex !== -1 && toolListIndex < index) {
+      router.dismiss(index - toolListIndex);
+      return;
+    }
+    router.replace({
+      pathname: "/(main)/aiTools/toolList" as any,
+      params: { mode: "aiTools" },
+    });
+  }, [navigation, router]);
 
   const handleRetry = useCallback(async () => {
     if (!autoReelId || retrying) return;
@@ -951,7 +974,17 @@ export default function AutoReelScreen() {
 
   return (
     <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
-      <StackHeader title={t("autoReelTitle")} />
+      <StackHeader
+        title={t("autoReelTitle")}
+        rightIcon={
+          <MaterialIcons
+            name="smart-toy"
+            size={moderateWidthScale(22)}
+            color={theme.white}
+          />
+        }
+        onRightPress={handleRobotPress}
+      />
       <ScrollView
         contentContainerStyle={styles.body}
         showsVerticalScrollIndicator={false}
