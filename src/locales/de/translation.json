@@ -1875,5 +1875,6 @@
   "reelTypeAutoTitle": "KI-Auto-Reel",
   "reelTypeAutoDesc": "Lade ein Rohvideo hoch. Die KI findet die besten Momente und schneidet dein Reel.",
   "reelTypeStart": "Starten",
-  "videoTooLong": "Das Video darf höchstens {{max_seconds}} Sekunden lang sein."
+  "videoTooLong": "Das Video darf höchstens {{max_seconds}} Sekunden lang sein.",
+  "autoReelCompressing": "Video wird komprimiert… {{percent}} %"
 }

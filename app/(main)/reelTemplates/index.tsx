@@ -25,6 +25,10 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Button from "@/src/components/button";
+import HairPipelineProcessingModal, {
+  INITIAL_HAIR_PIPELINE_STATE,
+  type HairPipelineModalState,
+} from "@/src/components/HairPipelineProcessingModal";
 import AutoReelTrimPromptModal from "@/src/components/autoReelTrimPromptModal";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import StackHeader from "@/src/components/StackHeader";
@@ -84,6 +88,9 @@ const iosCompatiblePickerOptions =
     : {};
 
 const CAPTION_MAX = 2200;
+
+/** Share of the single progress bar used by on-phone compression (rest = upload) */
+const COMPRESS_SHARE = 0.4;
 
 type CategoryOption = { id: number; name: string };
 type ServiceOption = { id: number; name: string };
@@ -839,6 +846,11 @@ export default function ReelTemplatesScreen() {
   const [sourcePickerVisible, setSourcePickerVisible] = useState(false);
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
   // Compression runs first on long clips — show it instead of "Uploading 0%"
+  // "We'll notify you" popup once the auto reel has started (same as template reels)
+  const [startedModal, setStartedModal] = useState<HairPipelineModalState>(
+    INITIAL_HAIR_PIPELINE_STATE,
+  );
+  // One 0–100 bar: compressing fills 0–40, uploading 40–100
   const [uploadPhase, setUploadPhase] = useState<"preparing" | "uploading">(
     "uploading",
   );
@@ -1222,11 +1234,14 @@ export default function ReelTemplatesScreen() {
             width: local.width,
             height: local.height,
             purpose: "auto_reel_source",
-            onCompressProgress: (percent) => setUploadPercent(percent),
+            onCompressProgress: (percent) =>
+              setUploadPercent(Math.round(percent * COMPRESS_SHARE)),
           },
           (percent) => {
             setUploadPhase("uploading");
-            setUploadPercent(percent);
+            setUploadPercent(
+              Math.round(COMPRESS_SHARE * 100 + percent * (1 - COMPRESS_SHARE)),
+            );
           },
         );
         // Save the id at once: if the start fails, the next tap won't upload again
@@ -1297,10 +1312,14 @@ export default function ReelTemplatesScreen() {
         ...(serviceId ? { service_id: serviceId } : {}),
         ...(trimmedCaption ? { caption: trimmedCaption } : {}),
       });
-      // 3. Status screen (polling + auto_reel push as before)
-      router.replace({
-        pathname: "/(main)/autoReel" as any,
-        params: { autoReelId: String(autoReel.id) },
+      // 3. Server does the rest — tell the user they'll get a notification.
+      // Result shows in the auto_reel push and AI Requests → Reels.
+      setStartedModal({
+        ...INITIAL_HAIR_PIPELINE_STATE,
+        visible: true,
+        jobId: String(autoReel.id),
+        jobType: "AI Auto Reel",
+        estimatedMinutes: 3,
       });
     } catch (error: any) {
       Logger.error("Failed to start auto reel:", error);
@@ -1339,7 +1358,6 @@ export default function ReelTemplatesScreen() {
     loadTemplates,
     noReelsLeft,
     quotaBlockedMessage,
-    router,
     selected,
     serviceId,
     showBanner,
@@ -1756,7 +1774,7 @@ export default function ReelTemplatesScreen() {
                     <View accessibilityLiveRegion="polite">
                       <Text style={styles.slotTitle} numberOfLines={1}>
                         {uploadPhase === "preparing"
-                          ? t("autoReelPreparing", { percent: uploadPercent })
+                          ? t("autoReelCompressing", { percent: uploadPercent })
                           : t("autoReelUploading", { percent: uploadPercent })}
                       </Text>
                       <View style={styles.slotProgressTrack}>
@@ -1990,6 +2008,18 @@ export default function ReelTemplatesScreen() {
           )}
         </View>
       ) : null}
+
+      <HairPipelineProcessingModal
+        state={startedModal}
+        onClose={() => {
+          setStartedModal(INITIAL_HAIR_PIPELINE_STATE);
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace("/(main)/aiTools/toolList" as any);
+          }
+        }}
+      />
 
       <ModalizeBottomSheet
         visible={sourcePickerVisible}

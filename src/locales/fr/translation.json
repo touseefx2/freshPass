@@ -1875,5 +1875,6 @@
   "reelTypeAutoTitle": "Reel auto IA",
   "reelTypeAutoDesc": "Importez une vidéo brute. L’IA trouve les meilleurs moments et monte votre reel.",
   "reelTypeStart": "Commencer",
-  "videoTooLong": "La vidéo doit durer {{max_seconds}} secondes ou moins."
+  "videoTooLong": "La vidéo doit durer {{max_seconds}} secondes ou moins.",
+  "autoReelCompressing": "Compression de la vidéo… {{percent}} %"
 }

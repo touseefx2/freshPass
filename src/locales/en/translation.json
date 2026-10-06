@@ -1932,5 +1932,6 @@
   "reelTypeAutoTitle": "AI auto reel",
   "reelTypeAutoDesc": "Upload one raw video. AI finds the best moments and cuts your reel.",
   "reelTypeStart": "Start",
-  "videoTooLong": "Video must be {{max_seconds}} seconds or shorter."
+  "videoTooLong": "Video must be {{max_seconds}} seconds or shorter.",
+  "autoReelCompressing": "Compressing video… {{percent}}%"
 }

@@ -1875,5 +1875,6 @@
   "reelTypeAutoTitle": "AIオートリール",
   "reelTypeAutoDesc": "未編集の動画を1本アップロード。AIが見どころを見つけてリールにします。",
   "reelTypeStart": "開始",
-  "videoTooLong": "動画は{{max_seconds}}秒以内にしてください。"
+  "videoTooLong": "動画は{{max_seconds}}秒以内にしてください。",
+  "autoReelCompressing": "動画を圧縮中… {{percent}}%"
 }

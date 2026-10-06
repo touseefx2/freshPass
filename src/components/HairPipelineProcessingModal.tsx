@@ -23,7 +23,8 @@ export type PipelineJobType =
   | "Hair Tryon"
   | "Generate Post"
   | "Generate Collage"
-  | "Generate Reel";
+  | "Generate Reel"
+  | "AI Auto Reel";
 
 export type HairPipelineModalState = {
   visible: boolean;
@@ -161,6 +162,8 @@ function jobTypeTitleKey(jobType: PipelineJobType | null): string {
       return "generateCollage";
     case "Generate Reel":
       return "generateReel";
+    case "AI Auto Reel":
+      return "autoReelTitle";
     default:
       return "aiTools";
   }

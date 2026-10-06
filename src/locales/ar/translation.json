@@ -1875,5 +1875,6 @@
   "reelTypeAutoTitle": "ريل تلقائي بالذكاء الاصطناعي",
   "reelTypeAutoDesc": "ارفع فيديو خامًا واحدًا. يجد الذكاء الاصطناعي أفضل اللحظات ويقص الريل.",
   "reelTypeStart": "ابدأ",
-  "videoTooLong": "يجب ألا تزيد مدة الفيديو عن {{max_seconds}} ثانية."
+  "videoTooLong": "يجب ألا تزيد مدة الفيديو عن {{max_seconds}} ثانية.",
+  "autoReelCompressing": "جارٍ ضغط الفيديو… {{percent}}%"
 }

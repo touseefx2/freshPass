@@ -1875,5 +1875,6 @@
   "reelTypeAutoTitle": "Reel automático IA",
   "reelTypeAutoDesc": "Sube un video sin editar. La IA encuentra los mejores momentos y crea tu reel.",
   "reelTypeStart": "Empezar",
-  "videoTooLong": "El video debe durar {{max_seconds}} segundos o menos."
+  "videoTooLong": "El video debe durar {{max_seconds}} segundos o menos.",
+  "autoReelCompressing": "Comprimiendo video… {{percent}}%"
 }
