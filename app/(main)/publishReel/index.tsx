@@ -32,7 +32,7 @@ import { fetchMyProducts } from "@/src/services/productService";
 import type { ShopProduct } from "@/src/types/shopProduct";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
-import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
+import { fetchReelServiceOptions, fetchStaffBusinessCategory } from "@/src/services/reelServicesOptions";
 import {
   createReel,
   getMyReel,
@@ -309,12 +309,18 @@ export default function PublishReelScreen() {
     (s) => s.completeProfile.businessCategory,
   );
   const selectBsnsCategory = useAppSelector((s) => s.user.selectBsnsCategory);
+  // Staff: their owner's business category (they have no business status of their own)
+  const [staffBusinessCategory, setStaffBusinessCategory] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   /** Prefer live status, then onboarding slice, then persisted discovery pick. */
   const resolvedBusinessCategory = useMemo(() => {
     if (businessStatus?.business_category?.id != null) {
       return businessStatus.business_category;
     }
+    if (userRole === "staff") return staffBusinessCategory;
     if (completeProfileCategory?.id != null) {
       return completeProfileCategory;
     }
@@ -325,6 +331,8 @@ export default function PublishReelScreen() {
     return null;
   }, [
     businessStatus?.business_category,
+    userRole,
+    staffBusinessCategory,
     completeProfileCategory,
     selectBsnsCategory,
   ]);
@@ -396,6 +404,15 @@ export default function PublishReelScreen() {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const userPickedCategoryRef = useRef(false);
+
+  useEffect(() => {
+    if (userRole !== "staff") return;
+    fetchStaffBusinessCategory(userBusinessId)
+      .then(setStaffBusinessCategory)
+      .catch((error) => {
+        Logger.error("Failed to load staff business category:", error);
+      });
+  }, [userRole, userBusinessId]);
 
   useEffect(() => {
     (async () => {

@@ -27,7 +27,7 @@ import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
 import Logger from "@/src/services/logger";
-import { fetchReelServiceOptions } from "@/src/services/reelServicesOptions";
+import { fetchReelServiceOptions, fetchStaffBusinessCategory } from "@/src/services/reelServicesOptions";
 import {
   getMediaLimits,
   getVideo,
@@ -748,11 +748,17 @@ export default function ReelTemplatesScreen() {
     (s) => s.completeProfile.businessCategory,
   );
   const selectBsnsCategory = useAppSelector((s) => s.user.selectBsnsCategory);
+  // Staff: their owner's business category (they have no business status of their own)
+  const [staffBusinessCategory, setStaffBusinessCategory] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const resolvedBusinessCategory = useMemo(() => {
     if (businessStatus?.business_category?.id != null) {
       return businessStatus.business_category;
     }
+    if (userRole === "staff") return staffBusinessCategory;
     if (completeProfileCategory?.id != null) {
       return completeProfileCategory;
     }
@@ -761,6 +767,8 @@ export default function ReelTemplatesScreen() {
     return null;
   }, [
     businessStatus?.business_category,
+    userRole,
+    staffBusinessCategory,
     completeProfileCategory,
     selectBsnsCategory,
   ]);
@@ -846,6 +854,15 @@ export default function ReelTemplatesScreen() {
         Logger.error("Failed to load media limits for auto reel:", error);
       });
   }, [t]);
+
+  useEffect(() => {
+    if (userRole !== "staff") return;
+    fetchStaffBusinessCategory(userBusinessId)
+      .then(setStaffBusinessCategory)
+      .catch((error) => {
+        Logger.error("Failed to load staff business category:", error);
+      });
+  }, [userRole, userBusinessId]);
 
   useEffect(() => {
     (async () => {
