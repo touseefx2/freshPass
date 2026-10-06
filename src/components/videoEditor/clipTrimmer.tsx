@@ -32,6 +32,8 @@ type Props = {
   onTrimBegin: () => void;
   onTrimChange: (edge: TrimEdge, ms: number) => void;
   onTrimEnd: () => void;
+  /** Slide the whole trim window (length kept) to a new start, SOURCE ms. */
+  onTrimMove: (startMs: number) => void;
   onScrubBegin: () => void;
   onScrub: (ms: number) => void;
   onScrubEnd: () => void;
@@ -54,11 +56,18 @@ const ANDROID_EDGE_INSET = moderateWidthScale(24);
 const SEND_EVERY_MS = 40;
 /** Screen-reader increment for the adjustable trim handles. */
 const A11Y_STEP_MS = 250;
+/** Touches this close to the white line scrub it instead of moving the window. */
+const PLAYHEAD_GRAB = widthScale(14);
+/** Finger travel before a press inside the window becomes a move (else a tap). */
+const MOVE_SLOP = 6;
 
 const DRAG_NONE = 0;
 const DRAG_START = 1;
 const DRAG_END = 2;
 const DRAG_SCRUB = 3;
+/** Pressed inside the window — a move once it travels, otherwise a tap. */
+const DRAG_PENDING = 4;
+const DRAG_MOVE = 5;
 
 /** m:ss.d — trimming needs sub-second precision. */
 export function formatPrecise(ms: number): string {
@@ -153,6 +162,7 @@ export default function ClipTrimmer({
   onTrimBegin,
   onTrimChange,
   onTrimEnd,
+  onTrimMove,
   onScrubBegin,
   onScrub,
   onScrubEnd,
@@ -176,6 +186,11 @@ export default function ClipTrimmer({
   const dragging = useSharedValue(DRAG_NONE);
   const origin = useSharedValue(0);
   const lastSent = useSharedValue(0);
+  // Longest the clip may get during this drag (see onStart)
+  const allowedMs = useSharedValue(maxLengthMs);
+  // Window length while it's being slid, and where the press began
+  const moveLen = useSharedValue(0);
+  const pressX = useSharedValue(0);
 
   useEffect(() => {
     trackWidth.value = trackW;
@@ -212,6 +227,9 @@ export default function ClipTrimmer({
         dragging.value = isStart ? DRAG_START : DRAG_END;
         origin.value = isStart ? startMs.value : endMs.value;
         lastSent.value = 0;
+        // Already over the limit (full long source): allow shrinking freely
+        // instead of snapping the handle to the limit on first touch.
+        allowedMs.value = Math.max(maxLengthMs, endMs.value - startMs.value);
         runOnJS(onTrimBegin)();
       })
       .onUpdate((e) => {
@@ -219,11 +237,11 @@ export default function ClipTrimmer({
           origin.value + (e.translationX / trackWidth.value) * durationMs;
         let next: number;
         if (isStart) {
-          const min = Math.max(0, endMs.value - maxLengthMs);
+          const min = Math.max(0, endMs.value - allowedMs.value);
           next = Math.min(Math.max(raw, min), endMs.value - MIN_CLIP_MS);
           startMs.value = next;
         } else {
-          const max = Math.min(durationMs, startMs.value + maxLengthMs);
+          const max = Math.min(durationMs, startMs.value + allowedMs.value);
           next = Math.max(Math.min(raw, max), startMs.value + MIN_CLIP_MS);
           endMs.value = next;
         }
@@ -271,32 +289,84 @@ export default function ClipTrimmer({
     ],
   );
 
-  const scrubGesture = useMemo(() => {
+  /**
+   * Strip: drag inside the window slides it (Instagram style), the white line
+   * (or anywhere outside the window) scrubs, a tap moves the white line.
+   */
+  const stripGesture = useMemo(() => {
     const toMs = (x: number) => {
       "worklet";
       const ms = (x / trackWidth.value) * durationMs;
       return Math.round(Math.min(endMs.value - 1, Math.max(startMs.value, ms)));
     };
+    const throttled = () => {
+      "worklet";
+      const now = Date.now();
+      if (now - lastSent.value < SEND_EVERY_MS) return false;
+      lastSent.value = now;
+      return true;
+    };
     return Gesture.Pan()
       .enabled(!disabled)
       .minDistance(0)
       .onBegin((e) => {
-        dragging.value = DRAG_SCRUB;
         lastSent.value = 0;
+        pressX.value = e.x;
+        const ms = (e.x / trackWidth.value) * durationMs;
+        const playX = (playMs.value / durationMs) * trackWidth.value;
+        const onPlayhead =
+          playMs.value >= 0 && Math.abs(e.x - playX) <= PLAYHEAD_GRAB;
+        const len = endMs.value - startMs.value;
+        // Whole source selected → nothing to slide, keep plain scrubbing
+        const canMove = len < durationMs - 1;
+        if (!onPlayhead && canMove && ms > startMs.value && ms < endMs.value) {
+          dragging.value = DRAG_PENDING;
+          origin.value = startMs.value;
+          moveLen.value = len;
+          return;
+        }
+        dragging.value = DRAG_SCRUB;
         playMs.value = toMs(e.x);
         runOnJS(onScrubBegin)();
         runOnJS(onScrub)(playMs.value);
       })
       .onUpdate((e) => {
-        playMs.value = toMs(e.x);
-        const now = Date.now();
-        if (now - lastSent.value >= SEND_EVERY_MS) {
-          lastSent.value = now;
-          runOnJS(onScrub)(playMs.value);
+        if (dragging.value === DRAG_PENDING) {
+          if (Math.abs(e.translationX) < MOVE_SLOP) return;
+          dragging.value = DRAG_MOVE;
+          runOnJS(onTrimBegin)();
         }
+        if (dragging.value === DRAG_MOVE) {
+          const raw =
+            origin.value + (e.translationX / trackWidth.value) * durationMs;
+          const next = Math.min(
+            Math.max(raw, 0),
+            Math.max(0, durationMs - moveLen.value),
+          );
+          startMs.value = next;
+          endMs.value = next + moveLen.value;
+          if (throttled()) runOnJS(onTrimMove)(Math.round(next));
+          return;
+        }
+        if (dragging.value !== DRAG_SCRUB) return;
+        playMs.value = toMs(e.x);
+        if (throttled()) runOnJS(onScrub)(playMs.value);
       })
       .onFinalize(() => {
-        if (dragging.value !== DRAG_SCRUB) return;
+        if (dragging.value === DRAG_MOVE) {
+          runOnJS(onTrimMove)(Math.round(startMs.value));
+          dragging.value = DRAG_NONE;
+          runOnJS(onTrimEnd)();
+          runOnJS(endDrag)();
+          return;
+        }
+        if (dragging.value === DRAG_PENDING) {
+          // Plain tap inside the window: put the white line there
+          playMs.value = toMs(pressX.value);
+          runOnJS(onScrubBegin)();
+        } else if (dragging.value !== DRAG_SCRUB) {
+          return;
+        }
         runOnJS(onScrub)(playMs.value);
         dragging.value = DRAG_NONE;
         runOnJS(onScrubEnd)();
@@ -305,12 +375,19 @@ export default function ClipTrimmer({
     disabled,
     dragging,
     durationMs,
+    endDrag,
     endMs,
     lastSent,
+    moveLen,
     onScrub,
     onScrubBegin,
     onScrubEnd,
+    onTrimBegin,
+    onTrimEnd,
+    onTrimMove,
+    origin,
     playMs,
+    pressX,
     startMs,
     trackWidth,
   ]);
@@ -344,6 +421,7 @@ export default function ClipTrimmer({
       ms >= 0 &&
       dragging.value !== DRAG_START &&
       dragging.value !== DRAG_END &&
+      dragging.value !== DRAG_MOVE &&
       ms >= startMs.value - 1 &&
       ms <= endMs.value + 1;
     return {
@@ -392,7 +470,7 @@ export default function ClipTrimmer({
       <View style={styles.container} onLayout={onLayout}>
         {width > 0 ? (
           <>
-            <GestureDetector gesture={scrubGesture}>
+            <GestureDetector gesture={stripGesture}>
               <View style={styles.strip}>
                 {frameCells.map((uri, i) =>
                   uri ? (

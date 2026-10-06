@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
-index 68cad71..22a0fa2 100644
+index 68cad71..7b9b835 100644
 --- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
 +++ b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
 @@ -4,11 +4,13 @@ import android.content.Context
@@ -25,7 +25,21 @@ index 68cad71..22a0fa2 100644
  
      // Audio sequences (one per audio clip).
      val audioSequences = project.audioClips().mapNotNull { buildAudioSequence(it, project) }
-@@ -175,7 +177,12 @@ object ProjectCompiler {
+@@ -113,6 +115,13 @@ object ProjectCompiler {
+     }
+ 
+     val compositionBuilder = Composition.Builder(sequences + audioSequences)
++    // Some clips muted (or images) and some with sound: media3 rejects a
++    // sequence whose audio starts after an audio-less item unless an audio
++    // track is forced (silence fills the muted parts).
++    val clipsWithSound = videoClips.count { !it.isImage && it.originalVolume > 0f }
++    if (clipsWithSound in 1 until videoClips.size) {
++      compositionBuilder.experimentalSetForceAudioTrack(true)
++    }
+     if (overlays.isNotEmpty()) {
+       compositionBuilder.setEffects(Effects(emptyList(), listOf(OverlayEffect(overlays))))
+     }
+@@ -175,7 +184,12 @@ object ProjectCompiler {
  
    // MARK: - Lane → EditedMediaItemSequence
  
@@ -39,7 +53,7 @@ index 68cad71..22a0fa2 100644
      val builder = EditedMediaItemSequence.Builder()
      var laneCursor = 0L
      for (pc in placed) {
-@@ -192,7 +199,7 @@ object ProjectCompiler {
+@@ -192,7 +206,7 @@ object ProjectCompiler {
            // visible content at these timestamps in crossfade scenarios).
          }
        }
@@ -48,7 +62,7 @@ index 68cad71..22a0fa2 100644
        builder.addItem(item)
        laneCursor = pc.timelineEndMs
      }
-@@ -201,7 +208,7 @@ object ProjectCompiler {
+@@ -201,7 +215,7 @@ object ProjectCompiler {
  
    // MARK: - per-clip EditedMediaItem with optional alpha effects
  
@@ -57,7 +71,7 @@ index 68cad71..22a0fa2 100644
      val clip = pc.clip
      val mediaItem = if (clip.isImage) {
        MediaItem.Builder().setUri(clip.sourceUri).build()
-@@ -226,6 +233,16 @@ object ProjectCompiler {
+@@ -226,6 +240,16 @@ object ProjectCompiler {
        builder.setRemoveAudio(true)
      }
  
@@ -74,7 +88,7 @@ index 68cad71..22a0fa2 100644
      // If this clip is in a crossfade (fade-in head and/or fade-out tail),
      // attach an AlphaScaleEffect whose alphaFor is computed in absolute-
      // timeline-time, then mapped to clip-local time inside the lambda.
-@@ -249,8 +266,9 @@ object ProjectCompiler {
+@@ -249,8 +273,9 @@ object ProjectCompiler {
          }
          a
        }
@@ -85,7 +99,7 @@ index 68cad71..22a0fa2 100644
      return builder.build()
    }
  
-@@ -279,6 +297,11 @@ object ProjectCompiler {
+@@ -279,6 +304,11 @@ object ProjectCompiler {
    // MARK: - render-size resolution
  
    private fun resolveRenderSize(context: Context, clips: List<ProjectVideoClip>, project: Project): Pair<Int, Int> {
@@ -97,7 +111,7 @@ index 68cad71..22a0fa2 100644
      for (clip in clips) {
        if (clip.isImage) continue
        val retriever = android.media.MediaMetadataRetriever()
-@@ -288,13 +311,13 @@ object ProjectCompiler {
+@@ -288,13 +318,13 @@ object ProjectCompiler {
          var h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt() ?: 0
          val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toInt() ?: 0
          if (rotation == 90 || rotation == 270) { val t = w; w = h; h = t }

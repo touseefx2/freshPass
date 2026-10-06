@@ -309,19 +309,8 @@ export default function BusinessCreateMediaMenu({
       seconds: number,
     ) => {
       if (!asset.uri) return;
-      // expo-image-picker duration is milliseconds
-      const durationMs = asset.duration ?? 0;
-      const durationSec =
-        durationMs > 0 ? Math.ceil(durationMs / 1000) : null;
-      if (durationSec != null && durationSec > seconds) {
-        showBanner(
-          t("error"),
-          t("videoTooLong", { max_seconds: seconds }),
-          "error",
-          3000,
-        );
-        return;
-      }
+      // Longer than the limit is fine — the editor loads the whole video
+      // and won't continue until it's trimmed to `seconds`.
       router.push({
         pathname: "/(main)/editVideo" as any,
         params: {
@@ -335,7 +324,7 @@ export default function BusinessCreateMediaMenu({
         },
       });
     },
-    [router, showBanner, t],
+    [router],
   );
 
   const resolveMaxSeconds = useCallback(async () => {

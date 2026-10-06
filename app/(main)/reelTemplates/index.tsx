@@ -25,6 +25,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Button from "@/src/components/button";
+import AutoReelTrimPromptModal from "@/src/components/autoReelTrimPromptModal";
 import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -41,7 +42,10 @@ import {
   uploadVideo,
   VideoTooLargeError,
 } from "@/src/services/mediaLibraryService";
-import { measureVideoDurationSeconds } from "@/src/utils/videoDuration";
+import {
+  formatVideoDuration,
+  measureVideoDurationSeconds,
+} from "@/src/utils/videoDuration";
 import { extractVideoThumbnail } from "@/src/utils/videoThumbnailCache";
 import {
   handleCameraPermission,
@@ -96,6 +100,15 @@ type PickedVideoFile = {
   height?: number;
 };
 
+/** What the editor needs: a picker asset or the selected local file */
+type EditorSource = {
+  uri: string;
+  mimeType?: string | null;
+  fileName?: string | null;
+  width?: number;
+  height?: number;
+};
+
 type SourceVideo = {
   /** Server media id (purpose=auto_reel_source) once uploaded, or reused from "Try another template" */
   id: number | null;
@@ -111,14 +124,6 @@ function fieldError(error: any, field: string): string | null {
   const value = error?.data?.errors?.[field];
   if (Array.isArray(value) && typeof value[0] === "string") return value[0];
   return null;
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds == null || !Number.isFinite(seconds)) return "";
-  const total = Math.max(0, Math.round(seconds));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 type Styles = ReturnType<typeof createStyles>;
@@ -594,6 +599,27 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(999),
       backgroundColor: theme.buttonBack,
     },
+    editVideoBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: moderateWidthScale(6),
+      minHeight: moderateHeightScale(40),
+      marginTop: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      borderRadius: moderateWidthScale(999),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+    },
+    editVideoBtnDisabled: {
+      opacity: 0.5,
+    },
+    editVideoText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
     slotChevron: {
       width: moderateWidthScale(28),
       height: moderateWidthScale(28),
@@ -972,17 +998,30 @@ export default function ReelTemplatesScreen() {
     if (!showCategoryPicker) await loadCategories();
   }, [loadCategories, showCategoryPicker]);
 
-  // Too-long pick sent to the editor; its trimmed copy comes back on focus.
+  // Video sent to the editor; its edited copy comes back on focus.
   const editRequestRef = useRef<{
     id: string;
     sourceType: MediaUploadSourceType;
+    /** Editing the already-selected video — keep it as is when nothing changed */
+    fromSelected: boolean;
+  } | null>(null);
+
+  /** Too-long pick waiting on the trim prompt */
+  const [trimPrompt, setTrimPrompt] = useState<{
+    asset: ImagePicker.ImagePickerAsset;
+    sourceType: MediaUploadSourceType;
+    durationSeconds: number;
   } | null>(null);
 
   /** Open the reel editor in "save" mode, capped at the auto reel source limit. */
   const openTrimEditor = useCallback(
-    (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
+    (
+      asset: EditorSource,
+      sourceType: MediaUploadSourceType,
+      fromSelected = false,
+    ) => {
       const requestId = createEditRequestId();
-      editRequestRef.current = { id: requestId, sourceType };
+      editRequestRef.current = { id: requestId, sourceType, fromSelected };
       router.push({
         pathname: "/(main)/editVideo" as any,
         params: {
@@ -1025,16 +1064,10 @@ export default function ReelTemplatesScreen() {
 
       if (durationSeconds > MAX_AUTO_REEL_SOURCE_SECONDS) {
         // Offer to trim it in the editor instead of a dead-end error.
-        Alert.alert(
-          t("autoReelTrimTitle"),
-          t("autoReelTrimMessage", { length: formatDuration(durationSeconds) }),
-          [
-            { text: t("cancel"), style: "cancel" },
-            {
-              text: t("autoReelTrimAction"),
-              onPress: () => openTrimEditor(asset, sourceType),
-            },
-          ],
+        // iOS: let the picker finish dismissing before presenting the modal.
+        setTimeout(
+          () => setTrimPrompt({ asset, sourceType, durationSeconds }),
+          Platform.OS === "ios" ? 350 : 0,
         );
         return;
       }
@@ -1068,16 +1101,36 @@ export default function ReelTemplatesScreen() {
         thumbnailUri: localThumb,
       });
     },
-    [openTrimEditor, t],
+    [],
   );
 
-  // Back from the editor: select its trimmed copy like a fresh pick.
+  const handleTrimPromptTrim = useCallback(() => {
+    if (!trimPrompt) return;
+    setTrimPrompt(null);
+    openTrimEditor(trimPrompt.asset, trimPrompt.sourceType);
+  }, [openTrimEditor, trimPrompt]);
+
+  const handleTrimPromptChooseAnother = useCallback(() => {
+    setTrimPrompt(null);
+    setSourcePickerVisible(true);
+  }, []);
+
+  /** Trim / edit the video that's already selected (any length). */
+  const handleEditSelectedVideo = useCallback(() => {
+    const local = sourceVideo?.local;
+    if (!local) return;
+    openTrimEditor(local, local.sourceType, true);
+  }, [openTrimEditor, sourceVideo?.local]);
+
+  // Back from the editor: select its edited copy like a fresh pick.
   useFocusEffect(
     useCallback(() => {
       const request = editRequestRef.current;
       const result = takeEditedVideo(request?.id ?? null);
       if (!request || !result) return;
       editRequestRef.current = null;
+      // Nothing changed — keep the current selection (and any upload id)
+      if (request.fromSelected && !result.edited) return;
       void selectPickedVideo(
         {
           uri: result.uri,
@@ -1725,7 +1778,7 @@ export default function ReelTemplatesScreen() {
                       <Text style={styles.slotSub} numberOfLines={1}>
                         {sourceVideo
                           ? [
-                              formatDuration(sourceVideo.durationSeconds),
+                              formatVideoDuration(sourceVideo.durationSeconds),
                               // Make clear nothing is uploaded until the tap
                               sourceVideo.id == null
                                 ? t("autoReelUploadsOnMake")
@@ -1748,6 +1801,31 @@ export default function ReelTemplatesScreen() {
                   </View>
                 ) : null}
               </TouchableOpacity>
+              {/* Picked file can be trimmed / edited before it's uploaded */}
+              {sourceVideo?.local && uploadPercent == null ? (
+                <TouchableOpacity
+                  style={[
+                    styles.editVideoBtn,
+                    submitting && styles.editVideoBtnDisabled,
+                  ]}
+                  onPress={handleEditSelectedVideo}
+                  disabled={submitting}
+                  activeOpacity={0.75}
+                  hitSlop={{ top: 4, bottom: 4 }}
+                  accessibilityRole="button"
+                  accessibilityHint={t("autoReelEditVideoHint")}
+                  accessibilityState={{ disabled: submitting }}
+                >
+                  <MaterialIcons
+                    name="content-cut"
+                    size={moderateWidthScale(16)}
+                    color={theme.darkGreen}
+                  />
+                  <Text style={styles.editVideoText}>
+                    {t("autoReelEditVideo")}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
 
             <View style={styles.section}>
@@ -1953,6 +2031,14 @@ export default function ReelTemplatesScreen() {
         </TouchableOpacity>
       </ModalizeBottomSheet>
 
+      <AutoReelTrimPromptModal
+        visible={trimPrompt != null}
+        durationSeconds={trimPrompt?.durationSeconds ?? 0}
+        maxSeconds={MAX_AUTO_REEL_SOURCE_SECONDS}
+        onTrim={handleTrimPromptTrim}
+        onChooseAnother={handleTrimPromptChooseAnother}
+        onClose={() => setTrimPrompt(null)}
+      />
     </View>
   );
 }

@@ -142,7 +142,10 @@ const createStyles = (theme: Theme) =>
       bottom: 0,
       paddingVertical: moderateHeightScale(2),
       backgroundColor: theme.borderDark,
+      flexDirection: "row",
       alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(2),
     },
     durationText: {
       fontSize: fontSize.size10,
@@ -301,9 +304,11 @@ function ClipTile({
           style={styles.tile}
           accessible
           accessibilityRole="button"
-          accessibilityLabel={`${t("clipLabel", { index: index + 1, count })}, ${formatMs(
-            clipLengthMs(clip),
-          )}`}
+          accessibilityLabel={[
+            t("clipLabel", { index: index + 1, count }),
+            formatMs(clipLengthMs(clip)),
+            ...(clip.muted ? [t("clipMuted")] : []),
+          ].join(", ")}
           accessibilityHint={t("clipTileA11yHint")}
           accessibilityActions={[
             { name: "activate" },
@@ -336,6 +341,9 @@ function ClipTile({
             </View>
           )}
           <View style={styles.durationPill}>
+            {clip.muted ? (
+              <MaterialIcons name="volume-off" size={moderateWidthScale(11)} color={theme.white} />
+            ) : null}
             <Text style={styles.durationText}>{formatMs(clipLengthMs(clip))}</Text>
           </View>
         </View>

@@ -42,3 +42,12 @@ export function measureVideoDurationSeconds(
     }
   });
 }
+
+/** Seconds → "m:ss" (e.g. 266 → "4:26"); "" when unknown. */
+export function formatVideoDuration(seconds: number | null): string {
+  if (seconds == null || !Number.isFinite(seconds)) return "";
+  const total = Math.max(0, Math.round(seconds));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}

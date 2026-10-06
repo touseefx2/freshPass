@@ -12,6 +12,7 @@ import {
 } from "@/src/theme/dimensions";
 import ClipTrimmer, { type TrimEdge } from "./clipTrimmer";
 import { clipLengthMs, type EditorClip } from "./editorModel";
+import { formatVideoDuration } from "@/src/utils/videoDuration";
 
 /**
  * Level 2 of the trim tool: one clip at a time (Instagram "trim clip").
@@ -28,11 +29,13 @@ type Props = {
   disabled: boolean;
   onDone: () => void;
   onSplit: () => void;
-  onMove: (direction: -1 | 1) => void;
+  /** Mute / unmute this clip's own sound. */
+  onToggleMute: () => void;
   onRemove: () => void;
   onTrimBegin: () => void;
   onTrimChange: (edge: TrimEdge, ms: number) => void;
   onTrimEnd: () => void;
+  onTrimMove: (startMs: number) => void;
   onScrubBegin: () => void;
   onScrub: (ms: number) => void;
   onScrubEnd: () => void;
@@ -89,6 +92,12 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.white70,
     },
+    overLimit: {
+      color: theme.link,
+    },
+    hintOverLimit: {
+      fontFamily: fonts.fontBold,
+    },
     toolbar: {
       flexDirection: "row",
       justifyContent: "space-around",
@@ -109,6 +118,10 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
+    actionLabelActive: {
+      color: theme.selectCard,
+      fontFamily: fonts.fontBold,
+    },
   });
 
 export default function ClipEditor({
@@ -121,11 +134,12 @@ export default function ClipEditor({
   disabled,
   onDone,
   onSplit,
-  onMove,
+  onToggleMute,
   onRemove,
   onTrimBegin,
   onTrimChange,
   onTrimEnd,
+  onTrimMove,
   onScrubBegin,
   onScrub,
   onScrubEnd,
@@ -135,6 +149,9 @@ export default function ClipEditor({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
   const multi = count > 1;
+  const lengthMs = clipLengthMs(clip);
+  // e.g. a full long auto reel source that still has to be trimmed down
+  const overLimit = lengthMs > maxLengthMs + 50;
 
   const actions: {
     key: string;
@@ -142,24 +159,20 @@ export default function ClipEditor({
     label: string;
     onPress: () => void;
     enabled: boolean;
+    /** Toggle that's on (e.g. clip muted) — drawn in the accent colour */
+    active?: boolean;
   }[] = [
     { key: "split", icon: "content-cut", label: t("splitClip"), onPress: onSplit, enabled: true },
+    {
+      key: "mute",
+      icon: clip.muted ? "volume-off" : "volume-up",
+      label: clip.muted ? t("clipMuted") : t("muteClip"),
+      onPress: onToggleMute,
+      enabled: true,
+      active: !!clip.muted,
+    },
     ...(multi
       ? [
-          {
-            key: "left",
-            icon: "arrow-back" as const,
-            label: t("moveClipLeft"),
-            onPress: () => onMove(-1),
-            enabled: index > 0,
-          },
-          {
-            key: "right",
-            icon: "arrow-forward" as const,
-            label: t("moveClipRight"),
-            onPress: () => onMove(1),
-            enabled: index < count - 1,
-          },
           {
             key: "delete",
             icon: "delete-outline" as const,
@@ -191,8 +204,8 @@ export default function ClipEditor({
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.length} accessibilityLabel={t("clipLengthA11y", { length: formatClipLength(clipLengthMs(clip)) })}>
-        {formatClipLength(clipLengthMs(clip))}
+      <Text style={[styles.length, overLimit && styles.overLimit]} accessibilityLabel={t("clipLengthA11y", { length: formatClipLength(lengthMs) })}>
+        {formatClipLength(lengthMs)}
       </Text>
 
       <ClipTrimmer
@@ -204,12 +217,20 @@ export default function ClipEditor({
         onTrimBegin={onTrimBegin}
         onTrimChange={onTrimChange}
         onTrimEnd={onTrimEnd}
+        onTrimMove={onTrimMove}
         onScrubBegin={onScrubBegin}
         onScrub={onScrub}
         onScrubEnd={onScrubEnd}
       />
 
-      <Text style={styles.hint}>{t("clipEditorHint")}</Text>
+      <Text
+        style={[styles.hint, overLimit && [styles.overLimit, styles.hintOverLimit]]}
+        accessibilityLiveRegion="polite"
+      >
+        {overLimit
+          ? t("clipTrimToFit", { max: formatVideoDuration(maxLengthMs / 1000) })
+          : t("clipEditorHint")}
+      </Text>
 
       <View style={styles.toolbar}>
         {actions.map((action) => {
@@ -221,12 +242,21 @@ export default function ClipEditor({
               onPress={action.onPress}
               disabled={!enabled}
               activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={action.label}
-              accessibilityState={{ disabled: !enabled }}
+              accessibilityRole={action.active === undefined ? "button" : "switch"}
+              accessibilityLabel={action.key === "mute" ? t("muteClip") : action.label}
+              accessibilityState={{
+                disabled: !enabled,
+                ...(action.active === undefined ? {} : { checked: action.active }),
+              }}
             >
-              <MaterialIcons name={action.icon} size={moderateWidthScale(22)} color={theme.white} />
-              <Text style={styles.actionLabel}>{action.label}</Text>
+              <MaterialIcons
+                name={action.icon}
+                size={moderateWidthScale(22)}
+                color={action.active ? theme.selectCard : theme.white}
+              />
+              <Text style={[styles.actionLabel, action.active && styles.actionLabelActive]}>
+                {action.label}
+              </Text>
             </TouchableOpacity>
           );
         })}

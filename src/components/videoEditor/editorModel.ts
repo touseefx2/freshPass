@@ -29,6 +29,8 @@ export type EditorClip = {
   width: number;
   height: number;
   sourceType: MediaUploadSourceType;
+  /** This clip's own sound is off (Instagram per-clip mute). */
+  muted?: boolean;
 };
 
 /**
@@ -238,10 +240,7 @@ export async function prepareStickerImage(asset: {
   return { uri, width: result.width, height: result.height };
 }
 
-export function buildVideoTrackClips(
-  clips: EditorClip[],
-  muteOriginal: boolean,
-): VideoClip[] {
+export function buildVideoTrackClips(clips: EditorClip[]): VideoClip[] {
   let cursor = 0;
   return clips.map((clip) => {
     const start = Math.round(clip.trimStartMs);
@@ -252,7 +251,7 @@ export function buildVideoTrackClips(
       sourceUri: clip.uri,
       sourceRange: { startMs: start, endMs: end },
       timelineRange: { startMs: cursor, endMs: cursor + len },
-      originalVolume: muteOriginal ? 0 : 1,
+      originalVolume: clip.muted ? 0 : 1,
     };
     cursor += len;
     return out;

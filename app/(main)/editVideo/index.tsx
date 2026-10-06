@@ -50,6 +50,7 @@ import {
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
+import { formatVideoDuration } from "@/src/utils/videoDuration";
 import {
   getCachedMediaLimits,
   getMediaLimits,
@@ -108,7 +109,6 @@ type EditorSnapshot = {
   clips: EditorClip[];
   stickers: EditorSticker[];
   aspect: AspectPreset;
-  muteOriginal: boolean;
   musicUri: string | null;
   musicName: string | null;
   musicVolume: number;
@@ -774,7 +774,6 @@ export default function EditVideoScreen() {
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [maxSeconds, setMaxSeconds] = useState(initialMaxSeconds);
   const [aspect, setAspect] = useState<AspectPreset>("original");
-  const [muteOriginal, setMuteOriginal] = useState(false);
   const [musicUri, setMusicUri] = useState<string | null>(null);
   const [musicName, setMusicName] = useState<string | null>(null);
   const [musicVolume, setMusicVolume] = useState(0.8);
@@ -812,12 +811,17 @@ export default function EditVideoScreen() {
   const [activeSlot, setActiveSlot] = useState<PlayerSlot>(0);
 
   const trimHistoryPushedRef = useRef(false);
+  /** Clip length when the current trim drag began — it may shrink back from over the limit, never grow past it. */
+  const trimAllowedMsRef = useRef(0);
   const textHistoryPushedRef = useRef(false);
   const textInputRef = useRef<TextInputType>(null);
   const musicSoundRef = useRef<Audio.Sound | null>(null);
 
   const maxClipMs = Math.max(MIN_CLIP_MS, Math.round(maxSeconds * 1000));
   const totalMs = totalClipsMs(clips);
+  const mutedClipCount = clips.filter((c) => c.muted).length;
+  /** "Mute original audio" (Music panel) = every clip's own sound is off. */
+  const allClipsMuted = clips.length > 0 && mutedClipCount === clips.length;
   const editingIndex = clips.findIndex((c) => c.id === editingClipId);
   const editingClip: EditorClip | null =
     editingIndex >= 0 ? clips[editingIndex] : null;
@@ -839,6 +843,8 @@ export default function EditVideoScreen() {
   const activeSlotRef = useRef<PlayerSlot>(0);
   const activeIndexRef = useRef(0);
   const slotUriRef = useRef<(string | null)[]>([null, null]);
+  /** Clip loaded in each player — its own mute applies to that player. */
+  const slotClipIdRef = useRef<(string | null)[]>([null, null]);
   const preloadRef = useRef<{
     slot: PlayerSlot;
     index: number;
@@ -889,7 +895,6 @@ export default function EditVideoScreen() {
       clips,
       stickers,
       aspect,
-      muteOriginal,
       musicUri,
       musicName,
       musicVolume,
@@ -909,7 +914,6 @@ export default function EditVideoScreen() {
       musicName,
       musicUri,
       musicVolume,
-      muteOriginal,
       overlayBgColorKey,
       overlayBold,
       overlayColorKey,
@@ -932,7 +936,6 @@ export default function EditVideoScreen() {
         last.clips === snap.clips &&
         last.stickers === snap.stickers &&
         last.aspect === snap.aspect &&
-        last.muteOriginal === snap.muteOriginal &&
         last.musicUri === snap.musicUri &&
         last.musicName === snap.musicName &&
         last.musicVolume === snap.musicVolume &&
@@ -964,7 +967,6 @@ export default function EditVideoScreen() {
       setClips(snap.clips);
       setStickers(snap.stickers);
       setAspect(snap.aspect);
-      setMuteOriginal(snap.muteOriginal);
       setMusicUri(snap.musicUri);
       setMusicName(snap.musicName);
       setMusicVolume(snap.musicVolume);
@@ -1029,7 +1031,9 @@ export default function EditVideoScreen() {
           uri: paramUri,
           fileName: params.fileName,
           sourceType,
-          budgetMs: clipCap,
+          // Load the whole video so the user picks the part to keep;
+          // Next / Save stays blocked until it fits the limit.
+          budgetMs: Number.POSITIVE_INFINITY,
         });
         if (cancelled) return;
         clipsRef.current = [first];
@@ -1038,6 +1042,11 @@ export default function EditVideoScreen() {
         setPreviewReady(true);
         setPlaying(true);
         loadThumbnail(first);
+        if (clipLengthMs(first) > clipCap) {
+          // Over the limit — open the trimmer on it straight away
+          setActiveTool("trim");
+          setEditingClipId(first.id);
+        }
       } catch (error) {
         Logger.error("prepare video for edit failed:", error);
         if (!cancelled) {
@@ -1066,24 +1075,6 @@ export default function EditVideoScreen() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramUri, params.fileName, paramMaxSeconds, showBanner, t]);
-
-  // Account limit can arrive late (or shrink) — trim from the end to fit.
-  useEffect(() => {
-    setClips((prev) => {
-      let over = totalClipsMs(prev) - maxClipMs;
-      if (over <= 0) return prev;
-      const next = [...prev];
-      for (let i = next.length - 1; i >= 0 && over > 0; i--) {
-        const c = next[i];
-        const shrink = Math.min(over, clipLengthMs(c) - MIN_CLIP_MS);
-        if (shrink > 0) {
-          next[i] = { ...c, trimEndMs: c.trimEndMs - shrink };
-          over -= shrink;
-        }
-      }
-      return next;
-    });
-  }, [maxClipMs]);
 
   // ── Preview engine ────────────────────────────────────────────────
   // expo-video plays one source per player, so clips are previewed back
@@ -1118,6 +1109,8 @@ export default function EditVideoScreen() {
         if (gen !== engineGenRef.current) return;
         players[slot].pause();
         players[slot].currentTime = clip.trimStartMs / 1000;
+        players[slot].muted = !!clip.muted;
+        slotClipIdRef.current[slot] = clip.id;
         preloadRef.current = { slot, index: nextIndex, clipId: clip.id };
       } catch (error) {
         Logger.error("Preload next clip failed:", error);
@@ -1142,6 +1135,8 @@ export default function EditVideoScreen() {
         if (gen !== engineGenRef.current) return;
         activeIndexRef.current = index;
         p.currentTime = clip.trimStartMs / 1000;
+        p.muted = !!clip.muted;
+        slotClipIdRef.current[slot] = clip.id;
         if (playingRef.current) p.play();
         else p.pause();
         setPreviewTimeMs(
@@ -1249,12 +1244,21 @@ export default function EditVideoScreen() {
     return () => subs.forEach((s) => s.remove());
   }, [advance, players]);
 
-  // Play / pause + mute
+  // Per-clip mute changed → re-apply to whatever each player holds.
+  const mutedKey = clips.map((c) => (c.muted ? 1 : 0)).join("");
   useEffect(() => {
     try {
-      players.forEach((p) => {
-        p.muted = muteOriginal;
+      players.forEach((p, slot) => {
+        const id = slotClipIdRef.current[slot];
+        const clip = clipsRef.current.find((c) => c.id === id);
+        p.muted = !!clip?.muted;
       });
+    } catch {}
+  }, [mutedKey, players]);
+
+  // Play / pause
+  useEffect(() => {
+    try {
       players[otherSlot(activeSlot)].pause();
       if (playing && !engineLoadingRef.current) {
         players[activeSlot].play();
@@ -1262,7 +1266,7 @@ export default function EditVideoScreen() {
         players[activeSlot].pause();
       }
     } catch {}
-  }, [activeSlot, muteOriginal, players, playing]);
+  }, [activeSlot, players, playing]);
 
   // (Re)start playback when the clip list / trims / focus change.
   const clipsKey = clips
@@ -1291,7 +1295,11 @@ export default function EditVideoScreen() {
       const idx = list.findIndex((c) => c.id === editingClipIdRef.current);
       const clip = list[idx];
       if (!clip) return;
-      const budget = maxClipMs - (totalClipsMs(list) - clipLengthMs(clip));
+      // A full long source starts over the limit: let it shrink without snapping
+      const budget = Math.max(
+        maxClipMs - (totalClipsMs(list) - clipLengthMs(clip)),
+        trimAllowedMsRef.current,
+      );
       let next: EditorClip;
       if (edge === "start") {
         const minStart = Math.max(0, clip.trimEndMs - budget);
@@ -1324,8 +1332,59 @@ export default function EditVideoScreen() {
     [maxClipMs, scrubTo],
   );
 
+  /** Mute / unmute one clip's own sound (Instagram per-clip mute). */
+  const toggleClipMuted = useCallback(
+    (id: string) => {
+      const list = clipsRef.current;
+      const idx = list.findIndex((c) => c.id === id);
+      if (idx < 0) return;
+      pushHistory();
+      const updated = [...list];
+      updated[idx] = { ...list[idx], muted: !list[idx].muted };
+      clipsRef.current = updated;
+      setClips(updated);
+    },
+    [pushHistory],
+  );
+
+  /** Music panel switch: mute / unmute every clip at once. */
+  const setAllClipsMuted = useCallback(
+    (muted: boolean) => {
+      pushHistory();
+      const updated = clipsRef.current.map((c) => ({ ...c, muted }));
+      clipsRef.current = updated;
+      setClips(updated);
+    },
+    [pushHistory],
+  );
+
+  /** Slide the selected clip's trim window, keeping its length. */
+  const moveSelectedTrim = useCallback(
+    (startMs: number) => {
+      const list = clipsRef.current;
+      const idx = list.findIndex((c) => c.id === editingClipIdRef.current);
+      const clip = list[idx];
+      if (!clip) return;
+      const length = clipLengthMs(clip);
+      const start = Math.round(
+        Math.min(Math.max(startMs, 0), Math.max(0, clip.sourceDurationMs - length)),
+      );
+      if (start === clip.trimStartMs) return;
+      const updated = [...list];
+      updated[idx] = { ...clip, trimStartMs: start, trimEndMs: start + length };
+      clipsRef.current = updated;
+      setClips(updated);
+      scrubTo(start);
+    },
+    [scrubTo],
+  );
+
   const onTrimSlideStart = useCallback(() => {
     dismissKeyboard();
+    const clip = clipsRef.current.find(
+      (c) => c.id === editingClipIdRef.current,
+    );
+    trimAllowedMsRef.current = clip ? clipLengthMs(clip) : 0;
     if (!trimHistoryPushedRef.current) {
       pushHistory();
       trimHistoryPushedRef.current = true;
@@ -1336,6 +1395,7 @@ export default function EditVideoScreen() {
 
   const onTrimSlideComplete = useCallback(() => {
     trimHistoryPushedRef.current = false;
+    trimAllowedMsRef.current = 0;
     scrubbingRef.current = false;
     playingRef.current = true;
     setPlaying(true);
@@ -1493,7 +1553,7 @@ export default function EditVideoScreen() {
 
   const project: Project | null = useMemo(() => {
     if (clips.length === 0) return null;
-    const videoClips = buildVideoTrackClips(clips, muteOriginal);
+    const videoClips = buildVideoTrackClips(clips);
     const reelDuration =
       videoClips[videoClips.length - 1]?.timelineRange.endMs ?? 0;
     if (reelDuration <= 0) return null;
@@ -1575,7 +1635,6 @@ export default function EditVideoScreen() {
     clips,
     musicUri,
     musicVolume,
-    muteOriginal,
     overlayBgColorKey,
     overlayBold,
     overlayColorKey,
@@ -1638,6 +1697,9 @@ export default function EditVideoScreen() {
       let outOfTime = 0;
       let shortened = false;
       let budget = maxClipMs - totalClipsMs(clipsRef.current);
+      // Original audio muted for every clip → new clips come in muted too
+      const inheritMute =
+        clipsRef.current.length > 0 && clipsRef.current.every((c) => c.muted);
       for (const asset of assets) {
         if (!asset.uri) continue;
         if (clipsRef.current.length + added.length >= MAX_EDITOR_CLIPS) break;
@@ -1654,7 +1716,7 @@ export default function EditVideoScreen() {
           });
           if (clip.trimEndMs < clip.sourceDurationMs) shortened = true;
           budget -= clipLengthMs(clip);
-          added.push(clip);
+          added.push(inheritMute ? { ...clip, muted: true } : clip);
         } catch (error) {
           Logger.error("Add clip failed:", error);
           failed += 1;
@@ -2042,16 +2104,24 @@ export default function EditVideoScreen() {
   const handleNextToPublish = useCallback(async () => {
     if (!project || exporting || clips.length === 0) return;
 
+    // Over the limit (reel limit, or the auto reel source limit in save mode)
     const clipSeconds = totalMs / 1000;
     if (clipSeconds > maxSeconds + 0.05) {
       Alert.alert(
         t("reelTrimRequiredTitle"),
-        t("reelTrimRequiredMessage", {
-          max_seconds: maxSeconds,
-          clip_seconds: Math.round(clipSeconds),
-        }),
+        isSaveMode
+          ? t("autoReelTrimRequiredMessage", {
+              length: formatVideoDuration(clipSeconds),
+              max: formatVideoDuration(maxSeconds),
+            })
+          : t("reelTrimRequiredMessage", {
+              max_seconds: maxSeconds,
+              clip_seconds: Math.round(clipSeconds),
+            }),
       );
       setActiveTool("trim");
+      // One clip: open its trimmer directly
+      if (clips.length === 1) setEditingClipId(clips[0].id);
       return;
     }
 
@@ -2068,7 +2138,7 @@ export default function EditVideoScreen() {
       !single ||
       aspect !== "original" ||
       !!musicUri ||
-      muteOriginal ||
+      mutedClipCount > 0 ||
       !!overlayText.trim() ||
       stickers.length > 0 ||
       single.trimStartMs > 0 ||
@@ -2170,7 +2240,7 @@ export default function EditVideoScreen() {
     isSaveMode,
     maxSeconds,
     musicUri,
-    muteOriginal,
+    mutedClipCount,
     overlayText,
     params.fileName,
     params.height,
@@ -2636,11 +2706,12 @@ export default function EditVideoScreen() {
                   disabled={busy}
                   onDone={() => setEditingClipId(null)}
                   onSplit={() => splitSelectedClip(editingClip.id)}
-                  onMove={(direction) => moveClip(editingClip.id, direction)}
+                  onToggleMute={() => toggleClipMuted(editingClip.id)}
                   onRemove={() => removeClip(editingClip.id)}
                   onTrimBegin={onTrimSlideStart}
                   onTrimChange={updateSelectedTrim}
                   onTrimEnd={onTrimSlideComplete}
+                  onTrimMove={moveSelectedTrim}
                   onScrubBegin={onScrubBegin}
                   onScrub={onScrub}
                   onScrubEnd={onScrubEnd}
@@ -2778,11 +2849,9 @@ export default function EditVideoScreen() {
                   <View style={styles.rowBetween}>
                     <Text style={styles.label}>{t("muteOriginalAudio")}</Text>
                     <Switch
-                      value={muteOriginal}
-                      onValueChange={(v) => {
-                        pushHistory();
-                        setMuteOriginal(v);
-                      }}
+                      value={allClipsMuted}
+                      onValueChange={setAllClipsMuted}
+                      accessibilityLabel={t("muteOriginalAudio")}
                       disabled={busy}
                       trackColor={{
                         false: theme.white15,
@@ -2791,6 +2860,16 @@ export default function EditVideoScreen() {
                       thumbColor={theme.white}
                     />
                   </View>
+                  {clips.length > 1 ? (
+                    <Text style={styles.panelHint}>
+                      {mutedClipCount > 0 && !allClipsMuted
+                        ? t("clipsMutedCount", {
+                            count: mutedClipCount,
+                            total: clips.length,
+                          })
+                        : t("muteAllClipsHint")}
+                    </Text>
+                  ) : null}
                 </>
               ) : null}
 
