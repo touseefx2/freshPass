@@ -1804,5 +1804,10 @@
   "autoReelLeaveUploadTitle": "Importation en cours",
   "autoReelLeaveUploadMessage": "Si vous quittez maintenant, votre reel ne sera pas créé. Rester jusqu’à la fin de l’importation ?",
   "autoReelKeepUploading": "Rester",
-  "autoReelLeave": "Quitter"
+  "autoReelLeave": "Quitter",
+  "reelsScopeMine": "Mes reels",
+  "reelsScopeAll": "Toute l’entreprise",
+  "reelViewOnly": "Lecture seule",
+  "reelViewOnlyHint": "Vous ne pouvez modifier que les reels que vous avez créés.",
+  "autoReelViewOnlyHint": "Seule la personne qui a lancé ce reel peut le relancer, le publier, le modifier ou le supprimer."
 }

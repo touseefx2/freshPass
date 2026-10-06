@@ -48,6 +48,7 @@ import {
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel } from "@/src/types/reels";
+import { canChangeReel } from "@/src/types/reels";
 
 type CategoryOption = { id: number; name: string };
 type ServiceOption = { id: number; name: string; price?: string | number };
@@ -455,6 +456,12 @@ export default function PublishReelScreen() {
       setLoading(true);
       try {
         const reel = await getMyReel(reelId);
+        // Staff can only change reels they made — the server would 403 the save
+        if (!canChangeReel(reel, userRole)) {
+          showBanner(t("reelViewOnly"), t("reelViewOnlyHint"), "warning", 3500);
+          router.back();
+          return;
+        }
         setExisting(reel);
         setCaption(reel.caption || "");
         setLookTag(reel.look_tag || "");

@@ -374,10 +374,12 @@ export default function AiRequests() {
       }
 
       try {
+        // "AI reel requests" = only what this user started (owner or staff)
         const { autoReels, meta } = await listAutoReels(
           page,
           undefined,
           PER_PAGE,
+          true,
         );
 
         setReels((prev) => {

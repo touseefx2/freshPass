@@ -16,7 +16,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import Button from "@/src/components/button";
 import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
 import {
   deleteReel,
@@ -34,6 +34,7 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
   AUTO_REEL_RETRYABLE_ERRORS,
+  canChangeReel,
   isAutoReelInProgress,
   type AutoReel,
   type AutoReelStatus,
@@ -359,6 +360,7 @@ export default function AutoReelScreen() {
   const [autoReel, setAutoReel] = useState<AutoReel | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const userRole = useAppSelector((s) => s.user.userRole);
   const [publishing, setPublishing] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   // created_at stays the original time after a retry — time the retry locally
@@ -497,6 +499,8 @@ export default function AutoReelScreen() {
     });
   }, [reelId, router]);
 
+  // Staff may only retry / publish / edit / delete what they started (403 otherwise)
+  const canChange = canChangeReel(autoReel, userRole);
   const reelStatus = autoReel?.reel?.status ?? null;
   const isDraft = reelStatus === "draft";
   const isPublished = reelStatus === "published";
@@ -546,6 +550,17 @@ export default function AutoReelScreen() {
   const templateName = autoReel
     ? autoReel.template?.name || t("autoReelTemplateRemoved")
     : null;
+
+  const renderViewOnlyNote = () => (
+    <View style={styles.note}>
+      <MaterialIcons
+        name="lock-outline"
+        size={moderateWidthScale(16)}
+        color={theme.buttonBack}
+      />
+      <Text style={styles.noteText}>{t("autoReelViewOnlyHint")}</Text>
+    </View>
+  );
 
   const renderTemplatePill = () =>
     templateName ? (
@@ -683,9 +698,11 @@ export default function AutoReelScreen() {
   const renderFailed = () => {
     const code = autoReel?.error_code ?? "";
     const isServerFault =
-      AUTO_REEL_RETRYABLE_ERRORS.includes(code) ||
-      (!NEW_VIDEO_ERRORS.includes(code) && code !== "not_found");
-    const offerSecondaryRetry = RARELY_RETRYABLE_ERRORS.includes(code);
+      canChange &&
+      (AUTO_REEL_RETRYABLE_ERRORS.includes(code) ||
+        (!NEW_VIDEO_ERRORS.includes(code) && code !== "not_found"));
+    const offerSecondaryRetry =
+      canChange && RARELY_RETRYABLE_ERRORS.includes(code);
     const offerAnotherTemplate =
       code === "not_found" && !!autoReel?.source_media_asset_id;
 
@@ -717,6 +734,8 @@ export default function AutoReelScreen() {
             {autoReel?.error_message || t("generationFailedHint")}
           </Text>
         </View>
+
+        {!canChange ? renderViewOnlyNote() : null}
 
         <View style={styles.actions}>
           {isServerFault ? (
@@ -867,7 +886,8 @@ export default function AutoReelScreen() {
             <Text style={styles.noteText}>{t("autoReelMissingReveal")}</Text>
           </View>
         ) : null}
-        {reelGone ? null : (
+        {!canChange && !reelGone ? renderViewOnlyNote() : null}
+        {reelGone || !canChange ? null : (
         <View style={styles.actions}>
           {isDraft ? (
             <Button

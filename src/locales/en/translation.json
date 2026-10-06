@@ -1861,5 +1861,10 @@
   "autoReelLeaveUploadTitle": "Upload in progress",
   "autoReelLeaveUploadMessage": "If you leave now, your reel won’t be made. Stay until the upload finishes?",
   "autoReelKeepUploading": "Stay",
-  "autoReelLeave": "Leave"
+  "autoReelLeave": "Leave",
+  "reelsScopeMine": "My reels",
+  "reelsScopeAll": "All business",
+  "reelViewOnly": "View only",
+  "reelViewOnlyHint": "You can only change reels you created.",
+  "autoReelViewOnlyHint": "Only the person who started this reel can retry, publish, edit or delete it."
 }

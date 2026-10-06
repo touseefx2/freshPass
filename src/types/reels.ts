@@ -70,6 +70,10 @@ export type OwnerReel = {
   /** Present while Shotstack render is in flight / finished */
   generation_status?: GenerationStatus | null;
   generation_error?: string | null;
+  /** User id of whoever made it; null on reels made before this was saved */
+  created_by?: number | null;
+  /** True when the logged-in user made it — staff may only change their own */
+  is_mine?: boolean;
   created_at?: string;
   updated_at?: string;
 };
@@ -369,6 +373,8 @@ export type AutoReelDraft = {
   id: number;
   status: ReelStatus;
   caption: string | null;
+  is_mine?: boolean;
+  created_by?: number | null;
   category: ReelCategory | null;
   service: ReelService | null;
   video: {
@@ -392,6 +398,10 @@ export type AutoReel = {
   source_media_asset_id: number | null;
   reel_id: number | null;
   reel: AutoReelDraft | null;
+  /** User id of whoever started it */
+  created_by?: number | null;
+  /** True when the logged-in user started it — staff may only retry their own */
+  is_mine?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -403,6 +413,18 @@ export type CreateAutoReelPayload = {
   service_id?: number;
   caption?: string;
 };
+
+/**
+ * Owner can change any reel in the business; staff only the ones they made
+ * (`is_mine`). Old reels with created_by null count as the business's (owner only).
+ */
+export function canChangeReel(
+  item: { is_mine?: boolean } | null | undefined,
+  userRole: string | null | undefined,
+): boolean {
+  if (userRole !== "staff") return true;
+  return item?.is_mine === true;
+}
 
 export function isAutoReelInProgress(status: AutoReelStatus | null | undefined) {
   return status === "pending" || status === "analyzing" || status === "rendering";

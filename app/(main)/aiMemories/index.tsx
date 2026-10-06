@@ -234,11 +234,17 @@ export default function AiMemories() {
       page,
       "ready",
       AUTO_REELS_PER_PAGE,
+      true,
     );
     let items = autoReelsToMemoryItems(autoReels);
     for (let extra = 0; items.length === 0 && meta.has_more && extra < 5; extra++) {
       page = (meta.current_page ?? page) + 1;
-      ({ autoReels, meta } = await listAutoReels(page, "ready", AUTO_REELS_PER_PAGE));
+      ({ autoReels, meta } = await listAutoReels(
+        page,
+        "ready",
+        AUTO_REELS_PER_PAGE,
+        true,
+      ));
       items = autoReelsToMemoryItems(autoReels);
     }
     setReelsHasMore(Boolean(meta.has_more));

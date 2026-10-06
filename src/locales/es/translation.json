@@ -1804,5 +1804,10 @@
   "autoReelLeaveUploadTitle": "Subida en curso",
   "autoReelLeaveUploadMessage": "Si sales ahora, tu reel no se creará. ¿Quedarte hasta que termine la subida?",
   "autoReelKeepUploading": "Quedarme",
-  "autoReelLeave": "Salir"
+  "autoReelLeave": "Salir",
+  "reelsScopeMine": "Mis reels",
+  "reelsScopeAll": "Todo el negocio",
+  "reelViewOnly": "Solo ver",
+  "reelViewOnlyHint": "Solo puedes cambiar los reels que creaste.",
+  "autoReelViewOnlyHint": "Solo quien inició este reel puede reintentarlo, publicarlo, editarlo o borrarlo."
 }

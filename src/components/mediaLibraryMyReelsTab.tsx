@@ -51,6 +51,7 @@ import {
 } from "@/src/state/slices/generalSlice";
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel, ReelPerformanceStats } from "@/src/types/reels";
+import { canChangeReel } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import {
   formatReelLimitMessage,
@@ -137,6 +138,52 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.darkGreen,
       lineHeight: fontSize.size16,
+    },
+    scopeTrack: {
+      marginHorizontal: moderateWidthScale(20),
+      marginBottom: moderateHeightScale(10),
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+    },
+    scopeSeg: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(6),
+      minHeight: moderateHeightScale(40),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+    },
+    scopeSegActive: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+    },
+    scopeSegText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    scopeSegTextActive: {
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
+    },
+    viewOnlyChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(3),
+      alignSelf: "flex-start",
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen07,
+    },
+    viewOnlyChipText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
     filterTrack: {
       marginHorizontal: moderateWidthScale(20),
@@ -399,6 +446,10 @@ export default function MediaLibraryMyReelsTab({
   const listRef = useRef<FlatList<OwnerReel>>(null);
 
   const [filter, setFilter] = useState<StatusFilter>("all");
+  // "My reels" (mine=1) vs the whole business. Staff start on their own.
+  const [scope, setScope] = useState<"mine" | "all">(
+    userRole === "staff" ? "mine" : "all",
+  );
   const [reels, setReels] = useState<OwnerReel[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
@@ -435,6 +486,7 @@ export default function MediaLibraryMyReelsTab({
           pageToLoad,
           status,
           REELS_MINE_PER_PAGE,
+          scope === "mine",
         );
         // Shotstack drafts / in-progress live on AI Requests → Reels, not Media Library
         const libraryReels = pageReels.filter((r) => {
@@ -471,7 +523,7 @@ export default function MediaLibraryMyReelsTab({
         setLoadingMore(false);
       }
     },
-    [filter, showBanner, t],
+    [filter, scope, showBanner, t],
   );
 
   const fetchLimits = useCallback(async () => {
@@ -809,9 +861,11 @@ export default function MediaLibraryMyReelsTab({
 
   const openReelMoreMenu = useCallback(
     (item: OwnerReel, openPreview: () => void) => {
-      const canEdit = item.status !== "removed";
+      // Staff can only change reels they made (backend answers 403 otherwise)
+      const canChange = canChangeReel(item, userRole);
+      const canEdit = canChange && item.status !== "removed";
       const canToggle =
-        item.status === "draft" || item.status === "published";
+        canChange && (item.status === "draft" || item.status === "published");
       const canStats = item.status === "published";
       const toggleLabel =
         item.status === "published" ? t("unpublish") : t("publish");
@@ -847,14 +901,19 @@ export default function MediaLibraryMyReelsTab({
           labels.push(t("viewPerformance"));
           keys.push("stats");
         }
-        labels.push(t("delete"), t("cancel"));
-        keys.push("delete", "cancel");
+        if (canChange) {
+          labels.push(t("delete"));
+          keys.push("delete");
+        }
+        labels.push(t("cancel"));
+        keys.push("cancel");
         const destructiveIndex = keys.indexOf("delete");
         const cancelIndex = keys.indexOf("cancel");
         ActionSheetIOS.showActionSheetWithOptions(
           {
             options: labels,
-            destructiveButtonIndex: destructiveIndex,
+            destructiveButtonIndex:
+              destructiveIndex >= 0 ? destructiveIndex : undefined,
             cancelButtonIndex: cancelIndex,
           },
           (buttonIndex) => {
@@ -882,15 +941,17 @@ export default function MediaLibraryMyReelsTab({
           onPress: () => run("stats"),
         });
       }
-      buttons.push({
-        text: t("delete"),
-        style: "destructive",
-        onPress: () => run("delete"),
-      });
+      if (canChange) {
+        buttons.push({
+          text: t("delete"),
+          style: "destructive",
+          onPress: () => run("delete"),
+        });
+      }
       buttons.push({ text: t("cancel"), style: "cancel" });
       Alert.alert(t("editReel"), undefined, buttons);
     },
-    [confirmDelete, handlePublishToggle, router, t],
+    [confirmDelete, handlePublishToggle, router, t, userRole],
   );
 
   const renderItem = useCallback(
@@ -1067,7 +1128,9 @@ export default function MediaLibraryMyReelsTab({
                   />
                 </TouchableOpacity>
               ) : null}
-              {item.status !== "removed" && !isGenerating ? (
+              {item.status !== "removed" &&
+              !isGenerating &&
+              canChangeReel(item, userRole) ? (
                 <TouchableOpacity
                   style={styles.iconBtn}
                   hitSlop={6}
@@ -1118,18 +1181,33 @@ export default function MediaLibraryMyReelsTab({
                 />
               </TouchableOpacity>
               <View style={{ flex: 1 }} />
-              <TouchableOpacity
-                style={[styles.iconBtn, styles.iconBtnDanger]}
-                hitSlop={6}
-                accessibilityLabel={t("delete")}
-                onPress={() => confirmDelete(item)}
-              >
-                <MaterialIcons
-                  name="delete-outline"
-                  size={moderateWidthScale(16)}
-                  color={theme.selectCard}
-                />
-              </TouchableOpacity>
+              {canChangeReel(item, userRole) ? (
+                <TouchableOpacity
+                  style={[styles.iconBtn, styles.iconBtnDanger]}
+                  hitSlop={6}
+                  accessibilityLabel={t("delete")}
+                  onPress={() => confirmDelete(item)}
+                >
+                  <MaterialIcons
+                    name="delete-outline"
+                    size={moderateWidthScale(16)}
+                    color={theme.selectCard}
+                  />
+                </TouchableOpacity>
+              ) : (
+                // Staff viewing a teammate's / the owner's reel
+                <View
+                  style={styles.viewOnlyChip}
+                  accessibilityLabel={t("reelViewOnlyHint")}
+                >
+                  <MaterialIcons
+                    name="lock-outline"
+                    size={moderateWidthScale(11)}
+                    color={theme.lightGreen}
+                  />
+                  <Text style={styles.viewOnlyChipText}>{t("reelViewOnly")}</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -1144,6 +1222,7 @@ export default function MediaLibraryMyReelsTab({
       styles,
       t,
       theme,
+      userRole,
     ],
   );
 
@@ -1218,6 +1297,34 @@ export default function MediaLibraryMyReelsTab({
           </Text>
         </View>
       ) : null}
+
+      <View style={styles.scopeTrack} accessibilityRole="tablist">
+        {(["mine", "all"] as const).map((key) => {
+          const active = scope === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              style={[styles.scopeSeg, active && styles.scopeSegActive]}
+              onPress={() => setScope(key)}
+              activeOpacity={0.8}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+            >
+              <MaterialIcons
+                name={key === "mine" ? "person" : "groups"}
+                size={moderateWidthScale(15)}
+                color={active ? theme.buttonText : theme.darkGreen}
+              />
+              <Text
+                style={[styles.scopeSegText, active && styles.scopeSegTextActive]}
+                numberOfLines={1}
+              >
+                {key === "mine" ? t("reelsScopeMine") : t("reelsScopeAll")}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
 
       <View style={styles.filterTrack}>
         {filters.map((key) => (

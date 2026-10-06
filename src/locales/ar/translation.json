@@ -1804,5 +1804,10 @@
   "autoReelLeaveUploadTitle": "الرفع قيد التقدم",
   "autoReelLeaveUploadMessage": "إذا غادرت الآن فلن يُنشأ الريل. هل تبقى حتى يكتمل الرفع؟",
   "autoReelKeepUploading": "البقاء",
-  "autoReelLeave": "مغادرة"
+  "autoReelLeave": "مغادرة",
+  "reelsScopeMine": "ريلزي",
+  "reelsScopeAll": "كل النشاط التجاري",
+  "reelViewOnly": "عرض فقط",
+  "reelViewOnlyHint": "يمكنك تعديل الريلز التي أنشأتها فقط.",
+  "autoReelViewOnlyHint": "فقط من بدأ هذا الريل يمكنه إعادة المحاولة أو نشره أو تعديله أو حذفه."
 }

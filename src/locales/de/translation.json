@@ -1804,5 +1804,10 @@
   "autoReelLeaveUploadTitle": "Upload läuft",
   "autoReelLeaveUploadMessage": "Wenn du jetzt gehst, wird dein Reel nicht erstellt. Bis zum Ende des Uploads bleiben?",
   "autoReelKeepUploading": "Bleiben",
-  "autoReelLeave": "Verlassen"
+  "autoReelLeave": "Verlassen",
+  "reelsScopeMine": "Meine Reels",
+  "reelsScopeAll": "Ganzes Unternehmen",
+  "reelViewOnly": "Nur ansehen",
+  "reelViewOnlyHint": "Du kannst nur Reels ändern, die du erstellt hast.",
+  "autoReelViewOnlyHint": "Nur wer dieses Reel gestartet hat, kann es wiederholen, veröffentlichen, bearbeiten oder löschen."
 }

@@ -1804,5 +1804,10 @@
   "autoReelLeaveUploadTitle": "アップロード中",
   "autoReelLeaveUploadMessage": "今離れるとリールは作成されません。アップロード完了まで待ちますか？",
   "autoReelKeepUploading": "とどまる",
-  "autoReelLeave": "離れる"
+  "autoReelLeave": "離れる",
+  "reelsScopeMine": "自分のリール",
+  "reelsScopeAll": "ビジネス全体",
+  "reelViewOnly": "閲覧のみ",
+  "reelViewOnlyHint": "変更できるのは自分が作成したリールのみです。",
+  "autoReelViewOnlyHint": "このリールを再試行・公開・編集・削除できるのは、作成した本人のみです。"
 }

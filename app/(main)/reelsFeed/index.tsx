@@ -87,6 +87,7 @@ import HairPipelineProcessingModal, {
   INITIAL_HAIR_PIPELINE_STATE,
   type HairPipelineModalState,
 } from "@/src/components/HairPipelineProcessingModal";
+import { canChangeReel } from "@/src/types/reels";
 import type {
   FeedReel,
   OwnerReel,
@@ -1769,7 +1770,7 @@ export default function ReelsFeedScreen() {
   }>();
   const isPreviewMode = params.mode === "preview";
   /** Business Media Library → own published reels (vertical only, no report / category swipe). */
-  // Staff manage the business's reels too (backend: any reel in their business)
+  // Staff can view all business reels here; changing one needs is_mine (canChangeReel)
   const isOwnerMode =
     params.mode === "owner" && (isBusiness || user.userRole === "staff");
   const shouldOpenComments = params.open_comments === "1";
@@ -1868,6 +1869,8 @@ export default function ReelsFeedScreen() {
   const [optionsReel, setOptionsReel] = useState<FeedReel | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
+  // Staff can preview any business reel but only publish their own
+  const [previewCanChange, setPreviewCanChange] = useState(true);
   const viewedIdsRef = useRef<Set<number>>(new Set());
   /** R-24: unique reels that became active during the current category visit. */
   const categorySeenSetRef = useRef<Set<number>>(new Set());
@@ -1973,6 +1976,7 @@ export default function ReelsFeedScreen() {
           setCursor(null);
           setHasMore(false);
           setPreviewStatus(owner.status);
+          setPreviewCanChange(canChangeReel(owner, user.userRole));
           setActiveId(mapped.id);
           return;
         }
@@ -2110,6 +2114,7 @@ export default function ReelsFeedScreen() {
       }
     },
     [
+      user.userRole,
       activeId,
       categoryId,
       coords,
@@ -3173,7 +3178,9 @@ export default function ReelsFeedScreen() {
                     Number(item.business.id) === Number(ownerBusinessId))
                 }
                 isPreview={isPreviewMode}
-                canPublish={isPreviewMode && previewStatus === "draft"}
+                canPublish={
+                  isPreviewMode && previewStatus === "draft" && previewCanChange
+                }
                 publishing={publishing}
                 // showFeedTabs={!isPreviewMode && !isOwnerMode}
                 // feedTab={feedTab}

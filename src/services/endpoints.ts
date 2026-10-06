@@ -729,13 +729,20 @@ export const reelTemplateEndpoints = {
 export const autoReelEndpoints = {
   templates: `/api/auto-reels/templates`,
   create: `/api/auto-reels`,
-  list: (params?: { page?: number; per_page?: number; status?: string }) => {
+  list: (params?: {
+    page?: number;
+    per_page?: number;
+    status?: string;
+    /** Only the auto reels the logged-in user started */
+    mine?: boolean;
+  }) => {
     const queryParams = new URLSearchParams();
     if (params?.page != null)
       queryParams.append("page", params.page.toString());
     if (params?.per_page != null)
       queryParams.append("per_page", params.per_page.toString());
     if (params?.status) queryParams.append("status", params.status);
+    if (params?.mine) queryParams.append("mine", "1");
     const query = queryParams.toString();
     return `/api/auto-reels${query ? `?${query}` : ""}`;
   },
@@ -753,10 +760,13 @@ export const reelsEndpoints = {
     page?: number;
     per_page?: number;
     group_by?: string;
+    /** Only the reels the logged-in user created (else the whole business) */
+    mine?: boolean;
   }) => {
     const queryParams = new URLSearchParams();
     if (params?.status) queryParams.append("status", params.status);
     if (params?.group_by) queryParams.append("group_by", params.group_by);
+    if (params?.mine) queryParams.append("mine", "1");
     if (params?.page != null)
       queryParams.append("page", params.page.toString());
     if (params?.per_page != null)

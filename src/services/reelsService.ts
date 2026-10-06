@@ -85,10 +85,11 @@ export async function listAutoReels(
   page: number = 1,
   status?: string,
   perPage: number = AUTO_REELS_PER_PAGE,
+  mine: boolean = false,
 ): Promise<{ autoReels: AutoReel[]; meta: PageMeta }> {
   const response = await ApiService.get<
     Envelope<{ data: AutoReel[]; meta: PageMeta }>
-  >(autoReelEndpoints.list({ page, per_page: perPage, status }));
+  >(autoReelEndpoints.list({ page, per_page: perPage, status, mine }));
   return {
     autoReels: response?.data?.data ?? [],
     meta: response?.data?.meta ?? {
@@ -135,14 +136,16 @@ export async function createReel(
   return response.data;
 }
 
+/** Business reels; `mine` = only the ones the logged-in user created. */
 export async function listMyReels(
   page: number = 1,
   status?: string,
   perPage: number = REELS_MINE_PER_PAGE,
+  mine: boolean = false,
 ): Promise<{ reels: OwnerReel[]; meta: PageMeta }> {
   const response = await ApiService.get<
     Envelope<{ data: OwnerReel[]; meta: PageMeta }>
-  >(reelsEndpoints.mine({ page, per_page: perPage, status }));
+  >(reelsEndpoints.mine({ page, per_page: perPage, status, mine }));
   return {
     reels: response?.data?.data ?? [],
     meta: response?.data?.meta ?? {

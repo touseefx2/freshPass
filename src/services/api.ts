@@ -389,7 +389,11 @@ const getErrorMessage = (error: AxiosError): string => {
     case 401:
       return "Unauthorized. Please login again.";
     case 403:
-      return "You don't have permission to perform this action.";
+      // Prefer the server's reason, e.g. "You can only change reels you created."
+      return (
+        (data as any)?.message ||
+        "You don't have permission to perform this action."
+      );
     case 404:
       return "Resource not found.";
     case 409:
