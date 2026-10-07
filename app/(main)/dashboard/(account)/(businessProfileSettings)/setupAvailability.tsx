@@ -17,6 +17,7 @@ import {
 import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -327,6 +328,7 @@ const createStyles = (theme: Theme) =>
   });
 
 export default function SetupAvailabilityScreen() {
+  const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
@@ -575,7 +577,7 @@ export default function SetupAvailabilityScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Set availability" />
+      <StackHeader title={t("businessHoursTitle")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -586,9 +588,9 @@ export default function SetupAvailabilityScreen() {
         ) : (
           <>
             <View style={styles.titleSec}>
-              <Text style={styles.title}>Business hours</Text>
+              <Text style={styles.title}>{t("businessHoursTitle")}</Text>
               <Text style={styles.subtitle}>
-                When clients can book your services
+                {t("businessHoursScreenSubtitle")}
               </Text>
             </View>
 

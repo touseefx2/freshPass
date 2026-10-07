@@ -1133,7 +1133,7 @@ export default function ManageSubscriptionsScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title={t("manageSubscriptionList")} />
+      <StackHeader title={t("membershipList")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}

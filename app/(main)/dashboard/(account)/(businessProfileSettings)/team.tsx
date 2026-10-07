@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,6 +28,7 @@ import CustomToggle from "@/src/components/customToggle";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import UpgradeToBusinessModal from "@/src/components/UpgradeToBusinessModal";
 import RemoveOwnerAsStaffModal from "@/src/components/removeOwnerAsStaffModal";
+import StaffActionMenuModal from "@/src/components/staffActionMenuModal";
 import { Skeleton } from "@/src/components/skeletons";
 import {
   setStaffInvitationEmail,
@@ -40,7 +42,7 @@ import {
 } from "@/src/state/slices/userSlice";
 import { ApiService } from "@/src/services/api";
 import Logger from "@/src/services/logger";
-import { businessEndpoints, staffEndpoints } from "@/src/services/endpoints";
+import { staffEndpoints } from "@/src/services/endpoints";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { validateEmail } from "@/src/services/validationService";
 import {
@@ -124,14 +126,44 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(12),
     },
-    avatarIcon: {
-      width: moderateWidthScale(24),
-      height: moderateWidthScale(24),
-      borderRadius: moderateHeightScale(24 / 2),
-      borderWidth: 1,
-      borderColor: theme.lightGreen,
+    memberAvatar: {
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: widthScale(44) / 2,
+      backgroundColor: theme.emptyProfileImage,
+    },
+    memberMoreButton: {
+      padding: moderateWidthScale(6),
+    },
+    employeesHeader: {
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(10),
+    },
+    employeesTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    addEmployeeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      backgroundColor: theme.darkGreen,
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
+      borderRadius: moderateWidthScale(999),
+    },
+    addEmployeeButtonText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    employeesHint: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
     },
     memberContent: {
       flex: 1,
@@ -158,6 +190,10 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen4,
     },
+    memberStatusActive: {
+      color: theme.toggleActive,
+      fontFamily: fonts.fontMedium,
+    },
     divider: {
       height: 1.2,
       backgroundColor: theme.borderLight,
@@ -178,13 +214,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(24),
       paddingTop: moderateHeightScale(16),
-    },
-    invitationsTitle: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      textTransform: "lowercase",
-      opacity: 0.7,
     },
     // Home-matching owner add/remove cards
     ownerSectionTitle: {
@@ -347,17 +376,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    ownerTag: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.primary,
-    },
-    memberNameRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      flexWrap: "wrap",
-    },
   });
 
 function getImageUri(profileImage: string | null | undefined) {
@@ -373,23 +391,29 @@ function getImageUri(profileImage: string | null | undefined) {
   return process.env.EXPO_PUBLIC_API_BASE_URL + profileImage;
 }
 
+/** Row from GET /api/staff (same list the home "Staff on duty" section uses). */
 interface TeamMember {
   id: number;
   user_id: number;
   name: string;
   email: string | null;
-  phone: string | null;
   active: number;
   description: string | null;
-  invitation_status: string;
-  invited_at: string;
+  invitation_token?: string | null;
+  invitation_status?: string;
   completed_appointments_count: number;
+  monthly_reel_limit?: number | null;
   is_owner?: boolean;
   is_business_owner?: boolean;
+  user?: {
+    profile_image_url: string | null;
+    working_hours?: any[];
+  } | null;
 }
 
 export default function ManageTeamScreen() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const { colors } = useTheme();
   const { t } = useTranslation();
   const theme = colors as Theme;
@@ -418,6 +442,9 @@ export default function ManageTeamScreen() {
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [ownerBusy, setOwnerBusy] = useState(false);
   const [removeModalVisible, setRemoveModalVisible] = useState(false);
+  const [actionMenuMember, setActionMenuMember] = useState<TeamMember | null>(
+    null,
+  );
 
   const canInvite = useMemo(() => {
     if (!staffInvitationEmail.trim()) {
@@ -439,61 +466,32 @@ export default function ManageTeamScreen() {
   const fetchTeam = async () => {
     setLoading(true);
 
+    // Reel limits are extra info — never let them block the team list
+    fetchMonthlyReelLimits()
+      .then(setReelLimits)
+      .catch((error) => {
+        Logger.error("Failed to load monthly reel limits:", error);
+      });
+
     try {
-      const [moduleResponse, staffResponse] = await Promise.all([
-        ApiService.get<{
-          success: boolean;
-          message: string;
-          data: {
-            staff: TeamMember[];
-          };
-        }>(businessEndpoints.moduleData("team")),
-        ApiService.get<{
-          success: boolean;
-          message: string;
-          data: Array<{
-            id: number;
-            is_owner?: boolean;
-            is_business_owner?: boolean;
-          }>;
-        }>(staffEndpoints.list()).catch(() => null),
-        fetchMonthlyReelLimits()
-          .then(setReelLimits)
-          .catch((error) => {
-            Logger.error("Failed to load monthly reel limits:", error);
-          }),
-      ]);
+      const response = await ApiService.get<{
+        success: boolean;
+        message: string;
+        data: TeamMember[];
+      }>(staffEndpoints.list());
 
-      if (moduleResponse.success && moduleResponse.data?.staff) {
-        const ownerFlags = new Map<
-          number,
-          { is_owner?: boolean; is_business_owner?: boolean }
-        >();
-        if (staffResponse?.success && Array.isArray(staffResponse.data)) {
-          for (const staff of staffResponse.data) {
-            ownerFlags.set(staff.id, {
-              is_owner: staff.is_owner,
-              is_business_owner: staff.is_business_owner,
-            });
-          }
-        }
-
+      if (response.success && Array.isArray(response.data)) {
+        // Active members first, same as the home screen
         setTeamMembers(
-          moduleResponse.data.staff.map((member) => {
-            const flags = ownerFlags.get(member.id);
-            return {
-              ...member,
-              is_owner: member.is_owner ?? flags?.is_owner,
-              is_business_owner:
-                member.is_business_owner ?? flags?.is_business_owner,
-            };
-          }),
+          [...response.data].sort(
+            (a, b) => Number(b.active === 1) - Number(a.active === 1),
+          ),
         );
       } else {
         setTeamMembers([]);
       }
     } catch (error: any) {
-      Logger.error("Failed to fetch team module data:", error);
+      Logger.error("Failed to fetch team:", error);
       showBanner(
         t("error"),
         error?.message || t("failedToFetchTeam"),
@@ -687,6 +685,111 @@ export default function ManageTeamScreen() {
     handleOwnerRemovePress();
   };
 
+  const handleAddStaffPress = () => {
+    if (!isStripeOnboardingCompleted(businessStatus)) {
+      dispatch(setStripeConnectModalVisible(true));
+      return;
+    }
+    if (isSoloPlan) {
+      setUpgradeModalVisible(true);
+      return;
+    }
+    if (!canAddStaff) {
+      setBuyPlanModalVisible(true);
+      return;
+    }
+    router.push("/(main)/addStaff");
+  };
+
+  const handleOpenMember = (member: TeamMember) => {
+    router.push({
+      pathname: "/(main)/staffDetail",
+      params: { id: String(member.id) },
+    });
+  };
+
+  const handleEditMember = () => {
+    if (!actionMenuMember) return;
+    const member = actionMenuMember;
+    setActionMenuMember(null);
+
+    const profileImage = member.user?.profile_image_url;
+    router.push({
+      pathname: "/(main)/addStaff",
+      params: {
+        id: String(member.id),
+        name: member.name || "",
+        email: member.email || "",
+        description: member.description || "",
+        profile_image_url: profileImage ? getImageUri(profileImage) : "",
+        active: member.active ? "1" : "0",
+        working_hours: JSON.stringify(member.user?.working_hours ?? []),
+        is_owner: "0",
+        monthly_reel_limit:
+          member.monthly_reel_limit != null
+            ? String(member.monthly_reel_limit)
+            : "",
+        ...(member.invitation_token
+          ? { invitation_token: member.invitation_token }
+          : {}),
+      },
+    });
+  };
+
+  const handleDeleteMember = () => {
+    if (!actionMenuMember) return;
+    const { id: staffId, name: staffName } = actionMenuMember;
+    setActionMenuMember(null);
+
+    // Let the action sheet dismiss before presenting the system alert
+    setTimeout(() => {
+      Alert.alert(
+        t("deleteStaff") || "Delete staff",
+        t("deleteStaffConfirm") ||
+          `Are you sure you want to delete "${staffName}"?`,
+        [
+          { text: t("cancel"), style: "cancel" },
+          {
+            text: t("delete"),
+            style: "destructive",
+            onPress: async () => {
+              dispatch(setActionLoader(true));
+              try {
+                await ApiService.delete(staffEndpoints.delete(staffId));
+                showBanner(
+                  t("success"),
+                  t("staffDeletedSuccess") || "Staff deleted successfully",
+                  "success",
+                  3000,
+                );
+                await fetchTeam();
+              } catch (error: any) {
+                Logger.error("deleteStaff from team failed:", error);
+                showBanner(
+                  t("error"),
+                  error?.data?.message || error?.message || t("error"),
+                  "error",
+                  3000,
+                );
+              } finally {
+                dispatch(setActionLoader(false));
+              }
+            },
+          },
+        ],
+      );
+    }, 250);
+  };
+
+  const getMemberStatus = (member: TeamMember) => {
+    if (member.invitation_token && member.invitation_status !== "accepted") {
+      return { label: t("invitationSent"), active: false };
+    }
+    return member.active === 1
+      ? { label: t("active"), active: true }
+      : { label: t("inactive"), active: false };
+  };
+
   const isOwnerMember = (member: TeamMember) =>
     member.is_owner === true ||
     member.is_business_owner === true ||
@@ -694,12 +797,13 @@ export default function ManageTeamScreen() {
 
   const ownerMember =
     teamMembers.find((member) => isOwnerMember(member)) ?? null;
+  const employees = teamMembers.filter((member) => !isOwnerMember(member));
   const ownerName = ownerMember?.name || userName || "";
   const ownerImageUri = getImageUri(userProfileImage);
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title={t("manageTeam")} />
+      <StackHeader title={t("manageTeamTitle")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -830,7 +934,22 @@ export default function ManageTeamScreen() {
               {emailError && <Text style={styles.errorText}>{emailError}</Text>}
             </View>
 
-            {teamMembers.length === 0 ? (
+            <View style={styles.employeesHeader}>
+              <Text style={styles.employeesTitle}>{t("employees")}</Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleAddStaffPress}
+                style={styles.addEmployeeButton}
+                accessibilityLabel={t("addEmployee")}
+              >
+                <Feather name="plus" size={iconScale(14)} color={theme.white} />
+                <Text style={styles.addEmployeeButtonText}>
+                  {t("addEmployee")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {employees.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
                   {t("noTeamMemberYet")}
@@ -839,48 +958,54 @@ export default function ManageTeamScreen() {
             ) : (
               <>
                 {reelLimits?.staff_reel_limits ? (
-                  <View style={{ marginBottom: moderateHeightScale(16) }}>
-                    <BusinessReelsSummaryCard
-                      limits={reelLimits}
-                      resetLabel={formatReelsResetDate(
-                        reelLimits.monthly_reels_reset_on,
-                      )}
-                    />
-                  </View>
+                  <BusinessReelsSummaryCard
+                    limits={reelLimits}
+                    resetLabel={formatReelsResetDate(
+                      reelLimits.monthly_reels_reset_on,
+                    )}
+                  />
                 ) : null}
-                <Text style={styles.invitationsTitle}>
-                  {t("invitationsSend")}
+                <Text style={styles.employeesHint}>
+                  {t("manageTeamMemberHint")}
                 </Text>
-                {teamMembers.map((member) => {
-                  const owner = isOwnerMember(member);
-                  const reelRow = owner
-                    ? null
-                    : findStaffReelLimit(reelLimits, member.id);
+                {employees.map((member) => {
+                  const reelRow = findStaffReelLimit(reelLimits, member.id);
+                  const status = getMemberStatus(member);
                   return (
                     <React.Fragment key={member.id}>
-                      <View style={styles.memberCard}>
-                        <View style={styles.avatarIcon}>
-                          <Feather
-                            name="user"
-                            size={moderateWidthScale(16)}
-                            color={theme.darkGreen}
-                          />
-                        </View>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => handleOpenMember(member)}
+                        onLongPress={() => setActionMenuMember(member)}
+                        style={styles.memberCard}
+                        accessibilityRole="button"
+                        accessibilityLabel={member.name || member.email || ""}
+                      >
+                        <AppImage
+                          uri={getImageUri(member.user?.profile_image_url)}
+                          style={styles.memberAvatar}
+                        />
                         <View style={styles.memberContent}>
                           <View style={styles.memberInfo}>
-                            <View style={styles.memberNameRow}>
-                              <Text style={styles.memberName}>
-                                {member.name || member.email}
-                              </Text>
-                              {owner ? (
-                                <Text style={styles.ownerTag}>{t("owner")}</Text>
-                              ) : null}
-                            </View>
-                            {member.email && (
-                              <Text style={styles.memberEmail}>
+                            <Text style={styles.memberName} numberOfLines={1}>
+                              {member.name || member.email}
+                            </Text>
+                            {member.email ? (
+                              <Text
+                                style={styles.memberEmail}
+                                numberOfLines={1}
+                              >
                                 {member.email}
                               </Text>
-                            )}
+                            ) : null}
+                            <Text
+                              style={[
+                                styles.memberStatus,
+                                status.active && styles.memberStatusActive,
+                              ]}
+                            >
+                              {status.label}
+                            </Text>
                             {reelRow ? (
                               <StaffReelUsageInline
                                 limit={reelRow.monthly_reel_limit}
@@ -888,15 +1013,20 @@ export default function ManageTeamScreen() {
                               />
                             ) : null}
                           </View>
-                          {!owner ? (
-                            <Text style={styles.memberStatus}>
-                              {member.invitation_status === "accepted"
-                                ? "Invitation accepted"
-                                : "Invitation sent"}
-                            </Text>
-                          ) : null}
+                          <TouchableOpacity
+                            onPress={() => setActionMenuMember(member)}
+                            style={styles.memberMoreButton}
+                            hitSlop={8}
+                            accessibilityLabel={t("edit")}
+                          >
+                            <Feather
+                              name="more-vertical"
+                              size={iconScale(20)}
+                              color={theme.darkGreen}
+                            />
+                          </TouchableOpacity>
                         </View>
-                      </View>
+                      </TouchableOpacity>
                       <View style={styles.divider} />
                     </React.Fragment>
                   );
@@ -935,6 +1065,20 @@ export default function ManageTeamScreen() {
         onConfirm={() => {
           void runOwnerDisable();
         }}
+      />
+
+      <StaffActionMenuModal
+        visible={actionMenuMember != null}
+        staffName={actionMenuMember?.name}
+        imageUri={
+          actionMenuMember
+            ? getImageUri(actionMenuMember.user?.profile_image_url)
+            : undefined
+        }
+        isActive={actionMenuMember?.active === 1}
+        onClose={() => setActionMenuMember(null)}
+        onEdit={handleEditMember}
+        onDelete={handleDeleteMember}
       />
     </SafeAreaView>
   );

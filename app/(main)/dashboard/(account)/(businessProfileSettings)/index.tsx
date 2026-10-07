@@ -21,51 +21,35 @@ import { MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
   canShowStaffManagement,
-  isBusinessSubscriptionActive,
-  isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
-import { openNotificationSettings } from "@/src/services/notificationPermissionService";
 
 const CARD_WIDTH_PERCENT = "49%";
 
 type IconVariant = "dark" | "accent" | "cream";
 type IconFamily = "material" | "community";
 
-function getIconVariant(index: number): IconVariant {
-  const variants: IconVariant[] = ["dark", "accent", "cream"];
-  return variants[index % 3];
-}
-
 type SettingKey =
   | "businessProfile"
-  | "businessLocation"
-  | "description"
-  | "availability"
-  | "services"
+  | "businessHours"
+  | "servicesAndMemberships"
   | "cancellationPolicy"
-  | "subscriptions"
   | "team"
   | "socialMedia"
-  | "portfolio"
   | "products"
   | "freshpassSubscription"
-  | "notificationSettings"
   | "affiliationRequests"
   | "mediaLibrary"
   | "aiTools"
   | "allAppointments"
-  | "allWorkHistory"
   | "viewBusinessProfile";
 
 type SettingItem = {
   key: SettingKey;
   title: string;
-  subtitle: string;
 };
 
 function SettingCard({
   title,
-  subtitle,
   iconName,
   iconFamily = "material",
   onPress,
@@ -74,7 +58,6 @@ function SettingCard({
   iconVariant,
 }: {
   title: string;
-  subtitle: string;
   iconName: string;
   iconFamily?: IconFamily;
   onPress: () => void;
@@ -82,7 +65,7 @@ function SettingCard({
   styles: ReturnType<typeof createStyles>;
   iconVariant: IconVariant;
 }) {
-  const iconSize = moderateWidthScale(26);
+  const iconSize = moderateWidthScale(28);
   const thickness = moderateHeightScale(2.5);
   const radius = moderateWidthScale(16);
 
@@ -144,11 +127,8 @@ function SettingCard({
             </View>
 
             <View style={styles.cardTextBlock}>
-              <Text style={styles.cardTitle} numberOfLines={2}>
+              <Text style={styles.cardTitle} numberOfLines={3}>
                 {title}
-              </Text>
-              <Text style={styles.cardSubtitle} numberOfLines={3}>
-                {subtitle}
               </Text>
             </View>
           </View>
@@ -181,13 +161,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       marginBottom: moderateHeightScale(4),
-    },
-    subtitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      marginBottom: moderateHeightScale(8),
-      lineHeight: fontSize.size18,
     },
     gridContainer: {
       marginTop: moderateHeightScale(14),
@@ -249,16 +222,16 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       backgroundColor: theme.background,
       paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(14),
-      minHeight: moderateHeightScale(92),
-      gap: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(16),
+      minHeight: moderateHeightScale(100),
+      gap: moderateWidthScale(10),
       borderWidth: 1,
       borderColor: theme.lightGreen1,
     },
     iconWrap: {
-      width: moderateWidthScale(48),
-      height: moderateWidthScale(48),
-      borderRadius: moderateWidthScale(12),
+      width: moderateWidthScale(52),
+      height: moderateWidthScale(52),
+      borderRadius: moderateWidthScale(14),
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -309,17 +282,10 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(2),
     },
     cardTitle: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      lineHeight: fontSize.size15,
-      textAlign: "left",
-    },
-    cardSubtitle: {
-      fontSize: fontSize.size9,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen6,
-      lineHeight: fontSize.size12,
+      lineHeight: fontSize.size20,
       textAlign: "left",
     },
   });
@@ -343,35 +309,23 @@ export default function BusinessProfileSettingsScreen() {
 
   const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {
-      router.push("./businessProfile");
-    } else if (key === "description") {
-      router.push("./description");
-    } else if (key === "services") {
-      router.push("./services");
+      router.push("./businessProfileMenu");
+    } else if (key === "businessHours") {
+      router.push("./setupAvailability");
+    } else if (key === "servicesAndMemberships") {
+      router.push("./servicesAndMemberships");
     } else if (key === "cancellationPolicy") {
       router.push("./cancellationPolicy");
     } else if (key === "socialMedia") {
       router.push("./socialMedia");
-    } else if (key === "availability") {
-      router.push("./setupAvailability");
-    } else if (key === "subscriptions") {
-      router.push("./subscriptions");
     } else if (key === "team") {
       router.push("./team");
-    } else if (key === "portfolio") {
-      router.push("./portfolio");
     } else if (key === "products") {
       router.push("./products");
-    } else if (key === "businessLocation") {
-      router.push("./location");
     } else if (key === "freshpassSubscription") {
       router.push("/(main)/dashboard/(account)/subscription");
-    } else if (key === "notificationSettings") {
-      openNotificationSettings();
     } else if (key === "allAppointments") {
       router.push("/(main)/dashboard/(account)/allAppointments" as any);
-    } else if (key === "allWorkHistory") {
-      router.push("/(main)/dashboard/(account)/allWorkHistory" as any);
     } else if (key === "affiliationRequests") {
       router.push("./affiliationRequests");
     } else if (key === "mediaLibrary") {
@@ -395,79 +349,18 @@ export default function BusinessProfileSettingsScreen() {
   };
 
   const settings: SettingItem[] = [
-    {
-      key: "businessProfile",
-      title: t("businessProfile"),
-      subtitle: t("businessProfileCardSubtitle"),
-    },
-    {
-      key: "businessLocation",
-      title: t("yourBusinessLocation"),
-      subtitle: t("businessLocationCardSubtitle"),
-    },
-    {
-      key: "description",
-      title: t("description"),
-      subtitle: t("descriptionCardSubtitle"),
-    },
-    {
-      key: "availability",
-      title: t("setAvailabilityTitle"),
-      subtitle: t("availabilityCardSubtitle"),
-    },
-    {
-      key: "services",
-      title: t("manageServicesList"),
-      subtitle: t("servicesCardSubtitle"),
-    },
-    ...(isBusinessOwner
-      ? [
-          {
-            key: "cancellationPolicy" as const,
-            title: t("cancellationPolicy"),
-            subtitle: t("cancellationPolicyCardSubtitle"),
-          },
-        ]
-      : []),
-    {
-      key: "subscriptions",
-      title: t("manageSubscriptionList"),
-      subtitle: t("subscriptionListCardSubtitle"),
-    },
+    { key: "businessProfile", title: t("businessProfileTitle") },
+    { key: "businessHours", title: t("businessHoursTitle") },
+    { key: "servicesAndMemberships", title: t("servicesAndMemberships") },
     ...(showManageTeam
-      ? [
-          {
-            key: "team" as const,
-            title: t("manageTeam"),
-            subtitle: t("teamCardSubtitle"),
-          },
-        ]
+      ? [{ key: "team" as const, title: t("manageTeamTitle") }]
       : []),
-    {
-      key: "allAppointments" as const,
-      title: t("allAppointments"),
-      subtitle: t("allAppointmentsCardSubtitle"),
-    },
-    {
-      key: "allWorkHistory" as const,
-      title: t("allWorkHistory"),
-      subtitle: t("allWorkHistoryCardSubtitle"),
-    },
-    {
-      key: "socialMedia",
-      title: t("yourSocialMedia"),
-      subtitle: t("socialMediaCardSubtitle"),
-    },
-    {
-      key: "portfolio",
-      title: t("managePortfolioPhotos"),
-      subtitle: t("portfolioCardSubtitle"),
-    },
-    {
-      key: "products",
-      title: t("productsInventory"),
-      subtitle: t("productsInventoryCardSubtitle"),
-    },
+    { key: "allAppointments", title: t("appointments") },
+    ...(isBusinessOwner
+      ? [{ key: "cancellationPolicy" as const, title: t("cancellationPolicy") }]
+      : []),
+    { key: "socialMedia", title: t("yourSocialMedia") },
+    { key: "products", title: t("productsInventoryShort") },
     ...(isBusinessOwner &&
     businessStatus?.subscription_status === "active" &&
     businessStatus?.subscription_is_single === false
@@ -475,81 +368,55 @@ export default function BusinessProfileSettingsScreen() {
           {
             key: "affiliationRequests" as const,
             title: t("affiliationRequests"),
-            subtitle: t("affiliationRequestsCardSubtitle"),
           },
         ]
       : []),
-    {
-      key: "mediaLibrary" as const,
-      title: t("mediaLibrary"),
-      subtitle: t("mediaLibraryCardSubtitle"),
-    },
-    {
-      key: "aiTools" as const,
-      title: t("aiTools"),
-      subtitle: t("aiToolsCardSubtitle"),
-    },
+    { key: "mediaLibrary", title: t("mediaLibrary") },
+    { key: "aiTools", title: t("aiTools") },
     ...(!showStripeBanner
       ? [
           {
             key: "freshpassSubscription" as const,
             title: t("freshpassSubscription"),
-            subtitle: t("freshpassSubscriptionSubtitle"),
           },
         ]
       : []),
-    {
-      key: "viewBusinessProfile" as const,
-      title: t("viewBusinessProfile"),
-      subtitle: t("viewBusinessProfileSubtitle"),
-    },
+    { key: "viewBusinessProfile", title: t("viewBusinessProfile") },
   ];
 
   const getIconMeta = (
     key: SettingKey,
-  ): { name: string; family: IconFamily } => {
-    // Closest matches to client design icons
+  ): { name: string; family: IconFamily; variant: IconVariant } => {
+    // Icons + colors follow the client's Business Management design
     switch (key) {
       case "businessProfile":
-        return { name: "storefront", family: "material" };
-      case "businessLocation":
-        return { name: "place", family: "material" };
-      case "description":
-        return { name: "notebook-edit-outline", family: "community" };
-      case "availability":
-        return { name: "calendar-month", family: "material" };
-      case "services":
-        return { name: "content-cut", family: "material" };
-      case "cancellationPolicy":
-        return { name: "policy", family: "material" };
-      case "subscriptions":
-        return { name: "crown", family: "community" };
+        return { name: "storefront", family: "material", variant: "dark" };
+      case "businessHours":
+        return { name: "calendar-month", family: "material", variant: "accent" };
+      case "servicesAndMemberships":
+        return { name: "content-cut", family: "material", variant: "accent" };
       case "team":
-        return { name: "account-group", family: "community" };
-      case "socialMedia":
-        return { name: "share-variant", family: "community" };
-      case "portfolio":
-        return { name: "image-outline", family: "community" };
-      case "products":
-        return { name: "inventory-2", family: "material" };
+        return { name: "account-group", family: "community", variant: "dark" };
       case "allAppointments":
-        return { name: "event-note", family: "material" };
-      case "allWorkHistory":
-        return { name: "history", family: "material" };
+        return { name: "event-note", family: "material", variant: "cream" };
+      case "cancellationPolicy":
+        return { name: "policy", family: "material", variant: "cream" };
+      case "socialMedia":
+        return { name: "share-variant", family: "community", variant: "accent" };
+      case "products":
+        return { name: "inventory-2", family: "material", variant: "dark" };
       case "affiliationRequests":
-        return { name: "handshake", family: "community" };
+        return { name: "handshake", family: "community", variant: "accent" };
       case "mediaLibrary":
-        return { name: "video-library", family: "material" };
+        return { name: "video-library", family: "material", variant: "cream" };
       case "aiTools":
-        return { name: "smart-toy", family: "material" };
-      case "notificationSettings":
-        return { name: "notifications", family: "material" };
+        return { name: "smart-toy", family: "material", variant: "dark" };
       case "freshpassSubscription":
-        return { name: "crown", family: "community" };
+        return { name: "crown", family: "community", variant: "accent" };
       case "viewBusinessProfile":
-        return { name: "visibility", family: "material" };
+        return { name: "visibility", family: "material", variant: "cream" };
       default:
-        return { name: "settings", family: "material" };
+        return { name: "settings", family: "material", variant: "cream" };
     }
   };
 
@@ -562,26 +429,22 @@ export default function BusinessProfileSettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerBlock}>
-          <Text style={styles.title}>{t("businessProfileSettings")}</Text>
-          <Text style={styles.subtitle}>
-            {t("manageBusinessAllInOnePlace")}
-          </Text>
+          <Text style={styles.title}>{t("businessManagement")}</Text>
         </View>
 
         <View style={styles.gridContainer}>
-          {settings.map((setting, index) => {
+          {settings.map((setting) => {
             const iconMeta = getIconMeta(setting.key);
             return (
               <SettingCard
                 key={setting.key}
                 title={setting.title}
-                subtitle={setting.subtitle}
                 iconName={iconMeta.name}
                 iconFamily={iconMeta.family}
                 onPress={() => handleRowPress(setting.key)}
                 theme={theme}
                 styles={styles}
-                iconVariant={getIconVariant(index)}
+                iconVariant={iconMeta.variant}
               />
             );
           })}

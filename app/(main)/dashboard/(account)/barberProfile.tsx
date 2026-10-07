@@ -34,7 +34,6 @@ type BarberSettingKey =
   | "workingHours"
   | "portfolio"
   | "appointments"
-  | "workHistory"
   | "customers"
   | "followers"
   | "viewPublicProfile"
@@ -326,9 +325,6 @@ export default function BarberProfileScreen() {
       case "appointments":
         router.push("./myAppointments");
         break;
-      case "workHistory":
-        router.push("./myWorkHistory");
-        break;
       case "customers":
         router.push("./customers");
         break;
@@ -356,7 +352,6 @@ export default function BarberProfileScreen() {
     { key: "workingHours", title: t("myWorkingHours") },
     { key: "portfolio", title: t("myPortfolio"), subtitle: t("portfolioCardSubtitle") },
     { key: "appointments", title: t("myAppointments") },
-    { key: "workHistory", title: t("myWorkHistory") },
     { key: "customers", title: t("myCustomers") },
     { key: "followers", title: t("myFollowers") },
     { key: "viewPublicProfile", title: t("viewPublicProfile") },
@@ -375,8 +370,6 @@ export default function BarberProfileScreen() {
         return { name: "photo-library", family: "material" };
       case "appointments":
         return { name: "event-note", family: "material" };
-      case "workHistory":
-        return { name: "history", family: "material" };
       case "customers":
         return { name: "people", family: "material" };
       case "followers":

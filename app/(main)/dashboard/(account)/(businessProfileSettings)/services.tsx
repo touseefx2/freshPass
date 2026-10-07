@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -268,6 +269,7 @@ interface ModuleService {
 }
 
 export default function ManageServicesScreen() {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -599,7 +601,7 @@ export default function ManageServicesScreen() {
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <StackHeader title="Manage services list" />
+      <StackHeader title={t("individualServicesListTitle")} />
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
