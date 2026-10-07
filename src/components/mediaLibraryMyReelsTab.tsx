@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 import AppImage from "@/src/components/AppImage";
@@ -16,7 +15,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CloseIcon } from "@/assets/icons";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import TextWithEmoji from "@/src/components/textWithEmoji";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -29,7 +27,6 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { useUploadReel } from "@/src/hooks/useUploadReel";
 import Logger from "@/src/services/logger";
 import { getMediaLimits } from "@/src/services/mediaLibraryService";
 import {
@@ -177,48 +174,6 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: moderateWidthScale(20),
       paddingBottom: moderateHeightScale(120),
       flexGrow: 1,
-    },
-    fabBackdrop: {
-      ...StyleSheet.absoluteFillObject,
-      zIndex: 18,
-    },
-    fabMenu: {
-      position: "absolute",
-      right: moderateWidthScale(20),
-      alignItems: "flex-end",
-      gap: moderateHeightScale(10),
-      zIndex: 19,
-    },
-    fabMenuOption: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(14),
-      backgroundColor: theme.darkGreenLight,
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 3,
-      borderTopColor: theme.white,
-      borderLeftColor: theme.white,
-      borderRightColor: theme.orangeBrown,
-      borderBottomColor: theme.orangeBrown,
-      minWidth: widthScale(140),
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: moderateHeightScale(4) },
-      shadowOpacity: 0.38,
-      shadowRadius: moderateWidthScale(6),
-      elevation: 8,
-    },
-    fabMenuOptionIcon: {
-      width: widthScale(24),
-      height: widthScale(24),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    fabMenuOptionLabel: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
     },
     fab: {
       position: "absolute",
@@ -398,7 +353,6 @@ export default function MediaLibraryMyReelsTab({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
-  const { recordReel, pickReel } = useUploadReel();
   const dispatch = useAppDispatch();
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector(
@@ -413,7 +367,6 @@ export default function MediaLibraryMyReelsTab({
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [summary, setSummary] = useState<ReelPerformanceStats | null>(null);
-  const [fabOpen, setFabOpen] = useState(false);
   const [limits, setLimits] = useState<MediaLimits | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
 
@@ -598,35 +551,11 @@ export default function MediaLibraryMyReelsTab({
     fetchPage(1, false);
   }, [fetchPage, fetchSummary]);
 
-  // Same flow as "Upload a Reel" in the create menu: 30s cap, straight to Publish.
-  const handleRecord = useCallback(() => {
+  /** + is "Upload a Reel": the step-by-step Reel Studio, from "Add your video". */
+  const openReelStudio = useCallback(() => {
     if (!ensureCanUploadReel()) return;
-    void recordReel();
-  }, [ensureCanUploadReel, recordReel]);
-
-  const handleUpload = useCallback(() => {
-    if (!ensureCanUploadReel()) return;
-    void pickReel();
-  }, [ensureCanUploadReel, pickReel]);
-
-  const openAddMenu = useCallback(() => {
-    if (!fabOpen && !ensureCanUploadReel()) return;
-    setFabOpen((open) => !open);
-  }, [ensureCanUploadReel, fabOpen]);
-
-  const closeFabMenu = useCallback(() => {
-    setFabOpen(false);
-  }, []);
-
-  const onRecordPress = useCallback(() => {
-    setFabOpen(false);
-    void handleRecord();
-  }, [handleRecord]);
-
-  const onUploadPress = useCallback(() => {
-    setFabOpen(false);
-    void handleUpload();
-  }, [handleUpload]);
+    router.push("/(main)/reelStudio" as any);
+  }, [ensureCanUploadReel, router]);
 
 
   const confirmDelete = useCallback(
@@ -1197,71 +1126,19 @@ export default function MediaLibraryMyReelsTab({
         />
       )}
 
-      {fabOpen ? (
-        <TouchableWithoutFeedback onPress={closeFabMenu}>
-          <View style={styles.fabBackdrop} />
-        </TouchableWithoutFeedback>
-      ) : null}
-
-      {fabOpen ? (
-        <View
-          style={[
-            styles.fabMenu,
-            {
-              bottom:
-                fabBottom +
-                heightScale(FAB_SIZE) +
-                moderateHeightScale(12),
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.fabMenuOption}
-            onPress={onRecordPress}
-            activeOpacity={0.9}
-          >
-            <View style={styles.fabMenuOptionIcon}>
-              <MaterialIcons
-                name="videocam"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            </View>
-            <Text style={styles.fabMenuOptionLabel}>{t("recordVideo")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.fabMenuOption}
-            onPress={onUploadPress}
-            activeOpacity={0.9}
-          >
-            <View style={styles.fabMenuOptionIcon}>
-              <MaterialIcons
-                name="file-upload"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            </View>
-            <Text style={styles.fabMenuOptionLabel}>{t("uploadVideo")}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
       <TouchableOpacity
         style={[styles.fab, { bottom: fabBottom }]}
-        onPress={openAddMenu}
+        onPress={openReelStudio}
         activeOpacity={0.9}
-        accessibilityLabel={t("uploadVideo")}
+        accessibilityRole="button"
+        accessibilityLabel={t("simpleReelTitle")}
       >
         <View style={styles.fabInner}>
-          {fabOpen ? (
-            <CloseIcon width={22} height={22} color={theme.white} opacity={1} />
-          ) : (
-            <MaterialIcons
-              name="add"
-              size={moderateWidthScale(30)}
-              color={theme.buttonText}
-            />
-          )}
+          <MaterialIcons
+            name="add"
+            size={moderateWidthScale(30)}
+            color={theme.buttonText}
+          />
         </View>
       </TouchableOpacity>
 
