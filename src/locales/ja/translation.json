@@ -2160,6 +2160,7 @@
   "flowExportSongFailed": "この音楽ファイルはリールに使用できませんでした。別の曲を選んで（ライブラリの曲がおすすめです）もう一度お試しください。",
   "flowExportSourceFailed": "リール内の動画または写真を読み込めませんでした。削除するか追加し直してから、もう一度お試しください。",
   "flowAddClipsSubtitle": "動画や写真を好きなだけ追加できます。次のステップでトリミングします。",
+  "flowReelLengthNote": "リールは合計最大{{max_seconds}}秒です。長い動画もOK。次のステップでベストな部分を選べます。",
   "flowGalleryVideosPhotos": "動画と写真",
   "flowSelectedPhoto": "選択した写真",
   "flowRemoveClipN": "クリップ{{n}}を削除",

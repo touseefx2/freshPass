@@ -2160,6 +2160,7 @@
   "flowExportSongFailed": "Ce fichier audio n’a pas pu être utilisé pour votre reel. Choisissez une autre chanson (celles de la bibliothèque fonctionnent le mieux) et réessayez.",
   "flowExportSourceFailed": "Une vidéo ou une photo de votre reel n’a pas pu être lue. Retirez-la ou ajoutez-la à nouveau, puis réessayez.",
   "flowAddClipsSubtitle": "Ajoutez des vidéos ou des photos, autant que vous voulez. Vous les couperez à l’étape suivante.",
+  "flowReelLengthNote": "Votre reel peut durer jusqu’à {{max_seconds}} secondes au total. Les longues vidéos conviennent aussi : vous choisirez le meilleur passage à l’étape suivante.",
   "flowGalleryVideosPhotos": "Vidéos et photos",
   "flowSelectedPhoto": "Photo sélectionnée",
   "flowRemoveClipN": "Retirer le clip {{n}}",

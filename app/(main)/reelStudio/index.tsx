@@ -141,6 +141,7 @@ import StudioPublishStep, {
 } from "@/src/components/reelFlow/studioPublishStep";
 import {
   FlowTitle,
+  InfoNote,
   OptionRow,
   SectionLabel,
   SourceCard,
@@ -3486,6 +3487,8 @@ export default function ReelStudioScreen() {
   const renderUploadStep = () => {
     const totalLabel =
       clips.length > 0 ? formatVideoDuration(totalMs / 1000) : null;
+    // Same tolerance as the Trim step's length check
+    const overLimit = totalMs / 1000 > maxSeconds + 0.05;
     return (
       <>
         <ScrollView
@@ -3551,8 +3554,24 @@ export default function ReelStudioScreen() {
                 onRemove={(id) => removeClip(id, true)}
                 disabled={addingClips}
               />
+              {overLimit ? (
+                <InfoNote
+                  tone="warm"
+                  icon="content-cut"
+                  text={t(
+                    clips.length > 1 ? "flowAutoTooLongMany" : "flowAutoTooLongNote",
+                    { max: formatVideoDuration(maxSeconds) },
+                  )}
+                />
+              ) : null}
             </>
           ) : null}
+          <InfoNote
+            icon="timer"
+            text={t("flowReelLengthNote", {
+              max_seconds: Math.round(maxSeconds),
+            })}
+          />
         </ScrollView>
         <FlowFooter
           primary={{

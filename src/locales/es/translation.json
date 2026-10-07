@@ -2160,6 +2160,7 @@
   "flowExportSongFailed": "No se pudo usar este archivo de música en tu reel. Elige otra canción (las de la biblioteca funcionan mejor) e inténtalo de nuevo.",
   "flowExportSourceFailed": "No se pudo leer un video o una foto de tu reel. Quítalo o vuelve a añadirlo e inténtalo otra vez.",
   "flowAddClipsSubtitle": "Añade videos o fotos, todos los que quieras. Los recortarás en el siguiente paso.",
+  "flowReelLengthNote": "Tu reel puede durar hasta {{max_seconds}} segundos en total. Los videos largos también sirven: elegirás la mejor parte en el siguiente paso.",
   "flowGalleryVideosPhotos": "Videos y fotos",
   "flowSelectedPhoto": "Foto seleccionada",
   "flowRemoveClipN": "Quitar clip {{n}}",
