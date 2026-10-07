@@ -14,14 +14,37 @@ import type { MediaUploadSourceType } from "@/src/types/media";
 
 /**
  * "Upload a Reel" flow shared by the create (+) menu and the Media Library:
- * record (capped at the limit) or pick a video, reject anything over the limit,
- * and skip the editor — go straight to Publish reel.
+ * record (capped at the limit) or pick a video, then the step-by-step Reel
+ * Studio opens at Trim (any length — it's trimmed there) → Style → Preview →
+ * Publish.
  */
 export function useUploadReel() {
   const router = useRouter();
   const { t } = useTranslation();
   const { showBanner } = useNotificationContext();
 
+  /** Picked / recorded video → Reel Studio, starting at the Trim step. */
+  const openStudio = useCallback(
+    (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
+      if (!asset.uri) return;
+      router.push({
+        pathname: "/(main)/reelStudio" as any,
+        params: {
+          uri: encodeURIComponent(asset.uri),
+          mimeType: asset.mimeType || "video/mp4",
+          fileName: asset.fileName || "video.mp4",
+          sourceType,
+          ...(asset.width ? { width: String(asset.width) } : {}),
+          ...(asset.height ? { height: String(asset.height) } : {}),
+        },
+      });
+    },
+    [router],
+  );
+
+  // Old flow (kept for going back to it): skip the editor, reject anything over
+  // the limit and go straight to Publish reel.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openPublish = useCallback(
     (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
       if (!asset.uri) return;
@@ -77,13 +100,14 @@ export function useUploadReel() {
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        openPublish(result.assets[0], "camera");
+        // openPublish(result.assets[0], "camera");
+        openStudio(result.assets[0], "camera");
       }
     } catch (error) {
       Logger.error("Error recording video:", error);
       showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
     }
-  }, [openPublish, showBanner, t]);
+  }, [openStudio, showBanner, t]);
 
   const pickReel = useCallback(async () => {
     const hasPermission = await handleMediaLibraryPermission();
@@ -101,13 +125,14 @@ export function useUploadReel() {
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        openPublish(result.assets[0], "device");
+        // openPublish(result.assets[0], "device");
+        openStudio(result.assets[0], "device");
       }
     } catch (error) {
       Logger.error("Error selecting video:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [openPublish, showBanner, t]);
+  }, [openStudio, showBanner, t]);
 
   return { recordReel, pickReel };
 }

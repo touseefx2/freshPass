@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  FlatList,
-  Image,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -17,8 +14,6 @@ import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Button from "@/src/components/button";
 import HairPipelineProcessingModal, {
   INITIAL_HAIR_PIPELINE_STATE,
   type HairPipelineModalState,
@@ -33,9 +28,11 @@ import {
   musicCreditLine,
   musicCreditReserve,
 } from "@/src/services/musicLibraryService";
-import { measureVideoDurationSeconds } from "@/src/utils/videoDuration";
+import {
+  formatVideoDuration,
+  measureVideoDurationSeconds,
+} from "@/src/utils/videoDuration";
 import { isUploadCancelled } from "@/src/utils/uploadCancel";
-import StackHeader from "@/src/components/StackHeader";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { ApiService } from "@/src/services/api";
@@ -63,8 +60,25 @@ import {
   formatReelsResetDate,
   monthlyReelsBlockedMessage,
 } from "@/src/services/monthlyReelsService";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import {
+  FlowTitle,
+  InfoNote,
+  SelectedMediaRow,
+} from "@/src/components/reelFlow/flowParts";
+import TemplateDropdown from "@/src/components/reelFlow/templateDropdown";
+import RequirementsCard, {
+  type Requirement,
+} from "@/src/components/reelFlow/requirementsCard";
+import QuotaBanner from "@/src/components/reelFlow/quotaBanner";
+import {
+  FlowTextField,
+  SelectField,
+} from "@/src/components/reelFlow/detailsFields";
 import { Theme } from "@/src/theme/colors";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -77,7 +91,14 @@ import type {
 } from "@/src/types/reels";
 import { normalizeReelTemplateMediaFields } from "@/src/types/reels";
 import { isLikelyVideoUri } from "@/src/utils/prepareImageForUpload";
-import { LinearGradient } from "expo-linear-gradient";
+
+/**
+ * Template reel — one task per screen:
+ *   1 Choose a template (dropdown + what it needs)
+ *   2 Add the photos / videos it asks for — a picked video opens the
+ *     step-by-step Reel Studio (trim + edit) before it goes in its slot
+ *   3 Details (texts, caption, category) → Generate reel
+ */
 
 const iosCompatiblePickerOptions =
   Platform.OS === "ios"
@@ -86,6 +107,8 @@ const iosCompatiblePickerOptions =
           ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
       }
     : {};
+
+type WizardStep = "template" | "media" | "details";
 
 /** Still images uploaded as media assets — no duration_seconds on POST /api/media. */
 
@@ -179,490 +202,72 @@ const createStyles = (theme: Theme) =>
     },
     flex: { flex: 1 },
     content: {
-      paddingTop: moderateHeightScale(14),
-      paddingBottom: moderateHeightScale(32),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(10),
+      paddingBottom: moderateHeightScale(28),
+      gap: moderateHeightScale(18),
     },
-    loader: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
+    slots: {
+      gap: moderateHeightScale(12),
     },
-    heroShadow: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(18),
+    slotCard: {
+      backgroundColor: theme.white,
       borderRadius: moderateWidthScale(18),
-      backgroundColor: theme.background,
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(6) },
-      shadowOpacity: 0.22,
-      shadowRadius: moderateWidthScale(12),
-      elevation: 8,
-    },
-    heroCard: {
-      borderRadius: moderateWidthScale(18),
-      overflow: "hidden",
       borderWidth: 1,
-      borderColor: theme.lightGreen4,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(12),
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(3) },
+      shadowOpacity: 0.07,
+      shadowRadius: moderateWidthScale(8),
+      elevation: 2,
     },
-    heroGradient: {
-      paddingHorizontal: moderateWidthScale(18),
-      paddingVertical: moderateHeightScale(18),
-    },
-    heroHighlight: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: "45%",
-    },
-    heroRow: {
+    slotEmpty: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(14),
-    },
-    heroIconWrap: {
-      width: moderateWidthScale(52),
-      height: moderateWidthScale(52),
-      borderRadius: moderateWidthScale(26),
-      backgroundColor: theme.white15,
-      borderWidth: 1,
-      borderColor: theme.white50,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    heroTextCol: {
-      flex: 1,
-      gap: moderateHeightScale(4),
-    },
-    heroTitle: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-    },
-    heroSubtitle: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.white80,
-      lineHeight: fontSize.size16,
-    },
-    quotaBanner: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(14),
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
+      minHeight: heightScale(96),
       paddingHorizontal: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.lightGreen07,
-    },
-    quotaBannerLow: {
-      borderColor: theme.orangeBrown30,
-      backgroundColor: theme.orangeBrown015,
-    },
-    quotaBannerEmpty: {
-      borderColor: theme.lightRedBorder,
-      backgroundColor: theme.lightRed,
-    },
-    quotaText: {
-      flex: 1,
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      lineHeight: fontSize.size16,
-    },
-    pickerBlock: {
-      paddingHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(8),
-    },
-    dropdownShadow: {
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.background,
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(3) },
-      shadowOpacity: 0.12,
-      shadowRadius: moderateWidthScale(8),
-      elevation: 4,
-      marginBottom: moderateHeightScale(4),
-    },
-    dropdownShell: {
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-      overflow: "hidden",
-    },
-    dropdownRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(14),
-      gap: moderateWidthScale(10),
-    },
-    dropdownIconWrap: {
-      width: moderateWidthScale(34),
-      height: moderateWidthScale(34),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.lightGreen07,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    dropdownValue: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    dropdownPlaceholder: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-    },
-    dropdownList: {
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-      maxHeight: moderateHeightScale(220),
-    },
-    dropdownListState: {
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-      paddingVertical: moderateHeightScale(20),
-      paddingHorizontal: moderateWidthScale(16),
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateHeightScale(8),
-      minHeight: moderateHeightScale(88),
-    },
-    dropdownListStateText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-    },
-    dropdownRetryButton: {
-      marginTop: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(18),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.buttonBack,
-      minWidth: widthScale(120),
-      alignItems: "center",
-    },
-    dropdownRetryText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-    },
-    dropdownOption: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.borderLight,
-    },
-    dropdownOptionActive: {
-      backgroundColor: theme.lightGreen07,
-    },
-    dropdownOptionText: {
-      flex: 1,
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      paddingRight: moderateWidthScale(8),
-    },
-    dropdownOptionTextActive: {
-      fontFamily: fonts.fontBold,
-    },
-    label: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(6),
-    },
-    sectionTitleSm: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginBottom: moderateHeightScale(10),
-      textTransform: "uppercase",
-      letterSpacing: 0.4,
-    },
-    section: {
-      marginBottom: moderateHeightScale(18),
-      paddingHorizontal: moderateWidthScale(20),
-    },
-    reqShadow: {
-      marginHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(18),
-      marginBottom: moderateHeightScale(18),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.background,
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(3) },
-      shadowOpacity: 0.1,
-      shadowRadius: moderateWidthScale(8),
-      elevation: 3,
-    },
-    reqCard: {
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(16),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      gap: moderateHeightScale(10),
-      overflow: "hidden",
-    },
-    reqHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(2),
-    },
-    reqIconBadge: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.lightGreen07,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    reqTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    reqChips: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(8),
-    },
-    reqChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(20),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(6),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      maxWidth: "100%",
-    },
-    reqChipText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-      flexShrink: 1,
-    },
-    emptyState: {
-      marginHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(8),
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(28),
-      paddingHorizontal: moderateWidthScale(16),
-      borderRadius: moderateWidthScale(16),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-      gap: moderateHeightScale(10),
-    },
-    emptyStateIcon: {
-      width: moderateWidthScale(56),
-      height: moderateWidthScale(56),
-      borderRadius: moderateWidthScale(28),
-      backgroundColor: theme.lightGreen07,
-      alignItems: "center",
-      justifyContent: "center",
-      marginBottom: moderateHeightScale(4),
-    },
-    emptyStateTitle: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
-    },
-    emptyStateText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-      lineHeight: fontSize.size18,
-    },
-    slotsRow: {
-      gap: moderateHeightScale(10),
-    },
-    slotCard: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(14),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(12),
-      backgroundColor: theme.white,
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(2) },
-      shadowOpacity: 0.06,
-      shadowRadius: moderateWidthScale(6),
-      elevation: 2,
-    },
-    slotCardEmpty: {
+      borderRadius: moderateWidthScale(18),
+      borderWidth: 1.5,
       borderStyle: "dashed",
-      borderColor: theme.lightGreen4,
+      borderColor: theme.borderDark,
       backgroundColor: theme.lightGreen05,
-      shadowOpacity: 0,
-      elevation: 0,
     },
-    slotThumb: {
-      width: widthScale(56),
-      height: widthScale(56),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
-    },
-    slotThumbPlaceholder: {
+    slotEmptyIcon: {
+      width: widthScale(72),
+      height: widthScale(72),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderStyle: "dashed",
     },
-    slotTextCol: {
-      flex: 1,
-      gap: moderateHeightScale(2),
-    },
+    slotText: { flex: 1, minWidth: 0, gap: moderateHeightScale(3) },
     slotTitle: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     slotSub: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
-    slotChevron: {
-      width: moderateWidthScale(28),
-      height: moderateWidthScale(28),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.lightGreen07,
+    slotAdd: {
+      width: widthScale(46),
+      height: widthScale(46),
+      borderRadius: widthScale(23),
+      backgroundColor: theme.darkGreen,
       alignItems: "center",
       justifyContent: "center",
     },
-    input: {
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      borderRadius: moderateWidthScale(14),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
+    creditNote: {
+      marginTop: -moderateHeightScale(10),
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      backgroundColor: theme.white,
-      marginBottom: moderateHeightScale(10),
-    },
-    textArea: {
-      minHeight: moderateHeightScale(96),
-      textAlignVertical: "top",
-      lineHeight: fontSize.size18,
-    },
-    charCount: {
-      alignSelf: "flex-end",
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      marginTop: moderateHeightScale(-6),
-      marginBottom: moderateHeightScale(10),
-    },
-    categoryShell: {
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-      overflow: "hidden",
-    },
-    categoryRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
-      gap: moderateWidthScale(8),
-    },
-    categoryText: {
-      flex: 1,
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    categoryOption: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(12),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-    },
-    categoryOptionText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    footer: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(12),
-      paddingBottom: moderateHeightScale(12),
-      borderTopWidth: 1,
-      borderTopColor: theme.borderLight,
-      backgroundColor: theme.background,
-      gap: moderateHeightScale(8),
-    },
-    uploadProgressBlock: {
-      gap: moderateHeightScale(6),
-    },
-    uploadProgressText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    uploadProgressTrack: {
-      height: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.lightGreen015,
-      overflow: "hidden",
-    },
-    uploadProgressFill: {
-      height: "100%",
-      borderRadius: moderateWidthScale(999),
-      backgroundColor: theme.buttonBack,
-    },
-    uploadProgressHint: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      textAlign: "center",
-    },
-    emptyWrap: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: moderateWidthScale(32),
-    },
-    emptyTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
-      marginBottom: moderateHeightScale(6),
-    },
-    emptySubtitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
+      lineHeight: fontSize.size20,
     },
   });
 
@@ -677,7 +282,6 @@ export default function ReelTemplatesScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
 
@@ -718,11 +322,11 @@ export default function ReelTemplatesScreen() {
     selectBsnsCategory,
   ]);
 
+  const [step, setStep] = useState<WizardStep>("template");
   const [templates, setTemplates] = useState<ReelTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [selectedMedia, setSelectedMedia] = useState<(SlotItem | null)[]>([]);
@@ -758,7 +362,7 @@ export default function ReelTemplatesScreen() {
     percent: number;
     phase: "compressing" | "uploading";
   } | null>(null);
-  // Video sent to the editor for a slot; its trimmed copy comes back on focus
+  // Video sent to the editor for a slot; its edited copy comes back on focus
   const editRequestRef = useRef<{
     id: string;
     sourceType: MediaUploadSourceType;
@@ -787,7 +391,6 @@ export default function ReelTemplatesScreen() {
   const applyTemplate = useCallback(
     (template: ReelTemplate) => {
       setSelectedId(template.id);
-      setDropdownOpen(false);
       const fields = normalizeReelTemplateMediaFields(template.media_fields);
       const count =
         template.media_count || fields.length || 0;
@@ -915,8 +518,7 @@ export default function ReelTemplatesScreen() {
     setMediaPickerSlot(null);
   }, []);
 
-
-  /** Too-long slot video → editor (trim panel open on the full video), capped at 30 s. */
+  /** Slot video → step-by-step Reel Studio (trim + edit), capped at reel length. */
   const openTrimEditor = useCallback(
     (
       asset: ImagePicker.ImagePickerAsset,
@@ -925,8 +527,24 @@ export default function ReelTemplatesScreen() {
     ) => {
       const requestId = createEditRequestId();
       editRequestRef.current = { id: requestId, sourceType, slotIndex };
+      // Old full-screen editor (kept as it was — switch back by restoring this):
+      // router.push({
+      //   pathname: "/(main)/editVideo" as any,
+      //   params: {
+      //     uri: encodeURIComponent(asset.uri),
+      //     mimeType: (asset as { mimeType?: string }).mimeType || "video/mp4",
+      //     fileName: asset.fileName || "video.mp4",
+      //     sourceType,
+      //     maxSeconds: String(MAX_VIDEO_UPLOAD_SECONDS),
+      //     ...(asset.width ? { width: String(asset.width) } : {}),
+      //     ...(asset.height ? { height: String(asset.height) } : {}),
+      //     mode: "save",
+      //     requestId,
+      //     limitContext: "reel",
+      //   },
+      // });
       router.push({
-        pathname: "/(main)/editVideo" as any,
+        pathname: "/(main)/reelStudio" as any,
         params: {
           uri: encodeURIComponent(asset.uri),
           mimeType: (asset as { mimeType?: string }).mimeType || "video/mp4",
@@ -938,10 +556,15 @@ export default function ReelTemplatesScreen() {
           mode: "save",
           requestId,
           limitContext: "reel",
+          flowTitle: t("reelTypeTemplateTitle"),
+          // Editing is part of step 2 (Add photos & videos)
+          stepStart: "2",
+          stepTotal: "3",
+          stepFixed: "1",
         },
       });
     },
-    [router],
+    [router, t],
   );
 
   /** Pick = select only (local preview). Uploads happen on "Generate Reel". */
@@ -951,7 +574,10 @@ export default function ReelTemplatesScreen() {
       sourceType: MediaUploadSourceType,
       slotIndex: number,
       slotField: ReelTemplateMediaField | undefined,
-      /** Batch picks: only the first too-long video may open the editor */
+      /**
+       * A picked video goes through the editor first (any length). Batch
+       * picks: only the first video does; the editor's own result is placed.
+       */
       allowTrim = true,
     ): Promise<"selected" | "trim" | "tooLong" | "skipped"> => {
       if (!asset.uri) return "skipped";
@@ -980,22 +606,22 @@ export default function ReelTemplatesScreen() {
       let durationSeconds: number | undefined;
       let previewUri: string | null = isVideo ? null : asset.uri;
       if (isVideo) {
-        // expo-image-picker reports milliseconds; measure when it's missing
-        const lengthSeconds =
-          typeof asset.duration === "number" && asset.duration > 0
-            ? asset.duration / 1000
-            : await measureVideoDurationSeconds(asset.uri);
-        durationSeconds = Math.max(1, Math.round(lengthSeconds ?? 0));
-        if (durationSeconds > MAX_VIDEO_UPLOAD_SECONDS) {
-          if (!allowTrim) return "tooLong";
-          // Straight to the editor: full original video, trim panel open,
-          // required length on top (iOS: let the picker finish closing first)
+        if (allowTrim) {
+          // Straight to the step editor: trim + edit, then it lands in the
+          // slot (iOS: let the picker finish closing first)
           setTimeout(
             () => openTrimEditor(asset, sourceType, slotIndex),
             Platform.OS === "ios" ? 350 : 0,
           );
           return "trim";
         }
+        // expo-image-picker reports milliseconds; measure when it's missing
+        const lengthSeconds =
+          typeof asset.duration === "number" && asset.duration > 0
+            ? asset.duration / 1000
+            : await measureVideoDurationSeconds(asset.uri);
+        durationSeconds = Math.max(1, Math.round(lengthSeconds ?? 0));
+        if (durationSeconds > MAX_VIDEO_UPLOAD_SECONDS) return "tooLong";
         try {
           const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, {
             time: 0,
@@ -1032,8 +658,7 @@ export default function ReelTemplatesScreen() {
     [openTrimEditor, selectedMedia, showBanner, t],
   );
 
-
-  // Back from the editor: put the trimmed copy in the slot like a fresh pick
+  // Back from the editor: put the edited copy in the slot like a fresh pick
   useFocusEffect(
     useCallback(() => {
       const request = editRequestRef.current;
@@ -1057,6 +682,7 @@ export default function ReelTemplatesScreen() {
         request.sourceType,
         request.slotIndex,
         mediaFields[request.slotIndex],
+        false,
       );
       if (result.savedToGallery) {
         showBanner(t("success"), t("editedVideoSaved"), "success", 3000);
@@ -1064,6 +690,27 @@ export default function ReelTemplatesScreen() {
         showBanner(t("autoReelTrimTitle"), t("editedVideoNotSaved"), "warning", 4000);
       }
     }, [mediaFields, selectPickedAsset, showBanner, t]),
+  );
+
+  /** "Edit" on a filled video slot → the step editor again. */
+  const editSlotVideo = useCallback(
+    (slotIndex: number) => {
+      const item = selectedMedia[slotIndex];
+      if (!item?.local.isVideo) return;
+      openTrimEditor(
+        {
+          uri: item.local.uri,
+          fileName: item.local.fileName,
+          mimeType: item.local.mimeType,
+          width: item.local.width,
+          height: item.local.height,
+          type: "video",
+        } as ImagePicker.ImagePickerAsset,
+        item.local.sourceType,
+        slotIndex,
+      );
+    },
+    [openTrimEditor, selectedMedia],
   );
 
   /**
@@ -1213,8 +860,6 @@ export default function ReelTemplatesScreen() {
   }, [activeSlotField, mediaPickerSlot, selectPickedAsset, showBanner, t]);
 
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
-  const fewReelsLeft =
-    reelsRemaining != null && reelsRemaining > 0 && reelsRemaining <= 2;
 
   // Credits for edited clips that are still in a slot.
   const musicCreditText = useMemo(
@@ -1225,6 +870,10 @@ export default function ReelTemplatesScreen() {
     [editorMusicCredits, selectedMedia],
   );
   const captionMax = 2200 - musicCreditReserve(musicCreditText);
+
+  const allSlotsFilled =
+    selectedMedia.length > 0 && selectedMedia.every((m) => !!m);
+  const filledCount = selectedMedia.filter((m) => !!m).length;
 
   const canGenerate = useMemo(() => {
     if (!selected) return false;
@@ -1436,32 +1085,64 @@ export default function ReelTemplatesScreen() {
     texts,
   ]);
 
-  // The screen must stay open until the uploads finish
+  /** One step back; false on the first step (the caller leaves). */
+  const stepBack = useCallback((): boolean => {
+    if (submitting) return true;
+    if (step === "details") {
+      setStep("media");
+      return true;
+    }
+    if (step === "media") {
+      setStep("template");
+      return true;
+    }
+    return false;
+  }, [step, submitting]);
+
+  // The screen must stay open until the uploads finish; otherwise hardware
+  // back goes one step back.
   const navigation = useNavigation();
-  const uploadingRef = useRef(false);
-  uploadingRef.current = uploadProgress != null;
+  const allowLeaveRef = useRef(false);
+  const guardRef = useRef({ uploading: false, stepBack });
+  guardRef.current = { uploading: uploadProgress != null, stepBack };
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
-      if (!uploadingRef.current) return;
-      event.preventDefault();
-      Alert.alert(t("autoReelLeaveUploadTitle"), t("autoReelLeaveUploadMessage"), [
-        { text: t("autoReelKeepUploading"), style: "cancel" },
-        {
-          text: t("autoReelLeave"),
-          style: "destructive",
-          // Really cancel: stop compression / uploads, no reel is generated
-          onPress: () => {
-            uploadAbortRef.current?.abort();
-            navigation.dispatch(event.data.action);
+      if (allowLeaveRef.current) return;
+      if (guardRef.current.uploading) {
+        event.preventDefault();
+        Alert.alert(t("autoReelLeaveUploadTitle"), t("autoReelLeaveUploadMessage"), [
+          { text: t("autoReelKeepUploading"), style: "cancel" },
+          {
+            text: t("autoReelLeave"),
+            style: "destructive",
+            // Really cancel: stop compression / uploads, no reel is generated
+            onPress: () => {
+              uploadAbortRef.current?.abort();
+              allowLeaveRef.current = true;
+              navigation.dispatch(event.data.action);
+            },
           },
-        },
-      ]);
+        ]);
+        return;
+      }
+      // Only back presses step back — resets (e.g. sign-out) go through
+      const type = event?.data?.action?.type;
+      if ((type === "GO_BACK" || type === "POP") && guardRef.current.stepBack()) {
+        event.preventDefault();
+      }
     });
     return unsubscribe;
   }, [navigation, t]);
 
+  const onHeaderBack = useCallback(() => {
+    if (stepBack()) return;
+    if (router.canGoBack()) router.back();
+    else router.replace("/(main)/aiTools/toolList" as any);
+  }, [router, stepBack]);
+
   const closePipelineModal = useCallback(() => {
     setPipelineModal(INITIAL_HAIR_PIPELINE_STATE);
+    allowLeaveRef.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -1476,485 +1157,328 @@ export default function ReelTemplatesScreen() {
     ? formatMusicName(selected.music_name) || t("includesMusic")
     : "";
 
-  return (
-    <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
-      <StackHeader title={t("reelTemplates")} />
+  const templateOptions = useMemo(
+    () =>
+      templates.map((tpl) => {
+        const fields = normalizeReelTemplateMediaFields(tpl.media_fields);
+        return {
+          id: tpl.id,
+          name: tpl.name,
+          description: mediaRequirementLabel(fields, t) || null,
+          imageUrl: tpl.thumbnail_url,
+          icon: "dashboard-customize" as const,
+        };
+      }),
+    [t, templates],
+  );
 
-      <KeyboardAwareScrollView
+  const requirements: Requirement[] = selected
+    ? [
+        { icon: "photo-library", text: mediaLabel },
+        ...((selected.text_fields?.length ?? 0) > 0
+          ? [
+              {
+                icon: "text-fields" as const,
+                text: selected.text_fields.map(fieldLabel).join(" · "),
+              },
+            ]
+          : []),
+        ...(selected.has_music
+          ? [{ icon: "music-note" as const, text: musicLabel }]
+          : []),
+      ]
+    : [];
+
+  // ── Steps ─────────────────────────────────────────────────────────
+
+  const renderTemplateStep = () => (
+    <>
+      <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        bottomOffset={moderateHeightScale(80)}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.heroShadow}>
-          <View style={styles.heroCard}>
-            <LinearGradient
-              colors={[
-                theme.darkGreenLight,
-                theme.buttonBack,
-                theme.darkGreen,
-              ]}
-              locations={[0, 0.45, 1]}
-              start={{ x: 0.15, y: 0 }}
-              end={{ x: 0.85, y: 1 }}
-              style={styles.heroGradient}
-            >
-              <LinearGradient
-                colors={[theme.white15, "transparent"]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={styles.heroHighlight}
-                pointerEvents="none"
-              />
-              <View style={styles.heroRow}>
-                <View style={styles.heroIconWrap}>
-                  <MaterialIcons
-                    name="movie-filter"
-                    size={moderateWidthScale(26)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={styles.heroTextCol}>
-                  <Text style={styles.heroTitle}>{t("reelTemplatesIntroTitle")}</Text>
-                  <Text style={styles.heroSubtitle}>
-                    {t("reelTemplatesIntroSubtitle")}
-                  </Text>
-                </View>
-              </View>
-            </LinearGradient>
-          </View>
-        </View>
-
+        <FlowTitle
+          title={t("flowChooseTemplateTitle")}
+          subtitle={t("flowChooseTemplateSubtitle")}
+        />
         {reelsRemaining != null ? (
-          <View
-            style={[
-              styles.quotaBanner,
-              fewReelsLeft && styles.quotaBannerLow,
-              noReelsLeft && styles.quotaBannerEmpty,
-            ]}
-            accessibilityRole={noReelsLeft ? "alert" : undefined}
-          >
-            <MaterialIcons
-              name={
-                noReelsLeft ? "block" : fewReelsLeft ? "warning-amber" : "info-outline"
-              }
-              size={moderateWidthScale(18)}
-              color={
-                noReelsLeft
-                  ? theme.red
-                  : fewReelsLeft
-                    ? theme.orangeBrown
-                    : theme.buttonBack
-              }
-            />
-            <Text style={styles.quotaText}>
-              {noReelsLeft
-                ? quotaBlockedMessage || t("autoReelNoReelsLeft")
-                : [
-                    t("autoReelReelsLeft", { count: reelsRemaining }),
-                    quotaResetLabel
-                      ? t("monthlyReelsResets", { date: quotaResetLabel })
+          <QuotaBanner
+            remaining={reelsRemaining}
+            blockedMessage={quotaBlockedMessage}
+            resetLabel={quotaResetLabel}
+          />
+        ) : null}
+        <TemplateDropdown
+          options={templateOptions}
+          selectedId={selectedId}
+          onSelect={(id) => {
+            const tpl = templates.find((item) => item.id === id);
+            if (tpl && tpl.id !== selectedId) applyTemplate(tpl);
+          }}
+          loading={loadingTemplates}
+          error={templatesError}
+          onRetry={() => void loadTemplates()}
+          placeholder={t("selectTemplatePlaceholder")}
+        />
+        {selected ? (
+          <RequirementsCard
+            imageUrl={selected.thumbnail_url}
+            requirements={requirements}
+          />
+        ) : null}
+      </ScrollView>
+      <FlowFooter
+        primary={{
+          label: t("flowNextAddMedia"),
+          onPress: () => setStep("media"),
+          disabled: !selected,
+          trailingIcon: "chevron-right",
+        }}
+        hint={!selected ? t("flowPickTemplateHint") : null}
+      />
+    </>
+  );
+
+  const renderMediaStep = () => (
+    <>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlowTitle
+          title={t("flowAddMediaTitle")}
+          subtitle={[mediaLabel, t("flowAddMediaSubtitle")]
+            .filter(Boolean)
+            .join(" · ")}
+        />
+        <View style={styles.slots}>
+          {selectedMedia.map((media, index) => {
+            const field = mediaFields[index];
+            const label = field?.label || t("mediaSlot", { number: index + 1 });
+            if (!media) {
+              const photoOnly =
+                slotAcceptsImage(field) && !slotAcceptsVideo(field);
+              const videoOnly =
+                !slotAcceptsImage(field) && slotAcceptsVideo(field);
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  key={field?.key ?? `slot-${index}`}
+                  style={[
+                    styles.slotEmpty,
+                  ]}
+                  onPress={() => openSourcePicker(index)}
+                  disabled={submitting}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label}. ${field ? slotTypeHint(field, t) : t("tapToSelectMedia")}`}
+                >
+                  <View style={styles.slotEmptyIcon}>
+                    <MaterialIcons
+                      name={
+                        videoOnly
+                          ? "videocam"
+                          : photoOnly
+                            ? "add-photo-alternate"
+                            : "perm-media"
+                      }
+                      size={moderateWidthScale(30)}
+                      color={theme.buttonBack}
+                    />
+                  </View>
+                  <View style={styles.slotText}>
+                    <Text style={styles.slotTitle} numberOfLines={1}>
+                      {label}
+                    </Text>
+                    <Text style={styles.slotSub} numberOfLines={2}>
+                      {field ? slotTypeHint(field, t) : t("tapToSelectMedia")}
+                    </Text>
+                  </View>
+                  <View style={styles.slotAdd}>
+                    <MaterialIcons
+                      name="add"
+                      size={moderateWidthScale(26)}
+                      color={theme.white}
+                    />
+                  </View>
+                </TouchableOpacity>
+              );
+            }
+            return (
+              <View key={field?.key ?? `slot-${index}`} style={styles.slotCard}>
+                <SelectedMediaRow
+                  thumbUri={media.previewUri}
+                  isPhoto={!media.local.isVideo}
+                  title={label}
+                  subtitle={[
+                    media.name || t("mediaSelected"),
+                    media.local.isVideo && media.local.durationSeconds
+                      ? formatVideoDuration(media.local.durationSeconds)
                       : null,
                   ]
                     .filter(Boolean)
-                    .join(" ")}
-            </Text>
-          </View>
-        ) : null}
-
-        <View style={styles.pickerBlock}>
-          <Text style={styles.label}>{t("selectTemplate")}</Text>
-          <View style={styles.dropdownShadow}>
-            <View style={styles.dropdownShell}>
-              <TouchableOpacity
-                style={styles.dropdownRow}
-                onPress={() => setDropdownOpen((open) => !open)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.dropdownIconWrap}>
-                  <MaterialIcons
-                    name="movie-creation"
-                    size={moderateWidthScale(18)}
-                    color={theme.buttonBack}
-                  />
-                </View>
-                <Text
-                  style={
-                    selected ? styles.dropdownValue : styles.dropdownPlaceholder
+                    .join(" · ")}
+                  secondaryAction={
+                    media.local.isVideo && !submitting
+                      ? {
+                          icon: "content-cut",
+                          label: t("autoReelEditVideo"),
+                          onPress: () => editSlotVideo(index),
+                        }
+                      : null
                   }
-                  numberOfLines={1}
-                >
-                  {selected?.name || t("selectTemplatePlaceholder")}
-                </Text>
-                <MaterialIcons
-                  name={dropdownOpen ? "expand-less" : "expand-more"}
-                  size={moderateWidthScale(22)}
-                  color={theme.lightGreen}
+                  onAction={submitting ? null : () => removeSlotMedia(index)}
+                  actionLabel={t("remove")}
                 />
-              </TouchableOpacity>
-
-              {dropdownOpen ? (
-                loadingTemplates ? (
-                  <View style={styles.dropdownListState}>
-                    <ActivityIndicator color={theme.buttonBack} />
-                    <Text style={styles.dropdownListStateText}>
-                      {t("loadingTemplates")}
-                    </Text>
-                  </View>
-                ) : templatesError ? (
-                  <View style={styles.dropdownListState}>
-                    <MaterialIcons
-                      name="error-outline"
-                      size={moderateWidthScale(22)}
-                      color={theme.red}
-                    />
-                    <Text style={styles.dropdownListStateText}>
-                      {templatesError}
-                    </Text>
-                    <TouchableOpacity
-                      style={styles.dropdownRetryButton}
-                      onPress={() => void loadTemplates()}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.dropdownRetryText}>{t("retry")}</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : templates.length === 0 ? (
-                  <View style={styles.dropdownListState}>
-                    <Text style={styles.dropdownListStateText}>
-                      {t("noTemplatesYet")}
-                    </Text>
-                    <Text style={styles.dropdownListStateText}>
-                      {t("noTemplatesSubtitle")}
-                    </Text>
-                  </View>
-                ) : (
-                  <FlatList
-                    data={templates}
-                    keyExtractor={(item) => String(item.id)}
-                    style={styles.dropdownList}
-                    nestedScrollEnabled
-                    keyboardShouldPersistTaps="handled"
-                    renderItem={({ item }) => {
-                      const active = item.id === selectedId;
-                      return (
-                        <TouchableOpacity
-                          style={[
-                            styles.dropdownOption,
-                            active && styles.dropdownOptionActive,
-                          ]}
-                          onPress={() => applyTemplate(item)}
-                          activeOpacity={0.85}
-                        >
-                          <Text
-                            style={[
-                              styles.dropdownOptionText,
-                              active && styles.dropdownOptionTextActive,
-                            ]}
-                            numberOfLines={2}
-                          >
-                            {item.name}
-                          </Text>
-                          {active ? (
-                            <MaterialIcons
-                              name="check"
-                              size={moderateWidthScale(18)}
-                              color={theme.buttonBack}
-                            />
-                          ) : null}
-                        </TouchableOpacity>
-                      );
-                    }}
-                  />
-                )
-              ) : null}
-            </View>
-          </View>
+              </View>
+            );
+          })}
         </View>
+        {mediaFields.some((f) => slotAcceptsVideo(f)) ? (
+          <InfoNote icon="content-cut" text={t("flowTemplateVideoNote")} />
+        ) : null}
+      </ScrollView>
+      <FlowFooter
+        primary={{
+          label: t("flowNextAddDetails"),
+          onPress: () => setStep("details"),
+          disabled: !allSlotsFilled,
+          trailingIcon: "chevron-right",
+        }}
+        hint={
+          allSlotsFilled
+            ? null
+            : t("flowSlotsFilled", {
+                filled: filledCount,
+                total: selectedMedia.length,
+              })
+        }
+      />
+    </>
+  );
 
-        {selected ? (
-          <>
-            <View style={styles.reqShadow}>
-              <View style={styles.reqCard}>
-                <View style={styles.reqHeader}>
-                  <View style={styles.reqIconBadge}>
-                    <MaterialIcons
-                      name="checklist"
-                      size={moderateWidthScale(16)}
-                      color={theme.buttonBack}
-                    />
-                  </View>
-                  <Text style={styles.reqTitle}>{t("templateRequirements")}</Text>
-                </View>
-                <View style={styles.reqChips}>
-                  <View style={styles.reqChip}>
-                    <MaterialIcons
-                      name="photo-library"
-                      size={moderateWidthScale(14)}
-                      color={theme.buttonBack}
-                    />
-                    <Text style={styles.reqChipText}>{mediaLabel}</Text>
-                  </View>
-                  {(selected.text_fields?.length ?? 0) > 0 ? (
-                    <View style={styles.reqChip}>
-                      <MaterialIcons
-                        name="text-fields"
-                        size={moderateWidthScale(14)}
-                        color={theme.buttonBack}
-                      />
-                      <Text style={styles.reqChipText} numberOfLines={2}>
-                        {selected.text_fields.map(fieldLabel).join(" · ")}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {selected.has_music ? (
-                    <View style={styles.reqChip}>
-                      <MaterialIcons
-                        name="music-note"
-                        size={moderateWidthScale(14)}
-                        color={theme.buttonBack}
-                      />
-                      <Text style={styles.reqChipText} numberOfLines={1}>
-                        {musicLabel}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitleSm}>{t("selectMedia")}</Text>
-              <View style={styles.slotsRow}>
-                {selectedMedia.map((media, index) => {
-                  const field = mediaFields[index];
-                  const filled = !!media;
-                  const thumbUri = media?.previewUri ?? null;
-                  return (
-                    <TouchableOpacity
-                      key={field?.key ?? `slot-${index}`}
-                      style={[
-                        styles.slotCard,
-                        !filled && styles.slotCardEmpty,
-                      ]}
-                      onPress={() => openSourcePicker(index)}
-                      activeOpacity={0.85}
-                      disabled={submitting}
-                    >
-                      {filled && thumbUri ? (
-                        <Image
-                          source={{ uri: thumbUri }}
-                          style={styles.slotThumb}
-                        />
-                      ) : (
-                        <View
-                          style={[styles.slotThumb, styles.slotThumbPlaceholder]}
-                        >
-                          <MaterialIcons
-                            name={
-                              slotAcceptsImage(field) && !slotAcceptsVideo(field)
-                                ? "add-photo-alternate"
-                                : !slotAcceptsImage(field) &&
-                                    slotAcceptsVideo(field)
-                                  ? "videocam"
-                                  : "add-photo-alternate"
-                            }
-                            size={moderateWidthScale(22)}
-                            color={theme.buttonBack}
-                          />
-                        </View>
-                      )}
-                      <View style={styles.slotTextCol}>
-                        <Text style={styles.slotTitle}>
-                          {field?.label || t("mediaSlot", { number: index + 1 })}
-                        </Text>
-                        <Text style={styles.slotSub} numberOfLines={1}>
-                          {media
-                            ? [
-                                media.name || t("mediaSelected"),
-                                media.local.isVideo && media.local.durationSeconds
-                                  ? `0:${String(media.local.durationSeconds).padStart(2, "0")}`
-                                  : null,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")
-                            : field
-                              ? slotTypeHint(field, t)
-                              : t("tapToSelectMedia")}
-                        </Text>
-                      </View>
-                      {filled ? (
-                        <TouchableOpacity
-                          style={styles.slotChevron}
-                          onPress={() => removeSlotMedia(index)}
-                          disabled={submitting}
-                          hitSlop={8}
-                          accessibilityRole="button"
-                          accessibilityLabel={t("remove")}
-                        >
-                          <MaterialIcons
-                            name="close"
-                            size={moderateWidthScale(16)}
-                            color={theme.darkGreen}
-                          />
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={styles.slotChevron}>
-                          <MaterialIcons
-                            name="chevron-right"
-                            size={moderateWidthScale(18)}
-                            color={theme.darkGreen}
-                          />
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            {(selected.text_fields?.length ?? 0) > 0 ? (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitleSm}>{t("customText")}</Text>
-                {selected.text_fields.map((field) => (
-                  <View key={field}>
-                    <Text style={styles.label}>{fieldLabel(field)}</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={texts[field] || ""}
-                      onChangeText={(value) =>
-                        setTexts((prev) => ({ ...prev, [field]: value }))
-                      }
-                      placeholder={fieldLabel(field)}
-                      placeholderTextColor={theme.lightGreen5}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitleSm}>
-                {t("caption")}{" "}
-                <Text style={{ color: theme.selectCard }}>*</Text>
-              </Text>
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                value={caption}
-                onChangeText={(v) => setCaption(v.slice(0, captionMax))}
-                placeholder={t("captionPlaceholder")}
-                placeholderTextColor={theme.lightGreen5}
-                multiline
-                maxLength={captionMax}
-              />
-              <Text style={styles.charCount}>
-                {caption.length}/{captionMax}
-              </Text>
-              {musicCreditText ? (
-                <Text style={styles.charCount}>
-                  {t("musicCreditAutoAdded", { credit: musicCreditText })}
-                </Text>
-              ) : null}
-
-              <Text style={styles.label}>
-                {t("category")}{" "}
-                <Text style={{ color: theme.selectCard }}>*</Text>
-              </Text>
-              <View style={styles.categoryShell}>
-                <TouchableOpacity
-                  style={styles.categoryRow}
-                  onPress={openCategoryPicker}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.categoryText}>
-                    {categoryName || t("selectCategory")}
-                  </Text>
-                  {loadingCategories ? (
-                    <ActivityIndicator size="small" color={theme.buttonBack} />
-                  ) : (
-                    <MaterialIcons
-                      name={
-                        showCategoryPicker ? "expand-less" : "expand-more"
-                      }
-                      size={moderateWidthScale(22)}
-                      color={theme.lightGreen}
-                    />
-                  )}
-                </TouchableOpacity>
-                {showCategoryPicker
-                  ? categories.map((cat) => (
-                      <TouchableOpacity
-                        key={cat.id}
-                        style={styles.categoryOption}
-                        onPress={() => {
-                          userPickedCategoryRef.current = true;
-                          setCategoryId(cat.id);
-                          setCategoryName(cat.name);
-                          setShowCategoryPicker(false);
-                        }}
-                      >
-                        <Text style={styles.categoryOptionText}>{cat.name}</Text>
-                      </TouchableOpacity>
-                    ))
-                  : null}
-              </View>
-            </View>
-          </>
-        ) : (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyStateIcon}>
-              <MaterialIcons
-                name="arrow-drop-down-circle"
-                size={moderateWidthScale(26)}
-                color={theme.buttonBack}
-              />
-            </View>
-            <Text style={styles.emptyStateTitle}>{t("selectTemplateHintTitle")}</Text>
-            <Text style={styles.emptyStateText}>{t("selectTemplateHint")}</Text>
-          </View>
-        )}
-      </KeyboardAwareScrollView>
-
-      {selected ? (
-        <View style={styles.footer}>
-          {uploadProgress ? (
-            <View style={styles.uploadProgressBlock} accessibilityLiveRegion="polite">
-              <Text style={styles.uploadProgressText}>
-                {t(
-                  uploadProgress.phase === "compressing"
-                    ? "templateCompressingProgress"
-                    : "templateUploadingProgress",
-                  {
-                    current: uploadProgress.current,
-                    total: uploadProgress.total,
-                    percent: uploadProgress.percent,
-                  },
-                )}
-              </Text>
-              <View style={styles.uploadProgressTrack}>
-                <View
-                  style={[
-                    styles.uploadProgressFill,
-                    { width: `${uploadProgress.percent}%` },
-                  ]}
-                />
-              </View>
-            </View>
+  const renderDetailsStep = () => {
+    const progress = uploadProgress
+      ? {
+          label: t(
+            uploadProgress.phase === "compressing"
+              ? "templateCompressingProgress"
+              : "templateUploadingProgress",
+            {
+              current: uploadProgress.current,
+              total: uploadProgress.total,
+              percent: uploadProgress.percent,
+            },
+          ),
+          percent: uploadProgress.percent,
+        }
+      : null;
+    return (
+      <>
+        <KeyboardAwareScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={moderateHeightScale(140)}
+        >
+          <FlowTitle
+            title={t("flowDetailsTitle")}
+            subtitle={t("flowTemplateDetailsSubtitle")}
+          />
+          {selected?.text_fields?.map((field) => (
+            <FlowTextField
+              key={field}
+              label={fieldLabel(field)}
+              value={texts[field] || ""}
+              onChangeText={(value) =>
+                setTexts((prev) => ({ ...prev, [field]: value }))
+              }
+              placeholder={fieldLabel(field)}
+              editable={!submitting}
+            />
+          ))}
+          <FlowTextField
+            label={t("caption")}
+            required
+            value={caption}
+            onChangeText={(v) => setCaption(v.slice(0, captionMax))}
+            placeholder={t("flowCaptionPlaceholder")}
+            multiline
+            maxCount={captionMax}
+            editable={!submitting}
+          />
+          {musicCreditText ? (
+            <Text style={styles.creditNote}>
+              {t("musicCreditAutoAdded", { credit: musicCreditText })}
+            </Text>
           ) : null}
-          <Button
-            title={t("generateReel")}
-            onPress={handleGenerate}
-            disabled={!canGenerate || submitting}
-            loading={submitting}
+          <SelectField
+            label={t("category")}
+            required
+            value={categoryName || null}
+            placeholder={t("selectCategory")}
+            open={showCategoryPicker}
+            loading={loadingCategories}
+            options={categories}
+            selectedId={categoryId}
+            onToggle={() => void openCategoryPicker()}
+            onSelect={(cat) => {
+              userPickedCategoryRef.current = true;
+              setCategoryId(cat.id);
+              setCategoryName(cat.name);
+              setShowCategoryPicker(false);
+            }}
           />
           {uploadProgress ? (
-            <Text style={styles.uploadProgressHint}>
-              {t("autoReelKeepOpenWhileUploading")}
-            </Text>
+            <InfoNote
+              tone="warm"
+              icon="upload"
+              text={t("autoReelKeepOpenWhileUploading")}
+            />
           ) : null}
-        </View>
-      ) : null}
+        </KeyboardAwareScrollView>
+        <FlowFooter
+          progress={progress}
+          primary={{
+            label: t("generateReel"),
+            onPress: () => void handleGenerate(),
+            disabled: !canGenerate || submitting,
+            loading: submitting,
+            icon: "auto-awesome",
+          }}
+          hint={
+            submitting
+              ? null
+              : noReelsLeft
+                ? quotaBlockedMessage || t("autoReelNoReelsLeft")
+                : !caption.trim()
+                  ? t("flowCaptionNeeded")
+                  : !categoryId
+                    ? t("autoReelNeedCategory")
+                    : null
+          }
+        />
+      </>
+    );
+  };
+
+  const stepNumber = step === "template" ? 1 : step === "media" ? 2 : 3;
+
+  return (
+    <View style={styles.safeArea}>
+      <FlowHeader
+        title={t("reelTypeTemplateTitle")}
+        step={{ current: stepNumber, total: 3 }}
+        onBack={onHeaderBack}
+        backDisabled={submitting}
+        backIcon={step === "template" ? "close" : "back"}
+      />
+      {step === "template" ? renderTemplateStep() : null}
+      {step === "media" ? renderMediaStep() : null}
+      {step === "details" ? renderDetailsStep() : null}
 
       <ImagePickerModal
         visible={sourcePickerVisible}
@@ -1968,8 +1492,6 @@ export default function ReelTemplatesScreen() {
         }
         cameraIcon={slotAcceptsImage(activeSlotField) ? "camera-alt" : "videocam"}
       />
-
-
 
       <HairPipelineProcessingModal
         state={pipelineModal}

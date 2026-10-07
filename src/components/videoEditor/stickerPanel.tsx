@@ -37,20 +37,24 @@ type Props = {
   onSizeChange: (size: number) => void;
   onRotateBy: (degrees: number) => void;
   onRemove: () => void;
+  /** Bigger buttons and type (step-by-step Reel Studio). */
+  large?: boolean;
+  /** Hide the "Stickers" title (the host shows its own). */
+  hideTitle?: boolean;
 };
 
 const ROTATE_STEP = 15;
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, large: boolean = false) =>
   StyleSheet.create({
     title: {
-      fontSize: fontSize.size13,
+      fontSize: large ? fontSize.size16 : fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.white,
       marginBottom: moderateHeightScale(2),
     },
     hint: {
-      fontSize: fontSize.size11,
+      fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
       marginBottom: moderateHeightScale(6),
@@ -61,7 +65,7 @@ const createStyles = (theme: Theme) =>
       paddingRight: moderateWidthScale(4),
     },
     photoBtn: {
-      height: heightScale(44),
+      height: heightScale(large ? 52 : 44),
       paddingHorizontal: moderateWidthScale(12),
       borderRadius: moderateWidthScale(12),
       backgroundColor: theme.buttonBack,
@@ -71,20 +75,20 @@ const createStyles = (theme: Theme) =>
       marginRight: moderateWidthScale(4),
     },
     photoText: {
-      fontSize: fontSize.size12,
+      fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
     emojiBtn: {
-      width: widthScale(44),
-      height: heightScale(44),
+      width: widthScale(large ? 52 : 44),
+      height: heightScale(large ? 52 : 44),
       borderRadius: moderateWidthScale(12),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.black,
     },
     emoji: {
-      fontSize: fontSize.size24,
+      fontSize: large ? fontSize.size28 : fontSize.size24,
       includeFontPadding: false,
     },
     disabled: {
@@ -97,8 +101,8 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(8),
     },
     iconBtn: {
-      width: widthScale(40),
-      height: heightScale(40),
+      width: widthScale(large ? 48 : 40),
+      height: heightScale(large ? 48 : 40),
       borderRadius: moderateWidthScale(10),
       alignItems: "center",
       justifyContent: "center",
@@ -113,7 +117,7 @@ const createStyles = (theme: Theme) =>
       gap: moderateWidthScale(4),
     },
     sizeLabel: {
-      fontSize: fontSize.size11,
+      fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white70,
     },
@@ -134,10 +138,12 @@ export default function StickerPanel({
   onSizeChange,
   onRotateBy,
   onRemove,
+  large = false,
+  hideTitle = false,
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
   const { t } = useTranslation();
 
   const range = selected ? STICKER_SIZE_RANGE[selected.kind] : null;
@@ -146,7 +152,7 @@ export default function StickerPanel({
 
   return (
     <View>
-      <Text style={styles.title}>{t("stickers")}</Text>
+      {hideTitle ? null : <Text style={styles.title}>{t("stickers")}</Text>}
       {!selected ? <Text style={styles.hint}>{t("stickersHint")}</Text> : null}
 
       <ScrollView

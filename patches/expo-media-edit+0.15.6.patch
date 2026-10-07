@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
-index 68cad71..d7b7736 100644
+index 68cad71..7da07fc 100644
 --- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
 +++ b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
 @@ -4,11 +4,16 @@ import android.content.Context
@@ -73,7 +73,7 @@ index 68cad71..d7b7736 100644
        builder.addItem(item)
        laneCursor = pc.timelineEndMs
      }
-@@ -201,7 +221,7 @@ object ProjectCompiler {
+@@ -201,10 +221,18 @@ object ProjectCompiler {
  
    // MARK: - per-clip EditedMediaItem with optional alpha effects
  
@@ -81,8 +81,20 @@ index 68cad71..d7b7736 100644
 +  private fun buildEditedMediaItem(pc: PlacedClip, renderW: Int, renderH: Int): EditedMediaItem {
      val clip = pc.clip
      val mediaItem = if (clip.isImage) {
-       MediaItem.Builder().setUri(clip.sourceUri).build()
-@@ -226,6 +246,16 @@ object ProjectCompiler {
+-      MediaItem.Builder().setUri(clip.sourceUri).build()
++      // media3 1.8 only sends an item to the image loader when the MediaItem
++      // itself carries imageDurationMs (EditedMediaItem.setDurationUs alone no
++      // longer counts) — without it the JPEG goes to ExoPlayer and the export
++      // fails with "Asset loader error: Source error".
++      val imageMs = clip.imageDurationMs ?: clip.timelineRange.durationMs
++      MediaItem.Builder()
++        .setUri(clip.sourceUri)
++        .setImageDurationMs(imageMs)
++        .build()
+     } else {
+       MediaItem.Builder()
+         .setUri(clip.sourceUri)
+@@ -226,6 +254,16 @@ object ProjectCompiler {
        builder.setRemoveAudio(true)
      }
  
@@ -99,7 +111,7 @@ index 68cad71..d7b7736 100644
      // If this clip is in a crossfade (fade-in head and/or fade-out tail),
      // attach an AlphaScaleEffect whose alphaFor is computed in absolute-
      // timeline-time, then mapped to clip-local time inside the lambda.
-@@ -249,36 +279,77 @@ object ProjectCompiler {
+@@ -249,36 +287,79 @@ object ProjectCompiler {
          }
          a
        }
@@ -134,9 +146,11 @@ index 68cad71..d7b7736 100644
 +    for (audio in clips.sortedBy { it.timelineRange.startMs }) {
 +      val startMs = audio.timelineRange.startMs
 +      if (startMs >= project.durationMs) continue
++      // Stop at the part's own end, and at the video's end when trimToVideo
++      // (same as iOS) — a part never runs on over the next one.
 +      val endMs = if (audio.trimToVideo) {
 +        val maxLen = (project.durationMs - startMs).coerceAtLeast(0)
-+        audio.sourceRange.startMs + maxLen
++        minOf(audio.sourceRange.endMs, audio.sourceRange.startMs + maxLen)
 +      } else audio.sourceRange.endMs
 +      if (endMs <= audio.sourceRange.startMs) continue
 +      val gap = startMs - cursorMs
@@ -195,7 +209,7 @@ index 68cad71..d7b7736 100644
      for (clip in clips) {
        if (clip.isImage) continue
        val retriever = android.media.MediaMetadataRetriever()
-@@ -288,13 +359,13 @@ object ProjectCompiler {
+@@ -288,13 +369,13 @@ object ProjectCompiler {
          var h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt() ?: 0
          val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toInt() ?: 0
          if (rotation == 90 || rotation == 270) { val t = w; w = h; h = t }
@@ -211,6 +225,100 @@ index 68cad71..d7b7736 100644
    }
  }
  
+diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt
+index 8b5cea0..5f56431 100644
+--- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt
++++ b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectExporter.kt
+@@ -1,16 +1,30 @@
+ package expo.modules.mediaedit
+ 
+ import android.content.Context
++import android.graphics.BitmapFactory
++import android.graphics.ColorSpace
++import android.os.Build
+ import android.os.Handler
+ import android.os.Looper
+ import androidx.media3.common.MimeTypes
++import androidx.media3.common.util.Clock
+ import androidx.media3.common.util.UnstableApi
++import androidx.media3.datasource.DataSourceBitmapLoader
++import androidx.media3.datasource.DefaultDataSource
++import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
++import androidx.media3.extractor.DefaultExtractorsFactory
++import androidx.media3.extractor.mp3.Mp3Extractor
++import androidx.media3.extractor.mp4.Mp4Extractor
+ import androidx.media3.transformer.Composition
++import androidx.media3.transformer.DefaultAssetLoaderFactory
++import androidx.media3.transformer.DefaultDecoderFactory
+ import androidx.media3.transformer.ExportException
+ import androidx.media3.transformer.ExportResult
+ import androidx.media3.transformer.ProgressHolder
+ import androidx.media3.transformer.Transformer
++import com.google.common.util.concurrent.MoreExecutors
+ import java.io.File
++import java.util.concurrent.Executors
+ 
+ /**
+  * Runs a media3 [Composition] through [Transformer] to an MP4 on
+@@ -34,6 +48,37 @@ class ProjectExporter(private val context: Context) {
+     }
+   }
+ 
++  /**
++   * Same as media3's default asset loader, except the extractors can seek in
++   * song files without a seek table (CBR MP3 without a Xing / VBRI header,
++   * ADTS AAC, AMR). Without it, a song part that doesn't start at 0:00 —
++   * a ClippingMediaSource on an unseekable file — fails the whole export with
++   * "Asset loader error".
++   */
++  private fun seekableAssetLoaderFactory(): DefaultAssetLoaderFactory {
++    val extractors = DefaultExtractorsFactory()
++      .setMp4ExtractorFlags(Mp4Extractor.FLAG_READ_SEF_DATA)
++      .setConstantBitrateSeekingEnabled(true)
++      .setMp3ExtractorFlags(Mp3Extractor.FLAG_ENABLE_INDEX_SEEKING)
++    val bitmapOptions = BitmapFactory.Options()
++    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
++      bitmapOptions.inPreferredColorSpace = ColorSpace.get(ColorSpace.Named.SRGB)
++    }
++    val bitmapLoader = DataSourceBitmapLoader(
++      MoreExecutors.listeningDecorator(Executors.newSingleThreadExecutor()),
++      DefaultDataSource.Factory(context),
++      bitmapOptions,
++      4096,
++    )
++    return DefaultAssetLoaderFactory(
++      context,
++      DefaultDecoderFactory.Builder(context).build(),
++      Clock.DEFAULT,
++      DefaultMediaSourceFactory(context, extractors),
++      bitmapLoader,
++    )
++  }
++
+   fun export(
+     composition: Composition,
+     outputFile: File,
+@@ -43,6 +88,7 @@ class ProjectExporter(private val context: Context) {
+   ) {
+     mainHandler.post {
+       val t = Transformer.Builder(context)
++        .setAssetLoaderFactory(seekableAssetLoaderFactory())
+         .setVideoMimeType(MimeTypes.VIDEO_H264)
+         .setAudioMimeType(MimeTypes.AUDIO_AAC)
+         .addListener(object : Transformer.Listener {
+@@ -56,7 +102,11 @@ class ProjectExporter(private val context: Context) {
+             stopProgressPolling()
+             transformer = null
+             try { outputFile.delete() } catch (_: Exception) {}
+-            val msg = exportException.message ?: "Unknown export error"
++            val base = exportException.message ?: "Unknown export error"
++            val cause = exportException.cause?.let { c ->
++              c.message?.takeIf { it.isNotBlank() } ?: c.javaClass.simpleName
++            }
++            val msg = if (cause != null && !base.contains(cause)) "$base: $cause" else base
+             val isCancel = msg.contains("cancel", ignoreCase = true)
+             completion(Result.failure(
+               if (isCancel) CancellationException("Export was cancelled")
 diff --git a/node_modules/expo-media-edit/ios/OverlayRenderer.swift b/node_modules/expo-media-edit/ios/OverlayRenderer.swift
 index 329ec6b..a305c31 100644
 --- a/node_modules/expo-media-edit/ios/OverlayRenderer.swift

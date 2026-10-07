@@ -42,6 +42,14 @@ type Props = {
   onRemove: (id: string) => void;
   onMove: (id: string, direction: -1 | 1) => void;
   onReorder: (orderedIds: string[]) => void;
+  /** "light" = dark text for cream screens (step-by-step Reel Studio). */
+  tone?: "dark" | "light";
+  /** Clip shown as picked (outlined). */
+  selectedId?: string | null;
+  /** Overrides the header title; null hides the header row. */
+  title?: string | null;
+  /** Overrides the hint under the strip; null hides it. */
+  hint?: string | null;
 };
 
 const TILE_W = widthScale(56);
@@ -81,7 +89,7 @@ function orderOf(positions: Positions): string[] {
   return Object.keys(positions).sort((a, b) => positions[a] - positions[b]);
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, light: boolean = false) =>
   StyleSheet.create({
     headerRow: {
       flexDirection: "row",
@@ -89,18 +97,18 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
     },
     title: {
-      fontSize: fontSize.size13,
+      fontSize: light ? fontSize.size16 : fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
     },
     total: {
-      fontSize: fontSize.size12,
+      fontSize: light ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       fontVariant: ["tabular-nums"],
     },
     totalFull: {
-      color: theme.orangeBrown,
+      color: light ? theme.orangeBrownText : theme.orangeBrown,
     },
     stripContent: {
       paddingTop: BADGE_OVERHANG + moderateHeightScale(2),
@@ -126,6 +134,10 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.black,
       borderWidth: 1,
       borderColor: theme.white15,
+    },
+    tileSelected: {
+      borderWidth: 3,
+      borderColor: theme.selectCard,
     },
     thumb: {
       ...StyleSheet.absoluteFillObject,
@@ -172,7 +184,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(10),
       borderWidth: 1,
       borderStyle: "dashed",
-      borderColor: theme.white50,
+      borderColor: light ? theme.borderDark : theme.white50,
       alignItems: "center",
       justifyContent: "center",
       gap: moderateHeightScale(4),
@@ -181,14 +193,14 @@ const createStyles = (theme: Theme) =>
       opacity: 0.4,
     },
     addLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
+      fontSize: light ? fontSize.size13 : fontSize.size11,
+      fontFamily: light ? fonts.fontBold : fonts.fontMedium,
+      color: light ? theme.darkGreen : theme.white,
     },
     hint: {
-      fontSize: fontSize.size11,
+      fontSize: light ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       marginTop: moderateHeightScale(4),
     },
   });
@@ -202,6 +214,8 @@ type TileProps = {
   draggingId: SharedValue<string>;
   disabled: boolean;
   canRemove: boolean;
+  /** undefined = the strip has no picked clip (editor overview). */
+  selected?: boolean;
   styles: ReturnType<typeof createStyles>;
   theme: Theme;
   formatMs: (ms: number) => string;
@@ -221,6 +235,7 @@ function ClipTile({
   draggingId,
   disabled,
   canRemove,
+  selected,
   styles,
   theme,
   formatMs,
@@ -301,9 +316,10 @@ function ClipTile({
     <Animated.View style={[styles.tileWrap, animatedStyle]}>
       <GestureDetector gesture={gesture}>
         <View
-          style={styles.tile}
+          style={[styles.tile, selected && styles.tileSelected]}
           accessible
           accessibilityRole="button"
+          accessibilityState={selected === undefined ? undefined : { selected }}
           accessibilityLabel={[
             t("clipLabel", { index: index + 1, count }),
             formatMs(clipLengthMs(clip)),
@@ -385,10 +401,15 @@ export default function ClipTimeline({
   onRemove,
   onMove,
   onReorder,
+  tone = "dark",
+  selectedId = null,
+  title,
+  hint,
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const light = tone === "light";
+  const styles = useMemo(() => createStyles(theme, light), [theme, light]);
   const { t } = useTranslation();
   const scrollRef = useRef<ScrollView>(null);
   const prevCountRef = useRef(clips.length);
@@ -430,8 +451,9 @@ export default function ClipTimeline({
 
   return (
     <View>
+      {title === null ? null : (
       <View style={styles.headerRow}>
-        <Text style={styles.title}>{t("trimVideo")}</Text>
+        <Text style={styles.title}>{title ?? t("trimVideo")}</Text>
         <Text
           style={[styles.total, totalMs >= maxMs - 250 && styles.totalFull]}
           accessibilityLabel={t("clipsTotalA11y", {
@@ -442,6 +464,7 @@ export default function ClipTimeline({
           {formatMs(totalMs)} / {formatMs(maxMs)}
         </Text>
       </View>
+      )}
 
       <ScrollView
         ref={scrollRef}
@@ -463,6 +486,7 @@ export default function ClipTimeline({
               draggingId={draggingId}
               disabled={disabled}
               canRemove={canRemove}
+              selected={selectedId == null ? undefined : clip.id === selectedId}
               styles={styles}
               theme={theme}
               formatMs={formatMs}
@@ -487,15 +511,20 @@ export default function ClipTimeline({
           <MaterialIcons
             name={adding ? "hourglass-empty" : "add"}
             size={moderateWidthScale(24)}
-            color={theme.white}
+            color={light ? theme.darkGreen : theme.white}
           />
           <Text style={styles.addLabel}>{t("addClipShort")}</Text>
         </TouchableOpacity>
       </ScrollView>
 
-      <Text style={styles.hint}>
-        {clips.length > 1 ? t("clipsOverviewHint") : t("clipsOverviewHintSingle")}
-      </Text>
+      {hint === null ? null : (
+        <Text style={styles.hint}>
+          {hint ??
+            (clips.length > 1
+              ? t("clipsOverviewHint")
+              : t("clipsOverviewHintSingle"))}
+        </Text>
+      )}
     </View>
   );
 }

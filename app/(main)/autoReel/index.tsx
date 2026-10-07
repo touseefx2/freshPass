@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import {
@@ -14,18 +17,16 @@ import {
   useRouter,
 } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { useEvent } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
-import Button from "@/src/components/button";
-import StackHeader from "@/src/components/StackHeader";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
 import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import ReelVideoShareSheet from "@/src/components/ReelVideoShareSheet";
-// Same look as the AI Results screen (download row, player, video details)
-import { createStyles as createResultStyles } from "../aiResults/styles";
 import {
   getAutoReel,
   publishAutoReel,
@@ -33,6 +34,7 @@ import {
 } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
 import {
+  heightScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -43,19 +45,35 @@ import {
   canChangeReel,
   isAutoReelInProgress,
   type AutoReel,
-  type AutoReelStatus,
   autoReelVideo,
 } from "@/src/types/reels";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import FlowButton from "@/src/components/reelFlow/flowButton";
+import ProgressTracker, {
+  type TrackerStepState,
+} from "@/src/components/reelFlow/progressTracker";
+import {
+  FlowCard,
+  FlowTitle,
+  InfoNote,
+  OptionRow,
+} from "@/src/components/reelFlow/flowParts";
+import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
+import ProductPickerSheet, {
+  useInventoryProducts,
+} from "@/src/components/reelFlow/productPickerSheet";
+
+/**
+ * AI Auto Reel after it's started (from the AI auto reel steps, a push or
+ * AI Requests): "Creating your reel" → "Your reel is ready" (preview) →
+ * "Publish your reel" (caption, product, publish, download / share).
+ * These continue the flow, so no "Step N of M" here.
+ */
 
 const POLL_INTERVAL_MS = 5000;
 const ELAPSED_HIDE_AFTER_SECONDS = 60 * 60;
-
-const STEPS: { status: AutoReelStatus; labelKey: string }[] = [
-  { status: "pending", labelKey: "autoReelStepQueued" },
-  { status: "analyzing", labelKey: "autoReelStepAnalyzing" },
-  { status: "rendering", labelKey: "autoReelStepRendering" },
-  { status: "ready", labelKey: "autoReelStepReady" },
-];
+const CAPTION_MAX = 2200;
 
 const RENDER_STATUS_KEYS: Record<string, string> = {
   queued: "autoReelRenderQueued",
@@ -82,272 +100,313 @@ function fieldError(error: any, field: string): string | null {
   return null;
 }
 
+function formatClock(seconds: number | null | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds)) return "";
+  const total = Math.max(0, Math.round(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
       backgroundColor: theme.background,
     },
-    body: {
-      flexGrow: 1,
+    flex: { flex: 1 },
+    content: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(18),
-      paddingBottom: moderateHeightScale(24),
+      paddingTop: moderateHeightScale(10),
+      paddingBottom: moderateHeightScale(28),
+      gap: moderateHeightScale(18),
     },
     loadingWrap: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
     },
-    cardShadow: {
-      borderRadius: moderateWidthScale(18),
-      backgroundColor: theme.background,
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: moderateHeightScale(3) },
-      shadowOpacity: 0.1,
-      shadowRadius: moderateWidthScale(8),
-      elevation: 3,
-      marginBottom: moderateHeightScale(14),
+    elapsed: {
+      marginTop: -moderateHeightScale(8),
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      fontVariant: ["tabular-nums"],
     },
-    card: {
-      borderRadius: moderateWidthScale(18),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(16),
-      paddingVertical: moderateHeightScale(18),
+    templateRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(14),
+      padding: moderateWidthScale(14),
+    },
+    templateThumb: {
+      width: widthScale(72),
+      height: widthScale(72),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.darkGreen,
       overflow: "hidden",
-    },
-    heroIcon: {
-      alignSelf: "center",
-      width: widthScale(64),
-      height: widthScale(64),
-      borderRadius: widthScale(32),
-      backgroundColor: theme.lightGreen07,
-      borderWidth: 1,
-      borderColor: theme.lightGreen015,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: moderateHeightScale(12),
     },
-    heroIconError: {
-      backgroundColor: theme.lightRed,
-      borderColor: theme.lightRedBorder,
-    },
-    statusTitle: {
+    templateImage: { width: "100%", height: "100%" },
+    templateText: { flex: 1, minWidth: 0, gap: moderateHeightScale(3) },
+    templateName: {
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      textAlign: "center",
     },
-    statusSubtitle: {
-      fontSize: fontSize.size13,
+    templateSub: {
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-      textAlign: "center",
-      lineHeight: fontSize.size18,
     },
-    templatePill: {
-      alignSelf: "center",
+    playerArea: {
+      alignItems: "center",
+    },
+    playerCard: {
+      borderRadius: moderateWidthScale(24),
+      overflow: "hidden",
+      backgroundColor: theme.black,
+    },
+    poster: {
+      ...StyleSheet.absoluteFillObject,
+    },
+    playOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    playCircle: {
+      width: widthScale(78),
+      height: widthScale(78),
+      borderRadius: widthScale(39),
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    playerBar: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(4),
-      marginTop: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(4),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.lightGreen07,
+      gap: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
     },
-    templatePillText: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
-    elapsed: {
-      marginTop: moderateHeightScale(6),
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      textAlign: "center",
+    playerTime: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
       fontVariant: ["tabular-nums"],
     },
-    stepsTitle: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textTransform: "uppercase",
-      letterSpacing: 0.4,
-      marginBottom: moderateHeightScale(8),
+    playerTrack: {
+      flex: 1,
+      height: heightScale(4),
+      borderRadius: heightScale(2),
+      backgroundColor: theme.white50,
+      overflow: "hidden",
     },
-    stepRow: {
+    playerFill: {
+      height: "100%",
+      backgroundColor: theme.white,
+    },
+    rowButtons: {
       flexDirection: "row",
       gap: moderateWidthScale(12),
     },
-    stepRail: {
+    rowButton: { flex: 1 },
+    reelCard: {
+      flexDirection: "row",
       alignItems: "center",
-      width: moderateWidthScale(24),
+      gap: moderateWidthScale(14),
+      padding: moderateWidthScale(12),
     },
-    stepDot: {
-      width: moderateWidthScale(24),
-      height: moderateWidthScale(24),
+    reelThumb: {
+      width: widthScale(72),
+      height: widthScale(90),
       borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.darkGreen,
+      overflow: "hidden",
       alignItems: "center",
       justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.lightGreen4,
-      backgroundColor: theme.white,
     },
-    stepDotActive: {
-      borderColor: theme.buttonBack,
+    sectionDivider: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+    },
+    dividerLine: {
+      flex: 1,
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.borderMedium,
+    },
+    dividerText: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    publishedPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
+      minHeight: heightScale(58),
+      borderRadius: moderateWidthScale(16),
       backgroundColor: theme.lightGreen07,
-    },
-    stepDotDone: {
+      borderWidth: 1.5,
       borderColor: theme.buttonBack,
-      backgroundColor: theme.buttonBack,
     },
-    stepLine: {
-      flex: 1,
-      width: 2,
-      minHeight: moderateHeightScale(14),
-      backgroundColor: theme.lightGreen015,
-    },
-    stepLineDone: {
-      backgroundColor: theme.buttonBack,
-    },
-    stepBody: {
-      flex: 1,
-      paddingTop: moderateHeightScale(3),
-      paddingBottom: moderateHeightScale(14),
-    },
-    stepText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-    },
-    stepTextActive: {
+    publishedText: {
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    stepSub: {
-      marginTop: moderateHeightScale(2),
-      fontSize: fontSize.size11,
+    smallNote: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
-    },
-    note: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      gap: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
-      marginBottom: moderateHeightScale(10),
-    },
-    noteError: {
-      backgroundColor: theme.lightRed,
-      borderColor: theme.lightRedBorder,
-    },
-    noteText: {
-      flex: 1,
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      lineHeight: fontSize.size17,
+      textAlign: "center",
+      lineHeight: fontSize.size20,
     },
     actions: {
-      gap: moderateHeightScale(10),
-      marginTop: moderateHeightScale(8),
-    },
-    secondaryButton: {
-      flexDirection: "row",
-      gap: moderateWidthScale(6),
-      backgroundColor: theme.white,
-      borderWidth: 1,
-      borderColor: theme.buttonBack,
-      borderRadius: moderateWidthScale(12),
-      height: moderateHeightScale(48),
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    secondaryButtonText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      gap: moderateHeightScale(12),
     },
   });
 
-type ResultStyles = ReturnType<typeof createResultStyles>;
+type Styles = ReturnType<typeof createStyles>;
 
-function ResultVideoPlayerInner({
+/** Plays the finished reel once tapped (poster + play button before that). */
+function ReelPlayer({
   uri,
-  rs,
+  ratio,
+  posterUri,
+  styles,
   theme,
 }: {
   uri: string;
-  rs: ResultStyles;
+  ratio: number;
+  posterUri: string | null;
+  styles: Styles;
   theme: Theme;
 }) {
   const { t } = useTranslation();
-  const [ready, setReady] = useState(false);
-  const player = useVideoPlayer(uri, (p) => {
-    p.loop = false;
-  });
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const [started, setStarted] = useState(false);
+  const maxW = windowWidth - moderateWidthScale(40);
+  const maxH = windowHeight * 0.5;
+  const r = ratio > 0 ? ratio : 9 / 16;
+  const height = Math.min(maxH, maxW / r);
+  const width = height * r;
+
   return (
-    <View style={rs.videoContainer}>
-      <View style={StyleSheet.absoluteFill}>
-        <VideoView
-          player={player}
-          style={rs.video}
-          contentFit="contain"
-          nativeControls
-          onFirstFrameRender={async () => {
-            if (!ready) {
-              await player.play();
-              setTimeout(() => setReady(true), 200);
-            }
-          }}
-        />
+    <View style={styles.playerArea}>
+      <View style={[styles.playerCard, { width, height }]}>
+        {started ? (
+          <StartedPlayer uri={uri} styles={styles} theme={theme} />
+        ) : (
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setStarted(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("play")}
+          >
+            {posterUri ? (
+              <Image
+                source={{ uri: posterUri }}
+                style={styles.poster}
+                contentFit="cover"
+              />
+            ) : null}
+            <View style={styles.playOverlay}>
+              <View style={styles.playCircle}>
+                <MaterialIcons
+                  name="play-arrow"
+                  size={moderateWidthScale(46)}
+                  color={theme.white}
+                />
+              </View>
+            </View>
+          </Pressable>
+        )}
       </View>
-      {!ready ? (
-        <View style={rs.videoLoadingOverlay}>
-          <ActivityIndicator size="small" color={theme.white} />
-          <Text style={rs.videoLoadingText}>{t("loading")}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
 
-/** Poster with a play button until tapped — same as AI Results */
-function ResultVideoPlayer({
+function StartedPlayer({
   uri,
-  rs,
+  styles,
   theme,
 }: {
   uri: string;
-  rs: ResultStyles;
+  styles: Styles;
   theme: Theme;
 }) {
   const { t } = useTranslation();
-  const [show, setShow] = useState(false);
-  if (show) return <ResultVideoPlayerInner uri={uri} rs={rs} theme={theme} />;
+  const [timeMs, setTimeMs] = useState(0);
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.timeUpdateEventInterval = 0.25;
+    p.play();
+  });
+  const { isPlaying } = useEvent(player, "playingChange", {
+    isPlaying: player.playing,
+  });
+  const { status } = useEvent(player, "statusChange", {
+    status: player.status,
+  });
+  useEffect(() => {
+    const sub = player.addListener("timeUpdate", ({ currentTime }) => {
+      setTimeMs(Math.max(0, currentTime * 1000));
+    });
+    return () => sub.remove();
+  }, [player]);
+  const durationMs = Math.max(0, (player.duration || 0) * 1000);
+  const progress = durationMs > 0 ? Math.min(1, timeMs / durationMs) : 0;
+
   return (
-    <TouchableOpacity
-      style={rs.videoPlaceholder}
-      onPress={() => setShow(true)}
-      activeOpacity={0.8}
+    <Pressable
+      style={StyleSheet.absoluteFill}
+      onPress={() => (isPlaying ? player.pause() : player.play())}
       accessibilityRole="button"
-      accessibilityLabel={t("viewReel")}
+      accessibilityLabel={isPlaying ? t("pause") : t("play")}
     >
-      <Feather
-        name="play-circle"
-        size={moderateWidthScale(72)}
-        color={theme.white}
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        contentFit="contain"
+        nativeControls={false}
       />
-    </TouchableOpacity>
+      {status === "loading" ? (
+        <View style={styles.playOverlay} pointerEvents="none">
+          <ActivityIndicator color={theme.white} />
+        </View>
+      ) : !isPlaying ? (
+        <View style={styles.playOverlay} pointerEvents="none">
+          <View style={styles.playCircle}>
+            <MaterialIcons
+              name="play-arrow"
+              size={moderateWidthScale(46)}
+              color={theme.white}
+            />
+          </View>
+        </View>
+      ) : null}
+      <View style={styles.playerBar} pointerEvents="none">
+        <MaterialIcons
+          name={isPlaying ? "pause" : "play-arrow"}
+          size={moderateWidthScale(22)}
+          color={theme.white}
+        />
+        <Text style={styles.playerTime}>
+          {formatClock(timeMs / 1000)} / {formatClock(durationMs / 1000)}
+        </Text>
+        <View style={styles.playerTrack}>
+          <View style={[styles.playerFill, { width: `${progress * 100}%` }]} />
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
@@ -355,29 +414,51 @@ export default function AutoReelScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const rs = useMemo(() => createResultStyles(theme), [theme]);
   const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const { t } = useTranslation();
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
 
-  const params = useLocalSearchParams<{ autoReelId?: string }>();
+  const params = useLocalSearchParams<{
+    autoReelId?: string;
+    /** Opened right after "Make my reel" (template image / caption known). */
+    fromFlow?: string;
+    templateImage?: string;
+    caption?: string;
+  }>();
   const autoReelId = params.autoReelId ? Number(params.autoReelId) : null;
 
   const [autoReel, setAutoReel] = useState<AutoReel | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
   const userRole = useAppSelector((s) => s.user.userRole);
+  // Staff have no product inventory yet — hidden until the backend supports it
+  const canLinkProduct = userRole !== "staff";
   const [publishing, setPublishing] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
+  /** Ready reel: preview first, then the publish screen. */
+  const [view, setView] = useState<"status" | "publish">("status");
+  const [caption, setCaption] = useState(params.caption ?? "");
+  const captionTouchedRef = useRef(!!params.caption);
+  const captionInputRef = useRef<TextInput>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+  const [productTag, setProductTag] = useState("");
+  const [productSheetOpen, setProductSheetOpen] = useState(false);
   // created_at stays the original time after a retry — time the retry locally
   const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
 
   const status = autoReel?.status ?? null;
   const inProgress = autoReel == null || isAutoReelInProgress(status);
+
+  // Fill the caption from the reel's draft once (unless typed / handed in)
+  const draftCaption = autoReel?.reel?.caption ?? null;
+  useEffect(() => {
+    if (captionTouchedRef.current || !draftCaption) return;
+    captionTouchedRef.current = true;
+    setCaption(draftCaption);
+  }, [draftCaption]);
 
   // Elapsed time since the request — makes the 1–4 minute wait feel accounted for
   const [now, setNow] = useState(() => Date.now());
@@ -436,22 +517,32 @@ export default function AutoReelScreen() {
     }, [autoReelId, fetchOnce, inProgress, loadError]),
   );
 
-  // Robot icon: back to the AI Tools screen — pop to it when it's in the stack
-  // (Generate Reel / AI Requests), otherwise open it (e.g. from a push)
+  /** Pop back to a screen already in the stack, or open it in place of this one. */
+  const goToRoute = useCallback(
+    (namePrefix: string, pathname: string, routeParams: Record<string, string>) => {
+      const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
+      const found = routes.findLastIndex((r) => r.name.startsWith(namePrefix));
+      if (found !== -1 && found < index) {
+        router.dismiss(index - found);
+        return;
+      }
+      router.replace({ pathname: pathname as any, params: routeParams });
+    },
+    [navigation, router],
+  );
+
+  // Robot icon: back to the AI Tools screen
   const handleRobotPress = useCallback(() => {
-    const { routes, index } = navigation.getState() ?? { routes: [], index: 0 };
-    const toolListIndex = routes.findLastIndex((r) =>
-      r.name.startsWith("aiTools/toolList"),
-    );
-    if (toolListIndex !== -1 && toolListIndex < index) {
-      router.dismiss(index - toolListIndex);
-      return;
-    }
-    router.replace({
-      pathname: "/(main)/aiTools/toolList" as any,
-      params: { mode: "aiTools" },
+    goToRoute("aiTools/toolList", "/(main)/aiTools/toolList", { mode: "aiTools" });
+  }, [goToRoute]);
+
+  /** "Go to My Reels": the AI Requests → Reels list with this one highlighted. */
+  const handleGoToMyReels = useCallback(() => {
+    goToRoute("aiRequests", "/(main)/aiRequests", {
+      tab: "reels",
+      ...(autoReelId ? { highlightAutoReelId: String(autoReelId) } : {}),
     });
-  }, [navigation, router]);
+  }, [autoReelId, goToRoute]);
 
   const handleRetry = useCallback(async () => {
     if (!autoReelId || retrying) return;
@@ -474,6 +565,7 @@ export default function AutoReelScreen() {
     }
   }, [autoReelId, fetchOnce, retrying, showBanner, t]);
 
+  /** Same uploaded video, another template ("Change style" / "Try another template"). */
   const handleAnotherTemplate = useCallback(() => {
     router.replace({
       pathname: "/(main)/reelTemplates" as any,
@@ -487,12 +579,19 @@ export default function AutoReelScreen() {
     router.replace("/(main)/reelTemplates" as any);
   }, [router]);
 
-  // No draft is made any more: publishing creates the reel from the AI result
+  // Publishing makes the reel from the AI result. Fields left out keep the
+  // values chosen when the auto reel was started.
   const handlePublish = useCallback(async () => {
     if (!autoReelId || publishing) return;
     setPublishing(true);
     try {
-      const data = await publishAutoReel(autoReelId);
+      const trimmed = caption.trim();
+      const data = await publishAutoReel(autoReelId, {
+        ...(trimmed ? { caption: trimmed } : {}),
+        ...(selectedProductId != null
+          ? { product_id: selectedProductId, product_tag: productTag || null }
+          : {}),
+      });
       setAutoReel(data);
       showBanner(t("success"), t("reelPublished"), "success", 2500);
     } catch (error: any) {
@@ -502,50 +601,104 @@ export default function AutoReelScreen() {
         fieldError(error, "caption") ||
         fieldError(error, "category_id") ||
         fieldError(error, "service_id") ||
+        fieldError(error, "product_id") ||
         error?.message ||
         t("failedToPublishReel");
       showBanner(t("error"), message, "error", 4000);
     } finally {
       setPublishing(false);
     }
-  }, [autoReelId, publishing, showBanner, t]);
-
+  }, [autoReelId, caption, productTag, publishing, selectedProductId, showBanner, t]);
 
   // Staff may only retry / publish / edit / delete what they started (403 otherwise)
   const canChange = canChangeReel(autoReel, userRole);
   const reelStatus = autoReel?.reel?.status ?? null;
-  const isDraft = reelStatus === "draft";
   const isPublished = reelStatus === "published";
+  const isRemoved = reelStatus === "removed";
 
+  const products = useInventoryProducts(canLinkProduct && view === "publish");
+  const selectedProduct =
+    selectedProductId == null
+      ? null
+      : (products.products.find((p) => Number(p.id) === selectedProductId) ??
+        null);
 
   const templateName = autoReel
     ? autoReel.template?.name || t("autoReelTemplateRemoved")
     : null;
+  const video = autoReelVideo(autoReel);
+  const videoUrl = video?.playback_url ?? null;
+  const posterUri = video?.thumbnail_url ?? params.templateImage ?? null;
+  const durationSeconds = autoReel?.total_seconds ?? video?.duration_seconds ?? null;
+  const ratio =
+    video?.width && video?.height ? video.width / video.height : 9 / 16;
+  const downloading = !!videoUrl && downloadingUrl === videoUrl;
+  const canPublish = canChange && !isPublished && !isRemoved && !!videoUrl;
+
+  // Header back: Publish → preview, otherwise leave.
+  const onHeaderBack = useCallback(() => {
+    if (view === "publish") {
+      setView("status");
+      return;
+    }
+    if (router.canGoBack()) router.back();
+    else router.replace({ pathname: "/(main)/aiTools/toolList" as any, params: { mode: "aiTools" } });
+  }, [router, view]);
+
+  // Hardware back on the Publish screen → back to the preview
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
+      if (viewRef.current !== "publish") return;
+      // Only back presses — "Go to My Reels" / robot icon (POP / REPLACE) leave
+      if (event?.data?.action?.type !== "GO_BACK") return;
+      event.preventDefault();
+      setView("status");
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const renderTemplateCard = (subtitle?: string | null) =>
+    templateName ? (
+      <FlowCard>
+        <View style={styles.templateRow}>
+          <View style={styles.templateThumb}>
+            {params.templateImage ? (
+              <Image
+                source={{ uri: params.templateImage }}
+                style={styles.templateImage}
+                contentFit="cover"
+              />
+            ) : (
+              <MaterialIcons
+                name={
+                  autoReel?.template?.kind === "haircut"
+                    ? "content-cut"
+                    : "movie-filter"
+                }
+                size={moderateWidthScale(28)}
+                color={theme.white70}
+              />
+            )}
+          </View>
+          <View style={styles.templateText}>
+            <Text style={styles.templateName} numberOfLines={1}>
+              {templateName}
+            </Text>
+            {subtitle ? (
+              <Text style={styles.templateSub} numberOfLines={2}>
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+      </FlowCard>
+    ) : null;
 
   const renderViewOnlyNote = () => (
-    <View style={styles.note}>
-      <MaterialIcons
-        name="lock-outline"
-        size={moderateWidthScale(16)}
-        color={theme.buttonBack}
-      />
-      <Text style={styles.noteText}>{t("autoReelViewOnlyHint")}</Text>
-    </View>
+    <InfoNote icon="lock-outline" text={t("autoReelViewOnlyHint")} />
   );
-
-  const renderTemplatePill = () =>
-    templateName ? (
-      <View style={styles.templatePill}>
-        <MaterialIcons
-          name="movie-filter"
-          size={moderateWidthScale(12)}
-          color={theme.buttonBack}
-        />
-        <Text style={styles.templatePillText} numberOfLines={1}>
-          {templateName}
-        </Text>
-      </View>
-    ) : null;
 
   const renderProgress = () => {
     if (!autoReel) {
@@ -555,113 +708,69 @@ export default function AutoReelScreen() {
         </View>
       );
     }
-    const activeIndex = Math.max(
-      0,
-      STEPS.findIndex((s) => s.status === status),
-    );
+    const rendering = status === "rendering";
+    const highlights: TrackerStepState = rendering ? "done" : "active";
+    const building: TrackerStepState = rendering ? "active" : "pending";
     const renderKey = autoReel.render_status
       ? RENDER_STATUS_KEYS[autoReel.render_status]
       : null;
     return (
       <>
-        <View style={styles.cardShadow}>
-          <View style={styles.card}>
-            <View style={styles.heroIcon}>
-              <ActivityIndicator size="small" color={theme.buttonBack} />
-            </View>
-            <Text style={styles.statusTitle} accessibilityLiveRegion="polite">
-              {status === "analyzing"
-                ? t("autoReelStatusAnalyzing")
-                : status === "rendering"
-                  ? t("autoReelStatusRendering")
-                  : t("autoReelStatusPending")}
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <FlowTitle
+            title={t("flowCreatingTitle")}
+            subtitle={t("flowCreatingSubtitle")}
+          />
+          {elapsedLabel ? (
+            <Text style={styles.elapsed}>
+              {t("autoReelElapsed", { time: elapsedLabel })}
             </Text>
-            {renderTemplatePill()}
-            {elapsedLabel ? (
-              <Text style={styles.elapsed}>
-                {t("autoReelElapsed", { time: elapsedLabel })}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={styles.cardShadow}>
-          <View style={styles.card}>
-            <Text style={styles.stepsTitle}>{t("autoReelProgress")}</Text>
-            {STEPS.map((step, index) => {
-              const done = index < activeIndex;
-              const active = index === activeIndex;
-              const last = index === STEPS.length - 1;
-              return (
-                <View
-                  key={step.status}
-                  style={styles.stepRow}
-                  accessible
-                  accessibilityLabel={`${t(step.labelKey)}${
-                    done ? `, ${t("completed")}` : ""
-                  }`}
-                  accessibilityState={{ busy: active }}
-                >
-                  <View style={styles.stepRail}>
-                    <View
-                      style={[
-                        styles.stepDot,
-                        active && styles.stepDotActive,
-                        done && styles.stepDotDone,
-                      ]}
-                    >
-                      {done ? (
-                        <MaterialIcons
-                          name="check"
-                          size={moderateWidthScale(14)}
-                          color={theme.white}
-                        />
-                      ) : active ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={theme.buttonBack}
-                          style={{ transform: [{ scale: 0.7 }] }}
-                        />
-                      ) : null}
-                    </View>
-                    {!last ? (
-                      <View
-                        style={[styles.stepLine, done && styles.stepLineDone]}
-                      />
-                    ) : null}
-                  </View>
-                  <View style={[styles.stepBody, last && { paddingBottom: 0 }]}>
-                    <Text
-                      style={[styles.stepText, active && styles.stepTextActive]}
-                    >
-                      {t(step.labelKey)}
-                    </Text>
-                    {active && step.status === "rendering" && renderKey ? (
-                      <Text style={styles.stepSub}>{t(renderKey)}</Text>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.note}>
-          <MaterialIcons
-            name="schedule"
-            size={moderateWidthScale(16)}
-            color={theme.buttonBack}
+          ) : null}
+          <ProgressTracker
+            steps={[
+              {
+                key: "upload",
+                title: t("flowUploadComplete"),
+                subtitle: t("flowUploadCompleteSub"),
+                state: "done",
+              },
+              {
+                key: "highlights",
+                title: t("flowSelectingHighlights"),
+                subtitle:
+                  status === "pending"
+                    ? t("autoReelStatusPending")
+                    : t("flowSelectingHighlightsSub"),
+                state: highlights,
+              },
+              {
+                key: "build",
+                title: t("flowBuildingReel"),
+                subtitle:
+                  rendering && renderKey ? t(renderKey) : t("flowBuildingReelSub"),
+                state: building,
+              },
+            ]}
           />
-          <Text style={styles.noteText}>{t("autoReelTimeHint")}</Text>
-        </View>
-        <View style={styles.note}>
-          <MaterialIcons
-            name="notifications-none"
-            size={moderateWidthScale(16)}
-            color={theme.buttonBack}
+          {renderTemplateCard(t("autoReelReqLength"))}
+          <InfoNote
+            tone="warm"
+            icon="notifications-none"
+            title={t("flowVideoUploadedTitle")}
+            text={t("autoReelInProgressHint")}
           />
-          <Text style={styles.noteText}>{t("autoReelInProgressHint")}</Text>
-        </View>
+        </ScrollView>
+        <FlowFooter
+          primary={{
+            label: t("flowGoToMyReels"),
+            onPress: handleGoToMyReels,
+            trailingIcon: "arrow-forward",
+          }}
+        />
       </>
     );
   };
@@ -678,349 +787,329 @@ export default function AutoReelScreen() {
       code === "not_found" && !!autoReel?.source_media_asset_id;
 
     return (
-      <>
-        <View style={styles.cardShadow}>
-          <View style={styles.card}>
-            <View style={[styles.heroIcon, styles.heroIconError]}>
-              <MaterialIcons
-                name="error-outline"
-                size={moderateWidthScale(30)}
-                color={theme.red}
-              />
-            </View>
-            <Text style={styles.statusTitle} accessibilityRole="alert">
-              {t("autoReelFailedTitle")}
-            </Text>
-            {renderTemplatePill()}
-          </View>
-        </View>
-
-        <View style={[styles.note, styles.noteError]}>
-          <MaterialIcons
-            name="info-outline"
-            size={moderateWidthScale(16)}
-            color={theme.red}
-          />
-          <Text style={styles.noteText}>
-            {autoReel?.error_message || t("generationFailedHint")}
-          </Text>
-        </View>
-
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <FlowTitle title={t("autoReelFailedTitle")} />
+        {renderTemplateCard()}
+        <InfoNote
+          tone="error"
+          icon="error-outline"
+          text={autoReel?.error_message || t("generationFailedHint")}
+        />
         {!canChange ? renderViewOnlyNote() : null}
-
         <View style={styles.actions}>
           {isServerFault ? (
-            <Button
-              title={t("tryAgain")}
-              onPress={handleRetry}
+            <FlowButton
+              label={t("tryAgain")}
+              icon="refresh"
+              onPress={() => void handleRetry()}
               loading={retrying}
-              disabled={retrying}
             />
           ) : offerAnotherTemplate ? (
-            <Button
-              title={t("autoReelTryAnotherTemplate")}
+            <FlowButton
+              label={t("autoReelTryAnotherTemplate")}
+              icon="auto-awesome"
               onPress={handleAnotherTemplate}
             />
           ) : (
-            <Button
-              title={t("autoReelUploadAnotherVideo")}
+            <FlowButton
+              label={t("autoReelUploadAnotherVideo")}
+              icon="video-call"
               onPress={handleNewVideo}
             />
           )}
           {offerAnotherTemplate ? (
-            <TouchableOpacity
-              style={styles.secondaryButton}
+            <FlowButton
+              variant="outline"
+              label={t("autoReelUploadAnotherVideo")}
+              icon="video-call"
               onPress={handleNewVideo}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-            >
-              <MaterialIcons
-                name="video-call"
-                size={moderateWidthScale(18)}
-                color={theme.darkGreen}
-              />
-              <Text style={styles.secondaryButtonText}>
-                {t("autoReelUploadAnotherVideo")}
-              </Text>
-            </TouchableOpacity>
+            />
           ) : null}
           {offerSecondaryRetry ? (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={handleRetry}
-              disabled={retrying}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: retrying, busy: retrying }}
-            >
-              {retrying ? (
-                <ActivityIndicator size="small" color={theme.darkGreen} />
-              ) : (
-                <MaterialIcons
-                  name="refresh"
-                  size={moderateWidthScale(18)}
-                  color={theme.darkGreen}
-                />
-              )}
-              <Text style={styles.secondaryButtonText}>{t("tryAgain")}</Text>
-            </TouchableOpacity>
+            <FlowButton
+              variant="outline"
+              label={t("tryAgain")}
+              icon="refresh"
+              onPress={() => void handleRetry()}
+              loading={retrying}
+            />
           ) : null}
         </View>
-      </>
+      </ScrollView>
     );
   };
 
   const renderReady = () => {
-    const video = autoReelVideo(autoReel);
-    const videoUrl = video?.playback_url ?? null;
     const isHaircut = autoReel?.template?.kind === "haircut";
-    const isRemoved = reelStatus === "removed";
-    // Not published yet (no reel), or its reel was unpublished back to draft
-    const canPublish = canChange && !isPublished && !isRemoved && !!videoUrl;
-    const downloading = !!videoUrl && downloadingUrl === videoUrl;
-    const statusLabel = isPublished
-      ? t("published")
-      : isRemoved
-        ? t("removed")
-        : isDraft
-          ? t("draft")
-          : t("autoReelNotPublished");
-
+    const changeStyleAvailable =
+      canChange && !!autoReel?.source_media_asset_id && !isPublished;
     return (
-      <View>
-        {videoUrl ? (
-          <View style={rs.reelActionsBlock}>
-            <View style={rs.headerContainer}>
-              <TouchableOpacity
-                style={rs.downloadButtonPrimary}
-                onPress={() => downloadMedia(videoUrl, { isVideo: true })}
-                disabled={downloading}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={t("download")}
-              >
-                {downloading ? (
-                  <ActivityIndicator size="small" color={theme.white} />
-                ) : (
-                  <>
-                    <Feather
-                      name="download"
-                      size={moderateWidthScale(16)}
-                      color={theme.white}
-                    />
-                    <Text style={rs.downloadButtonPrimaryText} numberOfLines={1}>
-                      {t("download")}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              {/* Publish the draft (only the creator can; published shows its state) */}
-              {canPublish ? (
-                <TouchableOpacity
-                  style={rs.publishReelChip}
-                  onPress={handlePublish}
-                  disabled={publishing}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("publish")}
-                >
-                  {publishing ? (
-                    <ActivityIndicator size="small" color={theme.buttonBack} />
-                  ) : (
-                    <>
-                      <MaterialIcons
-                        name="video-library"
-                        size={moderateWidthScale(16)}
-                        color={theme.buttonBack}
-                      />
-                      <Text style={rs.publishReelChipText} numberOfLines={1}>
-                        {t("publishReel")}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              ) : isPublished ? (
-                <View
-                  style={[rs.publishReelChip, { opacity: 0.7 }]}
-                  accessibilityLabel={t("published")}
-                >
-                  <MaterialIcons
-                    name="check-circle"
-                    size={moderateWidthScale(16)}
-                    color={theme.buttonBack}
-                  />
-                  <Text style={rs.publishReelChipText} numberOfLines={1}>
-                    {t("published")}
-                  </Text>
-                </View>
-              ) : null}
-              {/* Same share as AI Results: in-app contact or native share sheet */}
-              <TouchableOpacity
-                style={rs.reelShareIconButton}
-                onPress={() => setShareVisible(true)}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={t("share")}
-              >
-                <MaterialIcons
-                  name="share"
-                  size={moderateWidthScale(20)}
-                  color={theme.white}
+      <>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <FlowTitle
+            title={t("flowReadyTitle")}
+            subtitle={t("flowReadySubtitle")}
+          />
+          {videoUrl ? (
+            <ReelPlayer
+              uri={videoUrl}
+              ratio={ratio}
+              posterUri={posterUri}
+              styles={styles}
+              theme={theme}
+            />
+          ) : null}
+          {canPublish ? (
+            <View style={styles.rowButtons}>
+              <FlowButton
+                variant="outline"
+                compact
+                icon="edit"
+                label={t("flowEditCaption")}
+                onPress={() => {
+                  setView("publish");
+                  setTimeout(() => captionInputRef.current?.focus(), 350);
+                }}
+                style={styles.rowButton}
+              />
+              {changeStyleAvailable ? (
+                <FlowButton
+                  variant="outline"
+                  compact
+                  icon="auto-awesome"
+                  label={t("flowChangeStyle")}
+                  onPress={handleAnotherTemplate}
+                  style={styles.rowButton}
                 />
-              </TouchableOpacity>
+              ) : null}
             </View>
-          </View>
-        ) : null}
-
-        {videoUrl ? (
-          <ResultVideoPlayer uri={videoUrl} rs={rs} theme={theme} />
-        ) : null}
-
-        <View style={rs.section}>
-          <Text style={rs.sectionTitleUppercase}>{t("videoDetails")}</Text>
-          <View style={rs.videoDetailsGrid}>
-            {(autoReel?.total_seconds ?? video?.duration_seconds) != null ? (
-              <View style={rs.videoDetailCard}>
-                <View style={rs.videoDetailIconContainer}>
-                  <MaterialIcons
-                    name="timer"
-                    size={moderateWidthScale(20)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={rs.videoDetailContent}>
-                  <Text style={rs.videoDetailLabel}>{t("duration")}</Text>
-                  <Text style={rs.videoDetailValue}>
-                    {Number(
-                      autoReel?.total_seconds ?? video?.duration_seconds,
-                    ).toFixed(1)}s
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-            {templateName ? (
-              <View style={rs.videoDetailCard}>
-                <View style={rs.videoDetailIconContainer}>
-                  <MaterialIcons
-                    name="movie-filter"
-                    size={moderateWidthScale(20)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={rs.videoDetailContent}>
-                  <Text style={rs.videoDetailLabel}>{t("autoReelTemplate")}</Text>
-                  <Text style={rs.videoDetailValue} numberOfLines={2}>
-                    {templateName}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-            {statusLabel ? (
-              <View style={rs.videoDetailCard}>
-                <View style={rs.videoDetailIconContainer}>
-                  <MaterialIcons
-                    name={isPublished ? "public" : isRemoved ? "block" : "edit-note"}
-                    size={moderateWidthScale(20)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={rs.videoDetailContent}>
-                  <Text style={rs.videoDetailLabel}>{t("status")}</Text>
-                  <Text style={rs.videoDetailValue}>{statusLabel}</Text>
-                </View>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        {canPublish ? (
-          <View style={styles.note}>
-            <MaterialIcons
-              name="info-outline"
-              size={moderateWidthScale(16)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.noteText}>{t("autoReelReadyHint")}</Text>
-          </View>
-        ) : isRemoved ? (
-          <View style={styles.note}>
-            <MaterialIcons
-              name="block"
-              size={moderateWidthScale(16)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.noteText}>{t("autoReelRemovedHint")}</Text>
-          </View>
-        ) : null}
-        {isHaircut && autoReel?.has_before === false ? (
-          <View style={styles.note}>
-            <MaterialIcons
-              name="info-outline"
-              size={moderateWidthScale(16)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.noteText}>{t("autoReelMissingBefore")}</Text>
-          </View>
-        ) : null}
-        {isHaircut && autoReel?.has_reveal === false ? (
-          <View style={styles.note}>
-            <MaterialIcons
-              name="info-outline"
-              size={moderateWidthScale(16)}
-              color={theme.buttonBack}
-            />
-            <Text style={styles.noteText}>{t("autoReelMissingReveal")}</Text>
-          </View>
-        ) : null}
-        {!canChange ? renderViewOnlyNote() : null}
-      </View>
+          ) : null}
+          {isPublished ? (
+            <InfoNote icon="public" text={t("flowAlreadyPublished")} />
+          ) : isRemoved ? (
+            <InfoNote icon="block" text={t("autoReelRemovedHint")} />
+          ) : null}
+          {isHaircut && autoReel?.has_before === false ? (
+            <InfoNote text={t("autoReelMissingBefore")} />
+          ) : null}
+          {isHaircut && autoReel?.has_reveal === false ? (
+            <InfoNote text={t("autoReelMissingReveal")} />
+          ) : null}
+          {!canChange ? renderViewOnlyNote() : null}
+        </ScrollView>
+        <FlowFooter
+          primary={{
+            label: canPublish ? t("flowNextPublish") : t("flowSaveOrShare"),
+            onPress: () => setView("publish"),
+            disabled: !videoUrl,
+            trailingIcon: "chevron-right",
+          }}
+        />
+      </>
     );
   };
 
-  return (
-    <View style={[styles.safeArea, { paddingBottom: insets.bottom }]}>
-      <StackHeader
-        title={t("autoReelTitle")}
-        rightIcon={
-          <MaterialIcons
-            name="smart-toy"
-            size={moderateWidthScale(22)}
-            color={theme.white}
-          />
-        }
-        onRightPress={handleRobotPress}
-      />
-      <ScrollView
-        contentContainerStyle={styles.body}
+  const renderPublish = () => (
+    <>
+      <KeyboardAwareScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(40)}
       >
-        {loadError ? (
-          <View style={styles.cardShadow}>
-            <View style={styles.card}>
-              <View style={[styles.heroIcon, styles.heroIconError]}>
-                <MaterialIcons
-                  name="error-outline"
-                  size={moderateWidthScale(30)}
-                  color={theme.red}
-                />
+        <FlowTitle
+          title={t("flowPublishReelTitle")}
+          subtitle={t("flowPublishReelSubtitle")}
+        />
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setView("status")}
+          accessibilityRole="button"
+          accessibilityLabel={t("flowWatchAgain")}
+        >
+          <FlowCard>
+            <View style={styles.reelCard}>
+              <View style={styles.reelThumb}>
+                {posterUri ? (
+                  <Image
+                    source={{ uri: posterUri }}
+                    style={styles.templateImage}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="movie"
+                    size={moderateWidthScale(28)}
+                    color={theme.white70}
+                  />
+                )}
               </View>
-              <Text style={styles.statusTitle} accessibilityRole="alert">
-                {loadError}
-              </Text>
+              <View style={styles.templateText}>
+                <Text style={styles.templateName} numberOfLines={1}>
+                  {[templateName, formatClock(durationSeconds)]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </Text>
+                <Text style={styles.templateSub}>{t("flowWatchAgain")}</Text>
+              </View>
+              <MaterialIcons
+                name="chevron-right"
+                size={moderateWidthScale(28)}
+                color={theme.darkGreen}
+              />
             </View>
+          </FlowCard>
+        </TouchableOpacity>
+
+        {canPublish ? (
+          <>
+            <FlowTextField
+              ref={captionInputRef}
+              label={t("caption")}
+              value={caption}
+              onChangeText={(v) => {
+                captionTouchedRef.current = true;
+                setCaption(v.slice(0, CAPTION_MAX));
+              }}
+              placeholder={t("flowCaptionPlaceholder")}
+              multiline
+              maxCount={CAPTION_MAX}
+              helper={caption.trim() ? null : t("flowCaptionKeepHint")}
+              editable={!publishing}
+            />
+            {canLinkProduct ? (
+              <OptionRow
+                icon="sell"
+                title={t("flowPromoteProductOptional")}
+                subtitle={
+                  selectedProduct?.name || productTag || t("flowPromoteProductSub")
+                }
+                done={selectedProductId != null}
+                onPress={() => setProductSheetOpen(true)}
+                disabled={publishing}
+              />
+            ) : null}
+            <FlowButton
+              label={t("flowPublishCta")}
+              icon="publish"
+              onPress={() => void handlePublish()}
+              loading={publishing}
+            />
+          </>
+        ) : isPublished ? (
+          <View style={styles.publishedPill} accessibilityRole="text">
+            <MaterialIcons
+              name="check-circle"
+              size={moderateWidthScale(24)}
+              color={theme.buttonBack}
+            />
+            <Text style={styles.publishedText}>{t("published")}</Text>
           </View>
-        ) : status === "ready" ? (
-          renderReady()
-        ) : status === "failed" ? (
-          renderFailed()
-        ) : (
-          renderProgress()
-        )}
-      </ScrollView>
+        ) : null}
+
+        {videoUrl ? (
+          <>
+            <View style={styles.sectionDivider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>{t("flowSaveOrShareVideo")}</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <View style={styles.rowButtons}>
+              <FlowButton
+                variant="outline"
+                compact
+                icon="file-download"
+                label={t("download")}
+                onPress={() => downloadMedia(videoUrl, { isVideo: true })}
+                loading={downloading}
+                style={styles.rowButton}
+              />
+              <FlowButton
+                variant="outline"
+                compact
+                icon="ios-share"
+                label={t("flowShareVideo")}
+                onPress={() => setShareVisible(true)}
+                style={styles.rowButton}
+              />
+            </View>
+            {!isPublished ? (
+              <Text style={styles.smallNote}>{t("flowDownloadNotPublish")}</Text>
+            ) : null}
+          </>
+        ) : null}
+      </KeyboardAwareScrollView>
+
+      {canLinkProduct ? (
+        <ProductPickerSheet
+          visible={productSheetOpen}
+          onClose={() => setProductSheetOpen(false)}
+          products={products.products}
+          loading={products.loading}
+          error={products.error}
+          onRetry={products.retry}
+          selectedId={selectedProductId}
+          isOwner={userRole === "business"}
+          onSelect={(product) => {
+            setSelectedProductId(product ? Number(product.id) : null);
+            setProductTag(product?.name ?? "");
+            setProductSheetOpen(false);
+          }}
+        />
+      ) : null}
+    </>
+  );
+
+  const renderBody = () => {
+    if (loadError) {
+      return (
+        <ScrollView contentContainerStyle={styles.content}>
+          <InfoNote tone="error" icon="error-outline" text={loadError} />
+        </ScrollView>
+      );
+    }
+    if (status === "ready") {
+      return view === "publish" ? renderPublish() : renderReady();
+    }
+    if (status === "failed") return renderFailed();
+    return renderProgress();
+  };
+
+  return (
+    <View style={styles.safeArea}>
+      <FlowHeader
+        title={t("autoReelIntroTitle")}
+        onBack={onHeaderBack}
+        right={
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handleRobotPress}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={t("aiTools")}
+          >
+            <MaterialIcons
+              name="smart-toy"
+              size={moderateWidthScale(26)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        }
+      />
+      {renderBody()}
       <ReelVideoShareSheet
         visible={shareVisible}
         onClose={() => setShareVisible(false)}
-        videoUrl={autoReelVideo(autoReel)?.playback_url ?? null}
+        videoUrl={videoUrl}
       />
     </View>
   );

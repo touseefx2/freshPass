@@ -42,10 +42,14 @@ type Props = {
   variant?: "keep" | "remove";
   /** false → no handles, the strip only scrubs (Split). */
   showHandles?: boolean;
+  /** Taller strip and wider handles (step-by-step Reel Studio). */
+  large?: boolean;
 };
 
 const HANDLE_W = widthScale(16);
 const STRIP_H = heightScale(52);
+const LARGE_HANDLE_W = widthScale(26);
+const LARGE_STRIP_H = heightScale(68);
 /**
  * Grab area grows INWARD (over the strip). Outward slop would sit in the
  * Android back-gesture edge zone, where the system eats the drag.
@@ -83,10 +87,15 @@ export function formatPrecise(ms: number): string {
   return `${m}:${s.toString().padStart(2, "0")}.${tenths % 10}`;
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (
+  theme: Theme,
+  handleW: number = HANDLE_W,
+  stripH: number = STRIP_H,
+  large: boolean = false,
+) =>
   StyleSheet.create({
     container: {
-      height: STRIP_H,
+      height: stripH,
       marginTop: moderateHeightScale(8),
       marginHorizontal: Platform.OS === "android" ? ANDROID_EDGE_INSET : 0,
     },
@@ -94,8 +103,8 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       top: 0,
       bottom: 0,
-      left: HANDLE_W,
-      right: HANDLE_W,
+      left: handleW,
+      right: handleW,
       flexDirection: "row",
       overflow: "hidden",
       borderRadius: moderateWidthScale(4),
@@ -128,8 +137,8 @@ const createStyles = (theme: Theme) =>
     handle: {
       position: "absolute",
       top: 0,
-      width: HANDLE_W,
-      height: STRIP_H,
+      width: handleW,
+      height: stripH,
       backgroundColor: theme.selectCard,
       alignItems: "center",
       justifyContent: "center",
@@ -143,8 +152,8 @@ const createStyles = (theme: Theme) =>
       borderBottomRightRadius: moderateWidthScale(6),
     },
     grip: {
-      width: widthScale(3),
-      height: heightScale(16),
+      width: widthScale(large ? 4 : 3),
+      height: heightScale(large ? 24 : 16),
       borderRadius: widthScale(2),
       backgroundColor: theme.white,
     },
@@ -164,7 +173,7 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       top: -heightScale(3),
       width: widthScale(3),
-      height: STRIP_H + heightScale(6),
+      height: stripH + heightScale(6),
       marginLeft: -widthScale(1.5),
       borderRadius: widthScale(2),
       backgroundColor: theme.white,
@@ -185,11 +194,17 @@ export default function ClipTrimmer({
   onScrubEnd,
   variant = "keep",
   showHandles = true,
+  large = false,
 }: Props) {
   const removing = variant === "remove";
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const handleW = large ? LARGE_HANDLE_W : HANDLE_W;
+  const stripH = large ? LARGE_STRIP_H : STRIP_H;
+  const styles = useMemo(
+    () => createStyles(theme, handleW, stripH, large),
+    [theme, handleW, stripH, large],
+  );
   const { t } = useTranslation();
 
   const [width, setWidth] = useState(0);
@@ -197,7 +212,7 @@ export default function ClipTrimmer({
   const [dragEpoch, setDragEpoch] = useState(0);
 
   const durationMs = Math.max(1, clip.sourceDurationMs);
-  const trackW = Math.max(1, width - HANDLE_W * 2);
+  const trackW = Math.max(1, width - handleW * 2);
 
   const startMs = useSharedValue(clip.trimStartMs);
   const endMs = useSharedValue(clip.trimEndMs);
@@ -408,21 +423,21 @@ export default function ClipTrimmer({
 
   const xOf = (ms: number) => {
     "worklet";
-    return HANDLE_W + (ms / durationMs) * trackWidth.value;
+    return handleW + (ms / durationMs) * trackWidth.value;
   };
 
   const startHandleStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: xOf(startMs.value) - HANDLE_W }],
+    transform: [{ translateX: xOf(startMs.value) - handleW }],
   }));
   const endHandleStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: xOf(endMs.value) }],
   }));
   const leftDimStyle = useAnimatedStyle(() => ({
     left: 0,
-    width: Math.max(0, xOf(startMs.value) - HANDLE_W),
+    width: Math.max(0, xOf(startMs.value) - handleW),
   }));
   const rightDimStyle = useAnimatedStyle(() => ({
-    left: Math.max(0, xOf(endMs.value) - HANDLE_W),
+    left: Math.max(0, xOf(endMs.value) - handleW),
     right: 0,
   }));
   const selectionStyle = useAnimatedStyle(() => ({

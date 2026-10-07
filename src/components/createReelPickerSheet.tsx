@@ -180,6 +180,11 @@ const createStyles = (theme: Theme) =>
 export type CreateReelPickerSheetProps = {
   visible: boolean;
   onClose: () => void;
+  /**
+   * "Upload a Reel" → step-by-step Reel Studio (Add video → Trim → Style →
+   * Preview → Publish). When set, the old Record / Upload source step is skipped.
+   */
+  onSimpleReelPress?: () => void;
   onRecordPress: () => void;
   onUploadPress: () => void;
   onGenerateFromTemplatePress?: () => void;
@@ -229,6 +234,7 @@ const REEL_TYPES: {
 export default function CreateReelPickerSheet({
   visible,
   onClose,
+  onSimpleReelPress,
   onRecordPress,
   onUploadPress,
   onGenerateFromTemplatePress,
@@ -251,8 +257,10 @@ export default function CreateReelPickerSheet({
   if (!visible) return null;
 
   const handleTypePress = (key: (typeof REEL_TYPES)[number]["key"]) => {
-    if (key === "simple") setStep("source");
-    else if (key === "image") onImageReelPress();
+    if (key === "simple") {
+      if (onSimpleReelPress) onSimpleReelPress();
+      else setStep("source");
+    } else if (key === "image") onImageReelPress();
     else onAiReelPress();
   };
 
@@ -281,7 +289,13 @@ export default function CreateReelPickerSheet({
 
         {isTypeStep ? (
           <View style={styles.typeList}>
-            {REEL_TYPES.map((type) => (
+            {REEL_TYPES.map((type) => {
+              // Step-by-step studio trims any length — say so instead of the 30 s cap
+              const descKey =
+                type.key === "simple" && onSimpleReelPress
+                  ? "simpleReelDescSteps"
+                  : type.descKey;
+              return (
               <TouchableOpacity
                 key={type.key}
                 style={styles.typeCard}
@@ -289,7 +303,7 @@ export default function CreateReelPickerSheet({
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityLabel={t(type.titleKey)}
-                accessibilityHint={t(type.descKey, {
+                accessibilityHint={t(descKey, {
                   max_seconds: MAX_VIDEO_UPLOAD_SECONDS,
                 })}
               >
@@ -308,7 +322,7 @@ export default function CreateReelPickerSheet({
                 <View style={styles.optionTextCol}>
                   <Text style={styles.typeTitle}>{t(type.titleKey)}</Text>
                   <Text style={styles.typeDesc}>
-                    {t(type.descKey, { max_seconds: MAX_VIDEO_UPLOAD_SECONDS })}
+                    {t(descKey, { max_seconds: MAX_VIDEO_UPLOAD_SECONDS })}
                   </Text>
                 </View>
                 <MaterialIcons
@@ -317,7 +331,8 @@ export default function CreateReelPickerSheet({
                   color={theme.lightGreen}
                 />
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         ) : (
           <>

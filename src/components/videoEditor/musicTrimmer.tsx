@@ -35,6 +35,8 @@ type Props = {
   disabled?: boolean;
   onDragStart: () => void;
   onChange: (startMs: number, endMs: number) => void;
+  /** Bigger type (step-by-step Reel Studio). */
+  large?: boolean;
 };
 
 const BAR_W = 3;
@@ -80,7 +82,7 @@ function barHeight(seed: number, i: number): number {
   return Math.max(0.2, Math.min(1, swell * (0.55 + noise * 0.6)));
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, large: boolean = false) =>
   StyleSheet.create({
     header: {
       flexDirection: "row",
@@ -89,12 +91,12 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(6),
     },
     title: {
-      fontSize: fontSize.size12,
+      fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
     range: {
-      fontSize: fontSize.size12,
+      fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.orangeBrown,
       fontVariant: ["tabular-nums"],
@@ -161,13 +163,13 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(3),
     },
     scaleText: {
-      fontSize: fontSize.size10,
+      fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
       fontVariant: ["tabular-nums"],
     },
     hint: {
-      fontSize: fontSize.size11,
+      fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
       textAlign: "center",
@@ -184,11 +186,12 @@ export default function MusicTrimmer({
   disabled,
   onDragStart,
   onChange,
+  large = false,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
 
   const [width, setWidth] = useState(0);
   /** Live selection while dragging; null = follow props. */

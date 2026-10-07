@@ -36,10 +36,14 @@ type Props = {
   onSelect: (id: string) => void;
   onAdd: () => void;
   onReorder: (orderedIds: string[]) => void;
+  /** Bigger chips and type (step-by-step Reel Studio). */
+  large?: boolean;
 };
 
 const CHIP_W = widthScale(132);
 const CHIP_H = heightScale(34);
+const LARGE_CHIP_W = widthScale(160);
+const LARGE_CHIP_H = heightScale(46);
 const GAP = moderateWidthScale(8);
 const SLOT = CHIP_W + GAP;
 const LONG_PRESS_MS = 250;
@@ -73,8 +77,10 @@ function orderOf(positions: Positions): string[] {
   return Object.keys(positions).sort((a, b) => positions[a] - positions[b]);
 }
 
-const createStyles = (theme: Theme) =>
-  StyleSheet.create({
+const createStyles = (theme: Theme, large: boolean = false) => {
+  const chipW = large ? LARGE_CHIP_W : CHIP_W;
+  const chipH = large ? LARGE_CHIP_H : CHIP_H;
+  return StyleSheet.create({
     row: {
       flexGrow: 0,
       marginBottom: moderateHeightScale(8),
@@ -84,14 +90,14 @@ const createStyles = (theme: Theme) =>
       paddingVertical: moderateHeightScale(2),
     },
     lane: {
-      height: CHIP_H,
+      height: chipH,
     },
     chipWrap: {
       position: "absolute",
       left: 0,
       top: 0,
-      width: CHIP_W,
-      height: CHIP_H,
+      width: chipW,
+      height: chipH,
     },
     chip: {
       flex: 1,
@@ -99,7 +105,7 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(6),
       paddingHorizontal: moderateWidthScale(10),
-      borderRadius: CHIP_H / 2,
+      borderRadius: chipH / 2,
       borderWidth: 1,
       borderColor: theme.white15,
       backgroundColor: theme.darkGreen,
@@ -109,13 +115,13 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.orangeBrown,
     },
     num: {
-      minWidth: widthScale(18),
-      height: widthScale(18),
-      borderRadius: widthScale(9),
+      minWidth: widthScale(large ? 24 : 18),
+      height: widthScale(large ? 24 : 18),
+      borderRadius: widthScale(large ? 12 : 9),
       overflow: "hidden",
       textAlign: "center",
-      lineHeight: widthScale(18),
-      fontSize: fontSize.size10,
+      lineHeight: widthScale(large ? 24 : 18),
+      fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       backgroundColor: theme.white70,
@@ -123,7 +129,7 @@ const createStyles = (theme: Theme) =>
     numActive: { backgroundColor: theme.orangeBrown },
     text: {
       flex: 1,
-      fontSize: fontSize.size12,
+      fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.white70,
     },
@@ -132,25 +138,28 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
-      height: CHIP_H,
+      height: chipH,
       paddingHorizontal: moderateWidthScale(12),
-      borderRadius: CHIP_H / 2,
+      borderRadius: chipH / 2,
       borderWidth: 1,
       borderStyle: "dashed",
       borderColor: theme.white50,
     },
     addText: {
-      fontSize: fontSize.size12,
+      fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontMedium,
       color: theme.white,
     },
   });
+};
 
 type ChipProps = {
   song: Song;
   index: number;
   count: number;
   active: boolean;
+  /** Chip width + gap (row slot). */
+  slot: number;
   positions: SharedValue<Positions>;
   draggingId: SharedValue<string>;
   disabled: boolean;
@@ -165,6 +174,7 @@ function SongChip({
   index,
   count,
   active,
+  slot,
   positions,
   draggingId,
   disabled,
@@ -187,21 +197,21 @@ function SongChip({
       .activateAfterLongPress(LONG_PRESS_MS)
       .onStart(() => {
         startPos.value = positions.value[id] ?? index;
-        dragX.value = startPos.value * SLOT;
+        dragX.value = startPos.value * slot;
         draggingId.value = id;
         runOnJS(onDragStart)();
       })
       .onUpdate((e) => {
-        const maxX = (count - 1) * SLOT;
-        dragX.value = Math.min(maxX, Math.max(0, startPos.value * SLOT + e.translationX));
-        const target = Math.min(count - 1, Math.max(0, Math.round(dragX.value / SLOT)));
+        const maxX = (count - 1) * slot;
+        dragX.value = Math.min(maxX, Math.max(0, startPos.value * slot + e.translationX));
+        const target = Math.min(count - 1, Math.max(0, Math.round(dragX.value / slot)));
         const current = positions.value[id];
         if (current !== undefined && target !== current) {
           positions.value = moveItem(positions.value, current, target);
         }
       })
       .onEnd(() => {
-        const finalX = (positions.value[id] ?? index) * SLOT;
+        const finalX = (positions.value[id] ?? index) * slot;
         dragX.value = withTiming(finalX, { duration: 140 }, () => {
           draggingId.value = "";
           runOnJS(onDragEnd)(orderOf(positions.value));
@@ -213,11 +223,11 @@ function SongChip({
         if (success) runOnJS(onSelect)(id);
       });
     return Gesture.Exclusive(reorder, tap);
-  }, [count, disabled, dragX, draggingId, id, index, onDragEnd, onDragStart, onSelect, positions, startPos]);
+  }, [count, disabled, dragX, draggingId, id, index, onDragEnd, onDragStart, onSelect, positions, slot, startPos]);
 
   const animatedStyle = useAnimatedStyle(() => {
     const dragging = draggingId.value === id;
-    const slotX = (positions.value[id] ?? index) * SLOT;
+    const slotX = (positions.value[id] ?? index) * slot;
     return {
       zIndex: dragging ? 10 : 1,
       transform: [
@@ -260,11 +270,13 @@ export default function MusicSongChips({
   onSelect,
   onAdd,
   onReorder,
+  large = false,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
+  const slot = large ? LARGE_CHIP_W + GAP : SLOT;
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const idsKey = songs.map((s) => s.id).join("|");
@@ -297,7 +309,7 @@ export default function MusicSongChips({
       style={styles.row}
       contentContainerStyle={styles.content}
     >
-      <View style={[styles.lane, { width: songs.length * SLOT }]}>
+      <View style={[styles.lane, { width: songs.length * slot }]}>
         {songs.map((song, index) => (
           <SongChip
             key={song.id}
@@ -305,6 +317,7 @@ export default function MusicSongChips({
             index={index}
             count={songs.length}
             active={song.id === selectedId}
+            slot={slot}
             positions={positions}
             draggingId={draggingId}
             disabled={disabled}
@@ -323,7 +336,7 @@ export default function MusicSongChips({
           activeOpacity={0.8}
           accessibilityRole="button"
         >
-          <MaterialIcons name="add" size={moderateWidthScale(16)} color={theme.white} />
+          <MaterialIcons name="add" size={moderateWidthScale(large ? 20 : 16)} color={theme.white} />
           <Text style={styles.addText}>{t("musicAddSong")}</Text>
         </TouchableOpacity>
       ) : null}

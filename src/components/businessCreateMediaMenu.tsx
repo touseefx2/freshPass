@@ -267,6 +267,13 @@ export default function BusinessCreateMediaMenu({
     void pickReel();
   }, [closeAll, ensureCanUploadReel, pickReel]);
 
+  /** Upload a Reel → step-by-step Reel Studio, starting at "Add your video". */
+  const openReelStudio = useCallback(() => {
+    if (!ensureCanUploadReel()) return;
+    closeAll();
+    router.push("/(main)/reelStudio" as any);
+  }, [closeAll, ensureCanUploadReel, router]);
+
   const openReelPicker = useCallback(() => {
     const gate = getReelUploadGate(businessStatus, userRole);
     if (gate === "stripe") {
@@ -415,6 +422,7 @@ export default function BusinessCreateMediaMenu({
       <CreateReelPickerSheet
         visible={visible && reelPickerVisible}
         onClose={closeAll}
+        onSimpleReelPress={openReelStudio}
         onRecordPress={handleRecord}
         onUploadPress={handleUpload}
         onImageReelPress={() => openAiToolsReel("/(main)/templateReels")}

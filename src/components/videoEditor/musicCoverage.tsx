@@ -37,16 +37,19 @@ type Props = {
   disabled?: boolean;
   onSelect: (index: number) => void;
   onToggleLoop: () => void;
+  /** Bigger type and bar (step-by-step Reel Studio). */
+  large?: boolean;
 };
 
 const BAR_H = heightScale(34);
+const LARGE_BAR_H = heightScale(42);
 
 function formatMs(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, large: boolean = false) =>
   StyleSheet.create({
     header: {
       flexDirection: "row",
@@ -56,7 +59,7 @@ const createStyles = (theme: Theme) =>
       minHeight: heightScale(30),
     },
     title: {
-      fontSize: fontSize.size12,
+      fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
@@ -64,7 +67,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
-      height: heightScale(30),
+      height: heightScale(large ? 38 : 30),
       paddingHorizontal: moderateWidthScale(12),
       borderRadius: heightScale(15),
       borderWidth: 1,
@@ -75,13 +78,13 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.orangeBrown,
     },
     repeatText: {
-      fontSize: fontSize.size12,
+      fontSize: large ? fontSize.size14 : fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
     repeatTextOn: { color: theme.darkGreen },
     bar: {
-      height: BAR_H,
+      height: large ? LARGE_BAR_H : BAR_H,
       borderRadius: moderateWidthScale(8),
       backgroundColor: theme.white15,
       overflow: "hidden",
@@ -106,7 +109,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(6),
     },
     blockLabel: {
-      fontSize: fontSize.size11,
+      fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       fontVariant: ["tabular-nums"],
@@ -121,7 +124,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     silenceText: {
-      fontSize: fontSize.size10,
+      fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontMedium,
       color: theme.white70,
     },
@@ -139,13 +142,13 @@ const createStyles = (theme: Theme) =>
       marginTop: moderateHeightScale(3),
     },
     scaleText: {
-      fontSize: fontSize.size10,
+      fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
       fontVariant: ["tabular-nums"],
     },
     info: {
-      fontSize: fontSize.size11,
+      fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
       marginTop: moderateHeightScale(4),
@@ -162,11 +165,12 @@ export default function MusicCoverage({
   disabled,
   onSelect,
   onToggleLoop,
+  large = false,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
   const [width, setWidth] = useState(0);
 
   const short = partsTotalMs < videoMs - 50;

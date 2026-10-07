@@ -59,6 +59,11 @@ export default function MainLayout() {
         }}
       />
       <Stack.Screen name="stripeConnectOnboarding" />
+      {/* Step-by-step reel flows: back goes one step back inside the screen,
+          so the iOS swipe (which would close the whole flow) is off. */}
+      <Stack.Screen name="reelStudio/index" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="reelTemplates/index" options={{ gestureEnabled: false }} />
+      <Stack.Screen name="templateReels/index" options={{ gestureEnabled: false }} />
     </Stack>
   );
 }
