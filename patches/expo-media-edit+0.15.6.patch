@@ -1,13 +1,16 @@
 diff --git a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
-index 68cad71..7b9b835 100644
+index 68cad71..d7b7736 100644
 --- a/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
 +++ b/node_modules/expo-media-edit/android/src/main/java/expo/modules/mediaedit/ProjectCompiler.kt
-@@ -4,11 +4,13 @@ import android.content.Context
+@@ -4,11 +4,16 @@ import android.content.Context
  import android.graphics.Bitmap
  import android.graphics.Canvas
  import android.net.Uri
 +import androidx.media3.common.Effect
  import androidx.media3.common.MediaItem
++import androidx.media3.common.audio.AudioProcessor
++import androidx.media3.common.audio.ChannelMixingAudioProcessor
++import androidx.media3.common.audio.ChannelMixingMatrix
  import androidx.media3.common.util.UnstableApi
  import androidx.media3.effect.BitmapOverlay
  import androidx.media3.effect.OverlayEffect
@@ -16,16 +19,24 @@ index 68cad71..7b9b835 100644
  import androidx.media3.effect.TextureOverlay
  import androidx.media3.transformer.Composition
  import androidx.media3.transformer.EditedMediaItem
-@@ -80,7 +82,7 @@ object ProjectCompiler {
+@@ -80,10 +85,13 @@ object ProjectCompiler {
      // a chain of `gap, clip, gap, clip, …` so absolute positions
      // align across lanes.
      val numLanes = (placed.maxOfOrNull { it.laneIndex } ?: 0) + 1
 -    val sequences = (0 until numLanes).map { lane -> buildLaneSequence(placed, lane) }
 +    val sequences = (0 until numLanes).map { lane -> buildLaneSequence(placed, lane, renderW, renderH) }
  
-     // Audio sequences (one per audio clip).
-     val audioSequences = project.audioClips().mapNotNull { buildAudioSequence(it, project) }
-@@ -113,6 +115,13 @@ object ProjectCompiler {
+-    // Audio sequences (one per audio clip).
+-    val audioSequences = project.audioClips().mapNotNull { buildAudioSequence(it, project) }
++    // Audio sequences: one per audio TRACK, clips back to back at their
++    // timeline positions (gaps in between) so e.g. a looped song plays in turn.
++    val audioSequences = project.tracks
++      .filterIsInstance<ProjectTrack.Audio>()
++      .mapNotNull { buildAudioTrackSequence(it.clips, project) }
+ 
+     // ── Composition-level overlay effects.
+     val overlays = mutableListOf<TextureOverlay>()
+@@ -113,6 +121,13 @@ object ProjectCompiler {
      }
  
      val compositionBuilder = Composition.Builder(sequences + audioSequences)
@@ -39,7 +50,7 @@ index 68cad71..7b9b835 100644
      if (overlays.isNotEmpty()) {
        compositionBuilder.setEffects(Effects(emptyList(), listOf(OverlayEffect(overlays))))
      }
-@@ -175,7 +184,12 @@ object ProjectCompiler {
+@@ -175,7 +190,12 @@ object ProjectCompiler {
  
    // MARK: - Lane → EditedMediaItemSequence
  
@@ -53,7 +64,7 @@ index 68cad71..7b9b835 100644
      val builder = EditedMediaItemSequence.Builder()
      var laneCursor = 0L
      for (pc in placed) {
-@@ -192,7 +206,7 @@ object ProjectCompiler {
+@@ -192,7 +212,7 @@ object ProjectCompiler {
            // visible content at these timestamps in crossfade scenarios).
          }
        }
@@ -62,7 +73,7 @@ index 68cad71..7b9b835 100644
        builder.addItem(item)
        laneCursor = pc.timelineEndMs
      }
-@@ -201,7 +215,7 @@ object ProjectCompiler {
+@@ -201,7 +221,7 @@ object ProjectCompiler {
  
    // MARK: - per-clip EditedMediaItem with optional alpha effects
  
@@ -71,7 +82,7 @@ index 68cad71..7b9b835 100644
      val clip = pc.clip
      val mediaItem = if (clip.isImage) {
        MediaItem.Builder().setUri(clip.sourceUri).build()
-@@ -226,6 +240,16 @@ object ProjectCompiler {
+@@ -226,6 +246,16 @@ object ProjectCompiler {
        builder.setRemoveAudio(true)
      }
  
@@ -88,7 +99,7 @@ index 68cad71..7b9b835 100644
      // If this clip is in a crossfade (fade-in head and/or fade-out tail),
      // attach an AlphaScaleEffect whose alphaFor is computed in absolute-
      // timeline-time, then mapped to clip-local time inside the lambda.
-@@ -249,8 +273,9 @@ object ProjectCompiler {
+@@ -249,36 +279,77 @@ object ProjectCompiler {
          }
          a
        }
@@ -99,7 +110,80 @@ index 68cad71..7b9b835 100644
      return builder.build()
    }
  
-@@ -279,6 +304,11 @@ object ProjectCompiler {
+   // MARK: - audio sequences
+ 
+-  private fun buildAudioSequence(audio: ProjectAudioClip, project: Project): EditedMediaItemSequence? {
+-    val endMs = if (audio.trimToVideo) {
+-      val maxLen = (project.durationMs - audio.timelineRange.startMs).coerceAtLeast(0)
+-      audio.sourceRange.startMs + maxLen
+-    } else audio.sourceRange.endMs
+-    val mediaItem = MediaItem.Builder()
+-      .setUri(audio.sourceUri)
+-      .setClippingConfiguration(
+-        MediaItem.ClippingConfiguration.Builder()
+-          .setStartPositionMs(audio.sourceRange.startMs)
+-          .setEndPositionMs(endMs)
+-          .build()
++  private fun buildAudioTrackSequence(
++    clips: List<ProjectAudioClip>,
++    project: Project,
++  ): EditedMediaItemSequence? {
++    val builder = EditedMediaItemSequence.Builder()
++    var cursorMs = 0L
++    var count = 0
++    for (audio in clips.sortedBy { it.timelineRange.startMs }) {
++      val startMs = audio.timelineRange.startMs
++      if (startMs >= project.durationMs) continue
++      val endMs = if (audio.trimToVideo) {
++        val maxLen = (project.durationMs - startMs).coerceAtLeast(0)
++        audio.sourceRange.startMs + maxLen
++      } else audio.sourceRange.endMs
++      if (endMs <= audio.sourceRange.startMs) continue
++      val gap = startMs - cursorMs
++      if (gap > 0) {
++        try {
++          builder.addGap(gap * 1000L)
++        } catch (_: NoSuchMethodError) {
++        }
++      }
++      val mediaItem = MediaItem.Builder()
++        .setUri(audio.sourceUri)
++        .setClippingConfiguration(
++          MediaItem.ClippingConfiguration.Builder()
++            .setStartPositionMs(audio.sourceRange.startMs)
++            .setEndPositionMs(endMs)
++            .build()
++        )
++        .build()
++      val edited = EditedMediaItem.Builder(mediaItem)
++        .setRemoveVideo(true)
++        .setEffects(Effects(volumeProcessors(audio.volume), emptyList()))
++        .build()
++      builder.addItem(edited)
++      cursorMs = startMs + (endMs - audio.sourceRange.startMs)
++      count++
++    }
++    return if (count > 0) builder.build() else null
++  }
++
++  /** Clip volume (0..1) as a gain on mono + stereo sources; none at full volume. */
++  private fun volumeProcessors(volume: Float): List<AudioProcessor> {
++    val v = volume.coerceIn(0f, 1f)
++    if (v >= 0.999f) return emptyList()
++    val mixer = ChannelMixingAudioProcessor()
++    for (channels in 1..2) {
++      mixer.putChannelMixingMatrix(
++        ChannelMixingMatrix.create(channels, channels).scaleBy(v)
+       )
+-      .build()
+-    val edited = EditedMediaItem.Builder(mediaItem)
+-      .setRemoveVideo(true)
+-      .build()
+-    return EditedMediaItemSequence.Builder().addItem(edited).build()
++    }
++    return listOf(mixer)
+   }
+ 
    // MARK: - render-size resolution
  
    private fun resolveRenderSize(context: Context, clips: List<ProjectVideoClip>, project: Project): Pair<Int, Int> {
@@ -111,7 +195,7 @@ index 68cad71..7b9b835 100644
      for (clip in clips) {
        if (clip.isImage) continue
        val retriever = android.media.MediaMetadataRetriever()
-@@ -288,13 +318,13 @@ object ProjectCompiler {
+@@ -288,13 +359,13 @@ object ProjectCompiler {
          var h = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt() ?: 0
          val rotation = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toInt() ?: 0
          if (rotation == 90 || rotation == 270) { val t = w; w = h; h = t }

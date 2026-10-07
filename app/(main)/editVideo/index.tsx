@@ -71,6 +71,23 @@ import StickerLayer, {
 import StickerPanel from "@/src/components/videoEditor/stickerPanel";
 import MusicLibrarySheet from "@/src/components/videoEditor/musicLibrarySheet";
 import MusicTrimmer from "@/src/components/videoEditor/musicTrimmer";
+import MusicCoverage from "@/src/components/videoEditor/musicCoverage";
+import MusicSongChips from "@/src/components/videoEditor/musicSongChips";
+import {
+  MAX_MUSIC_SEGMENTS,
+  MIN_MUSIC_PART_MS,
+  buildMusicSchedule,
+  musicCreditText,
+  musicPartsTotalMs,
+  musicSegmentOffsets,
+  musicSlotAt,
+  newMusicSegment,
+  probeAudioDurationMs,
+  segmentPart,
+  splitMusicName,
+  type MusicSegment,
+  type MusicSlot,
+} from "@/src/components/videoEditor/musicModel";
 import AddClipSheet, {
   type AddClipSource,
 } from "@/src/components/videoEditor/addClipSheet";
@@ -128,13 +145,10 @@ type EditorSnapshot = {
   clips: EditorClip[];
   stickers: EditorSticker[];
   aspect: AspectPreset;
-  musicUri: string | null;
-  musicName: string | null;
-  /** Attribution for library (Creative Commons) tracks; null for phone files. */
-  musicCredit: string | null;
-  /** Where in the song the reel's music starts (ms into the track). */
-  musicStartMs: number;
-  musicVolume: number;
+  /** Songs, played one after another over the reel. */
+  musicTracks: MusicSegment[];
+  /** Song that repeats to fill the rest of the reel; null = none. */
+  musicRepeatId: string | null;
   overlayText: string;
   overlayX: number;
   overlayY: number;
@@ -779,6 +793,13 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.white70,
     },
+    musicReorderHint: {
+      marginTop: -moderateHeightScale(4),
+      marginBottom: moderateHeightScale(8),
+    },
+    musicCoverageWrap: {
+      marginTop: moderateHeightScale(14),
+    },
     musicTrimWrap: {
       marginBottom: moderateHeightScale(10),
     },
@@ -871,16 +892,21 @@ export default function EditVideoScreen() {
   const [loadingInfo, setLoadingInfo] = useState(true);
   const [maxSeconds, setMaxSeconds] = useState(initialMaxSeconds);
   const [aspect, setAspect] = useState<AspectPreset>("original");
-  const [musicUri, setMusicUri] = useState<string | null>(null);
-  const [musicName, setMusicName] = useState<string | null>(null);
-  const [musicCredit, setMusicCredit] = useState<string | null>(null);
-  const [musicStartMs, setMusicStartMs] = useState(0);
-  /** Length of the loaded song; 0 until the preview sound reports it. */
-  const [musicDurationMs, setMusicDurationMs] = useState(0);
-  /** Song picked, user tapped "Change" → show the source buttons again. */
-  const [changingMusic, setChangingMusic] = useState(false);
+  const [musicTracks, setMusicTracks] = useState<MusicSegment[]>([]);
+  /** Song that repeats after the others to fill the reel; null = none. */
+  const [musicRepeatId, setMusicRepeatId] = useState<string | null>(null);
+  const [selectedMusicId, setSelectedMusicId] = useState<string | null>(null);
+  /** Picking a song: "add" = a new one at the end, "replace" = swap the selected one. */
+  const [musicPickMode, setMusicPickMode] = useState<"add" | "replace" | null>(
+    null,
+  );
   const [musicLibraryOpen, setMusicLibraryOpen] = useState(false);
-  const [musicVolume, setMusicVolume] = useState(0.8);
+  const selectedMusicIdRef = useRef(selectedMusicId);
+  selectedMusicIdRef.current = selectedMusicId;
+  const musicPickModeRef = useRef(musicPickMode);
+  musicPickModeRef.current = musicPickMode;
+  const musicTracksRef = useRef(musicTracks);
+  musicTracksRef.current = musicTracks;
   const [overlayText, setOverlayText] = useState("");
   const [overlayX, setOverlayX] = useState(0.5);
   const [overlayY, setOverlayY] = useState(0.45);
@@ -917,10 +943,11 @@ export default function EditVideoScreen() {
   const trimHistoryPushedRef = useRef(false);
   const textHistoryPushedRef = useRef(false);
   const textInputRef = useRef<TextInputType>(null);
-  const musicSoundRef = useRef<Audio.Sound | null>(null);
 
   const maxClipMs = Math.max(MIN_CLIP_MS, Math.round(maxSeconds * 1000));
   const totalMs = totalClipsMs(clips);
+  const totalMsRef = useRef(totalMs);
+  totalMsRef.current = totalMs;
   // Outside the allowed length (e.g. a long recording) — shown on top until it fits
   const lengthOutOfRange =
     clips.length > 0 &&
@@ -1010,11 +1037,8 @@ export default function EditVideoScreen() {
       clips,
       stickers,
       aspect,
-      musicUri,
-      musicName,
-      musicCredit,
-      musicStartMs,
-      musicVolume,
+      musicTracks,
+      musicRepeatId,
       overlayText,
       overlayX,
       overlayY,
@@ -1028,11 +1052,8 @@ export default function EditVideoScreen() {
     [
       aspect,
       clips,
-      musicCredit,
-      musicName,
-      musicStartMs,
-      musicUri,
-      musicVolume,
+      musicRepeatId,
+      musicTracks,
       overlayBgColorKey,
       overlayBold,
       overlayColorKey,
@@ -1055,11 +1076,8 @@ export default function EditVideoScreen() {
         last.clips === snap.clips &&
         last.stickers === snap.stickers &&
         last.aspect === snap.aspect &&
-        last.musicUri === snap.musicUri &&
-        last.musicName === snap.musicName &&
-        last.musicCredit === snap.musicCredit &&
-        last.musicStartMs === snap.musicStartMs &&
-        last.musicVolume === snap.musicVolume &&
+        last.musicTracks === snap.musicTracks &&
+        last.musicRepeatId === snap.musicRepeatId &&
         last.overlayText === snap.overlayText &&
         last.overlayX === snap.overlayX &&
         last.overlayY === snap.overlayY &&
@@ -1088,11 +1106,8 @@ export default function EditVideoScreen() {
       setClips(snap.clips);
       setStickers(snap.stickers);
       setAspect(snap.aspect);
-      setMusicUri(snap.musicUri);
-      setMusicName(snap.musicName);
-      setMusicCredit(snap.musicCredit);
-      setMusicStartMs(snap.musicStartMs);
-      setMusicVolume(snap.musicVolume);
+      setMusicTracks(snap.musicTracks);
+      setMusicRepeatId(snap.musicRepeatId);
       setOverlayText(snap.overlayText);
       setOverlayX(snap.overlayX);
       setOverlayY(snap.overlayY);
@@ -1697,102 +1712,192 @@ export default function EditVideoScreen() {
       });
   }, [activeTool, exporting, filmstrips, selectedIsImage, selectedSourceMs, selectedUri]);
 
-  const musicStartMsRef = useRef(musicStartMs);
-  musicStartMsRef.current = musicStartMs;
-  const previewTimeMsRef = useRef(previewTimeMs);
-  previewTimeMsRef.current = previewTimeMs;
-
-  /** Song position matching the current preview playhead. */
-  const musicPositionFor = useCallback(
-    (playheadMs: number) =>
-      musicStartMsRef.current +
-      (focusIndexRef.current != null ? 0 : Math.max(0, playheadMs)),
-    [],
+  // ── Background music: songs back to back over the reel ─────────────
+  const musicSchedule = useMemo(
+    () => buildMusicSchedule(musicTracks, totalMs, musicRepeatId),
+    [musicRepeatId, musicTracks, totalMs],
   );
-
-  const seekMusic = useCallback(
-    async (playheadMs: number) => {
-      const sound = musicSoundRef.current;
-      if (!sound) return;
-      try {
-        await sound.setPositionAsync(musicPositionFor(playheadMs));
-        if (playingRef.current) await sound.playAsync();
-      } catch {}
-    },
-    [musicPositionFor],
+  const musicPartsMs = useMemo(
+    () => musicPartsTotalMs(musicTracks, totalMs),
+    [musicTracks, totalMs],
   );
+  const selectedMusicIndex = Math.max(
+    0,
+    musicTracks.findIndex((m) => m.id === selectedMusicId),
+  );
+  const selectedMusic: MusicSegment | null = musicTracks[selectedMusicIndex] ?? null;
+  // Selected song gone (undo / delete) → select the first one again.
+  useEffect(() => {
+    if (musicTracks.length === 0) {
+      if (selectedMusicId) setSelectedMusicId(null);
+    } else if (!musicTracks.some((m) => m.id === selectedMusicId)) {
+      setSelectedMusicId(musicTracks[0].id);
+    }
+  }, [musicTracks, selectedMusicId]);
+  // Reel playhead (single-clip view → that clip's place in the reel)
+  const reelPlayheadMs =
+    focusIndex != null ? clipOffsetMs(clips, focusIndex) + previewTimeMs : previewTimeMs;
 
-  // Background music preview (live). Doesn't loop — the export doesn't either.
+  const musicSoundsRef = useRef<Map<string, Audio.Sound>>(new Map());
+  const musicScheduleRef = useRef<MusicSlot[]>(musicSchedule);
+  musicScheduleRef.current = musicSchedule;
+  const activeMusicSlotRef = useRef<MusicSlot | null>(null);
+  const reelPlayheadRef = useRef(reelPlayheadMs);
+  reelPlayheadRef.current = reelPlayheadMs;
+
+  /** Bumped on every music sync; an older sync that finishes late must not play. */
+  const musicSyncGenRef = useRef(0);
+
+  /** Play the song part that belongs at `reelMs`; every other song is paused. */
+  const syncMusic = useCallback(async (reelMs: number, force: boolean) => {
+    const slot = musicSlotAt(musicScheduleRef.current, reelMs);
+    const prev = activeMusicSlotRef.current;
+    if (!force && slot?.key === prev?.key) return;
+    const gen = ++musicSyncGenRef.current;
+    activeMusicSlotRef.current = slot;
+    const sounds = musicSoundsRef.current;
+    const pauseOthers = () =>
+      Promise.all(
+        [...sounds].map(([id, snd]) =>
+          id === slot?.segId ? null : snd.pauseAsync().catch(() => {}),
+        ),
+      );
+    await pauseOthers();
+    if (gen !== musicSyncGenRef.current || !slot) return;
+    const snd = sounds.get(slot.segId);
+    if (!snd) return;
+    try {
+      await snd.setVolumeAsync(slot.volume);
+      await snd.setPositionAsync(slot.srcStart + Math.max(0, reelMs - slot.at));
+      if (gen !== musicSyncGenRef.current) return;
+      if (!playingRef.current) {
+        await snd.pauseAsync();
+        return;
+      }
+      await snd.playAsync();
+      if (gen !== musicSyncGenRef.current) {
+        // A newer sync took over while this one started — stop unless it's the same song.
+        if (activeMusicSlotRef.current?.segId !== slot.segId) await snd.pauseAsync();
+        return;
+      }
+      // Belt and braces: anything a late call started gets stopped here.
+      await pauseOthers();
+    } catch {}
+  }, []);
+
+  // One preview sound per song; load new ones, unload removed ones.
+  const musicFilesKey = musicTracks.map((m) => `${m.id}:${m.uri}`).join("|");
   useEffect(() => {
     let cancelled = false;
-    setMusicDurationMs(0);
-    (async () => {
-      if (musicSoundRef.current) {
-        try {
-          await musicSoundRef.current.unloadAsync();
-        } catch {}
-        musicSoundRef.current = null;
+    const sounds = musicSoundsRef.current;
+    const wanted = new Map(musicTracks.map((m) => [m.id, m.uri]));
+    for (const [id, snd] of sounds) {
+      if (!wanted.has(id)) {
+        sounds.delete(id);
+        snd.unloadAsync().catch(() => {});
       }
-      if (!musicUri) return;
+    }
+    (async () => {
       try {
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
           staysActiveInBackground: false,
         });
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: musicUri },
-          {
-            shouldPlay: playing,
-            isLooping: false,
-            volume: musicVolume,
-            positionMillis: musicPositionFor(previewTimeMsRef.current),
-          },
-        );
-        if (cancelled) {
-          await sound.unloadAsync();
-          return;
+      } catch {}
+      for (const [id, uri] of wanted) {
+        if (sounds.has(id)) continue;
+        try {
+          const { sound } = await Audio.Sound.createAsync(
+            { uri },
+            { shouldPlay: false, isLooping: false },
+          );
+          if (cancelled || !wanted.has(id)) {
+            await sound.unloadAsync();
+            continue;
+          }
+          sounds.set(id, sound);
+        } catch (error) {
+          Logger.error("Music preview failed:", error);
         }
-        musicSoundRef.current = sound;
-        const status = await sound.getStatusAsync();
-        if (!cancelled && status.isLoaded && status.durationMillis) {
-          setMusicDurationMs(status.durationMillis);
-        }
-      } catch (error) {
-        Logger.error("Music preview failed:", error);
       }
+      if (!cancelled) void syncMusic(reelPlayheadRef.current, true);
     })();
     return () => {
       cancelled = true;
-      if (musicSoundRef.current) {
-        void musicSoundRef.current.unloadAsync();
-        musicSoundRef.current = null;
-      }
     };
-  }, [musicPositionFor, musicUri]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [musicFilesKey, syncMusic]);
 
-  // Keep the song in step with the video: re-seek when the reel restarts / jumps back.
-  const lastPreviewTimeRef = useRef(previewTimeMs);
-  useEffect(() => {
-    const last = lastPreviewTimeRef.current;
-    lastPreviewTimeRef.current = previewTimeMs;
-    if (previewTimeMs < last - 800) void seekMusic(previewTimeMs);
-  }, [previewTimeMs, seekMusic]);
+  useEffect(
+    () => () => {
+      for (const snd of musicSoundsRef.current.values()) {
+        snd.unloadAsync().catch(() => {});
+      }
+      musicSoundsRef.current.clear();
+    },
+    [],
+  );
 
+  // Follow the playhead: switch songs at their boundaries, re-seek when it jumps back.
+  const lastReelPlayheadRef = useRef(reelPlayheadMs);
   useEffect(() => {
-    void seekMusic(previewTimeMsRef.current);
-  }, [musicStartMs, seekMusic]);
+    const last = lastReelPlayheadRef.current;
+    lastReelPlayheadRef.current = reelPlayheadMs;
+    void syncMusic(reelPlayheadMs, reelPlayheadMs < last - 800);
+  }, [reelPlayheadMs, syncMusic]);
 
+  /** Move the reel preview to `reelMs` and play from there (overview only). */
+  const seekReelTo = useCallback(
+    async (reelMs: number) => {
+      if (focusIndexRef.current != null) return;
+      const list = clipsRef.current;
+      let offset = 0;
+      let idx = list.length - 1;
+      for (let i = 0; i < list.length; i++) {
+        const len = clipLengthMs(list[i]);
+        if (reelMs < offset + len) {
+          idx = i;
+          break;
+        }
+        offset += len;
+      }
+      const clip = list[idx];
+      if (!clip) return;
+      const local = Math.max(0, reelMs - offset);
+      playingRef.current = true;
+      setPlaying(true);
+      await startAt(idx);
+      if (isImageClip(clip)) {
+        imageElapsedRef.current = local;
+      } else {
+        try {
+          players[activeSlotRef.current].currentTime =
+            playToSourceMs(clip, local) / 1000;
+        } catch {}
+      }
+      setPreviewTimeMs(offset + local);
+      void syncMusic(offset + local, true);
+    },
+    [players, startAt, syncMusic],
+  );
+
+  /** Tap a song (chip or bar block): select it and play from where it starts. */
+  const selectMusicSong = useCallback(
+    (id: string) => {
+      setSelectedMusicId(id);
+      const slot = musicScheduleRef.current.find((m) => m.segId === id && !m.repeat);
+      if (slot) void seekReelTo(slot.at);
+    },
+    [seekReelTo],
+  );
+
+  // Parts / order / volume / Repeat changed, or play ↔ pause → re-apply.
+  const musicScheduleKey = musicSchedule
+    .map((m) => `${m.key}@${m.at}+${m.len}:${m.srcStart}:${m.volume}`)
+    .join("|");
   useEffect(() => {
-    const sound = musicSoundRef.current;
-    if (!sound) return;
-    void (async () => {
-      try {
-        await sound.setVolumeAsync(musicVolume);
-        if (playing) await sound.playAsync();
-        else await sound.pauseAsync();
-      } catch {}
-    })();
-  }, [musicVolume, playing]);
+    void syncMusic(reelPlayheadRef.current, true);
+  }, [musicScheduleKey, playing, syncMusic]);
 
   const firstClip = clips[0];
   const videoSize = useMemo(
@@ -1822,28 +1927,19 @@ export default function EditVideoScreen() {
       },
     ];
 
-    if (musicUri) {
-      // Keep the whole reel covered when the song is long enough.
-      const exportMusicStartMs =
-        musicDurationMs > 0
-          ? Math.max(0, Math.min(musicStartMs, musicDurationMs - reelDuration))
-          : musicStartMs;
+    if (musicSchedule.length > 0) {
+      // Every song part at its own place on the reel (repeats included).
       tracks.push({
         kind: "audio",
         id: "a",
-        clips: [
-          {
-            id: STABLE_CLIP_IDS.music,
-            sourceUri: musicUri,
-            sourceRange: {
-              startMs: exportMusicStartMs,
-              endMs: exportMusicStartMs + reelDuration,
-            },
-            timelineRange: { startMs: 0, endMs: reelDuration },
-            volume: musicVolume,
-            trimToVideo: true,
-          },
-        ],
+        clips: musicSchedule.map((slot, i) => ({
+          id: i === 0 ? STABLE_CLIP_IDS.music : `${STABLE_CLIP_IDS.music}-${i}`,
+          sourceUri: slot.uri,
+          sourceRange: { startMs: slot.srcStart, endMs: slot.srcStart + slot.len },
+          timelineRange: { startMs: slot.at, endMs: slot.at + slot.len },
+          volume: slot.volume,
+          trimToVideo: true,
+        })),
       });
     }
 
@@ -1898,10 +1994,7 @@ export default function EditVideoScreen() {
   }, [
     canvasSize,
     clips,
-    musicDurationMs,
-    musicStartMs,
-    musicUri,
-    musicVolume,
+    musicSchedule,
     overlayBgColorKey,
     overlayBold,
     overlayColorKey,
@@ -1915,9 +2008,53 @@ export default function EditVideoScreen() {
     stickers,
   ]);
 
+  /** Put a picked song in: append ("add") or swap the selected one ("replace"). */
+  const placeMusic = useCallback(
+    async (input: { uri: string; name: string; credit: string | null }) => {
+      const durationMs = await probeAudioDurationMs(input.uri);
+      const seg = newMusicSegment({ ...input, durationMs });
+      pushHistory();
+      // First song repeats by default (fills a long reel); a replaced
+      // repeating song hands the repeat to its replacement.
+      const replacing =
+        musicPickModeRef.current === "replace" &&
+        musicTracksRef.current.some((m) => m.id === selectedMusicIdRef.current);
+      setMusicRepeatId((cur) => {
+        if (musicTracksRef.current.length === 0) return seg.id;
+        if (replacing && cur === selectedMusicIdRef.current) return seg.id;
+        return cur;
+      });
+      setMusicTracks((list) => {
+        const sel = list.findIndex((m) => m.id === selectedMusicIdRef.current);
+        if (musicPickModeRef.current === "replace" && sel >= 0) {
+          const next = [...list];
+          next[sel] = { ...seg, volume: list[sel].volume };
+          return next;
+        }
+        // Earlier songs already fill the reel → shorten the last one to make room.
+        const next = [...list];
+        const total = musicPartsTotalMs(next, totalMsRef.current);
+        const lastIdx = next.length - 1;
+        if (lastIdx >= 0 && total >= totalMsRef.current - MIN_MUSIC_PART_MS) {
+          const offsets = musicSegmentOffsets(next, totalMsRef.current);
+          const lastPart = segmentPart(
+            next[lastIdx],
+            totalMsRef.current - offsets[lastIdx],
+          );
+          const keep = Math.max(MIN_MUSIC_PART_MS, Math.round(lastPart.len / 2));
+          next[lastIdx] = { ...next[lastIdx], startMs: lastPart.start, endMs: lastPart.start + keep };
+        }
+        return [...next, seg];
+      });
+      setSelectedMusicId(seg.id);
+      setMusicPickMode(null);
+      setPlaying(true);
+    },
+    [pushHistory],
+  );
+
   const pickMusic = useCallback(async () => {
     try {
-      pushHistory();
       const result = await DocumentPicker.getDocumentAsync({
         type: ["audio/*"],
         copyToCacheDirectory: true,
@@ -1929,17 +2066,16 @@ export default function EditVideoScreen() {
         asset.uri,
         (asset.name || "music.mp3").split(".").pop() || "mp3",
       );
-      setMusicUri(localMusic);
-      setMusicName(asset.name || t("backgroundMusic"));
-      setMusicCredit(null);
-      setMusicStartMs(0);
-      setChangingMusic(false);
-      setPlaying(true);
+      await placeMusic({
+        uri: localMusic,
+        name: asset.name || t("backgroundMusic"),
+        credit: null,
+      });
     } catch (error) {
       Logger.error("Music pick failed:", error);
       showBanner(t("error"), t("failedToSelectMusic"), "error", 2500);
     }
-  }, [pushHistory, showBanner, t]);
+  }, [placeMusic, showBanner, t]);
 
   /** Free library pick. Copies into cache so removing the download later can't break export. */
   const applyLibraryTrack = useCallback(
@@ -1950,19 +2086,17 @@ export default function EditVideoScreen() {
         if (!cacheDir) throw new Error("Cache directory unavailable");
         const dest = `${cacheDir}media-edit-music-${Date.now()}.mp3`;
         await FileSystem.copyAsync({ from: track.localUri, to: dest });
-        pushHistory();
-        setMusicUri(dest);
-        setMusicName(`${track.title} · ${track.artist}`);
-        setMusicCredit(trackCredit(track));
-        setMusicStartMs(0);
-        setChangingMusic(false);
-        setPlaying(true);
+        await placeMusic({
+          uri: dest,
+          name: `${track.title} · ${track.artist}`,
+          credit: trackCredit(track),
+        });
       } catch (error) {
         Logger.error("Library music apply failed:", error);
         showBanner(t("error"), t("failedToSelectMusic"), "error", 2500);
       }
     },
-    [pushHistory, showBanner, t],
+    [placeMusic, showBanner, t],
   );
 
   /** Pauses the editor preview so the library's track preview isn't mixed with it. */
@@ -1971,14 +2105,42 @@ export default function EditVideoScreen() {
     setMusicLibraryOpen(true);
   }, []);
 
-  const removeMusic = useCallback(() => {
+  const removeSelectedMusic = useCallback(() => {
+    const id = selectedMusicIdRef.current;
     pushHistory();
-    setMusicUri(null);
-    setMusicName(null);
-    setMusicCredit(null);
-    setMusicStartMs(0);
-    setChangingMusic(false);
+    setMusicTracks((list) => {
+      const idx = list.findIndex((m) => m.id === id);
+      if (idx < 0) return list;
+      const next = list.filter((m) => m.id !== id);
+      setMusicRepeatId((cur) => (cur === id ? null : cur));
+      setSelectedMusicId(next[Math.max(0, idx - 1)]?.id ?? null);
+      return next;
+    });
+    setMusicPickMode(null);
   }, [pushHistory]);
+
+  /** Drag-and-drop on the song chips: new play order. */
+  const reorderMusic = useCallback(
+    (orderedIds: string[]) => {
+      pushHistory();
+      setMusicTracks((list) => {
+        const byId = new Map(list.map((m) => [m.id, m]));
+        const next = orderedIds
+          .map((id) => byId.get(id))
+          .filter((m): m is MusicSegment => !!m);
+        return next.length === list.length ? next : list;
+      });
+    },
+    [pushHistory],
+  );
+
+  /** Change the selected song's part / volume (no history — callers push it). */
+  const updateSelectedMusic = useCallback((patch: Partial<MusicSegment>) => {
+    const id = selectedMusicIdRef.current;
+    setMusicTracks((list) =>
+      list.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+    );
+  }, []);
 
   // ── Clips: add (gallery / camera), reorder, remove ────────────────
 
@@ -2439,16 +2601,16 @@ export default function EditVideoScreen() {
     setPlaying(false);
     playingRef.current = false;
     await releasePlayers();
-    try {
-      await musicSoundRef.current?.pauseAsync();
-    } catch {}
+    for (const snd of musicSoundsRef.current.values()) {
+      snd.pauseAsync().catch(() => {});
+    }
 
     const single = clips.length === 1 ? clips[0] : null;
     const hasEdits =
       !single ||
       isImageClip(single) ||
       aspect !== "original" ||
-      !!musicUri ||
+      musicTracks.length > 0 ||
       mutedClipCount > 0 ||
       !!overlayText.trim() ||
       stickers.length > 0 ||
@@ -2511,7 +2673,7 @@ export default function EditVideoScreen() {
         height: hasEdits ? canvasSize.height : Math.round(videoSize.height),
         edited: hasEdits,
         savedToGallery,
-        musicCredit: musicUri ? musicCredit : null,
+        musicCredit: musicCreditText(musicTracks),
       });
       router.back();
       return;
@@ -2541,8 +2703,8 @@ export default function EditVideoScreen() {
         durationSeconds: String(clipDurationSeconds),
         ...(widthParam ? { width: widthParam } : {}),
         ...(heightParam ? { height: heightParam } : {}),
-        ...(musicUri && musicCredit
-          ? { musicCredit: encodeURIComponent(musicCredit) }
+        ...(musicCreditText(musicTracks)
+          ? { musicCredit: encodeURIComponent(musicCreditText(musicTracks)!) }
           : {}),
       },
     });
@@ -2556,8 +2718,7 @@ export default function EditVideoScreen() {
     exporting,
     isSaveMode,
     maxSeconds,
-    musicCredit,
-    musicUri,
+    musicTracks,
     mutedClipCount,
     overlayText,
     params.fileName,
@@ -2733,16 +2894,19 @@ export default function EditVideoScreen() {
   }));
 
   const busy = exporting || savingToGallery;
-  // Library names are "Title · Artist" — show them on two lines.
-  const [musicTitle, musicArtist] = useMemo(() => {
-    if (!musicName) return [null, null];
-    const i = musicCredit ? musicName.lastIndexOf(" · ") : -1;
-    return i > 0
-      ? [musicName.slice(0, i), musicName.slice(i + 3)]
-      : [musicName, null];
-  }, [musicCredit, musicName]);
-  /** Latest start that still keeps music under the whole reel; 0 = song too short to move. */
-  const musicMaxStartMs = Math.max(0, musicDurationMs - totalMs);
+  const selectedMusicName = selectedMusic ? splitMusicName(selectedMusic) : null;
+  const selectedMusicPart = selectedMusic
+    ? segmentPart(
+        selectedMusic,
+        totalMs - (musicSegmentOffsets(musicTracks, totalMs)[selectedMusicIndex] ?? 0),
+      )
+    : null;
+  // White line on the song strip: where in the selected song's part we are now
+  const selectedMusicSlot = musicSlotAt(musicSchedule, reelPlayheadMs);
+  const selectedMusicPlayheadMs =
+    selectedMusicSlot && selectedMusicSlot.segId === selectedMusic?.id
+      ? reelPlayheadMs - selectedMusicSlot.at
+      : null;
   const canUndo = history.length > 0;
   const tools: {
     key: Exclude<EditorTool, null>;
@@ -3150,9 +3314,9 @@ export default function EditVideoScreen() {
                 <>
                   <View style={styles.musicTitleRow}>
                     <Text style={styles.panelTitle}>{t("backgroundMusic")}</Text>
-                    {changingMusic && musicUri ? (
+                    {musicPickMode && musicTracks.length > 0 ? (
                       <TouchableOpacity
-                        onPress={() => setChangingMusic(false)}
+                        onPress={() => setMusicPickMode(null)}
                         disabled={busy}
                         hitSlop={12}
                       >
@@ -3160,49 +3324,7 @@ export default function EditVideoScreen() {
                       </TouchableOpacity>
                     ) : null}
                   </View>
-                  {musicUri && !changingMusic ? (
-                    <TouchableOpacity
-                      style={styles.musicCard}
-                      onPress={() => setChangingMusic(true)}
-                      disabled={busy}
-                      activeOpacity={0.8}
-                      accessibilityRole="button"
-                      accessibilityLabel={t("changeMusic")}
-                    >
-                      <MaterialIcons
-                        name="music-note"
-                        size={moderateWidthScale(18)}
-                        color={theme.orangeBrown}
-                      />
-                      <View style={styles.musicCardInfo}>
-                        <Text style={styles.musicCardTitle} numberOfLines={1}>
-                          {musicTitle || t("backgroundMusic")}
-                        </Text>
-                        {musicArtist ? (
-                          <Text style={styles.musicCardSub} numberOfLines={1}>
-                            {musicArtist}
-                          </Text>
-                        ) : null}
-                      </View>
-                      <MaterialIcons
-                        name="swap-horiz"
-                        size={moderateWidthScale(22)}
-                        color={theme.white}
-                      />
-                      <TouchableOpacity
-                        onPress={removeMusic}
-                        disabled={busy}
-                        hitSlop={10}
-                        accessibilityLabel={t("remove")}
-                      >
-                        <MaterialIcons
-                          name="delete-outline"
-                          size={moderateWidthScale(22)}
-                          color={theme.white70}
-                        />
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  ) : (
+                  {musicTracks.length === 0 || musicPickMode ? (
                     <View style={[styles.musicCard, styles.musicAddCard]}>
                       <TouchableOpacity
                         style={styles.musicAddMain}
@@ -3250,47 +3372,126 @@ export default function EditVideoScreen() {
                         </Text>
                       </TouchableOpacity>
                     </View>
-                  )}
-                  {musicUri && !changingMusic && musicDurationMs > 0 ? (
-                    musicMaxStartMs > 0 ? (
-                      <View style={styles.musicTrimWrap}>
-                        <MusicTrimmer
-                          seed={musicUri}
-                          musicDurationMs={musicDurationMs}
-                          windowMs={totalMs}
-                          startMs={musicStartMs}
-                          playheadMs={focusIndex == null ? previewTimeMs : null}
+                  ) : (
+                    <>
+                      <MusicSongChips
+                        songs={musicTracks.map((m) => ({
+                          id: m.id,
+                          title: splitMusicName(m).title,
+                        }))}
+                        selectedId={selectedMusic?.id ?? null}
+                        canAdd={musicTracks.length < MAX_MUSIC_SEGMENTS}
+                        disabled={busy}
+                        onSelect={selectMusicSong}
+                        onAdd={() => setMusicPickMode("add")}
+                        onReorder={reorderMusic}
+                      />
+                      {musicTracks.length > 1 ? (
+                        <Text style={[styles.panelHint, styles.musicReorderHint]}>
+                          {t("musicReorderHint")}
+                        </Text>
+                      ) : null}
+
+                      {selectedMusic && selectedMusicName ? (
+                        <>
+                          <View style={styles.musicCard}>
+                            <MaterialIcons
+                              name="music-note"
+                              size={moderateWidthScale(18)}
+                              color={theme.orangeBrown}
+                            />
+                            <View style={styles.musicCardInfo}>
+                              <Text style={styles.musicCardTitle} numberOfLines={1}>
+                                {selectedMusicName.title}
+                              </Text>
+                              {selectedMusicName.artist ? (
+                                <Text style={styles.musicCardSub} numberOfLines={1}>
+                                  {selectedMusicName.artist}
+                                </Text>
+                              ) : null}
+                            </View>
+                            <TouchableOpacity
+                              onPress={() => setMusicPickMode("replace")}
+                              disabled={busy}
+                              hitSlop={10}
+                              accessibilityLabel={t("changeMusic")}
+                            >
+                              <MaterialIcons
+                                name="swap-horiz"
+                                size={moderateWidthScale(22)}
+                                color={theme.white}
+                              />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              onPress={removeSelectedMusic}
+                              disabled={busy}
+                              hitSlop={10}
+                              accessibilityLabel={t("remove")}
+                            >
+                              <MaterialIcons
+                                name="delete-outline"
+                                size={moderateWidthScale(22)}
+                                color={theme.white70}
+                              />
+                            </TouchableOpacity>
+                          </View>
+
+                          {selectedMusicPart && selectedMusic.durationMs > 0 ? (
+                            <View style={styles.musicTrimWrap}>
+                              <MusicTrimmer
+                                seed={selectedMusic.uri}
+                                musicDurationMs={selectedMusic.durationMs}
+                                startMs={selectedMusicPart.start}
+                                endMs={selectedMusicPart.end}
+                                playheadMs={selectedMusicPlayheadMs}
+                                disabled={busy}
+                                onDragStart={pushHistory}
+                                onChange={(start, end) =>
+                                  updateSelectedMusic({ startMs: start, endMs: end })
+                                }
+                              />
+                            </View>
+                          ) : null}
+
+                          <Text style={styles.label}>
+                            {t("musicVolume")}: {Math.round(selectedMusic.volume * 100)}%
+                          </Text>
+                          <Slider
+                            minimumValue={0}
+                            maximumValue={1}
+                            value={selectedMusic.volume}
+                            onSlidingStart={() => pushHistory()}
+                            onValueChange={(v) => updateSelectedMusic({ volume: v })}
+                            minimumTrackTintColor={theme.selectCard}
+                            maximumTrackTintColor={theme.white15}
+                            thumbTintColor={theme.selectCard}
+                            disabled={busy}
+                          />
+                        </>
+                      ) : null}
+
+                      <View style={styles.musicCoverageWrap}>
+                        <MusicCoverage
+                          videoMs={totalMs}
+                          slots={musicSchedule}
+                          selectedIndex={selectedMusicIndex}
+                          partsTotalMs={musicPartsMs}
+                          repeatIndex={musicTracks.findIndex((m) => m.id === musicRepeatId)}
+                          playheadMs={reelPlayheadMs}
                           disabled={busy}
-                          onDragStart={pushHistory}
-                          onChange={setMusicStartMs}
+                          onSelect={(i) => {
+                            const m = musicTracks[i];
+                            if (m) selectMusicSong(m.id);
+                          }}
+                          onToggleLoop={() => {
+                            pushHistory();
+                            const id = selectedMusic?.id ?? null;
+                            setMusicRepeatId((cur) => (cur === id ? null : id));
+                          }}
                         />
                       </View>
-                    ) : (
-                      <Text style={styles.panelHint}>
-                        {t("musicShorterThanVideo", {
-                          time: formatMs(musicDurationMs),
-                        })}
-                      </Text>
-                    )
-                  ) : null}
-                  {musicUri && !changingMusic ? (
-                    <>
-                      <Text style={styles.label}>
-                        {t("musicVolume")}: {Math.round(musicVolume * 100)}%
-                      </Text>
-                      <Slider
-                        minimumValue={0}
-                        maximumValue={1}
-                        value={musicVolume}
-                        onSlidingStart={() => pushHistory()}
-                        onValueChange={setMusicVolume}
-                        minimumTrackTintColor={theme.selectCard}
-                        maximumTrackTintColor={theme.white15}
-                        thumbTintColor={theme.selectCard}
-                        disabled={busy}
-                      />
                     </>
-                  ) : null}
+                  )}
                   <View style={styles.rowBetween}>
                     <Text style={styles.label}>{t("muteOriginalAudio")}</Text>
                     <Switch

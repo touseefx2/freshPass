@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   PanResponder,
+  Platform,
   StyleSheet,
   Text,
   View,
@@ -18,23 +19,22 @@ import {
 } from "@/src/theme/dimensions";
 
 /**
- * Music section picker: the whole song is drawn across the strip and a box
- * (= reel length) sits on top. Drag the box — or tap anywhere — to choose the
- * part that plays. The waveform is decorative (seeded from the uri); we don't
- * decode audio.
+ * "Song part" picker: the whole song is drawn across the strip and an orange
+ * box marks the part that's used. Drag the box to move it, drag its edges to
+ * make it shorter / longer, or tap the song to move the box there. The
+ * waveform is decorative (seeded from the uri); we don't decode audio.
  */
 type Props = {
   /** Seeds the decorative waveform so each song looks different. */
   seed: string;
   musicDurationMs: number;
-  /** Reel length — the box width. */
-  windowMs: number;
   startMs: number;
-  /** Reel playhead (0..windowMs), or null to hide the play line. */
+  endMs: number;
+  /** Ms into the selection that's playing now, or null to hide the line. */
   playheadMs: number | null;
   disabled?: boolean;
   onDragStart: () => void;
-  onChange: (startMs: number) => void;
+  onChange: (startMs: number, endMs: number) => void;
 };
 
 const BAR_W = 3;
@@ -42,9 +42,18 @@ const BAR_GAP = 2;
 const BAR_STEP = BAR_W + BAR_GAP;
 const WAVE_H = heightScale(40);
 const STRIP_H = WAVE_H + moderateHeightScale(14);
-/** Keeps the box grabbable when the song is much longer than the reel. */
-const MIN_BOX_W = moderateWidthScale(44);
+const HANDLE_W = moderateWidthScale(14);
+/** Finger this close to an edge grabs the edge instead of the box. */
+const EDGE_GRAB = moderateWidthScale(22);
+const MIN_PART_MS = 1000;
+/**
+ * Android gesture navigation claims ~24dp at each screen edge for "back";
+ * a drag that starts there never reaches the app. Keep the handles clear.
+ */
+const ANDROID_EDGE_INSET = moderateWidthScale(24);
 const TAP_SLOP = 4;
+
+type Drag = "none" | "move" | "start" | "end";
 
 function formatMs(ms: number): string {
   const total = Math.max(0, Math.round(ms / 1000));
@@ -79,19 +88,23 @@ const createStyles = (theme: Theme) =>
       alignItems: "baseline",
       marginBottom: moderateHeightScale(6),
     },
-    range: {
-      fontSize: fontSize.size13,
+    title: {
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    total: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.white70,
+    range: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrown,
+      fontVariant: ["tabular-nums"],
     },
     strip: {
       height: STRIP_H,
       justifyContent: "center",
+    },
+    edgeSafe: {
+      marginHorizontal: Platform.OS === "android" ? ANDROID_EDGE_INSET : 0,
     },
     dim: {
       position: "absolute",
@@ -104,36 +117,69 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       top: 0,
       bottom: 0,
-      borderWidth: 2,
-      borderColor: theme.white,
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: "rgba(255,255,255,0.08)",
+      borderTopWidth: 3,
+      borderBottomWidth: 3,
+      borderColor: theme.orangeBrown,
       pointerEvents: "none",
     },
-    boxActive: { borderColor: theme.orangeBrown },
+    handle: {
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      width: HANDLE_W,
+      backgroundColor: theme.orangeBrown,
+      alignItems: "center",
+      justifyContent: "center",
+      pointerEvents: "none",
+    },
+    handleStart: {
+      borderTopLeftRadius: moderateWidthScale(6),
+      borderBottomLeftRadius: moderateWidthScale(6),
+    },
+    handleEnd: {
+      borderTopRightRadius: moderateWidthScale(6),
+      borderBottomRightRadius: moderateWidthScale(6),
+    },
+    grip: {
+      width: 3,
+      height: heightScale(14),
+      borderRadius: 2,
+      backgroundColor: theme.darkGreen,
+    },
     playLine: {
       position: "absolute",
-      top: moderateHeightScale(5),
-      bottom: moderateHeightScale(5),
+      top: moderateHeightScale(4),
+      bottom: moderateHeightScale(4),
       width: 2,
       borderRadius: 1,
-      backgroundColor: theme.orangeBrown,
+      backgroundColor: theme.white,
       pointerEvents: "none",
+    },
+    scale: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginTop: moderateHeightScale(3),
+    },
+    scaleText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+      fontVariant: ["tabular-nums"],
     },
     hint: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
       textAlign: "center",
-      marginTop: moderateHeightScale(6),
+      marginTop: moderateHeightScale(4),
     },
   });
 
 export default function MusicTrimmer({
   seed,
   musicDurationMs,
-  windowMs,
   startMs,
+  endMs,
   playheadMs,
   disabled,
   onDragStart,
@@ -145,120 +191,153 @@ export default function MusicTrimmer({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [width, setWidth] = useState(0);
-  /** Box left edge (px) while dragging; null = follow `startMs`. */
-  const [dragLeft, setDragLeft] = useState<number | null>(null);
+  /** Live selection while dragging; null = follow props. */
+  const [draft, setDraft] = useState<{ s: number; e: number } | null>(null);
 
-  const maxStartMs = Math.max(0, musicDurationMs - windowMs);
-  const boxW =
-    musicDurationMs > 0
-      ? Math.min(width, Math.max(MIN_BOX_W, (windowMs / musicDurationMs) * width))
-      : width;
-  const travel = Math.max(0, width - boxW);
+  const dur = Math.max(1, musicDurationMs);
+  // Waveform sits between the two handle widths so the edges stay grabbable.
+  const track = Math.max(1, width - HANDLE_W * 2);
+  const xOf = (ms: number) => HANDLE_W + (ms / dur) * track;
 
-  const leftFromMs = (ms: number) =>
-    maxStartMs > 0 ? (Math.min(ms, maxStartMs) / maxStartMs) * travel : 0;
-  const msFromLeft = (left: number) =>
-    travel > 0 ? (Math.max(0, Math.min(travel, left)) / travel) * maxStartMs : 0;
-
-  const boxLeft = dragLeft ?? leftFromMs(startMs);
-  const shownStart = msFromLeft(boxLeft);
+  const s = draft?.s ?? startMs;
+  const e = draft?.e ?? endMs;
 
   // PanResponder is created once — read live values through a ref.
-  const live = useRef({ boxLeft, travel, boxW, disabled, onDragStart, onChange, msFromLeft });
-  live.current = { boxLeft, travel, boxW, disabled, onDragStart, onChange, msFromLeft };
-  const grabLeftRef = useRef(0);
+  const live = useRef({ s, e, dur, track, disabled, onDragStart, onChange });
+  live.current = { s, e, dur, track, disabled, onDragStart, onChange };
+  const grab = useRef<{ mode: Drag; s: number; e: number; x: number }>({
+    mode: "none",
+    s: 0,
+    e: 0,
+    x: 0,
+  });
 
-  const pan = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => !live.current.disabled,
-        onMoveShouldSetPanResponder: () => !live.current.disabled,
-        // Keep the gesture — parent Pressable / scroll views must not steal it.
-        onPanResponderTerminationRequest: () => false,
-        onShouldBlockNativeResponder: () => true,
-        onPanResponderGrant: () => {
-          grabLeftRef.current = live.current.boxLeft;
-          live.current.onDragStart();
-        },
-        onPanResponderMove: (_, g) => {
-          const { travel: tr } = live.current;
-          setDragLeft(Math.max(0, Math.min(tr, grabLeftRef.current + g.dx)));
-        },
-        onPanResponderRelease: (e, g) => {
-          const { travel: tr, boxW: bw, msFromLeft: toMs, onChange: emit } =
-            live.current;
-          let left = Math.max(0, Math.min(tr, grabLeftRef.current + g.dx));
-          if (Math.abs(g.dx) < TAP_SLOP && Math.abs(g.dy) < TAP_SLOP) {
-            // Tap → center the box where the finger landed.
-            left = Math.max(0, Math.min(tr, e.nativeEvent.locationX - bw / 2));
-          }
-          setDragLeft(null);
-          emit(Math.round(toMs(left) / 100) * 100);
-        },
-        onPanResponderTerminate: () => setDragLeft(null),
-      }),
-    [],
-  );
+  const pan = useMemo(() => {
+    const clampSel = (mode: Drag, s0: number, e0: number, dMs: number) => {
+      const { dur: d } = live.current;
+      if (mode === "move") {
+        const len = e0 - s0;
+        const ns = Math.max(0, Math.min(d - len, s0 + dMs));
+        return { s: ns, e: ns + len };
+      }
+      if (mode === "start") {
+        return { s: Math.max(0, Math.min(e0 - MIN_PART_MS, s0 + dMs)), e: e0 };
+      }
+      return { s: s0, e: Math.min(d, Math.max(s0 + MIN_PART_MS, e0 + dMs)) };
+    };
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => !live.current.disabled,
+      onMoveShouldSetPanResponder: () => !live.current.disabled,
+      // Keep the gesture — the parent Pressable must not steal it.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: (ev) => {
+        const { s: s0, e: e0, dur: d, track: tr } = live.current;
+        const x = ev.nativeEvent.locationX;
+        const left = HANDLE_W + (s0 / d) * tr;
+        const right = HANDLE_W + (e0 / d) * tr;
+        let mode: Drag = "none";
+        if (Math.abs(x - left) <= EDGE_GRAB && x <= (left + right) / 2) mode = "start";
+        else if (Math.abs(x - right) <= EDGE_GRAB) mode = "end";
+        else if (x > left && x < right) mode = "move";
+        grab.current = { mode, s: s0, e: e0, x };
+        live.current.onDragStart();
+      },
+      onPanResponderMove: (_, g) => {
+        const { mode, s: s0, e: e0 } = grab.current;
+        if (mode === "none") return;
+        const dMs = (g.dx / live.current.track) * live.current.dur;
+        const next = clampSel(mode, s0, e0, dMs);
+        setDraft({ s: next.s, e: next.e });
+      },
+      onPanResponderRelease: (_, g) => {
+        const { mode, s: s0, e: e0, x } = grab.current;
+        const { dur: d, track: tr, onChange: emit } = live.current;
+        let next = { s: s0, e: e0 };
+        const tapped = Math.abs(g.dx) < TAP_SLOP && Math.abs(g.dy) < TAP_SLOP;
+        if (tapped && (mode === "none" || mode === "move")) {
+          // Tap → center the box on that spot (same length)
+          const len = e0 - s0;
+          const at = ((x - HANDLE_W) / tr) * d;
+          const ns = Math.max(0, Math.min(d - len, at - len / 2));
+          next = { s: ns, e: ns + len };
+        } else if (mode !== "none") {
+          next = clampSel(mode, s0, e0, (g.dx / tr) * d);
+        }
+        setDraft(null);
+        emit(Math.round(next.s / 100) * 100, Math.round(next.e / 100) * 100);
+      },
+      onPanResponderTerminate: () => setDraft(null),
+    });
+  }, []);
 
-  // A new song / undo while dragging → drop the stale drag.
   useEffect(() => {
-    setDragLeft(null);
+    setDraft(null);
   }, [seed]);
 
   const seedNum = useMemo(() => hashSeed(seed), [seed]);
   const wavePath = useMemo(() => {
     let d = "";
-    for (let x = 0, i = 0; x + BAR_W <= width; x += BAR_STEP, i++) {
+    for (let x = 0, i = 0; x + BAR_W <= track; x += BAR_STEP, i++) {
       const h = barHeight(seedNum, i) * WAVE_H;
       const y = (WAVE_H - h) / 2;
       d += `M${x} ${y}h${BAR_W}v${h}h-${BAR_W}z`;
     }
     return d;
-  }, [seedNum, width]);
+  }, [seedNum, track]);
 
+  const left = xOf(s);
+  const right = xOf(e);
   const playX =
-    playheadMs != null && dragLeft == null && windowMs > 0
-      ? boxLeft + Math.min(1, Math.max(0, playheadMs / windowMs)) * boxW
+    playheadMs != null && draft == null
+      ? xOf(Math.min(e, s + Math.max(0, playheadMs)))
       : null;
 
   return (
     <View>
       <View style={styles.header}>
+        <Text style={styles.title}>{t("musicSongPart")}</Text>
         <Text style={styles.range}>
-          {formatMs(shownStart)} – {formatMs(shownStart + windowMs)}
+          {formatMs(s)} – {formatMs(e)} · {Math.round((e - s) / 1000)}s
         </Text>
-        <Text style={styles.total}>{formatMs(musicDurationMs)}</Text>
       </View>
 
+      <View style={styles.edgeSafe}>
       <View
         style={styles.strip}
-        onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+        onLayout={(ev: LayoutChangeEvent) => setWidth(ev.nativeEvent.layout.width)}
         {...pan.panHandlers}
+        accessibilityLabel={t("musicSongPart")}
+        accessibilityValue={{ text: `${formatMs(s)} – ${formatMs(e)}` }}
       >
         {width > 0 ? (
           <>
-            <Svg width={width} height={WAVE_H} pointerEvents="none">
+            <Svg
+              width={track}
+              height={WAVE_H}
+              style={{ marginLeft: HANDLE_W }}
+              pointerEvents="none"
+            >
               <Path d={wavePath} fill={theme.white} />
             </Svg>
-            <View style={[styles.dim, { left: 0, width: boxLeft }]} />
-            <View
-              style={[
-                styles.dim,
-                { left: boxLeft + boxW, width: Math.max(0, width - boxLeft - boxW) },
-              ]}
-            />
-            <View
-              style={[
-                styles.box,
-                dragLeft != null && styles.boxActive,
-                { left: boxLeft, width: boxW },
-              ]}
-            />
+            <View style={[styles.dim, { left: 0, width: Math.max(0, left - HANDLE_W) }]} />
+            <View style={[styles.dim, { left: right + HANDLE_W, right: 0 }]} />
+            <View style={[styles.box, { left, width: Math.max(0, right - left) }]} />
+            <View style={[styles.handle, styles.handleStart, { left: left - HANDLE_W }]}>
+              <View style={styles.grip} />
+            </View>
+            <View style={[styles.handle, styles.handleEnd, { left: right }]}>
+              <View style={styles.grip} />
+            </View>
             {playX != null ? <View style={[styles.playLine, { left: playX }]} /> : null}
           </>
         ) : null}
       </View>
-
+      <View style={styles.scale}>
+        <Text style={styles.scaleText}>0:00</Text>
+        <Text style={styles.scaleText}>{formatMs(musicDurationMs)}</Text>
+      </View>
+      </View>
       <Text style={styles.hint}>{t("musicTrimHint")}</Text>
     </View>
   );
