@@ -35,6 +35,13 @@ type Props = {
   onScrubBegin: () => void;
   onScrub: (ms: number) => void;
   onScrubEnd: () => void;
+  /**
+   * "keep" (default): handles mark the part that stays, outside is dimmed.
+   * "remove": handles mark a part to delete — drawn red, nothing dimmed.
+   */
+  variant?: "keep" | "remove";
+  /** false → no handles, the strip only scrubs (Split). */
+  showHandles?: boolean;
 };
 
 const HANDLE_W = widthScale(16);
@@ -141,6 +148,18 @@ const createStyles = (theme: Theme) =>
       borderRadius: widthScale(2),
       backgroundColor: theme.white,
     },
+    removeFill: {
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      backgroundColor: "rgba(220, 53, 69, 0.38)",
+    },
+    handleRemove: {
+      backgroundColor: theme.red,
+    },
+    selectionBarRemove: {
+      backgroundColor: theme.red,
+    },
     playhead: {
       position: "absolute",
       top: -heightScale(3),
@@ -164,7 +183,10 @@ export default function ClipTrimmer({
   onScrubBegin,
   onScrub,
   onScrubEnd,
+  variant = "keep",
+  showHandles = true,
 }: Props) {
+  const removing = variant === "remove";
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -308,7 +330,8 @@ export default function ClipTrimmer({
           playMs.value >= 0 && Math.abs(e.x - playX) <= PLAYHEAD_GRAB;
         const len = endMs.value - startMs.value;
         // Whole source selected → nothing to slide, keep plain scrubbing
-        const canMove = len < durationMs - 1;
+        // No handles (Split) → the strip only scrubs
+        const canMove = showHandles && len < durationMs - 1;
         if (!onPlayhead && canMove && ms > startMs.value && ms < endMs.value) {
           dragging.value = DRAG_PENDING;
           origin.value = startMs.value;
@@ -378,6 +401,7 @@ export default function ClipTrimmer({
     origin,
     playMs,
     pressX,
+    showHandles,
     startMs,
     trackWidth,
   ]);
@@ -475,46 +499,84 @@ export default function ClipTrimmer({
                     <View key={i} style={styles.frameEmpty} />
                   ),
                 )}
-                <Animated.View
-                  pointerEvents="none"
-                  style={[styles.dim, leftDimStyle]}
-                />
-                <Animated.View
-                  pointerEvents="none"
-                  style={[styles.dim, rightDimStyle]}
-                />
+                {removing ? null : (
+                  <>
+                    <Animated.View
+                      pointerEvents="none"
+                      style={[styles.dim, leftDimStyle]}
+                    />
+                    <Animated.View
+                      pointerEvents="none"
+                      style={[styles.dim, rightDimStyle]}
+                    />
+                  </>
+                )}
               </View>
             </GestureDetector>
 
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.selectionBar, { top: 0 }, selectionStyle]}
-            />
-            <Animated.View
-              pointerEvents="none"
-              style={[styles.selectionBar, { bottom: 0 }, selectionStyle]}
-            />
+            {removing ? (
+              <Animated.View
+                pointerEvents="none"
+                style={[styles.removeFill, selectionStyle]}
+              />
+            ) : null}
+            {showHandles ? (
+              <>
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.selectionBar,
+                    removing && styles.selectionBarRemove,
+                    { top: 0 },
+                    selectionStyle,
+                  ]}
+                />
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.selectionBar,
+                    removing && styles.selectionBarRemove,
+                    { bottom: 0 },
+                    selectionStyle,
+                  ]}
+                />
+              </>
+            ) : null}
             <Animated.View
               pointerEvents="none"
               style={[styles.playhead, playheadStyle]}
             />
 
-            <GestureDetector gesture={startGesture}>
-              <Animated.View
-                style={[styles.handle, styles.handleStart, startHandleStyle]}
-                {...a11yHandleProps("start")}
-              >
-                <View style={styles.grip} />
-              </Animated.View>
-            </GestureDetector>
-            <GestureDetector gesture={endGesture}>
-              <Animated.View
-                style={[styles.handle, styles.handleEnd, endHandleStyle]}
-                {...a11yHandleProps("end")}
-              >
-                <View style={styles.grip} />
-              </Animated.View>
-            </GestureDetector>
+            {showHandles ? (
+              <>
+                <GestureDetector gesture={startGesture}>
+                  <Animated.View
+                    style={[
+                      styles.handle,
+                      styles.handleStart,
+                      removing && styles.handleRemove,
+                      startHandleStyle,
+                    ]}
+                    {...a11yHandleProps("start")}
+                  >
+                    <View style={styles.grip} />
+                  </Animated.View>
+                </GestureDetector>
+                <GestureDetector gesture={endGesture}>
+                  <Animated.View
+                    style={[
+                      styles.handle,
+                      styles.handleEnd,
+                      removing && styles.handleRemove,
+                      endHandleStyle,
+                    ]}
+                    {...a11yHandleProps("end")}
+                  >
+                    <View style={styles.grip} />
+                  </Animated.View>
+                </GestureDetector>
+              </>
+            ) : null}
           </>
         ) : null}
       </View>

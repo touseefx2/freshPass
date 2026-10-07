@@ -22,7 +22,7 @@ import {
   moderateWidthScale,
   widthScale,
 } from "@/src/theme/dimensions";
-import { clipLengthMs, type EditorClip } from "./editorModel";
+import { clipLengthMs, isImageClip, type EditorClip } from "./editorModel";
 
 /**
  * Level 1 of the trim tool (Instagram "Edit clips"): one tile per clip.
@@ -337,11 +337,17 @@ function ClipTile({
             <Image source={{ uri: thumb }} style={styles.thumb} contentFit="cover" transition={120} />
           ) : (
             <View style={styles.thumbFallback}>
-              <MaterialIcons name="movie" size={moderateWidthScale(20)} color={theme.white50} />
+              <MaterialIcons
+                name={isImageClip(clip) ? "image" : "movie"}
+                size={moderateWidthScale(20)}
+                color={theme.white50}
+              />
             </View>
           )}
           <View style={styles.durationPill}>
-            {clip.muted ? (
+            {isImageClip(clip) ? (
+              <MaterialIcons name="image" size={moderateWidthScale(11)} color={theme.white} />
+            ) : clip.muted ? (
               <MaterialIcons name="volume-off" size={moderateWidthScale(11)} color={theme.white} />
             ) : null}
             <Text style={styles.durationText}>{formatMs(clipLengthMs(clip))}</Text>

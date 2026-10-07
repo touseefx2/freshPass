@@ -12,11 +12,18 @@ import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 
 /** Shortest clip the editor allows (matches the trim sliders' 500ms gap). */
 export const MIN_CLIP_MS = 500;
-export const MAX_EDITOR_CLIPS = 10;
+/** Safety cap for preview memory / export; length is checked on Save, not here. */
+export const MAX_EDITOR_CLIPS = 30;
 export const MAX_EDITOR_STICKERS = 10;
 /** Android re-draws overlays every 100ms during export — keep photos few + small. */
 export const MAX_IMAGE_STICKERS = 5;
 export const STICKER_IMAGE_MAX_SIDE = 720;
+/** Photo clips: how long a still shows (its length lives in trimStartMs..trimEndMs). */
+export const IMAGE_CLIP_DEFAULT_MS = 3000;
+export const IMAGE_CLIP_MIN_MS = 1000;
+export const IMAGE_CLIP_MAX_MS = 15000;
+/** Photos are re-encoded to this longest side — plenty for a 1080p reel. */
+const IMAGE_CLIP_MAX_SIDE = 1920;
 /** Shortest part the Cut tool removes. */
 export const MIN_CUT_MS = 200;
 /** Cut never leaves less than this of a clip. */
@@ -30,6 +37,11 @@ export type CutRange = { startMs: number; endMs: number };
 
 export type EditorClip = {
   id: string;
+  /**
+   * "image" = a still photo shown for trimEndMs - trimStartMs (always 0..duration,
+   * sourceDurationMs = IMAGE_CLIP_MAX_MS). Omitted = video.
+   */
+  kind?: "video" | "image";
   /** Local file:// copy that both preview and export can open. */
   uri: string;
   sourceDurationMs: number;
@@ -318,7 +330,55 @@ export async function prepareEditorClip(input: {
   };
 }
 
+export function isImageClip(clip: Pick<EditorClip, "kind">): boolean {
+  return clip.kind === "image";
+}
+
+/**
+ * Copy a picked/taken photo into a clip: EXIF-upright JPEG, longest side
+ * capped, shown for IMAGE_CLIP_DEFAULT_MS (or what's left of `budgetMs`).
+ */
+export async function prepareImageClip(input: {
+  uri: string;
+  width?: number;
+  height?: number;
+  sourceType: MediaUploadSourceType;
+  budgetMs: number;
+}): Promise<EditorClip> {
+  const w = input.width || 0;
+  const h = input.height || 0;
+  const actions: ImageManipulator.Action[] = [];
+  if (!w || !h || Math.max(w, h) > IMAGE_CLIP_MAX_SIDE) {
+    actions.push(
+      w >= h
+        ? { resize: { width: IMAGE_CLIP_MAX_SIDE } }
+        : { resize: { height: IMAGE_CLIP_MAX_SIDE } },
+    );
+  }
+  const result = await ImageManipulator.manipulateAsync(input.uri, actions, {
+    compress: 0.9,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  const uri = result.uri.startsWith("file://") ? result.uri : `file://${result.uri}`;
+  const durationMs = Math.max(
+    IMAGE_CLIP_MIN_MS,
+    Math.min(IMAGE_CLIP_DEFAULT_MS, Math.floor(input.budgetMs)),
+  );
+  return {
+    id: makeClipId("photo"),
+    kind: "image",
+    uri,
+    sourceDurationMs: IMAGE_CLIP_MAX_MS,
+    trimStartMs: 0,
+    trimEndMs: durationMs,
+    width: result.width,
+    height: result.height,
+    sourceType: input.sourceType,
+  };
+}
+
 export async function clipThumbnail(clip: EditorClip): Promise<string | null> {
+  if (isImageClip(clip)) return clip.uri;
   try {
     return await generateThumbnail(
       clip.uri,
@@ -414,8 +474,22 @@ export async function prepareStickerImage(asset: {
 /** One native video clip per kept part, so cut parts never reach the export. */
 export function buildVideoTrackClips(clips: EditorClip[]): VideoClip[] {
   let cursor = 0;
-  return clips.flatMap((clip) =>
-    keptSegments(clip).map((seg, i) => {
+  return clips.flatMap((clip) => {
+    if (isImageClip(clip)) {
+      const len = Math.round(clipLengthMs(clip));
+      // ImageClip lives in the video track natively; the TS union only lists VideoClip.
+      const image = {
+        id: clip.id,
+        kind: "image",
+        sourceUri: clip.uri,
+        durationMs: len,
+        sourceRange: { startMs: 0, endMs: len },
+        timelineRange: { startMs: cursor, endMs: cursor + len },
+      } as unknown as VideoClip;
+      cursor += len;
+      return [image];
+    }
+    return keptSegments(clip).map((seg, i) => {
       const start = Math.round(seg.startMs);
       const end = Math.round(seg.endMs);
       const len = end - start;
@@ -428,8 +502,8 @@ export function buildVideoTrackClips(clips: EditorClip[]): VideoClip[] {
       };
       cursor += len;
       return out;
-    }),
-  );
+    });
+  });
 }
 
 /**

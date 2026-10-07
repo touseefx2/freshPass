@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Keyboard,
@@ -20,6 +19,7 @@ import { CloseIcon } from "@/assets/icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
+import { Image as ExpoImage } from "expo-image";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -71,6 +71,9 @@ import StickerLayer, {
 import StickerPanel from "@/src/components/videoEditor/stickerPanel";
 import MusicLibrarySheet from "@/src/components/videoEditor/musicLibrarySheet";
 import MusicTrimmer from "@/src/components/videoEditor/musicTrimmer";
+import AddClipSheet, {
+  type AddClipSource,
+} from "@/src/components/videoEditor/addClipSheet";
 import {
   trackCredit,
   type DownloadedTrack,
@@ -78,6 +81,8 @@ import {
 import { deliverEditedVideo } from "@/src/components/videoEditor/editorHandoff";
 import { saveLocalVideoToGallery } from "@/src/services/downloadMediaService";
 import {
+  IMAGE_CLIP_MAX_MS,
+  IMAGE_CLIP_MIN_MS,
   MAX_EDITOR_CLIPS,
   MAX_EDITOR_STICKERS,
   MAX_IMAGE_STICKERS,
@@ -90,10 +95,12 @@ import {
   clipOffsetMs,
   clipPlayRange,
   clipThumbnail,
+  isImageClip,
   normalizeDegrees,
   prepareEditorClip,
+  prepareImageClip,
   playToSourceMs,
-  cutTrimWindow,
+  addCut,
   prepareStickerImage,
   skipCutAt,
   sourceFilmstrip,
@@ -402,6 +409,9 @@ const createStyles = (theme: Theme) =>
     },
     videoLayer: {
       ...StyleSheet.absoluteFillObject,
+    },
+    photoLayer: {
+      backgroundColor: theme.black,
     },
     playOverlay: {
       ...StyleSheet.absoluteFillObject,
@@ -918,9 +928,11 @@ export default function EditVideoScreen() {
     clips.length > 0 &&
     (totalMs > maxSeconds * 1000 + 50 ||
       totalMs < MIN_REEL_SECONDS * 1000 - 50);
-  const mutedClipCount = clips.filter((c) => c.muted).length;
+  // Photos have no sound — mute state only counts videos.
+  const videoClipCount = clips.filter((c) => !isImageClip(c)).length;
+  const mutedClipCount = clips.filter((c) => c.muted && !isImageClip(c)).length;
   /** "Mute original audio" (Music panel) = every clip's own sound is off. */
-  const allClipsMuted = clips.length > 0 && mutedClipCount === clips.length;
+  const allClipsMuted = videoClipCount > 0 && mutedClipCount === videoClipCount;
   const editingIndex = clips.findIndex((c) => c.id === editingClipId);
   const editingClip: EditorClip | null =
     editingIndex >= 0 ? clips[editingIndex] : null;
@@ -951,6 +963,12 @@ export default function EditVideoScreen() {
   } | null>(null);
   const engineGenRef = useRef(0);
   const engineLoadingRef = useRef(false);
+  /** Photo clip on screen (preview players are paused while it shows). */
+  const [activeImageUri, setActiveImageUri] = useState<string | null>(null);
+  const imageActiveRef = useRef(false);
+  /** Ms of the current photo clip already shown. */
+  const imageElapsedRef = useRef(0);
+  const [addClipOpen, setAddClipOpen] = useState(false);
   const scrubbingRef = useRef(false);
   const filmstripLoadingRef = useRef(new Set<string>());
 
@@ -1211,6 +1229,8 @@ export default function EditVideoScreen() {
       if (focusIndexRef.current != null || list.length < 2) return;
       const nextIndex = (activeIndexRef.current + 1) % list.length;
       const clip = list[nextIndex];
+      // Photos don't use a player — nothing to preload.
+      if (!clip || isImageClip(clip)) return;
       const slot = otherSlot(activeSlotRef.current);
       try {
         players[slot].pause();
@@ -1237,6 +1257,23 @@ export default function EditVideoScreen() {
       if (!clip) return;
       const slot = activeSlotRef.current;
       const p = players[slot];
+      if (isImageClip(clip)) {
+        try {
+          players.forEach((pl) => pl.pause());
+        } catch {}
+        activeIndexRef.current = index;
+        imageActiveRef.current = true;
+        imageElapsedRef.current = 0;
+        setActiveImageUri(clip.uri);
+        engineLoadingRef.current = false;
+        setPreviewTimeMs(
+          focusIndexRef.current != null ? 0 : clipOffsetMs(list, index),
+        );
+        void preloadNext(gen);
+        return;
+      }
+      imageActiveRef.current = false;
+      setActiveImageUri(null);
       engineLoadingRef.current = true;
       try {
         players[otherSlot(slot)].pause();
@@ -1271,6 +1308,11 @@ export default function EditVideoScreen() {
     if (focus != null || list.length < 2) {
       const clip = list[focus ?? idx] ?? list[0];
       if (!clip) return;
+      if (isImageClip(clip)) {
+        imageElapsedRef.current = 0;
+        setPreviewTimeMs(0);
+        return;
+      }
       try {
         players[slot].currentTime = clipPlayRange(clip).startMs / 1000;
         if (playingRef.current) players[slot].play();
@@ -1291,6 +1333,8 @@ export default function EditVideoScreen() {
       preloadRef.current = null;
       activeSlotRef.current = pre.slot;
       activeIndexRef.current = nextIndex;
+      imageActiveRef.current = false;
+      setActiveImageUri(null);
       setActiveSlot(pre.slot);
       try {
         if (playingRef.current) players[pre.slot].play();
@@ -1316,7 +1360,8 @@ export default function EditVideoScreen() {
           if (
             slot !== activeSlotRef.current ||
             engineLoadingRef.current ||
-            scrubbingRef.current
+            scrubbingRef.current ||
+            imageActiveRef.current
           ) {
             return;
           }
@@ -1352,7 +1397,11 @@ export default function EditVideoScreen() {
           );
         }),
         p.addListener("playToEnd", () => {
-          if (slot !== activeSlotRef.current || engineLoadingRef.current) {
+          if (
+            slot !== activeSlotRef.current ||
+            engineLoadingRef.current ||
+            imageActiveRef.current
+          ) {
             return;
           }
           advance();
@@ -1378,13 +1427,40 @@ export default function EditVideoScreen() {
   useEffect(() => {
     try {
       players[otherSlot(activeSlot)].pause();
-      if (playing && !engineLoadingRef.current) {
+      if (activeImageUri) {
+        players[activeSlot].pause();
+      } else if (playing && !engineLoadingRef.current) {
         players[activeSlot].play();
       } else if (!playing) {
         players[activeSlot].pause();
       }
     } catch {}
-  }, [activeSlot, players, playing]);
+  }, [activeImageUri, activeSlot, players, playing]);
+
+  // Photo clip clock: no player drives time, so tick the playhead here.
+  useEffect(() => {
+    if (!activeImageUri || !playing) return;
+    let last = Date.now();
+    const id = setInterval(() => {
+      if (scrubbingRef.current || !imageActiveRef.current) return;
+      const now = Date.now();
+      imageElapsedRef.current += now - last;
+      last = now;
+      const list = clipsRef.current;
+      const idx = activeIndexRef.current;
+      const clip = list[idx];
+      if (!clip || !isImageClip(clip)) return;
+      const elapsed = imageElapsedRef.current;
+      if (elapsed >= clipLengthMs(clip)) {
+        advance();
+        return;
+      }
+      setPreviewTimeMs(
+        focusIndexRef.current != null ? elapsed : clipOffsetMs(list, idx) + elapsed,
+      );
+    }, 100);
+    return () => clearInterval(id);
+  }, [activeImageUri, advance, playing]);
 
   // (Re)start playback when the clip list / trims / focus change.
   const clipsKey = clips
@@ -1583,27 +1659,18 @@ export default function EditVideoScreen() {
   );
 
   /**
-   * Cut: remove the part between the orange handles right away (no confirm)
-   * and open the window back up so the rest of the video stays. Undo brings
-   * it back.
+   * Remove part: delete `range` (SOURCE ms) from the clip right away; the
+   * rest joins up. Undo brings it back.
    */
-  const cutSelectedClip = useCallback(
-    (id: string, outer: CutRange) => {
+  const removeRangeFromClip = useCallback(
+    (id: string, range: CutRange) => {
       const list = clipsRef.current;
       const index = list.findIndex((c) => c.id === id);
       const clip = list[index];
       if (!clip) return;
-      if (
-        clip.trimStartMs <= outer.startMs &&
-        clip.trimEndMs >= outer.endMs
-      ) {
-        // Handles still around everything — nothing picked to cut yet
-        showBanner(t("cutClip"), t("cutSelectFirst"), "info", 3500);
-        return;
-      }
-      const next = cutTrimWindow(clip, outer);
+      const next = addCut(clip, range);
       if (!next) {
-        showBanner(t("cutClip"), t("cutClipTooMuch"), "info", 3500);
+        showBanner(t("clipModeRemove"), t("cutClipTooMuch"), "info", 3500);
         return;
       }
       pushHistory();
@@ -1619,8 +1686,10 @@ export default function EditVideoScreen() {
   // Load trimmer frames for the open clip's file (once per file).
   const selectedUri = editingClip?.uri;
   const selectedSourceMs = editingClip?.sourceDurationMs ?? 0;
+  const selectedIsImage = !!editingClip && isImageClip(editingClip);
   useEffect(() => {
     if (activeTool !== "trim" || !selectedUri || exporting) return;
+    if (selectedIsImage) return;
     if (filmstrips[selectedUri] || filmstripLoadingRef.current.has(selectedUri)) {
       return;
     }
@@ -1632,7 +1701,7 @@ export default function EditVideoScreen() {
       .finally(() => {
         filmstripLoadingRef.current.delete(selectedUri);
       });
-  }, [activeTool, exporting, filmstrips, selectedSourceMs, selectedUri]);
+  }, [activeTool, exporting, filmstrips, selectedIsImage, selectedSourceMs, selectedUri]);
 
   const musicStartMsRef = useRef(musicStartMs);
   musicStartMsRef.current = musicStartMs;
@@ -1919,17 +1988,16 @@ export default function EditVideoScreen() {
 
   // ── Clips: add (gallery / camera), reorder, remove ────────────────
 
-  /** Returns a reason the user can't add another clip, or null. */
+  /**
+   * Returns a reason the user can't add another clip, or null. Length is NOT
+   * checked here — add freely; Save / Next checks the final reel.
+   */
   const clipAddBlocker = useCallback((): string | null => {
-    const list = clipsRef.current;
-    if (list.length >= MAX_EDITOR_CLIPS) {
+    if (clipsRef.current.length >= MAX_EDITOR_CLIPS) {
       return t("clipsLimitReached", { max: MAX_EDITOR_CLIPS });
     }
-    if (maxClipMs - totalClipsMs(list) < MIN_CLIP_MS) {
-      return t("clipsNoTimeLeft", { max_seconds: maxSeconds });
-    }
     return null;
-  }, [maxClipMs, maxSeconds, t]);
+  }, [t]);
 
   const appendClips = useCallback(
     async (
@@ -1940,28 +2008,29 @@ export default function EditVideoScreen() {
       setAddingClips(true);
       const added: EditorClip[] = [];
       let failed = 0;
-      let outOfTime = 0;
-      let shortened = false;
-      let budget = maxClipMs - totalClipsMs(clipsRef.current);
       // Original audio muted for every clip → new clips come in muted too
       const inheritMute =
         clipsRef.current.length > 0 && clipsRef.current.every((c) => c.muted);
       for (const asset of assets) {
         if (!asset.uri) continue;
         if (clipsRef.current.length + added.length >= MAX_EDITOR_CLIPS) break;
-        if (budget < MIN_CLIP_MS) {
-          outOfTime += 1;
-          continue;
-        }
         try {
-          const clip = await prepareEditorClip({
-            uri: asset.uri,
-            fileName: asset.fileName,
-            sourceType: type,
-            budgetMs: budget,
-          });
-          if (clip.trimEndMs < clip.sourceDurationMs) shortened = true;
-          budget -= clipLengthMs(clip);
+          const isPhoto = asset.type === "image";
+          // Whole videos / default photo length — the user trims afterwards.
+          const clip = isPhoto
+            ? await prepareImageClip({
+                uri: asset.uri,
+                width: asset.width,
+                height: asset.height,
+                sourceType: type,
+                budgetMs: Number.POSITIVE_INFINITY,
+              })
+            : await prepareEditorClip({
+                uri: asset.uri,
+                fileName: asset.fileName,
+                sourceType: type,
+                budgetMs: Number.POSITIVE_INFINITY,
+              });
           added.push(inheritMute ? { ...clip, muted: true } : clip);
         } catch (error) {
           Logger.error("Add clip failed:", error);
@@ -1980,23 +2049,9 @@ export default function EditVideoScreen() {
 
       if (failed > 0) {
         showBanner(t("error"), t("failedToAddClip"), "error", 3000);
-      } else if (outOfTime > 0) {
-        showBanner(
-          t("trimVideo"),
-          t("clipsNoTimeLeft", { max_seconds: maxSeconds }),
-          "warning",
-          4000,
-        );
-      } else if (shortened) {
-        showBanner(
-          t("trimVideo"),
-          t("clipsShortenedToFit", { max_seconds: maxSeconds }),
-          "info",
-          3500,
-        );
       }
     },
-    [loadThumbnail, maxClipMs, maxSeconds, pushSnapshot, showBanner, t],
+    [loadThumbnail, pushSnapshot, showBanner, t],
   );
 
   const addClipsFromGallery = useCallback(async () => {
@@ -2012,7 +2067,7 @@ export default function EditVideoScreen() {
     setPlaying(false);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"],
+        mediaTypes: ["videos", "images"],
         allowsMultipleSelection: true,
         orderedSelection: true,
         selectionLimit: Math.max(1, MAX_EDITOR_CLIPS - clipsRef.current.length),
@@ -2037,7 +2092,7 @@ export default function EditVideoScreen() {
     t,
   ]);
 
-  const addClipFromCamera = useCallback(async () => {
+  const addClipFromCamera = useCallback(async (mode: "video" | "photo" = "video") => {
     dismissKeyboard();
     const blocked = clipAddBlocker();
     if (blocked) {
@@ -2046,16 +2101,19 @@ export default function EditVideoScreen() {
     }
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) return;
-    const remainingMs = maxClipMs - totalClipsMs(clipsRef.current);
     const snap = currentSnapshot();
     setPlaying(false);
     try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["videos"],
-        quality: 1,
-        videoMaxDuration: Math.max(1, Math.floor(remainingMs / 1000)),
-        ...IOS_PICKER_COMPAT,
-      });
+      const result = await ImagePicker.launchCameraAsync(
+        mode === "photo"
+          ? { mediaTypes: ["images"], quality: 1, ...IOS_PICKER_COMPAT }
+          : {
+              mediaTypes: ["videos"],
+              quality: 1,
+              videoMaxDuration: Math.max(1, Math.floor(maxSeconds)),
+              ...IOS_PICKER_COMPAT,
+            },
+      );
       if (!result.canceled && result.assets?.[0]) {
         await appendClips([result.assets[0]], "camera", snap);
       }
@@ -2070,7 +2128,7 @@ export default function EditVideoScreen() {
     clipAddBlocker,
     currentSnapshot,
     dismissKeyboard,
-    maxClipMs,
+    maxSeconds,
     showBanner,
     t,
   ]);
@@ -2123,7 +2181,7 @@ export default function EditVideoScreen() {
     [pushHistory],
   );
 
-  /** "+" tile → native chooser (action sheet on iOS, dialog on Android). */
+  /** "+" tile → add-clip sheet (gallery / record / photo). */
   const openAddClipChooser = useCallback(() => {
     dismissKeyboard();
     const blocked = clipAddBlocker();
@@ -2131,40 +2189,36 @@ export default function EditVideoScreen() {
       showBanner(t("trimVideo"), blocked, "warning", 3500);
       return;
     }
-    const gallery = () => void addClipsFromGallery();
-    const camera = () => void addClipFromCamera();
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: t("addClip"),
-          options: [t("clipsGallery"), t("clipsCamera"), t("cancel")],
-          cancelButtonIndex: 2,
-        },
-        (i) => {
-          if (i === 0) gallery();
-          else if (i === 1) camera();
-        },
-      );
-      return;
-    }
-    Alert.alert(
-      t("addClip"),
-      undefined,
-      [
-        { text: t("cancel"), style: "cancel" },
-        { text: t("clipsCamera"), onPress: camera },
-        { text: t("clipsGallery"), onPress: gallery },
-      ],
-      { cancelable: true },
+    setAddClipOpen(true);
+  }, [clipAddBlocker, dismissKeyboard, showBanner, t]);
+
+  const onAddClipSource = useCallback(
+    (source: AddClipSource) => {
+      setAddClipOpen(false);
+      // Pickers can't present while the sheet's Modal is still dismissing (iOS).
+      setTimeout(() => {
+        if (source === "gallery") void addClipsFromGallery();
+        else void addClipFromCamera(source === "takePhoto" ? "photo" : "video");
+      }, 400);
+    },
+    [addClipFromCamera, addClipsFromGallery],
+  );
+
+  /** Photo clip length (Trim → open a photo). */
+  const setSelectedPhotoDuration = useCallback((ms: number) => {
+    const list = clipsRef.current;
+    const idx = list.findIndex((c) => c.id === editingClipIdRef.current);
+    const clip = list[idx];
+    if (!clip || !isImageClip(clip)) return;
+    const end = Math.round(
+      Math.min(IMAGE_CLIP_MAX_MS, Math.max(IMAGE_CLIP_MIN_MS, ms)),
     );
-  }, [
-    addClipFromCamera,
-    addClipsFromGallery,
-    clipAddBlocker,
-    dismissKeyboard,
-    showBanner,
-    t,
-  ]);
+    if (end === clip.trimEndMs) return;
+    const updated = [...list];
+    updated[idx] = { ...clip, trimStartMs: 0, trimEndMs: end };
+    clipsRef.current = updated;
+    setClips(updated);
+  }, []);
 
   // ── Stickers ──────────────────────────────────────────────────────
 
@@ -2398,6 +2452,7 @@ export default function EditVideoScreen() {
     const single = clips.length === 1 ? clips[0] : null;
     const hasEdits =
       !single ||
+      isImageClip(single) ||
       aspect !== "original" ||
       !!musicUri ||
       mutedClipCount > 0 ||
@@ -2775,6 +2830,15 @@ export default function EditVideoScreen() {
                 pointerEvents="none"
               />
             ))}
+            {activeImageUri ? (
+              // Export letterboxes photos into the frame — preview matches.
+              <ExpoImage
+                source={{ uri: activeImageUri }}
+                style={[styles.videoLayer, styles.photoLayer]}
+                contentFit="contain"
+                pointerEvents="none"
+              />
+            ) : null}
 
             <View style={styles.playOverlay} pointerEvents="box-none">
               <TouchableOpacity
@@ -3008,7 +3072,9 @@ export default function EditVideoScreen() {
                   disabled={busy}
                   onDone={() => setEditingClipId(null)}
                   onSplit={() => splitSelectedClip(editingClip.id)}
-                  onCut={(outer) => cutSelectedClip(editingClip.id, outer)}
+                  onRemoveRange={(range) =>
+                    removeRangeFromClip(editingClip.id, range)
+                  }
                   onToggleMute={() => toggleClipMuted(editingClip.id)}
                   onRemove={() => removeClip(editingClip.id)}
                   onTrimBegin={onTrimSlideStart}
@@ -3018,6 +3084,8 @@ export default function EditVideoScreen() {
                   onScrubBegin={onScrubBegin}
                   onScrub={onScrub}
                   onScrubEnd={onScrubEnd}
+                  onImageDurationBegin={pushHistory}
+                  onImageDurationChange={setSelectedPhotoDuration}
                 />
               ) : null}
 
@@ -3028,10 +3096,7 @@ export default function EditVideoScreen() {
                     thumbs={thumbs}
                     totalMs={totalMs}
                     maxMs={maxClipMs}
-                    canAdd={
-                      clips.length < MAX_EDITOR_CLIPS &&
-                      maxClipMs - totalMs >= MIN_CLIP_MS
-                    }
+                    canAdd={clips.length < MAX_EDITOR_CLIPS}
                     adding={addingClips}
                     disabled={busy}
                     formatMs={formatMs}
@@ -3041,7 +3106,7 @@ export default function EditVideoScreen() {
                     onMove={moveClip}
                     onReorder={reorderClips}
                   />
-                  {maxClipMs - totalMs < MIN_CLIP_MS ? (
+                  {totalMs > maxClipMs + 50 ? (
                     <Text style={styles.panelHint}>
                       {t("reelTrimMaxHint", { max_seconds: maxSeconds })}
                     </Text>
@@ -3547,6 +3612,20 @@ export default function EditVideoScreen() {
           <Text style={styles.progressHint}>{t("exportKeepAppOpen")}</Text>
         </View>
       ) : null}
+
+      <AddClipSheet
+        visible={addClipOpen}
+        timeLabel={
+          totalMs > maxClipMs + 50
+            ? t("addClipOverLimit", {
+                time: formatMs(totalMs - maxClipMs),
+                max: formatMs(maxClipMs),
+              })
+            : t("addClipTimeLeft", { time: formatMs(maxClipMs - totalMs) })
+        }
+        onClose={() => setAddClipOpen(false)}
+        onPick={onAddClipSource}
+      />
 
       <MusicLibrarySheet
         visible={musicLibraryOpen}
