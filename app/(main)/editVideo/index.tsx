@@ -707,51 +707,60 @@ const createStyles = (theme: Theme) =>
       borderRadius: moderateWidthScale(9),
       borderWidth: 1.5,
     },
-    musicRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(10),
-    },
-    musicBtn: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(8),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.buttonBack,
-    },
-    musicBtnSecondary: {
-      backgroundColor: "transparent",
-      borderWidth: 1,
-      borderColor: theme.buttonBack,
-    },
-    musicBtnText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-    },
     musicCard: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(10),
-      padding: moderateWidthScale(8),
-      borderRadius: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
+      paddingHorizontal: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(10),
       backgroundColor: theme.white15,
       marginBottom: moderateHeightScale(10),
     },
-    musicCardIcon: {
-      width: widthScale(36),
-      height: widthScale(36),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.buttonBack,
+    musicCardInfo: { flex: 1, minWidth: 0 },
+    musicAddCard: {
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      gap: 0,
+      overflow: "hidden",
+    },
+    musicAddMain: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      minHeight: heightScale(52),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    musicAddDivider: {
+      width: StyleSheet.hairlineWidth,
+      alignSelf: "stretch",
+      marginVertical: moderateHeightScale(10),
+      backgroundColor: theme.white50,
+    },
+    musicPhoneBtn: {
+      minWidth: widthScale(64),
+      minHeight: heightScale(52),
       alignItems: "center",
       justifyContent: "center",
+      gap: moderateHeightScale(2),
+      paddingHorizontal: moderateWidthScale(10),
     },
-    musicCardInfo: { flex: 1, minWidth: 0 },
+    musicPhoneText: {
+      fontSize: fontSize.size10,
+      fontFamily: fonts.fontMedium,
+      color: theme.white70,
+    },
+    musicTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    musicCancelText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrown,
+    },
     musicCardTitle: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
@@ -761,19 +770,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.white70,
-      marginTop: moderateHeightScale(2),
-    },
-    musicCardBtn: {
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.white50,
-    },
-    musicCardBtnText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
     },
     musicTrimWrap: {
       marginBottom: moderateHeightScale(10),
@@ -2688,6 +2684,14 @@ export default function EditVideoScreen() {
   }));
 
   const busy = exporting || savingToGallery;
+  // Library names are "Title · Artist" — show them on two lines.
+  const [musicTitle, musicArtist] = useMemo(() => {
+    if (!musicName) return [null, null];
+    const i = musicCredit ? musicName.lastIndexOf(" · ") : -1;
+    return i > 0
+      ? [musicName.slice(0, i), musicName.slice(i + 3)]
+      : [musicName, null];
+  }, [musicCredit, musicName]);
   /** Latest start that still keeps music under the whole reel; 0 = song too short to move. */
   const musicMaxStartMs = Math.max(0, musicDurationMs - totalMs);
   const canUndo = history.length > 0;
@@ -3087,38 +3091,51 @@ export default function EditVideoScreen() {
 
               {activeTool === "music" ? (
                 <>
-                  <Text style={styles.panelTitle}>{t("backgroundMusic")}</Text>
+                  <View style={styles.musicTitleRow}>
+                    <Text style={styles.panelTitle}>{t("backgroundMusic")}</Text>
+                    {changingMusic && musicUri ? (
+                      <TouchableOpacity
+                        onPress={() => setChangingMusic(false)}
+                        disabled={busy}
+                        hitSlop={12}
+                      >
+                        <Text style={styles.musicCancelText}>{t("cancel")}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                   {musicUri && !changingMusic ? (
-                    <View style={styles.musicCard}>
-                      <View style={styles.musicCardIcon}>
-                        <MaterialIcons
-                          name="music-note"
-                          size={moderateWidthScale(18)}
-                          color={theme.white}
-                        />
-                      </View>
+                    <TouchableOpacity
+                      style={styles.musicCard}
+                      onPress={() => setChangingMusic(true)}
+                      disabled={busy}
+                      activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("changeMusic")}
+                    >
+                      <MaterialIcons
+                        name="music-note"
+                        size={moderateWidthScale(18)}
+                        color={theme.orangeBrown}
+                      />
                       <View style={styles.musicCardInfo}>
                         <Text style={styles.musicCardTitle} numberOfLines={1}>
-                          {musicName || t("backgroundMusic")}
+                          {musicTitle || t("backgroundMusic")}
                         </Text>
-                        {musicCredit ? (
+                        {musicArtist ? (
                           <Text style={styles.musicCardSub} numberOfLines={1}>
-                            {t("musicCreditShort")}
+                            {musicArtist}
                           </Text>
                         ) : null}
                       </View>
-                      <TouchableOpacity
-                        style={styles.musicCardBtn}
-                        onPress={() => setChangingMusic(true)}
-                        disabled={busy}
-                        activeOpacity={0.85}
-                      >
-                        <Text style={styles.musicCardBtnText}>{t("change")}</Text>
-                      </TouchableOpacity>
+                      <MaterialIcons
+                        name="swap-horiz"
+                        size={moderateWidthScale(22)}
+                        color={theme.white}
+                      />
                       <TouchableOpacity
                         onPress={removeMusic}
                         disabled={busy}
-                        hitSlop={8}
+                        hitSlop={10}
                         accessibilityLabel={t("remove")}
                       >
                         <MaterialIcons
@@ -3127,53 +3144,54 @@ export default function EditVideoScreen() {
                           color={theme.white70}
                         />
                       </TouchableOpacity>
-                    </View>
+                    </TouchableOpacity>
                   ) : (
-                    <View style={styles.musicRow}>
+                    <View style={[styles.musicCard, styles.musicAddCard]}>
                       <TouchableOpacity
-                        style={styles.musicBtn}
+                        style={styles.musicAddMain}
                         onPress={openMusicLibrary}
                         disabled={busy}
-                        activeOpacity={0.85}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("musicAddTitle")}
                       >
                         <MaterialIcons
                           name="library-music"
-                          size={moderateWidthScale(18)}
-                          color={theme.buttonText}
+                          size={moderateWidthScale(20)}
+                          color={theme.orangeBrown}
                         />
-                        <Text style={styles.musicBtnText} numberOfLines={1}>
-                          {t("musicFromLibrary")}
-                        </Text>
+                        <View style={styles.musicCardInfo}>
+                          <Text style={styles.musicCardTitle} numberOfLines={1}>
+                            {t("musicAddTitle")}
+                          </Text>
+                          <Text style={styles.musicCardSub} numberOfLines={1}>
+                            {t("musicAddSub")}
+                          </Text>
+                        </View>
+                        <MaterialIcons
+                          name="chevron-right"
+                          size={moderateWidthScale(22)}
+                          color={theme.white70}
+                        />
                       </TouchableOpacity>
+                      <View style={styles.musicAddDivider} />
                       <TouchableOpacity
-                        style={[styles.musicBtn, styles.musicBtnSecondary]}
+                        style={styles.musicPhoneBtn}
                         onPress={() => void pickMusic()}
                         disabled={busy}
-                        activeOpacity={0.85}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("musicFromPhone")}
                       >
                         <MaterialIcons
-                          name="smartphone"
-                          size={moderateWidthScale(18)}
+                          name="folder-open"
+                          size={moderateWidthScale(20)}
                           color={theme.white}
                         />
-                        <Text style={styles.musicBtnText} numberOfLines={1}>
-                          {t("musicFromPhone")}
+                        <Text style={styles.musicPhoneText}>
+                          {t("musicPhoneShort")}
                         </Text>
                       </TouchableOpacity>
-                      {changingMusic ? (
-                        <TouchableOpacity
-                          onPress={() => setChangingMusic(false)}
-                          disabled={busy}
-                          hitSlop={8}
-                          accessibilityLabel={t("cancel")}
-                        >
-                          <MaterialIcons
-                            name="close"
-                            size={moderateWidthScale(24)}
-                            color={theme.white}
-                          />
-                        </TouchableOpacity>
-                      ) : null}
                     </View>
                   )}
                   {musicUri && !changingMusic && musicDurationMs > 0 ? (
