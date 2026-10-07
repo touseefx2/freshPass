@@ -1,4 +1,5 @@
 import { makeClipId } from "expo-media-edit";
+import type { MediaUploadSourceType } from "@/src/types/media";
 
 /**
  * One-shot hand-off from the editor's "save" mode back to the screen that
@@ -39,4 +40,31 @@ export function takeEditedVideo(requestId: string | null): EditedVideoResult | n
   const result = pending;
   pending = null;
   return result;
+}
+
+/** A picked photo / video the editor opens with. */
+export type EditorSeedAsset = {
+  uri: string;
+  kind: "video" | "image";
+  fileName?: string | null;
+  mimeType?: string | null;
+  width?: number;
+  height?: number;
+  sourceType: MediaUploadSourceType;
+};
+
+let seed: { requestId: string; assets: EditorSeedAsset[] } | null = null;
+
+/**
+ * Several picks for the editor to open with — route params carry one uri.
+ * Set right before pushing the studio with the same request id.
+ */
+export function setEditorSeed(requestId: string, assets: EditorSeedAsset[]): void {
+  seed = { requestId, assets };
+}
+
+/** Picks left for `requestId` (kept until the next request, so a remount still finds them). */
+export function getEditorSeed(requestId: string | null | undefined): EditorSeedAsset[] | null {
+  if (!requestId || !seed || seed.requestId !== requestId) return null;
+  return seed.assets;
 }

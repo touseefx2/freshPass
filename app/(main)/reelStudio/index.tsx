@@ -96,7 +96,11 @@ import {
   trackCredit,
   type DownloadedTrack,
 } from "@/src/services/musicLibraryService";
-import { deliverEditedVideo } from "@/src/components/videoEditor/editorHandoff";
+import {
+  deliverEditedVideo,
+  getEditorSeed,
+  type EditorSeedAsset,
+} from "@/src/components/videoEditor/editorHandoff";
 import { saveLocalVideoToGallery } from "@/src/services/downloadMediaService";
 import {
   IMAGE_CLIP_MAX_MS,
@@ -1021,6 +1025,25 @@ export default function ReelStudioScreen() {
       ? paramMaxSeconds
       : getCachedMediaLimits()?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
+  /** Files handed in by the opener: several picks (seed) or one video (uri). */
+  const [initialAssets] = useState<EditorSeedAsset[]>(() => {
+    const seeded = getEditorSeed(params.requestId);
+    if (seeded?.length) return seeded;
+    return paramUri
+      ? [
+          {
+            uri: paramUri,
+            kind: "video",
+            fileName: params.fileName,
+            mimeType: params.mimeType,
+            width: Number(params.width) || undefined,
+            height: Number(params.height) || undefined,
+            sourceType,
+          },
+        ]
+      : [];
+  });
+
   const steps = useMemo<StudioStep[]>(
     () =>
       isSaveMode
@@ -1028,9 +1051,9 @@ export default function ReelStudioScreen() {
         : ["upload", "trim", "style", "preview", "publish"],
     [isSaveMode],
   );
-  // A video handed in (save mode / Media Library) starts at Trim
+  // Media handed in (save mode / Media Library) starts at Trim
   const [step, setStep] = useState<StudioStep>(() =>
-    isSaveMode || paramUri ? "trim" : "upload",
+    isSaveMode || initialAssets.length > 0 ? "trim" : "upload",
   );
   const [styleTool, setStyleTool] = useState<StyleTool | null>(null);
   const [exported, setExported] = useState<ExportedReel | null>(null);
@@ -1052,7 +1075,7 @@ export default function ReelStudioScreen() {
   const [pickingFrom, setPickingFrom] = useState<"gallery" | "camera" | null>(
     null,
   );
-  const [loadingInfo, setLoadingInfo] = useState(!!paramUri);
+  const [loadingInfo, setLoadingInfo] = useState(initialAssets.length > 0);
   const [maxSeconds, setMaxSeconds] = useState(initialMaxSeconds);
   const [aspect, setAspect] = useState<AspectPreset>("original");
   const [musicTracks, setMusicTracks] = useState<MusicSegment[]>([]);
@@ -1305,11 +1328,11 @@ export default function ReelStudioScreen() {
     });
   }, []);
 
-  // Video handed in by the opener (save mode / Media Library)
+  // Media handed in by the opener (save mode / Media Library)
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!paramUri) return;
+      if (initialAssets.length === 0) return;
       const clipCap = Math.max(
         MIN_CLIP_MS,
         Math.round(
@@ -1319,56 +1342,87 @@ export default function ReelStudioScreen() {
               REEL_LIMIT_FALLBACK.max_seconds) * 1000,
         ),
       );
-      const meta: ClipMeta = {
-        name: params.fileName || null,
-        mimeType: params.mimeType || null,
-      };
-      try {
-        const first = await prepareEditorClip({
-          uri: paramUri,
-          fileName: params.fileName,
-          sourceType,
-          // Whole video loaded; a longer one starts with a window of the
-          // allowed length that the user slides to their best moment.
-          budgetMs: clipCap,
-        });
-        if (cancelled) return;
-        clipsRef.current = [first];
-        setClips([first]);
-        setClipMeta({ [first.id]: meta });
-        setEditingClipId(first.id);
-        setAspect("original");
-        setPlaying(true);
-        loadThumbnail(first);
-      } catch (error) {
-        Logger.error("prepare video for studio failed:", error);
-        if (!cancelled) {
-          // Keep "use as-is" possible even when metadata can't be read.
-          const fallback: EditorClip = {
-            id: makeClipId("clip"),
-            uri: paramUri,
-            sourceDurationMs: clipCap,
-            trimStartMs: 0,
-            trimEndMs: clipCap,
-            width: Number(params.width) || 0,
-            height: Number(params.height) || 0,
-            sourceType,
+      // A lone video starts with a window of the allowed length that the
+      // user slides to their best moment; several picks come in whole.
+      const onlyVideo =
+        initialAssets.length === 1 && initialAssets[0].kind === "video";
+      const prepared: EditorClip[] = [];
+      const metas: Record<string, ClipMeta> = {};
+      let failed = 0;
+      for (const asset of initialAssets.slice(0, MAX_EDITOR_CLIPS)) {
+        try {
+          const clip =
+            asset.kind === "image"
+              ? await prepareImageClip({
+                  uri: asset.uri,
+                  width: asset.width,
+                  height: asset.height,
+                  sourceType: asset.sourceType,
+                  budgetMs: Number.POSITIVE_INFINITY,
+                })
+              : await prepareEditorClip({
+                  uri: asset.uri,
+                  fileName: asset.fileName,
+                  sourceType: asset.sourceType,
+                  budgetMs: onlyVideo ? clipCap : Number.POSITIVE_INFINITY,
+                });
+          if (cancelled) return;
+          prepared.push(clip);
+          metas[clip.id] = {
+            name: asset.fileName || null,
+            mimeType: asset.mimeType || null,
           };
-          clipsRef.current = [fallback];
-          setClips([fallback]);
-          setClipMeta({ [fallback.id]: meta });
-          setEditingClipId(fallback.id);
+        } catch (error) {
+          Logger.error("prepare media for studio failed:", error);
+          failed += 1;
         }
-        showBanner(t("error"), t("failedToLoadVideoForEdit"), "error", 3000);
-      } finally {
-        if (!cancelled) setLoadingInfo(false);
       }
+      if (cancelled) return;
+      const loaded = [...prepared];
+      if (loaded.length === 0 && onlyVideo) {
+        // Keep "use as-is" possible even when metadata can't be read.
+        const asset = initialAssets[0];
+        const fallback: EditorClip = {
+          id: makeClipId("clip"),
+          uri: asset.uri,
+          sourceDurationMs: clipCap,
+          trimStartMs: 0,
+          trimEndMs: clipCap,
+          width: asset.width || 0,
+          height: asset.height || 0,
+          sourceType: asset.sourceType,
+        };
+        loaded.push(fallback);
+        metas[fallback.id] = {
+          name: asset.fileName || null,
+          mimeType: asset.mimeType || null,
+        };
+      }
+      clipsRef.current = loaded;
+      setClips(loaded);
+      setClipMeta(metas);
+      if (loaded.length > 0) {
+        setEditingClipId(loaded[0].id);
+        setAspect("original");
+        setPlaying(prepared.length > 0);
+      }
+      prepared.forEach(loadThumbnail);
+      if (failed > 0) {
+        showBanner(
+          t("error"),
+          onlyVideo ? t("failedToLoadVideoForEdit") : t("failedToAddClip"),
+          "error",
+          3000,
+        );
+      }
+      setLoadingInfo(false);
     })();
     return () => {
       cancelled = true;
     };
+    // Runs once — the picks are fixed for this visit
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paramUri, params.fileName, paramMaxSeconds, showBanner, t]);
+  }, [initialAssets]);
 
   // ── Preview engine ────────────────────────────────────────────────
   // expo-video plays one source per player, so clips are previewed back

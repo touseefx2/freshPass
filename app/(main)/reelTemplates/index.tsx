@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -55,8 +54,14 @@ import {
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import {
   createEditRequestId,
+  setEditorSeed,
   takeEditedVideo,
+  type EditedVideoResult,
 } from "@/src/components/videoEditor/editorHandoff";
+import {
+  IMAGE_CLIP_DEFAULT_MS,
+  MAX_EDITOR_CLIPS,
+} from "@/src/components/videoEditor/editorModel";
 import {
   captionWithMusicCredit,
   musicCreditLine,
@@ -72,6 +77,7 @@ import {
   SelectedMediaRow,
   SourceCard,
 } from "@/src/components/reelFlow/flowParts";
+import MediaTileGrid from "@/src/components/reelFlow/mediaTileGrid";
 import TemplateDropdown from "@/src/components/reelFlow/templateDropdown";
 import RequirementsCard from "@/src/components/reelFlow/requirementsCard";
 import QuotaBanner from "@/src/components/reelFlow/quotaBanner";
@@ -94,8 +100,8 @@ import type { AutoReelTemplate } from "@/src/types/reels";
 /**
  * AI auto reel — one task per screen:
  *   1 Choose a style (template dropdown + what it needs)
- *   2 Add your video (up to 3 min)
- *   3–4 Reel Studio: trim + edit (always — any length)
+ *   2 Add your videos / photos (several at once)
+ *   3–4 Reel Studio: trim + edit them into one video (always — any length, up to 3 min)
  *   5 Details (category, service, caption) → Make my reel
  * then "Creating your reel" while the video uploads, and the AI Auto Reel
  * screen tracks it (selecting highlights → building) → preview → publish.
@@ -130,14 +136,25 @@ type PickedVideoFile = {
   height?: number;
 };
 
-/** What the editor needs: a picker asset or the selected local file */
-type EditorSource = {
+/** Photo / video picked on "Add your video" — the editor combines them all */
+type PickedMedia = {
+  id: string;
+  kind: "video" | "image";
   uri: string;
-  mimeType?: string | null;
-  fileName?: string | null;
+  mimeType: string;
+  fileName: string;
+  sourceType: MediaUploadSourceType;
+  /** Videos only; null until known */
+  durationSeconds: number | null;
   width?: number;
   height?: number;
+  thumbnailUri: string | null;
+  /** The editor's result (shown as "Your edited video") */
+  edited?: boolean;
 };
+
+let pickSeq = 0;
+const nextPickId = () => `pick-${Date.now()}-${pickSeq++}`;
 
 type SourceVideo = {
   /** Server media id (purpose=auto_reel_source) once uploaded, or reused from "Try another template" */
@@ -207,17 +224,6 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       lineHeight: fontSize.size20,
     },
-    loadingRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(8),
-    },
-    loadingText: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
-    },
   });
 
 export default function ReelTemplatesScreen() {
@@ -273,8 +279,17 @@ export default function ReelTemplatesScreen() {
   const [templatesError, setTemplatesError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
+  /** The video "Make my reel" uploads (editor result, or a server-only one). */
   const [sourceVideo, setSourceVideo] = useState<SourceVideo | null>(null);
-  const [pickingVideo, setPickingVideo] = useState(false);
+  /** What the editor opens with on Next (photos + videos, in order). */
+  const [picks, setPicks] = useState<PickedMedia[]>([]);
+  const picksRef = useRef(picks);
+  picksRef.current = picks;
+  const [addingMedia, setAddingMedia] = useState(false);
+  /** Which source card is adding (its icon shows the spinner). */
+  const [pickingFrom, setPickingFrom] = useState<"gallery" | "camera" | null>(
+    null,
+  );
   const [caption, setCaption] = useState("");
   /** Library-music credit from the editor, tied to the exported file it belongs to. */
   const [editorMusicCredit, setEditorMusicCredit] = useState<{
@@ -462,24 +477,26 @@ export default function ReelTemplatesScreen() {
     if (!showCategoryPicker) await loadCategories();
   }, [loadCategories, showCategoryPicker]);
 
-  // Video sent to the editor; its edited copy comes back on focus.
+  // Picks sent to the editor; its edited video comes back on focus.
   const editRequestRef = useRef<{
     id: string;
     sourceType: MediaUploadSourceType;
-    /** Editing the already-selected video — keep it as is when nothing changed */
+    /** Re-editing the video the editor made last time — keep it when nothing changed */
     fromSelected: boolean;
   } | null>(null);
 
-  /** Open the step-by-step Reel Studio in "save" mode, capped at the auto reel source limit. */
+  /**
+   * Open the step-by-step Reel Studio in "save" mode with every pick; it
+   * hands back one video, capped at the auto reel source limit.
+   */
   const openTrimEditor = useCallback(
-    (
-      asset: EditorSource,
-      sourceType: MediaUploadSourceType,
-      fromSelected = false,
-    ) => {
+    (items: PickedMedia[], fromSelected = false) => {
+      if (items.length === 0) return;
       const requestId = createEditRequestId();
+      const sourceType = items[0].sourceType;
       editRequestRef.current = { id: requestId, sourceType, fromSelected };
-      // Old full-screen editor (kept as it was — switch back by restoring this):
+      // Old full-screen editor (kept as it was — one video only; switch back by restoring this):
+      // const asset = items[0];
       // router.push({
       //   pathname: "/(main)/editVideo" as any,
       //   params: {
@@ -494,16 +511,24 @@ export default function ReelTemplatesScreen() {
       //     requestId,
       //   },
       // });
+      // Route params carry one uri — the studio reads the picks from the seed
+      setEditorSeed(
+        requestId,
+        items.map((item) => ({
+          uri: item.uri,
+          kind: item.kind,
+          fileName: item.fileName,
+          mimeType: item.mimeType,
+          width: item.width,
+          height: item.height,
+          sourceType: item.sourceType,
+        })),
+      );
       router.push({
         pathname: "/(main)/reelStudio" as any,
         params: {
-          uri: encodeURIComponent(asset.uri),
-          mimeType: asset.mimeType || "video/mp4",
-          fileName: asset.fileName || "video.mp4",
           sourceType,
           maxSeconds: String(MAX_AUTO_REEL_SOURCE_SECONDS),
-          ...(asset.width ? { width: String(asset.width) } : {}),
-          ...(asset.height ? { height: String(asset.height) } : {}),
           mode: "save",
           requestId,
           flowTitle: t("autoReelIntroTitle"),
@@ -515,71 +540,153 @@ export default function ReelTemplatesScreen() {
     [router, t],
   );
 
-  /**
-   * Pick = select only (any length — the editor trims it on Next).
-   * Upload happens on "Make my reel" (no wasted uploads).
-   */
-  const selectPickedVideo = useCallback(
-    async (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
-      if (!asset.uri) return;
-
-      // expo-image-picker reports video duration in milliseconds; some Android
-      // gallery items report none — measure it instead of guessing
-      let lengthSeconds =
-        typeof asset.duration === "number" && asset.duration > 0
-          ? asset.duration / 1000
-          : null;
-      if (lengthSeconds == null) {
-        lengthSeconds = await measureVideoDurationSeconds(asset.uri);
-      }
-      // Round (not ceil): a camera clip capped at 180 s often reports 180.03 s
-      const durationSeconds =
-        lengthSeconds != null
-          ? Math.max(1, Math.round(lengthSeconds))
-          : // Still unknown: the server reads the real length after start and
-            // fails with source_too_long if it's over 3 minutes
-            MAX_AUTO_REEL_SOURCE_SECONDS;
-
-      let localThumb: string | null = null;
-      try {
-        const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, {
-          time: 0,
-          quality: 0.6,
-        });
-        localThumb = thumb.uri;
-      } catch {
-        // Thumbnail is cosmetic only
-      }
-
+  /** Picker asset → tile. Any length — the editor trims on Next. */
+  const toPickedMedia = useCallback(
+    (
+      asset: ImagePicker.ImagePickerAsset,
+      sourceType: MediaUploadSourceType,
+    ): PickedMedia | null => {
+      if (!asset.uri) return null;
+      const isPhoto = asset.type === "image";
       const mime = (asset as { mimeType?: string }).mimeType ?? "";
-      // A new pick replaces any earlier upload — that id is no longer used
-      setSourceVideo({
-        id: null,
-        local: {
-          uri: asset.uri,
-          mimeType: mime || "video/mp4",
-          fileName: asset.fileName || "video.mp4",
-          sourceType,
-          durationSeconds,
-          width: asset.width || undefined,
-          height: asset.height || undefined,
-        },
-        name: asset.fileName || null,
-        durationSeconds: lengthSeconds != null ? durationSeconds : null,
-        thumbnailUri: localThumb,
-      });
+      return {
+        id: nextPickId(),
+        kind: isPhoto ? "image" : "video",
+        uri: asset.uri,
+        mimeType: mime || (isPhoto ? "image/jpeg" : "video/mp4"),
+        fileName: asset.fileName || (isPhoto ? "photo.jpg" : "video.mp4"),
+        sourceType,
+        // expo-image-picker reports video length in milliseconds
+        durationSeconds:
+          !isPhoto && typeof asset.duration === "number" && asset.duration > 0
+            ? Math.max(1, Math.round(asset.duration / 1000))
+            : null,
+        width: asset.width || undefined,
+        height: asset.height || undefined,
+        thumbnailUri: isPhoto ? asset.uri : null,
+      };
     },
     [],
   );
 
-  /** Next on "Add your video": always through the editor (any length). */
-  const handleEditSelectedVideo = useCallback(() => {
-    const local = sourceVideo?.local;
-    if (!local) return;
-    openTrimEditor(local, local.sourceType, true);
+  /** Video tiles show at once; their frame (and any missing length) fills in after. */
+  const fillVideoDetails = useCallback(async (items: PickedMedia[]) => {
+    for (const item of items) {
+      if (item.kind !== "video") continue;
+      let durationSeconds = item.durationSeconds;
+      if (durationSeconds == null) {
+        // Some Android gallery items report no length — measure it
+        const measured = await measureVideoDurationSeconds(item.uri);
+        durationSeconds = measured != null ? Math.max(1, Math.round(measured)) : null;
+      }
+      let thumbnailUri: string | null = null;
+      try {
+        const thumb = await VideoThumbnails.getThumbnailAsync(item.uri, {
+          time: 0,
+          quality: 0.6,
+        });
+        thumbnailUri = thumb.uri;
+      } catch {
+        // Thumbnail is cosmetic only
+      }
+      setPicks((prev) =>
+        prev.map((p) =>
+          p.id === item.id ? { ...p, durationSeconds, thumbnailUri } : p,
+        ),
+      );
+    }
+  }, []);
+
+  const addPicks = useCallback(
+    (assets: ImagePicker.ImagePickerAsset[], sourceType: MediaUploadSourceType) => {
+      const room = MAX_EDITOR_CLIPS - picksRef.current.length;
+      const items = assets
+        .slice(0, Math.max(0, room))
+        .map((asset) => toPickedMedia(asset, sourceType))
+        .filter((item): item is PickedMedia => item != null);
+      if (items.length === 0) return;
+      const next = [...picksRef.current, ...items];
+      picksRef.current = next;
+      setPicks(next);
+      // New picks → Next makes a new video from the whole list (this also
+      // replaces an earlier upload — that id is no longer used)
+      setSourceVideo(null);
+      void fillVideoDetails(items);
+    },
+    [fillVideoDetails, toPickedMedia],
+  );
+
+  const removePick = useCallback((id: string) => {
+    const next = picksRef.current.filter((p) => p.id !== id);
+    picksRef.current = next;
+    setPicks(next);
+    setSourceVideo(null);
+  }, []);
+
+  /** The editor's video is what gets uploaded — and the only tile now. */
+  const applyEditorResult = useCallback(
+    async (result: EditedVideoResult, sourceType: MediaUploadSourceType) => {
+      const durationSeconds = Math.max(1, Math.round(result.durationMs / 1000));
+      let thumbnailUri: string | null = null;
+      try {
+        const thumb = await VideoThumbnails.getThumbnailAsync(result.uri, {
+          time: 0,
+          quality: 0.6,
+        });
+        thumbnailUri = thumb.uri;
+      } catch {
+        // Thumbnail is cosmetic only
+      }
+      const mimeType = result.mimeType || "video/mp4";
+      const fileName = result.fileName || "video.mp4";
+      const width = result.width || undefined;
+      const height = result.height || undefined;
+      setSourceVideo({
+        id: null,
+        local: {
+          uri: result.uri,
+          mimeType,
+          fileName,
+          sourceType,
+          durationSeconds,
+          width,
+          height,
+        },
+        name: fileName,
+        durationSeconds,
+        thumbnailUri,
+      });
+      const tile: PickedMedia = {
+        id: nextPickId(),
+        kind: "video",
+        uri: result.uri,
+        mimeType,
+        fileName,
+        sourceType,
+        durationSeconds,
+        width,
+        height,
+        thumbnailUri,
+        edited: result.edited,
+      };
+      picksRef.current = [tile];
+      setPicks([tile]);
+    },
+    [],
+  );
+
+  /** Next on "Add your video": always through the editor (any length, any mix). */
+  const handleEditPicks = useCallback(() => {
+    const items = picksRef.current;
+    if (items.length === 0) return;
+    const current = sourceVideo?.local;
+    openTrimEditor(
+      items,
+      items.length === 1 && !!current && current.uri === items[0].uri,
+    );
   }, [openTrimEditor, sourceVideo?.local]);
 
-  // Back from the editor: select its edited copy and go on to the details.
+  // Back from the editor: its video is selected → on to the details.
   useFocusEffect(
     useCallback(() => {
       const request = editRequestRef.current;
@@ -594,53 +701,71 @@ export default function ReelTemplatesScreen() {
       setEditorMusicCredit(
         result.musicCredit ? { uri: result.uri, credit: result.musicCredit } : null,
       );
-      void selectPickedVideo(
-        {
-          uri: result.uri,
-          duration: result.durationMs,
-          fileName: result.fileName,
-          mimeType: result.mimeType,
-          width: result.width,
-          height: result.height,
-          type: "video",
-        } as ImagePicker.ImagePickerAsset,
-        request.sourceType,
-      ).then(() => setStep("details"));
+      void applyEditorResult(result, request.sourceType).then(() =>
+        setStep("details"),
+      );
       if (result.savedToGallery) {
         showBanner(t("success"), t("editedVideoSaved"), "success", 3000);
       } else if (result.edited) {
         showBanner(t("autoReelTrimTitle"), t("editedVideoNotSaved"), "warning", 4000);
       }
-    }, [selectPickedVideo, showBanner, t]),
+    }, [applyEditorResult, showBanner, t]),
   );
 
+  /** Gallery: several videos and photos at once, in the order tapped. */
   const handleSelectFromGallery = useCallback(async () => {
-    const hasPermission = await handleMediaLibraryPermission();
-    if (!hasPermission) return;
+    if (picksRef.current.length >= MAX_EDITOR_CLIPS) {
+      showBanner(
+        t("flowAddVideoTitle"),
+        t("clipsLimitReached", { max: MAX_EDITOR_CLIPS }),
+        "warning",
+        3500,
+      );
+      return;
+    }
+    // Spinner on the card from the tap until the picks are in (Android
+    // copies the files after the picker closes)
+    setAddingMedia(true);
+    setPickingFrom("gallery");
     try {
+      const hasPermission = await handleMediaLibraryPermission();
+      if (!hasPermission) return;
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"],
-        allowsMultipleSelection: false,
+        mediaTypes: ["videos", "images"],
+        allowsMultipleSelection: true,
+        orderedSelection: true,
+        selectionLimit: Math.max(1, MAX_EDITOR_CLIPS - picksRef.current.length),
         quality: 1,
         allowsEditing: false,
         ...iosCompatiblePickerOptions,
       });
-      if (!result.canceled && result.assets?.[0]) {
-        setPickingVideo(true);
-        await selectPickedVideo(result.assets[0], "device");
+      if (!result.canceled && result.assets?.length) {
+        addPicks(result.assets, "device");
       }
     } catch (error) {
-      Logger.error("Error selecting auto reel video from gallery:", error);
+      Logger.error("Error selecting auto reel media from gallery:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     } finally {
-      setPickingVideo(false);
+      setAddingMedia(false);
+      setPickingFrom(null);
     }
-  }, [showBanner, t, selectPickedVideo]);
+  }, [addPicks, showBanner, t]);
 
   const handleRecordVideo = useCallback(async () => {
-    const hasPermission = await handleCameraPermission();
-    if (!hasPermission) return;
+    if (picksRef.current.length >= MAX_EDITOR_CLIPS) {
+      showBanner(
+        t("flowAddVideoTitle"),
+        t("clipsLimitReached", { max: MAX_EDITOR_CLIPS }),
+        "warning",
+        3500,
+      );
+      return;
+    }
+    setAddingMedia(true);
+    setPickingFrom("camera");
     try {
+      const hasPermission = await handleCameraPermission();
+      if (!hasPermission) return;
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["videos"],
         quality: 1,
@@ -648,16 +773,16 @@ export default function ReelTemplatesScreen() {
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        setPickingVideo(true);
-        await selectPickedVideo(result.assets[0], "camera");
+        addPicks([result.assets[0]], "camera");
       }
     } catch (error) {
       Logger.error("Error recording auto reel video:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     } finally {
-      setPickingVideo(false);
+      setAddingMedia(false);
+      setPickingFrom(null);
     }
-  }, [showBanner, t, selectPickedVideo]);
+  }, [addPicks, showBanner, t]);
 
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
 
@@ -854,8 +979,8 @@ export default function ReelTemplatesScreen() {
 
   const isHaircut = selected?.kind === "haircut";
   // Server-only video (from "Try another template") can't be edited here
-  const editable = !!sourceVideo?.local;
-  const stepTotal = editable || !sourceVideo ? 5 : 3;
+  const serverOnly = picks.length === 0 && !!sourceVideo && !sourceVideo.local;
+  const stepTotal = serverOnly ? 3 : 5;
   const stepNumber =
     step === "style" ? 1 : step === "video" ? 2 : stepTotal;
 
@@ -928,9 +1053,24 @@ export default function ReelTemplatesScreen() {
     [templates],
   );
 
-  const videoTooLong =
-    !!sourceVideo?.durationSeconds &&
-    sourceVideo.durationSeconds > MAX_AUTO_REEL_SOURCE_SECONDS;
+  // Length once combined (photos show for 3 s unless changed in the editor)
+  const picksSeconds = picks.reduce(
+    (sum, p) =>
+      sum +
+      (p.kind === "image"
+        ? IMAGE_CLIP_DEFAULT_MS / 1000
+        : p.durationSeconds ?? 0),
+    0,
+  );
+  const picksTooLong = picksSeconds > MAX_AUTO_REEL_SOURCE_SECONDS;
+  const picksLabel =
+    picks.length > 1
+      ? t("flowSelectedClips", { n: picks.length })
+      : picks[0]?.edited
+        ? t("flowEditedVideo")
+        : picks[0]?.kind === "image"
+          ? t("flowSelectedPhoto")
+          : t("flowSelectedVideo");
 
   // ── Steps ─────────────────────────────────────────────────────────
 
@@ -1002,73 +1142,94 @@ export default function ReelTemplatesScreen() {
         <SourceCard
           icon="video-library"
           label={t("flowChooseFromGallery")}
-          sublabel={t("autoReelPickVideoHint")}
-          sublabelIcon="timer"
+          sublabel={t("flowGalleryVideosPhotos")}
+          sublabelIcon="perm-media"
           badgeIcon="add"
           onPress={() => void handleSelectFromGallery()}
-          disabled={pickingVideo}
+          disabled={addingMedia}
+          loading={addingMedia && pickingFrom === "gallery"}
         />
         <SourceCard
           icon="videocam"
           label={t("flowRecordVideo")}
           badgeIcon="fiber-manual-record"
           onPress={() => void handleRecordVideo()}
-          disabled={pickingVideo}
+          disabled={addingMedia}
+          loading={addingMedia && pickingFrom === "camera"}
         />
-        {sourceVideo || pickingVideo ? (
+        {picks.length > 0 ? (
           <>
             <View style={styles.divider} />
-            <SectionLabel label={t("flowSelectedVideo")} />
-            {pickingVideo ? (
-              <View style={styles.loadingRow}>
-                <ActivityIndicator color={theme.buttonBack} />
-                <Text style={styles.loadingText}>{t("flowAddingVideo")}</Text>
-              </View>
-            ) : sourceVideo ? (
-              <SelectedMediaRow
-                thumbUri={sourceVideo.thumbnailUri}
-                title={sourceVideo.name || t("autoReelVideoAdded")}
-                subtitle={[
-                  formatVideoDuration(sourceVideo.durationSeconds),
-                  sourceVideo.local ? null : t("flowAlreadyUploaded"),
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-                loading={!sourceVideo.thumbnailUri}
-                onAction={() => setSourceVideo(null)}
-                actionLabel={t("remove")}
-              />
-            ) : null}
-            {videoTooLong ? (
+            <SectionLabel
+              label={picksLabel}
+              meta={picksSeconds > 0 ? formatVideoDuration(picksSeconds) : null}
+            />
+            <MediaTileGrid
+              items={picks.map((p) => ({
+                id: p.id,
+                thumbUri: p.thumbnailUri,
+                isPhoto: p.kind === "image",
+                badge:
+                  p.kind === "image"
+                    ? `${Math.round(IMAGE_CLIP_DEFAULT_MS / 1000)}s`
+                    : formatVideoDuration(p.durationSeconds),
+              }))}
+              onRemove={removePick}
+              disabled={addingMedia}
+            />
+            {picksTooLong ? (
               <InfoNote
                 tone="warm"
                 icon="content-cut"
-                text={t("flowAutoTooLongNote", {
-                  max: formatVideoDuration(MAX_AUTO_REEL_SOURCE_SECONDS),
-                })}
+                text={t(
+                  picks.length > 1 ? "flowAutoTooLongMany" : "flowAutoTooLongNote",
+                  { max: formatVideoDuration(MAX_AUTO_REEL_SOURCE_SECONDS) },
+                )}
               />
             ) : null}
+          </>
+        ) : sourceVideo ? (
+          <>
+            <View style={styles.divider} />
+            <SectionLabel label={t("flowSelectedVideo")} />
+            <SelectedMediaRow
+              thumbUri={sourceVideo.thumbnailUri}
+              title={sourceVideo.name || t("autoReelVideoAdded")}
+              subtitle={[
+                formatVideoDuration(sourceVideo.durationSeconds),
+                t("flowAlreadyUploaded"),
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+              loading={!sourceVideo.thumbnailUri}
+              onAction={() => setSourceVideo(null)}
+              actionLabel={t("remove")}
+            />
           </>
         ) : null}
         <InfoNote icon="auto-awesome" text={t("flowAutoVideoNote")} />
       </ScrollView>
       <FlowFooter
         primary={
-          editable
+          serverOnly
             ? {
-                label: t("flowNextEditVideo"),
-                onPress: handleEditSelectedVideo,
-                disabled: pickingVideo,
+                label: t("flowNextAddDetails"),
+                onPress: () => setStep("details"),
+                disabled: addingMedia,
                 trailingIcon: "chevron-right",
               }
             : {
-                label: t("flowNextAddDetails"),
-                onPress: () => setStep("details"),
-                disabled: !sourceVideo || pickingVideo,
+                label: t("flowNextEditVideo"),
+                onPress: handleEditPicks,
+                disabled: picks.length === 0 || addingMedia,
                 trailingIcon: "chevron-right",
               }
         }
-        hint={!sourceVideo && !pickingVideo ? t("autoReelNeedVideo") : null}
+        hint={
+          picks.length === 0 && !sourceVideo && !addingMedia
+            ? t("flowPickClipsHint")
+            : null
+        }
       />
     </>
   );

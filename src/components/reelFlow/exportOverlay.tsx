@@ -24,8 +24,9 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: moderateWidthScale(28),
+      // zIndex only — Android draws an elevation shadow under a see-through
+      // view, which showed through as dark bands down both sides.
       zIndex: 50,
-      elevation: 50,
     },
     card: {
       width: "100%",
