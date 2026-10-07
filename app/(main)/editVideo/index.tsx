@@ -70,6 +70,7 @@ import StickerLayer, {
 } from "@/src/components/videoEditor/stickerLayer";
 import StickerPanel from "@/src/components/videoEditor/stickerPanel";
 import MusicLibrarySheet from "@/src/components/videoEditor/musicLibrarySheet";
+import MusicTrimmer from "@/src/components/videoEditor/musicTrimmer";
 import {
   trackCredit,
   type DownloadedTrack,
@@ -126,6 +127,8 @@ type EditorSnapshot = {
   musicName: string | null;
   /** Attribution for library (Creative Commons) tracks; null for phone files. */
   musicCredit: string | null;
+  /** Where in the song the reel's music starts (ms into the track). */
+  musicStartMs: number;
   musicVolume: number;
   overlayText: string;
   overlayX: number;
@@ -707,7 +710,7 @@ const createStyles = (theme: Theme) =>
     musicRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(10),
+      gap: moderateWidthScale(8),
       marginBottom: moderateHeightScale(10),
     },
     musicBtn: {
@@ -716,22 +719,64 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(8),
       borderRadius: moderateWidthScale(12),
       backgroundColor: theme.buttonBack,
+    },
+    musicBtnSecondary: {
+      backgroundColor: "transparent",
+      borderWidth: 1,
+      borderColor: theme.buttonBack,
     },
     musicBtnText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.buttonText,
     },
-    musicName: {
-      flex: 1,
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
+    musicCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      padding: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.white15,
+      marginBottom: moderateHeightScale(10),
+    },
+    musicCardIcon: {
+      width: widthScale(36),
+      height: widthScale(36),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    musicCardInfo: { flex: 1, minWidth: 0 },
+    musicCardTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
       color: theme.white,
-      opacity: 0.75,
-      marginBottom: moderateHeightScale(8),
+    },
+    musicCardSub: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.white70,
+      marginTop: moderateHeightScale(2),
+    },
+    musicCardBtn: {
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
+      borderRadius: moderateWidthScale(14),
+      borderWidth: 1,
+      borderColor: theme.white50,
+    },
+    musicCardBtnText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    musicTrimWrap: {
+      marginBottom: moderateHeightScale(10),
     },
     rowBetween: {
       flexDirection: "row",
@@ -825,6 +870,11 @@ export default function EditVideoScreen() {
   const [musicUri, setMusicUri] = useState<string | null>(null);
   const [musicName, setMusicName] = useState<string | null>(null);
   const [musicCredit, setMusicCredit] = useState<string | null>(null);
+  const [musicStartMs, setMusicStartMs] = useState(0);
+  /** Length of the loaded song; 0 until the preview sound reports it. */
+  const [musicDurationMs, setMusicDurationMs] = useState(0);
+  /** Song picked, user tapped "Change" → show the source buttons again. */
+  const [changingMusic, setChangingMusic] = useState(false);
   const [musicLibraryOpen, setMusicLibraryOpen] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.8);
   const [overlayText, setOverlayText] = useState("");
@@ -951,6 +1001,7 @@ export default function EditVideoScreen() {
       musicUri,
       musicName,
       musicCredit,
+      musicStartMs,
       musicVolume,
       overlayText,
       overlayX,
@@ -967,6 +1018,7 @@ export default function EditVideoScreen() {
       clips,
       musicCredit,
       musicName,
+      musicStartMs,
       musicUri,
       musicVolume,
       overlayBgColorKey,
@@ -994,6 +1046,7 @@ export default function EditVideoScreen() {
         last.musicUri === snap.musicUri &&
         last.musicName === snap.musicName &&
         last.musicCredit === snap.musicCredit &&
+        last.musicStartMs === snap.musicStartMs &&
         last.musicVolume === snap.musicVolume &&
         last.overlayText === snap.overlayText &&
         last.overlayX === snap.overlayX &&
@@ -1026,6 +1079,7 @@ export default function EditVideoScreen() {
       setMusicUri(snap.musicUri);
       setMusicName(snap.musicName);
       setMusicCredit(snap.musicCredit);
+      setMusicStartMs(snap.musicStartMs);
       setMusicVolume(snap.musicVolume);
       setOverlayText(snap.overlayText);
       setOverlayX(snap.overlayX);
@@ -1584,9 +1638,35 @@ export default function EditVideoScreen() {
       });
   }, [activeTool, exporting, filmstrips, selectedSourceMs, selectedUri]);
 
-  // Background music preview (live)
+  const musicStartMsRef = useRef(musicStartMs);
+  musicStartMsRef.current = musicStartMs;
+  const previewTimeMsRef = useRef(previewTimeMs);
+  previewTimeMsRef.current = previewTimeMs;
+
+  /** Song position matching the current preview playhead. */
+  const musicPositionFor = useCallback(
+    (playheadMs: number) =>
+      musicStartMsRef.current +
+      (focusIndexRef.current != null ? 0 : Math.max(0, playheadMs)),
+    [],
+  );
+
+  const seekMusic = useCallback(
+    async (playheadMs: number) => {
+      const sound = musicSoundRef.current;
+      if (!sound) return;
+      try {
+        await sound.setPositionAsync(musicPositionFor(playheadMs));
+        if (playingRef.current) await sound.playAsync();
+      } catch {}
+    },
+    [musicPositionFor],
+  );
+
+  // Background music preview (live). Doesn't loop — the export doesn't either.
   useEffect(() => {
     let cancelled = false;
+    setMusicDurationMs(0);
     (async () => {
       if (musicSoundRef.current) {
         try {
@@ -1604,8 +1684,9 @@ export default function EditVideoScreen() {
           { uri: musicUri },
           {
             shouldPlay: playing,
-            isLooping: true,
+            isLooping: false,
             volume: musicVolume,
+            positionMillis: musicPositionFor(previewTimeMsRef.current),
           },
         );
         if (cancelled) {
@@ -1613,6 +1694,10 @@ export default function EditVideoScreen() {
           return;
         }
         musicSoundRef.current = sound;
+        const status = await sound.getStatusAsync();
+        if (!cancelled && status.isLoaded && status.durationMillis) {
+          setMusicDurationMs(status.durationMillis);
+        }
       } catch (error) {
         Logger.error("Music preview failed:", error);
       }
@@ -1624,7 +1709,19 @@ export default function EditVideoScreen() {
         musicSoundRef.current = null;
       }
     };
-  }, [musicUri]);
+  }, [musicPositionFor, musicUri]);
+
+  // Keep the song in step with the video: re-seek when the reel restarts / jumps back.
+  const lastPreviewTimeRef = useRef(previewTimeMs);
+  useEffect(() => {
+    const last = lastPreviewTimeRef.current;
+    lastPreviewTimeRef.current = previewTimeMs;
+    if (previewTimeMs < last - 800) void seekMusic(previewTimeMs);
+  }, [previewTimeMs, seekMusic]);
+
+  useEffect(() => {
+    void seekMusic(previewTimeMsRef.current);
+  }, [musicStartMs, seekMusic]);
 
   useEffect(() => {
     const sound = musicSoundRef.current;
@@ -1667,6 +1764,11 @@ export default function EditVideoScreen() {
     ];
 
     if (musicUri) {
+      // Keep the whole reel covered when the song is long enough.
+      const exportMusicStartMs =
+        musicDurationMs > 0
+          ? Math.max(0, Math.min(musicStartMs, musicDurationMs - reelDuration))
+          : musicStartMs;
       tracks.push({
         kind: "audio",
         id: "a",
@@ -1674,7 +1776,10 @@ export default function EditVideoScreen() {
           {
             id: STABLE_CLIP_IDS.music,
             sourceUri: musicUri,
-            sourceRange: { startMs: 0, endMs: reelDuration },
+            sourceRange: {
+              startMs: exportMusicStartMs,
+              endMs: exportMusicStartMs + reelDuration,
+            },
             timelineRange: { startMs: 0, endMs: reelDuration },
             volume: musicVolume,
             trimToVideo: true,
@@ -1734,6 +1839,8 @@ export default function EditVideoScreen() {
   }, [
     canvasSize,
     clips,
+    musicDurationMs,
+    musicStartMs,
     musicUri,
     musicVolume,
     overlayBgColorKey,
@@ -1766,6 +1873,8 @@ export default function EditVideoScreen() {
       setMusicUri(localMusic);
       setMusicName(asset.name || t("backgroundMusic"));
       setMusicCredit(null);
+      setMusicStartMs(0);
+      setChangingMusic(false);
       setPlaying(true);
     } catch (error) {
       Logger.error("Music pick failed:", error);
@@ -1786,6 +1895,8 @@ export default function EditVideoScreen() {
         setMusicUri(dest);
         setMusicName(`${track.title} · ${track.artist}`);
         setMusicCredit(trackCredit(track));
+        setMusicStartMs(0);
+        setChangingMusic(false);
         setPlaying(true);
       } catch (error) {
         Logger.error("Library music apply failed:", error);
@@ -1795,38 +1906,20 @@ export default function EditVideoScreen() {
     [pushHistory, showBanner, t],
   );
 
-  /** "Select music" → free library or a file from the phone. */
-  const openMusicSourceChooser = useCallback(() => {
-    const library = () => {
-      setPlaying(false);
-      setMusicLibraryOpen(true);
-    };
-    const phone = () => void pickMusic();
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: t("musicSourceTitle"),
-          options: [t("musicFromLibrary"), t("musicFromPhone"), t("cancel")],
-          cancelButtonIndex: 2,
-        },
-        (i) => {
-          if (i === 0) library();
-          else if (i === 1) phone();
-        },
-      );
-      return;
-    }
-    Alert.alert(
-      t("musicSourceTitle"),
-      undefined,
-      [
-        { text: t("cancel"), style: "cancel" },
-        { text: t("musicFromPhone"), onPress: phone },
-        { text: t("musicFromLibrary"), onPress: library },
-      ],
-      { cancelable: true },
-    );
-  }, [pickMusic, t]);
+  /** Pauses the editor preview so the library's track preview isn't mixed with it. */
+  const openMusicLibrary = useCallback(() => {
+    setPlaying(false);
+    setMusicLibraryOpen(true);
+  }, []);
+
+  const removeMusic = useCallback(() => {
+    pushHistory();
+    setMusicUri(null);
+    setMusicName(null);
+    setMusicCredit(null);
+    setMusicStartMs(0);
+    setChangingMusic(false);
+  }, [pushHistory]);
 
   // ── Clips: add (gallery / camera), reorder, remove ────────────────
 
@@ -2373,6 +2466,7 @@ export default function EditVideoScreen() {
         height: hasEdits ? canvasSize.height : Math.round(videoSize.height),
         edited: hasEdits,
         savedToGallery,
+        musicCredit: musicUri ? musicCredit : null,
       });
       router.back();
       return;
@@ -2402,6 +2496,9 @@ export default function EditVideoScreen() {
         durationSeconds: String(clipDurationSeconds),
         ...(widthParam ? { width: widthParam } : {}),
         ...(heightParam ? { height: heightParam } : {}),
+        ...(musicUri && musicCredit
+          ? { musicCredit: encodeURIComponent(musicCredit) }
+          : {}),
       },
     });
   }, [
@@ -2414,6 +2511,7 @@ export default function EditVideoScreen() {
     exporting,
     isSaveMode,
     maxSeconds,
+    musicCredit,
     musicUri,
     mutedClipCount,
     overlayText,
@@ -2590,6 +2688,8 @@ export default function EditVideoScreen() {
   }));
 
   const busy = exporting || savingToGallery;
+  /** Latest start that still keeps music under the whole reel; 0 = song too short to move. */
+  const musicMaxStartMs = Math.max(0, musicDurationMs - totalMs);
   const canUndo = history.length > 0;
   const tools: {
     key: Exclude<EditorTool, null>;
@@ -2988,52 +3088,117 @@ export default function EditVideoScreen() {
               {activeTool === "music" ? (
                 <>
                   <Text style={styles.panelTitle}>{t("backgroundMusic")}</Text>
-                  <View style={styles.musicRow}>
-                    <TouchableOpacity
-                      style={styles.musicBtn}
-                      onPress={openMusicSourceChooser}
-                      disabled={busy}
-                      activeOpacity={0.85}
-                    >
-                      <MaterialIcons
-                        name="library-music"
-                        size={moderateWidthScale(18)}
-                        color={theme.buttonText}
-                      />
-                      <Text style={styles.musicBtnText}>
-                        {musicUri ? t("changeMusic") : t("selectMusic")}
-                      </Text>
-                    </TouchableOpacity>
-                    {musicUri ? (
-                      <TouchableOpacity
-                        onPress={() => {
-                          pushHistory();
-                          setMusicUri(null);
-                          setMusicName(null);
-                          setMusicCredit(null);
-                        }}
-                        disabled={busy}
-                        hitSlop={8}
-                      >
+                  {musicUri && !changingMusic ? (
+                    <View style={styles.musicCard}>
+                      <View style={styles.musicCardIcon}>
                         <MaterialIcons
-                          name="close"
-                          size={moderateWidthScale(24)}
+                          name="music-note"
+                          size={moderateWidthScale(18)}
                           color={theme.white}
                         />
+                      </View>
+                      <View style={styles.musicCardInfo}>
+                        <Text style={styles.musicCardTitle} numberOfLines={1}>
+                          {musicName || t("backgroundMusic")}
+                        </Text>
+                        {musicCredit ? (
+                          <Text style={styles.musicCardSub} numberOfLines={1}>
+                            {t("musicCreditShort")}
+                          </Text>
+                        ) : null}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.musicCardBtn}
+                        onPress={() => setChangingMusic(true)}
+                        disabled={busy}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.musicCardBtnText}>{t("change")}</Text>
                       </TouchableOpacity>
-                    ) : null}
-                  </View>
-                  {musicName ? (
-                    <Text style={styles.musicName} numberOfLines={1}>
-                      {musicName}
-                    </Text>
+                      <TouchableOpacity
+                        onPress={removeMusic}
+                        disabled={busy}
+                        hitSlop={8}
+                        accessibilityLabel={t("remove")}
+                      >
+                        <MaterialIcons
+                          name="delete-outline"
+                          size={moderateWidthScale(22)}
+                          color={theme.white70}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={styles.musicRow}>
+                      <TouchableOpacity
+                        style={styles.musicBtn}
+                        onPress={openMusicLibrary}
+                        disabled={busy}
+                        activeOpacity={0.85}
+                      >
+                        <MaterialIcons
+                          name="library-music"
+                          size={moderateWidthScale(18)}
+                          color={theme.buttonText}
+                        />
+                        <Text style={styles.musicBtnText} numberOfLines={1}>
+                          {t("musicFromLibrary")}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.musicBtn, styles.musicBtnSecondary]}
+                        onPress={() => void pickMusic()}
+                        disabled={busy}
+                        activeOpacity={0.85}
+                      >
+                        <MaterialIcons
+                          name="smartphone"
+                          size={moderateWidthScale(18)}
+                          color={theme.white}
+                        />
+                        <Text style={styles.musicBtnText} numberOfLines={1}>
+                          {t("musicFromPhone")}
+                        </Text>
+                      </TouchableOpacity>
+                      {changingMusic ? (
+                        <TouchableOpacity
+                          onPress={() => setChangingMusic(false)}
+                          disabled={busy}
+                          hitSlop={8}
+                          accessibilityLabel={t("cancel")}
+                        >
+                          <MaterialIcons
+                            name="close"
+                            size={moderateWidthScale(24)}
+                            color={theme.white}
+                          />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  )}
+                  {musicUri && !changingMusic && musicDurationMs > 0 ? (
+                    musicMaxStartMs > 0 ? (
+                      <View style={styles.musicTrimWrap}>
+                        <MusicTrimmer
+                          seed={musicUri}
+                          musicDurationMs={musicDurationMs}
+                          windowMs={totalMs}
+                          startMs={musicStartMs}
+                          playheadMs={focusIndex == null ? previewTimeMs : null}
+                          disabled={busy}
+                          onDragStart={pushHistory}
+                          onChange={setMusicStartMs}
+                        />
+                      </View>
+                    ) : (
+                      <Text style={styles.panelHint}>
+                        {t("musicShorterThanVideo", {
+                          time: formatMs(musicDurationMs),
+                        })}
+                      </Text>
+                    )
                   ) : null}
-                  {musicCredit ? (
-                    <Text style={styles.panelHint} numberOfLines={2}>
-                      {t("musicCreditHint", { credit: musicCredit })}
-                    </Text>
-                  ) : null}
-                  {musicUri ? (
+                  {musicUri && !changingMusic ? (
                     <>
                       <Text style={styles.label}>
                         {t("musicVolume")}: {Math.round(musicVolume * 100)}%

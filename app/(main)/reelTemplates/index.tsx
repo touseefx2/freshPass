@@ -68,6 +68,11 @@ import {
   createEditRequestId,
   takeEditedVideo,
 } from "@/src/components/videoEditor/editorHandoff";
+import {
+  captionWithMusicCredit,
+  musicCreditLine,
+  musicCreditReserve,
+} from "@/src/services/musicLibraryService";
 import { Theme } from "@/src/theme/colors";
 import {
   iconScale,
@@ -854,6 +859,17 @@ export default function ReelTemplatesScreen() {
 
   const [sourceVideo, setSourceVideo] = useState<SourceVideo | null>(null);
   const [caption, setCaption] = useState("");
+  /** Library-music credit from the editor, tied to the exported file it belongs to. */
+  const [editorMusicCredit, setEditorMusicCredit] = useState<{
+    uri: string;
+    credit: string;
+  } | null>(null);
+  // Only while that edited file is still the selected video.
+  const musicCreditText =
+    editorMusicCredit && sourceVideo?.local?.uri === editorMusicCredit.uri
+      ? musicCreditLine([editorMusicCredit.credit])
+      : "";
+  const captionMax = CAPTION_MAX - musicCreditReserve(musicCreditText);
   const [categoryId, setCategoryId] = useState<number | null>(
     resolvedBusinessCategory?.id ?? null,
   );
@@ -1158,6 +1174,9 @@ export default function ReelTemplatesScreen() {
       editRequestRef.current = null;
       // Nothing changed — keep the current selection (and any upload id)
       if (request.fromSelected && !result.edited) return;
+      setEditorMusicCredit(
+        result.musicCredit ? { uri: result.uri, credit: result.musicCredit } : null,
+      );
       void selectPickedVideo(
         {
           uri: result.uri,
@@ -1332,7 +1351,7 @@ export default function ReelTemplatesScreen() {
       if (mediaId == null || controller.signal.aborted) return;
 
       // 2. Start the auto reel
-      const trimmedCaption = caption.trim();
+      const trimmedCaption = captionWithMusicCredit(caption, musicCreditText);
       const autoReel = await createAutoReel({
         media_asset_id: mediaId,
         template_id: selected.id,
@@ -1385,6 +1404,7 @@ export default function ReelTemplatesScreen() {
     categoryId,
     loadReelLimits,
     loadTemplates,
+    musicCreditText,
     noReelsLeft,
     quotaBlockedMessage,
     selected,
@@ -2011,15 +2031,20 @@ export default function ReelTemplatesScreen() {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={caption}
-                onChangeText={(v) => setCaption(v.slice(0, CAPTION_MAX))}
+                onChangeText={(v) => setCaption(v.slice(0, captionMax))}
                 placeholder={t("captionPlaceholder")}
                 placeholderTextColor={theme.lightGreen5}
                 multiline
-                maxLength={CAPTION_MAX}
+                maxLength={captionMax}
               />
               <Text style={styles.charCount}>
-                {caption.length}/{CAPTION_MAX}
+                {caption.length}/{captionMax}
               </Text>
+              {musicCreditText ? (
+                <Text style={styles.charCount}>
+                  {t("musicCreditAutoAdded", { credit: musicCreditText })}
+                </Text>
+              ) : null}
             </View>
           </>
         ) : (

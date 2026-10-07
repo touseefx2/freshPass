@@ -19,6 +19,8 @@ export type EditedVideoResult = {
   edited: boolean;
   /** false when gallery permission was denied or saving failed. */
   savedToGallery: boolean;
+  /** Creative Commons credit for library music — must go in the reel caption. */
+  musicCredit?: string | null;
 };
 
 let pending: EditedVideoResult | null = null;

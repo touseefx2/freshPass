@@ -52,6 +52,11 @@ import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import type { OwnerReel } from "@/src/types/reels";
 import { canChangeReel } from "@/src/types/reels";
+import {
+  captionWithMusicCredit,
+  musicCreditLine,
+  musicCreditReserve,
+} from "@/src/services/musicLibraryService";
 
 type CategoryOption = { id: number; name: string };
 type ServiceOption = { id: number; name: string; price?: string | number };
@@ -89,6 +94,12 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size11,
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen5,
+    },
+    musicCreditNote: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen5,
+      marginTop: moderateHeightScale(6),
     },
     input: {
       borderWidth: 1,
@@ -455,6 +466,8 @@ export default function PublishReelScreen() {
     durationSeconds?: string;
     width?: string;
     height?: string;
+    /** Creative Commons credit for editor library music. */
+    musicCredit?: string;
   }>();
   const mediaAssetIdParam = params.mediaAssetId
     ? Number(params.mediaAssetId)
@@ -479,6 +492,15 @@ export default function PublishReelScreen() {
     Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : null;
   const reelId = params.reelId ? Number(params.reelId) : null;
   const isEdit = !!reelId;
+  // Library music (CC BY) must be credited — appended to the caption on create.
+  const musicCreditText = useMemo(
+    () =>
+      musicCreditLine([
+        params.musicCredit ? decodeURIComponent(params.musicCredit) : null,
+      ]),
+    [params.musicCredit],
+  );
+  const captionMax = 2200 - musicCreditReserve(musicCreditText);
   const fromEditor = !!localVideoUri && !mediaAssetIdParam;
 
   const [loading, setLoading] = useState(isEdit);
@@ -781,7 +803,7 @@ export default function PublishReelScreen() {
   const buildCreatePayload = (publish: boolean, mediaId: number) => ({
     media_asset_id: mediaId,
     category_id: categoryId!,
-    caption: caption.trim(),
+    caption: captionWithMusicCredit(caption, musicCreditText),
     ...(serviceId ? { service_id: serviceId } : {}),
     ...(lookTag.trim() ? { look_tag: lookTag.trim() } : {}),
     ...(promotionText.trim() ? { promotion_text: promotionText.trim() } : {}),
@@ -930,7 +952,9 @@ export default function PublishReelScreen() {
               <Text style={styles.label}>
                 {t("caption")} <Text style={styles.required}>*</Text>
               </Text>
-              <Text style={styles.charCount}>{caption.length}/2200</Text>
+              <Text style={styles.charCount}>
+                {caption.length}/{captionMax}
+              </Text>
             </View>
             <TextInput
               style={[styles.input, styles.textArea]}
@@ -939,8 +963,13 @@ export default function PublishReelScreen() {
               placeholder={t("captionPlaceholder")}
               placeholderTextColor={theme.lightGreen5}
               multiline
-              maxLength={2200}
+              maxLength={captionMax}
             />
+            {musicCreditText ? (
+              <Text style={styles.musicCreditNote}>
+                {t("musicCreditAutoAdded", { credit: musicCreditText })}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.field}>

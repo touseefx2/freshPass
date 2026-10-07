@@ -28,6 +28,11 @@ import {
   createEditRequestId,
   takeEditedVideo,
 } from "@/src/components/videoEditor/editorHandoff";
+import {
+  captionWithMusicCredit,
+  musicCreditLine,
+  musicCreditReserve,
+} from "@/src/services/musicLibraryService";
 import { measureVideoDurationSeconds } from "@/src/utils/videoDuration";
 import { isUploadCancelled } from "@/src/utils/uploadCancel";
 import StackHeader from "@/src/components/StackHeader";
@@ -722,6 +727,10 @@ export default function ReelTemplatesScreen() {
   const [texts, setTexts] = useState<Record<string, string>>({});
   const [selectedMedia, setSelectedMedia] = useState<(SlotItem | null)[]>([]);
   const [caption, setCaption] = useState("");
+  /** Library-music credits from the editor, keyed by the exported file uri. */
+  const [editorMusicCredits, setEditorMusicCredits] = useState<
+    Record<string, string>
+  >({});
   const [categoryId, setCategoryId] = useState<number | null>(
     resolvedBusinessCategory?.id ?? null,
   );
@@ -1031,6 +1040,10 @@ export default function ReelTemplatesScreen() {
       const result = takeEditedVideo(request?.id ?? null);
       if (!request || !result) return;
       editRequestRef.current = null;
+      const credit = result.musicCredit;
+      if (credit) {
+        setEditorMusicCredits((prev) => ({ ...prev, [result.uri]: credit }));
+      }
       void selectPickedAsset(
         {
           uri: result.uri,
@@ -1203,6 +1216,16 @@ export default function ReelTemplatesScreen() {
   const fewReelsLeft =
     reelsRemaining != null && reelsRemaining > 0 && reelsRemaining <= 2;
 
+  // Credits for edited clips that are still in a slot.
+  const musicCreditText = useMemo(
+    () =>
+      musicCreditLine(
+        selectedMedia.map((m) => (m ? editorMusicCredits[m.local.uri] : null)),
+      ),
+    [editorMusicCredits, selectedMedia],
+  );
+  const captionMax = 2200 - musicCreditReserve(musicCreditText);
+
   const canGenerate = useMemo(() => {
     if (!selected) return false;
     if (noReelsLeft) return false;
@@ -1354,7 +1377,7 @@ export default function ReelTemplatesScreen() {
         media_asset_ids: mediaIds,
         texts: textsPayload,
         category_id: categoryId,
-        caption: caption.trim(),
+        caption: captionWithMusicCredit(caption, musicCreditText),
         music_asset_id: null,
       });
 
@@ -1402,6 +1425,7 @@ export default function ReelTemplatesScreen() {
     canGenerate,
     caption,
     categoryId,
+    musicCreditText,
     loadReelLimits,
     mediaFields.length,
     selected,
@@ -1818,13 +1842,20 @@ export default function ReelTemplatesScreen() {
               <TextInput
                 style={[styles.input, styles.textArea]}
                 value={caption}
-                onChangeText={(v) => setCaption(v.slice(0, 2200))}
+                onChangeText={(v) => setCaption(v.slice(0, captionMax))}
                 placeholder={t("captionPlaceholder")}
                 placeholderTextColor={theme.lightGreen5}
                 multiline
-                maxLength={2200}
+                maxLength={captionMax}
               />
-              <Text style={styles.charCount}>{caption.length}/2200</Text>
+              <Text style={styles.charCount}>
+                {caption.length}/{captionMax}
+              </Text>
+              {musicCreditText ? (
+                <Text style={styles.charCount}>
+                  {t("musicCreditAutoAdded", { credit: musicCreditText })}
+                </Text>
+              ) : null}
 
               <Text style={styles.label}>
                 {t("category")}{" "}

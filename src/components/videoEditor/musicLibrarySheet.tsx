@@ -185,11 +185,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    pct: {
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
     useBtn: {
       minWidth: widthScale(56),
       height: heightScale(32),
@@ -603,25 +598,7 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
                 color={theme.white70}
               />
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => void startDownload(item)}
-              disabled={!!saved || downloading || offline}
-              hitSlop={6}
-              accessibilityLabel={t("musicDownload")}
-            >
-              {downloading ? (
-                <Text style={styles.pct}>{Math.round(dl * 100)}%</Text>
-              ) : (
-                <MaterialIcons
-                  name={saved ? "download-done" : "file-download"}
-                  size={moderateWidthScale(22)}
-                  color={saved ? theme.orangeBrown : offline ? theme.white50 : theme.white}
-                />
-              )}
-            </TouchableOpacity>
-          )}
+          ) : null}
 
           <TouchableOpacity
             style={[styles.useBtn, !canStream && { opacity: 0.5 }]}
@@ -629,7 +606,9 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
             disabled={!canStream || !!applyingId}
             activeOpacity={0.85}
           >
-            {applyingId === item.id ? (
+            {downloading ? (
+              <Text style={styles.useText}>{Math.round(dl * 100)}%</Text>
+            ) : applyingId === item.id ? (
               <ActivityIndicator color={theme.darkGreen} size="small" />
             ) : (
               <Text style={styles.useText}>{t("musicUse")}</Text>
@@ -649,7 +628,6 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
       previewRatio,
       progress,
       showingDownloads,
-      startDownload,
       styles,
       t,
       theme,

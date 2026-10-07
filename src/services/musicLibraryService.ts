@@ -161,6 +161,24 @@ export function trackCredit(track: LibraryTrack): string {
   return `"${track.title}" by ${track.artist} (${license})`;
 }
 
+/** Caption line for one or more credits, e.g. `🎵 Music: "Song" by Artist (CC BY 4.0)`. */
+export function musicCreditLine(credits: (string | null | undefined)[]): string {
+  const unique = Array.from(new Set(credits.filter((c): c is string => !!c)));
+  return unique.length ? `🎵 Music: ${unique.join(", ")}` : "";
+}
+
+/** Appends the credit line to the caption (once). Library tracks require it. */
+export function captionWithMusicCredit(caption: string, creditLine: string): string {
+  const text = caption.trim();
+  if (!creditLine || text.includes(creditLine)) return text;
+  return text ? `${text}\n\n${creditLine}` : creditLine;
+}
+
+/** Caption characters to keep free for the credit line. */
+export function musicCreditReserve(creditLine: string): number {
+  return creditLine ? creditLine.length + 2 : 0;
+}
+
 export function licenseLabel(track: LibraryTrack): string {
   return track.license === "cc0" ? "CC0" : `CC ${track.license.toUpperCase()}`;
 }
