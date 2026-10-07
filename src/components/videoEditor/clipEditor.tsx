@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
@@ -17,24 +17,21 @@ import {
   IMAGE_CLIP_MAX_MS,
   IMAGE_CLIP_MIN_MS,
   MIN_CLIP_MS,
-  MIN_CUT_MS,
   clipLengthMs,
   isImageClip,
   sourceToViewMs,
   viewDurationMs,
   viewToSourceMs,
-  type CutRange,
   type EditorClip,
 } from "./editorModel";
 import { formatVideoDuration } from "@/src/utils/videoDuration";
 
 /**
- * Level 2 of the trim tool: one clip at a time. Three clearly separated
- * modes so it's always obvious what the strip does:
- *   Trim    — orange ends mark the part that STAYS
- *   Split   — move the white line, tap "Split at …"
- *   Remove  — red ends mark a part to DELETE, tap "Remove …"
- * Photos get a duration picker instead.
+ * Level 2 of the trim tool: one clip at a time, CapCut / Instagram Edits
+ * style — no modes. The strip always shows the orange trim ends and the
+ * white line; tools act on them (Split at the white line, Mute, Delete),
+ * and one full-width Done closes it. Removing a middle part = Split, then
+ * delete the piece. Photos get a duration picker instead of the strip.
  *
  * The trimmer works on a "view" of the source with cut parts taken out;
  * everything going in or out of it is mapped here, so the screen only
@@ -52,8 +49,8 @@ type Props = {
   onDone: () => void;
   /** Split at the white line. */
   onSplit: () => void;
-  /** Delete a part of the clip (SOURCE ms); the rest joins up. */
-  onRemoveRange: (range: CutRange) => void;
+  /** Back to the whole clip (trim + removed parts undone). */
+  onReset: () => void;
   /** Mute / unmute this clip's own sound. */
   onToggleMute: () => void;
   onRemove: () => void;
@@ -69,8 +66,6 @@ type Props = {
   onImageDurationBegin: () => void;
   onImageDurationChange: (ms: number) => void;
 };
-
-type Mode = "trim" | "split" | "remove";
 
 /** Quick picks for photo length (seconds). */
 const PHOTO_PRESETS_S = [2, 3, 5, 7, 10];
@@ -91,61 +86,55 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      minHeight: heightScale(32),
     },
-    titleWrap: { flex: 1, minWidth: 0 },
     title: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.white,
     },
-    length: {
+    resetBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      paddingHorizontal: moderateWidthScale(10),
+      height: heightScale(30),
+      borderRadius: heightScale(15),
+      borderWidth: 1,
+      borderColor: theme.white15,
+    },
+    resetText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
+    },
+    lengthRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: moderateHeightScale(6),
+    },
+    edgeTime: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
       color: theme.white70,
       fontVariant: ["tabular-nums"],
-      marginTop: moderateHeightScale(1),
+      minWidth: moderateWidthScale(52),
     },
-    overLimit: { color: theme.link },
-    doneBtn: {
-      height: heightScale(34),
-      paddingHorizontal: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(17),
-      backgroundColor: theme.buttonBack,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(4),
+    edgeTimeEnd: { textAlign: "right" },
+    lengthPill: {
+      paddingHorizontal: moderateWidthScale(10),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.white15,
     },
-    doneText: {
+    lengthText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.buttonText,
-    },
-    segment: {
-      flexDirection: "row",
-      marginTop: moderateHeightScale(10),
-      padding: moderateWidthScale(3),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.black,
-    },
-    segmentBtn: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateWidthScale(5),
-      minHeight: heightScale(36),
-      borderRadius: moderateWidthScale(9),
-    },
-    segmentBtnActive: { backgroundColor: theme.buttonBack },
-    segmentText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white70,
-    },
-    segmentTextActive: {
-      fontFamily: fonts.fontBold,
       color: theme.white,
+      fontVariant: ["tabular-nums"],
     },
+    overLimit: { color: theme.link },
     hint: {
       textAlign: "center",
       marginTop: moderateHeightScale(8),
@@ -157,57 +146,46 @@ const createStyles = (theme: Theme) =>
       color: theme.link,
       fontFamily: fonts.fontBold,
     },
-    rangeRow: {
+    tools: {
       flexDirection: "row",
-      justifyContent: "space-between",
-      marginTop: moderateHeightScale(4),
+      justifyContent: "center",
+      gap: moderateWidthScale(10),
+      marginTop: moderateHeightScale(10),
     },
-    rangeText: {
+    tool: {
+      flex: 1,
+      maxWidth: moderateWidthScale(110),
+      minHeight: heightScale(56),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.white15,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: moderateHeightScale(3),
+    },
+    toolDisabled: { opacity: 0.35 },
+    toolLabel: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontMedium,
-      color: theme.white70,
-      fontVariant: ["tabular-nums"],
+      color: theme.white,
     },
-    primaryBtn: {
-      marginTop: moderateHeightScale(10),
-      minHeight: heightScale(42),
-      borderRadius: moderateWidthScale(12),
+    toolLabelActive: {
+      color: theme.selectCard,
+      fontFamily: fonts.fontBold,
+    },
+    doneBtn: {
+      marginTop: moderateHeightScale(12),
+      minHeight: heightScale(46),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.buttonBack,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(6),
-      backgroundColor: theme.buttonBack,
     },
-    primaryBtnDanger: { backgroundColor: theme.red },
-    primaryBtnDisabled: { opacity: 0.4 },
-    primaryText: {
-      fontSize: fontSize.size13,
+    doneText: {
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontBold,
-      color: theme.white,
-      fontVariant: ["tabular-nums"],
-    },
-    toolbar: {
-      flexDirection: "row",
-      justifyContent: "center",
-      gap: moderateWidthScale(24),
-      marginTop: moderateHeightScale(6),
-    },
-    action: {
-      minWidth: moderateWidthScale(64),
-      minHeight: heightScale(48),
-      alignItems: "center",
-      justifyContent: "center",
-      gap: moderateHeightScale(2),
-    },
-    actionDisabled: { opacity: 0.35 },
-    actionLabel: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
-    actionLabelActive: {
-      color: theme.selectCard,
-      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
     },
     photoPresets: {
       flexDirection: "row",
@@ -248,7 +226,7 @@ export default function ClipEditor({
   disabled,
   onDone,
   onSplit,
-  onRemoveRange,
+  onReset,
   onToggleMute,
   onRemove,
   onTrimBegin,
@@ -270,9 +248,11 @@ export default function ClipEditor({
   const lengthMs = clipLengthMs(clip);
   // e.g. a full long auto reel source that still has to be trimmed down
   const overLimit = lengthMs > maxLengthMs + 50;
-
-  const [mode, setMode] = useState<Mode>("trim");
-  useEffect(() => setMode("trim"), [clip.id]);
+  const edited =
+    !isPhoto &&
+    (clip.trimStartMs > 0 ||
+      clip.trimEndMs < clip.sourceDurationMs ||
+      (clip.cuts?.length ?? 0) > 0);
 
   // ── Trimmer view (cut parts taken out of the source)
   const cutsKey = (clip.cuts ?? []).map((c) => `${c.startMs}-${c.endMs}`).join(",");
@@ -304,112 +284,60 @@ export default function ClipEditor({
 
   const clipRef = useRef(clip);
   clipRef.current = clip;
-  const toSource = useCallback(
-    (viewMs: number, bias: "after" | "before" = "after") =>
-      viewToSourceMs(clipRef.current, viewMs, bias),
-    [],
-  );
-
-  // ── Trim mode
   const handleTrimChange = useCallback(
     (edge: TrimEdge, ms: number) => {
-      onTrimChange(edge, toSource(ms, edge === "start" ? "after" : "before"));
+      onTrimChange(
+        edge,
+        viewToSourceMs(clipRef.current, ms, edge === "start" ? "after" : "before"),
+      );
     },
-    [onTrimChange, toSource],
+    [onTrimChange],
   );
   const handleTrimMove = useCallback(
     (startMs: number) => {
       const c = clipRef.current;
       const len = sourceToViewMs(c, c.trimEndMs) - sourceToViewMs(c, c.trimStartMs);
-      onTrimMove(toSource(startMs, "after"), toSource(startMs + len, "before"));
+      onTrimMove(
+        viewToSourceMs(c, startMs, "after"),
+        viewToSourceMs(c, startMs + len, "before"),
+      );
     },
-    [onTrimMove, toSource],
+    [onTrimMove],
   );
   const handleScrub = useCallback(
-    (ms: number) => onScrub(toSource(ms, "after")),
-    [onScrub, toSource],
+    (ms: number) => onScrub(viewToSourceMs(clipRef.current, ms, "after")),
+    [onScrub],
   );
 
-  // ── Remove mode: a red range (VIEW ms), local until "Remove" is tapped
-  const [removeSel, setRemoveSel] = useState<CutRange | null>(null);
-  useEffect(() => {
-    if (mode !== "remove") return;
-    // Start in the middle third of what's kept, so the red part is obvious
-    const start = viewClip.trimStartMs;
-    const len = viewClip.trimEndMs - start;
-    const width = Math.max(MIN_CUT_MS, Math.round(len / 3));
-    const s = Math.round(start + (len - width) / 2);
-    setRemoveSel({ startMs: s, endMs: Math.min(viewClip.trimEndMs, s + width) });
-  }, [mode, viewClip.trimStartMs, viewClip.trimEndMs, cutsKey]);
-  const removeClip = useMemo<EditorClip | null>(
-    () =>
-      removeSel
-        ? { ...viewClip, trimStartMs: removeSel.startMs, trimEndMs: removeSel.endMs }
-        : null,
-    [removeSel, viewClip],
-  );
-  const removeSelRef = useRef(removeSel);
-  removeSelRef.current = removeSel;
-  const onRemoveEdge = useCallback(
-    (edge: TrimEdge, ms: number) => {
-      setRemoveSel((sel) => {
-        if (!sel) return sel;
-        const next =
-          edge === "start"
-            ? { startMs: Math.min(ms, sel.endMs - MIN_CUT_MS), endMs: sel.endMs }
-            : { startMs: sel.startMs, endMs: Math.max(ms, sel.startMs + MIN_CUT_MS) };
-        return next;
-      });
-      onScrub(toSource(ms, edge === "start" ? "after" : "before"));
-    },
-    [onScrub, toSource],
-  );
-  const onRemoveMove = useCallback(
-    (startMs: number) => {
-      setRemoveSel((sel) =>
-        sel ? { startMs, endMs: startMs + (sel.endMs - sel.startMs) } : sel,
-      );
-      onScrub(toSource(startMs, "after"));
-    },
-    [onScrub, toSource],
-  );
-  const applyRemove = () => {
-    const sel = removeSelRef.current;
-    if (!sel) return;
-    onRemoveRange({
-      startMs: toSource(sel.startMs, "after"),
-      endMs: toSource(sel.endMs, "before"),
-    });
-  };
-
-  // ── Split mode
-  const splitOffsetMs =
-    viewPlayheadMs == null ? null : viewPlayheadMs - viewClip.trimStartMs;
+  // Split needs the white line clear of both trim ends
   const canSplit =
-    splitOffsetMs != null &&
-    splitOffsetMs >= MIN_CLIP_MS &&
-    viewClip.trimEndMs - (viewPlayheadMs ?? 0) >= MIN_CLIP_MS;
+    viewPlayheadMs != null &&
+    viewPlayheadMs - viewClip.trimStartMs >= MIN_CLIP_MS &&
+    viewClip.trimEndMs - viewPlayheadMs >= MIN_CLIP_MS;
 
-  const modes: { key: Mode; icon: keyof typeof MaterialIcons.glyphMap; label: string }[] = [
-    { key: "trim", icon: "content-cut", label: t("clipModeTrim") },
-    { key: "split", icon: "call-split", label: t("clipModeSplit") },
-    { key: "remove", icon: "remove-circle-outline", label: t("clipModeRemove") },
-  ];
-
-  const secondary: {
+  const tools: {
     key: string;
     icon: keyof typeof MaterialIcons.glyphMap;
     label: string;
     onPress: () => void;
+    enabled: boolean;
     active?: boolean;
   }[] = [
     ...(!isPhoto
       ? [
           {
+            key: "split",
+            icon: "call-split" as const,
+            label: t("clipModeSplit"),
+            onPress: onSplit,
+            enabled: canSplit,
+          },
+          {
             key: "mute",
             icon: (clip.muted ? "volume-off" : "volume-up") as keyof typeof MaterialIcons.glyphMap,
             label: clip.muted ? t("clipMuted") : t("muteClip"),
             onPress: onToggleMute,
+            enabled: true,
             active: !!clip.muted,
           },
         ]
@@ -421,6 +349,7 @@ export default function ClipEditor({
             icon: "delete-outline" as const,
             label: t("delete"),
             onPress: onRemove,
+            enabled: true,
           },
         ]
       : []),
@@ -430,38 +359,27 @@ export default function ClipEditor({
     ? t("clipTrimToFit", { max: formatVideoDuration(maxLengthMs / 1000) })
     : isPhoto
       ? t("photoClipHint")
-      : mode === "trim"
-        ? t("clipTrimHint")
-        : mode === "split"
-          ? t("clipSplitModeHint")
-          : t("clipRemoveHint");
+      : t("clipEditHint");
 
   return (
     <View>
       <View style={styles.header}>
-        <View style={styles.titleWrap}>
-          <Text style={styles.title} numberOfLines={1}>
-            {multi ? t("clipLabel", { index: index + 1, count }) : t("trimVideo")}
-          </Text>
-          <Text
-            style={[styles.length, overLimit && styles.overLimit]}
-            accessibilityLabel={t("clipLengthA11y", { length: formatClipLength(lengthMs) })}
+        <Text style={styles.title} numberOfLines={1}>
+          {multi ? t("clipLabel", { index: index + 1, count }) : t("trimVideo")}
+        </Text>
+        {edited ? (
+          <TouchableOpacity
+            style={styles.resetBtn}
+            onPress={onReset}
+            disabled={disabled}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t("clipReset")}
           >
-            {formatClipLength(lengthMs)}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={styles.doneBtn}
-          onPress={onDone}
-          disabled={disabled}
-          activeOpacity={0.85}
-          hitSlop={6}
-          accessibilityRole="button"
-          accessibilityLabel={t("done")}
-        >
-          <MaterialIcons name="check" size={moderateWidthScale(16)} color={theme.buttonText} />
-          <Text style={styles.doneText}>{t("done")}</Text>
-        </TouchableOpacity>
+            <MaterialIcons name="restart-alt" size={moderateWidthScale(15)} color={theme.white} />
+            <Text style={styles.resetText}>{t("clipReset")}</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       {isPhoto ? (
@@ -504,108 +422,37 @@ export default function ClipEditor({
           />
         </>
       ) : (
-        <>
-          <View style={styles.segment} accessibilityRole="tablist">
-            {modes.map((m) => {
-              const active = mode === m.key;
-              return (
-                <TouchableOpacity
-                  key={m.key}
-                  style={[styles.segmentBtn, active && styles.segmentBtnActive]}
-                  onPress={() => setMode(m.key)}
-                  disabled={disabled}
-                  activeOpacity={0.8}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: active, disabled }}
-                >
-                  <MaterialIcons
-                    name={m.icon}
-                    size={moderateWidthScale(16)}
-                    color={active ? theme.white : theme.white70}
-                  />
-                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>
-                    {m.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          {mode === "remove" && removeClip ? (
-            <ClipTrimmer
-              key="remove"
-              variant="remove"
-              clip={removeClip}
-              frames={viewFrames}
-              playheadMs={viewPlayheadMs}
-              disabled={disabled}
-              onTrimBegin={onScrubBegin}
-              onTrimChange={onRemoveEdge}
-              onTrimEnd={onScrubEnd}
-              onTrimMove={onRemoveMove}
-              onScrubBegin={onScrubBegin}
-              onScrub={handleScrub}
-              onScrubEnd={onScrubEnd}
-            />
-          ) : (
-            <ClipTrimmer
-              key={mode === "split" ? "split" : "trim"}
-              clip={viewClip}
-              frames={viewFrames}
-              playheadMs={viewPlayheadMs}
-              disabled={disabled}
-              showHandles={mode === "trim"}
-              onTrimBegin={onTrimBegin}
-              onTrimChange={handleTrimChange}
-              onTrimEnd={onTrimEnd}
-              onTrimMove={handleTrimMove}
-              onScrubBegin={onScrubBegin}
-              onScrub={handleScrub}
-              onScrubEnd={onScrubEnd}
-            />
-          )}
-
-          {mode === "trim" ? (
-            <View style={styles.rangeRow}>
-              <Text style={styles.rangeText}>{formatPrecise(viewClip.trimStartMs)}</Text>
-              <Text style={styles.rangeText}>{formatPrecise(viewClip.trimEndMs)}</Text>
-            </View>
-          ) : null}
-
-          {mode === "split" ? (
-            <TouchableOpacity
-              style={[styles.primaryBtn, !canSplit && styles.primaryBtnDisabled]}
-              onPress={onSplit}
-              disabled={disabled || !canSplit}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-            >
-              <MaterialIcons name="call-split" size={moderateWidthScale(18)} color={theme.white} />
-              <Text style={styles.primaryText}>
-                {t("clipSplitAt", { time: formatClipLength(splitOffsetMs ?? 0) })}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-
-          {mode === "remove" && removeSel ? (
-            <TouchableOpacity
-              style={[styles.primaryBtn, styles.primaryBtnDanger]}
-              onPress={applyRemove}
-              disabled={disabled}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-            >
-              <MaterialIcons name="delete-outline" size={moderateWidthScale(18)} color={theme.white} />
-              <Text style={styles.primaryText}>
-                {t("clipRemoveRange", {
-                  start: formatPrecise(removeSel.startMs),
-                  end: formatPrecise(removeSel.endMs),
-                })}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-        </>
+        <ClipTrimmer
+          clip={viewClip}
+          frames={viewFrames}
+          playheadMs={viewPlayheadMs}
+          disabled={disabled}
+          onTrimBegin={onTrimBegin}
+          onTrimChange={handleTrimChange}
+          onTrimEnd={onTrimEnd}
+          onTrimMove={handleTrimMove}
+          onScrubBegin={onScrubBegin}
+          onScrub={handleScrub}
+          onScrubEnd={onScrubEnd}
+        />
       )}
+
+      <View style={styles.lengthRow}>
+        <Text style={styles.edgeTime}>
+          {isPhoto ? "" : formatPrecise(viewClip.trimStartMs)}
+        </Text>
+        <View style={styles.lengthPill}>
+          <Text
+            style={[styles.lengthText, overLimit && styles.overLimit]}
+            accessibilityLabel={t("clipLengthA11y", { length: formatClipLength(lengthMs) })}
+          >
+            {formatClipLength(lengthMs)}
+          </Text>
+        </View>
+        <Text style={[styles.edgeTime, styles.edgeTimeEnd]}>
+          {isPhoto ? "" : formatPrecise(viewClip.trimEndMs)}
+        </Text>
+      </View>
 
       <Text
         style={[styles.hint, overLimit && styles.hintOverLimit]}
@@ -614,34 +461,50 @@ export default function ClipEditor({
         {hintText}
       </Text>
 
-      {secondary.length > 0 ? (
-        <View style={styles.toolbar}>
-          {secondary.map((action) => (
-            <TouchableOpacity
-              key={action.key}
-              style={[styles.action, disabled && styles.actionDisabled]}
-              onPress={action.onPress}
-              disabled={disabled}
-              activeOpacity={0.7}
-              accessibilityRole={action.active === undefined ? "button" : "switch"}
-              accessibilityLabel={action.key === "mute" ? t("muteClip") : action.label}
-              accessibilityState={{
-                disabled,
-                ...(action.active === undefined ? {} : { checked: action.active }),
-              }}
-            >
-              <MaterialIcons
-                name={action.icon}
-                size={moderateWidthScale(22)}
-                color={action.active ? theme.selectCard : theme.white}
-              />
-              <Text style={[styles.actionLabel, action.active && styles.actionLabelActive]}>
-                {action.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {tools.length > 0 ? (
+        <View style={styles.tools}>
+          {tools.map((tool) => {
+            const enabled = tool.enabled && !disabled;
+            return (
+              <TouchableOpacity
+                key={tool.key}
+                style={[styles.tool, !enabled && styles.toolDisabled]}
+                onPress={tool.onPress}
+                disabled={!enabled}
+                activeOpacity={0.75}
+                accessibilityRole={tool.active === undefined ? "button" : "switch"}
+                accessibilityLabel={tool.key === "mute" ? t("muteClip") : tool.label}
+                accessibilityHint={tool.key === "split" ? t("clipSplitToolHint") : undefined}
+                accessibilityState={{
+                  disabled: !enabled,
+                  ...(tool.active === undefined ? {} : { checked: tool.active }),
+                }}
+              >
+                <MaterialIcons
+                  name={tool.icon}
+                  size={moderateWidthScale(22)}
+                  color={tool.active ? theme.selectCard : theme.white}
+                />
+                <Text style={[styles.toolLabel, tool.active && styles.toolLabelActive]}>
+                  {tool.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       ) : null}
+
+      <TouchableOpacity
+        style={styles.doneBtn}
+        onPress={onDone}
+        disabled={disabled}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={t("done")}
+      >
+        <MaterialIcons name="check" size={moderateWidthScale(18)} color={theme.buttonText} />
+        <Text style={styles.doneText}>{t("done")}</Text>
+      </TouchableOpacity>
     </View>
   );
 }

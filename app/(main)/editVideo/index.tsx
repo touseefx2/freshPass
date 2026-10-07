@@ -100,7 +100,6 @@ import {
   prepareEditorClip,
   prepareImageClip,
   playToSourceMs,
-  addCut,
   prepareStickerImage,
   skipCutAt,
   sourceFilmstrip,
@@ -108,7 +107,6 @@ import {
   splitClip,
   stickerToOverlay,
   totalClipsMs,
-  type CutRange,
   type EditorClip,
   type EditorSticker,
 } from "@/src/components/videoEditor/editorModel";
@@ -1658,29 +1656,25 @@ export default function EditVideoScreen() {
     [loadThumbnail, playheadSourceMs, pushHistory, showBanner, t],
   );
 
-  /**
-   * Remove part: delete `range` (SOURCE ms) from the clip right away; the
-   * rest joins up. Undo brings it back.
-   */
-  const removeRangeFromClip = useCallback(
-    (id: string, range: CutRange) => {
+  /** Clip editor "Reset": the whole clip again (trim + removed parts undone). */
+  const resetClip = useCallback(
+    (id: string) => {
       const list = clipsRef.current;
       const index = list.findIndex((c) => c.id === id);
       const clip = list[index];
-      if (!clip) return;
-      const next = addCut(clip, range);
-      if (!next) {
-        showBanner(t("clipModeRemove"), t("cutClipTooMuch"), "info", 3500);
-        return;
-      }
+      if (!clip || isImageClip(clip)) return;
       pushHistory();
       const updated = [...list];
-      updated[index] = next;
+      updated[index] = {
+        ...clip,
+        trimStartMs: 0,
+        trimEndMs: clip.sourceDurationMs,
+        cuts: undefined,
+      };
       clipsRef.current = updated;
       setClips(updated);
-      loadThumbnail(next);
     },
-    [loadThumbnail, pushHistory, showBanner, t],
+    [pushHistory],
   );
 
   // Load trimmer frames for the open clip's file (once per file).
@@ -3072,9 +3066,7 @@ export default function EditVideoScreen() {
                   disabled={busy}
                   onDone={() => setEditingClipId(null)}
                   onSplit={() => splitSelectedClip(editingClip.id)}
-                  onRemoveRange={(range) =>
-                    removeRangeFromClip(editingClip.id, range)
-                  }
+                  onReset={() => resetClip(editingClip.id)}
                   onToggleMute={() => toggleClipMuted(editingClip.id)}
                   onRemove={() => removeClip(editingClip.id)}
                   onTrimBegin={onTrimSlideStart}
