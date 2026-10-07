@@ -4,6 +4,7 @@ import {
   Image as CompressorImage,
   Video as CompressorVideo,
   getRealPath,
+  getVideoMetaData,
 } from "react-native-compressor";
 import Logger from "@/src/services/logger";
 import {
@@ -36,6 +37,8 @@ const IMAGE_QUALITY = 0.82;
 const VIDEO_MAX_SIZE = 1920;
 const VIDEO_BITRATE = 4_500_000;
 const VIDEO_MIN_FILE_SIZE_MB = 6;
+/** Already this light (e.g. an editor export) → re-encoding only costs time */
+const VIDEO_SKIP_BITRATE = VIDEO_BITRATE * 1.25;
 
 const IMAGE_EXT_RE = /\.(jpe?g|png|gif|bmp|webp|heic|heif|tiff?|avif)$/i;
 const VIDEO_EXT_RE = /\.(mp4|mov|m4v|webm|avi|mkv)$/i;
@@ -214,6 +217,24 @@ export async function prepareImagesForUpload(
 }
 
 /**
+ * True when the file is already within the upload settings (size ÷ duration
+ * at or under ~5.6 Mbps and longest side ≤ 1920). Unknown → false (compress).
+ */
+async function isVideoAlreadyLight(uri: string): Promise<boolean> {
+  try {
+    const meta = await getVideoMetaData(uri);
+    const size = Number(meta?.size);
+    const duration = Number(meta?.duration);
+    const longestSide = Math.max(Number(meta?.width), Number(meta?.height));
+    if (!(size > 0 && duration > 0 && longestSide > 0)) return false;
+    const bitrate = (size * 8) / duration;
+    return bitrate <= VIDEO_SKIP_BITRATE && longestSide <= VIDEO_MAX_SIZE;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Mildly compress a local video before upload (reels, AI tools, chat, camera).
  * On failure / web, returns the original URI so upload can still proceed.
  */
@@ -243,6 +264,12 @@ export async function prepareVideoForUpload(
     } catch {
       // Continue with original URI
     }
+
+    if (await isVideoAlreadyLight(inputUri)) {
+      options?.onProgress?.(100);
+      return { uri, type: mimeType, name: fileName };
+    }
+    throwIfAborted(options?.signal);
 
     let cancellationId: string | null = null;
     const onAbort = () => {
