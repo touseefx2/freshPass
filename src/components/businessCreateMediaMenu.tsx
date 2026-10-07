@@ -25,7 +25,7 @@ import {
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import Logger from "@/src/services/logger";
-import { getMediaLimits, MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
+import { MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
 import {
   handleCameraPermission,
   handleMediaLibraryPermission,
@@ -40,8 +40,7 @@ import {
   isSoloSubscription,
   isStripeOnboardingCompleted,
 } from "@/src/state/slices/userSlice";
-import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
-import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
+import type { MediaUploadSourceType } from "@/src/types/media";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
 const androidBlurMethod =
@@ -186,7 +185,6 @@ export default function BusinessCreateMediaMenu({
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
 
-  const [limits, setLimits] = useState<MediaLimits | null>(null);
   const [buyPlanModalVisible, setBuyPlanModalVisible] = useState(false);
   const [upgradeModalVisible, setUpgradeModalVisible] = useState(false);
   const [reelPickerVisible, setReelPickerVisible] = useState(false);
@@ -201,8 +199,6 @@ export default function BusinessCreateMediaMenu({
    * Keep only a small gap — matches design sample.
    */
   const reelPickerBottom = tabBarClearance + moderateHeightScale(12);
-
-  const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
   useEffect(() => {
     if (!visible) {
@@ -267,42 +263,45 @@ export default function BusinessCreateMediaMenu({
     router,
   ]);
 
-  const openEditor = useCallback(
-    (
-      asset: ImagePicker.ImagePickerAsset,
-      sourceType: MediaUploadSourceType,
-      seconds: number,
-    ) => {
+  /** Upload a Reel: skip the editor and go straight to Publish reel. */
+  const openPublish = useCallback(
+    (asset: ImagePicker.ImagePickerAsset, sourceType: MediaUploadSourceType) => {
       if (!asset.uri) return;
-      // Longer than the limit is fine — the editor loads the whole video
-      // and won't continue until it's trimmed to `seconds`.
+      // expo-image-picker reports duration in ms (null when unknown)
+      const durationMs = asset.duration ?? 0;
+      // Small tolerance — a 30s recording often reports 30.0x seconds
+      if (durationMs > MAX_VIDEO_UPLOAD_SECONDS * 1000 + 500) {
+        showBanner(
+          t("error"),
+          t("selectVideoWithinLimit", {
+            max_seconds: MAX_VIDEO_UPLOAD_SECONDS,
+          }),
+          "error",
+          3500,
+        );
+        return;
+      }
       router.push({
-        pathname: "/(main)/editVideo" as any,
+        pathname: "/(main)/publishReel" as any,
         params: {
-          uri: encodeURIComponent(asset.uri),
+          videoUri: encodeURIComponent(asset.uri),
           mimeType: asset.mimeType || "video/mp4",
           fileName: asset.fileName || "video.mp4",
           sourceType,
-          maxSeconds: String(seconds),
+          ...(durationMs > 0
+            ? {
+                durationSeconds: String(
+                  Math.max(1, Math.round(durationMs / 1000)),
+                ),
+              }
+            : {}),
           ...(asset.width ? { width: String(asset.width) } : {}),
           ...(asset.height ? { height: String(asset.height) } : {}),
         },
       });
     },
-    [router],
+    [router, showBanner, t],
   );
-
-  const resolveMaxSeconds = useCallback(async () => {
-    let seconds = maxSeconds;
-    try {
-      const data = await getMediaLimits();
-      setLimits(data);
-      seconds = data.max_seconds;
-    } catch {
-      // keep last known / default
-    }
-    return Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
-  }, [maxSeconds]);
 
   const handleRecord = useCallback(async () => {
     if (!ensureCanUploadReel()) return;
@@ -310,13 +309,11 @@ export default function BusinessCreateMediaMenu({
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) return;
 
-    const seconds = await resolveMaxSeconds();
-
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ["videos"],
         quality: 1,
-        // No length cap: a long recording opens in the editor to trim
+        videoMaxDuration: MAX_VIDEO_UPLOAD_SECONDS,
         ...(Platform.OS === "ios" && {
           preferredAssetRepresentationMode:
             ImagePicker.UIImagePickerPreferredAssetRepresentationMode
@@ -324,28 +321,19 @@ export default function BusinessCreateMediaMenu({
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        openEditor(result.assets[0], "camera", seconds);
+        openPublish(result.assets[0], "camera");
       }
     } catch (error) {
       Logger.error("Error recording video:", error);
       showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
     }
-  }, [
-    closeAll,
-    ensureCanUploadReel,
-    openEditor,
-    resolveMaxSeconds,
-    showBanner,
-    t,
-  ]);
+  }, [closeAll, ensureCanUploadReel, openPublish, showBanner, t]);
 
   const handleUpload = useCallback(async () => {
     if (!ensureCanUploadReel()) return;
     closeAll();
     const hasPermission = await handleMediaLibraryPermission();
     if (!hasPermission) return;
-
-    const seconds = await resolveMaxSeconds();
 
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -359,20 +347,13 @@ export default function BusinessCreateMediaMenu({
         }),
       });
       if (!result.canceled && result.assets?.[0]) {
-        openEditor(result.assets[0], "device", seconds);
+        openPublish(result.assets[0], "device");
       }
     } catch (error) {
       Logger.error("Error selecting video:", error);
       showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
     }
-  }, [
-    closeAll,
-    ensureCanUploadReel,
-    openEditor,
-    resolveMaxSeconds,
-    showBanner,
-    t,
-  ]);
+  }, [closeAll, ensureCanUploadReel, openPublish, showBanner, t]);
 
   const openReelPicker = useCallback(() => {
     const gate = getReelUploadGate(businessStatus, userRole);

@@ -11,6 +11,7 @@ import { BlurView } from "expo-blur";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
+import { MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
@@ -221,8 +222,8 @@ const REEL_TYPES: {
 ];
 
 /**
- * Create Reel picker: first the reel type (Simple / Image / AI), then for
- * Simple the video source (Record / Upload / Template).
+ * Create Reel picker: first the reel type (Upload / Image / AI), then for
+ * Upload the video source (Record / Gallery, max 30s).
  * Floating card just above the center tab FAB — tab bar / X stay visible.
  */
 export default function CreateReelPickerSheet({
@@ -288,7 +289,9 @@ export default function CreateReelPickerSheet({
                 activeOpacity={0.85}
                 accessibilityRole="button"
                 accessibilityLabel={t(type.titleKey)}
-                accessibilityHint={t(type.descKey)}
+                accessibilityHint={t(type.descKey, {
+                  max_seconds: MAX_VIDEO_UPLOAD_SECONDS,
+                })}
               >
                 <View
                   style={[
@@ -304,7 +307,9 @@ export default function CreateReelPickerSheet({
                 </View>
                 <View style={styles.optionTextCol}>
                   <Text style={styles.typeTitle}>{t(type.titleKey)}</Text>
-                  <Text style={styles.typeDesc}>{t(type.descKey)}</Text>
+                  <Text style={styles.typeDesc}>
+                    {t(type.descKey, { max_seconds: MAX_VIDEO_UPLOAD_SECONDS })}
+                  </Text>
                 </View>
                 <MaterialIcons
                   name="chevron-right"

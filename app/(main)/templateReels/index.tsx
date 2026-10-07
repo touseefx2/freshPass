@@ -85,6 +85,15 @@ const iosCompatiblePickerOptions =
 
 /** Still images uploaded as media assets — no duration_seconds on POST /api/media. */
 
+function assetIsVideo(asset: ImagePicker.ImagePickerAsset): boolean {
+  const mime = (asset as { mimeType?: string }).mimeType ?? "";
+  return (
+    asset.type === "video" ||
+    mime.startsWith("video/") ||
+    isLikelyVideoUri(asset.uri)
+  );
+}
+
 function slotAcceptsImage(field: ReelTemplateMediaField | undefined): boolean {
   return field?.accepted_types?.includes("image") ?? true;
 }
@@ -483,6 +492,29 @@ const createStyles = (theme: Theme) =>
     },
     slotsRow: {
       gap: moderateHeightScale(10),
+    },
+    slotsHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: moderateHeightScale(10),
+    },
+    slotsHeaderTitle: {
+      marginBottom: 0,
+    },
+    fillSlotsButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      backgroundColor: theme.buttonBack,
+      borderRadius: moderateWidthScale(999),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(6),
+    },
+    fillSlotsText: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
     },
     slotCard: {
       flexDirection: "row",
@@ -967,22 +999,21 @@ export default function ReelTemplatesScreen() {
       sourceType: MediaUploadSourceType,
       slotIndex: number,
       slotField: ReelTemplateMediaField | undefined,
-    ) => {
-      if (!asset.uri) return;
+      /** Batch picks: only the first too-long video may open the editor */
+      allowTrim = true,
+    ): Promise<"selected" | "trim" | "tooLong" | "skipped"> => {
+      if (!asset.uri) return "skipped";
 
       const mime = (asset as { mimeType?: string }).mimeType ?? "";
-      const isVideo =
-        asset.type === "video" ||
-        mime.startsWith("video/") ||
-        isLikelyVideoUri(asset.uri);
+      const isVideo = assetIsVideo(asset);
 
       if (isVideo && !slotAcceptsVideo(slotField)) {
         showBanner(t("error"), t("slotRequiresPhoto"), "error", 3500);
-        return;
+        return "skipped";
       }
       if (!isVideo && !slotAcceptsImage(slotField)) {
         showBanner(t("error"), t("slotRequiresVideo"), "error", 3500);
-        return;
+        return "skipped";
       }
 
       // One file can't fill two slots (server counts duplicate ids once)
@@ -991,7 +1022,7 @@ export default function ReelTemplatesScreen() {
       );
       if (alreadyUsed) {
         showBanner(t("error"), t("mediaAlreadySelected"), "error", 2500);
-        return;
+        return "skipped";
       }
 
       let durationSeconds: number | undefined;
@@ -1004,13 +1035,14 @@ export default function ReelTemplatesScreen() {
             : await measureVideoDurationSeconds(asset.uri);
         durationSeconds = Math.max(1, Math.round(lengthSeconds ?? 0));
         if (durationSeconds > MAX_VIDEO_UPLOAD_SECONDS) {
+          if (!allowTrim) return "tooLong";
           // Straight to the editor: full original video, trim panel open,
           // required length on top (iOS: let the picker finish closing first)
           setTimeout(
             () => openTrimEditor(asset, sourceType, slotIndex),
             Platform.OS === "ios" ? 350 : 0,
           );
-          return;
+          return "trim";
         }
         try {
           const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, {
@@ -1043,6 +1075,7 @@ export default function ReelTemplatesScreen() {
         };
         return next;
       });
+      return "selected";
     },
     [openTrimEditor, selectedMedia, showBanner, t],
   );
@@ -1077,46 +1110,120 @@ export default function ReelTemplatesScreen() {
     }, [mediaFields, selectPickedAsset, showBanner, t]),
   );
 
+  /**
+   * Gallery multi-select: picks fill `targetSlots` in order, each going to the
+   * first remaining slot that accepts its type (photo / video).
+   */
+  const pickFromGalleryInto = useCallback(
+    async (targetSlots: number[]) => {
+      if (targetSlots.length === 0) return;
+      const hasPermission = await handleMediaLibraryPermission();
+      if (!hasPermission) return;
+
+      const acceptsImage = targetSlots.some((i) =>
+        slotAcceptsImage(mediaFields[i]),
+      );
+      const acceptsVideo = targetSlots.some((i) =>
+        slotAcceptsVideo(mediaFields[i]),
+      );
+      const mediaTypes: ("images" | "videos")[] =
+        acceptsImage && acceptsVideo
+          ? ["images", "videos"]
+          : acceptsImage
+            ? ["images"]
+            : ["videos"];
+
+      try {
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes,
+          allowsMultipleSelection: targetSlots.length > 1,
+          selectionLimit: targetSlots.length,
+          orderedSelection: true,
+          quality: 0.8,
+          allowsEditing: false,
+          ...iosCompatiblePickerOptions,
+        });
+        if (result.canceled || !result.assets?.length) return;
+
+        // Older Android pickers ignore selectionLimit — keep only what fits
+        const assets = result.assets.slice(0, targetSlots.length);
+        if (result.assets.length > targetSlots.length) {
+          showBanner(
+            t("error"),
+            t("tooManyMediaSelected", { count: targetSlots.length }),
+            "warning",
+            3000,
+          );
+        }
+
+        const freeSlots = [...targetSlots];
+        let trimUsed = false;
+        let tooLong = 0;
+        for (const asset of assets) {
+          const isVideo = assetIsVideo(asset);
+          const pos = freeSlots.findIndex((i) =>
+            isVideo
+              ? slotAcceptsVideo(mediaFields[i])
+              : slotAcceptsImage(mediaFields[i]),
+          );
+          if (pos === -1) continue;
+          const slotIndex = freeSlots[pos];
+          const outcome = await selectPickedAsset(
+            asset,
+            "device",
+            slotIndex,
+            mediaFields[slotIndex],
+            !trimUsed,
+          );
+          if (outcome === "trim") trimUsed = true;
+          if (outcome === "tooLong") tooLong += 1;
+          // Trim keeps the slot reserved — the edited copy comes back into it
+          if (outcome === "selected" || outcome === "trim") {
+            freeSlots.splice(pos, 1);
+          }
+        }
+        if (tooLong > 0) {
+          showBanner(
+            t("error"),
+            t("videoTooLong", { max_seconds: MAX_VIDEO_UPLOAD_SECONDS }),
+            "error",
+            3500,
+          );
+        }
+      } catch (error) {
+        Logger.error("Error selecting media from gallery:", error);
+        showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
+      }
+    },
+    [mediaFields, selectPickedAsset, showBanner, t],
+  );
+
+  /** Tapped slot first, then every other empty slot — fill them in one go */
   const handleSelectFromGallery = useCallback(async () => {
-    const slotField = activeSlotField;
     const slotIndex = mediaPickerSlot;
     setSourcePickerVisible(false);
     setMediaPickerSlot(null);
     if (slotIndex == null) return;
-    const hasPermission = await handleMediaLibraryPermission();
-    if (!hasPermission) {
-      setMediaPickerSlot(null);
-      return;
-    }
+    const emptySlots = selectedMedia
+      .map((m, i) => (m || i === slotIndex ? -1 : i))
+      .filter((i) => i >= 0);
+    await pickFromGalleryInto([slotIndex, ...emptySlots]);
+  }, [mediaPickerSlot, pickFromGalleryInto, selectedMedia]);
 
-    const acceptsImage = slotAcceptsImage(slotField);
-    const acceptsVideo = slotAcceptsVideo(slotField);
-    const mediaTypes: ("images" | "videos")[] =
-      acceptsImage && acceptsVideo
-        ? ["images", "videos"]
-        : acceptsImage
-          ? ["images"]
-          : ["videos"];
+  const handleFillEmptySlots = useCallback(() => {
+    const emptySlots = selectedMedia
+      .map((m, i) => (m ? -1 : i))
+      .filter((i) => i >= 0);
+    void pickFromGalleryInto(emptySlots);
+  }, [pickFromGalleryInto, selectedMedia]);
 
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes,
-        allowsMultipleSelection: false,
-        quality: 0.8,
-        allowsEditing: false,
-        ...iosCompatiblePickerOptions,
-      });
-      if (!result.canceled && result.assets?.[0]) {
-        await selectPickedAsset(result.assets[0], "device", slotIndex, slotField);
-      } else {
-        setMediaPickerSlot(null);
-      }
-    } catch (error) {
-      Logger.error("Error selecting media from gallery:", error);
-      showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
-      setMediaPickerSlot(null);
-    }
-  }, [activeSlotField, mediaPickerSlot, selectPickedAsset, showBanner, t]);
+  const removeSlotMedia = useCallback((slotIndex: number) => {
+    setSelectedMedia((prev) => {
+      const next = [...prev];
+      next[slotIndex] = null;
+      return next;
+    });
+  }, []);
 
   const handleSelectFromCamera = useCallback(async () => {
     const slotField = activeSlotField;
@@ -1658,7 +1765,30 @@ export default function ReelTemplatesScreen() {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitleSm}>{t("selectMedia")}</Text>
+              <View style={styles.slotsHeader}>
+                <Text style={[styles.sectionTitleSm, styles.slotsHeaderTitle]}>
+                  {t("selectMedia")}
+                </Text>
+                {selectedMedia.some((m) => !m) ? (
+                  <TouchableOpacity
+                    style={styles.fillSlotsButton}
+                    onPress={handleFillEmptySlots}
+                    activeOpacity={0.8}
+                    disabled={submitting}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("addFromGallery")}
+                  >
+                    <MaterialIcons
+                      name="photo-library"
+                      size={moderateWidthScale(14)}
+                      color={theme.white}
+                    />
+                    <Text style={styles.fillSlotsText}>
+                      {t("addFromGallery")}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
               <View style={styles.slotsRow}>
                 {selectedMedia.map((media, index) => {
                   const field = mediaFields[index];
@@ -1717,13 +1847,30 @@ export default function ReelTemplatesScreen() {
                               : t("tapToSelectMedia")}
                         </Text>
                       </View>
-                      <View style={styles.slotChevron}>
-                        <MaterialIcons
-                          name="chevron-right"
-                          size={moderateWidthScale(18)}
-                          color={theme.darkGreen}
-                        />
-                      </View>
+                      {filled ? (
+                        <TouchableOpacity
+                          style={styles.slotChevron}
+                          onPress={() => removeSlotMedia(index)}
+                          disabled={submitting}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={t("remove")}
+                        >
+                          <MaterialIcons
+                            name="close"
+                            size={moderateWidthScale(16)}
+                            color={theme.darkGreen}
+                          />
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.slotChevron}>
+                          <MaterialIcons
+                            name="chevron-right"
+                            size={moderateWidthScale(18)}
+                            color={theme.darkGreen}
+                          />
+                        </View>
+                      )}
                     </TouchableOpacity>
                   );
                 })}
