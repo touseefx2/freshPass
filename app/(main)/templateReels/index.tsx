@@ -23,7 +23,7 @@ import HairPipelineProcessingModal, {
   INITIAL_HAIR_PIPELINE_STATE,
   type HairPipelineModalState,
 } from "@/src/components/HairPipelineProcessingModal";
-import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
+import ImagePickerModal from "@/src/components/imagePickerModal";
 import {
   createEditRequestId,
   takeEditedVideo,
@@ -60,7 +60,6 @@ import {
 } from "@/src/services/monthlyReelsService";
 import { Theme } from "@/src/theme/colors";
 import {
-  iconScale,
   moderateHeightScale,
   moderateWidthScale,
   widthScale,
@@ -493,29 +492,6 @@ const createStyles = (theme: Theme) =>
     slotsRow: {
       gap: moderateHeightScale(10),
     },
-    slotsHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: moderateHeightScale(10),
-    },
-    slotsHeaderTitle: {
-      marginBottom: 0,
-    },
-    fillSlotsButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-      backgroundColor: theme.buttonBack,
-      borderRadius: moderateWidthScale(999),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-    },
-    fillSlotsText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
-    },
     slotCard: {
       flexDirection: "row",
       alignItems: "center",
@@ -682,39 +658,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
-    },
-    optionItem: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: moderateHeightScale(16),
-      borderBottomWidth: 1,
-      borderBottomColor: theme.borderLight,
-    },
-    optionItemLast: {
-      borderBottomWidth: 0,
-    },
-    optionIcon: {
-      marginRight: moderateWidthScale(16),
-    },
-    optionText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-      flex: 1,
-    },
-    optionTitle: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
-    },
-    optionDesc: {
-      fontSize: fontSize.size11,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      marginTop: moderateHeightScale(2),
-    },
-    optionTextCol: {
-      flex: 1,
     },
   });
 
@@ -1209,13 +1152,6 @@ export default function ReelTemplatesScreen() {
       .filter((i) => i >= 0);
     await pickFromGalleryInto([slotIndex, ...emptySlots]);
   }, [mediaPickerSlot, pickFromGalleryInto, selectedMedia]);
-
-  const handleFillEmptySlots = useCallback(() => {
-    const emptySlots = selectedMedia
-      .map((m, i) => (m ? -1 : i))
-      .filter((i) => i >= 0);
-    void pickFromGalleryInto(emptySlots);
-  }, [pickFromGalleryInto, selectedMedia]);
 
   const removeSlotMedia = useCallback((slotIndex: number) => {
     setSelectedMedia((prev) => {
@@ -1765,30 +1701,7 @@ export default function ReelTemplatesScreen() {
             </View>
 
             <View style={styles.section}>
-              <View style={styles.slotsHeader}>
-                <Text style={[styles.sectionTitleSm, styles.slotsHeaderTitle]}>
-                  {t("selectMedia")}
-                </Text>
-                {selectedMedia.some((m) => !m) ? (
-                  <TouchableOpacity
-                    style={styles.fillSlotsButton}
-                    onPress={handleFillEmptySlots}
-                    activeOpacity={0.8}
-                    disabled={submitting}
-                    accessibilityRole="button"
-                    accessibilityLabel={t("addFromGallery")}
-                  >
-                    <MaterialIcons
-                      name="photo-library"
-                      size={moderateWidthScale(14)}
-                      color={theme.white}
-                    />
-                    <Text style={styles.fillSlotsText}>
-                      {t("addFromGallery")}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
+              <Text style={styles.sectionTitleSm}>{t("selectMedia")}</Text>
               <View style={styles.slotsRow}>
                 {selectedMedia.map((media, index) => {
                   const field = mediaFields[index];
@@ -2012,55 +1925,18 @@ export default function ReelTemplatesScreen() {
         </View>
       ) : null}
 
-      <ModalizeBottomSheet
+      <ImagePickerModal
         visible={sourcePickerVisible}
         onClose={dismissSourcePicker}
-        title={
-          activeSlotField?.label || t("selectMedia")
+        onImageSelected={() => {}}
+        title={activeSlotField?.label || t("selectMedia")}
+        onGalleryPress={handleSelectFromGallery}
+        onCameraPress={handleSelectFromCamera}
+        cameraLabel={
+          slotAcceptsImage(activeSlotField) ? t("fromCamera") : t("recordVideo")
         }
-      >
-        <TouchableOpacity
-          style={styles.optionItem}
-          onPress={handleSelectFromGallery}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons
-            name="photo-library"
-            size={iconScale(24)}
-            color={theme.darkGreen}
-            style={styles.optionIcon}
-          />
-          <View style={styles.optionTextCol}>
-            <Text style={styles.optionTitle}>{t("fromGallery")}</Text>
-            <Text style={styles.optionDesc}>
-              {activeSlotField
-                ? slotTypeHint(activeSlotField, t)
-                : t("tapToSelectMedia")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.optionItem, styles.optionItemLast]}
-          onPress={handleSelectFromCamera}
-          activeOpacity={0.7}
-        >
-          <MaterialIcons
-            name={
-              slotAcceptsImage(activeSlotField) ? "camera-alt" : "videocam"
-            }
-            size={iconScale(24)}
-            color={theme.darkGreen}
-            style={styles.optionIcon}
-          />
-          <Text style={styles.optionText}>
-            {slotAcceptsImage(activeSlotField)
-              ? t("fromCamera")
-              : t("recordVideo")}
-          </Text>
-        </TouchableOpacity>
-
-      </ModalizeBottomSheet>
+        cameraIcon={slotAcceptsImage(activeSlotField) ? "camera-alt" : "videocam"}
+      />
 
 
 

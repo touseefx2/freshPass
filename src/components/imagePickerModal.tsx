@@ -53,6 +53,14 @@ interface ImagePickerModalProps {
   showCameraOption?: boolean;
   /** When "social", label/icon show "Select from social media" (e.g. for business role); default "tryon" */
   attachmentOptionMode?: "tryon" | "social";
+  /** Sheet title; defaults to "Select photo" */
+  title?: string;
+  /** Own gallery handling (e.g. photos + videos) instead of the built-in picker */
+  onGalleryPress?: () => void;
+  /** Own camera handling instead of the built-in photo capture */
+  onCameraPress?: () => void;
+  cameraLabel?: string;
+  cameraIcon?: React.ComponentProps<typeof MaterialIcons>["name"];
 }
 
 const createStyles = (theme: Theme) =>
@@ -86,6 +94,11 @@ export default function ImagePickerModal({
   onFromTryOnPress,
   showCameraOption = true,
   attachmentOptionMode = "tryon",
+  title,
+  onGalleryPress,
+  onCameraPress,
+  cameraLabel,
+  cameraIcon = "camera-alt",
 }: ImagePickerModalProps) {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -94,6 +107,10 @@ export default function ImagePickerModal({
 
   const handleSelectFromGallery = useCallback(async () => {
     onClose();
+    if (onGalleryPress) {
+      onGalleryPress();
+      return;
+    }
     const hasPermission = await handleMediaLibraryPermission();
     if (!hasPermission) {
       return;
@@ -125,6 +142,7 @@ export default function ImagePickerModal({
     }
   }, [
     onClose,
+    onGalleryPress,
     onImageSelected,
     onImagesSelected,
     allowsMultipleSelection,
@@ -133,6 +151,10 @@ export default function ImagePickerModal({
 
   const handleTakePhoto = useCallback(async () => {
     onClose();
+    if (onCameraPress) {
+      onCameraPress();
+      return;
+    }
     const hasPermission = await handleCameraPermission();
     if (!hasPermission) {
       return;
@@ -153,13 +175,13 @@ export default function ImagePickerModal({
       Logger.error("Error taking photo:", error);
       Alert.alert(t("error"), t("failedToTakePhoto"));
     }
-  }, [onClose, onImageSelected, quality]);
+  }, [onCameraPress, onClose, onImageSelected, quality]);
 
   return (
     <ModalizeBottomSheet
       visible={visible}
       onClose={onClose}
-      title={t("selectPhoto")}
+      title={title ?? t("selectPhoto")}
     >
       <TouchableOpacity
         style={styles.optionItem}
@@ -182,12 +204,14 @@ export default function ImagePickerModal({
           activeOpacity={0.7}
         >
           <MaterialIcons
-            name="camera-alt"
+            name={cameraIcon}
             size={iconScale(24)}
             color={theme.darkGreen}
             style={styles.optionIcon}
           />
-          <Text style={styles.optionText}>{t("fromCamera")}</Text>
+          <Text style={styles.optionText}>
+            {cameraLabel ?? t("fromCamera")}
+          </Text>
         </TouchableOpacity>
       ) : null}
 

@@ -400,7 +400,6 @@
   "viewBookings": "Buchungen anzeigen",
   "generate": "Generieren",
   "selectMedia": "Medien auswählen",
-  "addFromGallery": "Aus Galerie hinzufügen",
   "tooManyMediaSelected": "Du kannst bis zu {{count}} Dateien wählen – weitere wurden ausgelassen.",
   "selectAudioFile": "Audiodatei auswählen",
   "continueWithGoogle": "Mit Google fortfahren",

@@ -400,7 +400,6 @@
   "viewBookings": "Ver reservas",
   "generate": "Generar",
   "selectMedia": "Seleccionar medio",
-  "addFromGallery": "Añadir de la galería",
   "tooManyMediaSelected": "Puedes elegir hasta {{count}} archivos; los demás se omitieron.",
   "selectAudioFile": "Seleccionar archivo de audio",
   "continueWithGoogle": "Continuar con Google",

@@ -400,7 +400,6 @@
   "viewBookings": "عرض الحجوزات",
   "generate": "إنشاء",
   "selectMedia": "اختيار وسائط",
-  "addFromGallery": "إضافة من المعرض",
   "tooManyMediaSelected": "يمكنك اختيار حتى {{count}} ملفات — تم تجاهل الباقي.",
   "selectAudioFile": "اختيار ملف صوتي",
   "continueWithGoogle": "المتابعة مع Google",

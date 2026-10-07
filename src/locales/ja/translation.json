@@ -400,7 +400,6 @@
   "viewBookings": "予約を見る",
   "generate": "生成",
   "selectMedia": "メディアを選択",
-  "addFromGallery": "ギャラリーから追加",
   "tooManyMediaSelected": "選択できるのは最大{{count}}件です。超えた分は除外されました。",
   "selectAudioFile": "オーディオファイルを選択",
   "continueWithGoogle": "Googleで続ける",

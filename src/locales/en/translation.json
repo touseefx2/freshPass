@@ -403,7 +403,6 @@
   "viewBookings": "View bookings",
   "generate": "Generate",
   "selectMedia": "Select media",
-  "addFromGallery": "Add from gallery",
   "tooManyMediaSelected": "You can pick up to {{count}} files — extra ones were left out.",
   "selectAudioFile": "Select Audio File",
   "continueWithGoogle": "Continue with Google",
