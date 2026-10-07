@@ -866,7 +866,6 @@ export default function AiResults() {
     allSelectableUrls.length > 0 &&
     selectedUrls.size === allSelectableUrls.length;
 
-  const userRole = useAppSelector((state) => state.user.userRole);
   const bookingPreselectedUrls = useAppSelector(
     (state) => state.general.bookingTryOnPreselectedUrls,
   );
@@ -1575,9 +1574,6 @@ export default function AiResults() {
                   </>
                 )}
               </TouchableOpacity>
-              {/* Staff can't import their own AI jobs via /api/media/from-ai (server
-                  looks under the owner) — only offer it for template reels (reelId) */}
-              {reelId || userRole !== "staff" ? (
               <TouchableOpacity
                 style={styles.publishReelChip}
                 onPress={handlePublishAsReel}
@@ -1607,7 +1603,6 @@ export default function AiResults() {
                   </>
                 )}
               </TouchableOpacity>
-              ) : null}
               <TouchableOpacity
                 style={styles.reelShareIconButton}
                 onPress={() =>

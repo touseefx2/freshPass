@@ -43,7 +43,6 @@ import {
 import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
 import { REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
-import { monthlyReelsBlockedMessage } from "@/src/services/monthlyReelsService";
 
 const androidBlurMethod =
   Platform.OS === "android" ? ("dimezisBlurView" as const) : ("none" as const);
@@ -211,46 +210,11 @@ export default function BusinessCreateMediaMenu({
     }
   }, [visible]);
 
-  // Monthly counters change with every reel — only gate on numbers fetched
-  // for this opening of the menu (stale ones could wrongly block, e.g. after reset)
-  const [monthlyLimitsFresh, setMonthlyLimitsFresh] = useState(false);
-
-  useEffect(() => {
-    if (!visible) {
-      setMonthlyLimitsFresh(false);
-      return;
-    }
-    let cancelled = false;
-    void getMediaLimits({ force: true })
-      .then((data) => {
-        if (cancelled) return;
-        setLimits(data);
-        setMonthlyLimitsFresh(true);
-      })
-      .catch((error) => {
-        Logger.error("Failed to load media limits:", error);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [visible]);
-
   /** Close both speed-dial and reel picker; keeps center tab as +. */
   const closeAll = useCallback(() => {
     setReelPickerVisible(false);
     onClose();
   }, [onClose]);
-
-  /** Monthly reels (12 per business, shared with staff) — warn before starting */
-  const ensureMonthlyReelsLeft = useCallback((): boolean => {
-    // Not loaded yet → let it through; the server still answers 422 on `reel`
-    if (!monthlyLimitsFresh) return true;
-    const blocked = monthlyReelsBlockedMessage(limits, t);
-    if (!blocked) return true;
-    closeAll();
-    showBanner(t("monthlyReelsLimitTitle"), blocked, "error", 5000);
-    return false;
-  }, [closeAll, limits, monthlyLimitsFresh, showBanner, t]);
 
   const ensureCanUploadReel = useCallback((): boolean => {
     const gate = getReelUploadGate(businessStatus, userRole);
@@ -264,8 +228,9 @@ export default function BusinessCreateMediaMenu({
       setBuyPlanModalVisible(true);
       return false;
     }
-    return ensureMonthlyReelsLeft();
-  }, [businessStatus, userRole, closeAll, dispatch, ensureMonthlyReelsLeft]);
+    // Monthly reels only limit AI / template reels — those screens check it.
+    return true;
+  }, [businessStatus, userRole, closeAll, dispatch]);
 
   const handleViewPlans = useCallback(() => {
     setBuyPlanModalVisible(false);
@@ -421,10 +386,9 @@ export default function BusinessCreateMediaMenu({
       setBuyPlanModalVisible(true);
       return;
     }
-    if (!ensureMonthlyReelsLeft()) return;
     // Keep parent `visible` true so center tab stays as X while picker is open.
     setReelPickerVisible(true);
-  }, [businessStatus, userRole, closeAll, dispatch, ensureMonthlyReelsLeft]);
+  }, [businessStatus, userRole, closeAll, dispatch]);
 
   /**
    * Image / AI reel: AI Tools → that reel screen, so Back lands on AI Tools
