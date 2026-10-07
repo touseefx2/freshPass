@@ -427,7 +427,9 @@ export default function BookingDetailsById() {
   const [outcomePreview, setOutcomePreview] = useState<OutcomePreview | null>(
     null,
   );
+  const [outcomeError, setOutcomeError] = useState<string | null>(null);
   const [correctionSheetVisible, setCorrectionSheetVisible] = useState(false);
+  const [correctionError, setCorrectionError] = useState<string | null>(null);
   const [correctionConfirming, setCorrectionConfirming] = useState(false);
   const [correctionPreview, setCorrectionPreview] =
     useState<OutcomeCorrectionPreview | null>(null);
@@ -1555,6 +1557,7 @@ export default function BookingDetailsById() {
     if (!bookingId) return;
     setPendingOutcome(outcome);
     setOutcomePreview(null);
+    setOutcomeError(null);
     setOutcomePreviewLoading(true);
     setOutcomeSheetVisible(true);
     try {
@@ -1592,6 +1595,7 @@ export default function BookingDetailsById() {
 
   const handleConfirmOutcome = async () => {
     if (!bookingId || !pendingOutcome || outcomeConfirming) return;
+    setOutcomeError(null);
     setOutcomeConfirming(true);
     try {
       const stripeHeaders = await getStripeModeHeaders();
@@ -1614,22 +1618,15 @@ export default function BookingDetailsById() {
         setOutcomePreview(null);
         await fetchBookingDetails();
       } else {
-        showBanner(
-          t("error"),
-          response.message || "Unable to mark outcome.",
-          "error",
-          3000,
-        );
+        setOutcomeError(response.message || "Unable to mark outcome.");
       }
     } catch (error: any) {
       Logger.error("Mark outcome error:", error);
-      showBanner(
-        t("error"),
-        error?.response?.data?.message ||
+      setOutcomeError(
+        error?.data?.message ||
+          error?.response?.data?.message ||
           error?.message ||
           "Unable to mark outcome.",
-        "error",
-        3000,
       );
     } finally {
       setOutcomeConfirming(false);
@@ -1639,6 +1636,7 @@ export default function BookingDetailsById() {
   const openCorrectionPreview = async () => {
     if (!bookingId) return;
     setCorrectionPreview(null);
+    setCorrectionError(null);
     dispatch(setActionLoader(true));
     try {
       const response = await ApiService.get<{
@@ -1674,6 +1672,7 @@ export default function BookingDetailsById() {
 
   const handleConfirmCorrection = async () => {
     if (!bookingId || correctionConfirming) return;
+    setCorrectionError(null);
     setCorrectionConfirming(true);
     try {
       const stripeHeaders = await getStripeModeHeaders();
@@ -1694,22 +1693,15 @@ export default function BookingDetailsById() {
         setCorrectionPreview(null);
         await fetchBookingDetails();
       } else {
-        showBanner(
-          t("error"),
-          response.message || "Unable to correct outcome.",
-          "error",
-          3000,
-        );
+        setCorrectionError(response.message || "Unable to correct outcome.");
       }
     } catch (error: any) {
       Logger.error("Correct outcome error:", error);
-      showBanner(
-        t("error"),
-        error?.response?.data?.message ||
+      setCorrectionError(
+        error?.data?.message ||
+          error?.response?.data?.message ||
           error?.message ||
           "Unable to correct outcome.",
-        "error",
-        3000,
       );
     } finally {
       setCorrectionConfirming(false);
@@ -2923,6 +2915,7 @@ export default function BookingDetailsById() {
             if (!outcomeConfirming) {
               setOutcomeSheetVisible(false);
               setOutcomePreview(null);
+              setOutcomeError(null);
             }
           }}
           onConfirm={handleConfirmOutcome}
@@ -2950,6 +2943,8 @@ export default function BookingDetailsById() {
             !outcomePreview.paid
           }
           confirming={outcomeConfirming || outcomePreviewLoading}
+          submitting={outcomeConfirming}
+          errorMessage={outcomeError}
         />
 
         <OutcomeConfirmSheet
@@ -2958,6 +2953,7 @@ export default function BookingDetailsById() {
             if (!correctionConfirming) {
               setCorrectionSheetVisible(false);
               setCorrectionPreview(null);
+              setCorrectionError(null);
             }
           }}
           onConfirm={handleConfirmCorrection}
@@ -2966,6 +2962,8 @@ export default function BookingDetailsById() {
           message={correctionPreview?.message || ""}
           confirmLabel={t("changeToCompleted")}
           confirming={correctionConfirming}
+          submitting={correctionConfirming}
+          errorMessage={correctionError}
         />
 
         <ReviewPromptModal

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -293,8 +293,14 @@ export default function AwaitingOutcomeSection({
     "completed" | "no_show" | null
   >(null);
   const [preview, setPreview] = useState<OutcomePreview | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  // Hide appointments as soon as they're marked so the next one can be processed
+  // while the list refetches.
+  const [processedIds, setProcessedIds] = useState<number[]>([]);
+  // Ignore preview responses that arrive after another appointment was opened.
+  const previewRequestRef = useRef(0);
 
-  const items = data || [];
+  const items = (data || []).filter((item) => !processedIds.includes(item.id));
   if (!loading && items.length === 0) {
     return null;
   }
@@ -310,9 +316,12 @@ export default function AwaitingOutcomeSection({
     id: number,
     outcome: "completed" | "no_show",
   ) => {
+    if (confirming) return;
+    const requestId = ++previewRequestRef.current;
     setActiveId(id);
     setActiveOutcome(outcome);
     setPreview(null);
+    setSubmitError(null);
     setPreviewLoading(true);
     setSheetVisible(true);
     try {
@@ -321,6 +330,7 @@ export default function AwaitingOutcomeSection({
         message?: string;
         data: OutcomePreview;
       }>(appointmentsEndpoints.outcomePreview(id, outcome));
+      if (requestId !== previewRequestRef.current) return;
       if (response.success && response.data) {
         setPreview(response.data);
       } else {
@@ -333,6 +343,7 @@ export default function AwaitingOutcomeSection({
         );
       }
     } catch (error: any) {
+      if (requestId !== previewRequestRef.current) return;
       Logger.error("Outcome preview error:", error);
       setSheetVisible(false);
       showBanner(
@@ -344,12 +355,18 @@ export default function AwaitingOutcomeSection({
         2500,
       );
     } finally {
-      setPreviewLoading(false);
+      if (requestId === previewRequestRef.current) setPreviewLoading(false);
     }
   };
 
   const handleConfirm = async () => {
-    if (!activeId || !activeOutcome || confirming) return;
+    if (confirming) return;
+    if (!activeId || !activeOutcome) {
+      setSubmitError("Unable to mark outcome. Please close and try again.");
+      return;
+    }
+    const id = activeId;
+    setSubmitError(null);
     setConfirming(true);
     try {
       const stripeHeaders = await getStripeModeHeaders();
@@ -358,7 +375,7 @@ export default function AwaitingOutcomeSection({
         message?: string;
         data?: unknown;
       }>(
-        appointmentsEndpoints.markOutcome(activeId),
+        appointmentsEndpoints.markOutcome(id),
         { outcome: activeOutcome },
         { headers: stripeHeaders },
       );
@@ -370,26 +387,21 @@ export default function AwaitingOutcomeSection({
           "success",
           2500,
         );
+        setProcessedIds((prev) => [...prev, id]);
         setSheetVisible(false);
         setPreview(null);
+        setActiveId(null);
         onRefresh();
       } else {
-        showBanner(
-          t("error"),
-          response.message || "Unable to mark outcome.",
-          "error",
-          3000,
-        );
+        setSubmitError(response.message || "Unable to mark outcome.");
       }
     } catch (error: any) {
       Logger.error("Mark outcome error:", error);
-      showBanner(
-        t("error"),
-        error?.response?.data?.message ||
+      setSubmitError(
+        error?.data?.message ||
+          error?.response?.data?.message ||
           error?.message ||
           "Unable to mark outcome.",
-        "error",
-        3000,
       );
     } finally {
       setConfirming(false);
@@ -560,6 +572,7 @@ export default function AwaitingOutcomeSection({
           if (!confirming) {
             setSheetVisible(false);
             setPreview(null);
+            setSubmitError(null);
           }
         }}
         onConfirm={handleConfirm}
@@ -583,6 +596,8 @@ export default function AwaitingOutcomeSection({
           !preview.paid
         }
         confirming={confirming || previewLoading}
+        submitting={confirming}
+        errorMessage={submitError}
       />
     </View>
   );

@@ -21,7 +21,12 @@ export interface OutcomeConfirmSheetProps {
   confirmLabel: string;
   confirmDestructive?: boolean;
   showNoSavedCardWarning?: boolean;
+  /** Disables the confirm/cancel buttons (e.g. while the preview loads). */
   confirming?: boolean;
+  /** Request in flight: spinner on the confirm button and the sheet can't be dismissed. */
+  submitting?: boolean;
+  /** Shown inside the sheet, since banners render underneath it. */
+  errorMessage?: string | null;
 }
 
 const createStyles = (theme: Theme) =>
@@ -55,6 +60,21 @@ const createStyles = (theme: Theme) =>
       lineHeight: fontSize.size18,
       marginBottom: moderateHeightScale(16),
     },
+    errorBox: {
+      backgroundColor: theme.lightRed,
+      borderRadius: moderateWidthScale(10),
+      borderWidth: 1,
+      borderColor: theme.lightRedBorder,
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(12),
+    },
+    errorText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
+      lineHeight: fontSize.size18,
+    },
     cancelLinkWrap: {
       marginTop: moderateHeightScale(8),
     },
@@ -71,6 +91,8 @@ export default function OutcomeConfirmSheet({
   confirmDestructive = false,
   showNoSavedCardWarning = false,
   confirming = false,
+  submitting = false,
+  errorMessage,
 }: OutcomeConfirmSheetProps) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -84,7 +106,9 @@ export default function OutcomeConfirmSheet({
       title={title}
       footerButtonTitle={confirmLabel}
       onFooterButtonPress={onConfirm}
-      footerButtonDisabled={confirming}
+      footerButtonDisabled={confirming && !submitting}
+      footerButtonLoading={submitting}
+      dismissible={!submitting}
     >
       <Text style={styles.question}>{question}</Text>
       {message ? (
@@ -95,11 +119,16 @@ export default function OutcomeConfirmSheet({
       {showNoSavedCardWarning ? (
         <Text style={styles.warningText}>{t("noSavedCardWarning")}</Text>
       ) : null}
+      {errorMessage ? (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      ) : null}
       <View style={styles.cancelLinkWrap}>
         <Button
           title={t("cancel")}
           onPress={onClose}
-          disabled={confirming}
+          disabled={confirming || submitting}
           backgroundColor={theme.white}
           textColor={theme.darkGreen}
           containerStyle={{

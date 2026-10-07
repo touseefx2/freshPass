@@ -30,6 +30,10 @@ interface ModalizeBottomSheetProps {
   footerButtonTitle?: string;
   onFooterButtonPress?: () => void;
   footerButtonDisabled?: boolean;
+  /** Shows a spinner in the footer button and blocks presses. */
+  footerButtonLoading?: boolean;
+  /** When false, swipe / overlay tap / back button / close icon cannot dismiss the sheet (e.g. while submitting). */
+  dismissible?: boolean;
   children: React.ReactNode;
   sheetContainerStyle?: ViewStyle;
   contentStyle?: ViewStyle;
@@ -103,6 +107,8 @@ export default function ModalizeBottomSheet({
   footerButtonTitle,
   onFooterButtonPress,
   footerButtonDisabled = false,
+  footerButtonLoading = false,
+  dismissible = true,
   children,
   sheetContainerStyle = {},
   contentStyle,
@@ -135,26 +141,51 @@ export default function ModalizeBottomSheet({
     ? resolvedModalHeight - chromeHeight
     : cappedMaxModalHeight - chromeHeight;
 
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
+  const programmaticCloseRef = useRef(false);
+
   useEffect(() => {
     if (visible) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         modalizeRef.current?.open();
       }, 100);
-    } else {
-      modalizeRef.current?.close();
+      return () => clearTimeout(timer);
     }
+    programmaticCloseRef.current = true;
+    modalizeRef.current?.close();
   }, [visible]);
+
+  // Modalize fires onClosed even when its close animation is interrupted by a
+  // re-open (e.g. opening the next item right after confirming the previous one).
+  // If the parent already wants the sheet visible again, re-open instead of
+  // reporting a close that would hide the sheet and desync `visible`.
+  const handleClosed = () => {
+    const wasProgrammatic = programmaticCloseRef.current;
+    programmaticCloseRef.current = false;
+    if (wasProgrammatic && visibleRef.current) {
+      setTimeout(() => {
+        if (visibleRef.current) modalizeRef.current?.open();
+      }, 0);
+      return;
+    }
+    onClose();
+  };
 
   const sheet = (
     <Modalize
       ref={modalizeRef}
-      onClosed={onClose}
+      onClosed={handleClosed}
       adjustToContentHeight={!modalHeightPercent}
       modalHeight={resolvedModalHeight}
       handlePosition="inside"
       withOverlay
-      closeOnOverlayTap
-      panGestureEnabled
+      closeOnOverlayTap={dismissible}
+      panGestureEnabled={dismissible}
+      onBackButtonPress={() => {
+        if (dismissible) modalizeRef.current?.close();
+        return true;
+      }}
       avoidKeyboardLikeIOS
       overlayStyle={styles.modalOverlay}
       modalStyle={[
@@ -166,7 +197,11 @@ export default function ModalizeBottomSheet({
         <View style={styles.header}>
           <Text style={styles.headerTitle}>{title}</Text>
           <View style={styles.headerRight}>
-            <Pressable onPress={onClose} style={styles.closeButton}>
+            <Pressable
+              onPress={onClose}
+              disabled={!dismissible}
+              style={[styles.closeButton, !dismissible && { opacity: 0.4 }]}
+            >
               <Feather
                 name="x"
                 size={iconScale(12)}
@@ -188,6 +223,7 @@ export default function ModalizeBottomSheet({
               title={footerButtonTitle}
               onPress={onFooterButtonPress || (() => {})}
               disabled={footerButtonDisabled}
+              loading={footerButtonLoading}
             />
           </View>
         ) : (
