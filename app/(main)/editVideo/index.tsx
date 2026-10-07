@@ -822,25 +822,28 @@ const createStyles = (theme: Theme) =>
     },
     busyOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: theme.borderDark,
+      backgroundColor: "rgba(0, 0, 0, 0.85)",
       alignItems: "center",
       justifyContent: "center",
       zIndex: 30,
     },
+    busySpinner: {
+      transform: [{ scale: 1.6 }],
+    },
     progressText: {
-      marginTop: moderateHeightScale(12),
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
+      marginTop: moderateHeightScale(28),
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
       color: theme.white,
     },
     progressHint: {
-      marginTop: moderateHeightScale(8),
-      paddingHorizontal: moderateWidthScale(40),
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontRegular,
-      color: theme.white80,
+      marginTop: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(36),
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontMedium,
+      color: theme.white,
       textAlign: "center",
-      lineHeight: fontSize.size16,
+      lineHeight: fontSize.size22,
     },
   });
 
@@ -3796,7 +3799,11 @@ export default function EditVideoScreen() {
 
       {busy ? (
         <View style={styles.busyOverlay}>
-          <ActivityIndicator size="large" color={theme.white} />
+          <ActivityIndicator
+            size="large"
+            color={theme.white}
+            style={styles.busySpinner}
+          />
           <Text style={styles.progressText}>
             {savingToGallery
               ? t("savingVideo")
