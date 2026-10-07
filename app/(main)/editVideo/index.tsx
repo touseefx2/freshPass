@@ -18,6 +18,7 @@ import type { TextInput as TextInputType } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { CloseIcon } from "@/assets/icons";
 import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
@@ -68,6 +69,11 @@ import StickerLayer, {
   type StickerTransformPatch,
 } from "@/src/components/videoEditor/stickerLayer";
 import StickerPanel from "@/src/components/videoEditor/stickerPanel";
+import MusicLibrarySheet from "@/src/components/videoEditor/musicLibrarySheet";
+import {
+  trackCredit,
+  type DownloadedTrack,
+} from "@/src/services/musicLibraryService";
 import { deliverEditedVideo } from "@/src/components/videoEditor/editorHandoff";
 import { saveLocalVideoToGallery } from "@/src/services/downloadMediaService";
 import {
@@ -118,6 +124,8 @@ type EditorSnapshot = {
   aspect: AspectPreset;
   musicUri: string | null;
   musicName: string | null;
+  /** Attribution for library (Creative Commons) tracks; null for phone files. */
+  musicCredit: string | null;
   musicVolume: number;
   overlayText: string;
   overlayX: number;
@@ -816,6 +824,8 @@ export default function EditVideoScreen() {
   const [aspect, setAspect] = useState<AspectPreset>("original");
   const [musicUri, setMusicUri] = useState<string | null>(null);
   const [musicName, setMusicName] = useState<string | null>(null);
+  const [musicCredit, setMusicCredit] = useState<string | null>(null);
+  const [musicLibraryOpen, setMusicLibraryOpen] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.8);
   const [overlayText, setOverlayText] = useState("");
   const [overlayX, setOverlayX] = useState(0.5);
@@ -940,6 +950,7 @@ export default function EditVideoScreen() {
       aspect,
       musicUri,
       musicName,
+      musicCredit,
       musicVolume,
       overlayText,
       overlayX,
@@ -954,6 +965,7 @@ export default function EditVideoScreen() {
     [
       aspect,
       clips,
+      musicCredit,
       musicName,
       musicUri,
       musicVolume,
@@ -981,6 +993,7 @@ export default function EditVideoScreen() {
         last.aspect === snap.aspect &&
         last.musicUri === snap.musicUri &&
         last.musicName === snap.musicName &&
+        last.musicCredit === snap.musicCredit &&
         last.musicVolume === snap.musicVolume &&
         last.overlayText === snap.overlayText &&
         last.overlayX === snap.overlayX &&
@@ -1012,6 +1025,7 @@ export default function EditVideoScreen() {
       setAspect(snap.aspect);
       setMusicUri(snap.musicUri);
       setMusicName(snap.musicName);
+      setMusicCredit(snap.musicCredit);
       setMusicVolume(snap.musicVolume);
       setOverlayText(snap.overlayText);
       setOverlayX(snap.overlayX);
@@ -1751,12 +1765,68 @@ export default function EditVideoScreen() {
       );
       setMusicUri(localMusic);
       setMusicName(asset.name || t("backgroundMusic"));
+      setMusicCredit(null);
       setPlaying(true);
     } catch (error) {
       Logger.error("Music pick failed:", error);
       showBanner(t("error"), t("failedToSelectMusic"), "error", 2500);
     }
   }, [pushHistory, showBanner, t]);
+
+  /** Free library pick. Copies into cache so removing the download later can't break export. */
+  const applyLibraryTrack = useCallback(
+    async (track: DownloadedTrack) => {
+      setMusicLibraryOpen(false);
+      try {
+        const cacheDir = FileSystem.cacheDirectory;
+        if (!cacheDir) throw new Error("Cache directory unavailable");
+        const dest = `${cacheDir}media-edit-music-${Date.now()}.mp3`;
+        await FileSystem.copyAsync({ from: track.localUri, to: dest });
+        pushHistory();
+        setMusicUri(dest);
+        setMusicName(`${track.title} · ${track.artist}`);
+        setMusicCredit(trackCredit(track));
+        setPlaying(true);
+      } catch (error) {
+        Logger.error("Library music apply failed:", error);
+        showBanner(t("error"), t("failedToSelectMusic"), "error", 2500);
+      }
+    },
+    [pushHistory, showBanner, t],
+  );
+
+  /** "Select music" → free library or a file from the phone. */
+  const openMusicSourceChooser = useCallback(() => {
+    const library = () => {
+      setPlaying(false);
+      setMusicLibraryOpen(true);
+    };
+    const phone = () => void pickMusic();
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: t("musicSourceTitle"),
+          options: [t("musicFromLibrary"), t("musicFromPhone"), t("cancel")],
+          cancelButtonIndex: 2,
+        },
+        (i) => {
+          if (i === 0) library();
+          else if (i === 1) phone();
+        },
+      );
+      return;
+    }
+    Alert.alert(
+      t("musicSourceTitle"),
+      undefined,
+      [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("musicFromPhone"), onPress: phone },
+        { text: t("musicFromLibrary"), onPress: library },
+      ],
+      { cancelable: true },
+    );
+  }, [pickMusic, t]);
 
   // ── Clips: add (gallery / camera), reorder, remove ────────────────
 
@@ -2921,7 +2991,7 @@ export default function EditVideoScreen() {
                   <View style={styles.musicRow}>
                     <TouchableOpacity
                       style={styles.musicBtn}
-                      onPress={pickMusic}
+                      onPress={openMusicSourceChooser}
                       disabled={busy}
                       activeOpacity={0.85}
                     >
@@ -2940,6 +3010,7 @@ export default function EditVideoScreen() {
                           pushHistory();
                           setMusicUri(null);
                           setMusicName(null);
+                          setMusicCredit(null);
                         }}
                         disabled={busy}
                         hitSlop={8}
@@ -2955,6 +3026,11 @@ export default function EditVideoScreen() {
                   {musicName ? (
                     <Text style={styles.musicName} numberOfLines={1}>
                       {musicName}
+                    </Text>
+                  ) : null}
+                  {musicCredit ? (
+                    <Text style={styles.panelHint} numberOfLines={2}>
+                      {t("musicCreditHint", { credit: musicCredit })}
                     </Text>
                   ) : null}
                   {musicUri ? (
@@ -3288,6 +3364,12 @@ export default function EditVideoScreen() {
           <Text style={styles.progressHint}>{t("exportKeepAppOpen")}</Text>
         </View>
       ) : null}
+
+      <MusicLibrarySheet
+        visible={musicLibraryOpen}
+        onClose={() => setMusicLibraryOpen(false)}
+        onSelect={(track) => void applyLibraryTrack(track)}
+      />
     </View>
   );
 }
