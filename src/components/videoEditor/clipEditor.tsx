@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -173,20 +173,6 @@ export default function ClipEditor({
   // e.g. a full long auto reel source that still has to be trimmed down
   const overLimit = lengthMs > maxLengthMs + 50;
 
-  // Widest window seen since this clip was opened — Cut opens back up to it
-  const outerRef = useRef<CutRange>({ startMs: clip.trimStartMs, endMs: clip.trimEndMs });
-  const openedIdRef = useRef(clip.id);
-  if (openedIdRef.current !== clip.id) {
-    openedIdRef.current = clip.id;
-    outerRef.current = { startMs: clip.trimStartMs, endMs: clip.trimEndMs };
-  }
-  useEffect(() => {
-    outerRef.current = {
-      startMs: Math.min(outerRef.current.startMs, clip.trimStartMs),
-      endMs: Math.max(outerRef.current.endMs, clip.trimEndMs),
-    };
-  }, [clip.trimStartMs, clip.trimEndMs]);
-
   // ── Trimmer view (cut parts taken out of the source)
   const cutsKey = (clip.cuts ?? []).map((c) => `${c.startMs}-${c.endMs}`).join(",");
   const viewClip = useMemo<EditorClip>(
@@ -251,12 +237,14 @@ export default function ClipEditor({
     /** Toggle that's on (e.g. clip muted) — drawn in the accent colour */
     active?: boolean;
   }[] = [
-    { key: "split", icon: "vertical-split", label: t("splitClip"), onPress: onSplit, enabled: true },
+    // Split hidden for now — not needed yet.
+    // { key: "split", icon: "vertical-split", label: t("splitClip"), onPress: onSplit, enabled: true },
     {
       key: "cut",
       icon: "content-cut",
       label: t("cutClip"),
-      onPress: () => onCut(outerRef.current),
+      // Remove the picked part from the FULL video; everything else stays
+      onPress: () => onCut({ startMs: 0, endMs: clip.sourceDurationMs }),
       enabled: true,
     },
     {
