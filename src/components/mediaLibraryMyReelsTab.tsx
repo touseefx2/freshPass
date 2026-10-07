@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ActionSheetIOS,
   Alert,
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import AppImage from "@/src/components/AppImage";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,12 +29,9 @@ import {
   widthScale,
 } from "@/src/theme/dimensions";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useUploadReel } from "@/src/hooks/useUploadReel";
 import Logger from "@/src/services/logger";
-import { getMediaLimits, MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
-import {
-  handleCameraPermission,
-  handleMediaLibraryPermission,
-} from "@/src/services/mediaPermissionService";
+import { getMediaLimits } from "@/src/services/mediaLibraryService";
 import {
   deleteReel,
   getBusinessReelStats,
@@ -49,13 +45,12 @@ import {
   setBusinessPlansModalVisible,
   setStripeConnectModalVisible,
 } from "@/src/state/slices/generalSlice";
-import type { MediaLimits, MediaUploadSourceType } from "@/src/types/media";
+import type { MediaLimits } from "@/src/types/media";
 import type { OwnerReel, ReelPerformanceStats } from "@/src/types/reels";
 import { canChangeReel } from "@/src/types/reels";
 import { resolveApiImageUrl } from "@/src/utils/media";
 import {
   formatReelLimitMessage,
-  REEL_LIMIT_FALLBACK,
 } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
@@ -403,6 +398,7 @@ export default function MediaLibraryMyReelsTab({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { showBanner } = useNotificationContext();
+  const { recordReel, pickReel } = useUploadReel();
   const dispatch = useAppDispatch();
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector(
@@ -591,7 +587,6 @@ export default function MediaLibraryMyReelsTab({
   );
 
 
-  const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
 
   const handleLoadMore = useCallback(() => {
     if (!hasMore || loadingMore || loading) return;
@@ -603,100 +598,16 @@ export default function MediaLibraryMyReelsTab({
     fetchPage(1, false);
   }, [fetchPage, fetchSummary]);
 
-  const openEditor = useCallback(
-    (
-      asset: ImagePicker.ImagePickerAsset,
-      sourceType: MediaUploadSourceType,
-      seconds: number,
-    ) => {
-      if (!asset.uri) return;
-      // Longer than the limit is fine — the editor loads the whole video
-      // and won't continue until it's trimmed to `seconds`.
-      router.push({
-        pathname: "/(main)/editVideo" as any,
-        params: {
-          uri: encodeURIComponent(asset.uri),
-          mimeType: asset.mimeType || "video/mp4",
-          fileName: asset.fileName || "video.mp4",
-          sourceType,
-          maxSeconds: String(seconds),
-          ...(asset.width ? { width: String(asset.width) } : {}),
-          ...(asset.height ? { height: String(asset.height) } : {}),
-        },
-      });
-    },
-    [router],
-  );
-
-  const handleRecord = useCallback(async () => {
+  // Same flow as "Upload a Reel" in the create menu: 30s cap, straight to Publish.
+  const handleRecord = useCallback(() => {
     if (!ensureCanUploadReel()) return;
-    const hasPermission = await handleCameraPermission();
-    if (!hasPermission) return;
+    void recordReel();
+  }, [ensureCanUploadReel, recordReel]);
 
-    let seconds = maxSeconds;
-    try {
-      const data = await getMediaLimits();
-      setLimits(data);
-      seconds = data.max_seconds;
-    } catch {
-      // keep last known / default
-    }
-    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
-
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["videos"],
-        quality: 1,
-        // No length cap: a long recording opens in the editor to trim
-        ...(Platform.OS === "ios" && {
-          preferredAssetRepresentationMode:
-            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
-              .Compatible,
-        }),
-      });
-      if (!result.canceled && result.assets?.[0]) {
-        openEditor(result.assets[0], "camera", seconds);
-      }
-    } catch (error) {
-      Logger.error("Error recording video:", error);
-      showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
-    }
-  }, [ensureCanUploadReel, maxSeconds, openEditor, showBanner, t]);
-
-  const handleUpload = useCallback(async () => {
+  const handleUpload = useCallback(() => {
     if (!ensureCanUploadReel()) return;
-    const hasPermission = await handleMediaLibraryPermission();
-    if (!hasPermission) return;
-
-    let seconds = maxSeconds;
-    try {
-      const data = await getMediaLimits();
-      setLimits(data);
-      seconds = data.max_seconds;
-    } catch {
-      // keep last known / default
-    }
-    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"],
-        allowsMultipleSelection: false,
-        quality: 1,
-        ...(Platform.OS === "ios" && {
-          preferredAssetRepresentationMode:
-            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
-              .Compatible,
-        }),
-      });
-      if (!result.canceled && result.assets?.[0]) {
-        openEditor(result.assets[0], "device", seconds);
-      }
-    } catch (error) {
-      Logger.error("Error selecting video:", error);
-      showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
-    }
-  }, [ensureCanUploadReel, maxSeconds, openEditor, showBanner, t]);
+    void pickReel();
+  }, [ensureCanUploadReel, pickReel]);
 
   const openAddMenu = useCallback(() => {
     if (!fabOpen && !ensureCanUploadReel()) return;

@@ -10,33 +10,27 @@ import {
   Alert,
   Dimensions,
   FlatList,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useTranslation } from "react-i18next";
 import { useFocusEffect, useRouter } from "expo-router";
 import BuyBusinessPlanModal from "@/src/components/BuyBusinessPlanModal";
 import Button from "@/src/components/button";
 import MediaLibraryVideoTile from "@/src/components/mediaLibraryVideoTile";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { useUploadReel } from "@/src/hooks/useUploadReel";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import {
   deleteVideo,
   getMediaLimits,
   getVideo,
   listVideos,
-  MAX_VIDEO_UPLOAD_SECONDS,
   MEDIA_VIDEOS_PER_PAGE,
 } from "@/src/services/mediaLibraryService";
-import {
-  handleCameraPermission,
-  handleMediaLibraryPermission,
-} from "@/src/services/mediaPermissionService";
 import Logger from "@/src/services/logger";
 import {
   setBusinessPlansModalVisible,
@@ -50,12 +44,10 @@ import {
 } from "@/src/theme/dimensions";
 import type {
   MediaLimits,
-  MediaUploadSourceType,
   MediaVideo,
 } from "@/src/types/media";
 import {
   formatReelLimitMessage,
-  REEL_LIMIT_FALLBACK,
 } from "@/src/utils/reelLimits";
 import { getReelUploadGate } from "@/src/utils/reelUploadGate";
 
@@ -149,6 +141,7 @@ export default function MediaLibraryVideosTab() {
   const { t } = useTranslation();
   const router = useRouter();
   const { showBanner } = useNotificationContext();
+  const { recordReel, pickReel } = useUploadReel();
   const dispatch = useAppDispatch();
   const userRole = useAppSelector((state) => state.user.userRole);
   const businessStatus = useAppSelector(
@@ -285,7 +278,6 @@ export default function MediaLibraryVideosTab() {
     fetchPage(page + 1, true);
   }, [fetchPage, hasMore, loadingMore, loading, page]);
 
-  const maxSeconds = limits?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
   const limitMessage = useMemo(
     () => (limits ? formatReelLimitMessage(limits, t) : null),
     [limits, t],
@@ -309,111 +301,16 @@ export default function MediaLibraryVideosTab() {
     dispatch(setBusinessPlansModalVisible(true));
   }, [dispatch]);
 
-  const openEditor = useCallback(
-    (
-      asset: ImagePicker.ImagePickerAsset,
-      sourceType: MediaUploadSourceType,
-      seconds: number,
-    ) => {
-      if (!asset.uri) return;
-      // Longer than the limit is fine — the editor loads the whole video
-      // and won't continue until it's trimmed to `seconds`.
-      router.push({
-        pathname: "/(main)/editVideo" as any,
-        params: {
-          uri: encodeURIComponent(asset.uri),
-          mimeType: asset.mimeType || "video/mp4",
-          fileName: asset.fileName || "video.mp4",
-          sourceType,
-          maxSeconds: String(seconds),
-          ...(asset.width ? { width: String(asset.width) } : {}),
-          ...(asset.height ? { height: String(asset.height) } : {}),
-        },
-      });
-    },
-    [router],
-  );
-
-  const afterPick = useCallback(
-    (
-      asset: ImagePicker.ImagePickerAsset,
-      sourceType: MediaUploadSourceType,
-      seconds: number,
-    ) => {
-      openEditor(asset, sourceType, seconds);
-    },
-    [openEditor],
-  );
-
-  const handleRecord = useCallback(async () => {
+  // Same flow as "Upload a Reel" in the create menu: 30s cap, straight to Publish.
+  const handleRecord = useCallback(() => {
     if (!ensureCanUploadReel()) return;
-    const hasPermission = await handleCameraPermission();
-    if (!hasPermission) return;
+    void recordReel();
+  }, [ensureCanUploadReel, recordReel]);
 
-    let seconds = maxSeconds;
-    try {
-      const data = await getMediaLimits();
-      setLimits(data);
-      seconds = data.max_seconds;
-    } catch {
-      // keep last known / default
-    }
-    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
-
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["videos"],
-        quality: 1,
-        // No length cap: a long recording opens in the editor to trim
-        ...(Platform.OS === "ios" && {
-          preferredAssetRepresentationMode:
-            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
-              .Compatible,
-        }),
-      });
-      if (!result.canceled && result.assets?.[0]) {
-        afterPick(result.assets[0], "camera", seconds);
-      }
-    } catch (error) {
-      Logger.error("Error recording video:", error);
-      showBanner(t("error"), t("failedToRecordVideo"), "error", 3000);
-    }
-  }, [afterPick, ensureCanUploadReel, maxSeconds, showBanner, t]);
-
-  const handleUpload = useCallback(async () => {
+  const handleUpload = useCallback(() => {
     if (!ensureCanUploadReel()) return;
-    const hasPermission = await handleMediaLibraryPermission();
-    if (!hasPermission) return;
-
-    let seconds = maxSeconds;
-    try {
-      const data = await getMediaLimits();
-      setLimits(data);
-      seconds = data.max_seconds;
-    } catch {
-      // keep last known / default
-    }
-    seconds = Math.min(seconds, MAX_VIDEO_UPLOAD_SECONDS);
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos"],
-        allowsMultipleSelection: false,
-        quality: 1,
-        ...(Platform.OS === "ios" && {
-          preferredAssetRepresentationMode:
-            ImagePicker.UIImagePickerPreferredAssetRepresentationMode
-              .Compatible,
-        }),
-      });
-      if (!result.canceled && result.assets?.[0]) {
-        afterPick(result.assets[0], "device", seconds);
-      }
-    } catch (error) {
-      Logger.error("Error selecting video:", error);
-      showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
-    }
-  }, [afterPick, ensureCanUploadReel, maxSeconds, showBanner, t]);
+    void pickReel();
+  }, [ensureCanUploadReel, pickReel]);
 
   const confirmDelete = useCallback(
     (video: MediaVideo) => {
