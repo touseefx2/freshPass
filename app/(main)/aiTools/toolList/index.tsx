@@ -16,7 +16,6 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import MediaLibraryMyReelsTab from "@/src/components/mediaLibraryMyReelsTab";
-import ReelTypePicker, { type ReelType } from "@/src/components/ReelTypePicker";
 import { canManageReels } from "@/src/utils/reelUploadGate";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -141,16 +140,6 @@ export default function ToolList() {
     } catch {}
   };
 
-  // "Generate Reel" opens a choice: Shotstack template reel or AI auto reel
-  const [reelTypeOpen, setReelTypeOpen] = useState(false);
-  const handleReelTypeSelect = (type: ReelType) => {
-    setReelTypeOpen(false);
-    router.push(
-      (type === "template"
-        ? "/(main)/templateReels"
-        : "/(main)/reelTemplates") as any,
-    );
-  };
 
   const openTool = (paramTitle: string) => {
     router.push({
@@ -357,11 +346,9 @@ export default function ToolList() {
         title: t("generateReel"),
         desc: t("generateReelDesc"),
         cta: t("generateReelCta"),
-        onPress: () => setReelTypeOpen((open) => !open),
-        expanded: reelTypeOpen,
+        // Video / Photo reel are tabs on the template screen
+        onPress: () => router.push("/(main)/templateGallery" as any),
       })}
-      {/* Monthly reel limit is checked on Reel Templates (before Make my reel) */}
-      <ReelTypePicker visible={reelTypeOpen} onSelect={handleReelTypeSelect} />
     </>
   );
 

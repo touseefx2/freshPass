@@ -19,6 +19,8 @@ type StackHeaderProps = {
   onBack?: () => void;
   rightIcon?: React.ReactNode;
   onRightPress?: () => void;
+  /** Screen reader name for the right icon button */
+  rightAccessibilityLabel?: string;
   showLine?: boolean;
   /** When true, uses darkGreen → darkGreenLight gradient instead of solid fill */
   useGradient?: boolean;
@@ -67,6 +69,7 @@ export default function StackHeader({
   onBack,
   rightIcon,
   onRightPress,
+  rightAccessibilityLabel,
   showLine = true,
   useGradient = false,
 }: StackHeaderProps) {
@@ -105,6 +108,8 @@ export default function StackHeader({
             onPress={onRightPress}
             style={styles.rightIconWrapper}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel={rightAccessibilityLabel}
           >
             {rightIcon}
           </TouchableOpacity>
