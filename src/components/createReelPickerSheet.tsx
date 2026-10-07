@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Platform,
   StyleSheet,
@@ -137,6 +137,31 @@ const createStyles = (theme: Theme) =>
     optionDescLeft: {
       textAlign: "left",
     },
+    typeList: {
+      gap: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(12),
+    },
+    typeCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+      borderRadius: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(14),
+    },
+    typeTitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginBottom: moderateHeightScale(2),
+    },
+    typeDesc: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size16,
+    },
     cancelButton: {
       backgroundColor: theme.lightGreen015,
       borderRadius: moderateWidthScale(999),
@@ -157,14 +182,47 @@ export type CreateReelPickerSheetProps = {
   onRecordPress: () => void;
   onUploadPress: () => void;
   onGenerateFromTemplatePress?: () => void;
+  /** Image Reel → AI Tools template reel */
+  onImageReelPress: () => void;
+  /** AI Reel → AI Tools auto reel */
+  onAiReelPress: () => void;
   /** Distance from screen bottom so the card sits just above the center X. */
   bottomOffset: number;
   /** Keep tab bar (and X) clear of the dimmed backdrop. */
   tabBarClearance: number;
 };
 
+type PickerStep = "type" | "source";
+
+const REEL_TYPES: {
+  key: "simple" | "image" | "ai";
+  icon: React.ComponentProps<typeof MaterialIcons>["name"];
+  titleKey: string;
+  descKey: string;
+}[] = [
+  {
+    key: "simple",
+    icon: "videocam",
+    titleKey: "simpleReelTitle",
+    descKey: "simpleReelDesc",
+  },
+  {
+    key: "image",
+    icon: "photo-library",
+    titleKey: "imageReelTitle",
+    descKey: "imageReelDesc",
+  },
+  {
+    key: "ai",
+    icon: "auto-awesome",
+    titleKey: "aiReelTitle",
+    descKey: "aiReelDesc",
+  },
+];
+
 /**
- * Reusable Create Reel source picker (Record / Upload / Template).
+ * Create Reel picker: first the reel type (Simple / Image / AI), then for
+ * Simple the video source (Record / Upload / Template).
  * Floating card just above the center tab FAB — tab bar / X stay visible.
  */
 export default function CreateReelPickerSheet({
@@ -173,6 +231,8 @@ export default function CreateReelPickerSheet({
   onRecordPress,
   onUploadPress,
   onGenerateFromTemplatePress,
+  onImageReelPress,
+  onAiReelPress,
   bottomOffset,
   tabBarClearance,
 }: CreateReelPickerSheetProps) {
@@ -180,8 +240,22 @@ export default function CreateReelPickerSheet({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
+  const [step, setStep] = useState<PickerStep>("type");
+
+  // Every opening starts at the reel type
+  useEffect(() => {
+    if (!visible) setStep("type");
+  }, [visible]);
 
   if (!visible) return null;
+
+  const handleTypePress = (key: (typeof REEL_TYPES)[number]["key"]) => {
+    if (key === "simple") setStep("source");
+    else if (key === "image") onImageReelPress();
+    else onAiReelPress();
+  };
+
+  const isTypeStep = step === "type";
 
   return (
     <View style={styles.root} pointerEvents="box-none">
@@ -197,81 +271,137 @@ export default function CreateReelPickerSheet({
       </TouchableWithoutFeedback>
       <View style={[styles.sheet, { marginBottom: bottomOffset }]}>
         <View style={styles.handle} />
-        <Text style={styles.title}>{t("createReel")}</Text>
-        <Text style={styles.subtitle}>{t("chooseHowToAddVideo")}</Text>
+        <Text style={styles.title}>
+          {isTypeStep ? t("createReel") : t("simpleReelTitle")}
+        </Text>
+        <Text style={styles.subtitle}>
+          {isTypeStep ? t("chooseReelType") : t("chooseHowToAddVideo")}
+        </Text>
 
-        <View style={styles.optionsRow}>
-          <TouchableOpacity
-            style={styles.optionCard}
-            onPress={onRecordPress}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t("recordVideoOption")}
-          >
-            <View style={styles.optionIconCircle}>
-              <MaterialIcons
-                name="videocam"
-                size={moderateWidthScale(24)}
-                color={theme.white}
-              />
-            </View>
-            <Text style={styles.optionTitle}>{t("recordVideoOption")}</Text>
-            <Text style={styles.optionDesc}>{t("recordVideoDescription")}</Text>
-          </TouchableOpacity>
+        {isTypeStep ? (
+          <View style={styles.typeList}>
+            {REEL_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.key}
+                style={styles.typeCard}
+                onPress={() => handleTypePress(type.key)}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t(type.titleKey)}
+                accessibilityHint={t(type.descKey)}
+              >
+                <View
+                  style={[
+                    styles.optionIconCircle,
+                    styles.optionIconCircleInline,
+                  ]}
+                >
+                  <MaterialIcons
+                    name={type.icon}
+                    size={moderateWidthScale(22)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={styles.optionTextCol}>
+                  <Text style={styles.typeTitle}>{t(type.titleKey)}</Text>
+                  <Text style={styles.typeDesc}>{t(type.descKey)}</Text>
+                </View>
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(22)}
+                  color={theme.lightGreen}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <>
+            <View style={styles.optionsRow}>
+              <TouchableOpacity
+                style={styles.optionCard}
+                onPress={onRecordPress}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t("recordVideoOption")}
+              >
+                <View style={styles.optionIconCircle}>
+                  <MaterialIcons
+                    name="videocam"
+                    size={moderateWidthScale(24)}
+                    color={theme.white}
+                  />
+                </View>
+                <Text style={styles.optionTitle}>{t("recordVideoOption")}</Text>
+                <Text style={styles.optionDesc}>
+                  {t("recordVideoDescription")}
+                </Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.optionCard}
-            onPress={onUploadPress}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t("uploadVideoOption")}
-          >
-            <View style={styles.optionIconCircle}>
-              <MaterialIcons
-                name="file-upload"
-                size={moderateWidthScale(24)}
-                color={theme.white}
-              />
+              <TouchableOpacity
+                style={styles.optionCard}
+                onPress={onUploadPress}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t("uploadVideoOption")}
+              >
+                <View style={styles.optionIconCircle}>
+                  <MaterialIcons
+                    name="file-upload"
+                    size={moderateWidthScale(24)}
+                    color={theme.white}
+                  />
+                </View>
+                <Text style={styles.optionTitle}>{t("uploadVideoOption")}</Text>
+                <Text style={styles.optionDesc}>
+                  {t("uploadVideoDescription")}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.optionTitle}>{t("uploadVideoOption")}</Text>
-            <Text style={styles.optionDesc}>{t("uploadVideoDescription")}</Text>
-          </TouchableOpacity>
-        </View>
 
-        {onGenerateFromTemplatePress ? (
-          <TouchableOpacity
-            style={[styles.optionCard, styles.optionCardWide]}
-            onPress={onGenerateFromTemplatePress}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel={t("generateFromTemplate")}
-          >
-            <View style={[styles.optionIconCircle, styles.optionIconCircleInline]}>
-              <MaterialIcons
-                name="auto-awesome"
-                size={moderateWidthScale(22)}
-                color={theme.white}
-              />
-            </View>
-            <View style={styles.optionTextCol}>
-              <Text style={[styles.optionTitle, styles.optionTitleLeft]}>
-                {t("generateFromTemplate")}
-              </Text>
-              <Text style={[styles.optionDesc, styles.optionDescLeft]}>
-                {t("generateFromTemplateDescription")}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ) : null}
+            {onGenerateFromTemplatePress ? (
+              <TouchableOpacity
+                style={[styles.optionCard, styles.optionCardWide]}
+                onPress={onGenerateFromTemplatePress}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={t("generateFromTemplate")}
+              >
+                <View
+                  style={[
+                    styles.optionIconCircle,
+                    styles.optionIconCircleInline,
+                  ]}
+                >
+                  <MaterialIcons
+                    name="auto-awesome"
+                    size={moderateWidthScale(22)}
+                    color={theme.white}
+                  />
+                </View>
+                <View style={styles.optionTextCol}>
+                  <Text style={[styles.optionTitle, styles.optionTitleLeft]}>
+                    {t("generateFromTemplate")}
+                  </Text>
+                  <Text style={[styles.optionDesc, styles.optionDescLeft]}>
+                    {t("generateFromTemplateDescription")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : null}
+          </>
+        )}
 
+        {/* Source step goes back to the reel type instead of closing */}
         <TouchableOpacity
           style={styles.cancelButton}
-          onPress={onClose}
+          onPress={isTypeStep ? onClose : () => setStep("type")}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel={t("cancel")}
+          accessibilityLabel={isTypeStep ? t("cancel") : t("back")}
         >
-          <Text style={styles.cancelText}>{t("cancel")}</Text>
+          <Text style={styles.cancelText}>
+            {isTypeStep ? t("cancel") : t("back")}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -17,6 +17,16 @@ export const MAX_EDITOR_STICKERS = 10;
 /** Android re-draws overlays every 100ms during export — keep photos few + small. */
 export const MAX_IMAGE_STICKERS = 5;
 export const STICKER_IMAGE_MAX_SIDE = 720;
+/** Shortest part the Cut tool removes. */
+export const MIN_CUT_MS = 200;
+/** Cut never leaves less than this of a clip. */
+export const MIN_KEEP_MS = 1000;
+/** Kept pieces shorter than this next to a cut are folded into the cut. */
+const CUT_SNAP_MS = 300;
+const MIN_SEGMENT_MS = 50;
+
+/** A part removed from the middle of a clip, in SOURCE ms. */
+export type CutRange = { startMs: number; endMs: number };
 
 export type EditorClip = {
   id: string;
@@ -31,6 +41,8 @@ export type EditorClip = {
   sourceType: MediaUploadSourceType;
   /** This clip's own sound is off (Instagram per-clip mute). */
   muted?: boolean;
+  /** Parts cut out of the trim window, SOURCE ms, sorted, non-overlapping. */
+  cuts?: CutRange[];
 };
 
 /**
@@ -98,8 +110,160 @@ export const EMOJI_STICKERS = [
   "🆕",
 ] as const;
 
-export function clipLengthMs(clip: Pick<EditorClip, "trimStartMs" | "trimEndMs">): number {
-  return Math.max(0, clip.trimEndMs - clip.trimStartMs);
+type ClipRange = Pick<EditorClip, "trimStartMs" | "trimEndMs" | "cuts">;
+
+/** Cuts that fall inside the current trim window, clipped to it. */
+export function activeCuts(clip: ClipRange): CutRange[] {
+  return (clip.cuts ?? [])
+    .map((c) => ({
+      startMs: Math.max(c.startMs, clip.trimStartMs),
+      endMs: Math.min(c.endMs, clip.trimEndMs),
+    }))
+    .filter((c) => c.endMs - c.startMs > 0);
+}
+
+/** Parts of the source that play, in order (trim window minus cuts). */
+export function keptSegments(clip: ClipRange): CutRange[] {
+  const out: CutRange[] = [];
+  let cursor = clip.trimStartMs;
+  // Slivers left by a trim handle next to a cut aren't worth a native clip
+  const push = (startMs: number, endMs: number) => {
+    if (endMs - startMs >= MIN_SEGMENT_MS) out.push({ startMs, endMs });
+  };
+  for (const cut of activeCuts(clip)) {
+    push(cursor, cut.startMs);
+    cursor = Math.max(cursor, cut.endMs);
+  }
+  push(cursor, clip.trimEndMs);
+  return out;
+}
+
+/** Length that plays: the trim window minus the cut parts. */
+export function clipLengthMs(clip: ClipRange): number {
+  return keptSegments(clip).reduce((sum, s) => sum + (s.endMs - s.startMs), 0);
+}
+
+/** Where playback of the clip starts / stops, SOURCE ms. */
+export function clipPlayRange(clip: ClipRange): CutRange {
+  const segs = keptSegments(clip);
+  return {
+    startMs: segs[0]?.startMs ?? clip.trimStartMs,
+    endMs: segs[segs.length - 1]?.endMs ?? clip.trimEndMs,
+  };
+}
+
+/** SOURCE ms → ms into the clip as it plays (cut parts skipped). */
+export function sourceToPlayMs(clip: ClipRange, sourceMs: number): number {
+  let played = 0;
+  for (const seg of keptSegments(clip)) {
+    if (sourceMs <= seg.startMs) break;
+    played += Math.min(sourceMs, seg.endMs) - seg.startMs;
+  }
+  return Math.max(0, played);
+}
+
+/** Ms into the clip as it plays → SOURCE ms. */
+export function playToSourceMs(clip: ClipRange, playMs: number): number {
+  const segs = keptSegments(clip);
+  let left = Math.max(0, playMs);
+  for (const seg of segs) {
+    const len = seg.endMs - seg.startMs;
+    if (left < len) return seg.startMs + left;
+    left -= len;
+  }
+  return segs[segs.length - 1]?.endMs ?? clip.trimEndMs;
+}
+
+/**
+ * Inside a cut part → the SOURCE ms where playback should jump to
+ * (the cut's end), otherwise null. `leadMs` jumps a little early so the
+ * coarse preview clock doesn't show the start of the removed part.
+ */
+export function skipCutAt(clip: ClipRange, sourceMs: number, leadMs = 0): number | null {
+  for (const cut of activeCuts(clip)) {
+    if (sourceMs >= cut.startMs - leadMs && sourceMs < cut.endMs) return cut.endMs;
+  }
+  return null;
+}
+
+/**
+ * Remove `range` from the clip. Overlapping cuts merge, and slivers
+ * shorter than CUT_SNAP_MS left next to a cut are cut too. Returns null
+ * when less than MIN_KEEP_MS would be left.
+ */
+export function addCut(clip: EditorClip, range: CutRange): EditorClip | null {
+  let start = Math.max(clip.trimStartMs, Math.round(Math.min(range.startMs, range.endMs)));
+  let end = Math.min(clip.trimEndMs, Math.round(Math.max(range.startMs, range.endMs)));
+  if (end - start < MIN_CUT_MS) return null;
+  if (start - clip.trimStartMs < CUT_SNAP_MS) start = clip.trimStartMs;
+  if (clip.trimEndMs - end < CUT_SNAP_MS) end = clip.trimEndMs;
+
+  const all = [...(clip.cuts ?? []), { startMs: start, endMs: end }].sort(
+    (a, b) => a.startMs - b.startMs,
+  );
+  const merged: CutRange[] = [];
+  for (const cut of all) {
+    const last = merged[merged.length - 1];
+    if (last && cut.startMs - last.endMs < CUT_SNAP_MS) {
+      last.endMs = Math.max(last.endMs, cut.endMs);
+    } else {
+      merged.push({ ...cut });
+    }
+  }
+  const next = { ...clip, cuts: merged };
+  return clipLengthMs(next) >= MIN_KEEP_MS ? next : null;
+}
+
+/**
+ * Cut tool: remove the part between the orange handles, then open the
+ * window back up to `outer` so the rest of the clip stays.
+ */
+export function cutTrimWindow(clip: EditorClip, outer: CutRange): EditorClip | null {
+  return addCut(
+    { ...clip, trimStartMs: outer.startMs, trimEndMs: outer.endMs },
+    { startMs: clip.trimStartMs, endMs: clip.trimEndMs },
+  );
+}
+
+// ── Trimmer view: the source with every cut part taken out, so a cut
+// disappears from the strip and the parts around it join up.
+
+function sortedCuts(clip: Pick<EditorClip, "cuts">): CutRange[] {
+  return [...(clip.cuts ?? [])].sort((a, b) => a.startMs - b.startMs);
+}
+
+/** Length of the source once cut parts are taken out. */
+export function viewDurationMs(clip: Pick<EditorClip, "sourceDurationMs" | "cuts">): number {
+  const cut = sortedCuts(clip).reduce((sum, c) => sum + (c.endMs - c.startMs), 0);
+  return Math.max(1, clip.sourceDurationMs - cut);
+}
+
+/** SOURCE ms → trimmer view ms. */
+export function sourceToViewMs(clip: Pick<EditorClip, "cuts">, sourceMs: number): number {
+  let view = sourceMs;
+  for (const cut of sortedCuts(clip)) {
+    if (cut.startMs >= sourceMs) break;
+    view -= Math.min(sourceMs, cut.endMs) - cut.startMs;
+  }
+  return Math.max(0, view);
+}
+
+/**
+ * Trimmer view ms → SOURCE ms. Where a cut was, `bias` picks the side:
+ * "after" (start handles) lands past the cut, "before" (end handles) ahead of it.
+ */
+export function viewToSourceMs(
+  clip: Pick<EditorClip, "cuts">,
+  viewMs: number,
+  bias: "after" | "before" = "after",
+): number {
+  let source = viewMs;
+  for (const cut of sortedCuts(clip)) {
+    const passed = bias === "after" ? cut.startMs <= source : cut.startMs < source;
+    if (!passed) break;
+    source += cut.endMs - cut.startMs;
+  }
+  return source;
 }
 
 export function totalClipsMs(clips: EditorClip[]): number {
@@ -158,7 +322,7 @@ export async function clipThumbnail(clip: EditorClip): Promise<string | null> {
   try {
     return await generateThumbnail(
       clip.uri,
-      Math.min(clip.trimStartMs + 300, Math.max(0, clip.trimEndMs - 1)),
+      Math.min(clipPlayRange(clip).startMs + 300, Math.max(0, clip.trimEndMs - 1)),
       { width: 200, height: 200 },
     );
   } catch {
@@ -199,13 +363,20 @@ export function splitClip(
   atSourceMs: number,
 ): [EditorClip, EditorClip] | null {
   const at = Math.round(atSourceMs);
-  if (at - clip.trimStartMs < MIN_CLIP_MS || clip.trimEndMs - at < MIN_CLIP_MS) {
-    return null;
-  }
-  return [
+  // Both halves keep the cut list; each only plays the cuts in its window.
+  const parts: [EditorClip, EditorClip] = [
     { ...clip, trimEndMs: at },
     { ...clip, id: makeClipId("clip"), trimStartMs: at },
   ];
+  if (
+    at <= clip.trimStartMs ||
+    at >= clip.trimEndMs ||
+    clipLengthMs(parts[0]) < MIN_CLIP_MS ||
+    clipLengthMs(parts[1]) < MIN_CLIP_MS
+  ) {
+    return null;
+  }
+  return parts;
 }
 
 /**
@@ -240,22 +411,25 @@ export async function prepareStickerImage(asset: {
   return { uri, width: result.width, height: result.height };
 }
 
+/** One native video clip per kept part, so cut parts never reach the export. */
 export function buildVideoTrackClips(clips: EditorClip[]): VideoClip[] {
   let cursor = 0;
-  return clips.map((clip) => {
-    const start = Math.round(clip.trimStartMs);
-    const end = Math.round(clip.trimEndMs);
-    const len = end - start;
-    const out: VideoClip = {
-      id: clip.id,
-      sourceUri: clip.uri,
-      sourceRange: { startMs: start, endMs: end },
-      timelineRange: { startMs: cursor, endMs: cursor + len },
-      originalVolume: clip.muted ? 0 : 1,
-    };
-    cursor += len;
-    return out;
-  });
+  return clips.flatMap((clip) =>
+    keptSegments(clip).map((seg, i) => {
+      const start = Math.round(seg.startMs);
+      const end = Math.round(seg.endMs);
+      const len = end - start;
+      const out: VideoClip = {
+        id: i === 0 ? clip.id : `${clip.id}-part${i}`,
+        sourceUri: clip.uri,
+        sourceRange: { startMs: start, endMs: end },
+        timelineRange: { startMs: cursor, endMs: cursor + len },
+        originalVolume: clip.muted ? 0 : 1,
+      };
+      cursor += len;
+      return out;
+    }),
+  );
 }
 
 /**

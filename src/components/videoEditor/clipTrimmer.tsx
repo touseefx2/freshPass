@@ -24,8 +24,6 @@ type Props = {
   clip: EditorClip;
   /** Frames across the whole source file; undefined while loading. */
   frames?: (string | null)[];
-  /** Longest this clip may be (account limit minus the other clips). */
-  maxLengthMs: number;
   /** Playhead position in SOURCE ms, or null when it isn't on this clip. */
   playheadMs: number | null;
   disabled: boolean;
@@ -114,6 +112,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.black,
       opacity: 0.6,
     },
+
     selectionBar: {
       position: "absolute",
       height: heightScale(3),
@@ -156,7 +155,6 @@ const createStyles = (theme: Theme) =>
 export default function ClipTrimmer({
   clip,
   frames,
-  maxLengthMs,
   playheadMs,
   disabled,
   onTrimBegin,
@@ -186,8 +184,6 @@ export default function ClipTrimmer({
   const dragging = useSharedValue(DRAG_NONE);
   const origin = useSharedValue(0);
   const lastSent = useSharedValue(0);
-  // Longest the clip may get during this drag (see onStart)
-  const allowedMs = useSharedValue(maxLengthMs);
   // Window length while it's being slid, and where the press began
   const moveLen = useSharedValue(0);
   const pressX = useSharedValue(0);
@@ -227,9 +223,6 @@ export default function ClipTrimmer({
         dragging.value = isStart ? DRAG_START : DRAG_END;
         origin.value = isStart ? startMs.value : endMs.value;
         lastSent.value = 0;
-        // Already over the limit (full long source): allow shrinking freely
-        // instead of snapping the handle to the limit on first touch.
-        allowedMs.value = Math.max(maxLengthMs, endMs.value - startMs.value);
         runOnJS(onTrimBegin)();
       })
       .onUpdate((e) => {
@@ -237,12 +230,11 @@ export default function ClipTrimmer({
           origin.value + (e.translationX / trackWidth.value) * durationMs;
         let next: number;
         if (isStart) {
-          const min = Math.max(0, endMs.value - allowedMs.value);
-          next = Math.min(Math.max(raw, min), endMs.value - MIN_CLIP_MS);
+          // No length limit here — Next / Save checks the final reel
+          next = Math.min(Math.max(raw, 0), endMs.value - MIN_CLIP_MS);
           startMs.value = next;
         } else {
-          const max = Math.min(durationMs, startMs.value + allowedMs.value);
-          next = Math.max(Math.min(raw, max), startMs.value + MIN_CLIP_MS);
+          next = Math.max(Math.min(raw, durationMs), startMs.value + MIN_CLIP_MS);
           endMs.value = next;
         }
         const now = Date.now();
@@ -268,7 +260,6 @@ export default function ClipTrimmer({
     [
       disabled,
       durationMs,
-      maxLengthMs,
       onTrimBegin,
       onTrimChange,
       onTrimEnd,
@@ -281,7 +272,6 @@ export default function ClipTrimmer({
     [
       disabled,
       durationMs,
-      maxLengthMs,
       onTrimBegin,
       onTrimChange,
       onTrimEnd,

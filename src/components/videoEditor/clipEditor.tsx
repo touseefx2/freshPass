@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
@@ -11,13 +11,26 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import ClipTrimmer, { type TrimEdge } from "./clipTrimmer";
-import { clipLengthMs, type EditorClip } from "./editorModel";
+import {
+  FILMSTRIP_FRAMES,
+  clipLengthMs,
+  sourceToViewMs,
+  viewDurationMs,
+  viewToSourceMs,
+  type CutRange,
+  type EditorClip,
+} from "./editorModel";
 import { formatVideoDuration } from "@/src/utils/videoDuration";
 
 /**
  * Level 2 of the trim tool: one clip at a time (Instagram "trim clip").
  * Handles trim, the white playhead picks the split point, and every
- * action sits in one labelled toolbar.
+ * action sits in one labelled toolbar. Cut removes the part between the
+ * handles: it drops out of the strip and the rest of the clip stays.
+ *
+ * The trimmer works on a "view" of the source with cut parts taken out;
+ * everything going in or out of it is mapped here, so the screen only
+ * ever sees SOURCE ms.
  */
 type Props = {
   clip: EditorClip;
@@ -29,13 +42,19 @@ type Props = {
   disabled: boolean;
   onDone: () => void;
   onSplit: () => void;
+  /**
+   * Remove the part between the handles; `outer` is the window to open
+   * back up to afterwards (SOURCE ms).
+   */
+  onCut: (outer: CutRange) => void;
   /** Mute / unmute this clip's own sound. */
   onToggleMute: () => void;
   onRemove: () => void;
   onTrimBegin: () => void;
   onTrimChange: (edge: TrimEdge, ms: number) => void;
   onTrimEnd: () => void;
-  onTrimMove: (startMs: number) => void;
+  /** Slide the whole window to new SOURCE bounds. */
+  onTrimMove: (startMs: number, endMs: number) => void;
   onScrubBegin: () => void;
   onScrub: (ms: number) => void;
   onScrubEnd: () => void;
@@ -134,6 +153,7 @@ export default function ClipEditor({
   disabled,
   onDone,
   onSplit,
+  onCut,
   onToggleMute,
   onRemove,
   onTrimBegin,
@@ -153,6 +173,75 @@ export default function ClipEditor({
   // e.g. a full long auto reel source that still has to be trimmed down
   const overLimit = lengthMs > maxLengthMs + 50;
 
+  // Widest window seen since this clip was opened — Cut opens back up to it
+  const outerRef = useRef<CutRange>({ startMs: clip.trimStartMs, endMs: clip.trimEndMs });
+  const openedIdRef = useRef(clip.id);
+  if (openedIdRef.current !== clip.id) {
+    openedIdRef.current = clip.id;
+    outerRef.current = { startMs: clip.trimStartMs, endMs: clip.trimEndMs };
+  }
+  useEffect(() => {
+    outerRef.current = {
+      startMs: Math.min(outerRef.current.startMs, clip.trimStartMs),
+      endMs: Math.max(outerRef.current.endMs, clip.trimEndMs),
+    };
+  }, [clip.trimStartMs, clip.trimEndMs]);
+
+  // ── Trimmer view (cut parts taken out of the source)
+  const cutsKey = (clip.cuts ?? []).map((c) => `${c.startMs}-${c.endMs}`).join(",");
+  const viewClip = useMemo<EditorClip>(
+    () => ({
+      ...clip,
+      sourceDurationMs: viewDurationMs(clip),
+      trimStartMs: sourceToViewMs(clip, clip.trimStartMs),
+      trimEndMs: sourceToViewMs(clip, clip.trimEndMs),
+      cuts: undefined,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [clip.id, clip.uri, clip.sourceDurationMs, clip.trimStartMs, clip.trimEndMs, cutsKey],
+  );
+  const viewFrames = useMemo(() => {
+    if (!frames || !cutsKey) return frames;
+    // Pick the source frame nearest to each cell of the joined-up strip
+    const n = frames.length || FILMSTRIP_FRAMES;
+    const viewMs = viewDurationMs(clip);
+    return Array.from({ length: n }, (_, i) => {
+      const source = viewToSourceMs(clip, (viewMs * (i + 0.5)) / n);
+      const idx = Math.min(n - 1, Math.max(0, Math.floor((source / clip.sourceDurationMs) * n)));
+      return frames[idx] ?? null;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frames, cutsKey, clip.sourceDurationMs]);
+  const viewPlayheadMs =
+    playheadMs == null ? null : sourceToViewMs(clip, playheadMs);
+
+  const clipRef = useRef(clip);
+  clipRef.current = clip;
+  const handleTrimChange = useCallback(
+    (edge: TrimEdge, ms: number) => {
+      onTrimChange(
+        edge,
+        viewToSourceMs(clipRef.current, ms, edge === "start" ? "after" : "before"),
+      );
+    },
+    [onTrimChange],
+  );
+  const handleTrimMove = useCallback(
+    (startMs: number) => {
+      const c = clipRef.current;
+      const len = sourceToViewMs(c, c.trimEndMs) - sourceToViewMs(c, c.trimStartMs);
+      onTrimMove(
+        viewToSourceMs(c, startMs, "after"),
+        viewToSourceMs(c, startMs + len, "before"),
+      );
+    },
+    [onTrimMove],
+  );
+  const handleScrub = useCallback(
+    (ms: number) => onScrub(viewToSourceMs(clipRef.current, ms, "after")),
+    [onScrub],
+  );
+
   const actions: {
     key: string;
     icon: keyof typeof MaterialIcons.glyphMap;
@@ -162,7 +251,14 @@ export default function ClipEditor({
     /** Toggle that's on (e.g. clip muted) — drawn in the accent colour */
     active?: boolean;
   }[] = [
-    { key: "split", icon: "content-cut", label: t("splitClip"), onPress: onSplit, enabled: true },
+    { key: "split", icon: "vertical-split", label: t("splitClip"), onPress: onSplit, enabled: true },
+    {
+      key: "cut",
+      icon: "content-cut",
+      label: t("cutClip"),
+      onPress: () => onCut(outerRef.current),
+      enabled: true,
+    },
     {
       key: "mute",
       icon: clip.muted ? "volume-off" : "volume-up",
@@ -209,17 +305,16 @@ export default function ClipEditor({
       </Text>
 
       <ClipTrimmer
-        clip={clip}
-        frames={frames}
-        maxLengthMs={maxLengthMs}
-        playheadMs={playheadMs}
+        clip={viewClip}
+        frames={viewFrames}
+        playheadMs={viewPlayheadMs}
         disabled={disabled}
         onTrimBegin={onTrimBegin}
-        onTrimChange={onTrimChange}
+        onTrimChange={handleTrimChange}
         onTrimEnd={onTrimEnd}
-        onTrimMove={onTrimMove}
+        onTrimMove={handleTrimMove}
         onScrubBegin={onScrubBegin}
-        onScrub={onScrub}
+        onScrub={handleScrub}
         onScrubEnd={onScrubEnd}
       />
 

@@ -426,6 +426,24 @@ export default function BusinessCreateMediaMenu({
     setReelPickerVisible(true);
   }, [businessStatus, userRole, closeAll, dispatch, ensureMonthlyReelsLeft]);
 
+  /**
+   * Image / AI reel: AI Tools → that reel screen, so Back lands on AI Tools
+   * (same stack as Generate Reel there). Both screens check the monthly limit.
+   */
+  const openAiToolsReel = useCallback(
+    (pathname: "/(main)/templateReels" | "/(main)/reelTemplates") => {
+      closeAll();
+      router.push({
+        pathname: "/(main)/aiTools/toolList",
+        params: { mode: "aiTools" },
+      } as any);
+      setTimeout(() => {
+        router.push(pathname as any);
+      }, 15);
+    },
+    [closeAll, router],
+  );
+
   const handleMenuAction = useCallback(
     (action: CreateMenuAction) => {
       switch (action) {
@@ -542,6 +560,8 @@ export default function BusinessCreateMediaMenu({
         onClose={closeAll}
         onRecordPress={handleRecord}
         onUploadPress={handleUpload}
+        onImageReelPress={() => openAiToolsReel("/(main)/templateReels")}
+        onAiReelPress={() => openAiToolsReel("/(main)/reelTemplates")}
         bottomOffset={reelPickerBottom}
         tabBarClearance={tabBarClearance}
       />

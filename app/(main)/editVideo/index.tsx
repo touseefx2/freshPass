@@ -76,18 +76,25 @@ import {
   MAX_IMAGE_STICKERS,
   MIN_CLIP_MS,
   STICKER_SIZE_RANGE,
+  activeCuts,
   buildVideoTrackClips,
   clampStickerSize,
   clipLengthMs,
   clipOffsetMs,
+  clipPlayRange,
   clipThumbnail,
   normalizeDegrees,
   prepareEditorClip,
+  playToSourceMs,
+  cutTrimWindow,
   prepareStickerImage,
+  skipCutAt,
   sourceFilmstrip,
+  sourceToPlayMs,
   splitClip,
   stickerToOverlay,
   totalClipsMs,
+  type CutRange,
   type EditorClip,
   type EditorSticker,
 } from "@/src/components/videoEditor/editorModel";
@@ -844,8 +851,6 @@ export default function EditVideoScreen() {
   const [activeSlot, setActiveSlot] = useState<PlayerSlot>(0);
 
   const trimHistoryPushedRef = useRef(false);
-  /** Clip length when the current trim drag began — it may shrink back from over the limit, never grow past it. */
-  const trimAllowedMsRef = useRef(0);
   const textHistoryPushedRef = useRef(false);
   const textInputRef = useRef<TextInputType>(null);
   const musicSoundRef = useRef<Audio.Sound | null>(null);
@@ -1148,7 +1153,7 @@ export default function EditVideoScreen() {
         await ensureSlotSource(slot, clip.uri);
         if (gen !== engineGenRef.current) return;
         players[slot].pause();
-        players[slot].currentTime = clip.trimStartMs / 1000;
+        players[slot].currentTime = clipPlayRange(clip).startMs / 1000;
         players[slot].muted = !!clip.muted;
         slotClipIdRef.current[slot] = clip.id;
         preloadRef.current = { slot, index: nextIndex, clipId: clip.id };
@@ -1174,7 +1179,7 @@ export default function EditVideoScreen() {
         await ensureSlotSource(slot, clip.uri);
         if (gen !== engineGenRef.current) return;
         activeIndexRef.current = index;
-        p.currentTime = clip.trimStartMs / 1000;
+        p.currentTime = clipPlayRange(clip).startMs / 1000;
         p.muted = !!clip.muted;
         slotClipIdRef.current[slot] = clip.id;
         if (playingRef.current) p.play();
@@ -1203,7 +1208,7 @@ export default function EditVideoScreen() {
       const clip = list[focus ?? idx] ?? list[0];
       if (!clip) return;
       try {
-        players[slot].currentTime = clip.trimStartMs / 1000;
+        players[slot].currentTime = clipPlayRange(clip).startMs / 1000;
         if (playingRef.current) players[slot].play();
       } catch {}
       setPreviewTimeMs(0);
@@ -1256,17 +1261,26 @@ export default function EditVideoScreen() {
           const clip = list[idx];
           if (!clip) return;
           const ms = Math.max(0, currentTime * 1000);
-          if (ms >= clip.trimEndMs - 40) {
+          const range = clipPlayRange(clip);
+          if (ms >= range.endMs - 40) {
             advance();
             return;
           }
-          if (ms < clip.trimStartMs - 40) {
+          if (ms < range.startMs - 40) {
             try {
-              p.currentTime = clip.trimStartMs / 1000;
+              p.currentTime = range.startMs / 1000;
             } catch {}
             return;
           }
-          const local = ms - clip.trimStartMs;
+          // Hop over parts removed with Cut (export leaves them out exactly)
+          const resumeAt = skipCutAt(clip, ms, 60);
+          if (resumeAt != null) {
+            try {
+              p.currentTime = resumeAt / 1000;
+            } catch {}
+            return;
+          }
+          const local = sourceToPlayMs(clip, ms);
           setPreviewTimeMs(
             focusIndexRef.current != null
               ? local
@@ -1310,7 +1324,13 @@ export default function EditVideoScreen() {
 
   // (Re)start playback when the clip list / trims / focus change.
   const clipsKey = clips
-    .map((c) => `${c.id}:${c.uri}:${c.trimStartMs}:${c.trimEndMs}`)
+    .map(
+      (c) =>
+        `${c.id}:${c.uri}:${c.trimStartMs}:${c.trimEndMs}:` +
+        activeCuts(c)
+          .map((cut) => `${cut.startMs}-${cut.endMs}`)
+          .join(","),
+    )
     .join("|");
   useEffect(() => {
     if (!previewReady || scrubbingRef.current) return;
@@ -1328,24 +1348,21 @@ export default function EditVideoScreen() {
     [players],
   );
 
-  /** Move one trim handle of the selected clip, keeping the reel within the account limit. */
+  /**
+   * Move one trim handle of the selected clip. No length limit here —
+   * Next / Save checks the final reel and says what to fix.
+   */
   const updateSelectedTrim = useCallback(
     (edge: "start" | "end", value: number) => {
       const list = clipsRef.current;
       const idx = list.findIndex((c) => c.id === editingClipIdRef.current);
       const clip = list[idx];
       if (!clip) return;
-      // A full long source starts over the limit: let it shrink without snapping
-      const budget = Math.max(
-        maxClipMs - (totalClipsMs(list) - clipLengthMs(clip)),
-        trimAllowedMsRef.current,
-      );
       let next: EditorClip;
       if (edge === "start") {
-        const minStart = Math.max(0, clip.trimEndMs - budget);
         const start = Math.round(
           Math.min(
-            Math.max(value, minStart),
+            Math.max(value, 0),
             Math.max(0, clip.trimEndMs - MIN_CLIP_MS),
           ),
         );
@@ -1353,10 +1370,9 @@ export default function EditVideoScreen() {
         next = { ...clip, trimStartMs: start };
         scrubTo(start);
       } else {
-        const maxEnd = Math.min(clip.sourceDurationMs, clip.trimStartMs + budget);
         const end = Math.round(
           Math.max(
-            Math.min(value, maxEnd),
+            Math.min(value, clip.sourceDurationMs),
             Math.min(clip.sourceDurationMs, clip.trimStartMs + MIN_CLIP_MS),
           ),
         );
@@ -1364,12 +1380,14 @@ export default function EditVideoScreen() {
         next = { ...clip, trimEndMs: end };
         scrubTo(Math.max(clip.trimStartMs, end - 60));
       }
+      // Don't let the window close in on a cut so nothing is left to play
+      if (clipLengthMs(next) < MIN_CLIP_MS) return;
       const updated = [...list];
       updated[idx] = next;
       clipsRef.current = updated;
       setClips(updated);
     },
-    [maxClipMs, scrubTo],
+    [scrubTo],
   );
 
   /** Mute / unmute one clip's own sound (Instagram per-clip mute). */
@@ -1398,20 +1416,20 @@ export default function EditVideoScreen() {
     [pushHistory],
   );
 
-  /** Slide the selected clip's trim window, keeping its length. */
+  /** Slide the selected clip's trim window (bounds come in SOURCE ms). */
   const moveSelectedTrim = useCallback(
-    (startMs: number) => {
+    (startMs: number, endMs: number) => {
       const list = clipsRef.current;
       const idx = list.findIndex((c) => c.id === editingClipIdRef.current);
       const clip = list[idx];
       if (!clip) return;
-      const length = clipLengthMs(clip);
-      const start = Math.round(
-        Math.min(Math.max(startMs, 0), Math.max(0, clip.sourceDurationMs - length)),
-      );
-      if (start === clip.trimStartMs) return;
+      const start = Math.round(Math.max(0, startMs));
+      const end = Math.round(Math.min(clip.sourceDurationMs, endMs));
+      if (start === clip.trimStartMs && end === clip.trimEndMs) return;
+      const moved = { ...clip, trimStartMs: start, trimEndMs: end };
+      if (clipLengthMs(moved) < MIN_CLIP_MS) return;
       const updated = [...list];
-      updated[idx] = { ...clip, trimStartMs: start, trimEndMs: start + length };
+      updated[idx] = moved;
       clipsRef.current = updated;
       setClips(updated);
       scrubTo(start);
@@ -1421,10 +1439,6 @@ export default function EditVideoScreen() {
 
   const onTrimSlideStart = useCallback(() => {
     dismissKeyboard();
-    const clip = clipsRef.current.find(
-      (c) => c.id === editingClipIdRef.current,
-    );
-    trimAllowedMsRef.current = clip ? clipLengthMs(clip) : 0;
     if (!trimHistoryPushedRef.current) {
       pushHistory();
       trimHistoryPushedRef.current = true;
@@ -1435,7 +1449,6 @@ export default function EditVideoScreen() {
 
   const onTrimSlideComplete = useCallback(() => {
     trimHistoryPushedRef.current = false;
-    trimAllowedMsRef.current = 0;
     scrubbingRef.current = false;
     playingRef.current = true;
     setPlaying(true);
@@ -1445,7 +1458,7 @@ export default function EditVideoScreen() {
   // Playhead in SOURCE ms of the clip open in the single-clip view.
   const playheadSourceMs =
     editingClip && focusIndex != null
-      ? editingClip.trimStartMs + previewTimeMs
+      ? playToSourceMs(editingClip, previewTimeMs)
       : null;
 
   const onScrubBegin = useCallback(() => {
@@ -1461,7 +1474,7 @@ export default function EditVideoScreen() {
       );
       if (!clip) return;
       scrubTo(ms);
-      setPreviewTimeMs(Math.max(0, ms - clip.trimStartMs));
+      setPreviewTimeMs(sourceToPlayMs(clip, ms));
     },
     [scrubTo],
   );
@@ -1503,6 +1516,40 @@ export default function EditVideoScreen() {
       showBanner(t("splitClip"), t("clipSplitDone"), "success", 2500);
     },
     [loadThumbnail, playheadSourceMs, pushHistory, showBanner, t],
+  );
+
+  /**
+   * Cut: remove the part between the orange handles right away (no confirm)
+   * and open the window back up so the rest of the video stays. Undo brings
+   * it back.
+   */
+  const cutSelectedClip = useCallback(
+    (id: string, outer: CutRange) => {
+      const list = clipsRef.current;
+      const index = list.findIndex((c) => c.id === id);
+      const clip = list[index];
+      if (!clip) return;
+      if (
+        clip.trimStartMs <= outer.startMs &&
+        clip.trimEndMs >= outer.endMs
+      ) {
+        // Handles still around everything — nothing picked to cut yet
+        showBanner(t("cutClip"), t("cutSelectFirst"), "info", 3500);
+        return;
+      }
+      const next = cutTrimWindow(clip, outer);
+      if (!next) {
+        showBanner(t("cutClip"), t("cutClipTooMuch"), "info", 3500);
+        return;
+      }
+      pushHistory();
+      const updated = [...list];
+      updated[index] = next;
+      clipsRef.current = updated;
+      setClips(updated);
+      loadThumbnail(next);
+    },
+    [loadThumbnail, pushHistory, showBanner, t],
   );
 
   // Load trimmer frames for the open clip's file (once per file).
@@ -2198,7 +2245,8 @@ export default function EditVideoScreen() {
       !!overlayText.trim() ||
       stickers.length > 0 ||
       single.trimStartMs > 0 ||
-      single.trimEndMs < single.sourceDurationMs;
+      single.trimEndMs < single.sourceDurationMs ||
+      activeCuts(single).length > 0;
 
     let videoUri = clips[0].uri;
     let fileName = params.fileName || "video.mp4";
@@ -2786,6 +2834,7 @@ export default function EditVideoScreen() {
                   disabled={busy}
                   onDone={() => setEditingClipId(null)}
                   onSplit={() => splitSelectedClip(editingClip.id)}
+                  onCut={(outer) => cutSelectedClip(editingClip.id, outer)}
                   onToggleMute={() => toggleClipMuted(editingClip.id)}
                   onRemove={() => removeClip(editingClip.id)}
                   onTrimBegin={onTrimSlideStart}

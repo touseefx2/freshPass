@@ -594,6 +594,19 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
     },
+    slotKeepOpenRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(10),
+    },
+    slotKeepOpenText: {
+      flex: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontSemiBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size18,
+    },
     slotProgressTrack: {
       height: moderateHeightScale(4),
       borderRadius: moderateWidthScale(999),
@@ -618,6 +631,23 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.borderNormal,
       backgroundColor: theme.white,
+    },
+    timeHintRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(8),
+      marginTop: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen015,
+    },
+    timeHintText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontSemiBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size20,
     },
     editVideoBtnDisabled: {
       opacity: 0.5,
@@ -1394,10 +1424,10 @@ export default function ReelTemplatesScreen() {
   }, [navigation, t]);
 
   // Tell the barber what is still missing instead of a silent disabled button
-  const missingHint = !selected
-    ? null
-    : uploadPercent != null
-      ? t("autoReelKeepOpenWhileUploading")
+  // (upload in progress: the keep-open note lives in the upload box instead)
+  const missingHint =
+    !selected || uploadPercent != null
+      ? null
       : !sourceVideo
         ? t("autoReelNeedVideo")
         : !categoryId
@@ -1788,6 +1818,16 @@ export default function ReelTemplatesScreen() {
                           ]}
                         />
                       </View>
+                      <View style={styles.slotKeepOpenRow}>
+                        <MaterialIcons
+                          name="info-outline"
+                          size={moderateWidthScale(16)}
+                          color={theme.darkGreen}
+                        />
+                        <Text style={styles.slotKeepOpenText}>
+                          {t("autoReelKeepOpenWhileUploading")}
+                        </Text>
+                      </View>
                     </View>
                   ) : (
                     <>
@@ -1847,6 +1887,14 @@ export default function ReelTemplatesScreen() {
                   </Text>
                 </TouchableOpacity>
               ) : null}
+              <View style={styles.timeHintRow}>
+                <MaterialIcons
+                  name="schedule"
+                  size={moderateWidthScale(18)}
+                  color={theme.darkGreen}
+                />
+                <Text style={styles.timeHintText}>{t("autoReelTimeHint")}</Text>
+              </View>
             </View>
 
             <View style={styles.section}>
@@ -2006,9 +2054,7 @@ export default function ReelTemplatesScreen() {
               />
               <Text style={styles.footerHint}>{missingHint}</Text>
             </View>
-          ) : (
-            <Text style={styles.footerHint}>{t("autoReelTimeHint")}</Text>
-          )}
+          ) : null}
         </View>
       ) : null}
 
