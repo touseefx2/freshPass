@@ -147,7 +147,6 @@ import StudioPublishStep, {
 import {
   FlowTitle,
   InfoNote,
-  OptionRow,
   SectionLabel,
   SourceCard,
   SourceCardRow,
@@ -554,10 +553,10 @@ const createStyles = (theme: Theme, compact: boolean) =>
     },
     rows: {
       paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(compact ? 10 : 14),
-      // Room for the last card's edge + shadow above the footer
-      paddingBottom: moderateHeightScale(compact ? 6 : 10),
-      gap: moderateHeightScale(compact ? 8 : 10),
+      paddingTop: moderateHeightScale(compact ? 12 : 16),
+      // Room for the tiles' drop shadow above the footer
+      paddingBottom: moderateHeightScale(compact ? 14 : 18),
+      gap: moderateWidthScale(10),
     },
     // ── Tool sheet (Style / Music / Text): white sheet on the cream
     // screen, cream controls, green = selected, orange = accent icons.
@@ -3695,16 +3694,14 @@ export default function ReelStudioScreen() {
   const frameLabel = t(
     FRAME_OPTIONS.find((f) => f.key === aspect)?.labelKey ?? "flowFrameOriginal",
   );
-  const styleSummary = [
-    frameLabel,
-    stickers.length === 1
-      ? t("flowOneSticker")
-      : stickers.length > 1
-        ? t("flowStickersCount", { n: stickers.length })
-        : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // One short thing so it fits the tile: a picked frame, else the sticker
+  // count, else "Original" (stickers show on the preview right above)
+  const styleSummary =
+    aspect !== "original" || stickers.length === 0
+      ? frameLabel
+      : stickers.length === 1
+        ? t("flowOneSticker")
+        : t("flowStickersCount", { n: stickers.length });
   const musicSummary =
     musicTracks.length === 0
       ? t("flowMusicChoose")
@@ -3713,33 +3710,48 @@ export default function ReelStudioScreen() {
         : t("flowSongsCount", { n: musicTracks.length });
   const textSummary = overlayText.trim() || t("flowTextAdd");
 
+  const styleDone = aspect !== "original" || stickers.length > 0;
+  const musicDone = musicTracks.length > 0;
+  const textDone = !!overlayText.trim();
+
+  // Same filled tiles as "Choose from gallery" / "Record a video", three across
   const renderStyleRows = () => (
-    <View style={styles.rows}>
-      <OptionRow
+    <SourceCardRow style={styles.rows}>
+      <SourceCard
+        compact
+        tone="warm"
         icon="palette"
-        title={t("flowStyle")}
-        subtitle={styleSummary}
-        done={aspect !== "original" || stickers.length > 0}
+        label={t("flowStyle")}
+        sublabel={styleSummary}
+        // "+" = nothing yet, pencil = set (tap to change); ✓ marks the value
+        badgeIcon={styleDone ? "edit" : "add"}
+        sublabelIcon={styleDone ? "check-circle" : undefined}
         onPress={() => setStyleTool("style")}
         disabled={busy}
       />
-      <OptionRow
+      <SourceCard
+        compact
+        tone="green"
         icon="music-note"
-        title={t("backgroundMusic")}
-        subtitle={musicSummary}
-        done={musicTracks.length > 0}
+        label={t("backgroundMusic")}
+        sublabel={musicSummary}
+        badgeIcon={musicDone ? "edit" : "add"}
+        sublabelIcon={musicDone ? "check-circle" : undefined}
         onPress={() => setStyleTool("music")}
         disabled={busy}
       />
-      <OptionRow
+      <SourceCard
+        compact
+        tone="deep"
         icon="text-fields"
-        title={t("overlayText")}
-        subtitle={textSummary}
-        done={!!overlayText.trim()}
+        label={t("overlayText")}
+        sublabel={textSummary}
+        badgeIcon={textDone ? "edit" : "add"}
+        sublabelIcon={textDone ? "check-circle" : undefined}
         onPress={() => setStyleTool("text")}
         disabled={busy}
       />
-    </View>
+    </SourceCardRow>
   );
 
   const renderStylePanel = () => (

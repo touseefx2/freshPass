@@ -36,6 +36,17 @@ import {
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
+export type SourceTone = "green" | "warm" | "deep";
+
+/** Gradient (start → end) for a filled SourceCard tone; reused by tool sheets. */
+export function sourceToneFill(theme: Theme, tone: SourceTone) {
+  return tone === "warm"
+    ? ([theme.selectCard, theme.orangeBrownText] as const)
+    : tone === "deep"
+      ? ([theme.darkGreen, theme.darkGreenDeep] as const)
+      : ([theme.buttonBack, theme.darkGreen] as const);
+}
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     titleBlock: {
@@ -107,6 +118,9 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.orangeBrownText,
       shadowColor: theme.orangeBrownText,
     },
+    sourceShadowCompact: {
+      borderRadius: moderateWidthScale(20),
+    },
     sourceCard: {
       flexGrow: 1,
       borderRadius: moderateWidthScale(22),
@@ -115,6 +129,13 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(18),
       padding: moderateWidthScale(14),
       minHeight: heightScale(168),
+    },
+    // Three across (Style / Music / Text)
+    sourceCardCompact: {
+      borderRadius: moderateWidthScale(20),
+      gap: moderateHeightScale(12),
+      padding: moderateWidthScale(12),
+      minHeight: heightScale(132),
     },
     sourceWatermark: {
       position: "absolute",
@@ -136,6 +157,11 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    sourceIconCompact: {
+      width: widthScale(42),
+      height: widthScale(42),
+      borderRadius: widthScale(14),
+    },
     sourceAction: {
       width: widthScale(30),
       height: widthScale(30),
@@ -144,6 +170,11 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    sourceActionCompact: {
+      width: widthScale(26),
+      height: widthScale(26),
+      borderRadius: widthScale(13),
+    },
     sourceText: {
       gap: moderateHeightScale(4),
     },
@@ -151,6 +182,10 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.white,
+      lineHeight: fontSize.size22,
+    },
+    sourceLabelCompact: {
+      fontSize: fontSize.size18,
       lineHeight: fontSize.size22,
     },
     sourceMeta: {
@@ -163,6 +198,15 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.white85,
+    },
+    sourceMetaTextCompact: {
+      fontSize: fontSize.size14,
+      lineHeight: fontSize.size18,
+      color: theme.white,
+    },
+    // Faint enough not to fight the text on a small tile
+    sourceWatermarkCompact: {
+      opacity: 0.07,
     },
     optionRow: {
       flexDirection: "row",
@@ -196,65 +240,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.buttonBack,
       alignItems: "center",
       justifyContent: "center",
-    },
-    // ── Option tiles (Style / Music / Text): one row of equal cards
-    optionTileRow: {
-      flexDirection: "row",
-      gap: moderateWidthScale(10),
-    },
-    optionTile: {
-      flex: 1,
-      minWidth: 0,
-      minHeight: heightScale(120),
-      alignItems: "center",
-      gap: moderateHeightScale(8),
-      paddingTop: moderateHeightScale(16),
-      paddingBottom: moderateHeightScale(12),
-      paddingHorizontal: moderateWidthScale(8),
-      borderWidth: 1.5,
-    },
-    optionTileDone: {
-      borderColor: theme.buttonBack,
-    },
-    optionTileIcon: {
-      width: widthScale(50),
-      height: widthScale(50),
-      borderRadius: widthScale(25),
-      backgroundColor: theme.orangeBrown01,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    optionTileIconDone: {
-      backgroundColor: theme.selectCard,
-    },
-    optionTileBadge: {
-      position: "absolute",
-      top: moderateHeightScale(8),
-      right: moderateWidthScale(8),
-      width: widthScale(20),
-      height: widthScale(20),
-      borderRadius: widthScale(10),
-      backgroundColor: theme.buttonBack,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    optionTileText: {
-      alignSelf: "stretch",
-      alignItems: "center",
-      gap: moderateHeightScale(2),
-    },
-    optionTileTitle: {
-      fontSize: fontSize.size16,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
-    },
-    optionTileSub: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.lightGreen,
-      textAlign: "center",
-      lineHeight: fontSize.size17,
     },
     mediaRow: {
       flexDirection: "row",
@@ -410,7 +395,8 @@ export function SourceCardRow({
 }
 
 /**
- * Filled tappable tile — "Choose from gallery", "Record a video".
+ * Filled tappable tile — "Choose from gallery", "Record a video", and
+ * (compact, three across) the Style / Music / Text tools.
  * Fills its share of a SourceCardRow.
  */
 export function SourceCard({
@@ -421,6 +407,7 @@ export function SourceCard({
   badgeIcon,
   tone = "green",
   onPress,
+  compact = false,
   disabled = false,
   loading = false,
   style,
@@ -432,8 +419,10 @@ export function SourceCard({
   sublabelIcon?: IconName;
   /** Round white chip top-right ("+" for gallery, REC dot for camera). */
   badgeIcon?: IconName;
-  /** Tile colour: olive green, or warm burnt orange. */
-  tone?: "green" | "warm";
+  /** Tile colour: olive green, warm burnt orange, or deep forest green. */
+  tone?: SourceTone;
+  /** Smaller tile for three in a row. */
+  compact?: boolean;
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -442,9 +431,7 @@ export function SourceCard({
   const { theme, styles } = useFlowStyles();
   const inactive = disabled || loading;
   const warm = tone === "warm";
-  const fill = warm
-    ? ([theme.selectCard, theme.orangeBrownText] as const)
-    : ([theme.buttonBack, theme.darkGreen] as const);
+  const fill = sourceToneFill(theme, tone);
   // Gentle press-down (skipped with Reduce Motion) + a light haptic tap
   const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
@@ -457,6 +444,7 @@ export function SourceCard({
       style={[
         styles.sourceShadow,
         warm && styles.sourceShadowWarm,
+        compact && styles.sourceShadowCompact,
         pressStyle,
         disabled && styles.disabled,
         style,
@@ -475,7 +463,7 @@ export function SourceCard({
           scale.value = withTiming(1, { duration: 160 });
         }}
         disabled={inactive}
-        style={styles.sourceCard}
+        style={[styles.sourceCard, compact && styles.sourceCardCompact]}
         accessibilityRole="button"
         accessibilityLabel={sublabel ? `${label}. ${sublabel}` : label}
         accessibilityState={{ disabled: inactive, busy: loading }}
@@ -489,29 +477,37 @@ export function SourceCard({
         />
         <MaterialIcons
           name={icon}
-          size={moderateWidthScale(108)}
+          size={moderateWidthScale(compact ? 84 : 108)}
           color={theme.white}
-          style={styles.sourceWatermark}
+          style={[
+            styles.sourceWatermark,
+            compact && styles.sourceWatermarkCompact,
+          ]}
           pointerEvents="none"
         />
 
         <View style={styles.sourceTop}>
-          <View style={styles.sourceIcon}>
+          <View style={[styles.sourceIcon, compact && styles.sourceIconCompact]}>
             {loading ? (
               <ActivityIndicator color={theme.white} />
             ) : (
               <MaterialIcons
                 name={icon}
-                size={moderateWidthScale(26)}
+                size={moderateWidthScale(compact ? 24 : 26)}
                 color={theme.white}
               />
             )}
           </View>
           {badgeIcon ? (
-            <View style={styles.sourceAction} pointerEvents="none">
+            <View
+              style={[styles.sourceAction, compact && styles.sourceActionCompact]}
+              pointerEvents="none"
+            >
               <MaterialIcons
                 name={badgeIcon}
-                size={moderateWidthScale(warm ? 14 : 18)}
+                size={moderateWidthScale(
+                  badgeIcon === "fiber-manual-record" ? 14 : compact ? 16 : 18,
+                )}
                 color={warm ? theme.selectCard : theme.darkGreen}
               />
             </View>
@@ -519,7 +515,10 @@ export function SourceCard({
         </View>
 
         <View style={styles.sourceText}>
-          <Text style={styles.sourceLabel} numberOfLines={2}>
+          <Text
+            style={[styles.sourceLabel, compact && styles.sourceLabelCompact]}
+            numberOfLines={compact ? 1 : 2}
+          >
             {label}
           </Text>
           {sublabel ? (
@@ -527,11 +526,17 @@ export function SourceCard({
               {sublabelIcon ? (
                 <MaterialIcons
                   name={sublabelIcon}
-                  size={moderateWidthScale(14)}
-                  color={theme.white85}
+                  size={moderateWidthScale(compact ? 16 : 14)}
+                  color={compact ? theme.white : theme.white85}
                 />
               ) : null}
-              <Text style={styles.sourceMetaText} numberOfLines={2}>
+              <Text
+                style={[
+                  styles.sourceMetaText,
+                  compact && styles.sourceMetaTextCompact,
+                ]}
+                numberOfLines={compact ? 1 : 2}
+              >
                 {sublabel}
               </Text>
             </View>
@@ -616,84 +621,6 @@ export function OptionRow({
         size={moderateWidthScale(28)}
         color={theme.darkGreen}
       />
-    </TouchableOpacity>
-  );
-}
-
-/** Equal-width row for OptionTile cards. */
-export function OptionTileRow({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const { styles } = useFlowStyles();
-  return <View style={[styles.optionTileRow, style]}>{children}</View>;
-}
-
-/** Compact OptionRow for a row of three: icon, title, short summary. */
-export function OptionTile({
-  icon,
-  title,
-  subtitle,
-  onPress,
-  done = false,
-  disabled = false,
-  accessibilityHint,
-}: {
-  icon: IconName;
-  title: string;
-  subtitle?: string | null;
-  onPress: () => void;
-  /** Filled icon + check badge once something is set. */
-  done?: boolean;
-  disabled?: boolean;
-  accessibilityHint?: string;
-}) {
-  const { theme, styles } = useFlowStyles();
-  return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.card,
-        styles.optionTile,
-        done && styles.optionTileDone,
-        disabled && styles.disabled,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
-      accessibilityHint={accessibilityHint}
-      accessibilityState={{ disabled }}
-    >
-      {done ? (
-        <View style={styles.optionTileBadge}>
-          <MaterialIcons
-            name="check"
-            size={moderateWidthScale(14)}
-            color={theme.white}
-          />
-        </View>
-      ) : null}
-      <View style={[styles.optionTileIcon, done && styles.optionTileIconDone]}>
-        <MaterialIcons
-          name={icon}
-          size={moderateWidthScale(26)}
-          color={done ? theme.white : theme.selectCard}
-        />
-      </View>
-      <View style={styles.optionTileText}>
-        <Text style={styles.optionTileTitle} numberOfLines={1}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text style={styles.optionTileSub} numberOfLines={2}>
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
     </TouchableOpacity>
   );
 }

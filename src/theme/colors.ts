@@ -10,6 +10,8 @@ export const themes = {
     green: "#91E630",
     toggleActive: "#27C840",
     darkGreen: "#283618",
+    // Deepest brand green — gradient end on dark filled tiles
+    darkGreenDeep: "#18210E",
     darkGreenLight: "rgba(96, 108, 56, 1)",
     lightGreen: "rgba(40, 54, 24, 0.7)",
     lightGreen6: "rgba(40, 54, 24, 0.6)",

@@ -56,12 +56,12 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
       borderTopLeftRadius: moderateWidthScale(22),
       borderTopRightRadius: moderateWidthScale(22),
-      paddingTop: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(2),
     },
     row: {
       flexDirection: "row",
       alignItems: "center",
-      minHeight: heightScale(52),
+      minHeight: heightScale(46),
       paddingHorizontal: moderateWidthScale(8),
     },
     side: {
@@ -73,9 +73,9 @@ const createStyles = (theme: Theme) =>
       paddingRight: moderateWidthScale(12),
     },
     backBtn: {
-      width: widthScale(48),
-      height: widthScale(48),
-      borderRadius: widthScale(24),
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: widthScale(22),
       alignItems: "center",
       justifyContent: "center",
     },
@@ -97,7 +97,7 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       gap: moderateWidthScale(5),
       paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(2),
+      paddingTop: 0,
       paddingBottom: moderateHeightScale(4),
     },
     segment: {
