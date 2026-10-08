@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -8,7 +9,12 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { useTranslation } from "react-i18next";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -91,6 +97,11 @@ import type {
 } from "@/src/types/reels";
 import { normalizeReelTemplateMediaFields } from "@/src/types/reels";
 import { isLikelyVideoUri } from "@/src/utils/prepareImageForUpload";
+import {
+  formatMusicName,
+  mediaRequirementLabel,
+  templateTextFieldLabel,
+} from "@/src/utils/templateGallery";
 
 /**
  * Template reel — one task per screen:
@@ -129,29 +140,6 @@ function slotAcceptsVideo(field: ReelTemplateMediaField | undefined): boolean {
   return field?.accepted_types?.includes("video") ?? true;
 }
 
-function mediaRequirementLabel(
-  fields: ReelTemplateMediaField[],
-  t: (key: string, options?: Record<string, unknown>) => string,
-): string {
-  const count = fields.length;
-  if (count === 0) return "";
-  const hasImage = fields.some((f) => f.accepted_types.includes("image"));
-  const hasVideo = fields.some((f) => f.accepted_types.includes("video"));
-  if (hasImage && !hasVideo) {
-    return count === 1
-      ? t("photosNeededImagesOne")
-      : t("photosNeededImages", { count });
-  }
-  if (hasVideo && !hasImage) {
-    return count === 1
-      ? t("videosNeededOne")
-      : t("videosNeeded", { count });
-  }
-  return count === 1
-    ? t("photosNeededOne")
-    : t("photosNeeded", { count });
-}
-
 function slotTypeHint(
   field: ReelTemplateMediaField,
   t: (key: string) => string,
@@ -184,14 +172,6 @@ type SlotItem = {
   mediaId: number | null;
   previewUri: string | null;
   name: string | null;
-};
-
-const TEXT_FIELD_LABELS: Record<string, string> = {
-  business_name: "businessNameField",
-  tagline: "taglineField",
-  deal_text: "dealTextField",
-  service_name: "serviceNameField",
-  product_name: "productNameField",
 };
 
 const createStyles = (theme: Theme) =>
@@ -271,11 +251,6 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-function formatMusicName(name: string | null): string {
-  if (!name?.trim()) return "";
-  return name.replace(/\.(mp3|wav|m4a|aac)$/i, "").replace(/-/g, " ");
-}
-
 export default function ReelTemplatesScreen() {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -284,6 +259,8 @@ export default function ReelTemplatesScreen() {
   const router = useRouter();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
+  // Set when a template was picked on the template gallery
+  const params = useLocalSearchParams<{ templateId?: string }>();
 
   const businessName = useAppSelector(
     (s) => s.user.business_name || s.user.businessStatus?.business_name || "",
@@ -322,7 +299,11 @@ export default function ReelTemplatesScreen() {
     selectBsnsCategory,
   ]);
 
-  const [step, setStep] = useState<WizardStep>("template");
+  // Picked on the template gallery → that was the choice; start at the media
+  const fromGallery = !!params.templateId;
+  const [step, setStep] = useState<WizardStep>(
+    fromGallery ? "media" : "template",
+  );
   const [templates, setTemplates] = useState<ReelTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -411,10 +392,19 @@ export default function ReelTemplatesScreen() {
       const data = await listReelTemplates();
       const active = data.filter((item) => item.is_active !== false);
       setTemplates(active);
-      if (active.length === 1) {
-        applyTemplate(active[0]);
+      // Step 1 opens with the gallery's template already selected
+      const picked = active.find(
+        (item) => String(item.id) === params.templateId,
+      );
+      if (picked) {
+        applyTemplate(picked);
+      } else {
+        // Gallery's template is gone → let them choose here
+        setStep("template");
+        if (active.length === 1) applyTemplate(active[0]);
       }
     } catch (error: any) {
+      setStep("template");
       Logger.error("Failed to load reel templates:", error);
       setTemplates([]);
       setTemplatesError(
@@ -423,7 +413,7 @@ export default function ReelTemplatesScreen() {
     } finally {
       setLoadingTemplates(false);
     }
-  }, [applyTemplate, t]);
+  }, [applyTemplate, params.templateId, t]);
 
   /** Returns the blocked message, "" when the user can post, null if it couldn't load. */
   const loadReelLimits = useCallback(async (): Promise<string | null> => {
@@ -473,10 +463,7 @@ export default function ReelTemplatesScreen() {
   }, [resolvedBusinessCategory]);
 
   const fieldLabel = useCallback(
-    (field: string) => {
-      const key = TEXT_FIELD_LABELS[field];
-      return key ? t(key) : field.replace(/_/g, " ");
-    },
+    (field: string) => templateTextFieldLabel(field, t),
     [t],
   );
 
@@ -1093,11 +1080,13 @@ export default function ReelTemplatesScreen() {
       return true;
     }
     if (step === "media") {
+      // From the gallery, back goes to the gallery
+      if (fromGallery) return false;
       setStep("template");
       return true;
     }
     return false;
-  }, [step, submitting]);
+  }, [fromGallery, step, submitting]);
 
   // The screen must stay open until the uploads finish; otherwise hardware
   // back goes one step back.
@@ -1254,6 +1243,10 @@ export default function ReelTemplatesScreen() {
             .filter(Boolean)
             .join(" · ")}
         />
+        {/* From the gallery: the slots come once the template has loaded */}
+        {loadingTemplates ? (
+          <ActivityIndicator color={theme.buttonBack} />
+        ) : null}
         <View style={styles.slots}>
           {selectedMedia.map((media, index) => {
             const field = mediaFields[index];

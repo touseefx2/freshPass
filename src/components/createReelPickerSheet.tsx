@@ -188,9 +188,7 @@ export type CreateReelPickerSheetProps = {
   onRecordPress: () => void;
   onUploadPress: () => void;
   onGenerateFromTemplatePress?: () => void;
-  /** Image Reel → AI Tools template reel */
-  onImageReelPress: () => void;
-  /** AI Reel → AI Tools auto reel */
+  /** AI Reels → template gallery (Video tab) */
   onAiReelPress: () => void;
   /** Distance from screen bottom so the card sits just above the center X. */
   bottomOffset: number;
@@ -201,7 +199,7 @@ export type CreateReelPickerSheetProps = {
 type PickerStep = "type" | "source";
 
 const REEL_TYPES: {
-  key: "simple" | "image" | "ai";
+  key: "simple" | "ai";
   icon: React.ComponentProps<typeof MaterialIcons>["name"];
   titleKey: string;
   descKey: string;
@@ -213,12 +211,6 @@ const REEL_TYPES: {
     descKey: "simpleReelDesc",
   },
   {
-    key: "image",
-    icon: "photo-library",
-    titleKey: "imageReelTitle",
-    descKey: "imageReelDesc",
-  },
-  {
     key: "ai",
     icon: "auto-awesome",
     titleKey: "aiReelTitle",
@@ -227,7 +219,7 @@ const REEL_TYPES: {
 ];
 
 /**
- * Create Reel picker: first the reel type (Upload / Image / AI), then for
+ * Create Reel picker: first the reel type (Upload / AI), then for
  * Upload the video source (Record / Gallery, max 30s).
  * Floating card just above the center tab FAB — tab bar / X stay visible.
  */
@@ -238,7 +230,6 @@ export default function CreateReelPickerSheet({
   onRecordPress,
   onUploadPress,
   onGenerateFromTemplatePress,
-  onImageReelPress,
   onAiReelPress,
   bottomOffset,
   tabBarClearance,
@@ -260,8 +251,7 @@ export default function CreateReelPickerSheet({
     if (key === "simple") {
       if (onSimpleReelPress) onSimpleReelPress();
       else setStep("source");
-    } else if (key === "image") onImageReelPress();
-    else onAiReelPress();
+    } else onAiReelPress();
   };
 
   const isTypeStep = step === "type";

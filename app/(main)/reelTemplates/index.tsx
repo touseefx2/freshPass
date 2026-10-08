@@ -236,8 +236,12 @@ export default function ReelTemplatesScreen() {
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
 
-  // Set when coming back from a failed auto reel ("Try another template")
-  const params = useLocalSearchParams<{ sourceMediaAssetId?: string }>();
+  // sourceMediaAssetId: back from a failed auto reel ("Try another template")
+  // templateId: picked on the template gallery
+  const params = useLocalSearchParams<{
+    sourceMediaAssetId?: string;
+    templateId?: string;
+  }>();
 
   const businessStatus = useAppSelector((s) => s.user.businessStatus);
   const userRole = useAppSelector((s) => s.user.userRole);
@@ -274,7 +278,11 @@ export default function ReelTemplatesScreen() {
     selectBsnsCategory,
   ]);
 
-  const [step, setStep] = useState<WizardStep>("style");
+  // Picked on the template gallery → that was the choice; start at the video
+  const fromGallery = !!params.templateId;
+  const [step, setStep] = useState<WizardStep>(
+    fromGallery ? "video" : "style",
+  );
   const [templates, setTemplates] = useState<AutoReelTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -339,18 +347,26 @@ export default function ReelTemplatesScreen() {
     try {
       const data = await listAutoReelTemplates();
       setTemplates(data);
-      // User always picks the template themselves, even when there's only one
-      setSelectedId((prev) =>
-        prev != null && data.some((item) => item.id === prev) ? prev : null,
-      );
+      // User always picks the template themselves, even when there's only
+      // one — on the template gallery (step 1 opens with it) or here
+      const galleryId = params.templateId ? Number(params.templateId) : null;
+      // Gallery's template is gone → let them choose here
+      if (galleryId != null && !data.some((item) => item.id === galleryId)) {
+        setStep("style");
+      }
+      setSelectedId((prev) => {
+        const id = prev ?? galleryId;
+        return id != null && data.some((item) => item.id === id) ? id : null;
+      });
     } catch (error: any) {
+      if (params.templateId) setStep("style");
       Logger.error("Failed to load auto reel templates:", error);
       setTemplates([]);
       setTemplatesError(error?.message || t("failedToLoadTemplates"));
     } finally {
       setLoadingTemplates(false);
     }
-  }, [t]);
+  }, [params.templateId, t]);
 
   useEffect(() => {
     void loadTemplates();
@@ -993,11 +1009,13 @@ export default function ReelTemplatesScreen() {
       return true;
     }
     if (step === "video") {
+      // From the gallery, back goes to the gallery
+      if (fromGallery) return false;
       setStep("style");
       return true;
     }
     return false;
-  }, [step]);
+  }, [fromGallery, step]);
 
   // Compress + upload of a 3-minute video can take a minute — the screen must
   // stay open until it finishes, so confirm before leaving mid-upload.

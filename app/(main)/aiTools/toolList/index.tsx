@@ -16,7 +16,6 @@ import { moderateWidthScale } from "@/src/theme/dimensions";
 import { createStyles } from "./styles";
 import StackHeader from "@/src/components/StackHeader";
 import MediaLibraryMyReelsTab from "@/src/components/mediaLibraryMyReelsTab";
-import ReelTypePicker, { type ReelType } from "@/src/components/ReelTypePicker";
 import { canManageReels } from "@/src/utils/reelUploadGate";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -141,15 +140,12 @@ export default function ToolList() {
     } catch {}
   };
 
-  // "Generate Reel" opens a choice: Shotstack template reel or AI auto reel
-  const [reelTypeOpen, setReelTypeOpen] = useState(false);
-  const handleReelTypeSelect = (type: ReelType) => {
-    setReelTypeOpen(false);
-    router.push(
-      (type === "template"
-        ? "/(main)/templateReels"
-        : "/(main)/reelTemplates") as any,
-    );
+  // "Create AI reel" → template gallery on the Video tab
+  const openTemplateGallery = () => {
+    router.push({
+      pathname: "/(main)/templateGallery",
+      params: { kind: "video" },
+    } as any);
   };
 
   const openTool = (paramTitle: string) => {
@@ -350,20 +346,15 @@ export default function ToolList() {
     </View>
   );
 
-  const reelFeatured = () => (
-    <>
-      {renderFeatured({
-        icon: GenerateReelIcon,
-        title: t("generateReel"),
-        desc: t("generateReelDesc"),
-        cta: t("generateReelCta"),
-        onPress: () => setReelTypeOpen((open) => !open),
-        expanded: reelTypeOpen,
-      })}
-      {/* Monthly reel limit is checked on Reel Templates (before Make my reel) */}
-      <ReelTypePicker visible={reelTypeOpen} onSelect={handleReelTypeSelect} />
-    </>
-  );
+  // Monthly reel limit is checked on the reel screens behind the gallery
+  const reelFeatured = () =>
+    renderFeatured({
+      icon: GenerateReelIcon,
+      title: t("generateReel"),
+      desc: t("generateReelDesc"),
+      cta: t("generateReelCta"),
+      onPress: openTemplateGallery,
+    });
 
   const libraryLinks: LibraryLink[] = [
     ...(isCustomer
