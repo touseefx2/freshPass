@@ -3335,14 +3335,17 @@ export default function ReelStudioScreen() {
   // ── Renders ───────────────────────────────────────────────────────
 
   // Short screens: give the preview the room while a tool / clip row is open
+  // Focus mode: an open tool hides the title so the video gets the room
   const showEditTitle =
-    !(keyboardOpen && step === "style") &&
-    !(compact && step === "style" && !!styleTool) &&
+    !(step === "style" && (!!styleTool || keyboardOpen)) &&
     !(compact && step === "trim" && clips.length > 1);
   const shownTitleH = showEditTitle ? editTitleH : 0;
-  // Below this the preview stops shrinking and the body scrolls instead
+  // Below this the preview stops shrinking (the tool sheet / body scrolls
+  // instead). Typing gets the room back so the text box stays usable.
   const minPreviewH = styleTool
-    ? heightScale(compact ? 96 : 120)
+    ? keyboardOpen
+      ? heightScale(compact ? 96 : 120)
+      : heightScale(compact ? 150 : 200)
     : heightScale(compact ? 160 : 180);
   const editPreviewH = Math.max(
     minPreviewH,
@@ -3350,7 +3353,17 @@ export default function ReelStudioScreen() {
   );
 
   const renderPreview = () => (
-    <View style={[styles.previewWrap, { flex: 0, height: editPreviewH }]}>
+    <View
+      style={[
+        styles.previewWrap,
+        {
+          flex: 0,
+          height: editPreviewH,
+          // Title hidden → keep a little air under the step bar
+          paddingTop: showEditTitle ? 0 : moderateHeightScale(8),
+        },
+      ]}
+    >
       <View style={styles.previewCard} onLayout={onPreviewLayout}>
         {frameSize.width > 0 ? (
           <View
@@ -4217,7 +4230,7 @@ export default function ReelStudioScreen() {
             ? moderateHeightScale(6)
             : Math.max(insets.bottom, moderateHeightScale(12)),
           maxHeight: Math.min(
-            windowHeight * (keyboardOpen ? 0.42 : 0.58),
+            windowHeight * (keyboardOpen ? 0.42 : 0.46),
             editViewportH > 0
               ? editViewportH - shownTitleH - minPreviewH
               : Number.POSITIVE_INFINITY,
@@ -4253,7 +4266,7 @@ export default function ReelStudioScreen() {
       <ScrollView
         contentContainerStyle={styles.sheetBody}
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator
         bounces={false}
       >
         {styleTool === "style"
