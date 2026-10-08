@@ -576,19 +576,12 @@ const createStyles = (theme: Theme, compact: boolean) =>
       shadowRadius: moderateWidthScale(16),
       elevation: 12,
     },
-    sheetHandle: {
-      alignSelf: "center",
-      width: widthScale(44),
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: theme.borderMedium,
-    },
     sheetHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(10),
+      paddingTop: moderateHeightScale(14),
       paddingBottom: moderateHeightScale(8),
       gap: moderateWidthScale(10),
     },
@@ -4232,7 +4225,6 @@ export default function ReelStudioScreen() {
         },
       ]}
     >
-      <View style={styles.sheetHandle} />
       <View style={styles.sheetHeader}>
         <Text style={styles.sheetTitle} accessibilityRole="header">
           {toolTitle}
