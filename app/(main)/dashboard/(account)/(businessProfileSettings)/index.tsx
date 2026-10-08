@@ -36,6 +36,7 @@ type SettingKey =
   | "team"
   | "socialMedia"
   | "products"
+  | "orders"
   | "freshpassSubscription"
   | "affiliationRequests"
   | "mediaLibrary"
@@ -322,6 +323,8 @@ export default function BusinessProfileSettingsScreen() {
       router.push("./team");
     } else if (key === "products") {
       router.push("./products");
+    } else if (key === "orders") {
+      router.push("./orders" as any);
     } else if (key === "freshpassSubscription") {
       router.push("/(main)/dashboard/(account)/subscription");
     } else if (key === "allAppointments") {
@@ -361,6 +364,10 @@ export default function BusinessProfileSettingsScreen() {
       : []),
     { key: "socialMedia", title: t("yourSocialMedia") },
     { key: "products", title: t("productsInventoryShort") },
+    // Order APIs are owner-only
+    ...(isBusinessOwner
+      ? [{ key: "orders" as const, title: t("ordersTitle") }]
+      : []),
     ...(isBusinessOwner &&
     businessStatus?.subscription_status === "active" &&
     businessStatus?.subscription_is_single === false
@@ -405,6 +412,8 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "share-variant", family: "community", variant: "accent" };
       case "products":
         return { name: "inventory-2", family: "material", variant: "dark" };
+      case "orders":
+        return { name: "receipt-long", family: "material", variant: "accent" };
       case "affiliationRequests":
         return { name: "handshake", family: "community", variant: "accent" };
       case "mediaLibrary":

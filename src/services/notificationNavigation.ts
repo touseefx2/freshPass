@@ -38,7 +38,12 @@ export type NotificationSubType =
   | "business_reel_comment"
   | "business_reel_booking"
   | "business_reel_likes"
-  | "appointment_checkout_failed";
+  | "appointment_checkout_failed"
+  | "order_shipped"
+  | "order_shipping_details_updated"
+  | "order_ready_for_pickup"
+  | "order_picked_up"
+  | "order_cancelled";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -179,6 +184,7 @@ function openOwnerReelsList(
  * - type "follow" + sub_type follow_new_reel → reelsFeed; else → businessDetail
  * - type "business_follower" → owner's businessDetail
  * - type "business_reel" + comment → reelsFeed+comments; booking → appointment; likes → reelStats
+ * - type "order" + order_id / model_id (customer role) → shop order screen (every order_* subType)
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
@@ -493,6 +499,24 @@ export function navigateFromNotificationData(
           );
           return;
       }
+    }
+  }
+
+  // Product order updates (shipped, shipping details, ready for pickup,
+  // picked up, cancelled) — all open the customer's order screen
+  if (type === "order") {
+    const orderId = pickNumber(data, "order_id", "model_id");
+    const userRole = store.getState().user.userRole;
+    if (orderId != null && userRole === "customer") {
+      router.push({
+        pathname: "/(main)/shop/orderDetail" as any,
+        params: { orderId: String(orderId) },
+      });
+      Logger.log("------>navigateFromNotificationData (order) -> shop/orderDetail", {
+        order_id: orderId,
+        subType,
+      });
+      return;
     }
   }
 

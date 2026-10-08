@@ -1011,4 +1011,6 @@ export const orderEndpoints = {
   businessById: (id: string | number) => `/api/orders/business/${id}`,
   businessStats: `/api/orders/business/stats`,
   updateStatus: (id: string | number) => `/api/orders/${id}/status`,
+  shippingDetails: (id: string | number) =>
+    `/api/orders/${id}/shipping-details`,
 };

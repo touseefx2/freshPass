@@ -9,7 +9,6 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
 import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
@@ -17,10 +16,16 @@ import {
   heightScale,
   moderateHeightScale,
   moderateWidthScale,
+  widthScale,
 } from "@/src/theme/dimensions";
 import AppImage from "@/src/components/AppImage";
-import StackHeader from "@/src/components/StackHeader";
-import Button from "@/src/components/button";
+import FlowHeader from "@/src/components/reelFlow/flowHeader";
+import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import {
+  FlowCard,
+  InfoNote,
+  SectionLabel,
+} from "@/src/components/reelFlow/flowParts";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   setShippingMethod,
@@ -29,6 +34,9 @@ import {
 import { describeDelivery } from "@/src/utils/shopProductHelpers";
 
 const MAX_QTY_PER_ITEM = 10;
+/** Show "Only N left" at or below this stock. */
+const LOW_STOCK = 5;
+const SHOP_STEP_TOTAL = 3;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -40,17 +48,18 @@ const createStyles = (theme: Theme) =>
       flex: 1,
     },
     contentContainer: {
-      paddingBottom: moderateHeightScale(24),
-    },
-    actions: {
-      marginTop: moderateHeightScale(20),
       paddingHorizontal: moderateWidthScale(20),
-      gap: moderateHeightScale(10),
+      paddingTop: moderateHeightScale(8),
+      paddingBottom: moderateHeightScale(24),
+      gap: moderateHeightScale(16),
     },
     hero: {
-      width: "100%",
-      height: heightScale(280),
-      backgroundColor: theme.lightGreen05,
+      height: heightScale(260),
+      borderRadius: moderateWidthScale(22),
+      overflow: "hidden",
+      backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -58,81 +67,131 @@ const createStyles = (theme: Theme) =>
       width: "100%",
       height: "100%",
     },
-    body: {
-      paddingHorizontal: moderateWidthScale(20),
-      paddingTop: moderateHeightScale(16),
-      gap: moderateHeightScale(8),
+    heroEmpty: {
+      width: widthScale(96),
+      height: widthScale(96),
+      borderRadius: widthScale(48),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    info: {
+      gap: moderateHeightScale(6),
     },
     brand: {
       fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen5,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+      letterSpacing: 1,
+      textTransform: "uppercase",
     },
     name: {
+      fontSize: fontSize.size26,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size32,
+    },
+    price: {
       fontSize: fontSize.size24,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-    },
-    price: {
-      fontSize: fontSize.size22,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      marginTop: moderateHeightScale(4),
+      fontVariant: ["tabular-nums"],
     },
     description: {
-      fontSize: fontSize.size14,
+      marginTop: moderateHeightScale(4),
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
-      lineHeight: fontSize.size20,
-      marginTop: moderateHeightScale(8),
+      color: theme.lightGreen,
+      lineHeight: fontSize.size22,
     },
-    bullet: {
+    deliveryCard: {
+      paddingVertical: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(16),
+    },
+    deliveryRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(8),
-      marginTop: moderateHeightScale(6),
+      gap: moderateWidthScale(12),
+      minHeight: heightScale(52),
     },
-    bulletText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
+    deliveryDivider: {
+      height: 1,
+      backgroundColor: theme.borderLight,
+      marginLeft: widthScale(40) + moderateWidthScale(12),
+    },
+    deliveryIcon: {
+      width: widthScale(40),
+      height: widthScale(40),
+      borderRadius: widthScale(20),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    deliveryText: {
       flex: 1,
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    qtyCard: {
+      padding: moderateWidthScale(16),
+      gap: moderateHeightScale(14),
     },
     qtyRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
-      marginTop: moderateHeightScale(16),
     },
     qtyLabel: {
       flex: 1,
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
+    stepper: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: widthScale(26),
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      padding: moderateWidthScale(4),
+    },
     qtyBtn: {
-      width: moderateWidthScale(34),
-      height: moderateWidthScale(34),
-      borderRadius: moderateWidthScale(8),
+      width: widthScale(44),
+      height: widthScale(44),
+      borderRadius: widthScale(22),
       backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
     },
-    qtyBtnDisabled: { opacity: 0.4 },
+    qtyBtnDisabled: { opacity: 0.35 },
     qtyText: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      minWidth: moderateWidthScale(24),
+      minWidth: widthScale(40),
       textAlign: "center",
+      fontVariant: ["tabular-nums"],
     },
-    notice: {
-      fontSize: fontSize.size13,
+    totalRow: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      paddingTop: moderateHeightScale(12),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    totalLabel: {
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
-      color: theme.selectCard,
-      textAlign: "center",
+      color: theme.lightGreen,
+    },
+    totalValue: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
     },
     empty: {
       flex: 1,
@@ -141,30 +200,39 @@ const createStyles = (theme: Theme) =>
       padding: moderateWidthScale(24),
     },
     emptyText: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
+      color: theme.lightGreen,
       textAlign: "center",
     },
   });
 
+/** Shop flow, step 1 of 3: the product and how many. */
 export default function ProductDetailScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [colors]);
-  const insets = useSafeAreaInsets();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { productId } = useLocalSearchParams<{ productId?: string }>();
   const shopProduct = useAppSelector((s) => s.shopCart.product);
   const quantity = useAppSelector((s) => s.shopCart.quantity);
   const product = shopProduct && shopProduct.id === productId ? shopProduct : null;
 
+  const header = (
+    <FlowHeader
+      title={t("shopFlowTitle")}
+      step={product ? { current: 1, total: SHOP_STEP_TOTAL } : null}
+      onBack={() => router.back()}
+      backIcon="close"
+    />
+  );
+
   if (!product) {
     return (
       <View style={styles.container}>
-        <StackHeader title={t("shopProductDetails")} />
+        {header}
         <View style={styles.empty}>
           <Text style={styles.emptyText}>{t("productNotFound")}</Text>
         </View>
@@ -174,6 +242,11 @@ export default function ProductDetailScreen() {
 
   const outOfStock = product.trackInventory && product.inventoryCount <= 0;
   const takingOrders = !!product.delivery?.configured;
+  const canBuy = takingOrders && !outOfStock;
+  const lowStock =
+    product.trackInventory &&
+    product.inventoryCount > 0 &&
+    product.inventoryCount <= LOW_STOCK;
   const maxQty = product.trackInventory
     ? Math.min(product.inventoryCount, MAX_QTY_PER_ITEM)
     : MAX_QTY_PER_ITEM;
@@ -181,13 +254,10 @@ export default function ProductDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <StackHeader title={t("shopProductDetails")} />
+      {header}
       <ScrollView
         style={styles.content}
-        contentContainerStyle={[
-          styles.contentContainer,
-          { paddingBottom: insets.bottom + moderateHeightScale(24) },
-        ]}
+        contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
@@ -198,82 +268,123 @@ export default function ProductDetailScreen() {
               resizeMode="cover"
             />
           ) : (
-            <MaterialIcons
-              name="shopping-bag"
-              size={moderateWidthScale(72)}
-              color={theme.darkGreen}
-            />
+            <View style={styles.heroEmpty}>
+              <MaterialIcons
+                name="shopping-bag"
+                size={moderateWidthScale(48)}
+                color={theme.selectCard}
+              />
+            </View>
           )}
         </View>
 
-        <View style={styles.body}>
-          <Text style={styles.brand}>{product.brand}</Text>
-          <Text style={styles.name}>{product.name}</Text>
-          <Text style={styles.price}>
-            {formatShopPrice(product.sellingPrice)}
+        <View style={styles.info}>
+          {!!product.brand && <Text style={styles.brand}>{product.brand}</Text>}
+          <Text style={styles.name} accessibilityRole="header">
+            {product.name}
           </Text>
+          <Text style={styles.price}>{formatShopPrice(product.sellingPrice)}</Text>
           {!!product.description && (
             <Text style={styles.description}>{product.description}</Text>
           )}
+        </View>
 
-          {deliveryLines.map((line) => (
-            <View key={line.label} style={styles.bullet}>
-              <MaterialIcons
-                name={line.icon}
-                size={moderateWidthScale(18)}
-                color={theme.buttonBack}
+        {deliveryLines.length > 0 ? (
+          <FlowCard style={styles.deliveryCard}>
+            {deliveryLines.map((line, i) => (
+              <React.Fragment key={line.label}>
+                {i > 0 ? <View style={styles.deliveryDivider} /> : null}
+                <View style={styles.deliveryRow}>
+                  <View style={styles.deliveryIcon}>
+                    <MaterialIcons
+                      name={line.icon}
+                      size={moderateWidthScale(20)}
+                      color={theme.selectCard}
+                    />
+                  </View>
+                  <Text style={styles.deliveryText}>{line.label}</Text>
+                </View>
+              </React.Fragment>
+            ))}
+          </FlowCard>
+        ) : null}
+
+        {!takingOrders ? (
+          <InfoNote tone="warm" icon="storefront" text={t("salonNotTakingOrders")} />
+        ) : outOfStock ? (
+          <InfoNote tone="warm" icon="remove-shopping-cart" text={t("outOfStock")} />
+        ) : (
+          <>
+            <SectionLabel label={t("quantity")} />
+            <FlowCard style={styles.qtyCard}>
+              <View style={styles.qtyRow}>
+                <Text style={styles.qtyLabel}>
+                  {formatShopPrice(product.sellingPrice)}
+                </Text>
+                <View style={styles.stepper}>
+                  <TouchableOpacity
+                    style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
+                    disabled={quantity <= 1}
+                    onPress={() => dispatch(setShopQuantity(quantity - 1))}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("shopQtyLess")}
+                  >
+                    <MaterialIcons
+                      name="remove"
+                      size={moderateWidthScale(22)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.qtyText} accessibilityLiveRegion="polite">
+                    {quantity}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.qtyBtn,
+                      quantity >= maxQty && styles.qtyBtnDisabled,
+                    ]}
+                    disabled={quantity >= maxQty}
+                    onPress={() => dispatch(setShopQuantity(quantity + 1))}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("shopQtyMore")}
+                  >
+                    <MaterialIcons
+                      name="add"
+                      size={moderateWidthScale(22)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>{t("total")}</Text>
+                <Text style={styles.totalValue}>
+                  {formatShopPrice(product.sellingPrice * quantity)}
+                </Text>
+              </View>
+            </FlowCard>
+            {lowStock ? (
+              <InfoNote
+                tone="warm"
+                icon="inventory-2"
+                text={t("shopOnlyLeft", { count: product.inventoryCount })}
               />
-              <Text style={styles.bulletText}>{line.label}</Text>
-            </View>
-          ))}
-
-          {takingOrders && !outOfStock ? (
-            <View style={styles.qtyRow}>
-              <Text style={styles.qtyLabel}>{t("quantity")}</Text>
-              <TouchableOpacity
-                style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
-                disabled={quantity <= 1}
-                onPress={() => dispatch(setShopQuantity(quantity - 1))}
-              >
-                <MaterialIcons
-                  name="remove"
-                  size={moderateWidthScale(18)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-              <Text style={styles.qtyText}>{quantity}</Text>
-              <TouchableOpacity
-                style={[
-                  styles.qtyBtn,
-                  quantity >= maxQty && styles.qtyBtnDisabled,
-                ]}
-                disabled={quantity >= maxQty}
-                onPress={() => dispatch(setShopQuantity(quantity + 1))}
-              >
-                <MaterialIcons
-                  name="add"
-                  size={moderateWidthScale(18)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.actions}>
-          {!takingOrders ? (
-            <Text style={styles.notice}>{t("salonNotTakingOrders")}</Text>
-          ) : null}
-          <Button
-            title={outOfStock ? t("outOfStock") : t("buyNow")}
-            disabled={outOfStock || !takingOrders}
-            onPress={() => {
-              dispatch(setShippingMethod(null));
-              router.push("/(main)/shop/checkout" as any);
-            }}
-          />
-        </View>
+            ) : null}
+          </>
+        )}
       </ScrollView>
+
+      <FlowFooter
+        primary={{
+          label: outOfStock ? t("outOfStock") : t("shopNextDelivery"),
+          disabled: !canBuy,
+          trailingIcon: canBuy ? "chevron-right" : undefined,
+          onPress: () => {
+            dispatch(setShippingMethod(null));
+            router.push("/(main)/shop/checkout" as any);
+          },
+        }}
+      />
     </View>
   );
 }

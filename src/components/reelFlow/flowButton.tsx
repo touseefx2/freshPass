@@ -31,6 +31,8 @@ type Props = {
   trailingIcon?: keyof typeof MaterialIcons.glyphMap;
   style?: StyleProp<ViewStyle>;
   compact?: boolean;
+  /** Red label / icon for a destructive action (e.g. "Cancel order"). */
+  danger?: boolean;
   accessibilityHint?: string;
 };
 
@@ -80,6 +82,7 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       textDecorationLine: "underline",
     },
+    labelDanger: { color: theme.red },
     trailing: {
       position: "absolute",
       right: moderateWidthScale(18),
@@ -104,14 +107,18 @@ export default function FlowButton({
   trailingIcon,
   style,
   compact = false,
+  danger = false,
   accessibilityHint,
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const fg =
-    variant === "primary" ? theme.buttonText : theme.darkGreen;
+  const fg = danger
+    ? theme.red
+    : variant === "primary"
+      ? theme.buttonText
+      : theme.darkGreen;
   const inactive = disabled || loading;
 
   return (
@@ -155,6 +162,7 @@ export default function FlowButton({
                   : variant === "text"
                     ? styles.labelText
                     : styles.labelOutline,
+                danger && styles.labelDanger,
               ]}
               // Long translations wrap / shrink a little instead of clipping
               numberOfLines={2}
