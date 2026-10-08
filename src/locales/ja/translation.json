@@ -1996,7 +1996,7 @@
   "reelTooShortTitle": "動画が短すぎます",
   "reelTooShortMessage": "動画は{{min_seconds}}秒以上必要です。この動画は{{length}}です。トリムを広げるか、別のクリップを追加してください。",
   "reelTypeHeading": "作成方法を選んでください",
-  "reelTypeTemplateTitle": "テンプレートリール",
+  "reelTypeTemplateTitle": "フォトリール",
   "reelTypeTemplateDesc": "テンプレートを選び、写真や動画、テキストを追加します。",
   "reelTypeAutoTitle": "AIオートリール",
   "reelTypeAutoDesc": "未編集の動画を1本アップロード。AIが見どころを見つけてリールにします。",

@@ -1996,7 +1996,7 @@
   "reelTooShortTitle": "Video zu kurz",
   "reelTooShortMessage": "Videos müssen mindestens {{min_seconds}} Sekunden lang sein. Dieses ist {{length}}. Zieh die Trim-Griffe weiter auf oder füge einen weiteren Clip hinzu.",
   "reelTypeHeading": "Wie möchtest du es erstellen?",
-  "reelTypeTemplateTitle": "Vorlagen-Reel",
+  "reelTypeTemplateTitle": "Foto-Reel",
   "reelTypeTemplateDesc": "Wähle eine fertige Vorlage und füge Fotos oder Videos und Text hinzu.",
   "reelTypeAutoTitle": "KI-Auto-Reel",
   "reelTypeAutoDesc": "Lade ein Rohvideo hoch. Die KI findet die besten Momente und schneidet dein Reel.",

@@ -1996,7 +1996,7 @@
   "reelTooShortTitle": "Vidéo trop courte",
   "reelTooShortMessage": "Les vidéos doivent durer au moins {{min_seconds}} secondes. Celle-ci dure {{length}}. Élargissez le découpage ou ajoutez un autre clip.",
   "reelTypeHeading": "Comment voulez-vous le créer ?",
-  "reelTypeTemplateTitle": "Reel avec modèle",
+  "reelTypeTemplateTitle": "Reel photo",
   "reelTypeTemplateDesc": "Choisissez un modèle prêt et ajoutez vos photos ou vidéos et du texte.",
   "reelTypeAutoTitle": "Reel auto IA",
   "reelTypeAutoDesc": "Importez une vidéo brute. L’IA trouve les meilleurs moments et monte votre reel.",

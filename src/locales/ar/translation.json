@@ -1996,7 +1996,7 @@
   "reelTooShortTitle": "الفيديو قصير جدًا",
   "reelTooShortMessage": "يجب ألا تقل مدة الفيديو عن {{min_seconds}} ثوانٍ. مدة هذا الفيديو {{length}}. وسّع حدود القص أو أضف مقطعًا آخر.",
   "reelTypeHeading": "كيف تريد إنشاءه؟",
-  "reelTypeTemplateTitle": "ريل بقالب",
+  "reelTypeTemplateTitle": "ريل بالصور",
   "reelTypeTemplateDesc": "اختر قالبًا جاهزًا وأضف صورك أو فيديوهاتك ونصًا.",
   "reelTypeAutoTitle": "ريل تلقائي بالذكاء الاصطناعي",
   "reelTypeAutoDesc": "ارفع فيديو خامًا واحدًا. يجد الذكاء الاصطناعي أفضل اللحظات ويقص الريل.",
