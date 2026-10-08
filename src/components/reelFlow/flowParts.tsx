@@ -85,99 +85,84 @@ const createStyles = (theme: Theme) =>
       elevation: 2,
     },
     disabled: { opacity: 0.45 },
-    // ── Source card ("Choose from gallery" / "Record a video"): layered
-    // card, soft white→cream wash, warm + olive glows, gradient icon tile.
+    // ── Source cards ("Choose from gallery" / "Record a video"): two filled
+    // brand tiles side by side — icon + action chip on top, label at the
+    // bottom, a faint oversized icon as texture.
+    sourceRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+    },
     sourceShadow: {
-      borderRadius: moderateWidthScale(24),
-      backgroundColor: theme.white,
+      flex: 1,
+      minWidth: 0,
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.darkGreen,
       shadowColor: theme.darkGreen,
       shadowOffset: { width: 0, height: moderateHeightScale(8) },
-      shadowOpacity: 0.12,
-      shadowRadius: moderateWidthScale(18),
-      elevation: 5,
+      shadowOpacity: 0.22,
+      shadowRadius: moderateWidthScale(14),
+      elevation: 6,
+    },
+    sourceShadowWarm: {
+      backgroundColor: theme.orangeBrownText,
+      shadowColor: theme.orangeBrownText,
     },
     sourceCard: {
-      borderRadius: moderateWidthScale(24),
-      borderWidth: 1,
-      borderColor: theme.borderLight,
+      flexGrow: 1,
+      borderRadius: moderateWidthScale(22),
       overflow: "hidden",
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: moderateHeightScale(22),
-      paddingHorizontal: moderateWidthScale(18),
-      gap: moderateHeightScale(12),
-      minHeight: heightScale(150),
+      justifyContent: "space-between",
+      gap: moderateHeightScale(18),
+      padding: moderateWidthScale(14),
+      minHeight: heightScale(168),
     },
-    sourceGlow: {
+    sourceWatermark: {
       position: "absolute",
-      borderRadius: 999,
+      right: -widthScale(18),
+      bottom: -widthScale(20),
+      opacity: 0.1,
+      transform: [{ rotate: "-12deg" }],
     },
-    sourceGlowWarm: {
-      width: widthScale(170),
-      height: widthScale(170),
-      top: -widthScale(70),
-      right: -widthScale(50),
-      backgroundColor: theme.orangeBrown01,
-    },
-    sourceGlowCool: {
-      width: widthScale(130),
-      height: widthScale(130),
-      bottom: -widthScale(60),
-      left: -widthScale(40),
-      backgroundColor: theme.lightGreen05,
-    },
-    sourceHalo: {
-      width: widthScale(92),
-      height: widthScale(92),
-      borderRadius: widthScale(30),
-      backgroundColor: theme.orangeBrown01,
-      borderWidth: 1,
-      borderColor: theme.orangeBrown30,
-      alignItems: "center",
-      justifyContent: "center",
+    sourceTop: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
     },
     sourceIcon: {
-      width: widthScale(72),
-      height: widthScale(72),
-      borderRadius: widthScale(24),
+      width: widthScale(48),
+      height: widthScale(48),
+      borderRadius: widthScale(16),
+      backgroundColor: theme.white15,
       alignItems: "center",
       justifyContent: "center",
     },
-    sourceBadge: {
-      position: "absolute",
-      top: -widthScale(4),
-      right: -widthScale(4),
-      width: widthScale(28),
-      height: widthScale(28),
-      borderRadius: widthScale(14),
-      backgroundColor: theme.selectCard,
-      borderWidth: 2.5,
-      borderColor: theme.white,
+    sourceAction: {
+      width: widthScale(30),
+      height: widthScale(30),
+      borderRadius: widthScale(15),
+      backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
+    },
+    sourceText: {
+      gap: moderateHeightScale(4),
     },
     sourceLabel: {
-      fontSize: fontSize.size19,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      textAlign: "center",
+      color: theme.white,
+      lineHeight: fontSize.size22,
     },
-    sourcePill: {
+    sourceMeta: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(6),
-      marginTop: -moderateHeightScale(2),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(6),
-      borderRadius: 999,
-      backgroundColor: theme.lightGreen07,
-      borderWidth: 1,
-      borderColor: theme.borderLight,
+      gap: moderateWidthScale(5),
     },
-    sourcePillText: {
-      fontSize: fontSize.size14,
+    sourceMetaText: {
+      flexShrink: 1,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
-      color: theme.darkGreen,
+      color: theme.white85,
     },
     optionRow: {
       flexDirection: "row",
@@ -353,13 +338,29 @@ export function FlowCard({
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-/** Big tappable card with a round icon — "Choose from gallery", "Record a video". */
+/** Lays SourceCards out side by side at equal width and height. */
+export function SourceCardRow({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { styles } = useFlowStyles();
+  return <View style={[styles.sourceRow, style]}>{children}</View>;
+}
+
+/**
+ * Filled tappable tile — "Choose from gallery", "Record a video".
+ * Fills its share of a SourceCardRow.
+ */
 export function SourceCard({
   icon,
   label,
   sublabel,
   sublabelIcon,
   badgeIcon,
+  tone = "green",
   onPress,
   disabled = false,
   loading = false,
@@ -368,10 +369,12 @@ export function SourceCard({
   icon: IconName;
   label: string;
   sublabel?: string | null;
-  /** Small icon inside the sub-label pill. */
+  /** Small icon before the sub-label. */
   sublabelIcon?: IconName;
-  /** Little round badge on the icon tile ("+" for gallery, REC dot for camera). */
+  /** Round white chip top-right ("+" for gallery, REC dot for camera). */
   badgeIcon?: IconName;
+  /** Tile colour: olive green, or warm burnt orange. */
+  tone?: "green" | "warm";
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -379,6 +382,10 @@ export function SourceCard({
 }) {
   const { theme, styles } = useFlowStyles();
   const inactive = disabled || loading;
+  const warm = tone === "warm";
+  const fill = warm
+    ? ([theme.selectCard, theme.orangeBrownText] as const)
+    : ([theme.buttonBack, theme.darkGreen] as const);
   // Gentle press-down (skipped with Reduce Motion) + a light haptic tap
   const reduceMotion = useReducedMotion();
   const scale = useSharedValue(1);
@@ -388,7 +395,13 @@ export function SourceCard({
 
   return (
     <Animated.View
-      style={[styles.sourceShadow, pressStyle, disabled && styles.disabled, style]}
+      style={[
+        styles.sourceShadow,
+        warm && styles.sourceShadowWarm,
+        pressStyle,
+        disabled && styles.disabled,
+        style,
+      ]}
     >
       <TouchableOpacity
         activeOpacity={0.92}
@@ -409,57 +422,62 @@ export function SourceCard({
         accessibilityState={{ disabled: inactive, busy: loading }}
       >
         <LinearGradient
-          colors={[theme.white, theme.white, theme.background]}
-          locations={[0, 0.55, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
+          colors={fill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
-        <View style={[styles.sourceGlow, styles.sourceGlowWarm]} pointerEvents="none" />
-        <View style={[styles.sourceGlow, styles.sourceGlowCool]} pointerEvents="none" />
+        <MaterialIcons
+          name={icon}
+          size={moderateWidthScale(108)}
+          color={theme.white}
+          style={styles.sourceWatermark}
+          pointerEvents="none"
+        />
 
-        <View style={styles.sourceHalo}>
-          <LinearGradient
-            colors={[theme.buttonBack, theme.darkGreen]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.sourceIcon}
-          >
+        <View style={styles.sourceTop}>
+          <View style={styles.sourceIcon}>
             {loading ? (
               <ActivityIndicator color={theme.white} />
             ) : (
               <MaterialIcons
                 name={icon}
-                size={moderateWidthScale(34)}
+                size={moderateWidthScale(26)}
                 color={theme.white}
               />
             )}
-          </LinearGradient>
-          {badgeIcon && !loading ? (
-            <View style={styles.sourceBadge} pointerEvents="none">
+          </View>
+          {badgeIcon ? (
+            <View style={styles.sourceAction} pointerEvents="none">
               <MaterialIcons
                 name={badgeIcon}
-                size={moderateWidthScale(14)}
-                color={theme.white}
+                size={moderateWidthScale(warm ? 14 : 18)}
+                color={warm ? theme.selectCard : theme.darkGreen}
               />
             </View>
           ) : null}
         </View>
 
-        <Text style={styles.sourceLabel}>{label}</Text>
-        {sublabel ? (
-          <View style={styles.sourcePill}>
-            {sublabelIcon ? (
-              <MaterialIcons
-                name={sublabelIcon}
-                size={moderateWidthScale(16)}
-                color={theme.buttonBack}
-              />
-            ) : null}
-            <Text style={styles.sourcePillText}>{sublabel}</Text>
-          </View>
-        ) : null}
+        <View style={styles.sourceText}>
+          <Text style={styles.sourceLabel} numberOfLines={2}>
+            {label}
+          </Text>
+          {sublabel ? (
+            <View style={styles.sourceMeta}>
+              {sublabelIcon ? (
+                <MaterialIcons
+                  name={sublabelIcon}
+                  size={moderateWidthScale(14)}
+                  color={theme.white85}
+                />
+              ) : null}
+              <Text style={styles.sourceMetaText} numberOfLines={2}>
+                {sublabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );

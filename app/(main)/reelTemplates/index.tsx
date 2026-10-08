@@ -76,6 +76,7 @@ import {
   SectionLabel,
   SelectedMediaRow,
   SourceCard,
+  SourceCardRow,
 } from "@/src/components/reelFlow/flowParts";
 import MediaTileGrid from "@/src/components/reelFlow/mediaTileGrid";
 import TemplateDropdown from "@/src/components/reelFlow/templateDropdown";
@@ -1139,24 +1140,27 @@ export default function ReelTemplatesScreen() {
           title={t("flowAddVideoTitle")}
           subtitle={t("flowAutoVideoSubtitle")}
         />
-        <SourceCard
-          icon="video-library"
-          label={t("flowChooseFromGallery")}
-          sublabel={t("flowGalleryVideosPhotos")}
-          sublabelIcon="perm-media"
-          badgeIcon="add"
-          onPress={() => void handleSelectFromGallery()}
-          disabled={addingMedia}
-          loading={addingMedia && pickingFrom === "gallery"}
-        />
-        <SourceCard
-          icon="videocam"
-          label={t("flowRecordVideo")}
-          badgeIcon="fiber-manual-record"
-          onPress={() => void handleRecordVideo()}
-          disabled={addingMedia}
-          loading={addingMedia && pickingFrom === "camera"}
-        />
+        <SourceCardRow>
+          <SourceCard
+            icon="video-library"
+            label={t("flowChooseFromGallery")}
+            sublabel={t("flowGalleryVideosPhotos")}
+            sublabelIcon="perm-media"
+            badgeIcon="add"
+            onPress={() => void handleSelectFromGallery()}
+            disabled={addingMedia}
+            loading={addingMedia && pickingFrom === "gallery"}
+          />
+          <SourceCard
+            icon="videocam"
+            label={t("flowRecordVideo")}
+            tone="warm"
+            badgeIcon="fiber-manual-record"
+            onPress={() => void handleRecordVideo()}
+            disabled={addingMedia}
+            loading={addingMedia && pickingFrom === "camera"}
+          />
+        </SourceCardRow>
         {picks.length > 0 ? (
           <>
             <View style={styles.divider} />

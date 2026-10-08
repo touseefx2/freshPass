@@ -145,6 +145,7 @@ import {
   OptionRow,
   SectionLabel,
   SourceCard,
+  SourceCardRow,
 } from "@/src/components/reelFlow/flowParts";
 import MediaTileGrid from "@/src/components/reelFlow/mediaTileGrid";
 
@@ -3500,34 +3501,37 @@ export default function ReelStudioScreen() {
             title={t("flowAddVideoTitle")}
             subtitle={t("flowAddClipsSubtitle")}
           />
-          <SourceCard
-            icon="video-library"
-            label={t("flowChooseFromGallery")}
-            sublabel={t("flowGalleryVideosPhotos")}
-            sublabelIcon="perm-media"
-            badgeIcon="add"
-            onPress={() => {
-              setPickingFrom("gallery");
-              void addClipsFromGallery().finally(() => setPickingFrom(null));
-            }}
-            disabled={addingClips}
-            loading={addingClips && pickingFrom === "gallery"}
-          />
-          <SourceCard
-            icon="videocam"
-            label={t("flowRecordVideo")}
-            sublabel={t("flowRecordUpTo", {
-              time: formatVideoDuration(maxSeconds),
-            })}
-            sublabelIcon="timer"
-            badgeIcon="fiber-manual-record"
-            onPress={() => {
-              setPickingFrom("camera");
-              void addClipFromCamera("video").finally(() => setPickingFrom(null));
-            }}
-            disabled={addingClips}
-            loading={addingClips && pickingFrom === "camera"}
-          />
+          <SourceCardRow>
+            <SourceCard
+              icon="video-library"
+              label={t("flowChooseFromGallery")}
+              sublabel={t("flowGalleryVideosPhotos")}
+              sublabelIcon="perm-media"
+              badgeIcon="add"
+              onPress={() => {
+                setPickingFrom("gallery");
+                void addClipsFromGallery().finally(() => setPickingFrom(null));
+              }}
+              disabled={addingClips}
+              loading={addingClips && pickingFrom === "gallery"}
+            />
+            <SourceCard
+              icon="videocam"
+              label={t("flowRecordVideo")}
+              tone="warm"
+              sublabel={t("flowRecordUpTo", {
+                time: formatVideoDuration(maxSeconds),
+              })}
+              sublabelIcon="timer"
+              badgeIcon="fiber-manual-record"
+              onPress={() => {
+                setPickingFrom("camera");
+                void addClipFromCamera("video").finally(() => setPickingFrom(null));
+              }}
+              disabled={addingClips}
+              loading={addingClips && pickingFrom === "camera"}
+            />
+          </SourceCardRow>
 
           {clips.length > 0 ? (
             <>

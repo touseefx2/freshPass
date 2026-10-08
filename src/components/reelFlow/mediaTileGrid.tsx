@@ -33,7 +33,7 @@ type Props = {
   disabled?: boolean;
 };
 
-const GAP = moderateWidthScale(12);
+const GAP = moderateWidthScale(10);
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -43,7 +43,7 @@ const createStyles = (theme: Theme) =>
       gap: GAP,
     },
     tile: {
-      borderRadius: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(14),
       overflow: "hidden",
       backgroundColor: theme.darkGreen,
     },
@@ -59,16 +59,16 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       top: moderateHeightScale(6),
       left: moderateWidthScale(6),
-      minWidth: widthScale(26),
-      height: widthScale(26),
-      paddingHorizontal: moderateWidthScale(6),
-      borderRadius: widthScale(13),
+      minWidth: widthScale(22),
+      height: widthScale(22),
+      paddingHorizontal: moderateWidthScale(5),
+      borderRadius: widthScale(11),
       backgroundColor: "rgba(0, 0, 0, 0.6)",
       alignItems: "center",
       justifyContent: "center",
     },
     orderText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
       fontVariant: ["tabular-nums"],
@@ -77,9 +77,9 @@ const createStyles = (theme: Theme) =>
       position: "absolute",
       top: moderateHeightScale(6),
       right: moderateWidthScale(6),
-      width: widthScale(32),
-      height: widthScale(32),
-      borderRadius: widthScale(16),
+      width: widthScale(28),
+      height: widthScale(28),
+      borderRadius: widthScale(14),
       backgroundColor: theme.white,
       alignItems: "center",
       justifyContent: "center",
@@ -96,13 +96,13 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
-      paddingHorizontal: moderateWidthScale(8),
-      paddingVertical: moderateHeightScale(3),
-      borderRadius: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(7),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(9),
       backgroundColor: "rgba(0, 0, 0, 0.6)",
     },
     badgeText: {
-      fontSize: fontSize.size13,
+      fontSize: fontSize.size12,
       fontFamily: fonts.fontBold,
       color: theme.white,
       fontVariant: ["tabular-nums"],
@@ -129,7 +129,7 @@ export default function MediaTileGrid({
 
   const columns = width >= 560 ? 5 : width >= 420 ? 4 : 3;
   const tileW = Math.floor((width - GAP * (columns - 1)) / columns);
-  const tileH = Math.round(tileW * (4 / 3));
+  const tileH = Math.round(tileW * 1.1);
 
   const onLayout = (e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);
@@ -167,7 +167,7 @@ export default function MediaTileGrid({
             <View style={styles.badge} pointerEvents="none">
               <MaterialIcons
                 name={item.isPhoto ? "photo" : "videocam"}
-                size={moderateWidthScale(14)}
+                size={moderateWidthScale(13)}
                 color={theme.white}
               />
               <Text style={styles.badgeText}>{item.badge}</Text>
@@ -177,13 +177,13 @@ export default function MediaTileGrid({
               onPress={() => onRemove(item.id)}
               disabled={disabled}
               activeOpacity={0.7}
-              hitSlop={8}
+              hitSlop={10}
               accessibilityRole="button"
               accessibilityLabel={`${t("flowRemoveClipN", { n: index + 1 })}, ${kind}, ${item.badge}`}
             >
               <MaterialIcons
                 name="close"
-                size={moderateWidthScale(20)}
+                size={moderateWidthScale(17)}
                 color={theme.darkGreen}
               />
             </TouchableOpacity>
