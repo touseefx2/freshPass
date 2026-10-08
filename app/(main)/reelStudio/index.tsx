@@ -150,6 +150,8 @@ import {
   SectionLabel,
   SourceCard,
   SourceCardRow,
+  sourceToneFill,
+  type SourceTone,
 } from "@/src/components/reelFlow/flowParts";
 import MediaTileGrid from "@/src/components/reelFlow/mediaTileGrid";
 
@@ -560,20 +562,20 @@ const createStyles = (theme: Theme, compact: boolean) =>
     },
     // ── Tool sheet (Style / Music / Text): white sheet on the cream
     // screen, cream controls, green = selected, orange = accent icons.
+    sheetWrap: {
+      marginTop: moderateHeightScale(14),
+    },
     sheet: {
-      marginTop: moderateHeightScale(12),
       backgroundColor: theme.white,
       borderTopLeftRadius: moderateWidthScale(28),
       borderTopRightRadius: moderateWidthScale(28),
-      borderWidth: 1,
-      borderBottomWidth: 0,
-      borderColor: theme.borderLight,
-      paddingTop: moderateHeightScale(8),
-      shadowColor: theme.darkGreen,
-      shadowOffset: { width: 0, height: -moderateHeightScale(4) },
-      shadowOpacity: 0.1,
-      shadowRadius: moderateWidthScale(16),
-      elevation: 12,
+      // Thin accent edge in the tool's colour (set inline)
+      borderTopWidth: 3,
+      borderLeftWidth: 1.5,
+      borderRightWidth: 1.5,
+      paddingTop: moderateHeightScale(6),
+      overflow: "hidden",
+      elevation: 16,
     },
     sheetHeader: {
       flexDirection: "row",
@@ -4233,60 +4235,70 @@ export default function ReelStudioScreen() {
         ? t("backgroundMusic")
         : t("overlayText");
 
+  // Accent colour of the tile that opened the sheet
+  const toolTone: SourceTone =
+    styleTool === "style" ? "warm" : styleTool === "music" ? "green" : "deep";
+
   const renderToolSheet = () => (
-    <View
-      style={[
-        styles.sheet,
-        {
-          paddingBottom: keyboardOpen
-            ? moderateHeightScale(6)
-            : Math.max(insets.bottom, moderateHeightScale(12)),
-          maxHeight: Math.min(
-            windowHeight * (keyboardOpen ? 0.42 : 0.46),
-            editViewportH > 0
-              ? editViewportH - shownTitleH - minPreviewH
-              : Number.POSITIVE_INFINITY,
-          ),
-        },
-      ]}
-    >
-      <View style={styles.sheetHeader}>
-        <Text style={styles.sheetTitle} accessibilityRole="header">
-          {toolTitle}
-        </Text>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.sheetDone}
-          onPress={() => {
-            dismissKeyboard();
-            setSelectedStickerId(null);
-            setMusicPickMode(null);
-            setStyleTool(null);
-          }}
-          disabled={busy}
-          accessibilityRole="button"
-          accessibilityLabel={t("done")}
-        >
-          <MaterialIcons
-            name="check"
-            size={moderateWidthScale(20)}
-            color={theme.white}
-          />
-          <Text style={styles.sheetDoneText}>{t("done")}</Text>
-        </TouchableOpacity>
-      </View>
-      <ScrollView
-        contentContainerStyle={styles.sheetBody}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator
-        bounces={false}
+    <View style={styles.sheetWrap}>
+      <View
+        style={[
+          styles.sheet,
+          {
+            borderColor: sourceToneFill(theme, toolTone)[0],
+            paddingBottom: keyboardOpen
+              ? moderateHeightScale(6)
+              : Math.max(insets.bottom, moderateHeightScale(12)),
+            maxHeight: Math.min(
+              windowHeight * (keyboardOpen ? 0.42 : 0.46),
+              editViewportH > 0
+                ? editViewportH -
+                    shownTitleH -
+                    minPreviewH -
+                    moderateHeightScale(14) // sheetWrap margin
+                : Number.POSITIVE_INFINITY,
+            ),
+          },
+        ]}
       >
-        {styleTool === "style"
-          ? renderStylePanel()
-          : styleTool === "music"
-            ? renderMusicPanel()
-            : renderTextPanel()}
-      </ScrollView>
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle} accessibilityRole="header">
+            {toolTitle}
+          </Text>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.sheetDone}
+            onPress={() => {
+              dismissKeyboard();
+              setSelectedStickerId(null);
+              setMusicPickMode(null);
+              setStyleTool(null);
+            }}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel={t("done")}
+          >
+            <MaterialIcons
+              name="check"
+              size={moderateWidthScale(20)}
+              color={theme.white}
+            />
+            <Text style={styles.sheetDoneText}>{t("done")}</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView
+          contentContainerStyle={styles.sheetBody}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator
+          bounces={false}
+        >
+          {styleTool === "style"
+            ? renderStylePanel()
+            : styleTool === "music"
+              ? renderMusicPanel()
+              : renderTextPanel()}
+        </ScrollView>
+      </View>
     </View>
   );
 
