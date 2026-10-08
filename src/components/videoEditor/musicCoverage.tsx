@@ -39,6 +39,8 @@ type Props = {
   onToggleLoop: () => void;
   /** Bigger type and bar (step-by-step Reel Studio). */
   large?: boolean;
+  /** "light" = dark text on a white sheet (step-by-step Reel Studio). */
+  tone?: "dark" | "light";
 };
 
 const BAR_H = heightScale(34);
@@ -49,7 +51,7 @@ function formatMs(ms: number): string {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-const createStyles = (theme: Theme, large: boolean = false) =>
+const createStyles = (theme: Theme, large: boolean = false, light = false) =>
   StyleSheet.create({
     header: {
       flexDirection: "row",
@@ -61,7 +63,7 @@ const createStyles = (theme: Theme, large: boolean = false) =>
     title: {
       fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
     },
     repeatBtn: {
       flexDirection: "row",
@@ -70,23 +72,24 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       height: heightScale(large ? 38 : 30),
       paddingHorizontal: moderateWidthScale(12),
       borderRadius: heightScale(15),
-      borderWidth: 1,
-      borderColor: theme.white15,
+      borderWidth: light ? 1.5 : 1,
+      borderColor: light ? theme.borderNormal : theme.white15,
+      backgroundColor: light ? theme.background : "transparent",
     },
     repeatBtnOn: {
-      backgroundColor: theme.orangeBrown,
-      borderColor: theme.orangeBrown,
+      backgroundColor: light ? theme.buttonBack : theme.orangeBrown,
+      borderColor: light ? theme.buttonBack : theme.orangeBrown,
     },
     repeatText: {
       fontSize: large ? fontSize.size14 : fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
     },
-    repeatTextOn: { color: theme.darkGreen },
+    repeatTextOn: { color: light ? theme.white : theme.darkGreen },
     bar: {
       height: large ? LARGE_BAR_H : BAR_H,
       borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.white15,
+      backgroundColor: light ? theme.lightGreen07 : theme.white15,
       overflow: "hidden",
     },
     block: {
@@ -98,14 +101,14 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       gap: moderateWidthScale(2),
       paddingLeft: moderateWidthScale(6),
       borderRightWidth: 2,
-      borderRightColor: theme.darkGreen,
+      borderRightColor: light ? theme.white : theme.darkGreen,
     },
     blockA: { backgroundColor: theme.orangeBrown },
     blockB: { backgroundColor: theme.buttonBack },
     blockRepeat: { opacity: 0.6 },
     blockSelected: {
       borderWidth: 2,
-      borderColor: theme.white,
+      borderColor: light ? theme.darkGreen : theme.white,
       borderRadius: moderateWidthScale(6),
     },
     blockLabel: {
@@ -126,14 +129,14 @@ const createStyles = (theme: Theme, large: boolean = false) =>
     silenceText: {
       fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontMedium,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
     },
     playLine: {
       position: "absolute",
       top: 0,
       bottom: 0,
       width: 2,
-      backgroundColor: theme.white,
+      backgroundColor: light ? theme.darkGreen : theme.white,
       pointerEvents: "none",
     },
     scale: {
@@ -144,13 +147,13 @@ const createStyles = (theme: Theme, large: boolean = false) =>
     scaleText: {
       fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       fontVariant: ["tabular-nums"],
     },
     info: {
       fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       marginTop: moderateHeightScale(4),
     },
   });
@@ -166,11 +169,16 @@ export default function MusicCoverage({
   onSelect,
   onToggleLoop,
   large = false,
+  tone = "dark",
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
+  const light = tone === "light";
+  const styles = useMemo(
+    () => createStyles(theme, large, light),
+    [theme, large, light],
+  );
   const [width, setWidth] = useState(0);
 
   const short = partsTotalMs < videoMs - 50;
@@ -210,7 +218,15 @@ export default function MusicCoverage({
             <MaterialIcons
               name="repeat"
               size={moderateWidthScale(16)}
-              color={loop ? theme.darkGreen : theme.white}
+              color={
+                light
+                  ? loop
+                    ? theme.white
+                    : theme.darkGreen
+                  : loop
+                    ? theme.darkGreen
+                    : theme.white
+              }
             />
             <Text style={[styles.repeatText, loop && styles.repeatTextOn]}>
               {t("musicRepeatSong", { index: selectedIndex + 1 })}

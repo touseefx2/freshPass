@@ -75,6 +75,7 @@ import StickerLayer, {
 } from "@/src/components/videoEditor/stickerLayer";
 import StickerPanel from "@/src/components/videoEditor/stickerPanel";
 import MusicLibrarySheet from "@/src/components/videoEditor/musicLibrarySheet";
+import SourcePickerSheet from "@/src/components/videoEditor/sourcePickerSheet";
 import MusicTrimmer from "@/src/components/videoEditor/musicTrimmer";
 import MusicCoverage from "@/src/components/videoEditor/musicCoverage";
 import MusicSongChips from "@/src/components/videoEditor/musicSongChips";
@@ -431,14 +432,6 @@ const createStyles = (theme: Theme, compact: boolean) =>
       minHeight: heightScale(compact ? 96 : 120),
       paddingHorizontal: moderateWidthScale(20),
     },
-    // Trim / Style rows: on short screens the preview stops shrinking here
-    // and the step scrolls instead of pushing the footer off screen.
-    previewWrapScroll: {
-      minHeight: heightScale(compact ? 160 : 180),
-    },
-    editScroll: {
-      flexGrow: 1,
-    },
     previewCard: {
       flex: 1,
       borderRadius: moderateWidthScale(22),
@@ -566,42 +559,50 @@ const createStyles = (theme: Theme, compact: boolean) =>
       paddingBottom: moderateHeightScale(compact ? 6 : 10),
       gap: moderateHeightScale(compact ? 8 : 10),
     },
-    // ── Dark tool sheet (Style / Music / Text) — same surface as the
-    // editor's music library and add-clip sheets.
+    // ── Tool sheet (Style / Music / Text): white sheet on the cream
+    // screen, cream controls, green = selected, orange = accent icons.
     sheet: {
       marginTop: moderateHeightScale(12),
-      backgroundColor: theme.darkGreen,
-      borderTopLeftRadius: moderateWidthScale(24),
-      borderTopRightRadius: moderateWidthScale(24),
+      backgroundColor: theme.white,
+      borderTopLeftRadius: moderateWidthScale(28),
+      borderTopRightRadius: moderateWidthScale(28),
+      borderWidth: 1,
+      borderBottomWidth: 0,
+      borderColor: theme.borderLight,
       paddingTop: moderateHeightScale(8),
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: -moderateHeightScale(4) },
+      shadowOpacity: 0.1,
+      shadowRadius: moderateWidthScale(16),
+      elevation: 12,
     },
     sheetHandle: {
       alignSelf: "center",
-      width: widthScale(42),
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.white15,
+      width: widthScale(44),
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: theme.borderMedium,
     },
     sheetHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(18),
-      paddingTop: moderateHeightScale(8),
-      paddingBottom: moderateHeightScale(6),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(10),
+      paddingBottom: moderateHeightScale(8),
       gap: moderateWidthScale(10),
     },
     sheetTitle: {
       flex: 1,
-      fontSize: fontSize.size20,
+      fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.darkGreen,
     },
     sheetDone: {
       minHeight: heightScale(44),
-      paddingHorizontal: moderateWidthScale(22),
+      paddingHorizontal: moderateWidthScale(20),
       borderRadius: heightScale(22),
-      backgroundColor: theme.orangeBrown,
+      backgroundColor: theme.darkGreen,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(6),
@@ -609,28 +610,28 @@ const createStyles = (theme: Theme, compact: boolean) =>
     sheetDoneText: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: theme.white,
     },
     sheetBody: {
-      paddingHorizontal: moderateWidthScale(18),
+      paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(6),
-      paddingBottom: moderateHeightScale(10),
-      gap: moderateHeightScale(12),
+      paddingBottom: moderateHeightScale(18),
+      gap: moderateHeightScale(14),
     },
     sheetSection: {
-      fontSize: fontSize.size16,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.darkGreen,
     },
     sheetHint: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
-      lineHeight: fontSize.size19,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size20,
     },
     sheetDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: theme.white15,
+      height: 1,
+      backgroundColor: theme.borderLight,
       marginVertical: moderateHeightScale(2),
     },
     frameGrid: {
@@ -644,86 +645,63 @@ const createStyles = (theme: Theme, compact: boolean) =>
       minHeight: heightScale(56),
       borderRadius: moderateWidthScale(14),
       borderWidth: 1.5,
-      borderColor: theme.white15,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.background,
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(10),
       paddingHorizontal: moderateWidthScale(14),
     },
     frameTileActive: {
-      backgroundColor: theme.orangeBrown,
-      borderColor: theme.orangeBrown,
+      backgroundColor: theme.buttonBack,
+      borderColor: theme.buttonBack,
     },
     frameLabel: {
       flexShrink: 1,
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.darkGreen,
     },
-    frameLabelActive: { color: theme.darkGreen },
+    frameLabelActive: { color: theme.white },
     musicCard: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
-      minHeight: heightScale(60),
-      paddingVertical: moderateHeightScale(8),
+      minHeight: heightScale(64),
+      paddingVertical: moderateHeightScale(10),
       paddingHorizontal: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(14),
-      backgroundColor: theme.white15,
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.background,
     },
     musicCardInfo: { flex: 1, minWidth: 0 },
-    musicAddCard: {
-      paddingVertical: 0,
-      paddingHorizontal: 0,
-      gap: 0,
-      overflow: "hidden",
-    },
-    musicAddMain: {
-      flex: 1,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(12),
-      minHeight: heightScale(64),
-      paddingHorizontal: moderateWidthScale(14),
-    },
-    musicAddDivider: {
-      width: StyleSheet.hairlineWidth,
-      alignSelf: "stretch",
-      marginVertical: moderateHeightScale(12),
-      backgroundColor: theme.white50,
-    },
-    musicPhoneBtn: {
-      minWidth: widthScale(76),
-      minHeight: heightScale(64),
+    musicAddIcon: {
+      width: widthScale(46),
+      height: widthScale(46),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.selectCard,
       alignItems: "center",
       justifyContent: "center",
-      gap: moderateHeightScale(2),
-      paddingHorizontal: moderateWidthScale(10),
     },
-    musicPhoneText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontMedium,
-      color: theme.white70,
-    },
-    musicTitleRow: {
-      flexDirection: "row",
+    musicAddPlus: {
+      width: widthScale(36),
+      height: widthScale(36),
+      borderRadius: widthScale(18),
+      backgroundColor: theme.darkGreen,
       alignItems: "center",
-      justifyContent: "space-between",
-    },
-    musicCancelText: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
+      justifyContent: "center",
     },
     musicCardTitle: {
       fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.darkGreen,
     },
     musicCardSub: {
+      marginTop: moderateHeightScale(2),
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: theme.lightGreen,
     },
     iconHit: {
       width: widthScale(44),
@@ -734,7 +712,7 @@ const createStyles = (theme: Theme, compact: boolean) =>
     label: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
-      color: theme.white,
+      color: theme.darkGreen,
     },
     rowBetween: {
       flexDirection: "row",
@@ -748,16 +726,16 @@ const createStyles = (theme: Theme, compact: boolean) =>
     },
     textInput: {
       minHeight: heightScale(54),
-      borderWidth: 1,
-      borderColor: theme.white15,
+      borderWidth: 1.5,
+      borderColor: theme.borderNormal,
       borderRadius: moderateWidthScale(14),
       paddingLeft: moderateWidthScale(16),
       paddingRight: moderateWidthScale(46),
       paddingVertical: moderateHeightScale(12),
       fontSize: fontSize.size17,
       fontFamily: fonts.fontRegular,
-      color: theme.white,
-      backgroundColor: theme.black,
+      color: theme.darkGreen,
+      backgroundColor: theme.background,
     },
     textInputClear: {
       position: "absolute",
@@ -776,11 +754,11 @@ const createStyles = (theme: Theme, compact: boolean) =>
     },
     segment: {
       flexDirection: "row",
-      backgroundColor: theme.black,
+      backgroundColor: theme.background,
       borderRadius: moderateWidthScale(12),
       padding: moderateWidthScale(3),
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.white15,
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
     },
     segmentBtn: {
       minWidth: widthScale(44),
@@ -796,11 +774,9 @@ const createStyles = (theme: Theme, compact: boolean) =>
     segmentLabel: {
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
-      color: theme.white,
-      opacity: 0.75,
+      color: theme.darkGreen,
     },
     segmentLabelActive: {
-      opacity: 1,
       color: theme.buttonText,
     },
     colorTrack: {
@@ -808,23 +784,24 @@ const createStyles = (theme: Theme, compact: boolean) =>
       alignItems: "center",
       gap: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(4),
-      paddingRight: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(4),
     },
     colorDot: {
       width: widthScale(34),
       height: widthScale(34),
       borderRadius: widthScale(17),
       borderWidth: 2,
-      borderColor: theme.white15,
+      borderColor: theme.borderMedium,
     },
     colorDotActive: {
-      borderColor: theme.orangeBrown,
+      borderColor: theme.darkGreen,
       borderWidth: 3,
+      transform: [{ scale: 1.1 }],
     },
     colorDotNone: {
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.black,
+      backgroundColor: theme.white,
       overflow: "hidden",
     },
     colorDotNoneSlash: {
@@ -851,9 +828,9 @@ const createStyles = (theme: Theme, compact: boolean) =>
       borderRadius: moderateWidthScale(12),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.black,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.white15,
+      backgroundColor: theme.background,
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
     },
     formatBtnActive: {
       backgroundColor: theme.buttonBack,
@@ -1101,6 +1078,7 @@ export default function ReelStudioScreen() {
     null,
   );
   const [musicLibraryOpen, setMusicLibraryOpen] = useState(false);
+  const [musicSourceOpen, setMusicSourceOpen] = useState(false);
   const selectedMusicIdRef = useRef(selectedMusicId);
   selectedMusicIdRef.current = selectedMusicId;
   const musicPickModeRef = useRef(musicPickMode);
@@ -1130,10 +1108,13 @@ export default function ReelStudioScreen() {
   const [playing, setPlaying] = useState(false);
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
-  // Trim / Style body scrolls only when it doesn't fit (short Android screens)
+  // Trim / Style body: the preview takes what the title + controls leave.
+  // Measured by hand — inside a ScrollView a flex preview keeps its old
+  // size (its video frame props it open) instead of shrinking.
   const editScrollRef = useRef<React.ElementRef<typeof GHScrollView>>(null);
   const [editViewportH, setEditViewportH] = useState(0);
-  const [editContentH, setEditContentH] = useState(0);
+  const [editTitleH, setEditTitleH] = useState(0);
+  const [editControlsH, setEditControlsH] = useState(0);
   const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -2305,7 +2286,10 @@ export default function ReelStudioScreen() {
         copyToCacheDirectory: true,
         multiple: false,
       });
-      if (result.canceled || !result.assets?.[0]) return;
+      if (result.canceled || !result.assets?.[0]) {
+        setMusicPickMode(null);
+        return;
+      }
       const asset = result.assets[0];
       const localMusic = await ensureLocalMediaFileUri(
         asset.uri,
@@ -2349,6 +2333,28 @@ export default function ReelStudioScreen() {
     setPlaying(false);
     setMusicLibraryOpen(true);
   }, []);
+
+  /** "Add music" / "+" / swap → sheet (library / phone). */
+  const openMusicSource = useCallback(
+    (mode: "add" | "replace" | null) => {
+      dismissKeyboard();
+      setMusicPickMode(mode);
+      setMusicSourceOpen(true);
+    },
+    [dismissKeyboard],
+  );
+
+  const onMusicSource = useCallback(
+    (source: "library" | "phone") => {
+      setMusicSourceOpen(false);
+      // Pickers can't present while the sheet's Modal is still dismissing (iOS).
+      setTimeout(() => {
+        if (source === "library") openMusicLibrary();
+        else void pickMusic();
+      }, 400);
+    },
+    [openMusicLibrary, pickMusic],
+  );
 
   const removeSelectedMusic = useCallback(() => {
     const id = selectedMusicIdRef.current;
@@ -3335,8 +3341,23 @@ export default function ReelStudioScreen() {
 
   // ── Renders ───────────────────────────────────────────────────────
 
+  // Short screens: give the preview the room while a tool / clip row is open
+  const showEditTitle =
+    !(keyboardOpen && step === "style") &&
+    !(compact && step === "style" && !!styleTool) &&
+    !(compact && step === "trim" && clips.length > 1);
+  const shownTitleH = showEditTitle ? editTitleH : 0;
+  // Below this the preview stops shrinking and the body scrolls instead
+  const minPreviewH = styleTool
+    ? heightScale(compact ? 96 : 120)
+    : heightScale(compact ? 160 : 180);
+  const editPreviewH = Math.max(
+    minPreviewH,
+    editViewportH - shownTitleH - editControlsH,
+  );
+
   const renderPreview = () => (
-    <View style={[styles.previewWrap, !styleTool && styles.previewWrapScroll]}>
+    <View style={[styles.previewWrap, { flex: 0, height: editPreviewH }]}>
       <View style={styles.previewCard} onLayout={onPreviewLayout}>
         {frameSize.width > 0 ? (
           <View
@@ -3738,7 +3759,7 @@ export default function ReelStudioScreen() {
               <MaterialIcons
                 name={option.icon}
                 size={moderateWidthScale(24)}
-                color={active ? theme.darkGreen : theme.white}
+                color={active ? theme.white : theme.selectCard}
               />
               <Text
                 style={[styles.frameLabel, active && styles.frameLabelActive]}
@@ -3755,6 +3776,7 @@ export default function ReelStudioScreen() {
       <Text style={styles.sheetSection}>{t("stickers")}</Text>
       <StickerPanel
         large
+        tone="light"
         hideTitle
         selected={selectedSticker}
         canAdd={stickers.length < MAX_EDITOR_STICKERS}
@@ -3773,72 +3795,44 @@ export default function ReelStudioScreen() {
 
   const renderMusicPanel = () => (
     <>
-      {musicPickMode && musicTracks.length > 0 ? (
-        <View style={styles.musicTitleRow}>
-          <Text style={styles.sheetHint}>
-            {musicPickMode === "replace" ? t("changeMusic") : t("musicAddSong")}
-          </Text>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setMusicPickMode(null)}
-            disabled={busy}
-            hitSlop={12}
-            accessibilityRole="button"
-          >
-            <Text style={styles.musicCancelText}>{t("cancel")}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-      {musicTracks.length === 0 || musicPickMode ? (
-        <View style={[styles.musicCard, styles.musicAddCard]}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.musicAddMain}
-            onPress={openMusicLibrary}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel={t("musicAddTitle")}
-          >
+      {musicTracks.length === 0 ? (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={styles.musicCard}
+          onPress={() => openMusicSource(null)}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel={t("musicAddTitle")}
+          accessibilityHint={t("musicAddHint")}
+        >
+          <View style={styles.musicAddIcon}>
             <MaterialIcons
               name="library-music"
-              size={moderateWidthScale(26)}
-              color={theme.orangeBrown}
-            />
-            <View style={styles.musicCardInfo}>
-              <Text style={styles.musicCardTitle} numberOfLines={1}>
-                {t("musicAddTitle")}
-              </Text>
-              <Text style={styles.musicCardSub} numberOfLines={1}>
-                {t("musicAddSub")}
-              </Text>
-            </View>
-            <MaterialIcons
-              name="chevron-right"
-              size={moderateWidthScale(26)}
-              color={theme.white70}
-            />
-          </TouchableOpacity>
-          <View style={styles.musicAddDivider} />
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.musicPhoneBtn}
-            onPress={() => void pickMusic()}
-            disabled={busy}
-            accessibilityRole="button"
-            accessibilityLabel={t("musicFromPhone")}
-          >
-            <MaterialIcons
-              name="folder-open"
               size={moderateWidthScale(24)}
               color={theme.white}
             />
-            <Text style={styles.musicPhoneText}>{t("musicPhoneShort")}</Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+          <View style={styles.musicCardInfo}>
+            <Text style={styles.musicCardTitle} numberOfLines={1}>
+              {t("musicAddTitle")}
+            </Text>
+            <Text style={styles.musicCardSub} numberOfLines={1}>
+              {t("musicAddHint")}
+            </Text>
+          </View>
+          <View style={styles.musicAddPlus}>
+            <MaterialIcons
+              name="add"
+              size={moderateWidthScale(22)}
+              color={theme.white}
+            />
+          </View>
+        </TouchableOpacity>
       ) : (
         <>
           <MusicSongChips
             large
+            tone="light"
             songs={musicTracks.map((m) => ({
               id: m.id,
               title: splitMusicName(m).title,
@@ -3847,7 +3841,7 @@ export default function ReelStudioScreen() {
             canAdd={musicTracks.length < MAX_MUSIC_SEGMENTS}
             disabled={busy}
             onSelect={selectMusicSong}
-            onAdd={() => setMusicPickMode("add")}
+            onAdd={() => openMusicSource("add")}
             onReorder={reorderMusic}
           />
           {musicTracks.length > 1 ? (
@@ -3860,7 +3854,7 @@ export default function ReelStudioScreen() {
                 <MaterialIcons
                   name="music-note"
                   size={moderateWidthScale(24)}
-                  color={theme.orangeBrown}
+                  color={theme.selectCard}
                 />
                 <View style={styles.musicCardInfo}>
                   <Text style={styles.musicCardTitle} numberOfLines={1}>
@@ -3875,7 +3869,7 @@ export default function ReelStudioScreen() {
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={styles.iconHit}
-                  onPress={() => setMusicPickMode("replace")}
+                  onPress={() => openMusicSource("replace")}
                   disabled={busy}
                   accessibilityRole="button"
                   accessibilityLabel={t("changeMusic")}
@@ -3883,7 +3877,7 @@ export default function ReelStudioScreen() {
                   <MaterialIcons
                     name="swap-horiz"
                     size={moderateWidthScale(26)}
-                    color={theme.white}
+                    color={theme.darkGreen}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -3897,7 +3891,7 @@ export default function ReelStudioScreen() {
                   <MaterialIcons
                     name="delete-outline"
                     size={moderateWidthScale(26)}
-                    color={theme.white70}
+                    color={theme.red}
                   />
                 </TouchableOpacity>
               </View>
@@ -3905,6 +3899,7 @@ export default function ReelStudioScreen() {
               {selectedMusicPart && selectedMusic.durationMs > 0 ? (
                 <MusicTrimmer
                   large
+                  tone="light"
                   seed={selectedMusic.uri}
                   musicDurationMs={selectedMusic.durationMs}
                   startMs={selectedMusicPart.start}
@@ -3927,9 +3922,9 @@ export default function ReelStudioScreen() {
                 value={selectedMusic.volume}
                 onSlidingStart={() => pushHistory()}
                 onValueChange={(v) => updateSelectedMusic({ volume: v })}
-                minimumTrackTintColor={theme.orangeBrown}
-                maximumTrackTintColor={theme.white15}
-                thumbTintColor={theme.orangeBrown}
+                minimumTrackTintColor={theme.selectCard}
+                maximumTrackTintColor={theme.lightGreen2}
+                thumbTintColor={theme.selectCard}
                 disabled={busy}
                 accessibilityLabel={t("musicVolume")}
               />
@@ -3938,6 +3933,7 @@ export default function ReelStudioScreen() {
 
           <MusicCoverage
             large
+            tone="light"
             videoMs={totalMs}
             slots={musicSchedule}
             selectedIndex={selectedMusicIndex}
@@ -3966,8 +3962,8 @@ export default function ReelStudioScreen() {
           accessibilityLabel={t("muteOriginalAudio")}
           disabled={busy || videoClipCount === 0}
           trackColor={{
-            false: theme.white15,
-            true: theme.orangeBrown,
+            false: theme.lightGreen2,
+            true: theme.buttonBack,
           }}
           thumbColor={theme.white}
         />
@@ -4006,7 +4002,7 @@ export default function ReelStudioScreen() {
           returnKeyType="done"
           blurOnSubmit
           placeholder={t("overlayTextPlaceholder")}
-          placeholderTextColor={theme.white50}
+          placeholderTextColor={theme.lightGreen5}
           editable={!busy}
           maxLength={80}
           accessibilityLabel={t("overlayText")}
@@ -4024,7 +4020,7 @@ export default function ReelStudioScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("clear")}
           >
-            <CloseIcon color={theme.white70} />
+            <CloseIcon color={theme.lightGreen} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -4052,7 +4048,7 @@ export default function ReelStudioScreen() {
                 <MaterialIcons
                   name={item.icon}
                   size={moderateWidthScale(22)}
-                  color={active ? theme.buttonText : theme.white}
+                  color={active ? theme.buttonText : theme.darkGreen}
                 />
               </TouchableOpacity>
             );
@@ -4201,7 +4197,7 @@ export default function ReelStudioScreen() {
                 <MaterialIcons
                   name={item.icon}
                   size={moderateWidthScale(24)}
-                  color={item.active ? theme.buttonText : theme.white}
+                  color={item.active ? theme.buttonText : theme.darkGreen}
                 />
               </TouchableOpacity>
             ))}
@@ -4227,7 +4223,12 @@ export default function ReelStudioScreen() {
           paddingBottom: keyboardOpen
             ? moderateHeightScale(6)
             : Math.max(insets.bottom, moderateHeightScale(12)),
-          maxHeight: windowHeight * (keyboardOpen ? 0.42 : 0.58),
+          maxHeight: Math.min(
+            windowHeight * (keyboardOpen ? 0.42 : 0.58),
+            editViewportH > 0
+              ? editViewportH - shownTitleH - minPreviewH
+              : Number.POSITIVE_INFINITY,
+          ),
         },
       ]}
     >
@@ -4252,7 +4253,7 @@ export default function ReelStudioScreen() {
           <MaterialIcons
             name="check"
             size={moderateWidthScale(20)}
-            color={theme.darkGreen}
+            color={theme.white}
           />
           <Text style={styles.sheetDoneText}>{t("done")}</Text>
         </TouchableOpacity>
@@ -4283,12 +4284,10 @@ export default function ReelStudioScreen() {
         ? t("flowStyleSubtitleSave")
         : t("flowStyleSubtitle");
     // The tool sheet has its own scroll — keep the body still while it's open
-    const editScrollable = !styleTool && editContentH > editViewportH + 1;
-    // Short screens: give the preview the room while a tool / clip row is open
-    const showTitle =
-      !(keyboardOpen && step === "style") &&
-      !(compact && step === "style" && !!styleTool) &&
-      !(compact && isTrim && clips.length > 1);
+    const editScrollable =
+      !styleTool &&
+      editViewportH > 0 &&
+      shownTitleH + editPreviewH + editControlsH > editViewportH + 1;
 
     if (loadingInfo) {
       return (
@@ -4319,29 +4318,31 @@ export default function ReelStudioScreen() {
           <GHScrollView
             ref={editScrollRef}
             style={styles.flex}
-            contentContainerStyle={styles.editScroll}
             scrollEnabled={editScrollable}
             bounces={false}
             overScrollMode="never"
             showsVerticalScrollIndicator={editScrollable}
             keyboardShouldPersistTaps="handled"
             onLayout={(e) => setEditViewportH(e.nativeEvent.layout.height)}
-            onContentSizeChange={(_, h) => setEditContentH(h)}
           >
-            {showTitle ? (
-              <FlowTitle
-                compact
-                title={title}
-                subtitle={compact ? null : subtitle}
-                style={styles.editTitle}
-              />
+            {showEditTitle ? (
+              <View onLayout={(e) => setEditTitleH(e.nativeEvent.layout.height)}>
+                <FlowTitle
+                  compact
+                  title={title}
+                  subtitle={compact ? null : subtitle}
+                  style={styles.editTitle}
+                />
+              </View>
             ) : null}
             {renderPreview()}
-            {isTrim
-              ? renderTrimControls()
-              : styleTool
-                ? renderToolSheet()
-                : renderStyleRows()}
+            <View onLayout={(e) => setEditControlsH(e.nativeEvent.layout.height)}>
+              {isTrim
+                ? renderTrimControls()
+                : styleTool
+                  ? renderToolSheet()
+                  : renderStyleRows()}
+            </View>
           </GHScrollView>
         </View>
         {isTrim ? (
@@ -4449,6 +4450,7 @@ export default function ReelStudioScreen() {
       ) : null}
 
       <AddClipSheet
+        tone="light"
         visible={addClipOpen}
         timeLabel={
           totalMs > maxClipMs + 50
@@ -4462,9 +4464,38 @@ export default function ReelStudioScreen() {
         onPick={onAddClipSource}
       />
 
+      <SourcePickerSheet<"library" | "phone">
+        tone="light"
+        visible={musicSourceOpen}
+        title={musicPickMode === "replace" ? t("changeMusic") : t("musicAddTitle")}
+        options={[
+          {
+            key: "library",
+            icon: "library-music",
+            title: t("musicLibraryTitle"),
+            sub: t("musicSourceLibrarySub"),
+          },
+          {
+            key: "phone",
+            icon: "smartphone",
+            title: t("musicFromPhone"),
+            sub: t("musicSourcePhoneSub"),
+          },
+        ]}
+        onClose={() => {
+          setMusicSourceOpen(false);
+          setMusicPickMode(null);
+        }}
+        onPick={onMusicSource}
+      />
+
       <MusicLibrarySheet
+        tone="light"
         visible={musicLibraryOpen}
-        onClose={() => setMusicLibraryOpen(false)}
+        onClose={() => {
+          setMusicLibraryOpen(false);
+          setMusicPickMode(null);
+        }}
         onSelect={(track) => void applyLibraryTrack(track)}
       />
     </View>

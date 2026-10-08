@@ -41,23 +41,25 @@ type Props = {
   large?: boolean;
   /** Hide the "Stickers" title (the host shows its own). */
   hideTitle?: boolean;
+  /** "light" = dark text on a white sheet (step-by-step Reel Studio). */
+  tone?: "dark" | "light";
 };
 
 const ROTATE_STEP = 15;
 
-const createStyles = (theme: Theme, large: boolean = false) =>
+const createStyles = (theme: Theme, large: boolean = false, light = false) =>
   StyleSheet.create({
     title: {
       fontSize: large ? fontSize.size16 : fontSize.size13,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
       marginBottom: moderateHeightScale(2),
     },
     hint: {
       fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
-      marginBottom: moderateHeightScale(6),
+      color: light ? theme.lightGreen : theme.white70,
+      marginBottom: moderateHeightScale(light ? 10 : 6),
     },
     strip: {
       alignItems: "center",
@@ -85,7 +87,9 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       borderRadius: moderateWidthScale(12),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.black,
+      backgroundColor: light ? theme.background : theme.black,
+      borderWidth: light ? 1 : 0,
+      borderColor: theme.borderLight,
     },
     emoji: {
       fontSize: large ? fontSize.size28 : fontSize.size24,
@@ -106,9 +110,9 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       borderRadius: moderateWidthScale(10),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.black,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.white15,
+      backgroundColor: light ? theme.background : theme.black,
+      borderWidth: light ? 1 : StyleSheet.hairlineWidth,
+      borderColor: light ? theme.borderNormal : theme.white15,
     },
     sizeWrap: {
       flex: 1,
@@ -119,7 +123,7 @@ const createStyles = (theme: Theme, large: boolean = false) =>
     sizeLabel: {
       fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontMedium,
-      color: theme.white70,
+      color: light ? theme.darkGreen : theme.white70,
     },
     slider: {
       flex: 1,
@@ -140,10 +144,16 @@ export default function StickerPanel({
   onRemove,
   large = false,
   hideTitle = false,
+  tone = "dark",
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
+  const light = tone === "light";
+  const styles = useMemo(
+    () => createStyles(theme, large, light),
+    [theme, large, light],
+  );
+  const iconColor = light ? theme.darkGreen : theme.white;
   const { t } = useTranslation();
 
   const range = selected ? STICKER_SIZE_RANGE[selected.kind] : null;
@@ -210,7 +220,7 @@ export default function StickerPanel({
             <MaterialIcons
               name="rotate-left"
               size={moderateWidthScale(20)}
-              color={theme.white}
+              color={iconColor}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -224,7 +234,7 @@ export default function StickerPanel({
             <MaterialIcons
               name="rotate-right"
               size={moderateWidthScale(20)}
-              color={theme.white}
+              color={iconColor}
             />
           </TouchableOpacity>
           <View style={styles.sizeWrap}>
@@ -237,7 +247,7 @@ export default function StickerPanel({
               onSlidingStart={onSizeStart}
               onValueChange={onSizeChange}
               minimumTrackTintColor={theme.selectCard}
-              maximumTrackTintColor={theme.white15}
+              maximumTrackTintColor={light ? theme.lightGreen2 : theme.white15}
               thumbTintColor={theme.selectCard}
               disabled={disabled}
               accessibilityLabel={t("stickerSize")}
@@ -254,7 +264,7 @@ export default function StickerPanel({
             <MaterialIcons
               name="delete-outline"
               size={moderateWidthScale(20)}
-              color={theme.white}
+              color={iconColor}
             />
           </TouchableOpacity>
         </View>

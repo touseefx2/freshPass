@@ -197,6 +197,65 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    // ── Option tiles (Style / Music / Text): one row of equal cards
+    optionTileRow: {
+      flexDirection: "row",
+      gap: moderateWidthScale(10),
+    },
+    optionTile: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: heightScale(120),
+      alignItems: "center",
+      gap: moderateHeightScale(8),
+      paddingTop: moderateHeightScale(16),
+      paddingBottom: moderateHeightScale(12),
+      paddingHorizontal: moderateWidthScale(8),
+      borderWidth: 1.5,
+    },
+    optionTileDone: {
+      borderColor: theme.buttonBack,
+    },
+    optionTileIcon: {
+      width: widthScale(50),
+      height: widthScale(50),
+      borderRadius: widthScale(25),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    optionTileIconDone: {
+      backgroundColor: theme.selectCard,
+    },
+    optionTileBadge: {
+      position: "absolute",
+      top: moderateHeightScale(8),
+      right: moderateWidthScale(8),
+      width: widthScale(20),
+      height: widthScale(20),
+      borderRadius: widthScale(10),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    optionTileText: {
+      alignSelf: "stretch",
+      alignItems: "center",
+      gap: moderateHeightScale(2),
+    },
+    optionTileTitle: {
+      fontSize: fontSize.size16,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    optionTileSub: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+      lineHeight: fontSize.size17,
+    },
     mediaRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -557,6 +616,84 @@ export function OptionRow({
         size={moderateWidthScale(28)}
         color={theme.darkGreen}
       />
+    </TouchableOpacity>
+  );
+}
+
+/** Equal-width row for OptionTile cards. */
+export function OptionTileRow({
+  children,
+  style,
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { styles } = useFlowStyles();
+  return <View style={[styles.optionTileRow, style]}>{children}</View>;
+}
+
+/** Compact OptionRow for a row of three: icon, title, short summary. */
+export function OptionTile({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  done = false,
+  disabled = false,
+  accessibilityHint,
+}: {
+  icon: IconName;
+  title: string;
+  subtitle?: string | null;
+  onPress: () => void;
+  /** Filled icon + check badge once something is set. */
+  done?: boolean;
+  disabled?: boolean;
+  accessibilityHint?: string;
+}) {
+  const { theme, styles } = useFlowStyles();
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={onPress}
+      disabled={disabled}
+      style={[
+        styles.card,
+        styles.optionTile,
+        done && styles.optionTileDone,
+        disabled && styles.disabled,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled }}
+    >
+      {done ? (
+        <View style={styles.optionTileBadge}>
+          <MaterialIcons
+            name="check"
+            size={moderateWidthScale(14)}
+            color={theme.white}
+          />
+        </View>
+      ) : null}
+      <View style={[styles.optionTileIcon, done && styles.optionTileIconDone]}>
+        <MaterialIcons
+          name={icon}
+          size={moderateWidthScale(26)}
+          color={done ? theme.white : theme.selectCard}
+        />
+      </View>
+      <View style={styles.optionTileText}>
+        <Text style={styles.optionTileTitle} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={styles.optionTileSub} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
     </TouchableOpacity>
   );
 }

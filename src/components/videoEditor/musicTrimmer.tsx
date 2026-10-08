@@ -37,6 +37,8 @@ type Props = {
   onChange: (startMs: number, endMs: number) => void;
   /** Bigger type (step-by-step Reel Studio). */
   large?: boolean;
+  /** "light" = dark waveform and text on a white sheet (Reel Studio). */
+  tone?: "dark" | "light";
 };
 
 const BAR_W = 3;
@@ -82,7 +84,7 @@ function barHeight(seed: number, i: number): number {
   return Math.max(0.2, Math.min(1, swell * (0.55 + noise * 0.6)));
 }
 
-const createStyles = (theme: Theme, large: boolean = false) =>
+const createStyles = (theme: Theme, large: boolean = false, light = false) =>
   StyleSheet.create({
     header: {
       flexDirection: "row",
@@ -93,12 +95,12 @@ const createStyles = (theme: Theme, large: boolean = false) =>
     title: {
       fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
     },
     range: {
       fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.orangeBrown,
+      color: light ? theme.orangeBrownText : theme.orangeBrown,
       fontVariant: ["tabular-nums"],
     },
     strip: {
@@ -112,7 +114,8 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       position: "absolute",
       top: 0,
       bottom: 0,
-      backgroundColor: "rgba(0,0,0,0.55)",
+      // Fades the unused part of the song
+      backgroundColor: light ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.55)",
       pointerEvents: "none",
     },
     box: {
@@ -121,7 +124,7 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       bottom: 0,
       borderTopWidth: 3,
       borderBottomWidth: 3,
-      borderColor: theme.orangeBrown,
+      borderColor: light ? theme.selectCard : theme.orangeBrown,
       pointerEvents: "none",
     },
     handle: {
@@ -129,7 +132,7 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       top: 0,
       bottom: 0,
       width: HANDLE_W,
-      backgroundColor: theme.orangeBrown,
+      backgroundColor: light ? theme.selectCard : theme.orangeBrown,
       alignItems: "center",
       justifyContent: "center",
       pointerEvents: "none",
@@ -146,7 +149,7 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       width: 3,
       height: heightScale(14),
       borderRadius: 2,
-      backgroundColor: theme.darkGreen,
+      backgroundColor: light ? theme.white : theme.darkGreen,
     },
     playLine: {
       position: "absolute",
@@ -154,7 +157,7 @@ const createStyles = (theme: Theme, large: boolean = false) =>
       bottom: moderateHeightScale(4),
       width: 2,
       borderRadius: 1,
-      backgroundColor: theme.white,
+      backgroundColor: light ? theme.darkGreen : theme.white,
       pointerEvents: "none",
     },
     scale: {
@@ -165,13 +168,13 @@ const createStyles = (theme: Theme, large: boolean = false) =>
     scaleText: {
       fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       fontVariant: ["tabular-nums"],
     },
     hint: {
       fontSize: large ? fontSize.size14 : fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       textAlign: "center",
       marginTop: moderateHeightScale(4),
     },
@@ -187,11 +190,16 @@ export default function MusicTrimmer({
   onDragStart,
   onChange,
   large = false,
+  tone = "dark",
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
+  const light = tone === "light";
+  const styles = useMemo(
+    () => createStyles(theme, large, light),
+    [theme, large, light],
+  );
 
   const [width, setWidth] = useState(0);
   /** Live selection while dragging; null = follow props. */
@@ -321,7 +329,7 @@ export default function MusicTrimmer({
               style={{ marginLeft: HANDLE_W }}
               pointerEvents="none"
             >
-              <Path d={wavePath} fill={theme.white} />
+              <Path d={wavePath} fill={light ? theme.buttonBack : theme.white} />
             </Svg>
             <View style={[styles.dim, { left: 0, width: Math.max(0, left - HANDLE_W) }]} />
             <View style={[styles.dim, { left: right + HANDLE_W, right: 0 }]} />

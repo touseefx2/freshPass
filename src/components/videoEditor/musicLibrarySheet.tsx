@@ -46,6 +46,8 @@ type Props = {
   onClose: () => void;
   /** Track is already on disk when this fires. */
   onSelect: (track: DownloadedTrack) => void;
+  /** "light" = white sheet with dark text (step-by-step Reel Studio). */
+  tone?: "dark" | "light";
 };
 
 const DOWNLOADS_TAB = "downloads";
@@ -53,46 +55,46 @@ const SEARCH_DEBOUNCE_MS = 450;
 
 type LoadState = "idle" | "loading" | "error" | "rate_limited";
 
-const createStyles = (theme: Theme) =>
+const createStyles = (theme: Theme, light = false) =>
   StyleSheet.create({
     overlay: {
       flex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.55)",
+      backgroundColor: light ? "rgba(20, 28, 12, 0.5)" : "rgba(0, 0, 0, 0.55)",
       justifyContent: "flex-end",
     },
     sheet: {
       height: "86%",
-      backgroundColor: theme.darkGreen,
-      borderTopLeftRadius: moderateWidthScale(22),
-      borderTopRightRadius: moderateWidthScale(22),
+      backgroundColor: light ? theme.white : theme.darkGreen,
+      borderTopLeftRadius: moderateWidthScale(light ? 28 : 22),
+      borderTopRightRadius: moderateWidthScale(light ? 28 : 22),
       overflow: "hidden",
     },
     handle: {
       alignSelf: "center",
-      width: widthScale(40),
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: theme.white15,
+      width: widthScale(light ? 44 : 40),
+      height: light ? 5 : 4,
+      borderRadius: 3,
+      backgroundColor: light ? theme.borderMedium : theme.white15,
       marginTop: moderateHeightScale(8),
     },
     header: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      paddingHorizontal: moderateWidthScale(16),
-      paddingTop: moderateHeightScale(10),
-      paddingBottom: moderateHeightScale(10),
+      paddingHorizontal: moderateWidthScale(light ? 20 : 16),
+      paddingTop: moderateHeightScale(light ? 14 : 10),
+      paddingBottom: moderateHeightScale(light ? 12 : 10),
     },
     title: {
-      fontSize: fontSize.size18,
+      fontSize: light ? fontSize.size22 : fontSize.size18,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
     },
     closeBtn: {
-      width: widthScale(32),
-      height: widthScale(32),
-      borderRadius: widthScale(16),
-      backgroundColor: theme.white15,
+      width: widthScale(light ? 40 : 32),
+      height: widthScale(light ? 40 : 32),
+      borderRadius: widthScale(light ? 20 : 16),
+      backgroundColor: light ? theme.lightGreen07 : theme.white15,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -100,45 +102,49 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
-      marginHorizontal: moderateWidthScale(16),
+      marginHorizontal: moderateWidthScale(light ? 20 : 16),
       paddingHorizontal: moderateWidthScale(12),
-      height: heightScale(42),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.black,
+      height: heightScale(light ? 50 : 42),
+      borderRadius: moderateWidthScale(light ? 14 : 12),
+      backgroundColor: light ? theme.background : theme.black,
+      borderWidth: light ? 1.5 : 0,
+      borderColor: theme.borderNormal,
     },
     searchInput: {
       flex: 1,
-      fontSize: fontSize.size14,
+      fontSize: light ? fontSize.size16 : fontSize.size14,
       fontFamily: fonts.fontRegular,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
       paddingVertical: 0,
     },
     chips: {
       gap: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(light ? 20 : 16),
       paddingVertical: moderateHeightScale(12),
     },
     chip: {
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(4),
-      paddingHorizontal: moderateWidthScale(14),
-      height: heightScale(32),
-      borderRadius: heightScale(16),
-      borderWidth: 1,
-      borderColor: theme.white15,
+      paddingHorizontal: moderateWidthScale(light ? 16 : 14),
+      height: heightScale(light ? 40 : 32),
+      borderRadius: heightScale(light ? 20 : 16),
+      borderWidth: light ? 1.5 : 1,
+      borderColor: light ? theme.borderNormal : theme.white15,
+      backgroundColor: light ? theme.background : "transparent",
     },
     chipActive: {
       backgroundColor: theme.buttonBack,
       borderColor: theme.buttonBack,
     },
     chipText: {
-      fontSize: fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
+      fontSize: light ? fontSize.size14 : fontSize.size12,
+      fontFamily: light ? fonts.fontBold : fonts.fontMedium,
+      color: light ? theme.darkGreen : theme.white,
     },
+    chipTextActive: { color: theme.white },
     listContent: {
-      paddingHorizontal: moderateWidthScale(16),
+      paddingHorizontal: moderateWidthScale(light ? 20 : 16),
       paddingBottom: moderateHeightScale(16),
       flexGrow: 1,
     },
@@ -146,14 +152,14 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: theme.white15,
+      paddingVertical: moderateHeightScale(light ? 12 : 10),
+      borderBottomWidth: light ? 1 : StyleSheet.hairlineWidth,
+      borderBottomColor: light ? theme.borderLight : theme.white15,
     },
     playBtn: {
-      width: widthScale(44),
-      height: widthScale(44),
-      borderRadius: moderateWidthScale(10),
+      width: widthScale(light ? 48 : 44),
+      height: widthScale(light ? 48 : 44),
+      borderRadius: moderateWidthScale(light ? 14 : 10),
       backgroundColor: theme.buttonBack,
       alignItems: "center",
       justifyContent: "center",
@@ -161,24 +167,27 @@ const createStyles = (theme: Theme) =>
     playBtnActive: { backgroundColor: theme.selectCard },
     info: { flex: 1, minWidth: 0 },
     trackTitle: {
-      fontSize: fontSize.size14,
+      fontSize: light ? fontSize.size16 : fontSize.size14,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
     },
     trackMeta: {
-      fontSize: fontSize.size12,
+      fontSize: light ? fontSize.size13 : fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       marginTop: moderateHeightScale(2),
     },
     progressTrack: {
-      height: 2,
-      borderRadius: 1,
-      backgroundColor: theme.white15,
+      height: light ? 3 : 2,
+      borderRadius: 2,
+      backgroundColor: light ? theme.lightGreen1 : theme.white15,
       marginTop: moderateHeightScale(6),
       overflow: "hidden",
     },
-    progressFill: { height: 2, backgroundColor: theme.orangeBrown },
+    progressFill: {
+      height: light ? 3 : 2,
+      backgroundColor: light ? theme.selectCard : theme.orangeBrown,
+    },
     iconBtn: {
       width: widthScale(34),
       height: widthScale(34),
@@ -186,18 +195,18 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     useBtn: {
-      minWidth: widthScale(56),
-      height: heightScale(32),
-      paddingHorizontal: moderateWidthScale(12),
-      borderRadius: heightScale(16),
-      backgroundColor: theme.orangeBrown,
+      minWidth: widthScale(light ? 64 : 56),
+      height: heightScale(light ? 40 : 32),
+      paddingHorizontal: moderateWidthScale(light ? 16 : 12),
+      borderRadius: heightScale(light ? 20 : 16),
+      backgroundColor: light ? theme.darkGreen : theme.orangeBrown,
       alignItems: "center",
       justifyContent: "center",
     },
     useText: {
-      fontSize: fontSize.size12,
+      fontSize: light ? fontSize.size14 : fontSize.size12,
       fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      color: light ? theme.white : theme.darkGreen,
     },
     state: {
       flex: 1,
@@ -208,15 +217,15 @@ const createStyles = (theme: Theme) =>
       gap: moderateHeightScale(8),
     },
     stateTitle: {
-      fontSize: fontSize.size15,
+      fontSize: light ? fontSize.size17 : fontSize.size15,
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: light ? theme.darkGreen : theme.white,
       textAlign: "center",
     },
     stateBody: {
-      fontSize: fontSize.size12,
+      fontSize: light ? fontSize.size14 : fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       textAlign: "center",
     },
     stateBtn: {
@@ -235,20 +244,30 @@ const createStyles = (theme: Theme) =>
     },
     footerLoader: { paddingVertical: moderateHeightScale(16) },
     licenseNote: {
-      fontSize: fontSize.size11,
+      fontSize: light ? fontSize.size12 : fontSize.size11,
       fontFamily: fonts.fontRegular,
-      color: theme.white70,
+      color: light ? theme.lightGreen : theme.white70,
       textAlign: "center",
       paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(8),
     },
   });
 
-export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props) {
+export default function MusicLibrarySheet({
+  visible,
+  onClose,
+  onSelect,
+  tone = "dark",
+}: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const light = tone === "light";
+  const styles = useMemo(() => createStyles(theme, light), [theme, light]);
+  // Icons / spinners on the sheet surface
+  const ink = light ? theme.darkGreen : theme.white;
+  const inkMuted = light ? theme.lightGreen : theme.white70;
+  const inkFaint = light ? theme.lightGreen5 : theme.white50;
   const insets = useSafeAreaInsets();
 
   const [tab, setTab] = useState<string>(MUSIC_MOODS[0].key);
@@ -595,7 +614,7 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
               <MaterialIcons
                 name="delete-outline"
                 size={moderateWidthScale(22)}
-                color={theme.white70}
+                color={light ? theme.red : theme.white70}
               />
             </TouchableOpacity>
           ) : null}
@@ -609,7 +628,7 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
             {downloading ? (
               <Text style={styles.useText}>{Math.round(dl * 100)}%</Text>
             ) : applyingId === item.id ? (
-              <ActivityIndicator color={theme.darkGreen} size="small" />
+              <ActivityIndicator color={light ? theme.white : theme.darkGreen} size="small" />
             ) : (
               <Text style={styles.useText}>{t("musicUse")}</Text>
             )}
@@ -621,6 +640,7 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
       applyingId,
       confirmRemove,
       downloadsById,
+      light,
       offline,
       previewId,
       previewLoading,
@@ -643,7 +663,7 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
     action?: { label: string; onPress: () => void },
   ) => (
     <View style={styles.state}>
-      <MaterialIcons name={icon} size={moderateWidthScale(40)} color={theme.white50} />
+      <MaterialIcons name={icon} size={moderateWidthScale(40)} color={inkFaint} />
       <Text style={styles.stateTitle}>{title}</Text>
       {body ? <Text style={styles.stateBody}>{body}</Text> : null}
       {action ? (
@@ -673,7 +693,7 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
   } else if (loadState === "loading") {
     emptyComponent = (
       <View style={styles.state}>
-        <ActivityIndicator color={theme.white} />
+        <ActivityIndicator color={ink} />
       </View>
     );
   } else if (loadState === "error" || loadState === "rate_limited") {
@@ -709,25 +729,29 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
               hitSlop={8}
               accessibilityLabel={t("close")}
             >
-              <MaterialIcons name="close" size={moderateWidthScale(18)} color={theme.white} />
+              <MaterialIcons
+                name="close"
+                size={moderateWidthScale(light ? 22 : 18)}
+                color={ink}
+              />
             </TouchableOpacity>
           </View>
 
           <View style={styles.searchBox}>
-            <MaterialIcons name="search" size={moderateWidthScale(20)} color={theme.white70} />
+            <MaterialIcons name="search" size={moderateWidthScale(20)} color={inkMuted} />
             <TextInput
               style={styles.searchInput}
               value={searchText}
               onChangeText={setSearchText}
               placeholder={t("musicSearchPlaceholder")}
-              placeholderTextColor={theme.white50}
+              placeholderTextColor={inkFaint}
               returnKeyType="search"
               autoCorrect={false}
               editable={!offline}
             />
             {searchText ? (
               <TouchableOpacity onPress={() => setSearchText("")} hitSlop={8}>
-                <MaterialIcons name="cancel" size={moderateWidthScale(18)} color={theme.white70} />
+                <MaterialIcons name="cancel" size={moderateWidthScale(18)} color={inkMuted} />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -754,11 +778,11 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
                     {chip.key === DOWNLOADS_TAB ? (
                       <MaterialIcons
                         name="download-done"
-                        size={moderateWidthScale(14)}
-                        color={theme.white}
+                        size={moderateWidthScale(light ? 16 : 14)}
+                        color={active ? theme.white : ink}
                       />
                     ) : null}
-                    <Text style={styles.chipText}>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>
                       {t(chip.labelKey)}
                       {chip.key === DOWNLOADS_TAB && downloads.length > 0
                         ? ` (${downloads.length})`
@@ -778,7 +802,7 @@ export default function MusicLibrarySheet({ visible, onClose, onSelect }: Props)
             ListEmptyComponent={emptyComponent}
             ListFooterComponent={
               loadingMore ? (
-                <ActivityIndicator style={styles.footerLoader} color={theme.white} />
+                <ActivityIndicator style={styles.footerLoader} color={ink} />
               ) : null
             }
             onEndReached={onEndReached}

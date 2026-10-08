@@ -845,8 +845,9 @@ export default function AutoReelScreen() {
 
   const renderReady = () => {
     const isHaircut = autoReel?.template?.kind === "haircut";
-    const changeStyleAvailable =
-      canChange && !!autoReel?.source_media_asset_id && !isPublished;
+    // "Change style" hidden for now — not needed yet.
+    // const changeStyleAvailable =
+    //   canChange && !!autoReel?.source_media_asset_id && !isPublished;
     return (
       <>
         <ScrollView
@@ -880,6 +881,7 @@ export default function AutoReelScreen() {
                 }}
                 style={styles.rowButton}
               />
+              {/* "Change style" hidden for now — not needed yet.
               {changeStyleAvailable ? (
                 <FlowButton
                   variant="outline"
@@ -889,7 +891,7 @@ export default function AutoReelScreen() {
                   onPress={handleAnotherTemplate}
                   style={styles.rowButton}
                 />
-              ) : null}
+              ) : null} */}
             </View>
           ) : null}
           {isPublished ? (

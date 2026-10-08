@@ -38,6 +38,8 @@ type Props = {
   onReorder: (orderedIds: string[]) => void;
   /** Bigger chips and type (step-by-step Reel Studio). */
   large?: boolean;
+  /** "light" = dark text on a white sheet (step-by-step Reel Studio). */
+  tone?: "dark" | "light";
 };
 
 const CHIP_W = widthScale(132);
@@ -77,7 +79,7 @@ function orderOf(positions: Positions): string[] {
   return Object.keys(positions).sort((a, b) => positions[a] - positions[b]);
 }
 
-const createStyles = (theme: Theme, large: boolean = false) => {
+const createStyles = (theme: Theme, large: boolean = false, light = false) => {
   const chipW = large ? LARGE_CHIP_W : CHIP_W;
   const chipH = large ? LARGE_CHIP_H : CHIP_H;
   return StyleSheet.create({
@@ -106,13 +108,13 @@ const createStyles = (theme: Theme, large: boolean = false) => {
       gap: moderateWidthScale(6),
       paddingHorizontal: moderateWidthScale(10),
       borderRadius: chipH / 2,
-      borderWidth: 1,
-      borderColor: theme.white15,
-      backgroundColor: theme.darkGreen,
+      borderWidth: light ? 1.5 : 1,
+      borderColor: light ? theme.borderNormal : theme.white15,
+      backgroundColor: light ? theme.background : theme.darkGreen,
     },
     chipActive: {
       backgroundColor: theme.buttonBack,
-      borderColor: theme.orangeBrown,
+      borderColor: light ? theme.buttonBack : theme.orangeBrown,
     },
     num: {
       minWidth: widthScale(large ? 24 : 18),
@@ -124,14 +126,17 @@ const createStyles = (theme: Theme, large: boolean = false) => {
       fontSize: large ? fontSize.size13 : fontSize.size10,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      backgroundColor: theme.white70,
+      backgroundColor: light ? theme.lightGreen015 : theme.white70,
     },
-    numActive: { backgroundColor: theme.orangeBrown },
+    numActive: {
+      color: theme.darkGreen,
+      backgroundColor: light ? theme.white : theme.orangeBrown,
+    },
     text: {
       flex: 1,
       fontSize: large ? fontSize.size15 : fontSize.size12,
       fontFamily: fonts.fontMedium,
-      color: theme.white70,
+      color: light ? theme.darkGreen : theme.white70,
     },
     textActive: { color: theme.white, fontFamily: fonts.fontBold },
     add: {
@@ -143,12 +148,12 @@ const createStyles = (theme: Theme, large: boolean = false) => {
       borderRadius: chipH / 2,
       borderWidth: 1,
       borderStyle: "dashed",
-      borderColor: theme.white50,
+      borderColor: light ? theme.borderDark : theme.white50,
     },
     addText: {
       fontSize: large ? fontSize.size15 : fontSize.size12,
-      fontFamily: fonts.fontMedium,
-      color: theme.white,
+      fontFamily: light ? fonts.fontBold : fonts.fontMedium,
+      color: light ? theme.darkGreen : theme.white,
     },
   });
 };
@@ -271,11 +276,16 @@ export default function MusicSongChips({
   onAdd,
   onReorder,
   large = false,
+  tone = "dark",
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
-  const styles = useMemo(() => createStyles(theme, large), [theme, large]);
+  const light = tone === "light";
+  const styles = useMemo(
+    () => createStyles(theme, large, light),
+    [theme, large, light],
+  );
   const slot = large ? LARGE_CHIP_W + GAP : SLOT;
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
@@ -336,7 +346,11 @@ export default function MusicSongChips({
           activeOpacity={0.8}
           accessibilityRole="button"
         >
-          <MaterialIcons name="add" size={moderateWidthScale(large ? 20 : 16)} color={theme.white} />
+          <MaterialIcons
+            name="add"
+            size={moderateWidthScale(large ? 20 : 16)}
+            color={light ? theme.darkGreen : theme.white}
+          />
           <Text style={styles.addText}>{t("musicAddSong")}</Text>
         </TouchableOpacity>
       ) : null}
