@@ -25,7 +25,11 @@ import Slider from "@react-native-community/slider";
 import { Audio } from "expo-av";
 import { useEvent } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import {
+  Gesture,
+  GestureDetector,
+  ScrollView as GHScrollView,
+} from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -426,6 +430,14 @@ const createStyles = (theme: Theme, compact: boolean) =>
       flex: 1,
       minHeight: heightScale(compact ? 96 : 120),
       paddingHorizontal: moderateWidthScale(20),
+    },
+    // Trim / Style rows: on short screens the preview stops shrinking here
+    // and the step scrolls instead of pushing the footer off screen.
+    previewWrapScroll: {
+      minHeight: heightScale(compact ? 160 : 180),
+    },
+    editScroll: {
+      flexGrow: 1,
     },
     previewCard: {
       flex: 1,
@@ -1118,6 +1130,10 @@ export default function ReelStudioScreen() {
   const [playing, setPlaying] = useState(false);
   const [previewTimeMs, setPreviewTimeMs] = useState(0);
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
+  // Trim / Style body scrolls only when it doesn't fit (short Android screens)
+  const editScrollRef = useRef<React.ElementRef<typeof GHScrollView>>(null);
+  const [editViewportH, setEditViewportH] = useState(0);
+  const [editContentH, setEditContentH] = useState(0);
   const [history, setHistory] = useState<EditorSnapshot[]>([]);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
@@ -3139,6 +3155,11 @@ export default function ReelStudioScreen() {
     publishAbortRef.current = abort;
   }, []);
 
+  // A new step / opened tool starts from the top of the body
+  useEffect(() => {
+    editScrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [step, styleTool]);
+
   const onPreviewLayout = useCallback((e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
     if (width > 0 && height > 0) {
@@ -3315,7 +3336,7 @@ export default function ReelStudioScreen() {
   // ── Renders ───────────────────────────────────────────────────────
 
   const renderPreview = () => (
-    <View style={styles.previewWrap}>
+    <View style={[styles.previewWrap, !styleTool && styles.previewWrapScroll]}>
       <View style={styles.previewCard} onLayout={onPreviewLayout}>
         {frameSize.width > 0 ? (
           <View
@@ -4261,6 +4282,8 @@ export default function ReelStudioScreen() {
       : isSaveMode
         ? t("flowStyleSubtitleSave")
         : t("flowStyleSubtitle");
+    // The tool sheet has its own scroll — keep the body still while it's open
+    const editScrollable = !styleTool && editContentH > editViewportH + 1;
     // Short screens: give the preview the room while a tool / clip row is open
     const showTitle =
       !(keyboardOpen && step === "style") &&
@@ -4293,20 +4316,33 @@ export default function ReelStudioScreen() {
               : null,
           ]}
         >
-          {showTitle ? (
-            <FlowTitle
-              compact
-              title={title}
-              subtitle={compact ? null : subtitle}
-              style={styles.editTitle}
-            />
-          ) : null}
-          {renderPreview()}
-          {isTrim
-            ? renderTrimControls()
-            : styleTool
-              ? renderToolSheet()
-              : renderStyleRows()}
+          <GHScrollView
+            ref={editScrollRef}
+            style={styles.flex}
+            contentContainerStyle={styles.editScroll}
+            scrollEnabled={editScrollable}
+            bounces={false}
+            overScrollMode="never"
+            showsVerticalScrollIndicator={editScrollable}
+            keyboardShouldPersistTaps="handled"
+            onLayout={(e) => setEditViewportH(e.nativeEvent.layout.height)}
+            onContentSizeChange={(_, h) => setEditContentH(h)}
+          >
+            {showTitle ? (
+              <FlowTitle
+                compact
+                title={title}
+                subtitle={compact ? null : subtitle}
+                style={styles.editTitle}
+              />
+            ) : null}
+            {renderPreview()}
+            {isTrim
+              ? renderTrimControls()
+              : styleTool
+                ? renderToolSheet()
+                : renderStyleRows()}
+          </GHScrollView>
         </View>
         {isTrim ? (
           <FlowFooter
