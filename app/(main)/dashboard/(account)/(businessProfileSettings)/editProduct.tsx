@@ -69,7 +69,8 @@ export default function EditProductScreen() {
           err?.message || t("somethingWentWrong"),
           "error",
         );
-      } finally {
+        // Only on failure: router.back() runs on a later tick, and dropping
+        // `submitting` first lets the flow's back guard turn it into a step back.
         setSubmitting(false);
       }
     },
