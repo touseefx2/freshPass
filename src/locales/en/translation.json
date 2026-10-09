@@ -2072,6 +2072,7 @@
   "pickup": "Pickup",
   "pickupAtSalon": "Pickup at the salon",
   "pickupAtSalonHint": "Always free for the customer",
+  "deliveryCheckoutPreview": "What customers see at checkout",
   "shippingPerOrder": "Shipping {{amount}} per order",
   "setDeliveryBeforePublish": "Set your delivery options (shipping, pickup or both) before publishing a product.",
   "saveAsDraft": "Save as draft",

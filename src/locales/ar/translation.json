@@ -2015,6 +2015,7 @@
   "pickup": "الاستلام",
   "pickupAtSalon": "الاستلام من الصالون",
   "pickupAtSalonHint": "مجاني دائماً للعميل",
+  "deliveryCheckoutPreview": "ما يراه العملاء عند الدفع",
   "shippingPerOrder": "شحن {{amount}} لكل طلب",
   "setDeliveryBeforePublish": "اضبط خيارات التوصيل (شحن أو استلام أو كلاهما) قبل نشر المنتج.",
   "saveAsDraft": "حفظ كمسودة",

@@ -2015,6 +2015,7 @@
   "pickup": "Recogida",
   "pickupAtSalon": "Recoger en el salón",
   "pickupAtSalonHint": "Siempre gratis para el cliente",
+  "deliveryCheckoutPreview": "Lo que ven los clientes al pagar",
   "shippingPerOrder": "Envío {{amount}} por pedido",
   "setDeliveryBeforePublish": "Configura tus opciones de entrega (envío, recogida o ambos) antes de publicar un producto.",
   "saveAsDraft": "Guardar como borrador",

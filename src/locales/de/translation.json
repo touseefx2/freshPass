@@ -2015,6 +2015,7 @@
   "pickup": "Abholung",
   "pickupAtSalon": "Abholung im Salon",
   "pickupAtSalonHint": "Für Kunden immer kostenlos",
+  "deliveryCheckoutPreview": "Das sehen Kunden an der Kasse",
   "shippingPerOrder": "Versand {{amount}} pro Bestellung",
   "setDeliveryBeforePublish": "Lege deine Lieferoptionen fest (Versand, Abholung oder beides), bevor du ein Produkt veröffentlichst.",
   "saveAsDraft": "Als Entwurf speichern",

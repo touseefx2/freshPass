@@ -2015,6 +2015,7 @@
   "pickup": "受け取り",
   "pickupAtSalon": "サロンで受け取り",
   "pickupAtSalonHint": "お客様は常に無料",
+  "deliveryCheckoutPreview": "お客様がチェックアウトで見る内容",
   "shippingPerOrder": "送料 {{amount}}/注文",
   "setDeliveryBeforePublish": "商品を公開する前に配送オプション（配送・受け取り・両方）を設定してください。",
   "saveAsDraft": "下書きとして保存",

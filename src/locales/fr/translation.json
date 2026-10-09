@@ -2015,6 +2015,7 @@
   "pickup": "Retrait",
   "pickupAtSalon": "Retrait au salon",
   "pickupAtSalonHint": "Toujours gratuit pour le client",
+  "deliveryCheckoutPreview": "Ce que voient les clients au paiement",
   "shippingPerOrder": "Livraison {{amount}} par commande",
   "setDeliveryBeforePublish": "Définissez vos options de livraison (livraison, retrait ou les deux) avant de publier un produit.",
   "saveAsDraft": "Enregistrer en brouillon",

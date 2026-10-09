@@ -221,7 +221,9 @@ export default function ProductDetailScreen() {
   const { productId } = useLocalSearchParams<{ productId?: string }>();
   const shopProduct = useAppSelector((s) => s.shopCart.product);
   const quantity = useAppSelector((s) => s.shopCart.quantity);
-  const product = shopProduct && shopProduct.id === productId ? shopProduct : null;
+  // Compare as strings: the feed has sent numeric ids before; route params are strings
+  const product =
+    shopProduct && String(shopProduct.id) === String(productId) ? shopProduct : null;
   /** Deleted or unpublished since the feed loaded (404 on refresh) */
   const [unavailable, setUnavailable] = useState(false);
 
