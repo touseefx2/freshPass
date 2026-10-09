@@ -370,6 +370,10 @@ export default function BusinessCreateMediaMenu({
   }
 
   const showSpeedDial = visible && !reelPickerVisible;
+  // Widest pill on top, narrowest by the button — a pyramid in any language
+  const menuItems = [...MENU_ITEMS].sort(
+    (a, b) => t(b.labelKey).length - t(a.labelKey).length,
+  );
 
   return (
     <>
@@ -390,7 +394,7 @@ export default function BusinessCreateMediaMenu({
             pointerEvents="box-none"
           >
             <View style={styles.menu}>
-              {MENU_ITEMS.map((item) => (
+              {menuItems.map((item) => (
                 <TouchableOpacity
                   key={item.id}
                   style={[
