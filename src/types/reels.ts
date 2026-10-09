@@ -238,14 +238,30 @@ export type FunnelWindow = {
   last_30_days: number;
 };
 
+export type ReelWatchStats = {
+  plays: number;
+  avg_watch_seconds: number;
+  avg_completion_pct: number;
+  full_watches: number;
+};
+
 export type ReelPerformanceStats = {
   funnel: {
     view: FunnelWindow;
+    look_tap: FunnelWindow;
+    tryon_tap: FunnelWindow;
+    tryon_completed: FunnelWindow;
+    follow: FunnelWindow;
     profile_tap: FunnelWindow;
+    service_view: FunnelWindow;
     booking_started: FunnelWindow;
     booking_completed: FunnelWindow;
+    membership_view: FunnelWindow;
     subscription_started: FunnelWindow;
+    subscription_completed: FunnelWindow;
   };
+  /** Watch time from `/watch` reports (not windowed). All zeros until apps send it. */
+  watch?: ReelWatchStats;
   engagement: {
     likes: number;
     comments: number;
@@ -295,7 +311,11 @@ export type ReportResponse = {
   data: { already: boolean };
 };
 
-export type ReelEventType = "profile_tap" | "booking_started";
+export type ReelEventType =
+  | "profile_tap"
+  | "service_view"
+  | "booking_started"
+  | "membership_view";
 
 /** Top-level reel comment (R-13). */
 export type ReelComment = {

@@ -34,6 +34,34 @@ interface ProductResponse {
 interface DeleteResponse {
   success: boolean;
   message: string;
+  data?: { unlinkedReels: number; cancelledCheckouts: number };
+}
+
+/** Why the server refused a delete (409). `has_links` can be retried with force. */
+export type ProductDeleteBlockReason = "has_links" | "open_orders";
+
+export class ProductDeleteBlockedError extends Error {
+  reason: ProductDeleteBlockReason;
+  canForce: boolean;
+
+  constructor(message: string, reason: ProductDeleteBlockReason, canForce: boolean) {
+    super(message);
+    this.name = "ProductDeleteBlockedError";
+    this.reason = reason;
+    this.canForce = canForce;
+  }
+}
+
+/**
+ * Customer view of one product, fresher than `reel.product` from the feed.
+ * Rejects with `status: 404` when it was deleted or unpublished.
+ */
+export async function fetchProduct(id: string | number): Promise<ShopProduct> {
+  const response = await ApiService.get<ProductResponse>(productEndpoints.byId(id));
+  if (response.success && response.data) {
+    return response.data;
+  }
+  throw new Error(response.message || "Failed to fetch product");
 }
 
 export async function fetchMyProducts(params?: {
@@ -156,13 +184,37 @@ export async function updateProduct(
   throw new Error(response.message || "Failed to update product");
 }
 
-export async function deleteProduct(id: string | number): Promise<void> {
-  const response = await ApiService.delete<DeleteResponse>(
-    productEndpoints.delete(id),
-  );
+/**
+ * Deletes (hides) a product. Throws ProductDeleteBlockedError on 409 so the caller
+ * can offer "Delete anyway" when `canForce`; a 404 error keeps `status: 404`.
+ */
+export async function deleteProduct(
+  id: string | number,
+  options?: { force?: boolean },
+): Promise<{ unlinkedReels: number; cancelledCheckouts: number }> {
+  let response: DeleteResponse;
+  try {
+    response = await ApiService.delete<DeleteResponse>(
+      productEndpoints.delete(id, options?.force),
+    );
+  } catch (err: any) {
+    const data = err?.data?.data;
+    if (err?.status === 409 && data?.reason) {
+      throw new ProductDeleteBlockedError(
+        err?.data?.message || err.message,
+        data.reason,
+        data.canForce === true,
+      );
+    }
+    throw err;
+  }
   if (!response.success) {
     throw new Error(response.message || "Failed to delete product");
   }
+  return {
+    unlinkedReels: response.data?.unlinkedReels ?? 0,
+    cancelledCheckouts: response.data?.cancelledCheckouts ?? 0,
+  };
 }
 
 interface DeliveryOptionsResponse {

@@ -7,9 +7,10 @@ import { Theme } from "@/src/theme/colors";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
 import StackHeader from "@/src/components/StackHeader";
-import ProductFormScreen, {
-  type ProductFormDraft,
-} from "@/src/components/productFormScreen";
+// Old single-page form, kept so it can be switched back:
+// import ProductFormScreen from "@/src/components/productFormScreen";
+import type { ProductFormDraft } from "@/src/components/productFormScreen";
+import ProductStepFlow from "@/src/components/productStepFlow";
 import { updateProduct as updateProductRedux } from "@/src/state/slices/inventorySlice";
 import { updateProduct as updateProductApi } from "@/src/services/productService";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
@@ -100,7 +101,7 @@ export default function EditProductScreen() {
   }
 
   return (
-    <ProductFormScreen
+    <ProductStepFlow
       mode="edit"
       initial={initial}
       published={product.published}

@@ -344,6 +344,27 @@ export async function recordReelView(
 }
 
 /**
+ * Fire-and-forget: how long one play lasted (sent when the viewer leaves the reel).
+ * `watchedMs` = time actually playing (loops in, pauses out). Never retried.
+ */
+export async function recordReelWatch(
+  id: number | string,
+  watchedMs: number,
+  durationMs: number,
+): Promise<void> {
+  try {
+    await ApiService.post(reelsEndpoints.watch(id), {
+      watched_ms: Math.max(0, Math.round(watchedMs)),
+      duration_ms: Math.round(durationMs),
+    });
+  } catch (error: any) {
+    const status = error?.response?.status ?? error?.status;
+    if (status === 429 || status === 404) return;
+    Logger.error(`Failed to record reel watch ${id}:`, error);
+  }
+}
+
+/**
  * R-24: report how long a viewer stayed in a category.
  * Call once when leaving (swipe away or leave feed). Send 0 if they watched nothing.
  * Guests get 200 with nothing stored — no auth branch needed.

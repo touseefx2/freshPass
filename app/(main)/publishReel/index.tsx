@@ -30,6 +30,7 @@ import CustomToggle from "@/src/components/customToggle";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { ApiService } from "@/src/services/api";
 import { fetchMyProducts } from "@/src/services/productService";
+import { isLinkedProductError } from "@/src/components/reelFlow/productPickerSheet";
 import { isInStock, type ShopProduct } from "@/src/types/shopProduct";
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import { businessEndpoints } from "@/src/services/endpoints";
@@ -837,8 +838,13 @@ export default function PublishReelScreen() {
       }
       leaveAfterSuccess();
     } catch (error: any) {
+      if (isLinkedProductError(error)) {
+        setSelectedProductId(null);
+        setProductTag("");
+      }
       // Monthly reel limit (12 per business, shared with staff) → 422 on `reel`
       const msg =
+        (isLinkedProductError(error) ? t("linkedProductUnavailable") : null) ||
         error?.data?.errors?.reel?.[0] ||
         error?.data?.errors?.caption?.[0] ||
         error?.data?.errors?.media_asset_id?.[0] ||
@@ -885,7 +891,12 @@ export default function PublishReelScreen() {
       }
       leaveAfterSuccess();
     } catch (error: any) {
+      if (isLinkedProductError(error)) {
+        setSelectedProductId(null);
+        setProductTag("");
+      }
       const msg =
+        (isLinkedProductError(error) ? t("linkedProductUnavailable") : null) ||
         error?.data?.errors?.reel?.[0] ||
         error?.data?.errors?.media_asset_id?.[0] ||
         error?.response?.data?.errors?.media_asset_id?.[0] ||

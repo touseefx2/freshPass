@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/src/hooks/hooks";
@@ -34,6 +34,8 @@ type Props = {
   progress?: { label: string; percent: number | null } | null;
   /** Skip the bottom safe-area padding (e.g. a keyboard is open). */
   noSafeArea?: boolean;
+  /** Secondary and primary side by side (secondary on the left). */
+  row?: boolean;
 };
 
 const createStyles = (theme: Theme) =>
@@ -58,6 +60,14 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
       lineHeight: fontSize.size20,
     },
+    row: {
+      flexDirection: "row",
+      gap: moderateWidthScale(12),
+    },
+    // Secondary narrower, primary wider: the main action leads.
+    rowSecondary: { flex: 1 },
+    rowPrimary: { flex: 1.45 },
+    rowLabel: { fontSize: fontSize.size15 },
     progressBlock: {
       gap: moderateHeightScale(6),
     },
@@ -81,6 +91,17 @@ const createStyles = (theme: Theme) =>
     },
   });
 
+/**
+ * Bottom padding under the buttons. Android's gesture-bar inset is small,
+ * so it gets more room than iOS's home indicator.
+ */
+export function flowFooterBottomPad(insetBottom: number) {
+  return (
+    Math.max(insetBottom, moderateHeightScale(14)) +
+    moderateHeightScale(Platform.OS === "android" ? 14 : 4)
+  );
+}
+
 /** Sticky bottom action area: one clear primary button per step. */
 export default function FlowFooter({
   primary,
@@ -89,6 +110,7 @@ export default function FlowFooter({
   hint,
   progress,
   noSafeArea = false,
+  row = false,
 }: Props) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -102,8 +124,7 @@ export default function FlowFooter({
         {
           paddingBottom: noSafeArea
             ? moderateHeightScale(10)
-            : Math.max(insets.bottom, moderateHeightScale(14)) +
-              moderateHeightScale(4),
+            : flowFooterBottomPad(insets.bottom),
         },
       ]}
     >
@@ -125,28 +146,58 @@ export default function FlowFooter({
         </View>
       ) : null}
 
-      {secondary ? (
-        <FlowButton
-          variant="outline"
-          label={secondary.label}
-          onPress={secondary.onPress}
-          disabled={secondary.disabled}
-          loading={secondary.loading}
-          icon={secondary.icon}
-          trailingIcon={secondary.trailingIcon}
-          accessibilityHint={secondary.accessibilityHint}
-        />
-      ) : null}
+      {row && secondary ? (
+        <View style={styles.row}>
+          <FlowButton
+            variant="outline"
+            compact
+            style={styles.rowSecondary}
+            labelStyle={styles.rowLabel}
+            label={secondary.label}
+            onPress={secondary.onPress}
+            disabled={secondary.disabled}
+            loading={secondary.loading}
+            icon={secondary.icon}
+            accessibilityHint={secondary.accessibilityHint}
+          />
+          <FlowButton
+            compact
+            style={styles.rowPrimary}
+            labelStyle={styles.rowLabel}
+            label={primary.label}
+            onPress={primary.onPress}
+            disabled={primary.disabled}
+            loading={primary.loading}
+            icon={primary.icon}
+            accessibilityHint={primary.accessibilityHint}
+          />
+        </View>
+      ) : (
+        <>
+          {secondary ? (
+            <FlowButton
+              variant="outline"
+              label={secondary.label}
+              onPress={secondary.onPress}
+              disabled={secondary.disabled}
+              loading={secondary.loading}
+              icon={secondary.icon}
+              trailingIcon={secondary.trailingIcon}
+              accessibilityHint={secondary.accessibilityHint}
+            />
+          ) : null}
 
-      <FlowButton
-        label={primary.label}
-        onPress={primary.onPress}
-        disabled={primary.disabled}
-        loading={primary.loading}
-        icon={primary.icon}
-        trailingIcon={primary.trailingIcon}
-        accessibilityHint={primary.accessibilityHint}
-      />
+          <FlowButton
+            label={primary.label}
+            onPress={primary.onPress}
+            disabled={primary.disabled}
+            loading={primary.loading}
+            icon={primary.icon}
+            trailingIcon={primary.trailingIcon}
+            accessibilityHint={primary.accessibilityHint}
+          />
+        </>
+      )}
 
       {tertiary ? (
         <FlowButton

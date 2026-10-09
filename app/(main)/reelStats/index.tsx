@@ -115,6 +115,44 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.darkGreen,
     },
+    watchHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: moderateHeightScale(16),
+      marginBottom: moderateHeightScale(10),
+    },
+    watchTitle: { marginTop: 0, marginBottom: 0 },
+    watchScope: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    watchGrid: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "space-between",
+      rowGap: moderateHeightScale(10),
+      marginBottom: moderateHeightScale(8),
+    },
+    watchTile: {
+      width: "48.5%",
+      paddingHorizontal: moderateWidthScale(14),
+      paddingVertical: moderateHeightScale(12),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
+    },
+    watchValue: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    watchLabel: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
     linkBtn: {
       marginTop: moderateHeightScale(8),
       alignSelf: "flex-start",
@@ -151,8 +189,9 @@ const createStyles = (theme: Theme) =>
     },
   });
 
-function pickWindow(window: FunnelWindow, key: WindowKey): number {
-  return window[key] ?? 0;
+/** Older servers may not send every funnel key — read as zero. */
+function pickWindow(window: FunnelWindow | undefined, key: WindowKey): number {
+  return window?.[key] ?? 0;
 }
 
 export default function ReelStatsScreen() {
@@ -209,10 +248,17 @@ export default function ReelStatsScreen() {
     if (!stats) return [];
     return [
       { key: "view", label: t("funnelViews") },
+      { key: "look_tap", label: t("funnelLookTaps") },
       { key: "profile_tap", label: t("funnelProfileTaps") },
+      { key: "service_view", label: t("funnelServiceViews") },
       { key: "booking_started", label: t("funnelBookingStarted") },
       { key: "booking_completed", label: t("funnelBookingCompleted") },
+      { key: "membership_view", label: t("funnelMembershipViews") },
       { key: "subscription_started", label: t("funnelSubscriptionStarted") },
+      {
+        key: "subscription_completed",
+        label: t("funnelSubscriptionCompleted"),
+      },
     ] as const;
   }, [stats, t]);
 
@@ -278,11 +324,43 @@ export default function ReelStatsScreen() {
             <Text style={styles.rowLabel}>{row.label}</Text>
             <Text style={styles.rowValue}>
               {stats
-                ? pickWindow(stats.funnel[row.key], windowKey).toLocaleString()
+                ? pickWindow(stats.funnel?.[row.key], windowKey).toLocaleString()
                 : "0"}
             </Text>
           </View>
         ))}
+
+        <View style={styles.watchHeader}>
+          <Text style={[styles.sectionTitle, styles.watchTitle]}>
+            {t("watchTime")}
+          </Text>
+          <Text style={styles.watchScope}>{t("allTime")}</Text>
+        </View>
+        <View style={styles.watchGrid}>
+          {(
+            [
+              ["watchPlays", (stats?.watch?.plays ?? 0).toLocaleString()],
+              [
+                "watchAvgTime",
+                t("watchSecondsShort", {
+                  value: (stats?.watch?.avg_watch_seconds ?? 0).toFixed(1),
+                }),
+              ],
+              ["watchAvgCompletion", `${stats?.watch?.avg_completion_pct ?? 0}%`],
+              [
+                "watchFullWatches",
+                (stats?.watch?.full_watches ?? 0).toLocaleString(),
+              ],
+            ] as const
+          ).map(([labelKey, value]) => (
+            <View key={labelKey} style={styles.watchTile}>
+              <Text style={styles.watchValue} numberOfLines={1}>
+                {value}
+              </Text>
+              <Text style={styles.watchLabel}>{t(labelKey)}</Text>
+            </View>
+          ))}
+        </View>
 
         <Text style={styles.sectionTitle}>{t("engagement")}</Text>
         <View style={styles.row}>

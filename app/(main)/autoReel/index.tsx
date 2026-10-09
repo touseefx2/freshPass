@@ -61,6 +61,7 @@ import {
 } from "@/src/components/reelFlow/flowParts";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
 import ProductPickerSheet, {
+  isLinkedProductError,
   useInventoryProducts,
 } from "@/src/components/reelFlow/productPickerSheet";
 
@@ -596,7 +597,12 @@ export default function AutoReelScreen() {
       showBanner(t("success"), t("reelPublished"), "success", 2500);
     } catch (error: any) {
       Logger.error("Failed to publish auto reel:", error);
+      if (isLinkedProductError(error)) {
+        setSelectedProductId(null);
+        setProductTag("");
+      }
       const message =
+        (isLinkedProductError(error) ? t("linkedProductUnavailable") : null) ||
         fieldError(error, "auto_reel") ||
         fieldError(error, "caption") ||
         fieldError(error, "category_id") ||

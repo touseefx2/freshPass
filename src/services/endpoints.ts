@@ -837,6 +837,7 @@ export const reelsEndpoints = {
     return `/api/reels/${id}${query ? `?${query}` : ""}`;
   },
   view: (id: number | string) => `/api/reels/${id}/view`,
+  watch: (id: number | string) => `/api/reels/${id}/watch`,
   events: (id: number | string) => `/api/reels/${id}/events`,
   like: (id: number | string) => `/api/reels/${id}/like`,
   save: (id: number | string) => `/api/reels/${id}/save`,
@@ -964,9 +965,12 @@ export const productEndpoints = {
     return `/api/products/mine${query ? `?${query}` : ""}`;
   },
   mineById: (id: string | number) => `/api/products/mine/${id}`,
+  /** Customer/guest: the product as it is now (404 once deleted or unpublished). */
+  byId: (id: string | number) => `/api/products/${id}`,
   create: `/api/products`,
   update: (id: string | number) => `/api/products/${id}`,
-  delete: (id: string | number) => `/api/products/${id}`,
+  delete: (id: string | number, force?: boolean) =>
+    `/api/products/${id}${force ? "?force=true" : ""}`,
   checkout: `/api/payment-sheet/product-checkout`,
   deliveryOptions: `/api/business/delivery-options`,
 };

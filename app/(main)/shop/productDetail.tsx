@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -29,8 +29,11 @@ import {
 import { formatShopPrice } from "@/src/constants/demoShopProduct";
 import {
   setShippingMethod,
+  setShopProduct,
   setShopQuantity,
 } from "@/src/state/slices/shopCartSlice";
+import { fetchProduct } from "@/src/services/productService";
+import Logger from "@/src/services/logger";
 import { describeDelivery } from "@/src/utils/shopProductHelpers";
 
 const MAX_QTY_PER_ITEM = 10;
@@ -219,6 +222,36 @@ export default function ProductDetailScreen() {
   const shopProduct = useAppSelector((s) => s.shopCart.product);
   const quantity = useAppSelector((s) => s.shopCart.quantity);
   const product = shopProduct && shopProduct.id === productId ? shopProduct : null;
+  /** Deleted or unpublished since the feed loaded (404 on refresh) */
+  const [unavailable, setUnavailable] = useState(false);
+
+  // The feed's copy can be stale — refresh price, stock and delivery. On other
+  // errors keep the feed copy; checkout validates again on the server.
+  useEffect(() => {
+    if (!productId) return;
+    let cancelled = false;
+    fetchProduct(productId)
+      .then((fresh) => {
+        if (!cancelled) dispatch(setShopProduct(fresh));
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        if (err?.status === 404) setUnavailable(true);
+        else Logger.error("Failed to refresh product:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dispatch, productId]);
+
+  // Stock may have dropped below the chosen quantity
+  const stockCap =
+    product?.trackInventory && product.inventoryCount > 0
+      ? Math.min(product.inventoryCount, MAX_QTY_PER_ITEM)
+      : MAX_QTY_PER_ITEM;
+  useEffect(() => {
+    if (quantity > stockCap) dispatch(setShopQuantity(stockCap));
+  }, [dispatch, quantity, stockCap]);
 
   const header = (
     <FlowHeader
@@ -242,7 +275,7 @@ export default function ProductDetailScreen() {
 
   const outOfStock = product.trackInventory && product.inventoryCount <= 0;
   const takingOrders = !!product.delivery?.configured;
-  const canBuy = takingOrders && !outOfStock;
+  const canBuy = takingOrders && !outOfStock && !unavailable;
   const lowStock =
     product.trackInventory &&
     product.inventoryCount > 0 &&
@@ -309,7 +342,13 @@ export default function ProductDetailScreen() {
           </FlowCard>
         ) : null}
 
-        {!takingOrders ? (
+        {unavailable ? (
+          <InfoNote
+            tone="warm"
+            icon="remove-shopping-cart"
+            text={t("productNoLongerAvailable")}
+          />
+        ) : !takingOrders ? (
           <InfoNote tone="warm" icon="storefront" text={t("salonNotTakingOrders")} />
         ) : outOfStock ? (
           <InfoNote tone="warm" icon="remove-shopping-cart" text={t("outOfStock")} />
@@ -376,7 +415,11 @@ export default function ProductDetailScreen() {
 
       <FlowFooter
         primary={{
-          label: outOfStock ? t("outOfStock") : t("shopNextDelivery"),
+          label: unavailable
+            ? t("productUnavailableTitle")
+            : outOfStock
+              ? t("outOfStock")
+              : t("shopNextDelivery"),
           disabled: !canBuy,
           trailingIcon: canBuy ? "chevron-right" : undefined,
           onPress: () => {

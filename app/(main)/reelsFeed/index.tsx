@@ -64,6 +64,7 @@ import {
   listMyReels,
   publishReel,
   recordReelView,
+  recordReelWatch,
   reportCategoryDwell,
   REELS_MINE_PER_PAGE,
   saveReel,
@@ -746,6 +747,10 @@ type ReelItemProps = {
   onProfile: (reel: FeedReel) => void;
   onWantLook: (reel: FeedReel) => void;
   onPublish?: () => void;
+  /** Report plays: `/view` when playback starts, `/watch` when the play ends. */
+  trackPlays?: boolean;
+  onPlayStart?: (reelId: number) => void;
+  onPlayEnd?: (reelId: number, watchedMs: number, durationMs: number) => void;
 };
 
 function ReelFeedItemBase({
@@ -774,6 +779,9 @@ function ReelFeedItemBase({
   onProfile,
   onWantLook,
   onPublish,
+  trackPlays = false,
+  onPlayStart,
+  onPlayEnd,
 }: ReelItemProps) {
   // Preview looks like customer feed, but social actions are display-only.
   const showAsOwner = isOwnReel && !isPreview;
@@ -904,6 +912,76 @@ function ReelFeedItemBase({
       silencePlayer();
     };
   }, [player, silencePlayer, syncPlayback]);
+
+  /**
+   * Watch time: one play = one active stretch of this reel (ends on swipe,
+   * leaving the screen, opening I Want This Look, or backgrounding the app).
+   * Only time spent actually playing counts — loops in, pauses/buffering out.
+   */
+  const playOpenRef = useRef(false);
+  const playStartedRef = useRef(false);
+  const watchedMsRef = useRef(0);
+  const playingSinceRef = useRef<number | null>(null);
+  const loadedDurationMsRef = useRef(0);
+  const onPlayStartRef = useRef(onPlayStart);
+  const onPlayEndRef = useRef(onPlayEnd);
+  onPlayStartRef.current = onPlayStart;
+  onPlayEndRef.current = onPlayEnd;
+
+  const markPlaying = useCallback(() => {
+    if (!playOpenRef.current) return;
+    if (playingSinceRef.current == null) playingSinceRef.current = Date.now();
+    if (!playStartedRef.current) {
+      playStartedRef.current = true;
+      onPlayStartRef.current?.(reel.id);
+    }
+  }, [reel.id]);
+
+  const markStopped = useCallback(() => {
+    if (playingSinceRef.current == null) return;
+    watchedMsRef.current += Date.now() - playingSinceRef.current;
+    playingSinceRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!player) return;
+    const readDuration = () => {
+      if (player.duration > 0) {
+        loadedDurationMsRef.current = Math.round(player.duration * 1000);
+      }
+    };
+    readDuration();
+    const statusSub = player.addListener("statusChange", readDuration);
+    const playingSub = player.addListener("playingChange", ({ isPlaying }) => {
+      readDuration();
+      if (isPlaying) markPlaying();
+      else markStopped();
+    });
+    return () => {
+      statusSub.remove();
+      playingSub.remove();
+    };
+  }, [markPlaying, markStopped, player]);
+
+  useEffect(() => {
+    if (!trackPlays || !isActive || !player) return;
+    playOpenRef.current = true;
+    playStartedRef.current = false;
+    watchedMsRef.current = 0;
+    playingSinceRef.current = null;
+    // Already playing (e.g. sheet closed over a running reel) → new play starts now.
+    if (player.playing) markPlaying();
+    return () => {
+      markStopped();
+      playOpenRef.current = false;
+      const durationMs = loadedDurationMsRef.current;
+      // Skip if playback never started or the player never learned the length.
+      if (!playStartedRef.current || durationMs < 1 || durationMs > 600000) {
+        return;
+      }
+      onPlayEndRef.current?.(reel.id, watchedMsRef.current, durationMs);
+    };
+  }, [isActive, markPlaying, markStopped, player, reel.id, trackPlays]);
 
   useEffect(() => {
     return () => {
@@ -1871,7 +1949,6 @@ export default function ReelsFeedScreen() {
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
   // Staff can preview any business reel but only publish their own
   const [previewCanChange, setPreviewCanChange] = useState(true);
-  const viewedIdsRef = useRef<Set<number>>(new Set());
   /** R-24: unique reels that became active during the current category visit. */
   const categorySeenSetRef = useRef<Set<number>>(new Set());
   const dwellCategoryIdRef = useRef<string | undefined>(
@@ -2423,14 +2500,16 @@ export default function ReelsFeedScreen() {
       categorySeenSetRef.current.add(activeId);
     }
 
-    if (viewedIdsRef.current.has(activeId)) return;
-    viewedIdsRef.current.add(activeId);
-    recordReelView(activeId).then((result) => {
+  }, [activeId, categoryId, feedTab, isOwnerMode, isPreviewMode]);
+
+  /** Each play sends `/view` when playback starts (swipe back / resume = new play). */
+  const handlePlayStart = useCallback((reelId: number) => {
+    recordReelView(reelId).then((result) => {
       if (result == null || !result.counted) return;
       // Public views column is rebuilt on a schedule; bump locally when this play counts.
       setReels((prev) =>
         prev.map((r) =>
-          r.id === activeId
+          r.id === reelId
             ? {
                 ...r,
                 stats: {
@@ -2442,7 +2521,15 @@ export default function ReelsFeedScreen() {
         ),
       );
     });
-  }, [activeId, categoryId, feedTab, isOwnerMode, isPreviewMode]);
+  }, []);
+
+  /** …and `/watch` once when that play ends. Fire and forget. */
+  const handlePlayEnd = useCallback(
+    (reelId: number, watchedMs: number, durationMs: number) => {
+      void recordReelWatch(reelId, watchedMs, durationMs);
+    },
+    [],
+  );
 
   const onViewableItemsChanged = useRef(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -3201,6 +3288,14 @@ export default function ReelsFeedScreen() {
                 onProfile={openProfile}
                 onWantLook={wantLook}
                 onPublish={handlePublishPreview}
+                // Opening I Want This Look ends the play (video keeps running)
+                trackPlays={
+                  !isPreviewMode &&
+                  !isOwnerMode &&
+                  wantLookReel?.id !== item.id
+                }
+                onPlayStart={handlePlayStart}
+                onPlayEnd={handlePlayEnd}
               />
             )}
           />

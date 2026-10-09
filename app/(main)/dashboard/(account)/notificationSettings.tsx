@@ -213,6 +213,8 @@ export default function NotificationSettingsScreen() {
     { key: "biz_new_follower", title: t("prefBizNewFollower") },
     { key: "biz_reel_comments", title: t("prefBizReelComments") },
     { key: "biz_reel_bookings", title: t("prefBizReelBookings") },
+    { key: "biz_orders", title: t("prefBizOrders") },
+    { key: "biz_low_stock", title: t("prefBizLowStock") },
     { key: "biz_reel_likes", title: t("prefBizReelLikes") },
   ];
 

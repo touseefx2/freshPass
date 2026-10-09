@@ -295,6 +295,8 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
       lineHeight: fontSize.size20,
       textAlign: "left",
+      // Android: a title shrunk to one line keeps its 2-line box — center it
+      textAlignVertical: "center",
     },
   });
 

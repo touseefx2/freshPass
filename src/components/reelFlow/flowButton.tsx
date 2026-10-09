@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   View,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -30,6 +31,8 @@ type Props = {
   /** Icon after the label (e.g. chevron on "Next" buttons). */
   trailingIcon?: keyof typeof MaterialIcons.glyphMap;
   style?: StyleProp<ViewStyle>;
+  /** Extra label style (e.g. a smaller size in a two-button row). */
+  labelStyle?: StyleProp<TextStyle>;
   compact?: boolean;
   /** Red label / icon for a destructive action (e.g. "Cancel order"). */
   danger?: boolean;
@@ -106,6 +109,7 @@ export default function FlowButton({
   icon,
   trailingIcon,
   style,
+  labelStyle,
   compact = false,
   danger = false,
   accessibilityHint,
@@ -163,6 +167,7 @@ export default function FlowButton({
                     ? styles.labelText
                     : styles.labelOutline,
                 danger && styles.labelDanger,
+                labelStyle,
               ]}
               // Long translations wrap / shrink a little instead of clipping
               numberOfLines={2}

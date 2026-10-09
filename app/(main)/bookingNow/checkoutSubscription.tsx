@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from "react";
 import {
   StyleSheet,
   View,
@@ -39,6 +45,7 @@ import { resolveApiImageUrl } from "@/src/utils/media";
 import {
   getDefaultBusinessLogo,
 } from "@/src/services/remoteConfigService";
+import { reportReelEvent } from "@/src/services/reelsService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -406,6 +413,14 @@ function CheckoutSubscriptionContent() {
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
+  const membershipViewSentRef = useRef(false);
+
+  // Membership opened from a reel → count it once per mount (not on plan switch)
+  useEffect(() => {
+    if (!attributionReelId || membershipViewSentRef.current) return;
+    membershipViewSentRef.current = true;
+    reportReelEvent(attributionReelId, "membership_view");
+  }, [attributionReelId]);
 
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);

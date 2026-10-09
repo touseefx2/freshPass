@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from "react";
 import { useRouter } from "expo-router";
 import { useAppDispatch } from "@/src/hooks/hooks";
-import ProductFormScreen, {
-  type ProductFormDraft,
-} from "@/src/components/productFormScreen";
+// Old single-page form, kept so it can be switched back:
+// import ProductFormScreen from "@/src/components/productFormScreen";
+import type { ProductFormDraft } from "@/src/components/productFormScreen";
+import ProductStepFlow from "@/src/components/productStepFlow";
 import { addProduct } from "@/src/state/slices/inventorySlice";
 import { createEmptyProductDraft } from "@/src/utils/shopProductHelpers";
 import { createProduct } from "@/src/services/productService";
@@ -47,7 +48,7 @@ export default function AddProductScreen() {
   );
 
   return (
-    <ProductFormScreen
+    <ProductStepFlow
       mode="add"
       initial={createEmptyProductDraft()}
       submitting={submitting}

@@ -26,6 +26,14 @@ import {
 import { isInStock, type ShopProduct } from "@/src/types/shopProduct";
 
 /**
+ * 422 on `product_id` when saving a reel: the linked product was deleted (or
+ * hidden) after it was picked. Callers drop the selection so a retry succeeds.
+ */
+export function isLinkedProductError(error: any): boolean {
+  return Array.isArray(error?.data?.errors?.product_id);
+}
+
+/**
  * The user's inventory for "Promote a product" on a reel. Reloads when the
  * screen regains focus — products may have been added in Products & Inventory.
  */

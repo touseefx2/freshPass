@@ -49,7 +49,10 @@ import {
   SelectField,
   ToggleRow,
 } from "./detailsFields";
-import ProductPickerSheet, { useInventoryProducts } from "./productPickerSheet";
+import ProductPickerSheet, {
+  isLinkedProductError,
+  useInventoryProducts,
+} from "./productPickerSheet";
 
 /** The finished video the studio hands to its Publish step. */
 export type StudioVideo = {
@@ -459,6 +462,7 @@ export default function StudioPublishStep({
   });
 
   const errorMessage = (error: any, fallbackKey: string) =>
+    (isLinkedProductError(error) ? t("linkedProductUnavailable") : null) ||
     error?.data?.errors?.reel?.[0] ||
     error?.data?.errors?.caption?.[0] ||
     error?.data?.errors?.media_asset_id?.[0] ||
@@ -490,6 +494,10 @@ export default function StudioPublishStep({
     } catch (error: any) {
       if (controller.signal.aborted || isUploadCancelled(error)) return;
       Logger.error("Studio publish failed:", error);
+      if (isLinkedProductError(error)) {
+        setSelectedProductId(null);
+        setProductTag("");
+      }
       showBanner(t("error"), errorMessage(error, "failedToPublishReel"), "error", 3500);
     } finally {
       setPublishing(false);
@@ -513,6 +521,10 @@ export default function StudioPublishStep({
     } catch (error: any) {
       if (controller.signal.aborted || isUploadCancelled(error)) return;
       Logger.error("Studio save draft failed:", error);
+      if (isLinkedProductError(error)) {
+        setSelectedProductId(null);
+        setProductTag("");
+      }
       showBanner(t("error"), errorMessage(error, "failedToSaveReel"), "error", 3500);
     } finally {
       setSavingDraft(false);

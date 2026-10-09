@@ -29,7 +29,6 @@ import {
   removeProduct,
   setDeliveryOptions,
   setProducts,
-  updateProduct,
 } from "@/src/state/slices/inventorySlice";
 import { describeDelivery } from "@/src/utils/shopProductHelpers";
 import {
@@ -42,7 +41,7 @@ import {
   fetchMyProducts,
   fetchDeliveryOptions,
   deleteProduct as deleteProductApi,
-  updateProduct as updateProductApi,
+  ProductDeleteBlockedError,
 } from "@/src/services/productService";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 
@@ -303,6 +302,52 @@ export default function ProductsInventoryScreen() {
     });
   }, [products, search, filter]);
 
+  const runDelete = async (product: ShopProduct, force = false) => {
+    try {
+      const { unlinkedReels } = await deleteProductApi(product.id, { force });
+      dispatch(removeProduct(product.id));
+      showBanner(
+        t("products"),
+        unlinkedReels > 0
+          ? t("productDeletedFromReels", { count: unlinkedReels })
+          : t("productDeleted"),
+        "success",
+      );
+    } catch (err: any) {
+      if (err instanceof ProductDeleteBlockedError) {
+        // Decide on canForce, not on the wording of the message.
+        if (err.canForce && !force) {
+          Alert.alert(t("cannotDelete"), err.message, [
+            { text: t("cancel"), style: "cancel" },
+            {
+              text: t("deleteAnyway"),
+              style: "destructive",
+              onPress: () => runDelete(product, true),
+            },
+          ]);
+        } else if (err.reason === "open_orders") {
+          // Owner must complete or cancel those orders first
+          Alert.alert(t("cannotDelete"), err.message, [
+            { text: t("cancel"), style: "cancel" },
+            {
+              text: t("viewOrders"),
+              onPress: () => router.push("./orders" as any),
+            },
+          ]);
+        } else {
+          Alert.alert(t("cannotDelete"), err.message, [{ text: t("ok") }]);
+        }
+        return;
+      }
+      if (err?.status === 404) {
+        // Already gone or not ours — resync the list.
+        loadProducts();
+        return;
+      }
+      showBanner(t("products"), err?.message || t("somethingWentWrong"), "error");
+    }
+  };
+
   const confirmDelete = (product: ShopProduct) => {
     Alert.alert(
       t("deleteProductTitle"),
@@ -312,38 +357,7 @@ export default function ProductsInventoryScreen() {
         {
           text: t("delete"),
           style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteProductApi(product.id);
-              dispatch(removeProduct(product.id));
-            } catch (err: any) {
-              const msg = err?.message || "";
-              if (msg.includes("completed orders")) {
-                Alert.alert(t("cannotDelete"), msg, [
-                  { text: t("cancel"), style: "cancel" },
-                  {
-                    text: t("unpublish"),
-                    onPress: async () => {
-                      try {
-                        const updated = await updateProductApi(product.id, {
-                          published: false,
-                        });
-                        dispatch(updateProduct(updated));
-                      } catch {
-                        showBanner(
-                          t("products"),
-                          t("somethingWentWrong"),
-                          "error",
-                        );
-                      }
-                    },
-                  },
-                ]);
-              } else {
-                showBanner(t("products"), msg || t("somethingWentWrong"), "error");
-              }
-            }
-          },
+          onPress: () => runDelete(product),
         },
       ],
     );

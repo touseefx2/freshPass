@@ -68,6 +68,44 @@ const createStyles = (theme: Theme) =>
       minHeight: heightScale(124),
       textAlignVertical: "top",
     },
+    inputError: { borderColor: theme.red },
+    prefixWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      minHeight: heightScale(56),
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1.5,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      paddingLeft: moderateWidthScale(16),
+    },
+    prefix: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      marginRight: moderateWidthScale(4),
+    },
+    prefixInput: {
+      flex: 1,
+      minHeight: heightScale(56),
+      paddingRight: moderateWidthScale(16),
+      paddingVertical: moderateHeightScale(14),
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+    },
+    errorRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    errorText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
+      lineHeight: fontSize.size20,
+    },
     helper: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontRegular,
@@ -207,6 +245,10 @@ type TextFieldProps = TextInputProps & {
   /** Shows "12/2200" when set. */
   maxCount?: number;
   helper?: string | null;
+  /** Red border + message under the field. */
+  error?: string | null;
+  /** Fixed text inside the field before the value (e.g. "$"). */
+  prefix?: string;
   containerStyle?: StyleProp<ViewStyle>;
 };
 
@@ -217,6 +259,8 @@ export const FlowTextField = forwardRef<TextInput, TextFieldProps>(
       required = false,
       maxCount,
       helper,
+      error,
+      prefix,
       containerStyle,
       multiline,
       style,
@@ -235,17 +279,50 @@ export const FlowTextField = forwardRef<TextInput, TextFieldProps>(
             maxCount != null ? `${(value ?? "").length}/${maxCount}` : null
           }
         />
-        <TextInput
-          ref={ref}
-          value={value}
-          multiline={multiline}
-          maxLength={maxCount}
-          placeholderTextColor={theme.lightGreen5}
-          accessibilityLabel={label}
-          style={[styles.input, multiline && styles.inputMultiline, style]}
-          {...rest}
-        />
-        {helper ? <Text style={styles.helper}>{helper}</Text> : null}
+        {prefix ? (
+          <View style={[styles.prefixWrap, !!error && styles.inputError]}>
+            <Text style={styles.prefix}>{prefix}</Text>
+            <TextInput
+              ref={ref}
+              value={value}
+              maxLength={maxCount}
+              placeholderTextColor={theme.lightGreen5}
+              accessibilityLabel={label}
+              accessibilityHint={error ?? undefined}
+              style={[styles.prefixInput, style]}
+              {...rest}
+            />
+          </View>
+        ) : (
+          <TextInput
+            ref={ref}
+            value={value}
+            multiline={multiline}
+            maxLength={maxCount}
+            placeholderTextColor={theme.lightGreen5}
+            accessibilityLabel={label}
+            accessibilityHint={error ?? undefined}
+            style={[
+              styles.input,
+              multiline && styles.inputMultiline,
+              !!error && styles.inputError,
+              style,
+            ]}
+            {...rest}
+          />
+        )}
+        {error ? (
+          <View style={styles.errorRow} accessibilityLiveRegion="polite">
+            <MaterialIcons
+              name="error-outline"
+              size={moderateWidthScale(18)}
+              color={theme.red}
+            />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : helper ? (
+          <Text style={styles.helper}>{helper}</Text>
+        ) : null}
       </View>
     );
   },

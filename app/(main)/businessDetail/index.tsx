@@ -1148,6 +1148,117 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    serviceSheetOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      justifyContent: "flex-end",
+    },
+    serviceSheet: {
+      backgroundColor: theme.background,
+      borderTopLeftRadius: moderateWidthScale(24),
+      borderTopRightRadius: moderateWidthScale(24),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(8),
+      maxHeight: "85%",
+    },
+    serviceSheetHandle: {
+      alignSelf: "center",
+      width: moderateWidthScale(40),
+      height: moderateHeightScale(4),
+      borderRadius: moderateWidthScale(2),
+      backgroundColor: theme.lightGreen015,
+      marginBottom: moderateHeightScale(16),
+    },
+    serviceSheetHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(12),
+      marginBottom: moderateHeightScale(16),
+    },
+    serviceSheetHeaderText: {
+      flex: 1,
+    },
+    serviceSheetName: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textTransform: "capitalize",
+    },
+    serviceSheetDuration: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+      marginTop: moderateHeightScale(6),
+    },
+    serviceSheetDurationText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    serviceSheetBody: {
+      flexGrow: 0,
+      padding: moderateWidthScale(14),
+      marginBottom: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.lightGreen07,
+    },
+    serviceSheetSectionLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+      marginBottom: moderateHeightScale(6),
+    },
+    serviceSheetDescription: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size14 * 1.5,
+    },
+    serviceSheetFooter: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(16),
+      marginHorizontal: -moderateWidthScale(20),
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(14),
+      borderTopWidth: 1,
+      borderTopColor: theme.borderLight,
+    },
+    serviceSheetPriceBlock: {
+      flex: 1,
+    },
+    serviceSheetPrice: {
+      fontSize: fontSize.size20,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    serviceSheetCurrency: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+    },
+    serviceSheetDiscountRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginTop: moderateHeightScale(2),
+    },
+    serviceSheetSaveChip: {
+      paddingHorizontal: moderateWidthScale(6),
+      paddingVertical: moderateHeightScale(2),
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.orangeBrown015,
+    },
+    serviceSheetSaveText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.orangeBrownText,
+    },
+    serviceSheetBookButton: {
+      flex: 1,
+    },
     fullReviewModalContainer: {
       backgroundColor: theme.background,
       borderRadius: moderateWidthScale(12),
@@ -1469,6 +1580,7 @@ export default function BusinessDetailScreen() {
   >([]);
   const [showAllStaff, setShowAllStaff] = useState(false);
   const [fullReviewModalVisible, setFullReviewModalVisible] = useState(false);
+  const [serviceDetails, setServiceDetails] = useState<any | null>(null);
   const [selectedReview, setSelectedReview] = useState<any | null>(null);
   const user = useAppSelector((state: any) => state.user);
   const isGuest = user.isGuest;
@@ -2946,6 +3058,248 @@ export default function BusinessDetailScreen() {
     );
   };
 
+  /** Book Now for one service (card or service details) — forwards reel attribution. */
+  const handleBookService = (service: any) => {
+    if (isBusinessOwnerView) return;
+    // Set business data in Redux
+    const serviceData = {
+      id: service.id,
+      name: service.name,
+      description: service.description,
+      price: service.price,
+      originalPrice: service.originalPrice,
+      duration: service.duration,
+      label: service.label || null,
+    };
+    const allServicesData =
+      individualServices.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        price: s.price,
+        originalPrice: s.originalPrice,
+        duration: s.duration,
+        label: s.label || null,
+      }));
+    // Parse business hours from API format to Redux format
+    const parseTimeToHoursMinutes = (
+      timeString: string | null | undefined,
+    ): { hours: number; minutes: number } => {
+      if (
+        !timeString ||
+        typeof timeString !== "string"
+      ) {
+        return { hours: 0, minutes: 0 };
+      }
+      const [hours, minutes] = timeString
+        .split(":")
+        .map(Number);
+      return {
+        hours: hours || 0,
+        minutes: minutes || 0,
+      };
+    };
+
+    const getDayDisplayFormat = (
+      day: string,
+    ): string => {
+      if (!day) return day;
+      const dayLower = day.toLowerCase();
+      const dayMap: { [key: string]: string } = {
+        monday: "Monday",
+        tuesday: "Tuesday",
+        wednesday: "Wednesday",
+        thursday: "Thursday",
+        friday: "Friday",
+        saturday: "Saturday",
+        sunday: "Sunday",
+      };
+      return dayMap[dayLower] || day;
+    };
+
+    const parseBusinessHours = (
+      hoursArray: any[] | null | undefined,
+    ) => {
+      if (
+        !hoursArray ||
+        !Array.isArray(hoursArray) ||
+        hoursArray.length === 0
+      ) {
+        return null;
+      }
+
+      const businessHours: {
+        [key: string]: any;
+      } = {};
+
+      // Initialize all days with default closed state
+      const DAYS = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ];
+      DAYS.forEach((day) => {
+        businessHours[day] = {
+          isOpen: false,
+          fromHours: 0,
+          fromMinutes: 0,
+          tillHours: 0,
+          tillMinutes: 0,
+          breaks: [],
+        };
+      });
+
+      // Parse API hours
+      hoursArray.forEach((dayData: any) => {
+        const dayName = getDayDisplayFormat(
+          dayData.day,
+        );
+        if (!DAYS.includes(dayName)) return;
+
+        let fromHours = 0;
+        let fromMinutes = 0;
+        let tillHours = 0;
+        let tillMinutes = 0;
+
+        if (dayData.opening_time) {
+          const parsed = parseTimeToHoursMinutes(
+            dayData.opening_time,
+          );
+          fromHours = parsed.hours;
+          fromMinutes = parsed.minutes;
+        }
+
+        if (dayData.closing_time) {
+          const parsed = parseTimeToHoursMinutes(
+            dayData.closing_time,
+          );
+          tillHours = parsed.hours;
+          tillMinutes = parsed.minutes;
+        }
+
+        const breaks = (
+          dayData.break_hours || []
+        ).map((breakTime: any) => {
+          const {
+            hours: breakFromHours,
+            minutes: breakFromMinutes,
+          } = parseTimeToHoursMinutes(
+            breakTime.start || "00:00",
+          );
+          const {
+            hours: breakTillHours,
+            minutes: breakTillMinutes,
+          } = parseTimeToHoursMinutes(
+            breakTime.end || "00:00",
+          );
+          return {
+            fromHours: breakFromHours,
+            fromMinutes: breakFromMinutes,
+            tillHours: breakTillHours,
+            tillMinutes: breakTillMinutes,
+          };
+        });
+
+        businessHours[dayName] = {
+          isOpen: !dayData.closed,
+          fromHours,
+          fromMinutes,
+          tillHours,
+          tillMinutes,
+          breaks,
+        };
+      });
+
+      return businessHours;
+    };
+
+    // Map staff members with working_hours
+    const staffMembersData = (
+      businessData?.staff || []
+    )
+      .filter(
+        (staff: any) =>
+          staff.invitation_status === "accepted",
+      )
+      .map((staff: any) => {
+        // Construct image URL from API response
+        let image = getDefaultAvatarImage();
+        if (staff.avatar) {
+          const isAbsoluteUrl =
+            typeof staff.avatar === "string" &&
+            (staff.avatar.startsWith("http://") ||
+              staff.avatar.startsWith(
+                "https://",
+              ));
+
+          if (isAbsoluteUrl) {
+            image = staff.avatar;
+          } else {
+            image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
+          }
+        }
+
+        // Parse working_hours if available (even if empty array)
+        const staffWorkingHours =
+          parseBusinessHours(staff.working_hours);
+
+        return {
+          id: staff.id || staff.user_id || 0,
+          name:
+            staff.name ||
+            t("staffMemberFallback"),
+          experience: staff?.description ?? null,
+          image: image,
+          working_hours: staffWorkingHours,
+          active: staff.active,
+          is_owner: staff.is_owner === true,
+        };
+      });
+
+    const businessHoursData = parseBusinessHours(
+      businessData?.hours,
+    );
+
+    const businessPayload = {
+      selectedService: serviceData,
+      allServices: allServicesData,
+      staffMembers: staffMembersData,
+      businessId: params.business_id || "",
+      businessHours: businessHoursData,
+      subscriptionPlanType,
+      subscriptionStatus,
+    };
+    dispatch(
+      setBusinessDataAction(businessPayload),
+    );
+    // Navigate to bookingNow; forward reel attribution when present
+    router.push({
+      pathname: "/(main)/bookingNow",
+      params: attributionReelId
+        ? { reel_id: String(attributionReelId) }
+        : undefined,
+    });
+  };
+
+  /** Tap a service card → details sheet. From a reel, counts one `service_view` per open. */
+  const openServiceDetails = (service: any) => {
+    setServiceDetails(service);
+    if (attributionReelId) {
+      reportReelEvent(attributionReelId, "service_view");
+    }
+  };
+
+  const bookFromServiceDetails = () => {
+    const service = serviceDetails;
+    if (!service) return;
+    setServiceDetails(null);
+    handleBookService(service);
+  };
+
   const renderServiceContent = () => {
     const hasMemberships = membershipSubscriptions.length > 0;
     const hasAnyIndividualServices = individualServices.length > 0;
@@ -3251,8 +3605,12 @@ export default function BusinessDetailScreen() {
                   <>
                     {displayedIndividualServices.map(
                       (service: any, index: number) => (
-                        <View
+                        <TouchableOpacity
                           key={service.id}
+                          activeOpacity={0.7}
+                          accessibilityRole="button"
+                          accessibilityLabel={service.name}
+                          onPress={() => openServiceDetails(service)}
                           style={[
                             styles.serviceCard,
                             index ===
@@ -3295,231 +3653,7 @@ export default function BusinessDetailScreen() {
                                   isBusinessOwnerView && styles.disabledAction,
                                 ]}
                                 disabled={isBusinessOwnerView}
-                                onPress={() => {
-                                  if (isBusinessOwnerView) return;
-                                  // Set business data in Redux
-                                  const serviceData = {
-                                    id: service.id,
-                                    name: service.name,
-                                    description: service.description,
-                                    price: service.price,
-                                    originalPrice: service.originalPrice,
-                                    duration: service.duration,
-                                    label: service.label || null,
-                                  };
-                                  const allServicesData =
-                                    individualServices.map((s: any) => ({
-                                      id: s.id,
-                                      name: s.name,
-                                      description: s.description,
-                                      price: s.price,
-                                      originalPrice: s.originalPrice,
-                                      duration: s.duration,
-                                      label: s.label || null,
-                                    }));
-                                  // Parse business hours from API format to Redux format
-                                  const parseTimeToHoursMinutes = (
-                                    timeString: string | null | undefined,
-                                  ): { hours: number; minutes: number } => {
-                                    if (
-                                      !timeString ||
-                                      typeof timeString !== "string"
-                                    ) {
-                                      return { hours: 0, minutes: 0 };
-                                    }
-                                    const [hours, minutes] = timeString
-                                      .split(":")
-                                      .map(Number);
-                                    return {
-                                      hours: hours || 0,
-                                      minutes: minutes || 0,
-                                    };
-                                  };
-
-                                  const getDayDisplayFormat = (
-                                    day: string,
-                                  ): string => {
-                                    if (!day) return day;
-                                    const dayLower = day.toLowerCase();
-                                    const dayMap: { [key: string]: string } = {
-                                      monday: "Monday",
-                                      tuesday: "Tuesday",
-                                      wednesday: "Wednesday",
-                                      thursday: "Thursday",
-                                      friday: "Friday",
-                                      saturday: "Saturday",
-                                      sunday: "Sunday",
-                                    };
-                                    return dayMap[dayLower] || day;
-                                  };
-
-                                  const parseBusinessHours = (
-                                    hoursArray: any[] | null | undefined,
-                                  ) => {
-                                    if (
-                                      !hoursArray ||
-                                      !Array.isArray(hoursArray) ||
-                                      hoursArray.length === 0
-                                    ) {
-                                      return null;
-                                    }
-
-                                    const businessHours: {
-                                      [key: string]: any;
-                                    } = {};
-
-                                    // Initialize all days with default closed state
-                                    const DAYS = [
-                                      "Monday",
-                                      "Tuesday",
-                                      "Wednesday",
-                                      "Thursday",
-                                      "Friday",
-                                      "Saturday",
-                                      "Sunday",
-                                    ];
-                                    DAYS.forEach((day) => {
-                                      businessHours[day] = {
-                                        isOpen: false,
-                                        fromHours: 0,
-                                        fromMinutes: 0,
-                                        tillHours: 0,
-                                        tillMinutes: 0,
-                                        breaks: [],
-                                      };
-                                    });
-
-                                    // Parse API hours
-                                    hoursArray.forEach((dayData: any) => {
-                                      const dayName = getDayDisplayFormat(
-                                        dayData.day,
-                                      );
-                                      if (!DAYS.includes(dayName)) return;
-
-                                      let fromHours = 0;
-                                      let fromMinutes = 0;
-                                      let tillHours = 0;
-                                      let tillMinutes = 0;
-
-                                      if (dayData.opening_time) {
-                                        const parsed = parseTimeToHoursMinutes(
-                                          dayData.opening_time,
-                                        );
-                                        fromHours = parsed.hours;
-                                        fromMinutes = parsed.minutes;
-                                      }
-
-                                      if (dayData.closing_time) {
-                                        const parsed = parseTimeToHoursMinutes(
-                                          dayData.closing_time,
-                                        );
-                                        tillHours = parsed.hours;
-                                        tillMinutes = parsed.minutes;
-                                      }
-
-                                      const breaks = (
-                                        dayData.break_hours || []
-                                      ).map((breakTime: any) => {
-                                        const {
-                                          hours: breakFromHours,
-                                          minutes: breakFromMinutes,
-                                        } = parseTimeToHoursMinutes(
-                                          breakTime.start || "00:00",
-                                        );
-                                        const {
-                                          hours: breakTillHours,
-                                          minutes: breakTillMinutes,
-                                        } = parseTimeToHoursMinutes(
-                                          breakTime.end || "00:00",
-                                        );
-                                        return {
-                                          fromHours: breakFromHours,
-                                          fromMinutes: breakFromMinutes,
-                                          tillHours: breakTillHours,
-                                          tillMinutes: breakTillMinutes,
-                                        };
-                                      });
-
-                                      businessHours[dayName] = {
-                                        isOpen: !dayData.closed,
-                                        fromHours,
-                                        fromMinutes,
-                                        tillHours,
-                                        tillMinutes,
-                                        breaks,
-                                      };
-                                    });
-
-                                    return businessHours;
-                                  };
-
-                                  // Map staff members with working_hours
-                                  const staffMembersData = (
-                                    businessData?.staff || []
-                                  )
-                                    .filter(
-                                      (staff: any) =>
-                                        staff.invitation_status === "accepted",
-                                    )
-                                    .map((staff: any) => {
-                                      // Construct image URL from API response
-                                      let image = getDefaultAvatarImage();
-                                      if (staff.avatar) {
-                                        const isAbsoluteUrl =
-                                          typeof staff.avatar === "string" &&
-                                          (staff.avatar.startsWith("http://") ||
-                                            staff.avatar.startsWith(
-                                              "https://",
-                                            ));
-
-                                        if (isAbsoluteUrl) {
-                                          image = staff.avatar;
-                                        } else {
-                                          image = `${process.env.EXPO_PUBLIC_API_BASE_URL}${staff.avatar}`;
-                                        }
-                                      }
-
-                                      // Parse working_hours if available (even if empty array)
-                                      const staffWorkingHours =
-                                        parseBusinessHours(staff.working_hours);
-
-                                      return {
-                                        id: staff.id || staff.user_id || 0,
-                                        name:
-                                          staff.name ||
-                                          t("staffMemberFallback"),
-                                        experience: staff?.description ?? null,
-                                        image: image,
-                                        working_hours: staffWorkingHours,
-                                        active: staff.active,
-                                        is_owner: staff.is_owner === true,
-                                      };
-                                    });
-
-                                  const businessHoursData = parseBusinessHours(
-                                    businessData?.hours,
-                                  );
-
-                                  const businessPayload = {
-                                    selectedService: serviceData,
-                                    allServices: allServicesData,
-                                    staffMembers: staffMembersData,
-                                    businessId: params.business_id || "",
-                                    businessHours: businessHoursData,
-                                    subscriptionPlanType,
-                                    subscriptionStatus,
-                                  };
-                                  dispatch(
-                                    setBusinessDataAction(businessPayload),
-                                  );
-                                  // Navigate to bookingNow; forward reel attribution when present
-                                  router.push({
-                                    pathname: "/(main)/bookingNow",
-                                    params: attributionReelId
-                                      ? { reel_id: String(attributionReelId) }
-                                      : undefined,
-                                  });
-                                }}
+                                onPress={() => handleBookService(service)}
                               >
                                 <Text style={styles.bookNowButtonText}>
                                   {t("bookNow")}
@@ -3527,7 +3661,7 @@ export default function BusinessDetailScreen() {
                               </TouchableOpacity>
                             </View>
                           </View>
-                        </View>
+                        </TouchableOpacity>
                       ),
                     )}
 
@@ -4416,6 +4550,130 @@ export default function BusinessDetailScreen() {
         )}
         title={t("breakHours")}
       />
+
+      {/* Service Details Sheet */}
+      <Modal
+        visible={serviceDetails != null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setServiceDetails(null)}
+      >
+        <Pressable
+          style={styles.serviceSheetOverlay}
+          onPress={() => setServiceDetails(null)}
+        >
+          <Pressable
+            style={styles.serviceSheet}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={styles.serviceSheetHandle} />
+            {serviceDetails &&
+              (() => {
+                const price = Number(serviceDetails.price ?? 0);
+                const originalPrice = Number(serviceDetails.originalPrice ?? 0);
+                const hasDiscount = originalPrice > price;
+                const description = String(
+                  serviceDetails.description ?? "",
+                ).trim();
+                return (
+                  <>
+                    <View style={styles.serviceSheetHeader}>
+                      <View style={styles.serviceSheetHeaderText}>
+                        {!!serviceDetails.label && (
+                          <View style={styles.serviceLabel}>
+                            <Text style={styles.serviceLabelText}>
+                              {serviceDetails.label}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={styles.serviceSheetName}>
+                          {serviceDetails.name}
+                        </Text>
+                        {!!serviceDetails.duration && (
+                          <View style={styles.serviceSheetDuration}>
+                            <MaterialIcons
+                              name="schedule"
+                              size={moderateWidthScale(15)}
+                              color={theme.lightGreen}
+                            />
+                            <Text style={styles.serviceSheetDurationText}>
+                              {serviceDetails.duration}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        style={styles.reviewModalCloseButton}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("close")}
+                        onPress={() => setServiceDetails(null)}
+                      >
+                        <CloseIconBusinessDetail
+                          width={widthScale(20)}
+                          height={heightScale(20)}
+                        />
+                      </TouchableOpacity>
+                    </View>
+
+                    {!!description && (
+                      <ScrollView
+                        style={styles.serviceSheetBody}
+                        showsVerticalScrollIndicator={false}
+                      >
+                        <Text style={styles.serviceSheetSectionLabel}>
+                          {t("aboutThisService")}
+                        </Text>
+                        <Text style={styles.serviceSheetDescription}>
+                          {description.charAt(0).toUpperCase() +
+                            description.slice(1)}
+                        </Text>
+                      </ScrollView>
+                    )}
+
+                    <View
+                      style={[
+                        styles.serviceSheetFooter,
+                        {
+                          paddingBottom:
+                            Math.max(insets.bottom, moderateHeightScale(12)) +
+                            moderateHeightScale(8),
+                        },
+                      ]}
+                    >
+                      <View style={styles.serviceSheetPriceBlock}>
+                        <Text style={styles.serviceSheetPrice}>
+                          ${price.toFixed(2)}
+                          <Text style={styles.serviceSheetCurrency}> USD</Text>
+                        </Text>
+                        {hasDiscount && (
+                          <View style={styles.serviceSheetDiscountRow}>
+                            <Text style={styles.serviceOriginalPrice}>
+                              ${originalPrice.toFixed(2)}
+                            </Text>
+                            <View style={styles.serviceSheetSaveChip}>
+                              <Text style={styles.serviceSheetSaveText}>
+                                {t("saveAmount", {
+                                  amount: `$${(originalPrice - price).toFixed(2)}`,
+                                })}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                      <Button
+                        title={t("bookNow")}
+                        onPress={bookFromServiceDetails}
+                        disabled={isBusinessOwnerView}
+                        containerStyle={styles.serviceSheetBookButton}
+                      />
+                    </View>
+                  </>
+                );
+              })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Full Review Modal */}
       <Modal

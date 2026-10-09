@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -16,6 +16,8 @@ import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import { InfoNote } from "@/src/components/reelFlow/flowParts";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
+import { fetchCustomerOrder } from "@/src/services/orderService";
+import type { ShopOrderRefund } from "@/src/types/shopOrder";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -87,6 +89,22 @@ export default function OrderConfirmedScreen() {
   const lastOrderId = useAppSelector((s) => s.shopCart.lastOrderId);
   const orderId = paramOrderId || lastOrderId || "FP000000";
 
+  // The last unit can sell out while the sheet is open: the server then
+  // refunds this payment straight away and cancels the order.
+  const [refund, setRefund] = useState<ShopOrderRefund | null>(null);
+  useEffect(() => {
+    if (!paramOrderId) return;
+    let cancelled = false;
+    fetchCustomerOrder(paramOrderId)
+      .then((order) => {
+        if (!cancelled && order.status === "cancelled") setRefund(order.refund);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [paramOrderId]);
+
   const goHome = () => router.replace("/(main)/dashboard/(home)" as any);
 
   return (
@@ -100,14 +118,14 @@ export default function OrderConfirmedScreen() {
         <View style={styles.ring}>
           <View style={styles.iconWrap}>
             <MaterialIcons
-              name="check"
+              name={refund ? "currency-exchange" : "check"}
               size={moderateWidthScale(48)}
               color={theme.white}
             />
           </View>
         </View>
         <Text style={styles.title} accessibilityRole="header">
-          {t("orderConfirmedTitle")}
+          {refund ? t("orderStageAutoRefundedTitle") : t("orderConfirmedTitle")}
         </Text>
         <View style={styles.orderPill}>
           <Text style={styles.orderId}>
@@ -116,7 +134,15 @@ export default function OrderConfirmedScreen() {
         </View>
         <InfoNote
           icon="notifications-none"
-          text={t("shopConfirmedNote")}
+          text={
+            refund
+              ? t(
+                  refund.status === "refunded"
+                    ? "orderStageAutoRefundedCustomer"
+                    : "orderStageAutoRefundPendingCustomer",
+                )
+              : t("shopConfirmedNote")
+          }
           style={styles.note}
         />
       </ScrollView>

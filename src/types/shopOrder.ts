@@ -50,6 +50,16 @@ export interface ShopOrderHistoryEntry {
   createdAt: string;
 }
 
+/**
+ * Automatic refund: the payment arrived after the order was cancelled (e.g. the
+ * product was deleted) or the item sold out. The order's status is `cancelled`.
+ */
+export interface ShopOrderRefund {
+  status: "pending" | "refunded";
+  reason: string | null;
+  refundedAt: string | null;
+}
+
 export interface ShopOrderCustomer {
   id: string;
   name: string;
@@ -77,6 +87,8 @@ export interface ShopOrder {
   shippedAt: string | null;
   completedAt: string | null;
   cancelledAt: string | null;
+  /** Null unless the payment was refunded automatically. */
+  refund: ShopOrderRefund | null;
   createdAt: string;
 }
 

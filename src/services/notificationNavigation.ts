@@ -1,6 +1,8 @@
 import type { Router } from "expo-router";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
+import { fetchProductById } from "@/src/services/productService";
+import { addProduct, updateProduct } from "@/src/state/slices/inventorySlice";
 
 export type NotificationSubType =
   | "appointment_scheduled"
@@ -43,7 +45,11 @@ export type NotificationSubType =
   | "order_shipping_details_updated"
   | "order_ready_for_pickup"
   | "order_picked_up"
-  | "order_cancelled";
+  | "order_cancelled"
+  | "business_order_paid"
+  | "business_order_refunded"
+  | "product_low_stock"
+  | "product_out_of_stock";
 
 export type NotificationNavigationData = {
   type?: string | null;
@@ -185,6 +191,8 @@ function openOwnerReelsList(
  * - type "business_follower" → owner's businessDetail
  * - type "business_reel" + comment → reelsFeed+comments; booking → appointment; likes → reelStats
  * - type "order" + order_id / model_id (customer role) → shop order screen (every order_* subType)
+ * - type "business_order" (owner: new paid order / auto refund) → owner order screen
+ * - type "business_product" (owner: low / out of stock) → edit product; products list if deleted
  * - otherwise → notification screen (unless options.skipNotificationScreen is true, e.g. when already on that screen)
  */
 const AI_MEMORY_CHAIN_STEP_MS = 15;
@@ -270,6 +278,28 @@ function navigateFromNotificationList(
     return;
   }
   router.push(path as any);
+}
+
+const PRODUCTS_PATH =
+  "/(main)/dashboard/(account)/(businessProfileSettings)/products";
+
+async function openProductForRestock(router: Router, productId: number) {
+  try {
+    const product = await fetchProductById(productId);
+    const inStore = store
+      .getState()
+      .inventory.products.some((p) => p.id === product.id);
+    store.dispatch(inStore ? updateProduct(product) : addProduct(product));
+    router.push({
+      pathname:
+        "/(main)/dashboard/(account)/(businessProfileSettings)/editProduct" as any,
+      params: { id: product.id },
+    });
+  } catch (error) {
+    // Deleted since the alert (404) or offline — the list reloads itself
+    Logger.error("Failed to open product from notification:", error);
+    router.push(PRODUCTS_PATH as any);
+  }
 }
 
 export function navigateFromNotificationData(
@@ -823,6 +853,29 @@ export function navigateFromNotificationData(
       options?.fromInAppList,
     );
     return;
+  }
+
+  // Owner: new paid order or an automatic refund — both open the order
+  if (type === "business_order") {
+    const orderId = pickNumber(data, "order_id", "model_id");
+    if (orderId != null) {
+      router.push({
+        pathname:
+          "/(main)/dashboard/(account)/(businessProfileSettings)/orderDetail" as any,
+        params: { id: String(orderId) },
+      });
+      return;
+    }
+  }
+
+  // Owner: low / out of stock → edit product to restock. The edit screen reads
+  // the inventory store, so load the current product first (stock just changed).
+  if (type === "business_product") {
+    const productId = pickNumber(data, "product_id", "model_id");
+    if (productId != null) {
+      void openProductForRestock(router, productId);
+      return;
+    }
   }
 
   // R-23 · Owner alerts about their reels (comment / booking / likes digest)

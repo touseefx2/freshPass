@@ -7,6 +7,7 @@ import type {
   ShopOrderItem,
   ShopOrderListMeta,
   ShopOrderNextStatus,
+  ShopOrderRefund,
   ShopOrderStats,
   ShopOrderStatus,
 } from "@/src/types/shopOrder";
@@ -115,6 +116,16 @@ function normalizeHistoryEntry(value: unknown): ShopOrderHistoryEntry {
   };
 }
 
+function normalizeRefund(value: unknown): ShopOrderRefund | null {
+  const raw = asRecord(value);
+  if (!raw) return null;
+  return {
+    status: raw.status === "refunded" ? "refunded" : "pending",
+    reason: toText(raw.reason),
+    refundedAt: toText(raw.refundedAt),
+  };
+}
+
 function normalizeCustomer(value: unknown): ShopOrderCustomer | null {
   const raw = asRecord(value);
   if (!raw) return null;
@@ -148,6 +159,7 @@ export function normalizeShopOrder(value: unknown): ShopOrder {
     shippedAt: toText(raw.shippedAt),
     completedAt: toText(raw.completedAt),
     cancelledAt: toText(raw.cancelledAt),
+    refund: normalizeRefund(raw.refund),
     createdAt: toId(raw.createdAt),
   };
 }
@@ -385,7 +397,7 @@ export function getJourneyStepLabelKey(
 export function getOwnerStageKeys(
   order: Pick<
     BusinessShopOrder,
-    "status" | "shippingMethod" | "canEditShippingDetails"
+    "status" | "shippingMethod" | "canEditShippingDetails" | "refund"
   >,
 ): { title: string; text: string } {
   const pickup = isPickupOrder(order);
@@ -419,7 +431,9 @@ export function getOwnerStageKeys(
     case "cancelled":
       return {
         title: "orderStageCancelledTitle",
-        text: "orderStageCancelledOwner",
+        text: order.refund
+          ? "orderStageAutoRefundedOwner"
+          : "orderStageCancelledOwner",
       };
     case "refunded":
       return {
@@ -431,7 +445,10 @@ export function getOwnerStageKeys(
 
 /** Title + text of the status card on the customer's order screen. */
 export function getCustomerStageKeys(
-  order: Pick<ShopOrder, "status" | "shippingMethod" | "shippingDetails">,
+  order: Pick<
+    ShopOrder,
+    "status" | "shippingMethod" | "shippingDetails" | "refund"
+  >,
 ): { title: string; text: string } {
   const pickup = isPickupOrder(order);
   switch (order.status) {
@@ -464,6 +481,15 @@ export function getCustomerStageKeys(
         ? { title: "orderStatusPickedUp", text: "orderStagePickedUpCustomer" }
         : { title: "orderStatusCompleted", text: "orderStageCompletedCustomer" };
     case "cancelled":
+      if (order.refund) {
+        return {
+          title: "orderStageAutoRefundedTitle",
+          text:
+            order.refund.status === "refunded"
+              ? "orderStageAutoRefundedCustomer"
+              : "orderStageAutoRefundPendingCustomer",
+        };
+      }
       return {
         title: "orderStatusCancelled",
         text: "orderStageCancelledCustomer",

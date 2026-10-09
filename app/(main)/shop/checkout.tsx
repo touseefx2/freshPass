@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   BackHandler,
   Keyboard,
   ScrollView,
@@ -9,7 +10,7 @@ import {
   View,
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useAppDispatch, useAppSelector, useTheme } from "@/src/hooks/hooks";
@@ -264,6 +265,7 @@ export default function ShopCheckoutScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { initPaymentSheet, presentPaymentSheet } = useStripe();
+  const navigation = useNavigation();
 
   const address = useAppSelector((s) => s.shopCart.address);
   const shippingMethod = useAppSelector((s) => s.shopCart.shippingMethod);
@@ -450,6 +452,25 @@ export default function ShopCheckoutScreen() {
       const fieldErrors = err?.data?.errors as
         | Record<string, string[]>
         | undefined;
+      // 422 on items.N.product_id: the owner deleted or hid the product after the
+      // feed loaded. Retrying can't work, so close the whole shop flow.
+      if (
+        fieldErrors &&
+        Object.keys(fieldErrors).some((k) => /^items\.\d+\.product_id$/.test(k))
+      ) {
+        Alert.alert(t("productUnavailableTitle"), t("productUnavailableMessage"), [
+          {
+            text: t("ok"),
+            onPress: () => {
+              const parent = navigation.getParent();
+              if (parent?.canGoBack()) parent.goBack();
+              else router.back();
+              dispatch(resetShopCheckout());
+            },
+          },
+        ]);
+        return;
+      }
       const first = fieldErrors
         ? Object.values(fieldErrors).flat()[0]
         : undefined;
