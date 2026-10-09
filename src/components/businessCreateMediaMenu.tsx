@@ -8,6 +8,19 @@ import {
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
+import Animated, {
+  Extrapolation,
+  FadeIn,
+  FadeOut,
+  interpolate,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -113,47 +126,146 @@ const createStyles = (theme: Theme) =>
     },
     menu: {
       alignItems: "stretch",
-      gap: moderateHeightScale(8),
+      gap: moderateHeightScale(10),
     },
+    // Every pill stretches to the widest label, so the stack is one even column
     menuOption: {
       flexDirection: "row",
       alignItems: "center",
-      alignSelf: "center",
-      gap: moderateWidthScale(10),
-      paddingVertical: moderateHeightScale(8),
-      paddingLeft: moderateWidthScale(8),
-      paddingRight: moderateWidthScale(18),
-      backgroundColor: theme.buttonBack,
+      gap: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(7),
+      paddingLeft: moderateWidthScale(7),
+      paddingRight: moderateWidthScale(14),
+      backgroundColor: theme.white,
       borderRadius: moderateWidthScale(999),
       borderWidth: 1,
-      borderColor: theme.white50,
-      shadowColor: theme.shadow,
-      shadowOffset: { width: 0, height: moderateHeightScale(3) },
-      shadowOpacity: 0.25,
-      shadowRadius: moderateWidthScale(6),
-      elevation: 7,
+      borderColor: theme.darkGreen15,
+      shadowColor: theme.darkGreenDeep,
+      shadowOffset: { width: 0, height: moderateHeightScale(6) },
+      shadowOpacity: 0.16,
+      shadowRadius: moderateWidthScale(12),
+      elevation: 6,
     },
-    menuOptionHighlighted: {
-      borderColor: theme.orangeBrown,
-      borderWidth: 2,
-      shadowColor: theme.orangeBrown,
-      shadowOpacity: 0.45,
-      shadowRadius: moderateWidthScale(8),
+    menuOptionPrimary: {
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
+      shadowOpacity: 0.3,
     },
     menuOptionIconCircle: {
-      width: widthScale(32),
-      height: widthScale(32),
-      borderRadius: moderateWidthScale(16),
-      backgroundColor: theme.white,
+      width: widthScale(34),
+      height: widthScale(34),
+      borderRadius: widthScale(17),
+      backgroundColor: theme.darkGreen15,
       alignItems: "center",
       justifyContent: "center",
     },
+    menuOptionIconCirclePrimary: {
+      backgroundColor: theme.orangeBrown,
+    },
     menuOptionLabel: {
-      fontSize: fontSize.size14,
+      // Not flex: 1 — its 0 basis would shrink the menu to the icons
+      flexGrow: 1,
+      fontSize: fontSize.size15,
       fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    menuOptionLabelPrimary: {
       color: theme.white,
     },
   });
+
+type Styles = ReturnType<typeof createStyles>;
+
+/** Gap between pills plus one pill's height, roughly — how far each one rises */
+const PILL_STEP = moderateHeightScale(58);
+/** Pills leave the + button one after another, nearest first */
+const STAGGER_MS = 38;
+/** Low damping = the little hop past the spot before it settles */
+const HOP_SPRING = { damping: 13, stiffness: 320, mass: 0.7 };
+
+function MenuPill({
+  item,
+  fromBottom,
+  label,
+  icon,
+  styles,
+  theme,
+  onPress,
+}: {
+  item: MenuItem;
+  /** 0 = the pill right above the + button */
+  fromBottom: number;
+  label: string;
+  icon: React.ReactNode;
+  styles: Styles;
+  theme: Theme;
+  onPress: () => void;
+}) {
+  const reduceMotion = useReducedMotion();
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = reduceMotion
+      ? withTiming(1, { duration: 160 })
+      : withDelay(fromBottom * STAGGER_MS, withSpring(1, HOP_SPRING));
+  }, [fromBottom, progress, reduceMotion]);
+
+  // Starts squeezed into the + button, then springs up to its row
+  const rise = (fromBottom + 1) * PILL_STEP;
+  const motion = useAnimatedStyle(() => {
+    if (reduceMotion) return { opacity: progress.value };
+    return {
+      opacity: interpolate(
+        progress.value,
+        [0, 0.35],
+        [0, 1],
+        Extrapolation.CLAMP,
+      ),
+      transform: [
+        { translateY: (1 - progress.value) * rise },
+        { scale: interpolate(progress.value, [0, 1], [0.4, 1]) },
+      ],
+    };
+  });
+
+  const primary = !!item.highlighted;
+  return (
+    <Animated.View style={motion}>
+      <TouchableOpacity
+        style={[styles.menuOption, primary && styles.menuOptionPrimary]}
+        onPress={onPress}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+      >
+        <View
+          style={[
+            styles.menuOptionIconCircle,
+            primary && styles.menuOptionIconCirclePrimary,
+          ]}
+        >
+          {icon}
+        </View>
+        <Text
+          style={[
+            styles.menuOptionLabel,
+            primary && styles.menuOptionLabelPrimary,
+          ]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        <MaterialIcons
+          name="chevron-right"
+          size={moderateWidthScale(20)}
+          color={primary ? theme.orangeBrown : theme.buttonBack}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
 
 type BusinessCreateMediaMenuProps = {
   visible: boolean;
@@ -196,6 +308,11 @@ export default function BusinessCreateMediaMenu({
     if (!visible) {
       setReelPickerVisible(false);
     }
+  }, [visible]);
+
+  // A light tap as the menu pops open
+  useEffect(() => {
+    if (visible) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [visible]);
 
   /** Close both speed-dial and reel picker; keeps center tab as +. */
@@ -346,7 +463,7 @@ export default function BusinessCreateMediaMenu({
 
   const renderMenuIcon = (item: MenuItem) => {
     const size = moderateWidthScale(18);
-    const color = theme.buttonBack;
+    const color = item.highlighted ? theme.darkGreen : theme.buttonBack;
     if (item.iconSet === "community") {
       return (
         <MaterialCommunityIcons
@@ -370,51 +487,48 @@ export default function BusinessCreateMediaMenu({
   }
 
   const showSpeedDial = visible && !reelPickerVisible;
-  // Widest pill on top, narrowest by the button — a pyramid in any language
-  const menuItems = [...MENU_ITEMS].sort(
-    (a, b) => t(b.labelKey).length - t(a.labelKey).length,
-  );
 
   return (
     <>
       {showSpeedDial ? (
-        <View style={styles.root} pointerEvents="box-none">
+        <Animated.View
+          style={styles.root}
+          pointerEvents="box-none"
+          exiting={FadeOut.duration(120)}
+        >
           <TouchableWithoutFeedback onPress={closeAll}>
-            <View style={[styles.backdrop, { bottom: tabBarClearance }]}>
+            <Animated.View
+              style={[styles.backdrop, { bottom: tabBarClearance }]}
+              entering={FadeIn.duration(180)}
+            >
               <BlurView
                 intensity={10}
                 tint="light"
                 style={styles.blurFill}
                 experimentalBlurMethod={androidBlurMethod}
               />
-            </View>
+            </Animated.View>
           </TouchableWithoutFeedback>
           <View
             style={[styles.menuWrap, { bottom: menuBottom }]}
             pointerEvents="box-none"
           >
             <View style={styles.menu}>
-              {menuItems.map((item) => (
-                <TouchableOpacity
+              {MENU_ITEMS.map((item, i) => (
+                <MenuPill
                   key={item.id}
-                  style={[
-                    styles.menuOption,
-                    item.highlighted && styles.menuOptionHighlighted,
-                  ]}
+                  item={item}
+                  fromBottom={MENU_ITEMS.length - 1 - i}
+                  label={t(item.labelKey)}
+                  icon={renderMenuIcon(item)}
+                  styles={styles}
+                  theme={theme}
                   onPress={() => handleMenuAction(item.id)}
-                  activeOpacity={0.9}
-                  accessibilityRole="button"
-                  accessibilityLabel={t(item.labelKey)}
-                >
-                  <View style={styles.menuOptionIconCircle}>
-                    {renderMenuIcon(item)}
-                  </View>
-                  <Text style={styles.menuOptionLabel}>{t(item.labelKey)}</Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
           </View>
-        </View>
+        </Animated.View>
       ) : null}
 
       <CreateReelPickerSheet
