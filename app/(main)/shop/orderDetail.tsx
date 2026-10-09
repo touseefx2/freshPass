@@ -39,6 +39,9 @@ import {
  * (tracking number etc.), what was bought, and the history timeline.
  * Order notifications open this screen (GET /api/orders/{order}).
  */
+const PENDING_RETRIES = 3;
+const PENDING_RETRY_MS = 2000;
+
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     root: {
@@ -81,19 +84,21 @@ function CustomerOrder({ orderId }: { orderId: string }) {
   showBannerRef.current = showBanner;
 
   const load = useCallback(
-    async (mode: "initial" | "refresh") => {
+    async (mode: "initial" | "refresh" | "silent") => {
       if (!orderId) {
         setLoading(false);
         setLoadError(t("orderLoadFailed"));
         return;
       }
       if (mode === "initial") setLoading(true);
-      else setRefreshing(true);
+      if (mode === "refresh") setRefreshing(true);
       try {
         const next = await fetchCustomerOrder(orderId);
         setOrder(next);
         setLoadError(null);
       } catch (err) {
+        // A background retry fails quietly; the order on screen stays
+        if (mode === "silent") return;
         const message = getOrderErrorMessage(err, t("somethingWentWrong"));
         if (orderRef.current) {
           showBannerRef.current(t("orderLoadFailed"), message, "error");
@@ -111,6 +116,20 @@ function CustomerOrder({ orderId }: { orderId: string }) {
   useEffect(() => {
     void load("initial");
   }, [load]);
+
+  // Right after paying, Stripe's webhook can lag a few seconds. While the
+  // order is still pending, reload a few times (each GET also makes the
+  // backend check the payment with Stripe).
+  const pendingRetriesRef = useRef(0);
+  useEffect(() => {
+    if (order?.status !== "pending") return;
+    if (pendingRetriesRef.current >= PENDING_RETRIES) return;
+    const timer = setTimeout(() => {
+      pendingRetriesRef.current += 1;
+      void load("silent");
+    }, PENDING_RETRY_MS);
+    return () => clearTimeout(timer);
+  }, [load, order]);
 
   const renderOrder = (current: ShopOrder) => {
     const stage = getCustomerStageKeys(current);
