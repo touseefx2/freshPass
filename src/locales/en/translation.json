@@ -2433,5 +2433,16 @@
   "stockNotTracked": "Always available",
   "noProductsMatch": "No matching products",
   "noProductsMatchSubtitle": "Try a different search or filter.",
-  "clearFilters": "Clear filters"
+  "clearFilters": "Clear filters",
+  "reelStatsDiscovery": "Discovery",
+  "reelStatsBookingStage": "Booking",
+  "reelStatsMembershipStage": "Membership",
+  "reelStatsConversion": "Conversion",
+  "reelStatsPctOfViews": "{{value}}% of views",
+  "reelStatsPeak": "Peak",
+  "reelStatsTotalViews": "Total views",
+  "reelStatsNoViews": "No views in the last 30 days yet",
+  "reelStatsBooked": "Booked",
+  "reelStatsLookTaps": "Look taps",
+  "reelStatsTapBar": "Tap a bar to see that day"
 }

@@ -2377,5 +2377,16 @@
   "stockNotTracked": "Toujours disponible",
   "noProductsMatch": "Aucun produit correspondant",
   "noProductsMatchSubtitle": "Essayez une autre recherche ou un autre filtre.",
-  "clearFilters": "Effacer les filtres"
+  "clearFilters": "Effacer les filtres",
+  "reelStatsDiscovery": "Découverte",
+  "reelStatsBookingStage": "Réservation",
+  "reelStatsMembershipStage": "Abonnement",
+  "reelStatsConversion": "Conversion",
+  "reelStatsPctOfViews": "{{value}} % des vues",
+  "reelStatsPeak": "Pic",
+  "reelStatsTotalViews": "Vues totales",
+  "reelStatsNoViews": "Aucune vue sur les 30 derniers jours",
+  "reelStatsBooked": "Réservé",
+  "reelStatsLookTaps": "Taps sur le look",
+  "reelStatsTapBar": "Touchez une barre pour voir ce jour"
 }

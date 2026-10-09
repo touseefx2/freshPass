@@ -2377,5 +2377,16 @@
   "stockNotTracked": "متوفر دائمًا",
   "noProductsMatch": "لا توجد منتجات مطابقة",
   "noProductsMatchSubtitle": "جرّب بحثًا أو فلترًا مختلفًا.",
-  "clearFilters": "مسح الفلاتر"
+  "clearFilters": "مسح الفلاتر",
+  "reelStatsDiscovery": "الاكتشاف",
+  "reelStatsBookingStage": "الحجز",
+  "reelStatsMembershipStage": "العضوية",
+  "reelStatsConversion": "التحويل",
+  "reelStatsPctOfViews": "{{value}}% من المشاهدات",
+  "reelStatsPeak": "الذروة",
+  "reelStatsTotalViews": "إجمالي المشاهدات",
+  "reelStatsNoViews": "لا توجد مشاهدات في آخر 30 يومًا بعد",
+  "reelStatsBooked": "محجوز",
+  "reelStatsLookTaps": "نقرات الإطلالة",
+  "reelStatsTapBar": "اضغط على عمود لرؤية ذلك اليوم"
 }

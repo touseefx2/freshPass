@@ -2377,5 +2377,16 @@
   "stockNotTracked": "常に在庫あり",
   "noProductsMatch": "一致する商品がありません",
   "noProductsMatchSubtitle": "別のキーワードやフィルターをお試しください。",
-  "clearFilters": "フィルターをクリア"
+  "clearFilters": "フィルターをクリア",
+  "reelStatsDiscovery": "発見",
+  "reelStatsBookingStage": "予約",
+  "reelStatsMembershipStage": "メンバーシップ",
+  "reelStatsConversion": "コンバージョン",
+  "reelStatsPctOfViews": "閲覧数の{{value}}%",
+  "reelStatsPeak": "ピーク",
+  "reelStatsTotalViews": "合計閲覧数",
+  "reelStatsNoViews": "過去30日間の閲覧はまだありません",
+  "reelStatsBooked": "予約済み",
+  "reelStatsLookTaps": "ルックのタップ",
+  "reelStatsTapBar": "棒をタップしてその日を表示"
 }
