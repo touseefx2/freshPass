@@ -128,7 +128,14 @@ function SettingCard({
             </View>
 
             <View style={styles.cardTextBlock}>
-              <Text style={styles.cardTitle} numberOfLines={3}>
+              {/* 2 lines + shrink-to-fit so long words ("Memberships") shrink
+                  instead of breaking mid-word on narrow phones */}
+              <Text
+                style={styles.cardTitle}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
                 {title}
               </Text>
             </View>
@@ -222,10 +229,10 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.background,
-      paddingHorizontal: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(8),
       paddingVertical: moderateHeightScale(16),
       minHeight: moderateHeightScale(100),
-      gap: moderateWidthScale(10),
+      gap: moderateWidthScale(8),
       borderWidth: 1,
       borderColor: theme.lightGreen1,
     },
