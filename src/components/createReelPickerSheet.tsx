@@ -8,6 +8,12 @@ import {
   View,
 } from "react-native";
 import { BlurView } from "expo-blur";
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  FadeOut,
+  useReducedMotion,
+} from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -41,6 +47,12 @@ const createStyles = (theme: Theme) =>
     },
     blurFill: {
       ...StyleSheet.absoluteFillObject,
+    },
+    /** Same brand-green scrim as the create menu */
+    blurScrim: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.darkGreenDeep,
+      opacity: 0.4,
     },
     /** Floating card — sits just above the center X. */
     sheet: {
@@ -238,6 +250,7 @@ export default function CreateReelPickerSheet({
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { t } = useTranslation();
+  const reduceMotion = useReducedMotion();
   const [step, setStep] = useState<PickerStep>("type");
 
   // Every opening starts at the reel type
@@ -257,18 +270,34 @@ export default function CreateReelPickerSheet({
   const isTypeStep = step === "type";
 
   return (
-    <View style={styles.root} pointerEvents="box-none">
+    <Animated.View
+      style={styles.root}
+      pointerEvents="box-none"
+      exiting={FadeOut.duration(120)}
+    >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={[styles.backdrop, { bottom: tabBarClearance }]}>
+        <Animated.View
+          style={[styles.backdrop, { bottom: tabBarClearance }]}
+          entering={FadeIn.duration(180)}
+        >
           <BlurView
-            intensity={10}
-            tint="light"
+            intensity={18}
+            tint="dark"
             style={styles.blurFill}
             experimentalBlurMethod={androidBlurMethod}
           />
-        </View>
+          <View style={styles.blurScrim} />
+        </Animated.View>
       </TouchableWithoutFeedback>
-      <View style={[styles.sheet, { marginBottom: bottomOffset }]}>
+      {/* Springs up out of the + button, like the create menu's pills */}
+      <Animated.View
+        style={[styles.sheet, { marginBottom: bottomOffset }]}
+        entering={
+          reduceMotion
+            ? FadeIn.duration(160)
+            : FadeInDown.springify().damping(14).stiffness(300).mass(0.8)
+        }
+      >
         <View style={styles.handle} />
         <Text style={styles.title}>
           {isTypeStep ? t("createReel") : t("simpleReelTitle")}
@@ -413,7 +442,7 @@ export default function CreateReelPickerSheet({
             {isTypeStep ? t("cancel") : t("back")}
           </Text>
         </TouchableOpacity>
-      </View>
-    </View>
+      </Animated.View>
+    </Animated.View>
   );
 }

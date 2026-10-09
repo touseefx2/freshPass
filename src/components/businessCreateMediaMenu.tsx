@@ -118,6 +118,11 @@ const createStyles = (theme: Theme) =>
     blurFill: {
       ...StyleSheet.absoluteFillObject,
     },
+    blurScrim: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: theme.darkGreenDeep,
+      opacity: 0.4,
+    },
     menuWrap: {
       position: "absolute",
       left: 0,
@@ -148,7 +153,8 @@ const createStyles = (theme: Theme) =>
     },
     menuOptionPrimary: {
       backgroundColor: theme.darkGreen,
-      borderColor: theme.darkGreen,
+      // Orange edge keeps the dark pill apart from the dark scrim
+      borderColor: theme.orangeBrown,
       shadowOpacity: 0.3,
     },
     menuOptionIconCircle: {
@@ -502,11 +508,13 @@ export default function BusinessCreateMediaMenu({
               entering={FadeIn.duration(180)}
             >
               <BlurView
-                intensity={10}
-                tint="light"
+                intensity={18}
+                tint="dark"
                 style={styles.blurFill}
                 experimentalBlurMethod={androidBlurMethod}
               />
+              {/* Brand-green scrim: the light pills read clearly on a dimmed screen */}
+              <View style={styles.blurScrim} />
             </Animated.View>
           </TouchableWithoutFeedback>
           <View
