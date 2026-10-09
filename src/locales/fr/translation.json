@@ -1422,7 +1422,7 @@
   "failedToLikeReel": "Failed to update like.",
   "failedToFollow": "Failed to update follow.",
   "noReelsYet": "No reels yet",
-  "noReelsSubtitle": "Appuyez sur + pour enregistrer ou importer une vidéo et publier votre premier reel.",
+  "noReelsSubtitle": "Enregistrez ou importez une courte vidéo et publiez votre premier reel.",
   "untitledReel": "Untitled reel",
   "viewPerformance": "View performance",
   "viewReel": "View",
@@ -2388,5 +2388,6 @@
   "reelStatsNoViews": "Aucune vue sur les 30 derniers jours",
   "reelStatsBooked": "Réservé",
   "reelStatsLookTaps": "Taps sur le look",
-  "reelStatsTapBar": "Touchez une barre pour voir ce jour"
+  "reelStatsTapBar": "Touchez une barre pour voir ce jour",
+  "reelStatsViewInsights": "Statistiques"
 }

@@ -1422,7 +1422,7 @@
   "failedToLikeReel": "Failed to update like.",
   "failedToFollow": "Failed to update follow.",
   "noReelsYet": "No reels yet",
-  "noReelsSubtitle": "+をタップして動画を撮影またはアップロードし、最初のリールを公開しましょう。",
+  "noReelsSubtitle": "短い動画を撮影またはアップロードして、最初のリールを公開しましょう。",
   "untitledReel": "Untitled reel",
   "viewPerformance": "View performance",
   "viewReel": "View",
@@ -2388,5 +2388,6 @@
   "reelStatsNoViews": "過去30日間の閲覧はまだありません",
   "reelStatsBooked": "予約済み",
   "reelStatsLookTaps": "ルックのタップ",
-  "reelStatsTapBar": "棒をタップしてその日を表示"
+  "reelStatsTapBar": "棒をタップしてその日を表示",
+  "reelStatsViewInsights": "インサイト"
 }

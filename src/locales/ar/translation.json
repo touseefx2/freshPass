@@ -1422,7 +1422,7 @@
   "failedToLikeReel": "Failed to update like.",
   "failedToFollow": "Failed to update follow.",
   "noReelsYet": "No reels yet",
-  "noReelsSubtitle": "اضغط + لتسجيل أو رفع فيديو ونشر أول ريل.",
+  "noReelsSubtitle": "سجّل أو ارفع فيديو قصيرًا وانشر أول ريل لك.",
   "untitledReel": "Untitled reel",
   "viewPerformance": "View performance",
   "viewReel": "View",
@@ -2388,5 +2388,6 @@
   "reelStatsNoViews": "لا توجد مشاهدات في آخر 30 يومًا بعد",
   "reelStatsBooked": "محجوز",
   "reelStatsLookTaps": "نقرات الإطلالة",
-  "reelStatsTapBar": "اضغط على عمود لرؤية ذلك اليوم"
+  "reelStatsTapBar": "اضغط على عمود لرؤية ذلك اليوم",
+  "reelStatsViewInsights": "الإحصاءات"
 }

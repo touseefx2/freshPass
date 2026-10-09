@@ -5,6 +5,7 @@ import {
   ActionSheetIOS,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -59,72 +60,89 @@ const createStyles = (theme: Theme) =>
     root: { flex: 1 },
     statsCard: {
       marginHorizontal: moderateWidthScale(20),
-      marginTop: moderateHeightScale(14),
-      marginBottom: moderateHeightScale(10),
-      paddingVertical: moderateHeightScale(14),
-      paddingHorizontal: moderateWidthScale(14),
-      borderRadius: moderateWidthScale(16),
+      marginTop: moderateHeightScale(16),
+      borderRadius: moderateWidthScale(18),
       backgroundColor: theme.white,
       borderWidth: 1,
-      borderColor: theme.lightGreen015,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(8),
-    },
-    statsMain: { flex: 1 },
-    statsTitleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(6),
-      marginBottom: moderateHeightScale(10),
-    },
-    statsTitle: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      borderColor: theme.borderLight,
+      shadowColor: theme.darkGreen,
+      shadowOpacity: 0.06,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 1,
     },
     metricsRow: {
       flexDirection: "row",
-      alignItems: "stretch",
+      paddingVertical: moderateHeightScale(16),
     },
     metric: {
       flex: 1,
-      alignItems: "flex-start",
+      paddingHorizontal: moderateWidthScale(16),
     },
     metricDivider: {
-      width: 1,
-      backgroundColor: theme.lightGreen015,
-      marginHorizontal: moderateWidthScale(10),
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: theme.borderNormal,
+    },
+    metricLabelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(4),
+    },
+    metricLabel: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
     metricValue: {
+      marginTop: moderateHeightScale(6),
+      fontSize: fontSize.size24,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    statsFooter: {
+      minHeight: moderateHeightScale(48),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(16),
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
+    },
+    statsFooterIcon: {
+      width: moderateWidthScale(28),
+      height: moderateWidthScale(28),
+      borderRadius: moderateWidthScale(8),
+      backgroundColor: theme.apptMintBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    statsFooterText: {
+      flex: 1,
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    sectionHeader: {
+      marginHorizontal: moderateWidthScale(20),
+      marginTop: moderateHeightScale(24),
+    },
+    sectionTitle: {
       fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
-    metricLabel: {
-      marginTop: moderateHeightScale(2),
-      fontSize: fontSize.size10,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      textTransform: "uppercase",
-      letterSpacing: 0.3,
-    },
     tipRow: {
-      marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(10),
+      marginTop: moderateHeightScale(4),
       flexDirection: "row",
-      alignItems: "flex-start",
-      gap: moderateWidthScale(8),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(10),
-      borderRadius: moderateWidthScale(12),
-      backgroundColor: theme.orangeBrown015,
+      alignItems: "center",
+      gap: moderateWidthScale(5),
     },
     tipText: {
       flex: 1,
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.darkGreen,
+      color: theme.lightGreen,
       lineHeight: fontSize.size16,
     },
     viewOnlyChip: {
@@ -144,31 +162,36 @@ const createStyles = (theme: Theme) =>
     },
     filterTrack: {
       marginHorizontal: moderateWidthScale(20),
-      marginBottom: moderateHeightScale(12),
+      marginTop: moderateHeightScale(8),
+      marginBottom: moderateHeightScale(14),
       flexDirection: "row",
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(12),
-      padding: moderateWidthScale(4),
-      gap: moderateWidthScale(2),
+      borderBottomWidth: 1,
+      borderBottomColor: theme.borderLight,
     },
     filterSeg: {
       flex: 1,
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(10),
+      minHeight: moderateHeightScale(44),
       alignItems: "center",
       justifyContent: "center",
     },
-    filterSegActive: {
-      backgroundColor: theme.white,
-    },
     filterSegText: {
-      fontSize: fontSize.size11,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
     },
     filterSegTextActive: {
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
+    },
+    filterIndicator: {
+      position: "absolute",
+      bottom: -1,
+      left: "18%",
+      right: "18%",
+      height: 3,
+      borderTopLeftRadius: 3,
+      borderTopRightRadius: 3,
+      backgroundColor: theme.buttonBack,
     },
     listContent: {
       paddingHorizontal: moderateWidthScale(20),
@@ -301,14 +324,50 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.orangeBrown015,
     },
     emptyWrap: {
+      flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: moderateHeightScale(48),
+      paddingVertical: moderateHeightScale(40),
       paddingHorizontal: moderateWidthScale(24),
     },
+    emptyArt: {
+      width: moderateWidthScale(170),
+      height: moderateWidthScale(112),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    emptyReel: {
+      position: "absolute",
+      width: moderateWidthScale(58),
+      height: moderateWidthScale(96),
+      borderRadius: moderateWidthScale(12),
+      borderWidth: 2,
+      borderColor: theme.white,
+    },
+    emptyReelCenter: {
+      width: moderateWidthScale(64),
+      height: moderateWidthScale(106),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.darkGreen,
+      shadowOpacity: 0.18,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
+    },
+    emptyPlay: {
+      width: moderateWidthScale(30),
+      height: moderateWidthScale(30),
+      borderRadius: moderateWidthScale(15),
+      backgroundColor: theme.white15,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     emptyTitle: {
-      marginTop: moderateHeightScale(12),
-      fontSize: fontSize.size16,
+      marginTop: moderateHeightScale(20),
+      fontSize: fontSize.size18,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textAlign: "center",
@@ -319,12 +378,23 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
+      lineHeight: fontSize.size19,
+      maxWidth: moderateWidthScale(270),
     },
-    retryIconBtn: {
-      marginTop: moderateHeightScale(14),
-      padding: moderateWidthScale(8),
+    emptyCta: {
+      marginTop: moderateHeightScale(20),
+      minHeight: moderateHeightScale(44),
+      paddingHorizontal: moderateWidthScale(20),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.buttonBack,
+      flexDirection: "row",
       alignItems: "center",
-      justifyContent: "center",
+      gap: moderateWidthScale(6),
+    },
+    emptyCtaText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonText,
     },
     centerLoader: {
       flex: 1,
@@ -546,9 +616,14 @@ export default function MediaLibraryMyReelsTab({
     fetchPage(page + 1, true);
   }, [fetchPage, hasMore, loadingMore, loading, page]);
 
-  const refresh = useCallback(() => {
-    fetchSummary();
-    fetchPage(1, false);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const onPullRefresh = useCallback(async () => {
+    setPullRefreshing(true);
+    try {
+      await Promise.all([fetchSummary(), fetchPage(1, false)]);
+    } finally {
+      setPullRefreshing(false);
+    }
   }, [fetchPage, fetchSummary]);
 
   /** + is "Upload a Reel": the step-by-step Reel Studio, from "Add your video". */
@@ -988,95 +1063,102 @@ export default function MediaLibraryMyReelsTab({
 
   return (
     <View style={styles.root}>
-      <TouchableOpacity
-        style={styles.statsCard}
-        activeOpacity={0.85}
-        onPress={() =>
-          router.push({
-            pathname: "/(main)/reelStats" as any,
-            params: { mine: "1" },
-          })
-        }
-      >
-        <View style={styles.statsMain}>
-          <View style={styles.statsTitleRow}>
+      <View style={styles.statsCard}>
+        <View style={styles.metricsRow}>
+          {(
+            [
+              ["visibility", "views", summary?.funnel?.view?.all_time],
+              ["check-circle-outline", "published", summary?.reels?.published],
+              ["video-library", "total", summary?.reels?.total],
+            ] as const
+          ).map(([icon, labelKey, v], i) => (
+            <React.Fragment key={labelKey}>
+              {i > 0 && <View style={styles.metricDivider} />}
+              <View
+                style={styles.metric}
+                accessible
+                accessibilityLabel={`${t(labelKey)}: ${v ?? 0}`}
+              >
+                <View style={styles.metricLabelRow}>
+                  <MaterialIcons
+                    name={icon}
+                    size={moderateWidthScale(13)}
+                    color={theme.lightGreen}
+                  />
+                  <Text style={styles.metricLabel} numberOfLines={1}>
+                    {t(labelKey)}
+                  </Text>
+                </View>
+                <Text style={styles.metricValue}>
+                  {v == null ? "–" : v.toLocaleString()}
+                </Text>
+              </View>
+            </React.Fragment>
+          ))}
+        </View>
+        <TouchableOpacity
+          style={styles.statsFooter}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({
+              pathname: "/(main)/reelStats" as any,
+              params: { mine: "1" },
+            })
+          }
+        >
+          <View style={styles.statsFooterIcon}>
             <MaterialIcons
               name="insights"
               size={moderateWidthScale(16)}
-              color={theme.darkGreen}
+              color={theme.buttonBack}
             />
-            <Text style={styles.statsTitle}>{t("reelPerformance")}</Text>
           </View>
-          <View style={styles.metricsRow}>
-            <View style={styles.metric}>
-              <Text style={styles.metricValue}>
-                {summary?.reels?.published ?? "–"}
-              </Text>
-              <Text style={styles.metricLabel}>{t("published")}</Text>
-            </View>
-            <View style={styles.metricDivider} />
-            <View style={styles.metric}>
-              <Text style={styles.metricValue}>
-                {summary?.reels?.total ?? "–"}
-              </Text>
-              <Text style={styles.metricLabel}>{t("all")}</Text>
-            </View>
-            <View style={styles.metricDivider} />
-            <View style={styles.metric}>
-              <Text style={styles.metricValue}>
-                {summary?.funnel.view.all_time ?? "–"}
-              </Text>
-              <Text style={styles.metricLabel}>{t("views")}</Text>
-            </View>
-          </View>
-        </View>
-        <MaterialIcons
-          name="chevron-right"
-          size={moderateWidthScale(22)}
-          color={theme.lightGreen}
-        />
-      </TouchableOpacity>
-
-      {limitMessage ? (
-        <View style={styles.tipRow}>
+          <Text style={styles.statsFooterText}>{t("viewPerformance")}</Text>
           <MaterialIcons
-            name="info-outline"
-            size={moderateWidthScale(16)}
-            color={theme.selectCard}
+            name="chevron-right"
+            size={moderateWidthScale(22)}
+            color={theme.lightGreen}
           />
-          <Text style={styles.tipText}>{limitMessage}</Text>
-        </View>
-      ) : null}
+        </TouchableOpacity>
+      </View>
 
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{t("myReels")}</Text>
+        {limitMessage ? (
+          <View style={styles.tipRow}>
+            <MaterialIcons
+              name="info-outline"
+              size={moderateWidthScale(13)}
+              color={theme.lightGreen}
+            />
+            <Text style={styles.tipText}>{limitMessage}</Text>
+          </View>
+        ) : null}
+      </View>
 
-
-      <View style={styles.filterTrack}>
-        {filters.map((key) => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.filterSeg, filter === key && styles.filterSegActive]}
-            onPress={() => setFilter(key)}
-            activeOpacity={0.8}
-          >
-            <Text
-              style={[
-                styles.filterSegText,
-                filter === key && styles.filterSegTextActive,
-              ]}
-              numberOfLines={1}
+      <View style={styles.filterTrack} accessibilityRole="tablist">
+        {filters.map((key) => {
+          const active = filter === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              style={styles.filterSeg}
+              onPress={() => setFilter(key)}
+              activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
             >
-              {t(
-                key === "all"
-                  ? "all"
-                  : key === "draft"
-                    ? "draft"
-                    : key === "published"
-                      ? "published"
-                      : "removed",
-              )}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text
+                style={[styles.filterSegText, active && styles.filterSegTextActive]}
+                numberOfLines={1}
+              >
+                {t(key)}
+              </Text>
+              {active && <View style={styles.filterIndicator} />}
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {loading && reels.length === 0 ? (
@@ -1093,26 +1175,65 @@ export default function MediaLibraryMyReelsTab({
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.4}
           onScrollToIndexFailed={() => {}}
+          refreshControl={
+            <RefreshControl
+              refreshing={pullRefreshing}
+              onRefresh={onPullRefresh}
+              tintColor={theme.darkGreen}
+              colors={[theme.buttonBack]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
-              <MaterialIcons
-                name="movie-filter"
-                size={moderateWidthScale(40)}
-                color={theme.lightGreen}
-              />
+              <View style={styles.emptyArt} accessibilityElementsHidden>
+                <View
+                  style={[
+                    styles.emptyReel,
+                    {
+                      backgroundColor: theme.apptPeachBg,
+                      transform: [
+                        { translateX: -moderateWidthScale(44) },
+                        { rotate: "-10deg" },
+                      ],
+                    },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.emptyReel,
+                    {
+                      backgroundColor: theme.apptMintBg,
+                      transform: [
+                        { translateX: moderateWidthScale(44) },
+                        { rotate: "10deg" },
+                      ],
+                    },
+                  ]}
+                />
+                <View style={styles.emptyReelCenter}>
+                  <View style={styles.emptyPlay}>
+                    <MaterialIcons
+                      name="play-arrow"
+                      size={moderateWidthScale(20)}
+                      color={theme.white}
+                    />
+                  </View>
+                </View>
+              </View>
               <Text style={styles.emptyTitle}>{t("noReelsYet")}</Text>
               <Text style={styles.emptySubtitle}>{t("noReelsSubtitle")}</Text>
               <TouchableOpacity
-                style={styles.retryIconBtn}
-                onPress={refresh}
-                hitSlop={12}
-                accessibilityLabel={t("refresh")}
+                style={styles.emptyCta}
+                onPress={openReelStudio}
+                activeOpacity={0.7}
+                accessibilityRole="button"
               >
                 <MaterialIcons
-                  name="refresh"
-                  size={moderateWidthScale(28)}
-                  color={theme.darkGreen}
+                  name="add"
+                  size={moderateWidthScale(18)}
+                  color={theme.buttonText}
                 />
+                <Text style={styles.emptyCtaText}>{t("createReel")}</Text>
               </TouchableOpacity>
             </View>
           }
@@ -1126,21 +1247,24 @@ export default function MediaLibraryMyReelsTab({
         />
       )}
 
-      <TouchableOpacity
-        style={[styles.fab, { bottom: fabBottom }]}
-        onPress={openReelStudio}
-        activeOpacity={0.9}
-        accessibilityRole="button"
-        accessibilityLabel={t("simpleReelTitle")}
-      >
-        <View style={styles.fabInner}>
-          <MaterialIcons
-            name="add"
-            size={moderateWidthScale(30)}
-            color={theme.buttonText}
-          />
-        </View>
-      </TouchableOpacity>
+      {/* Empty state has its own Create button — avoid a duplicate + */}
+      {(loading || reels.length > 0) && (
+        <TouchableOpacity
+          style={[styles.fab, { bottom: fabBottom }]}
+          onPress={openReelStudio}
+          activeOpacity={0.9}
+          accessibilityRole="button"
+          accessibilityLabel={t("simpleReelTitle")}
+        >
+          <View style={styles.fabInner}>
+            <MaterialIcons
+              name="add"
+              size={moderateWidthScale(30)}
+              color={theme.buttonText}
+            />
+          </View>
+        </TouchableOpacity>
+      )}
 
       <BuyBusinessPlanModal
         visible={buyPlanModalVisible}
