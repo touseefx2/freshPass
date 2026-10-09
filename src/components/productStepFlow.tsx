@@ -385,6 +385,10 @@ export default function ProductStepFlow({
   const [fromReview, setFromReview] = useState(isEdit);
   const [errors, setErrors] = useState<Errors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Which button started the save, so only that one shows the loader.
+  const [submitAction, setSubmitAction] = useState<"publish" | "draft">(
+    "publish",
+  );
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const brandRef = useRef<TextInput>(null);
@@ -580,6 +584,7 @@ export default function ProductStepFlow({
       return;
     }
     allowLeaveRef.current = true;
+    setSubmitAction(publish ? "publish" : "draft");
     onSubmit(finalDraft, publish);
   };
 
@@ -1039,7 +1044,8 @@ export default function ProductStepFlow({
           label: isLive ? t("saveChanges") : t("publishProduct"),
           icon: isLive ? "check" : "storefront",
           onPress: () => submit(true),
-          loading: submitting,
+          loading: submitting && submitAction === "publish",
+          disabled: submitting,
         }
       : {
           label: nextLabel,
@@ -1054,6 +1060,7 @@ export default function ProductStepFlow({
       ? {
           label: t("saveAsDraft"),
           onPress: () => submit(false),
+          loading: submitting && submitAction === "draft",
           disabled: submitting,
         }
       : null;
