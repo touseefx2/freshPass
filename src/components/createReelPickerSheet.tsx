@@ -15,6 +15,7 @@ import Animated, {
   useReducedMotion,
 } from "react-native-reanimated";
 import { MaterialIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
 import { MAX_VIDEO_UPLOAD_SECONDS } from "@/src/services/mediaLibraryService";
@@ -58,13 +59,14 @@ const createStyles = (theme: Theme) =>
     sheet: {
       width: widthScale(340),
       maxWidth: "92%",
-      backgroundColor: theme.white,
-      borderRadius: moderateWidthScale(24),
+      // Cream like the app's screens, so the white card and green card pop
+      backgroundColor: theme.background,
+      borderRadius: moderateWidthScale(28),
       paddingHorizontal: moderateWidthScale(16),
       paddingTop: moderateHeightScale(10),
-      paddingBottom: moderateHeightScale(14),
+      paddingBottom: moderateHeightScale(10),
       borderWidth: 1,
-      borderColor: theme.borderLight,
+      borderColor: theme.white50,
       shadowColor: theme.shadow,
       shadowOffset: { width: 0, height: moderateHeightScale(10) },
       shadowOpacity: 0.35,
@@ -80,7 +82,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: moderateHeightScale(12),
     },
     title: {
-      fontSize: fontSize.size20,
+      fontSize: fontSize.size22,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textAlign: "center",
@@ -91,7 +93,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontRegular,
       color: theme.lightGreen,
       textAlign: "center",
-      marginBottom: moderateHeightScale(14),
+      marginBottom: moderateHeightScale(16),
     },
     optionsRow: {
       flexDirection: "row",
@@ -152,22 +154,56 @@ const createStyles = (theme: Theme) =>
     },
     typeList: {
       gap: moderateHeightScale(10),
-      marginBottom: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(6),
     },
     typeCard: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(12),
-      backgroundColor: theme.lightGreen07,
-      borderRadius: moderateWidthScale(16),
+      gap: moderateWidthScale(14),
+      backgroundColor: theme.white,
+      borderRadius: moderateWidthScale(20),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
       paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(14),
+      paddingVertical: moderateHeightScale(16),
+      overflow: "hidden",
+      shadowColor: theme.darkGreenDeep,
+      shadowOffset: { width: 0, height: moderateHeightScale(4) },
+      shadowOpacity: 0.08,
+      shadowRadius: moderateWidthScale(10),
+      elevation: 2,
+    },
+    typeCardPrimary: {
+      borderColor: theme.darkGreen,
+      shadowOpacity: 0.25,
+      elevation: 6,
+    },
+    /** Big faint sparkle in the AI card's corner */
+    typeCardArt: {
+      position: "absolute",
+      right: -moderateWidthScale(18),
+      top: -moderateHeightScale(22),
+      opacity: 0.08,
+    },
+    typeIconTile: {
+      width: widthScale(48),
+      height: widthScale(48),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.buttonBack,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    typeIconTilePrimary: {
+      backgroundColor: theme.orangeBrown,
     },
     typeTitle: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginBottom: moderateHeightScale(2),
+      marginBottom: moderateHeightScale(3),
+    },
+    typeTitlePrimary: {
+      color: theme.white,
     },
     typeDesc: {
       fontSize: fontSize.size12,
@@ -175,17 +211,32 @@ const createStyles = (theme: Theme) =>
       color: theme.lightGreen,
       lineHeight: fontSize.size16,
     },
+    typeDescPrimary: {
+      color: theme.white70,
+    },
+    typeChevron: {
+      width: widthScale(28),
+      height: widthScale(28),
+      borderRadius: widthScale(14),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    typeChevronPrimary: {
+      backgroundColor: theme.white85,
+    },
+    // Quiet text button — the cards are the actions here
     cancelButton: {
-      backgroundColor: theme.lightGreen015,
+      minHeight: 44,
       borderRadius: moderateWidthScale(999),
-      paddingVertical: moderateHeightScale(13),
+      paddingVertical: moderateHeightScale(10),
       alignItems: "center",
       justifyContent: "center",
     },
     cancelText: {
       fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
     },
   });
 
@@ -314,42 +365,79 @@ export default function CreateReelPickerSheet({
                 type.key === "simple" && onSimpleReelPress
                   ? "simpleReelDescSteps"
                   : type.descKey;
+              // AI Reels is the premium pick: brand-green card, orange icon
+              const primary = type.key === "ai";
               return (
-              <TouchableOpacity
-                key={type.key}
-                style={styles.typeCard}
-                onPress={() => handleTypePress(type.key)}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={t(type.titleKey)}
-                accessibilityHint={t(descKey, {
-                  max_seconds: MAX_VIDEO_UPLOAD_SECONDS,
-                })}
-              >
-                <View
-                  style={[
-                    styles.optionIconCircle,
-                    styles.optionIconCircleInline,
-                  ]}
+                <TouchableOpacity
+                  key={type.key}
+                  style={[styles.typeCard, primary && styles.typeCardPrimary]}
+                  onPress={() => handleTypePress(type.key)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel={t(type.titleKey)}
+                  accessibilityHint={t(descKey, {
+                    max_seconds: MAX_VIDEO_UPLOAD_SECONDS,
+                  })}
                 >
-                  <MaterialIcons
-                    name={type.icon}
-                    size={moderateWidthScale(22)}
-                    color={theme.white}
-                  />
-                </View>
-                <View style={styles.optionTextCol}>
-                  <Text style={styles.typeTitle}>{t(type.titleKey)}</Text>
-                  <Text style={styles.typeDesc}>
-                    {t(descKey, { max_seconds: MAX_VIDEO_UPLOAD_SECONDS })}
-                  </Text>
-                </View>
-                <MaterialIcons
-                  name="chevron-right"
-                  size={moderateWidthScale(22)}
-                  color={theme.lightGreen}
-                />
-              </TouchableOpacity>
+                  {primary ? (
+                    <>
+                      <LinearGradient
+                        colors={[theme.darkGreen, theme.buttonBack]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <MaterialIcons
+                        name="auto-awesome"
+                        size={moderateWidthScale(110)}
+                        color={theme.white}
+                        style={styles.typeCardArt}
+                      />
+                    </>
+                  ) : null}
+                  <View
+                    style={[
+                      styles.typeIconTile,
+                      primary && styles.typeIconTilePrimary,
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={type.icon}
+                      size={moderateWidthScale(24)}
+                      color={primary ? theme.darkGreen : theme.white}
+                    />
+                  </View>
+                  <View style={styles.optionTextCol}>
+                    <Text
+                      style={[
+                        styles.typeTitle,
+                        primary && styles.typeTitlePrimary,
+                      ]}
+                    >
+                      {t(type.titleKey)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.typeDesc,
+                        primary && styles.typeDescPrimary,
+                      ]}
+                    >
+                      {t(descKey, { max_seconds: MAX_VIDEO_UPLOAD_SECONDS })}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.typeChevron,
+                      primary && styles.typeChevronPrimary,
+                    ]}
+                  >
+                    <MaterialIcons
+                      name="chevron-right"
+                      size={moderateWidthScale(20)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                </TouchableOpacity>
               );
             })}
           </View>
