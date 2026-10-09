@@ -77,7 +77,13 @@ type Step = 0 | 1 | 2 | 3;
 const TOTAL_STEPS = 4;
 const REVIEW: Step = 3;
 
-type FieldKey = "name" | "brand" | "price" | "inventory" | "threshold";
+type FieldKey =
+  | "name"
+  | "brand"
+  | "description"
+  | "price"
+  | "inventory"
+  | "threshold";
 type Errors = Partial<Record<FieldKey, string>>;
 
 const CATEGORY_ICONS: Record<
@@ -454,6 +460,10 @@ export default function ProductStepFlow({
       if (!draft.name.trim()) e.name = t("productNameRequired");
       if (!draft.brand.trim()) e.brand = t("productBrandRequired");
     }
+    // The API rejects a product without a description.
+    if ((s === 1 || s === REVIEW) && !draft.description.trim()) {
+      e.description = t("productDescriptionRequired");
+    }
     if (s === 2 || s === REVIEW) {
       if (!(price > 0)) e.price = t("productPriceRequired");
       if (stock < 0) e.inventory = t("productInventoryInvalid");
@@ -575,7 +585,7 @@ export default function ProductStepFlow({
       setErrors(e);
       // Jump to the first step with a problem
       setFromReview(true);
-      goTo(e.name || e.brand ? 0 : 2, -1);
+      goTo(e.name || e.brand ? 0 : e.description ? 1 : 2, -1);
       return;
     }
     if (publish && !isLive && !deliveryConfigured) {
@@ -739,12 +749,17 @@ export default function ProductStepFlow({
       </View>
       <FlowTextField
         label={t("productDescription")}
+        required
         value={draft.description}
-        onChangeText={(v) => update("description", v)}
+        onChangeText={(v) => {
+          update("description", v);
+          clearError("description");
+        }}
         placeholder={t("productDescriptionPlaceholder")}
         multiline
         maxCount={500}
         helper={t("productDescriptionHelper")}
+        error={errors.description}
         scrollEnabled={false}
       />
     </>
