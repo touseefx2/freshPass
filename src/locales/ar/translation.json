@@ -2368,5 +2368,12 @@
   "productDiscardMessage": "لن يتم حفظ التفاصيل التي أدخلتها.",
   "productDiscardEditsTitle": "تجاهل التغييرات؟",
   "productThresholdMin": "أدخل 1 أو أكثر.",
-  "productThresholdAlreadyLow": "لديك {{count}} في المخزون، لذا سيظهر هذا المنتج كمخزون منخفض فورًا."
+  "productThresholdAlreadyLow": "لديك {{count}} في المخزون، لذا سيظهر هذا المنتج كمخزون منخفض فورًا.",
+  "inventoryStatProducts": "المنتجات",
+  "inventoryStatUnits": "الوحدات المتوفرة",
+  "inventoryStatRestock": "بحاجة لإعادة التخزين",
+  "stockNotTracked": "متوفر دائمًا",
+  "noProductsMatch": "لا توجد منتجات مطابقة",
+  "noProductsMatchSubtitle": "جرّب بحثًا أو فلترًا مختلفًا.",
+  "clearFilters": "مسح الفلاتر"
 }

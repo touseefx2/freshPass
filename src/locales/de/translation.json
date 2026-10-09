@@ -2368,5 +2368,12 @@
   "productDiscardMessage": "Deine Eingaben werden nicht gespeichert.",
   "productDiscardEditsTitle": "Änderungen verwerfen?",
   "productThresholdMin": "Gib 1 oder mehr ein.",
-  "productThresholdAlreadyLow": "Du hast {{count}} auf Lager, daher wird dieses Produkt sofort als „Niedriger Bestand“ angezeigt."
+  "productThresholdAlreadyLow": "Du hast {{count}} auf Lager, daher wird dieses Produkt sofort als „Niedriger Bestand“ angezeigt.",
+  "inventoryStatProducts": "Produkte",
+  "inventoryStatUnits": "Einheiten auf Lager",
+  "inventoryStatRestock": "Nachbestellen",
+  "stockNotTracked": "Immer verfügbar",
+  "noProductsMatch": "Keine passenden Produkte",
+  "noProductsMatchSubtitle": "Versuche eine andere Suche oder einen anderen Filter.",
+  "clearFilters": "Filter zurücksetzen"
 }

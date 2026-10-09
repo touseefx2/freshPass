@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -53,23 +54,72 @@ const createStyles = (theme: Theme) =>
     },
     content: {
       flex: 1,
-      paddingHorizontal: moderateWidthScale(20),
+    },
+    listHeader: {
+      paddingTop: moderateHeightScale(12),
+      gap: moderateHeightScale(12),
+      marginBottom: moderateHeightScale(4),
+    },
+    summaryCard: {
+      flexDirection: "row",
+      alignItems: "stretch",
+      paddingVertical: moderateHeightScale(16),
+      paddingHorizontal: moderateWidthScale(8),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.darkGreen,
+    },
+    summaryItem: {
+      flex: 1,
+      alignItems: "center",
+      gap: moderateHeightScale(4),
+      paddingHorizontal: moderateWidthScale(4),
+    },
+    summaryDivider: {
+      width: StyleSheet.hairlineWidth,
+      backgroundColor: "rgba(255, 255, 255, 0.25)",
+    },
+    summaryValue: {
+      fontSize: fontSize.size22,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+      fontVariant: ["tabular-nums"],
+    },
+    summaryValueAlert: {
+      color: "#F2B880",
+    },
+    summaryLabel: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontMedium,
+      color: "rgba(255, 255, 255, 0.75)",
+      textAlign: "center",
     },
     deliveryCard: {
-      marginTop: moderateHeightScale(8),
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(10),
+      gap: moderateWidthScale(12),
       paddingVertical: moderateHeightScale(10),
-      paddingHorizontal: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(12),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
+      paddingLeft: moderateWidthScale(10),
+      paddingRight: moderateWidthScale(8),
+      minHeight: moderateHeightScale(52),
+      borderRadius: moderateWidthScale(14),
       backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
     },
     deliveryCardWarning: {
       borderColor: theme.selectCard,
       backgroundColor: theme.orangeBrown015,
+    },
+    deliveryIcon: {
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(10),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    deliveryIconWarning: {
+      backgroundColor: "rgba(188, 108, 37, 0.15)",
     },
     deliveryText: {
       flex: 1,
@@ -82,24 +132,19 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontBold,
       color: theme.buttonBack,
     },
-    draftBadge: {
-      backgroundColor: theme.lightGreen05,
-    },
-    draftBadgeText: {
-      color: theme.lightGreen5,
+    deliveryEditWarning: {
+      color: theme.selectCard,
     },
     searchWrap: {
-      marginTop: moderateHeightScale(8),
-      marginBottom: moderateHeightScale(12),
       flexDirection: "row",
       alignItems: "center",
       gap: moderateWidthScale(8),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
-      borderRadius: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(14),
       backgroundColor: theme.white,
-      paddingHorizontal: moderateWidthScale(12),
-      height: moderateHeightScale(44),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      paddingHorizontal: moderateWidthScale(14),
+      height: moderateHeightScale(46),
     },
     searchInput: {
       flex: 1,
@@ -110,47 +155,69 @@ const createStyles = (theme: Theme) =>
     },
     tabs: {
       flexDirection: "row",
+      flexWrap: "wrap",
       gap: moderateWidthScale(8),
-      marginBottom: moderateHeightScale(14),
     },
     tab: {
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(8),
-      borderRadius: moderateWidthScale(20),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      paddingLeft: moderateWidthScale(14),
+      paddingRight: moderateWidthScale(6),
+      minHeight: moderateHeightScale(36),
+      borderRadius: moderateWidthScale(18),
       borderWidth: 1,
-      borderColor: theme.lightGreen2,
+      borderColor: theme.borderLight,
       backgroundColor: theme.white,
     },
     tabActive: {
-      backgroundColor: theme.buttonBack,
-      borderColor: theme.buttonBack,
+      backgroundColor: theme.darkGreen,
+      borderColor: theme.darkGreen,
     },
     tabText: {
-      fontSize: fontSize.size12,
+      fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
     },
     tabTextActive: {
-      color: theme.buttonText,
+      color: theme.white,
+    },
+    tabCount: {
+      minWidth: moderateWidthScale(22),
+      height: moderateWidthScale(22),
+      paddingHorizontal: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(11),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    tabCountActive: {
+      backgroundColor: "rgba(255, 255, 255, 0.2)",
+    },
+    tabCountText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
     },
     emptyWrap: {
       alignItems: "center",
       justifyContent: "center",
       paddingHorizontal: moderateWidthScale(24),
-      paddingVertical: moderateHeightScale(48),
-      gap: moderateHeightScale(12),
+      paddingVertical: moderateHeightScale(40),
+      gap: moderateHeightScale(10),
     },
     emptyIconWrap: {
-      width: widthScale(88),
-      height: widthScale(88),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.lightGreen05,
+      width: widthScale(80),
+      height: widthScale(80),
+      borderRadius: widthScale(40),
+      backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: moderateHeightScale(4),
+      marginBottom: moderateHeightScale(6),
     },
     emptyTitle: {
-      fontSize: fontSize.size18,
+      fontSize: fontSize.size17,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
       textAlign: "center",
@@ -158,35 +225,44 @@ const createStyles = (theme: Theme) =>
     emptySubtitle: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
+      color: theme.lightGreen,
       textAlign: "center",
-      lineHeight: fontSize.size18,
+      lineHeight: fontSize.size19,
+    },
+    emptyLink: {
+      marginTop: moderateHeightScale(4),
+      paddingVertical: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    emptyLinkText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.buttonBack,
     },
     listContent: {
+      paddingHorizontal: moderateWidthScale(20),
       gap: moderateHeightScale(10),
-    },
-    listFooter: {
-      marginTop: moderateHeightScale(16),
-      gap: moderateHeightScale(10),
-      alignSelf: "stretch",
-    },
-    addProductButton: {
-      minWidth: widthScale(200),
     },
     card: {
       flexDirection: "row",
+      alignItems: "center",
       gap: moderateWidthScale(12),
-      padding: moderateWidthScale(12),
-      borderRadius: moderateWidthScale(14),
-      borderWidth: 1,
-      borderColor: theme.lightGreen2,
+      padding: moderateWidthScale(10),
+      borderRadius: moderateWidthScale(16),
       backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.06,
+      shadowRadius: 8,
+      elevation: 1,
     },
     thumb: {
-      width: widthScale(64),
-      height: widthScale(64),
-      borderRadius: moderateWidthScale(10),
-      backgroundColor: theme.lightGreen05,
+      width: widthScale(76),
+      height: widthScale(76),
+      borderRadius: moderateWidthScale(12),
+      backgroundColor: theme.lightGreen07,
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
@@ -197,10 +273,16 @@ const createStyles = (theme: Theme) =>
     },
     cardBody: {
       flex: 1,
-      gap: moderateHeightScale(2),
       minWidth: 0,
+      gap: moderateHeightScale(3),
+    },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
     },
     cardTitle: {
+      flexShrink: 1,
       fontSize: fontSize.size15,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
@@ -208,39 +290,72 @@ const createStyles = (theme: Theme) =>
     cardMeta: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
-      color: theme.lightGreen5,
+      color: theme.lightGreen,
+    },
+    cardFooter: {
+      marginTop: moderateHeightScale(4),
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: moderateWidthScale(8),
     },
     cardPrice: {
-      fontSize: fontSize.size14,
+      fontSize: fontSize.size16,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      marginTop: moderateHeightScale(2),
+      fontVariant: ["tabular-nums"],
     },
-    badge: {
-      alignSelf: "flex-start",
-      marginTop: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(8),
+    draftBadge: {
+      paddingHorizontal: moderateWidthScale(7),
       paddingVertical: moderateHeightScale(2),
-      borderRadius: moderateWidthScale(8),
-      backgroundColor: theme.orangeBrown015,
+      borderRadius: moderateWidthScale(6),
+      backgroundColor: theme.lightGreen1,
     },
-    badgeText: {
+    draftBadgeText: {
       fontSize: fontSize.size10,
       fontFamily: fonts.fontBold,
-      color: theme.selectCard,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    stockPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      paddingHorizontal: moderateWidthScale(8),
+      paddingVertical: moderateHeightScale(3),
+      borderRadius: moderateWidthScale(10),
+    },
+    stockDot: {
+      width: moderateWidthScale(6),
+      height: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(3),
+    },
+    stockPillText: {
+      fontSize: fontSize.size11,
+      fontFamily: fonts.fontBold,
     },
     actions: {
+      alignSelf: "stretch",
       justifyContent: "space-between",
       alignItems: "center",
-      gap: moderateHeightScale(8),
     },
     iconBtn: {
-      width: moderateWidthScale(36),
-      height: moderateWidthScale(36),
-      borderRadius: moderateWidthScale(10),
+      width: moderateWidthScale(34),
+      height: moderateWidthScale(34),
+      borderRadius: moderateWidthScale(17),
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.lightGreen05,
+    },
+    deleteBtn: {
+      backgroundColor: "rgba(186, 26, 26, 0.08)",
+    },
+    bottomBar: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(12),
+      backgroundColor: theme.background,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.lightGreen2,
     },
     loader: {
       flex: 1,
@@ -265,6 +380,7 @@ export default function ProductsInventoryScreen() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<ShopStockFilter>("all");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -369,124 +485,280 @@ export default function ProductsInventoryScreen() {
     { key: "low_stock", label: t("productFilterLowStock") },
   ];
 
+  const tabCounts = useMemo(() => {
+    const counts: Record<ShopStockFilter, number> = {
+      all: 0,
+      in_stock: 0,
+      low_stock: 0,
+    };
+    tabs.forEach((tab) => {
+      counts[tab.key] = products.filter((p) =>
+        getStockFilterMatch(p, tab.key),
+      ).length;
+    });
+    return counts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products]);
+
+  const summary = useMemo(() => {
+    let units = 0;
+    let restock = 0;
+    products.forEach((p) => {
+      if (!p.trackInventory) return;
+      units += p.inventoryCount;
+      if (p.inventoryCount <= 0 || isLowStock(p)) restock += 1;
+    });
+    return { total: products.length, units, restock };
+  }, [products]);
+
+  const getStockStatus = (item: ShopProduct) => {
+    if (!item.trackInventory) {
+      return { label: t("stockNotTracked"), tone: "ok" as const };
+    }
+    if (item.inventoryCount <= 0) {
+      return { label: t("outOfStock"), tone: "out" as const };
+    }
+    if (isLowStock(item)) {
+      return {
+        label: `${t("lowStock")} · ${item.inventoryCount}`,
+        tone: "low" as const,
+      };
+    }
+    return {
+      label: t("qtyInStock", { count: item.inventoryCount }),
+      tone: "ok" as const,
+    };
+  };
+
+  const toneColors = {
+    ok: { bg: "rgba(96, 108, 56, 0.12)", fg: theme.buttonBack },
+    low: { bg: theme.orangeBrown015, fg: theme.selectCard },
+    out: { bg: "rgba(186, 26, 26, 0.08)", fg: theme.red },
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadProducts();
+    setRefreshing(false);
+  };
+
+  const openEdit = (item: ShopProduct) =>
+    router.push({
+      pathname: "./editProduct" as any,
+      params: { id: item.id },
+    });
+
+  const hasQuery = search.trim().length > 0 || filter !== "all";
+
+  const listHeader = (
+    <View style={styles.listHeader}>
+      {products.length > 0 ? (
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{summary.total}</Text>
+            <Text style={styles.summaryLabel}>{t("inventoryStatProducts")}</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryValue}>{summary.units}</Text>
+            <Text style={styles.summaryLabel}>{t("inventoryStatUnits")}</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text
+              style={[
+                styles.summaryValue,
+                summary.restock > 0 && styles.summaryValueAlert,
+              ]}
+            >
+              {summary.restock}
+            </Text>
+            <Text style={styles.summaryLabel}>{t("inventoryStatRestock")}</Text>
+          </View>
+        </View>
+      ) : null}
+
+      {delivery ? (
+        <TouchableOpacity
+          style={[
+            styles.deliveryCard,
+            !delivery.configured && styles.deliveryCardWarning,
+          ]}
+          activeOpacity={0.85}
+          onPress={() => router.push("./deliveryOptions" as any)}
+          accessibilityRole="button"
+        >
+          <View
+            style={[
+              styles.deliveryIcon,
+              !delivery.configured && styles.deliveryIconWarning,
+            ]}
+          >
+            <MaterialIcons
+              name={delivery.configured ? "local-shipping" : "warning-amber"}
+              size={moderateWidthScale(18)}
+              color={delivery.configured ? theme.darkGreen : theme.selectCard}
+            />
+          </View>
+          <Text style={styles.deliveryText} numberOfLines={2}>
+            {delivery.configured
+              ? deliveryLines.map((l) => l.label).join(" · ")
+              : t("deliveryNotSetHint")}
+          </Text>
+          <Text
+            style={[
+              styles.deliveryEdit,
+              !delivery.configured && styles.deliveryEditWarning,
+            ]}
+          >
+            {delivery.configured ? t("edit") : t("setUp")}
+          </Text>
+          <MaterialIcons
+            name="chevron-right"
+            size={moderateWidthScale(20)}
+            color={delivery.configured ? theme.buttonBack : theme.selectCard}
+          />
+        </TouchableOpacity>
+      ) : null}
+
+      {products.length > 0 ? (
+        <>
+          <View style={styles.searchWrap}>
+            <MaterialIcons
+              name="search"
+              size={moderateWidthScale(20)}
+              color={theme.lightGreen5}
+            />
+            <TextInput
+              style={styles.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder={t("searchProducts")}
+              placeholderTextColor={theme.lightGreen5}
+              returnKeyType="search"
+            />
+            {search.length > 0 ? (
+              <TouchableOpacity
+                onPress={() => setSearch("")}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                accessibilityRole="button"
+                accessibilityLabel={t("clearFilters")}
+              >
+                <MaterialIcons
+                  name="cancel"
+                  size={moderateWidthScale(18)}
+                  color={theme.lightGreen4}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <View style={styles.tabs}>
+            {tabs.map((tab) => {
+              const active = filter === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  style={[styles.tab, active && styles.tabActive]}
+                  onPress={() => setFilter(tab.key)}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>
+                    {tab.label}
+                  </Text>
+                  <View style={[styles.tabCount, active && styles.tabCountActive]}>
+                    <Text
+                      style={[styles.tabCountText, active && styles.tabTextActive]}
+                    >
+                      {tabCounts[tab.key]}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </>
+      ) : null}
+    </View>
+  );
+
+  const listEmpty = loading && products.length === 0 ? (
+    <View style={styles.emptyWrap}>
+      <ActivityIndicator size="large" color={theme.darkGreen} />
+    </View>
+  ) : products.length > 0 && hasQuery ? (
+    <View style={styles.emptyWrap}>
+      <View style={styles.emptyIconWrap}>
+        <MaterialIcons
+          name="search-off"
+          size={moderateWidthScale(34)}
+          color={theme.darkGreen}
+        />
+      </View>
+      <Text style={styles.emptyTitle}>{t("noProductsMatch")}</Text>
+      <Text style={styles.emptySubtitle}>{t("noProductsMatchSubtitle")}</Text>
+      <TouchableOpacity
+        style={styles.emptyLink}
+        onPress={() => {
+          setSearch("");
+          setFilter("all");
+        }}
+        accessibilityRole="button"
+      >
+        <Text style={styles.emptyLinkText}>{t("clearFilters")}</Text>
+      </TouchableOpacity>
+    </View>
+  ) : (
+    <View style={styles.emptyWrap}>
+      <View style={styles.emptyIconWrap}>
+        <MaterialIcons
+          name="inventory-2"
+          size={moderateWidthScale(34)}
+          color={theme.darkGreen}
+        />
+      </View>
+      <Text style={styles.emptyTitle}>{t("noProductsYet")}</Text>
+      <Text style={styles.emptySubtitle}>{t("noProductsYetSubtitle")}</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <StackHeader title={t("productsInventory")} />
       <View style={styles.content}>
-        {delivery ? (
-          <TouchableOpacity
-            style={[
-              styles.deliveryCard,
-              !delivery.configured && styles.deliveryCardWarning,
-            ]}
-            activeOpacity={0.85}
-            onPress={() => router.push("./deliveryOptions" as any)}
-          >
-            <MaterialIcons
-              name={delivery.configured ? "local-shipping" : "warning-amber"}
-              size={moderateWidthScale(20)}
-              color={delivery.configured ? theme.darkGreen : theme.selectCard}
+        <FlatList
+          data={loading && products.length === 0 ? [] : filtered}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: moderateHeightScale(20) },
+          ]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.darkGreen}
+              colors={[theme.darkGreen]}
             />
-            <Text style={styles.deliveryText} numberOfLines={2}>
-              {delivery.configured
-                ? deliveryLines.map((l) => l.label).join(" · ")
-                : t("deliveryNotSetHint")}
-            </Text>
-            <Text style={styles.deliveryEdit}>
-              {delivery.configured ? t("edit") : t("setUp")}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-        <View style={styles.searchWrap}>
-          <MaterialIcons
-            name="search"
-            size={moderateWidthScale(20)}
-            color={theme.lightGreen5}
-          />
-          <TextInput
-            style={styles.searchInput}
-            value={search}
-            onChangeText={setSearch}
-            placeholder={t("searchProducts")}
-            placeholderTextColor={theme.lightGreen5}
-          />
-        </View>
-
-        <View style={styles.tabs}>
-          {tabs.map((tab) => {
-            const active = filter === tab.key;
+          }
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
+          renderItem={({ item }) => {
+            const status = getStockStatus(item);
+            const tone = toneColors[status.tone];
             return (
               <TouchableOpacity
-                key={tab.key}
-                style={[styles.tab, active && styles.tabActive]}
-                onPress={() => setFilter(tab.key)}
+                style={styles.card}
                 activeOpacity={0.85}
+                onPress={() => openEdit(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`${t("editProduct")}: ${item.name}`}
               >
-                <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {loading ? (
-          <View style={styles.loader}>
-            <ActivityIndicator size="large" color={theme.darkGreen} />
-          </View>
-        ) : filtered.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <View style={styles.emptyIconWrap}>
-              <MaterialIcons
-                name="inventory-2"
-                size={moderateWidthScale(40)}
-                color={theme.darkGreen}
-              />
-            </View>
-            <Text style={styles.emptyTitle}>{t("noProductsYet")}</Text>
-            <Text style={styles.emptySubtitle}>{t("noProductsYetSubtitle")}</Text>
-            <View style={styles.listFooter}>
-              <Button
-                title={t("addProductCta")}
-                leftIcon={
-                  <MaterialIcons
-                    name="add"
-                    size={moderateWidthScale(20)}
-                    color={theme.buttonText}
-                  />
-                }
-                containerStyle={styles.addProductButton}
-                onPress={() => router.push("./addProduct" as any)}
-              />
-            </View>
-          </View>
-        ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={[
-              styles.listContent,
-              { paddingBottom: insets.bottom + moderateHeightScale(24) },
-            ]}
-            showsVerticalScrollIndicator={false}
-            ListFooterComponent={
-              <View style={styles.listFooter}>
-                <Button
-                  title={t("addProductCta")}
-                  leftIcon={
-                    <MaterialIcons
-                      name="add"
-                      size={moderateWidthScale(20)}
-                      color={theme.buttonText}
-                    />
-                  }
-                  containerStyle={styles.addProductButton}
-                  onPress={() => router.push("./addProduct" as any)}
-                />
-              </View>
-            }
-            renderItem={({ item }) => (
-              <View style={styles.card}>
                 <View style={styles.thumb}>
                   {item.imageUri ? (
                     <AppImage
@@ -497,55 +769,49 @@ export default function ProductsInventoryScreen() {
                   ) : (
                     <MaterialIcons
                       name="shopping-bag"
-                      size={moderateWidthScale(26)}
-                      color={theme.darkGreen}
+                      size={moderateWidthScale(28)}
+                      color={theme.lightGreen4}
                     />
                   )}
                 </View>
                 <View style={styles.cardBody}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>
-                    {item.name}
-                  </Text>
+                  <View style={styles.titleRow}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    {!item.published ? (
+                      <View style={styles.draftBadge}>
+                        <Text style={styles.draftBadgeText}>{t("draft")}</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text style={styles.cardMeta} numberOfLines={1}>
-                    {item.brand} · {item.category}
+                    {[item.brand, item.category].filter(Boolean).join(" · ")}
                   </Text>
-                  <Text style={styles.cardPrice}>
-                    {formatShopPrice(item.sellingPrice)}
-                  </Text>
-                  <Text style={styles.cardMeta}>
-                    {t("qtyInStock", { count: item.inventoryCount })}
-                  </Text>
-                  {!item.published ? (
-                    <View style={[styles.badge, styles.draftBadge]}>
-                      <Text style={[styles.badgeText, styles.draftBadgeText]}>
-                        {t("draft")}
+                  <View style={styles.cardFooter}>
+                    <Text style={styles.cardPrice}>
+                      {formatShopPrice(item.sellingPrice)}
+                    </Text>
+                    <View style={[styles.stockPill, { backgroundColor: tone.bg }]}>
+                      <View
+                        style={[styles.stockDot, { backgroundColor: tone.fg }]}
+                      />
+                      <Text
+                        style={[styles.stockPillText, { color: tone.fg }]}
+                        numberOfLines={1}
+                      >
+                        {status.label}
                       </Text>
                     </View>
-                  ) : isLowStock(item) ? (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{t("lowStock")}</Text>
-                    </View>
-                  ) : null}
+                  </View>
                 </View>
                 <View style={styles.actions}>
                   <TouchableOpacity
-                    style={styles.iconBtn}
-                    onPress={() =>
-                      router.push({
-                        pathname: "./editProduct" as any,
-                        params: { id: item.id },
-                      })
-                    }
-                  >
-                    <MaterialIcons
-                      name="edit"
-                      size={moderateWidthScale(18)}
-                      color={theme.darkGreen}
-                    />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.iconBtn}
+                    style={[styles.iconBtn, styles.deleteBtn]}
                     onPress={() => confirmDelete(item)}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t("delete")}: ${item.name}`}
                   >
                     <MaterialIcons
                       name="delete-outline"
@@ -553,11 +819,36 @@ export default function ProductsInventoryScreen() {
                       color={theme.red}
                     />
                   </TouchableOpacity>
+                  <View style={styles.iconBtn}>
+                    <MaterialIcons
+                      name="chevron-right"
+                      size={moderateWidthScale(22)}
+                      color={theme.lightGreen4}
+                    />
+                  </View>
                 </View>
-              </View>
-            )}
+              </TouchableOpacity>
+            );
+          }}
+        />
+        <View
+          style={[
+            styles.bottomBar,
+            { paddingBottom: insets.bottom + moderateHeightScale(12) },
+          ]}
+        >
+          <Button
+            title={t("addProductCta")}
+            leftIcon={
+              <MaterialIcons
+                name="add"
+                size={moderateWidthScale(20)}
+                color={theme.buttonText}
+              />
+            }
+            onPress={() => router.push("./addProduct" as any)}
           />
-        )}
+        </View>
       </View>
     </View>
   );

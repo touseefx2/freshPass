@@ -2424,5 +2424,12 @@
   "productDiscardMessage": "The details you entered won't be saved.",
   "productDiscardEditsTitle": "Discard your changes?",
   "productThresholdMin": "Enter 1 or more.",
-  "productThresholdAlreadyLow": "You have {{count}} in stock, so this product will show as Low stock right away."
+  "productThresholdAlreadyLow": "You have {{count}} in stock, so this product will show as Low stock right away.",
+  "inventoryStatProducts": "Products",
+  "inventoryStatUnits": "Units in stock",
+  "inventoryStatRestock": "Need restock",
+  "stockNotTracked": "Always available",
+  "noProductsMatch": "No matching products",
+  "noProductsMatchSubtitle": "Try a different search or filter.",
+  "clearFilters": "Clear filters"
 }

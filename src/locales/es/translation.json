@@ -2368,5 +2368,12 @@
   "productDiscardMessage": "Los datos que ingresaste no se guardarán.",
   "productDiscardEditsTitle": "¿Descartar los cambios?",
   "productThresholdMin": "Introduce 1 o más.",
-  "productThresholdAlreadyLow": "Tienes {{count}} en stock, así que este producto aparecerá como Stock bajo de inmediato."
+  "productThresholdAlreadyLow": "Tienes {{count}} en stock, así que este producto aparecerá como Stock bajo de inmediato.",
+  "inventoryStatProducts": "Productos",
+  "inventoryStatUnits": "Unidades en stock",
+  "inventoryStatRestock": "Por reponer",
+  "stockNotTracked": "Siempre disponible",
+  "noProductsMatch": "No hay productos que coincidan",
+  "noProductsMatchSubtitle": "Prueba con otra búsqueda o filtro.",
+  "clearFilters": "Borrar filtros"
 }

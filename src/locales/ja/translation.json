@@ -2368,5 +2368,12 @@
   "productDiscardMessage": "入力した内容は保存されません。",
   "productDiscardEditsTitle": "変更を破棄しますか？",
   "productThresholdMin": "1 以上を入力してください。",
-  "productThresholdAlreadyLow": "在庫が {{count}} 個のため、この商品はすぐに「在庫わずか」と表示されます。"
+  "productThresholdAlreadyLow": "在庫が {{count}} 個のため、この商品はすぐに「在庫わずか」と表示されます。",
+  "inventoryStatProducts": "商品",
+  "inventoryStatUnits": "在庫数",
+  "inventoryStatRestock": "要補充",
+  "stockNotTracked": "常に在庫あり",
+  "noProductsMatch": "一致する商品がありません",
+  "noProductsMatchSubtitle": "別のキーワードやフィルターをお試しください。",
+  "clearFilters": "フィルターをクリア"
 }
