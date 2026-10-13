@@ -30,7 +30,6 @@ type IconFamily = "material" | "community";
 
 type SettingKey =
   | "businessProfile"
-  | "businessHours"
   | "servicesAndMemberships"
   | "cancellationPolicy"
   | "team"
@@ -320,8 +319,6 @@ export default function BusinessProfileSettingsScreen() {
   const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {
       router.push("./businessProfileMenu");
-    } else if (key === "businessHours") {
-      router.push("./setupAvailability");
     } else if (key === "servicesAndMemberships") {
       router.push("./servicesAndMemberships");
     } else if (key === "cancellationPolicy") {
@@ -362,7 +359,6 @@ export default function BusinessProfileSettingsScreen() {
 
   const settings: SettingItem[] = [
     { key: "businessProfile", title: t("businessProfileTitle") },
-    { key: "businessHours", title: t("businessHoursTitle") },
     { key: "servicesAndMemberships", title: t("servicesAndMemberships") },
     ...(showManageTeam
       ? [{ key: "team" as const, title: t("manageTeamTitle") }]
@@ -407,8 +403,6 @@ export default function BusinessProfileSettingsScreen() {
     switch (key) {
       case "businessProfile":
         return { name: "storefront", family: "material", variant: "dark" };
-      case "businessHours":
-        return { name: "calendar-month", family: "material", variant: "accent" };
       case "servicesAndMemberships":
         return { name: "content-cut", family: "material", variant: "accent" };
       case "team":

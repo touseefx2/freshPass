@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import BusinessSettingsHub from "@/src/components/BusinessSettingsHub";
 
-/** Business Profile section: info, location, description and portfolio in one place. */
+/** Business Profile section: info, location, hours, description and portfolio in one place. */
 export default function BusinessProfileMenuScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -24,6 +24,12 @@ export default function BusinessProfileMenuScreen() {
           title: t("businessLocation"),
           iconName: "place",
           onPress: () => router.push("./location"),
+        },
+        {
+          key: "businessHours",
+          title: t("businessHoursTitle"),
+          iconName: "calendar-month",
+          onPress: () => router.push("./setupAvailability"),
         },
         {
           key: "aboutYourBusiness",
