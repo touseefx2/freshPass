@@ -36,7 +36,6 @@ type SettingKey =
   | "socialMedia"
   | "products"
   | "orders"
-  | "freshpassSubscription"
   | "affiliationRequests"
   | "mediaLibrary"
   | "aiTools"
@@ -311,10 +310,6 @@ export default function BusinessProfileSettingsScreen() {
   const businessId = user.business_id;
   const showManageTeam = canShowStaffManagement(businessStatus);
   const isBusinessOwner = userRole === "business";
-  const showStripeBanner =
-    isBusinessOwner &&
-    businessStatus?.onboarding_completed === true &&
-    businessStatus?.stripe_onboarding_status === "pending";
 
   const handleRowPress = (key: SettingKey) => {
     if (key === "businessProfile") {
@@ -331,8 +326,6 @@ export default function BusinessProfileSettingsScreen() {
       router.push("./products");
     } else if (key === "orders") {
       router.push("./orders" as any);
-    } else if (key === "freshpassSubscription") {
-      router.push("/(main)/dashboard/(account)/subscription");
     } else if (key === "allAppointments") {
       router.push("/(main)/dashboard/(account)/allAppointments" as any);
     } else if (key === "affiliationRequests") {
@@ -385,14 +378,6 @@ export default function BusinessProfileSettingsScreen() {
       : []),
     { key: "mediaLibrary", title: t("mediaLibrary") },
     { key: "aiTools", title: t("aiTools") },
-    ...(!showStripeBanner
-      ? [
-          {
-            key: "freshpassSubscription" as const,
-            title: t("freshpassSubscription"),
-          },
-        ]
-      : []),
     { key: "viewBusinessProfile", title: t("viewBusinessProfile") },
   ];
 
@@ -423,8 +408,6 @@ export default function BusinessProfileSettingsScreen() {
         return { name: "video-library", family: "material", variant: "cream" };
       case "aiTools":
         return { name: "smart-toy", family: "material", variant: "dark" };
-      case "freshpassSubscription":
-        return { name: "crown", family: "community", variant: "accent" };
       case "viewBusinessProfile":
         return { name: "visibility", family: "material", variant: "cream" };
       default:
