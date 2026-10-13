@@ -524,6 +524,25 @@ const createStyles = (theme: Theme) =>
       borderWidth: 1,
       borderColor: theme.white15,
     },
+    // Padding keeps the overhanging close button inside a touchable parent (Android).
+    productCardWrap: { paddingTop: moderateWidthScale(10) },
+    productClose: {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      zIndex: 2,
+      width: moderateWidthScale(26),
+      height: moderateWidthScale(26),
+      borderRadius: moderateWidthScale(13),
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: theme.black,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.35,
+      shadowRadius: 3,
+      elevation: 4,
+    },
     productThumb: {
       width: widthScale(56),
       height: widthScale(56),
@@ -746,6 +765,9 @@ type ReelItemProps = {
   onFollow: (reel: FeedReel) => void;
   onProfile: (reel: FeedReel) => void;
   onWantLook: (reel: FeedReel) => void;
+  /** Customer closed the product card on this reel (until the feed is reopened). */
+  productDismissed?: boolean;
+  onDismissProduct?: (reelId: number) => void;
   onPublish?: () => void;
   /** Report plays: `/view` when playback starts, `/watch` when the play ends. */
   trackPlays?: boolean;
@@ -778,6 +800,8 @@ function ReelFeedItemBase({
   onFollow,
   onProfile,
   onWantLook,
+  productDismissed = false,
+  onDismissProduct,
   onPublish,
   trackPlays = false,
   onPlayStart,
@@ -1582,51 +1606,66 @@ function ReelFeedItemBase({
           </View>
         </View>
 
-        {showAsCustomer && shopProduct ? (
-          <View style={styles.productCard}>
-            <View style={styles.productThumb}>
-              {shopProduct.imageUri ? (
-                <AppImage
-                  uri={shopProduct.imageUri}
-                  style={{ width: "100%", height: "100%" }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <MaterialIcons
-                  name="shopping-bag"
-                  size={moderateWidthScale(24)}
-                  color={theme.black}
-                />
-              )}
-            </View>
-            <View style={styles.productBody}>
-              <Text style={styles.productTitle} numberOfLines={1}>
-                {shopProduct.name}
-              </Text>
-              {!!shopProduct.description && (
-                <Text style={styles.productDesc} numberOfLines={2}>
-                  {shopProduct.description}
+        {showAsCustomer && shopProduct && !productDismissed ? (
+          <View style={styles.productCardWrap}>
+            <View style={styles.productCard}>
+              <View style={styles.productThumb}>
+                {shopProduct.imageUri ? (
+                  <AppImage
+                    uri={shopProduct.imageUri}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="shopping-bag"
+                    size={moderateWidthScale(24)}
+                    color={theme.black}
+                  />
+                )}
+              </View>
+              <View style={styles.productBody}>
+                <Text style={styles.productTitle} numberOfLines={1}>
+                  {shopProduct.name}
                 </Text>
-              )}
-              <Text style={styles.productPrice}>{productPrice}</Text>
+                {!!shopProduct.description && (
+                  <Text style={styles.productDesc} numberOfLines={2}>
+                    {shopProduct.description}
+                  </Text>
+                )}
+                <Text style={styles.productPrice}>{productPrice}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.shopBtn}
+                activeOpacity={0.85}
+                onPress={() => {
+                  dispatch(setShopProduct(shopProduct!));
+                  router.push({
+                    pathname: "/(main)/shop/productDetail" as any,
+                    params: { productId: shopProduct!.id },
+                  });
+                }}
+              >
+                <MaterialIcons
+                  name="shopping-cart"
+                  size={moderateWidthScale(14)}
+                  color={theme.white}
+                />
+                <Text style={styles.shopBtnText}>{t("shopNow")}</Text>
+              </TouchableOpacity>
             </View>
             <TouchableOpacity
-              style={styles.shopBtn}
-              activeOpacity={0.85}
-              onPress={() => {
-                dispatch(setShopProduct(shopProduct!));
-                router.push({
-                  pathname: "/(main)/shop/productDetail" as any,
-                  params: { productId: shopProduct!.id },
-                });
-              }}
+              style={styles.productClose}
+              activeOpacity={0.8}
+              hitSlop={10}
+              onPress={() => onDismissProduct?.(reel.id)}
+              accessibilityLabel={t("close")}
             >
               <MaterialIcons
-                name="shopping-cart"
-                size={moderateWidthScale(14)}
-                color={theme.white}
+                name="close"
+                size={moderateWidthScale(16)}
+                color={theme.black}
               />
-              <Text style={styles.shopBtnText}>{t("shopNow")}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -1892,6 +1931,10 @@ export default function ReelsFeedScreen() {
   const [wantLookLoading, setWantLookLoading] = useState(false);
   const wantLookReelRef = useRef<FeedReel | null>(null);
   const wantLookDataRef = useRef<ReelLookResponse | null>(null);
+  // Per-reel product card dismissals; screen-scoped so cards return when the feed is reopened.
+  const [dismissedProductReelIds, setDismissedProductReelIds] = useState<
+    Set<number>
+  >(() => new Set());
   const [tryOnPickerVisible, setTryOnPickerVisible] = useState(false);
   const [tryOnPipeline, setTryOnPipeline] = useState<HairPipelineModalState>(
     INITIAL_HAIR_PIPELINE_STATE,
@@ -2903,6 +2946,10 @@ export default function ReelsFeedScreen() {
     tryOnPipeline.complete,
   ]);
 
+  const dismissProduct = useCallback((reelId: number) => {
+    setDismissedProductReelIds((prev) => new Set(prev).add(reelId));
+  }, []);
+
   const openProfile = useCallback(
     (reel: FeedReel) => {
       router.push({
@@ -3287,6 +3334,8 @@ export default function ReelsFeedScreen() {
                 onFollow={handleFollow}
                 onProfile={openProfile}
                 onWantLook={wantLook}
+                productDismissed={dismissedProductReelIds.has(item.id)}
+                onDismissProduct={dismissProduct}
                 onPublish={handlePublishPreview}
                 // Opening I Want This Look ends the play (video keeps running)
                 trackPlays={
