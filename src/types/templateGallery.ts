@@ -34,4 +34,6 @@ export type TemplateGalleryItem = {
   previewVideoUrl: string | null;
   icon: IconName;
   features: TemplateGalleryFeature[];
+  /** Design templates: what goes in each slot, in reel order */
+  slots?: { icon: IconName; label: string; detail: string }[];
 };

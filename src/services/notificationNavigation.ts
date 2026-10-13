@@ -177,7 +177,8 @@ function openOwnerReelsList(
  * - type "ai_memory" → Profile → AI Tools → Memories (panel: back first, then chain)
  * - type "airequest" + job_id → aiRequests, then aiResults for that job
  * - type "reel_generation" + reel_id (business) → aiResults for that Shotstack reel
- * - type "auto_reel" + auto_reel_id (business/staff) → autoReel (ready: preview + publish draft; failed: error + retry)
+ * - type "auto_reel" + auto_reel_id (business/staff) → autoReel (ready: preview + publish draft; failed: error + retry;
+ *   review: video design — the user checks the AI's picks and builds the reel)
  * - type "manageSubscriptionList" → no navigation (Stripe Connect Setup Complete; informational only)
  * - type "customer_subscription" + model_id (business role) → Profile → Customers → businessCustomerDetail
  * - type "subscription" (customer role) → Profile → Customer subscriptions
@@ -622,7 +623,8 @@ export function navigateFromNotificationData(
     return;
   }
 
-  // AI Auto Reel finished (ready / failed) — separate from reel_generation
+  // AI Auto Reel finished (ready / failed) or waiting for review (video
+  // designs) — separate from reel_generation
   if (type === "auto_reel") {
     const userRole = store.getState().user.userRole;
     const autoReelId = pickNumber(data, "auto_reel_id", "model_id");

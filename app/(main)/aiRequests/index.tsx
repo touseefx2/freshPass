@@ -139,6 +139,8 @@ function mapGenerationToUiStatus(
 function mapAutoReelToUiStatus(status: AutoReelStatus | null | undefined): string {
   if (status === "ready") return "completed";
   if (status === "failed") return "failed";
+  // Video design waiting for the user to check the AI's picks
+  if (status === "review") return "review";
   return "processing";
 }
 
@@ -698,6 +700,7 @@ export default function AiRequests() {
     const s = (status ?? "").toLowerCase();
     if (s === "completed") return "check-circle";
     if (s === "failed") return "error-outline";
+    if (s === "review") return "rate-review";
     return "schedule";
   }, []);
 
@@ -707,6 +710,7 @@ export default function AiRequests() {
       if (s === "completed") return t("completed");
       if (s === "failed") return t("generationFailed");
       if (s === "processing") return t("processingText").replace(/\.\.\.$/, "");
+      if (s === "review") return t("designNeedsReview");
       return status?.charAt(0).toUpperCase() + (status?.slice(1) ?? "");
     },
     [t],

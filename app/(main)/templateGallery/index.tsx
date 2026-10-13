@@ -1012,6 +1012,30 @@ export default function TemplateGalleryScreen() {
                 {item.description ? (
                   <Text style={styles.infoDesc}>{item.description}</Text>
                 ) : null}
+                {item.slots?.length ? (
+                  <View style={styles.slotList}>
+                    <Text style={styles.slotListTitle}>
+                      {t("designWhatYouNeed")}
+                    </Text>
+                    {item.slots.map((slot, n) => (
+                      <View key={`${slot.label}-${n}`} style={styles.slotRow}>
+                        <View style={styles.slotIcon}>
+                          <MaterialIcons
+                            name={slot.icon}
+                            size={moderateWidthScale(16)}
+                            color={theme.darkGreen}
+                          />
+                        </View>
+                        <View style={styles.slotText}>
+                          <Text style={styles.slotLabel}>{slot.label}</Text>
+                          {slot.detail ? (
+                            <Text style={styles.slotDetail}>{slot.detail}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </SwipeLayer>
             </View>
           ))}

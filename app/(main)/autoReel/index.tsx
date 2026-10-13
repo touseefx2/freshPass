@@ -60,6 +60,7 @@ import {
   OptionRow,
 } from "@/src/components/reelFlow/flowParts";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
+import DesignReview from "@/src/components/autoReel/designReview";
 import ProductPickerSheet, {
   isLinkedProductError,
   useInventoryProducts,
@@ -69,6 +70,8 @@ import ProductPickerSheet, {
  * AI Auto Reel after it's started (from the AI auto reel steps, a push or
  * AI Requests): "Creating your reel" → "Your reel is ready" (preview) →
  * "Publish your reel" (caption, product, publish, download / share).
+ * Video design templates stop at `review` first: polling stops and the
+ * review screen (keep / move / own file per slot) builds the reel.
  * These continue the flow, so no "Step N of M" here.
  */
 
@@ -89,6 +92,7 @@ const NEW_VIDEO_ERRORS = [
   "not_suitable",
   "too_many_moments",
   "source_too_long",
+  "source_too_short",
   "source_missing",
 ];
 
@@ -576,9 +580,14 @@ export default function AutoReelScreen() {
     });
   }, [autoReel?.source_media_asset_id, router]);
 
+  /** Upload another video — same template (e.g. after source_too_short) */
   const handleNewVideo = useCallback(() => {
-    router.replace("/(main)/reelTemplates" as any);
-  }, [router]);
+    const templateId = autoReel?.template?.id;
+    router.replace({
+      pathname: "/(main)/reelTemplates" as any,
+      params: templateId ? { templateId: String(templateId) } : {},
+    });
+  }, [autoReel?.template?.id, router]);
 
   // Publishing makes the reel from the AI result. Fields left out keep the
   // values chosen when the auto reel was started.
@@ -632,6 +641,10 @@ export default function AutoReelScreen() {
   const templateName = autoReel
     ? autoReel.template?.name || t("autoReelTemplateRemoved")
     : null;
+  const designLength = autoReel?.design?.length_seconds ?? null;
+  const reelLengthLabel = designLength
+    ? t("designReelSeconds", { seconds: Math.round(designLength) })
+    : t("autoReelReqLength");
   const video = autoReelVideo(autoReel);
   const videoUrl = video?.playback_url ?? null;
   const posterUri = video?.thumbnail_url ?? params.templateImage ?? null;
@@ -715,8 +728,14 @@ export default function AutoReelScreen() {
       );
     }
     const rendering = status === "rendering";
-    const highlights: TrackerStepState = rendering ? "done" : "active";
-    const building: TrackerStepState = rendering ? "active" : "pending";
+    // Built after review: the highlights are already chosen
+    const reviewed = Object.keys(autoReel.design?.picks ?? {}).length > 0;
+    // Photo designs start without a video (every other kind has one) — no AI step
+    const photoDesign = autoReel.source_media_asset_id == null;
+    const highlights: TrackerStepState =
+      rendering || reviewed ? "done" : "active";
+    const building: TrackerStepState =
+      rendering || reviewed || photoDesign ? "active" : "pending";
     const renderKey = autoReel.render_status
       ? RENDER_STATUS_KEYS[autoReel.render_status]
       : null;
@@ -729,7 +748,11 @@ export default function AutoReelScreen() {
         >
           <FlowTitle
             title={t("flowCreatingTitle")}
-            subtitle={t("flowCreatingSubtitle")}
+            subtitle={
+              photoDesign
+                ? t("designCreatingPhotosSubtitle")
+                : t("flowCreatingSubtitle")
+            }
           />
           {elapsedLabel ? (
             <Text style={styles.elapsed}>
@@ -741,32 +764,47 @@ export default function AutoReelScreen() {
               {
                 key: "upload",
                 title: t("flowUploadComplete"),
-                subtitle: t("flowUploadCompleteSub"),
+                subtitle: photoDesign
+                  ? t("designPhotosUploaded")
+                  : t("flowUploadCompleteSub"),
                 state: "done",
               },
-              {
-                key: "highlights",
-                title: t("flowSelectingHighlights"),
-                subtitle:
-                  status === "pending"
-                    ? t("autoReelStatusPending")
-                    : t("flowSelectingHighlightsSub"),
-                state: highlights,
-              },
+              ...(photoDesign
+                ? []
+                : [
+                    {
+                      key: "highlights",
+                      title: reviewed
+                        ? t("designHighlightsChosen")
+                        : t("flowSelectingHighlights"),
+                      subtitle: reviewed
+                        ? t("designHighlightsChosenSub")
+                        : status === "pending"
+                          ? t("autoReelStatusPending")
+                          : t("flowSelectingHighlightsSub"),
+                      state: highlights,
+                    },
+                  ]),
               {
                 key: "build",
                 title: t("flowBuildingReel"),
                 subtitle:
-                  rendering && renderKey ? t(renderKey) : t("flowBuildingReelSub"),
+                  rendering && renderKey
+                    ? t(renderKey)
+                    : (reviewed || photoDesign) && status === "pending"
+                      ? t("autoReelStatusPending")
+                      : t("flowBuildingReelSub"),
                 state: building,
               },
             ]}
           />
-          {renderTemplateCard(t("autoReelReqLength"))}
+          {renderTemplateCard(reelLengthLabel)}
           <InfoNote
             tone="warm"
             icon="notifications-none"
-            title={t("flowVideoUploadedTitle")}
+            title={
+              photoDesign ? t("designPhotosUploaded") : t("flowVideoUploadedTitle")
+            }
             text={t("autoReelInProgressHint")}
           />
         </ScrollView>
@@ -1089,6 +1127,30 @@ export default function AutoReelScreen() {
       return view === "publish" ? renderPublish() : renderReady();
     }
     if (status === "failed") return renderFailed();
+    if (status === "review" && autoReel) {
+      if (!autoReel.design?.slots?.length) {
+        return (
+          <ScrollView contentContainerStyle={styles.content}>
+            <InfoNote
+              tone="error"
+              icon="error-outline"
+              text={t("designReviewMissing")}
+            />
+          </ScrollView>
+        );
+      }
+      return (
+        <DesignReview
+          key={autoReel.id}
+          autoReel={autoReel}
+          canChange={canChange}
+          onBuilt={(data) => {
+            setRetryStartedAt(Date.now());
+            setAutoReel(data);
+          }}
+        />
+      );
+    }
     return renderProgress();
   };
 

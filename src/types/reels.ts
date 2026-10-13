@@ -424,17 +424,67 @@ export type GenerationStatusResponse = {
 /** AI Auto Reels — GET /api/auto-reels/templates */
 export type AutoReelTemplateKind = "haircut" | "custom";
 
+/** One named place in a design template (photo / video / text). */
+export type AutoReelSlot = {
+  key: string;
+  kind: "image" | "video" | "text";
+  label: string;
+  hint: string | null;
+  /** What the AI looks for in the video (or what to film) */
+  find: string | null;
+  accepts: ("image" | "video")[];
+  /** Video slots: shortest clip the slot takes */
+  min_seconds: number | null;
+  /** Text slots */
+  max_length: number | null;
+  prefill: "business_name" | null;
+  /** When it is on screen in the finished reel (seconds) */
+  appears: { start: number; end: number }[];
+};
+
+/** What a design template asks for: one video (AI picks moments) or one photo per slot. */
+export type AutoReelTemplateNeeds = "video" | "photos";
+
 export type AutoReelTemplate = {
   id: number;
   name: string;
   description: string | null;
   preview_image_url: string | null;
+  /** Sample of the finished reel, when the server has one */
+  preview_video_url?: string | null;
   kind: AutoReelTemplateKind;
+  /** false → today's "one video in, finished reel out" template */
+  has_design?: boolean;
+  needs?: AutoReelTemplateNeeds | null;
+  min_video_seconds?: number | null;
+  slots?: AutoReelSlot[] | null;
+  /** false → silent design: the user must pick music or "No music" */
+  has_sound?: boolean | null;
+  /** Length of the finished reel (designs) */
+  length_seconds?: number | null;
 };
+
+/** Design template with slots (has_design + needs). */
+export function isDesignTemplate(
+  tpl: Pick<AutoReelTemplate, "has_design" | "needs"> | null | undefined,
+): boolean {
+  return !!tpl?.has_design && (tpl.needs === "video" || tpl.needs === "photos");
+}
+
+/** Slots the user fills with a photo / video (not text). */
+export function mediaSlots(slots: AutoReelSlot[] | null | undefined): AutoReelSlot[] {
+  return (slots ?? []).filter((s) => s.kind !== "text");
+}
+
+export function textSlots(slots: AutoReelSlot[] | null | undefined): AutoReelSlot[] {
+  return (slots ?? []).filter((s) => s.kind === "text");
+}
 
 export type AutoReelStatus =
   | "pending"
   | "analyzing"
+  /** Video design: AI picked the moments — the user reviews them, then builds */
+  | "review"
   | "rendering"
   | "ready"
   | "failed";
@@ -454,7 +504,52 @@ export type AutoReelErrorCode =
   | "source_missing"
   | "analysis_failed"
   | "render_failed"
-  | "store_failed";
+  | "store_failed"
+  /** Shorter than the template's min_video_seconds */
+  | "source_too_short"
+  /** Building the design failed — retry rebuilds with the same choices */
+  | "build_failed";
+
+/** The AI's moment for one photo / video slot of a video design. */
+export type AutoReelPick = {
+  /** Photo slots: second the still is taken from; video slots: where the clip starts */
+  at: number | null;
+  /** false → the AI couldn't find it; the user must choose a moment or attach a file */
+  found: boolean;
+  /** Set when the user's own file was used */
+  media_asset_id?: number | null;
+};
+
+/** `autoReel.design` on a video design (filled once it reaches `review`). */
+export type AutoReelDesign = {
+  /** In reel order */
+  slots: AutoReelSlot[];
+  /** The uploaded source video */
+  video_url: string | null;
+  video_seconds?: number | null;
+  picks: Record<string, AutoReelPick>;
+  /** Starting values for the text slots */
+  texts: Record<string, string> | null;
+  has_sound?: boolean | null;
+  length_seconds?: number | null;
+};
+
+/** Library track for a silent design (`null` = "No music"). */
+export type AutoReelMusic = {
+  url: string;
+  title: string;
+  artist: string;
+  license: string;
+  license_version: string | null;
+  source_url: string | null;
+};
+
+/** POST /api/auto-reels/{id}/build — one choice per photo/video slot + every text. */
+export type BuildAutoReelPayload = {
+  slots: Record<string, { at: number } | { media_asset_id: number }>;
+  texts: Record<string, string>;
+  music?: AutoReelMusic | null;
+};
 
 /** Draft reel attached to a ready auto reel */
 export type AutoReelDraft = {
@@ -484,6 +579,8 @@ export type AutoReel = {
   has_reveal: boolean | null;
   total_seconds: number | null;
   source_media_asset_id: number | null;
+  /** Design templates: slots, the AI's picks and texts (video designs, from `review`) */
+  design?: AutoReelDesign | null;
   /**
    * The finished video (set once `ready`). Play this — the reel is only made
    * when the user publishes. Older results fall back to their draft's video.
@@ -539,11 +636,17 @@ export function autoReelVideo(
 }
 
 export type CreateAutoReelPayload = {
-  media_asset_id: number;
+  /** One video (non-design and video designs); not sent for photo designs */
+  media_asset_id?: number;
   template_id: number;
   category_id: number;
   service_id?: number;
   caption?: string;
+  /** Photo designs: uploaded media id per slot key */
+  slot_media?: Record<string, number>;
+  texts?: Record<string, string>;
+  /** Photo designs that are silent */
+  music?: AutoReelMusic | null;
 };
 
 /**
@@ -567,4 +670,33 @@ export const AUTO_REEL_RETRYABLE_ERRORS: readonly string[] = [
   "analysis_failed",
   "render_failed",
   "store_failed",
+  "build_failed",
 ];
+
+/** First 422 message per key under `prefix`, e.g. { BEFORE_MEDIA: "…" } from errors["slots.BEFORE_MEDIA"]. */
+export function keyedFieldErrors(
+  error: any,
+  prefix: string,
+): Record<string, string> {
+  const errors = error?.data?.errors ?? error?.response?.errors ?? {};
+  const out: Record<string, string> = {};
+  for (const [field, value] of Object.entries(errors)) {
+    if (!field.startsWith(`${prefix}.`)) continue;
+    // "slots.KEY" or "slots.KEY.media_asset_id" → KEY
+    const key = field.slice(prefix.length + 1).split(".")[0];
+    const message = Array.isArray(value) ? value[0] : value;
+    if (key && typeof message === "string" && !out[key]) out[key] = message;
+  }
+  return out;
+}
+
+/** 422 on `music`, `music.url`, `music.license`… */
+export function musicFieldError(error: any): string | null {
+  const errors = error?.data?.errors ?? {};
+  for (const [field, value] of Object.entries(errors)) {
+    if (field !== "music" && !field.startsWith("music.")) continue;
+    const message = Array.isArray(value) ? value[0] : value;
+    if (typeof message === "string") return message;
+  }
+  return null;
+}

@@ -12,6 +12,7 @@ import { prepareImageForUpload } from "@/src/utils/prepareImageForUpload";
 import type {
   AutoReel,
   AutoReelTemplate,
+  BuildAutoReelPayload,
   CreateAutoReelPayload,
   PublishAutoReelPayload,
   CreateReelPayload,
@@ -154,6 +155,25 @@ export async function publishAutoReel(
   );
   if (!response?.data) {
     throw new Error(response?.message || "Failed to publish reel");
+  }
+  return response.data;
+}
+
+/**
+ * Video design in `review` → build it with the user's choices (one per
+ * photo/video slot, every text, music for silent designs). 202 → `pending`;
+ * poll to `ready` as usual. 422s are keyed `slots.KEY` / `texts.KEY` / `music`.
+ */
+export async function buildAutoReel(
+  id: number | string,
+  payload: BuildAutoReelPayload,
+): Promise<AutoReel> {
+  const response = await ApiService.post<Envelope<AutoReel>>(
+    autoReelEndpoints.build(id),
+    payload,
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to build reel");
   }
   return response.data;
 }

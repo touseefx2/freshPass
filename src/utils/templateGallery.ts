@@ -1,6 +1,10 @@
 import { MAX_AUTO_REEL_SOURCE_SECONDS } from "@/src/services/mediaLibraryService";
 import {
+  isDesignTemplate,
+  mediaSlots,
   normalizeReelTemplateMediaFields,
+  textSlots,
+  type AutoReelSlot,
   type AutoReelTemplate,
   type ReelTemplate,
   type ReelTemplateMediaField,
@@ -111,11 +115,132 @@ export function photoReelGalleryItem(
   };
 }
 
+/** "0:05" / "1:20" for slot timings. */
+function clock(seconds: number): string {
+  const total = Math.max(0, Math.round(seconds));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** Icon for a design slot (photo / video / text). */
+export function slotIcon(slot: AutoReelSlot): TemplateGalleryFeature["icon"] {
+  if (slot.kind === "text") return "text-fields";
+  if (slot.kind === "video") return "videocam";
+  return "photo-camera";
+}
+
+/** What to find / film for a slot (the API's `find`, else its `hint`). */
+export function slotWhat(slot: AutoReelSlot): string {
+  return slot.find?.trim() || slot.hint?.trim() || "";
+}
+
+/** Short facts about a slot: min video length / max text length and when it shows — "16s or longer · 0:06–0:22". */
+export function slotMeta(slot: AutoReelSlot, t: Translate): string {
+  const parts: string[] = [];
+  if (slot.kind === "video" && slot.min_seconds) {
+    parts.push(t("designSlotMinSeconds", { seconds: Math.ceil(slot.min_seconds) }));
+  }
+  if (slot.kind === "text" && slot.max_length) {
+    parts.push(t("designSlotMaxLength", { count: slot.max_length }));
+  }
+  const first = slot.appears?.[0];
+  if (first && Number.isFinite(first.start) && Number.isFinite(first.end)) {
+    parts.push(`${clock(first.start)}–${clock(first.end)}`);
+  }
+  return parts.join(" · ");
+}
+
+/**
+ * One line about a slot from the API: what to find / film, how long a video
+ * must be and when it shows in the reel — e.g. "Clipper work · 16s+ · 0:04–0:20".
+ */
+export function slotDetail(slot: AutoReelSlot, t: Translate): string {
+  return [slotWhat(slot), slotMeta(slot, t)].filter(Boolean).join(" · ");
+}
+
+/** Design template features: built from what the template needs, not fixed copy. */
+function designFeatures(
+  tpl: AutoReelTemplate,
+  t: Translate,
+): TemplateGalleryFeature[] {
+  const media = mediaSlots(tpl.slots);
+  const texts = textSlots(tpl.slots);
+  const features: TemplateGalleryFeature[] = [];
+  if (tpl.needs === "video") {
+    features.push({
+      icon: "video-library",
+      label: tpl.min_video_seconds
+        ? t("designOneVideoMin", { seconds: Math.ceil(tpl.min_video_seconds) })
+        : t("videosNeededOne"),
+    });
+    if (media.length) {
+      features.push({
+        icon: "auto-awesome",
+        label: t("designAiPicksMoments", { count: media.length }),
+      });
+    }
+  } else {
+    features.push({
+      icon: "photo-library",
+      label:
+        media.length === 1
+          ? t("photosNeededImagesOne")
+          : t("photosNeededImages", { count: media.length }),
+    });
+    features.push({
+      icon: "text-fields",
+      label: texts.length
+        ? texts.map((s) => s.label).join(", ")
+        : t("templateGalleryNoText"),
+    });
+  }
+  features.push({
+    icon: "timer",
+    label: tpl.length_seconds
+      ? t("designReelSeconds", { seconds: Math.round(tpl.length_seconds) })
+      : t("autoReelReqLength"),
+  });
+  features.push(
+    tpl.has_sound === false
+      ? { icon: "library-music", label: t("designPickMusic") }
+      : { icon: "music-note", label: t("includesMusic") },
+  );
+  return features;
+}
+
 /** AI auto reel template (auto-reel templates API) → gallery item. */
 export function autoReelGalleryItem(
   tpl: AutoReelTemplate,
   t: Translate,
 ): TemplateGalleryItem {
+  if (isDesignTemplate(tpl)) {
+    const photos = tpl.needs === "photos";
+    return {
+      id: tpl.id,
+      kind: "video",
+      headline: headlineWords(tpl.name),
+      tagline: tpl.length_seconds
+        ? t("designReelSeconds", { seconds: Math.round(tpl.length_seconds) })
+        : photos
+          ? t("designPhotoReel")
+          : t("autoReelReqLength"),
+      taglineIcon: photos ? "photo-library" : "timer",
+      name: tpl.name,
+      description: tpl.description?.trim() ?? "",
+      coverUrl: tpl.preview_image_url || null,
+      previewVideoUrl: tpl.preview_video_url || null,
+      icon: photos
+        ? "photo-library"
+        : tpl.kind === "haircut"
+          ? "content-cut"
+          : "movie-filter",
+      features: designFeatures(tpl, t),
+      slots: (tpl.slots ?? []).map((slot) => ({
+        icon: slotIcon(slot),
+        label: slot.label,
+        detail: slotDetail(slot, t),
+      })),
+    };
+  }
   return {
     id: tpl.id,
     kind: "video",
@@ -125,7 +250,7 @@ export function autoReelGalleryItem(
     name: tpl.name,
     description: tpl.description?.trim() ?? "",
     coverUrl: tpl.preview_image_url || null,
-    previewVideoUrl: null,
+    previewVideoUrl: tpl.preview_video_url || null,
     icon: tpl.kind === "haircut" ? "content-cut" : "movie-filter",
     // Short forms of the step 1 requirements
     features: [

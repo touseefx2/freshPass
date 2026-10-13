@@ -980,6 +980,8 @@ export default function ReelStudioScreen() {
     fileName?: string;
     sourceType?: string;
     maxSeconds?: string;
+    /** Shortest allowed result (e.g. a video design's min_video_seconds) */
+    minSeconds?: string;
     width?: string;
     height?: string;
     /** "save" → trim + edit, export, save to gallery and hand back to the opener. */
@@ -1009,6 +1011,14 @@ export default function ReelStudioScreen() {
     Number.isFinite(paramMaxSeconds) && paramMaxSeconds > 0
       ? paramMaxSeconds
       : getCachedMediaLimits()?.max_seconds ?? REEL_LIMIT_FALLBACK.max_seconds;
+
+  const paramMinSeconds = Number(params.minSeconds);
+  /** Template minimum when the opener sets one, else the app-wide reel minimum */
+  const templateMinSeconds =
+    Number.isFinite(paramMinSeconds) && paramMinSeconds > MIN_REEL_SECONDS
+      ? paramMinSeconds
+      : null;
+  const minReelSeconds = templateMinSeconds ?? MIN_REEL_SECONDS;
 
   /** Files handed in by the opener: several picks (seed) or one video (uri). */
   const [initialAssets] = useState<EditorSeedAsset[]>(() => {
@@ -2833,13 +2843,18 @@ export default function ReelStudioScreen() {
     if (clips.length === 0) return false;
     const clipSeconds = totalMs / 1000;
     // Small tolerance: phones report lengths a few ms off.
-    if (clipSeconds < MIN_REEL_SECONDS - 0.05) {
+    if (clipSeconds < minReelSeconds - 0.05) {
       Alert.alert(
         t("reelTooShortTitle"),
-        t("reelTooShortMessage", {
-          min_seconds: MIN_REEL_SECONDS,
-          length: formatVideoDuration(clipSeconds),
-        }),
+        templateMinSeconds
+          ? t("designTrimTooShortMessage", {
+              min: formatVideoDuration(templateMinSeconds),
+              length: formatVideoDuration(clipSeconds),
+            })
+          : t("reelTooShortMessage", {
+              min_seconds: MIN_REEL_SECONDS,
+              length: formatVideoDuration(clipSeconds),
+            }),
       );
       showTrimToFix();
       return false;
@@ -2861,7 +2876,16 @@ export default function ReelStudioScreen() {
       return false;
     }
     return true;
-  }, [clips.length, isAutoSource, maxSeconds, showTrimToFix, t, totalMs]);
+  }, [
+    clips.length,
+    isAutoSource,
+    maxSeconds,
+    minReelSeconds,
+    showTrimToFix,
+    t,
+    templateMinSeconds,
+    totalMs,
+  ]);
 
   /** Single native export of the whole edit (skipped when nothing changed). */
   const exportReel = useCallback(async (): Promise<ExportedReel | null> => {
@@ -3672,6 +3696,7 @@ export default function ReelStudioScreen() {
           disabled={busy}
           reelTotalMs={totalMs}
           maxMs={maxClipMs}
+          minMs={templateMinSeconds ? Math.round(templateMinSeconds * 1000) : null}
           multi={clips.length > 1}
           canAddClip={clips.length < MAX_EDITOR_CLIPS}
           addingClip={addingClips}
@@ -4307,7 +4332,12 @@ export default function ReelStudioScreen() {
     const title = isTrim ? t("flowTrimTitle") : t("flowStyleTitle");
     const subtitle = isTrim
       ? isAutoSource
-        ? t("flowTrimSubtitleAuto", { max: formatVideoDuration(maxSeconds) })
+        ? templateMinSeconds
+          ? t("flowTrimSubtitleAutoMin", {
+              min: formatVideoDuration(templateMinSeconds),
+              max: formatVideoDuration(maxSeconds),
+            })
+          : t("flowTrimSubtitleAuto", { max: formatVideoDuration(maxSeconds) })
         : t("flowTrimSubtitle", { max_seconds: maxSeconds })
       : isSaveMode
         ? t("flowStyleSubtitleSave")

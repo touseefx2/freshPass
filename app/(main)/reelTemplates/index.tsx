@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   ScrollView,
@@ -80,7 +81,11 @@ import {
 } from "@/src/components/reelFlow/flowParts";
 import MediaTileGrid from "@/src/components/reelFlow/mediaTileGrid";
 import TemplateDropdown from "@/src/components/reelFlow/templateDropdown";
-import RequirementsCard from "@/src/components/reelFlow/requirementsCard";
+import RequirementsCard, {
+  type Requirement,
+} from "@/src/components/reelFlow/requirementsCard";
+import DesignSlotCard from "@/src/components/reelFlow/designSlotCard";
+import DesignMusicField from "@/src/components/reelFlow/designMusicField";
 import QuotaBanner from "@/src/components/reelFlow/quotaBanner";
 import ProgressTracker from "@/src/components/reelFlow/progressTracker";
 import {
@@ -96,7 +101,28 @@ import {
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import type { MediaUploadSourceType } from "@/src/types/media";
-import type { AutoReelTemplate } from "@/src/types/reels";
+import {
+  isDesignTemplate,
+  keyedFieldErrors,
+  mediaSlots,
+  musicFieldError,
+  textSlots,
+  type AutoReelMusic,
+  type AutoReelSlot,
+  type AutoReelTemplate,
+} from "@/src/types/reels";
+import {
+  pickSlotFile,
+  slotAccepts,
+  uploadSlotFile,
+  type SlotFile,
+} from "@/src/utils/designSlots";
+import {
+  slotDetail,
+  slotIcon,
+  slotMeta,
+  slotWhat,
+} from "@/src/utils/templateGallery";
 
 /**
  * AI auto reel — one task per screen:
@@ -106,6 +132,13 @@ import type { AutoReelTemplate } from "@/src/types/reels";
  *   5 Details (category, service, caption) → Make my reel
  * then "Creating your reel" while the video uploads, and the AI Auto Reel
  * screen tracks it (selecting highlights → building) → preview → publish.
+ *
+ * Design templates (`has_design`) list what they need from their slots:
+ *   needs "video"  — same steps; the video must be at least
+ *                    `min_video_seconds`. The AI's picks are reviewed on the
+ *                    AI Auto Reel screen before the reel is built.
+ *   needs "photos" — 1 style, 2 one photo per slot + texts, 3 details (and
+ *                    music when the design is silent). No video, no AI.
  */
 
 const iosCompatiblePickerOptions =
@@ -181,6 +214,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.background,
     },
     flex: { flex: 1 },
+    loading: { flex: 1, alignItems: "center", justifyContent: "center" },
     content: {
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(10),
@@ -340,6 +374,98 @@ export default function ReelTemplatesScreen() {
     () => templates.find((item) => item.id === selectedId) ?? null,
     [selectedId, templates],
   );
+
+  // ── Design templates ──────────────────────────────────────────────
+  const isDesign = isDesignTemplate(selected);
+  const needsPhotos = isDesign && selected?.needs === "photos";
+  /** Video designs: shorter videos are refused before upload */
+  const minVideoSeconds =
+    isDesign && selected?.needs === "video"
+      ? (selected?.min_video_seconds ?? null)
+      : null;
+  const designMediaSlots = useMemo(
+    () => (needsPhotos ? mediaSlots(selected?.slots) : []),
+    [needsPhotos, selected?.slots],
+  );
+  const designTextSlots = useMemo(
+    () => (needsPhotos ? textSlots(selected?.slots) : []),
+    [needsPhotos, selected?.slots],
+  );
+  /** Silent photo design: music (or "No music") is sent with the start */
+  const needsMusicChoice = needsPhotos && selected?.has_sound === false;
+  const businessName = useAppSelector(
+    (s) => s.user.businessStatus?.business_name ?? s.user.business_name ?? "",
+  );
+  const [slotFiles, setSlotFiles] = useState<Record<string, SlotFile>>({});
+  const slotFilesRef = useRef(slotFiles);
+  slotFilesRef.current = slotFiles;
+  const [slotTexts, setSlotTexts] = useState<Record<string, string>>({});
+  const [slotErrors, setSlotErrors] = useState<Record<string, string>>({});
+  const [textErrors, setTextErrors] = useState<Record<string, string>>({});
+  const [pickingSlot, setPickingSlot] = useState<string | null>(null);
+  /** undefined = not chosen yet, null = "No music" */
+  const [music, setMusic] = useState<AutoReelMusic | null | undefined>(undefined);
+  const [musicError, setMusicError] = useState<string | null>(null);
+
+  // Another template → its own slots; texts start from `prefill`
+  const selectedTemplateId = selected?.id ?? null;
+  useEffect(() => {
+    setSlotFiles({});
+    setSlotErrors({});
+    setTextErrors({});
+    setMusic(undefined);
+    setMusicError(null);
+    const prefilled: Record<string, string> = {};
+    for (const slot of textSlots(selected?.slots)) {
+      if (slot.prefill === "business_name" && businessName) {
+        prefilled[slot.key] = slot.max_length
+          ? businessName.slice(0, slot.max_length)
+          : businessName;
+      }
+    }
+    setSlotTexts(prefilled);
+    // Only when the template changes — not on every business name refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTemplateId]);
+
+  const photosComplete =
+    designMediaSlots.every((slot) => !!slotFiles[slot.key]) &&
+    designTextSlots.every((slot) => !!slotTexts[slot.key]?.trim());
+
+  const pickForSlot = useCallback(
+    async (slot: AutoReelSlot) => {
+      if (pickingSlot) return;
+      setPickingSlot(slot.key);
+      try {
+        const picked = await pickSlotFile(slot, t);
+        if (!picked) return;
+        if ("error" in picked) {
+          setSlotErrors((prev) => ({ ...prev, [slot.key]: picked.error }));
+          return;
+        }
+        setSlotFiles((prev) => ({ ...prev, [slot.key]: picked.file }));
+        setSlotErrors((prev) => {
+          const next = { ...prev };
+          delete next[slot.key];
+          return next;
+        });
+      } catch (error) {
+        Logger.error("Error selecting design slot media:", error);
+        showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
+      } finally {
+        setPickingSlot(null);
+      }
+    },
+    [pickingSlot, showBanner, t],
+  );
+
+  const removeSlotFile = useCallback((key: string) => {
+    setSlotFiles((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }, []);
 
   const loadTemplates = useCallback(async () => {
     setLoadingTemplates(true);
@@ -546,6 +672,10 @@ export default function ReelTemplatesScreen() {
         params: {
           sourceType,
           maxSeconds: String(MAX_AUTO_REEL_SOURCE_SECONDS),
+          // Video design: the trim step won't let it go below this
+          ...(minVideoSeconds != null
+            ? { minSeconds: String(minVideoSeconds) }
+            : {}),
           mode: "save",
           requestId,
           flowTitle: t("autoReelIntroTitle"),
@@ -554,7 +684,7 @@ export default function ReelTemplatesScreen() {
         },
       });
     },
-    [router, t],
+    [minVideoSeconds, router, t],
   );
 
   /** Picker asset → tile. Any length — the editor trims on Next. */
@@ -710,23 +840,36 @@ export default function ReelTemplatesScreen() {
       const result = takeEditedVideo(request?.id ?? null);
       if (!request || !result) return;
       editRequestRef.current = null;
+      // Video design: the server fails short videos (source_too_short) —
+      // say so now and stay here instead of uploading it
+      const tooShort =
+        minVideoSeconds != null && result.durationMs / 1000 < minVideoSeconds;
+      if (tooShort) {
+        showBanner(
+          t("flowAddVideoTitle"),
+          t("designVideoTooShort", { seconds: Math.ceil(minVideoSeconds) }),
+          "warning",
+          5000,
+        );
+      }
+      const nextStep: WizardStep = tooShort ? "video" : "details";
       // Nothing changed — keep the current selection (and any upload id)
       if (request.fromSelected && !result.edited) {
-        setStep("details");
+        setStep(nextStep);
         return;
       }
       setEditorMusicCredit(
         result.musicCredit ? { uri: result.uri, credit: result.musicCredit } : null,
       );
       void applyEditorResult(result, request.sourceType).then(() =>
-        setStep("details"),
+        setStep(nextStep),
       );
       if (result.savedToGallery) {
         showBanner(t("success"), t("editedVideoSaved"), "success", 3000);
       } else if (result.edited) {
         showBanner(t("autoReelTrimTitle"), t("editedVideoNotSaved"), "warning", 4000);
       }
-    }, [applyEditorResult, showBanner, t]),
+    }, [applyEditorResult, minVideoSeconds, showBanner, t]),
   );
 
   /** Gallery: several videos and photos at once, in the order tapped. */
@@ -803,12 +946,17 @@ export default function ReelTemplatesScreen() {
 
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
 
-  const canGenerate =
-    !!selected &&
-    !!sourceVideo &&
-    (sourceVideo.id != null || sourceVideo.local != null) &&
-    !!categoryId &&
-    !noReelsLeft;
+  const canGenerate = needsPhotos
+    ? !!selected &&
+      photosComplete &&
+      (!needsMusicChoice || music !== undefined) &&
+      !!categoryId &&
+      !noReelsLeft
+    : !!selected &&
+      !!sourceVideo &&
+      (sourceVideo.id != null || sourceVideo.local != null) &&
+      !!categoryId &&
+      !noReelsLeft;
 
   /** Upload the picked file (compress → POST /api/media) and keep its id. */
   const uploadSelectedVideo = useCallback(
@@ -880,10 +1028,8 @@ export default function ReelTemplatesScreen() {
   /** Leaving on purpose (reel started) — skip the leave guard. */
   const allowLeaveRef = useRef(false);
 
-  const handleGenerate = useCallback(async () => {
-    if (!selected || !sourceVideo || !categoryId || submitting) return;
-
-    setSubmitting(true);
+  /** Monthly limit check before anything is uploaded; false = blocked (banner shown). */
+  const passQuota = useCallback(async (): Promise<boolean> => {
     // Limit not known yet (still loading / failed on open) → load it before going on
     let blocked: string | null = noReelsLeft
       ? quotaBlockedMessage || t("autoReelNoReelsLeft")
@@ -891,15 +1037,193 @@ export default function ReelTemplatesScreen() {
     if (!limitsLoadedRef.current) {
       blocked = await loadReelLimits();
       if (blocked == null) {
-        setSubmitting(false);
         showBanner(t("error"), t("monthlyReelsLoadFailed"), "error", 4000);
-        return;
+        return false;
       }
     }
     // No reels left → say so before uploading anything
     if (blocked) {
-      setSubmitting(false);
       showBanner(t("monthlyReelsLimitTitle"), blocked, "error", 5000);
+      return false;
+    }
+    return true;
+  }, [loadReelLimits, noReelsLeft, quotaBlockedMessage, showBanner, t]);
+
+  /**
+   * Photo design: upload a photo per slot (no `purpose`), then start with
+   * `slot_media` + `texts` (+ `music` when silent). No review — it goes
+   * straight to pending → rendering → ready.
+   */
+  const handleGeneratePhotos = useCallback(async () => {
+    if (!selected || !categoryId || submitting) return;
+    if (!photosComplete) {
+      setStep("video");
+      return;
+    }
+    if (needsMusicChoice && music === undefined) {
+      setMusicError(t("designMusicRequired"));
+      return;
+    }
+    setSubmitting(true);
+    if (!(await passQuota())) {
+      setSubmitting(false);
+      return;
+    }
+
+    setStep("creating");
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
+    try {
+      const slotMedia: Record<string, number> = {};
+      const toUpload = designMediaSlots.filter(
+        (slot) => slotFilesRef.current[slot.key]?.mediaId == null,
+      ).length;
+      let uploaded = 0;
+      if (toUpload > 0) {
+        setUploadPhase("uploading");
+        setUploadPercent(0);
+      }
+      for (const slot of designMediaSlots) {
+        const file = slotFilesRef.current[slot.key];
+        if (!file) throw new Error(t("designPhotosHint"));
+        if (file.mediaId != null) {
+          slotMedia[slot.key] = file.mediaId;
+          continue;
+        }
+        const id = await uploadSlotFile(file, {
+          signal: controller.signal,
+          onProgress: (percent) =>
+            setUploadPercent(
+              Math.round((uploaded * 100 + percent) / Math.max(1, toUpload)),
+            ),
+        });
+        if (controller.signal.aborted) return;
+        uploaded += 1;
+        slotMedia[slot.key] = id;
+        // Keep the id: a failed start doesn't upload this one again
+        setSlotFiles((prev) =>
+          prev[slot.key]?.uri === file.uri
+            ? { ...prev, [slot.key]: { ...prev[slot.key], mediaId: id } }
+            : prev,
+        );
+      }
+      if (controller.signal.aborted) return;
+      setUploadPercent(null);
+
+      const texts: Record<string, string> = {};
+      for (const slot of designTextSlots) {
+        texts[slot.key] = (slotTexts[slot.key] ?? "").trim();
+      }
+      // The server adds the music credit — the caption goes as typed
+      const trimmedCaption = caption.trim();
+      const autoReel = await createAutoReel({
+        template_id: selected.id,
+        slot_media: slotMedia,
+        texts,
+        category_id: categoryId,
+        ...(serviceId ? { service_id: serviceId } : {}),
+        ...(trimmedCaption ? { caption: trimmedCaption } : {}),
+        ...(needsMusicChoice ? { music: music ?? null } : {}),
+      });
+      allowLeaveRef.current = true;
+      router.replace({
+        pathname: "/(main)/autoReel" as any,
+        params: {
+          autoReelId: String(autoReel.id),
+          fromFlow: "1",
+          ...(selected.preview_image_url
+            ? { templateImage: selected.preview_image_url }
+            : {}),
+          ...(trimmedCaption ? { caption: trimmedCaption } : {}),
+        },
+      });
+    } catch (error: any) {
+      if (controller.signal.aborted || isUploadCancelled(error)) return;
+      Logger.error("Failed to start photo design auto reel:", error);
+      const slotErrs = keyedFieldErrors(error, "slot_media");
+      const textErrs = keyedFieldErrors(error, "texts");
+      const musicErr = musicFieldError(error);
+      if (Object.keys(slotErrs).length) {
+        // Refused uploads go up again next time
+        setSlotFiles((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(slotErrs)) {
+            if (next[key]) next[key] = { ...next[key], mediaId: null };
+          }
+          return next;
+        });
+      }
+      setSlotErrors(slotErrs);
+      setTextErrors(textErrs);
+      setMusicError(musicErr);
+      const templateError = fieldError(error, "template_id");
+      if (templateError) void loadTemplates();
+      // Show the step the problem is on
+      setStep(
+        Object.keys(slotErrs).length || Object.keys(textErrs).length
+          ? "video"
+          : "details",
+      );
+      const message =
+        fieldError(error, "reel") ||
+        fieldError(error, "auto_reel") ||
+        Object.values(slotErrs)[0] ||
+        Object.values(textErrs)[0] ||
+        musicErr ||
+        templateError ||
+        fieldError(error, "slot_media") ||
+        fieldError(error, "category_id") ||
+        fieldError(error, "service_id") ||
+        fieldError(error, "caption") ||
+        (error instanceof VideoTooLargeError ? t("autoReelVideoTooLarge") : null) ||
+        error?.message ||
+        t("failedToStartGeneration");
+      showBanner(t("error"), message, "error", 4000);
+    } finally {
+      setUploadPercent(null);
+      setSubmitting(false);
+    }
+  }, [
+    caption,
+    categoryId,
+    designMediaSlots,
+    designTextSlots,
+    loadTemplates,
+    music,
+    needsMusicChoice,
+    passQuota,
+    photosComplete,
+    router,
+    selected,
+    serviceId,
+    showBanner,
+    slotTexts,
+    submitting,
+    t,
+  ]);
+
+  const handleGenerate = useCallback(async () => {
+    if (!selected || !sourceVideo || !categoryId || submitting) return;
+
+    // Video design: refuse a too-short video before uploading it
+    if (
+      minVideoSeconds != null &&
+      sourceVideo.durationSeconds != null &&
+      sourceVideo.durationSeconds < minVideoSeconds
+    ) {
+      showBanner(
+        t("flowAddVideoTitle"),
+        t("designVideoTooShort", { seconds: Math.ceil(minVideoSeconds) }),
+        "warning",
+        5000,
+      );
+      setStep("video");
+      return;
+    }
+
+    setSubmitting(true);
+    if (!(await passQuota())) {
+      setSubmitting(false);
       return;
     }
 
@@ -979,11 +1303,10 @@ export default function ReelTemplatesScreen() {
   }, [
     caption,
     categoryId,
-    loadReelLimits,
     loadTemplates,
+    minVideoSeconds,
     musicCreditText,
-    noReelsLeft,
-    quotaBlockedMessage,
+    passQuota,
     router,
     selected,
     serviceId,
@@ -996,8 +1319,10 @@ export default function ReelTemplatesScreen() {
 
   const isHaircut = selected?.kind === "haircut";
   // Server-only video (from "Try another template") can't be edited here
-  const serverOnly = picks.length === 0 && !!sourceVideo && !sourceVideo.local;
-  const stepTotal = serverOnly ? 3 : 5;
+  const serverOnly =
+    !needsPhotos && picks.length === 0 && !!sourceVideo && !sourceVideo.local;
+  // Photo design: style → photos + texts → details
+  const stepTotal = serverOnly || needsPhotos ? 3 : 5;
   const stepNumber =
     step === "style" ? 1 : step === "video" ? 2 : stepTotal;
 
@@ -1082,6 +1407,12 @@ export default function ReelTemplatesScreen() {
     0,
   );
   const picksTooLong = picksSeconds > MAX_AUTO_REEL_SOURCE_SECONDS;
+  // Video design: clips shorter than the template needs (photos/clips can still be added)
+  const picksTooShort =
+    minVideoSeconds != null &&
+    picks.length > 0 &&
+    picks.every((p) => p.kind === "image" || p.durationSeconds != null) &&
+    picksSeconds < minVideoSeconds;
   const picksLabel =
     picks.length > 1
       ? t("flowSelectedClips", { n: picks.length })
@@ -1090,6 +1421,56 @@ export default function ReelTemplatesScreen() {
         : picks[0]?.kind === "image"
           ? t("flowSelectedPhoto")
           : t("flowSelectedVideo");
+
+  /** Reel length: from the design when it has one, else the AI decides */
+  const reelLengthLabel = selected?.length_seconds
+    ? t("designReelSeconds", { seconds: Math.round(selected.length_seconds) })
+    : t("autoReelReqLength");
+
+  /** "What it needs" — from the template's slots for designs, fixed otherwise */
+  const requirements = useMemo((): Requirement[] => {
+    if (!selected) return [];
+    if (!isDesign) {
+      return [
+        { icon: "videocam", text: t("autoReelReqVideo") },
+        { icon: "timer", text: t("autoReelReqLength") },
+        { icon: "graphic-eq", text: t("autoReelReqAudio") },
+        { icon: "toll", text: t("autoReelReqNoCredits") },
+      ];
+    }
+    const list: Requirement[] = [];
+    if (selected.needs === "video") {
+      list.push({
+        icon: "video-library",
+        text: minVideoSeconds
+          ? t("designReqVideoMin", { seconds: Math.ceil(minVideoSeconds) })
+          : t("designReqOneVideo"),
+      });
+    }
+    for (const slot of selected.slots ?? []) {
+      const detail = slotDetail(slot, t);
+      list.push({
+        icon: slotIcon(slot) as Requirement["icon"],
+        text: detail ? `${slot.label} — ${detail}` : slot.label,
+      });
+    }
+    list.push({ icon: "timer", text: reelLengthLabel });
+    if (selected.has_sound === false) {
+      list.push({ icon: "library-music", text: t("designReqMusic") });
+    }
+    return list;
+  }, [isDesign, minVideoSeconds, reelLengthLabel, selected, t]);
+
+  const summaryThumbUri = needsPhotos
+    ? (designMediaSlots
+        .map((slot) => slotFiles[slot.key]?.thumbnailUri)
+        .find(Boolean) ?? null)
+    : (sourceVideo?.thumbnailUri ?? null);
+
+  /** Names of the photo / video slots, in reel order ("Before, Process, After") */
+  const slotNames = mediaSlots(selected?.slots)
+    .map((slot) => slot.label)
+    .join(", ");
 
   // ── Steps ─────────────────────────────────────────────────────────
 
@@ -1125,19 +1506,14 @@ export default function ReelTemplatesScreen() {
           <RequirementsCard
             imageUrl={selected.preview_image_url}
             description={selected.description}
-            requirements={[
-              { icon: "videocam", text: t("autoReelReqVideo") },
-              { icon: "timer", text: t("autoReelReqLength") },
-              { icon: "graphic-eq", text: t("autoReelReqAudio") },
-              { icon: "toll", text: t("autoReelReqNoCredits") },
-            ]}
-            tip={isHaircut ? t("autoReelHaircutHint") : null}
+            requirements={requirements}
+            tip={isHaircut && !isDesign ? t("autoReelHaircutHint") : null}
           />
         ) : null}
       </ScrollView>
       <FlowFooter
         primary={{
-          label: t("flowNextAddVideo"),
+          label: needsPhotos ? t("designNextAddPhotos") : t("flowNextAddVideo"),
           onPress: () => setStep("video"),
           disabled: !selected,
           trailingIcon: "chevron-right",
@@ -1199,6 +1575,16 @@ export default function ReelTemplatesScreen() {
               onRemove={removePick}
               disabled={addingMedia}
             />
+            {picksTooShort ? (
+              <InfoNote
+                tone="warm"
+                icon="timer"
+                text={t("designPicksTooShort", {
+                  length: formatVideoDuration(picksSeconds),
+                  min: formatVideoDuration(minVideoSeconds),
+                })}
+              />
+            ) : null}
             {picksTooLong ? (
               <InfoNote
                 tone="warm"
@@ -1229,14 +1615,48 @@ export default function ReelTemplatesScreen() {
             />
           </>
         ) : null}
-        <InfoNote icon="auto-awesome" text={t("flowAutoVideoNote")} />
+        {minVideoSeconds != null || (isDesign && slotNames) ? (
+          <InfoNote
+            icon="auto-awesome"
+            text={[
+              minVideoSeconds != null
+                ? t("designVideoMinNote", {
+                    seconds: Math.ceil(minVideoSeconds),
+                  })
+                : null,
+              slotNames ? t("designVideoPartsNote", { parts: slotNames }) : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          />
+        ) : (
+          <InfoNote icon="auto-awesome" text={t("flowAutoVideoNote")} />
+        )}
       </ScrollView>
       <FlowFooter
         primary={
           serverOnly
             ? {
                 label: t("flowNextAddDetails"),
-                onPress: () => setStep("details"),
+                onPress: () => {
+                  const seconds = sourceVideo?.durationSeconds;
+                  if (
+                    minVideoSeconds != null &&
+                    seconds != null &&
+                    seconds < minVideoSeconds
+                  ) {
+                    showBanner(
+                      t("flowAddVideoTitle"),
+                      t("designVideoTooShort", {
+                        seconds: Math.ceil(minVideoSeconds),
+                      }),
+                      "warning",
+                      5000,
+                    );
+                    return;
+                  }
+                  setStep("details");
+                },
                 disabled: addingMedia,
                 trailingIcon: "chevron-right",
               }
@@ -1256,6 +1676,121 @@ export default function ReelTemplatesScreen() {
     </>
   );
 
+  /** Photo design: one photo per slot + the texts */
+  const renderPhotosStep = () => (
+    <>
+      <KeyboardAwareScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        bottomOffset={moderateHeightScale(120)}
+      >
+        <FlowTitle
+          title={t("designPhotosTitle")}
+          subtitle={t("designPhotosSubtitle")}
+        />
+        {designMediaSlots.map((slot) => {
+          const file = slotFiles[slot.key];
+          const onlyVideo =
+            slotAccepts(slot).length === 1 && slotAccepts(slot)[0] === "video";
+          return (
+            <DesignSlotCard
+              key={slot.key}
+              icon={slotIcon(slot) as "photo-camera"}
+              label={slot.label}
+              detail={slotWhat(slot)}
+              meta={slotMeta(slot, t)}
+              thumbUri={file?.thumbnailUri}
+              thumbLoading={pickingSlot === slot.key}
+              isVideo={file?.kind === "video"}
+              badge={
+                file
+                  ? {
+                      label:
+                        file.kind === "video"
+                          ? t("designYourVideo")
+                          : t("designYourPhoto"),
+                      tone: "own",
+                    }
+                  : null
+              }
+              error={slotErrors[slot.key]}
+              onThumbPress={() => void pickForSlot(slot)}
+              actions={
+                file
+                  ? [
+                      {
+                        icon: "swap-horiz",
+                        label: t("designReplace"),
+                        onPress: () => void pickForSlot(slot),
+                        disabled: !!pickingSlot,
+                      },
+                      {
+                        icon: "delete-outline",
+                        label: t("remove"),
+                        onPress: () => removeSlotFile(slot.key),
+                        disabled: !!pickingSlot,
+                      },
+                    ]
+                  : [
+                      {
+                        icon: onlyVideo ? "video-call" : "add-photo-alternate",
+                        label: onlyVideo
+                          ? t("designAddVideo")
+                          : t("designAddPhoto"),
+                        onPress: () => void pickForSlot(slot),
+                        disabled: !!pickingSlot,
+                      },
+                    ]
+              }
+            />
+          );
+        })}
+        {designTextSlots.length ? (
+          <>
+            <View style={styles.divider} />
+            <SectionLabel label={t("designTextsTitle")} />
+            {designTextSlots.map((slot) => (
+              <FlowTextField
+                key={slot.key}
+                label={slot.label}
+                required
+                value={slotTexts[slot.key] ?? ""}
+                onChangeText={(v) => {
+                  setSlotTexts((prev) => ({
+                    ...prev,
+                    [slot.key]: slot.max_length ? v.slice(0, slot.max_length) : v,
+                  }));
+                  if (textErrors[slot.key]) {
+                    setTextErrors((prev) => {
+                      const next = { ...prev };
+                      delete next[slot.key];
+                      return next;
+                    });
+                  }
+                }}
+                placeholder={slot.hint || slot.label}
+                maxCount={slot.max_length ?? undefined}
+                helper={slot.hint && slotTexts[slot.key] ? slot.hint : null}
+                error={textErrors[slot.key]}
+              />
+            ))}
+          </>
+        ) : null}
+      </KeyboardAwareScrollView>
+      <FlowFooter
+        primary={{
+          label: t("flowNextAddDetails"),
+          onPress: () => setStep("details"),
+          disabled: !photosComplete || !!pickingSlot,
+          trailingIcon: "chevron-right",
+        }}
+        hint={!photosComplete ? t("designPhotosHint") : null}
+      />
+    </>
+  );
+
   const renderDetailsStep = () => (
     <>
       <KeyboardAwareScrollView
@@ -1269,13 +1804,13 @@ export default function ReelTemplatesScreen() {
           title={t("flowDetailsTitle")}
           subtitle={t("flowDetailsSubtitle")}
         />
-        {selected && sourceVideo ? (
+        {selected && (sourceVideo || needsPhotos) ? (
           <FlowCard>
             <View style={styles.summary}>
               <View style={styles.summaryThumb}>
-                {sourceVideo.thumbnailUri ? (
+                {summaryThumbUri ? (
                   <Image
-                    source={{ uri: sourceVideo.thumbnailUri }}
+                    source={{ uri: summaryThumbUri }}
                     style={styles.summaryImage}
                     contentFit="cover"
                   />
@@ -1293,8 +1828,12 @@ export default function ReelTemplatesScreen() {
                 </Text>
                 <Text style={styles.summarySub} numberOfLines={1}>
                   {[
-                    formatVideoDuration(sourceVideo.durationSeconds),
-                    t("autoReelReqLength"),
+                    needsPhotos
+                      ? t("designPhotosAdded", {
+                          count: designMediaSlots.length,
+                        })
+                      : formatVideoDuration(sourceVideo?.durationSeconds ?? null),
+                    reelLengthLabel,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
@@ -1329,6 +1868,18 @@ export default function ReelTemplatesScreen() {
             onSelect={setServiceId}
           />
         ) : null}
+        {needsMusicChoice ? (
+          <DesignMusicField
+            value={music}
+            onChange={(next) => {
+              setMusic(next);
+              setMusicError(null);
+            }}
+            lengthSeconds={selected?.length_seconds}
+            error={musicError}
+            disabled={submitting}
+          />
+        ) : null}
         <FlowTextField
           label={t("autoReelCaptionOptional")}
           value={caption}
@@ -1342,12 +1893,15 @@ export default function ReelTemplatesScreen() {
             {t("musicCreditAutoAdded", { credit: musicCreditText })}
           </Text>
         ) : null}
-        <InfoNote icon="schedule" text={t("autoReelTimeHint")} />
+        {needsPhotos ? null : (
+          <InfoNote icon="schedule" text={t("autoReelTimeHint")} />
+        )}
       </KeyboardAwareScrollView>
       <FlowFooter
         primary={{
           label: t("autoReelMakeReel"),
-          onPress: () => void handleGenerate(),
+          onPress: () =>
+            void (needsPhotos ? handleGeneratePhotos() : handleGenerate()),
           disabled: !canGenerate || submitting,
           loading: submitting && step === "details",
           icon: "auto-awesome",
@@ -1357,7 +1911,9 @@ export default function ReelTemplatesScreen() {
             ? quotaBlockedMessage || t("autoReelNoReelsLeft")
             : !categoryId
               ? t("autoReelNeedCategory")
-              : null
+              : needsMusicChoice && music === undefined
+                ? t("designMusicRequired")
+                : null
         }
       />
     </>
@@ -1370,7 +1926,9 @@ export default function ReelTemplatesScreen() {
       ? t("flowStartingReel")
       : uploadPhase === "preparing"
         ? t("autoReelCompressing", { percent: uploadPercent })
-        : t("autoReelUploading", { percent: uploadPercent });
+        : needsPhotos
+          ? t("designUploadingPhotosPercent", { percent: uploadPercent })
+          : t("autoReelUploading", { percent: uploadPercent });
     return (
       <>
         <ScrollView
@@ -1380,31 +1938,50 @@ export default function ReelTemplatesScreen() {
         >
           <FlowTitle
             title={t("flowCreatingTitle")}
-            subtitle={t("flowCreatingSubtitle")}
+            subtitle={
+              needsPhotos
+                ? t("designCreatingPhotosSubtitle")
+                : t("flowCreatingSubtitle")
+            }
           />
           <ProgressTracker
             steps={[
               {
                 key: "upload",
                 title: uploading
-                  ? t("flowUploadingVideo")
+                  ? needsPhotos
+                    ? t("designUploadingPhotos")
+                    : t("flowUploadingVideo")
                   : t("flowUploadComplete"),
-                subtitle: uploading ? uploadLabel : t("flowUploadCompleteSub"),
+                subtitle: uploading
+                  ? uploadLabel
+                  : needsPhotos
+                    ? t("designPhotosUploaded")
+                    : t("flowUploadCompleteSub"),
                 state: uploading ? "active" : "done",
               },
-              {
-                key: "highlights",
-                title: t("flowSelectingHighlights"),
-                subtitle: uploading
-                  ? t("flowSelectingHighlightsSub")
-                  : t("flowStartingReel"),
-                state: uploading ? "pending" : "active",
-              },
+              // Photo designs use no AI — nothing to select
+              ...(needsPhotos
+                ? []
+                : [
+                    {
+                      key: "highlights",
+                      title: t("flowSelectingHighlights"),
+                      subtitle: uploading
+                        ? t("flowSelectingHighlightsSub")
+                        : t("flowStartingReel"),
+                      state: (uploading ? "pending" : "active") as
+                        | "pending"
+                        | "active",
+                    },
+                  ]),
               {
                 key: "build",
                 title: t("flowBuildingReel"),
-                subtitle: t("flowBuildingReelSub"),
-                state: "pending",
+                subtitle: needsPhotos && !uploading
+                  ? t("flowStartingReel")
+                  : t("flowBuildingReelSub"),
+                state: needsPhotos && !uploading ? "active" : "pending",
               },
             ]}
           />
@@ -1472,7 +2049,17 @@ export default function ReelTemplatesScreen() {
         backIcon={step === "style" ? "close" : "back"}
       />
       {step === "style" ? renderStyleStep() : null}
-      {step === "video" ? renderVideoStep() : null}
+      {step === "video"
+        ? !selected && loadingTemplates
+          ? (
+            <View style={styles.loading}>
+              <ActivityIndicator size="large" color={theme.buttonBack} />
+            </View>
+          )
+          : needsPhotos
+            ? renderPhotosStep()
+            : renderVideoStep()
+        : null}
       {step === "details" ? renderDetailsStep() : null}
       {step === "creating" ? renderCreatingStep() : null}
     </View>

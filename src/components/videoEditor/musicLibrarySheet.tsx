@@ -48,6 +48,8 @@ type Props = {
   onSelect: (track: DownloadedTrack) => void;
   /** "light" = white sheet with dark text (step-by-step Reel Studio). */
   tone?: "dark" | "light";
+  /** Hide tracks shorter than this (e.g. a silent design's reel length). */
+  minDurationMs?: number | null;
 };
 
 const DOWNLOADS_TAB = "downloads";
@@ -258,6 +260,7 @@ export default function MusicLibrarySheet({
   onClose,
   onSelect,
   tone = "dark",
+  minDurationMs = null,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -707,7 +710,17 @@ export default function MusicLibrarySheet({
     emptyComponent = renderState("music-off", t("musicNoResults"));
   }
 
-  const data: LibraryTrack[] = showingDownloads ? downloads : offline ? [] : tracks;
+  const allTracks: LibraryTrack[] = showingDownloads ? downloads : offline ? [] : tracks;
+  // Unknown length (0) can't be checked — leave those out too
+  const data = minDurationMs
+    ? allTracks.filter((track) => track.durationMs >= minDurationMs)
+    : allTracks;
+  // Every track on this page was too short — fetch the next one
+  const filteredOutPage =
+    !!minDurationMs && data.length === 0 && allTracks.length > 0;
+  useEffect(() => {
+    if (filteredOutPage) onEndReached();
+  }, [filteredOutPage, onEndReached]);
 
   return (
     <Modal

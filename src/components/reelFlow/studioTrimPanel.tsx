@@ -12,6 +12,7 @@ import {
   moderateWidthScale,
 } from "@/src/theme/dimensions";
 import ClipTrimmer, { type TrimEdge } from "@/src/components/videoEditor/clipTrimmer";
+import { formatVideoDuration } from "@/src/utils/videoDuration";
 import {
   FILMSTRIP_FRAMES,
   IMAGE_CLIP_MAX_MS,
@@ -43,6 +44,8 @@ type Props = {
   /** Whole reel (all clips) and its allowed maximum. */
   reelTotalMs: number;
   maxMs: number;
+  /** Shortest the reel may be (e.g. a design template's min video length) */
+  minMs?: number | null;
   multi: boolean;
   canAddClip: boolean;
   addingClip: boolean;
@@ -209,6 +212,7 @@ export default function StudioTrimPanel({
   disabled,
   reelTotalMs,
   maxMs,
+  minMs = null,
   multi,
   canAddClip,
   addingClip,
@@ -233,7 +237,9 @@ export default function StudioTrimPanel({
   const { t } = useTranslation();
   const isPhoto = isImageClip(clip);
   const lengthMs = clipLengthMs(clip);
-  const overLimit = reelTotalMs > maxMs + 50;
+  const tooLong = reelTotalMs > maxMs + 50;
+  const tooShort = !!minMs && reelTotalMs < minMs - 50;
+  const overLimit = tooLong || tooShort;
   const edited =
     !isPhoto &&
     (clip.trimStartMs > 0 ||
@@ -302,6 +308,8 @@ export default function StudioTrimPanel({
     viewClip.trimEndMs - viewPlayheadMs >= MIN_CLIP_MS;
 
   const maxLabel = formatTimecode(maxMs);
+  // Same "0:16" form as the step subtitle and the too-short alert
+  const minLabel = minMs ? formatVideoDuration(minMs / 1000) : null;
   const selectedLabel = formatTimecode(multi ? reelTotalMs : lengthMs, overLimit);
 
   const tools: {
@@ -467,9 +475,13 @@ export default function StudioTrimPanel({
           style={[styles.hint, overLimit && styles.hintOver]}
           accessibilityLiveRegion="polite"
         >
-          {overLimit
+          {tooLong
             ? t("flowTrimTooLong", { max: maxLabel })
-            : isPhoto
+            : tooShort
+              ? t("flowTrimTooShort", { min: minLabel })
+              : minLabel && !multi && !isPhoto
+                ? t("flowTrimHintMin", { min: minLabel })
+                : isPhoto
               ? t("photoClipHint")
               : multi
                 ? t("flowTrimHintMulti", { length: formatTimecode(lengthMs, true) })

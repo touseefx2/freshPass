@@ -304,6 +304,44 @@ export const createStyles = (theme: Theme) =>
       color: theme.darkGreenLight,
       lineHeight: fontSize.size21,
     },
+    // What goes in each slot (design templates)
+    slotList: {
+      marginTop: moderateHeightScale(12),
+      gap: moderateHeightScale(10),
+    },
+    slotListTitle: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.lightGreen,
+      textTransform: "uppercase",
+      letterSpacing: 0.6,
+    },
+    slotRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: moderateWidthScale(10),
+    },
+    slotIcon: {
+      width: moderateWidthScale(30),
+      height: moderateWidthScale(30),
+      borderRadius: moderateWidthScale(15),
+      backgroundColor: theme.lightGreen07,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    slotText: { flex: 1, minWidth: 0 },
+    slotLabel: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    slotDetail: {
+      marginTop: moderateHeightScale(2),
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.darkGreenLight,
+      lineHeight: fontSize.size18,
+    },
 
     // ── Page dots (in the footer, just above the button) ────────────
     dots: {

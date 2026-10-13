@@ -762,6 +762,8 @@ export const autoReelEndpoints = {
   retry: (id: number | string) => `/api/auto-reels/${id}/retry`,
   /** Make (or re-publish) the reel from a finished auto reel */
   publish: (id: number | string) => `/api/auto-reels/${id}/publish`,
+  /** Video design in `review`: build with the user's slot choices */
+  build: (id: number | string) => `/api/auto-reels/${id}/build`,
 };
 
 /**
