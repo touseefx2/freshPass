@@ -185,9 +185,9 @@ type Styles = ReturnType<typeof createStyles>;
 /** Gap between pills plus one pill's height, roughly — how far each one rises */
 const PILL_STEP = moderateHeightScale(58);
 /** Pills leave the + button one after another, nearest first */
-const STAGGER_MS = 38;
+const STAGGER_MS = 75;
 /** Low damping = the little hop past the spot before it settles */
-const HOP_SPRING = { damping: 13, stiffness: 320, mass: 0.7 };
+const HOP_SPRING = { damping: 10, stiffness: 200, mass: 0.7 };
 
 function MenuPill({
   item,
