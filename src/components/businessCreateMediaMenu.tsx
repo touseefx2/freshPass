@@ -56,7 +56,7 @@ type CreateMenuAction =
   | "addEmployee"
   | "addProduct"
   | "createReel"
-  | "blockTime";
+  | "servicesAndMemberships";
 
 type IconSet = "material" | "community";
 
@@ -95,9 +95,9 @@ const MENU_ITEMS: MenuItem[] = [
     highlighted: true,
   },
   {
-    id: "blockTime",
-    labelKey: "blockTime",
-    icon: "clock-outline",
+    id: "servicesAndMemberships",
+    labelKey: "servicesAndMemberships",
+    icon: "content-cut",
     iconSet: "community",
   },
 ];
@@ -450,15 +450,23 @@ export default function BusinessCreateMediaMenu({
               router.push(
                 "/(main)/dashboard/(account)/(businessProfileSettings)/products",
               );
-            }, 15);
-          }, 15);
+            }, 5);
+          }, 5);
           return;
-        case "blockTime":
+        case "servicesAndMemberships":
           closeAll();
-          router.push({
-            pathname: "/(main)/applyLeave",
-            params: { type: "break" },
-          });
+          // Profile → Business profile settings → Services & Memberships
+          router.push("/(main)/dashboard/(account)");
+          setTimeout(() => {
+            router.push(
+              "/(main)/dashboard/(account)/(businessProfileSettings)",
+            );
+            setTimeout(() => {
+              router.push(
+                "/(main)/dashboard/(account)/(businessProfileSettings)/servicesAndMemberships",
+              );
+            }, 5);
+          }, 5);
           return;
         default:
           closeAll();
