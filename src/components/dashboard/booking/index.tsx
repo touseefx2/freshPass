@@ -408,7 +408,7 @@ export default function BookingScreen() {
   const getStatusLabel = (status: BookingStatus) => {
     switch (status) {
       case "ongoing":
-        return "On-going apt.";
+        return t("upcomingApt");
       case "active":
         return "Active";
       case "complete":

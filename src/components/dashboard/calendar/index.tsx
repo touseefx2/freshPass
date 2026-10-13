@@ -186,7 +186,7 @@ const DEFAULT_OVERLAY_ANCHOR = {
 };
 
 const getWeekDays = (date: dayjs.Dayjs) => {
-  const startOfWeek = date.startOf("week");
+  const startOfWeek = date.startOf("isoWeek");
   return Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, "day"));
 };
 
@@ -1244,8 +1244,8 @@ export default function CalendarScreen() {
   const fetchRange = useMemo(() => {
     if (viewMode === "month") {
       return {
-        from: selectedDate.startOf("month").startOf("week"),
-        to: selectedDate.endOf("month").endOf("week"),
+        from: selectedDate.startOf("month").startOf("isoWeek"),
+        to: selectedDate.endOf("month").endOf("isoWeek"),
       };
     }
     return { from: week[0], to: week[6] };
@@ -1491,10 +1491,10 @@ export default function CalendarScreen() {
         "YYYY-MM-DD HH:mm",
       ).toISOString();
 
-      // Format status - show "On-going apt." for scheduled
+      // Format status - show "Upcoming" for scheduled
       const statusLabel =
         appointment.status === "scheduled"
-          ? "On-going apt."
+          ? t("upcomingApt")
           : appointment.status === "awaiting_outcome"
             ? "Awaiting outcome"
             : appointment.status === "no_show"
@@ -1575,8 +1575,8 @@ export default function CalendarScreen() {
   const showNowLine = isTodayVisible && viewMode !== "month";
 
   const monthWeeks = useMemo(() => {
-    const start = selectedDate.startOf("month").startOf("week");
-    const end = selectedDate.endOf("month").endOf("week");
+    const start = selectedDate.startOf("month").startOf("isoWeek");
+    const end = selectedDate.endOf("month").endOf("isoWeek");
     const rows: dayjs.Dayjs[][] = [];
     let cursor = start;
     while (cursor.isBefore(end, "day") || cursor.isSame(end, "day")) {

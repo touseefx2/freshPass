@@ -279,7 +279,7 @@ export default function WorkHistory({
                   </View>
                   <View style={[styles.statusBadge, getStatusBadgeStyle(item.status), { marginBottom: moderateHeightScale(4) }]}>
                     <Text style={[styles.statusText, getStatusTextStyle(item.status)]}>
-                      {item.status === "scheduled" ? t("onGoingApt") : item.status}
+                      {item.status === "scheduled" ? t("upcomingApt") : item.status}
                     </Text>
                   </View>
                   {!!item.user && (

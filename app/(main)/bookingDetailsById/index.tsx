@@ -16,6 +16,7 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
@@ -173,6 +174,63 @@ type SendMessageResponse = {
 
 // A tip only becomes available once the Stripe webhook settles the service
 // payment, which lands a moment after the payment sheet closes.
+type InfoRowProps = {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+  onPress?: () => void;
+  isLast?: boolean;
+  styles: ReturnType<typeof createStyles>;
+  theme: Theme;
+};
+
+// One line of the details card. A chevron shows only when the row opens
+// something; otherwise a same-width spacer keeps the values aligned.
+function InfoRow({
+  icon,
+  label,
+  children,
+  onPress,
+  isLast,
+  styles,
+  theme,
+}: InfoRowProps) {
+  const rowStyle = [styles.infoListRow, isLast && styles.infoListRowLast];
+  const content = (
+    <>
+      <View style={styles.infoListIcon}>{icon}</View>
+      <Text style={styles.infoListLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      <View style={styles.infoListValueWrap}>{children}</View>
+      {onPress ? (
+        <Ionicons
+          name="chevron-forward"
+          size={moderateWidthScale(16)}
+          color={theme.lightGreen5}
+          style={styles.infoListChevron}
+        />
+      ) : (
+        <View style={styles.infoListChevron} />
+      )}
+    </>
+  );
+
+  if (!onPress) {
+    return <View style={rowStyle}>{content}</View>;
+  }
+  return (
+    <TouchableOpacity
+      style={rowStyle}
+      activeOpacity={0.7}
+      onPress={onPress}
+      accessibilityRole="button"
+    >
+      {content}
+    </TouchableOpacity>
+  );
+}
+
 const TIP_AVAILABILITY_POLL_DELAYS_MS = [0, 2000, 2000];
 
 type BookingStatus =
@@ -409,6 +467,7 @@ export default function BookingDetailsById() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const { showBanner } = useNotificationContext();
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -458,6 +517,7 @@ export default function BookingDetailsById() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payAndTipModalVisible, setPayAndTipModalVisible] = useState(false);
+  const [policyExpanded, setPolicyExpanded] = useState(false);
 
   const bookingId = params.bookingId as string;
   // Set by payment_request / review_request notifications so the tap lands in
@@ -964,29 +1024,10 @@ export default function BookingDetailsById() {
     }
   };
 
-  const getStatusDotStyle = (status: BookingStatus) => {
-    switch (status) {
-      case "ongoing":
-        return styles.statusDotOngoing;
-      case "active":
-        return styles.statusDotActive;
-      case "complete":
-        return styles.statusDotComplete;
-      case "awaiting_outcome":
-        return styles.statusDotAwaitingOutcome;
-      case "cancelled":
-      case "expired":
-      case "no_show":
-        return styles.statusDotCancelled;
-      default:
-        return styles.statusDotActive;
-    }
-  };
-
   const getStatusLabel = (status: BookingStatus, customerName?: string) => {
     switch (status) {
       case "ongoing":
-        return "On going";
+        return t("upcomingApt");
       case "active":
         return "Active";
       case "complete":
@@ -1351,6 +1392,94 @@ export default function BookingDetailsById() {
   const canShowRestoreVisit = !!booking?.canRestoreVisit;
   const canShowBottomButtonRow =
     canShowBottomReschedule || canShowBottomCancel;
+  const canShowBottomBar =
+    canShowOutcomeActions || canShowCorrectOutcome || canShowRestoreVisit;
+
+  // Pay Now sits beside chat at the top while the customer still owes.
+  const canShowPayNow =
+    !isCancelled &&
+    userRole === "customer" &&
+    booking?.type === "service" &&
+    !!booking?.owesPayment;
+
+  const isCustomerView = userRole === "customer";
+  const statusSubtitle = (() => {
+    switch (booking?.status) {
+      case "ongoing":
+      case "active":
+        return isCustomerView
+          ? t("bookingStatusSubScheduledCustomer")
+          : t("bookingStatusSubScheduled");
+      case "awaiting_outcome":
+        return isCustomerView
+          ? t("bookingStatusSubAwaitingCustomer")
+          : t("bookingStatusSubAwaitingBusiness");
+      case "complete":
+        return t("bookingStatusSubComplete");
+      case "no_show":
+        return t("bookingStatusSubNoShow");
+      case "cancelled":
+        return t("bookingStatusSubCancelled");
+      case "expired":
+        return t("bookingStatusSubExpired");
+      default:
+        return null;
+    }
+  })();
+  const statusIconName = isComplete
+    ? "checkmark-circle-outline"
+    : isCancelled
+      ? "close-circle-outline"
+      : "time-outline";
+
+  const canOpenPerson = isCustomerView
+    ? booking?.staffId != null &&
+      staffClientname.toLowerCase() !== "anyone"
+    : booking?.userId != null;
+  const personAvatarUri = canOpenPerson && isCustomerView
+    ? resolveApiImageUrl(booking?.staffImage)
+    : null;
+
+  // Four equal tiles across the images card, sized from the live width.
+  const MAX_VISIBLE_IMAGES = 4;
+  const imageTileSize = Math.floor(
+    (windowWidth -
+      moderateWidthScale(15) * 2 -
+      moderateWidthScale(14) * 2 -
+      2 -
+      moderateWidthScale(8) * (MAX_VISIBLE_IMAGES - 1)) /
+      MAX_VISIBLE_IMAGES,
+  );
+  const imageActionSize = Math.min(
+    moderateWidthScale(30),
+    Math.round(imageTileSize * 0.4),
+  );
+
+  const cancellationPolicySummary = (() => {
+    const policy = booking?.cancellationPolicy;
+    if (!policy) return null;
+    const until = formatPolicyDateTime(policy.freeCancellationUntil);
+    const freePart =
+      policy.cancellationFeePercent === 0
+        ? t("policySummaryFreeAnyTime")
+        : until
+          ? t("policySummaryFreeUntil", { date: until })
+          : t("policySummaryNoFree");
+    const feeParts: string[] = [];
+    if (policy.cancellationFeePercent > 0) {
+      feeParts.push(
+        t("policySummaryLateFee", {
+          percent: String(policy.cancellationFeePercent),
+        }),
+      );
+    }
+    if (policy.noShowFeePercent > 0) {
+      feeParts.push(
+        t("policySummaryNoShow", { percent: String(policy.noShowFeePercent) }),
+      );
+    }
+    return [freePart, feeParts.join(" ")].filter(Boolean).join("\n");
+  })();
 
   const visitStatusLabel = getVisitStatusLabel(booking?.visitStatus, t);
 
@@ -2018,22 +2147,121 @@ export default function BookingDetailsById() {
       <>
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            // No bottom bar → keep the last card clear of the home indicator.
+            !canShowBottomBar && {
+              paddingBottom: insets.bottom + moderateHeightScale(40),
+            },
+          ]}
         >
-          {/* Status + Booking ID */}
-          <View style={styles.statusIdRow}>
-            <View
-              style={[styles.statusBadge, getStatusBadgeStyle(booking.status)]}
-            >
-              <View
-                style={[styles.statusDot, getStatusDotStyle(booking.status)]}
-              />
-              <Text
-                style={[styles.statusText, getStatusTextStyle(booking.status)]}
+          {/* Top actions: Pay Now + Chat */}
+          <View style={styles.topActionsRow}>
+            {canShowPayNow ? (
+              <TouchableOpacity
+                style={[styles.topActionCard, styles.topActionPrimary]}
+                activeOpacity={0.8}
+                onPress={startPayOnlineFlow}
+                accessibilityRole="button"
               >
-                {getStatusLabel(booking.status, booking.user)}
-              </Text>
+                <Ionicons
+                  name="card-outline"
+                  size={moderateWidthScale(24)}
+                  color={theme.white}
+                />
+                <View style={styles.topActionTextWrap}>
+                  <Text
+                    style={[styles.topActionTitle, styles.topActionTitlePrimary]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    {t("payNow")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.topActionSubtitle,
+                      styles.topActionSubtitlePrimary,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {t("completeYourPayment")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={[styles.topActionCard, styles.topActionSecondary]}
+              activeOpacity={0.7}
+              onPress={handleContactPress}
+              accessibilityRole="button"
+            >
+              <ContactIcon
+                width={moderateWidthScale(22)}
+                height={moderateWidthScale(22)}
+                color={theme.darkGreen}
+              />
+              <View style={styles.topActionTextWrap}>
+                <Text
+                  style={[styles.topActionTitle, styles.topActionTitleSecondary]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  {isCustomerView
+                    ? t("chatWithBusiness")
+                    : t("chatWithCustomer")}
+                </Text>
+                <Text
+                  style={[
+                    styles.topActionSubtitle,
+                    styles.topActionSubtitleSecondary,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {t("messageName", {
+                    name: isCustomerView ? businessName : staffClientname,
+                  })}
+                </Text>
+              </View>
+              <Ionicons
+                name="chevron-forward"
+                size={moderateWidthScale(16)}
+                color={theme.darkGreen}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Status + Booking ID */}
+          <View
+            style={[styles.statusBanner, getStatusBadgeStyle(booking.status)]}
+          >
+            <View style={styles.statusBannerMain}>
+              <View style={styles.statusBannerIcon}>
+                <Ionicons
+                  name={statusIconName}
+                  size={moderateWidthScale(22)}
+                  color={getStatusTextStyle(booking.status).color}
+                />
+              </View>
+              <View style={styles.statusBannerTextCol}>
+                <Text
+                  style={[
+                    styles.statusBannerTitle,
+                    getStatusTextStyle(booking.status),
+                  ]}
+                  numberOfLines={2}
+                >
+                  {getStatusLabel(booking.status, booking.user)}
+                </Text>
+                {statusSubtitle ? (
+                  <Text style={styles.statusBannerSubtitle} numberOfLines={2}>
+                    {statusSubtitle}
+                  </Text>
+                ) : null}
+              </View>
             </View>
+            <View style={styles.statusBannerDivider} />
             <View style={styles.bookingIdBlock}>
               <Text style={styles.bookingIdText}>{`#FP${booking.id}`}</Text>
               {bookedOnLabel ? (
@@ -2051,7 +2279,7 @@ export default function BookingDetailsById() {
             />
           ) : null}
 
-          {/* Service / Plan card */}
+          {/* Service / Plan card — price has its own column so it never overflows */}
           <View style={[styles.serviceCard, styles.cardShadow]}>
             <View style={styles.serviceCardRow}>
               <View style={styles.serviceIconWrap}>
@@ -2062,19 +2290,14 @@ export default function BookingDetailsById() {
                 />
               </View>
               <View style={styles.serviceInfo}>
-                <View style={styles.servicePriceRow}>
-                  <Text style={styles.serviceTitle} numberOfLines={2}>
-                    {serviceCardTitle}
-                  </Text>
-                  <Text style={styles.servicePriceText}>
-                    {booking.price}
-                  </Text>
-                </View>
+                <Text style={styles.serviceTitle} numberOfLines={3}>
+                  {serviceCardTitle}
+                </Text>
                 <View style={styles.tagsRow}>
                   <View style={styles.tagPill}>
                     <Ionicons
                       name="time-outline"
-                      size={moderateWidthScale(11)}
+                      size={moderateWidthScale(12)}
                       color={theme.darkGreen}
                     />
                     <Text style={styles.tagText}>{booking.duration}</Text>
@@ -2083,7 +2306,7 @@ export default function BookingDetailsById() {
                     <View style={styles.tagPill}>
                       <Ionicons
                         name="pricetag-outline"
-                        size={moderateWidthScale(11)}
+                        size={moderateWidthScale(12)}
                         color={theme.darkGreen}
                       />
                       <Text style={styles.tagText}>Plan</Text>
@@ -2091,91 +2314,134 @@ export default function BookingDetailsById() {
                   ) : null}
                 </View>
               </View>
+              <Text
+                style={styles.servicePriceText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {booking.price}
+              </Text>
             </View>
           </View>
 
           {/* Info rows list */}
-          <View style={styles.infoListCard}>
-            <TouchableOpacity
-              style={styles.infoListRow}
-              activeOpacity={0.7}
-              onPress={handlePersonPress}
-            >
-              <View style={styles.infoListIcon}>
+          <View style={[styles.infoListCard, styles.cardShadow]}>
+            <InfoRow
+              icon={
                 <PersonIcon
-                  width={moderateWidthScale(16)}
-                  height={moderateWidthScale(16)}
+                  width={moderateWidthScale(18)}
+                  height={moderateWidthScale(18)}
                   color={theme.darkGreen}
                 />
-              </View>
-              <Text style={styles.infoListLabel}>
-                {userRole === "customer" ? t("myBarber") : t("myCustomer")}
-              </Text>
-              <Text style={[styles.infoListValue, styles.infoListValueName]} numberOfLines={1}>
+              }
+              label={isCustomerView ? t("myBarber") : t("myCustomer")}
+              onPress={canOpenPerson ? handlePersonPress : undefined}
+              styles={styles}
+              theme={theme}
+            >
+              {personAvatarUri ? (
+                <AppImage
+                  uri={personAvatarUri}
+                  style={styles.infoListAvatar}
+                  resizeMode="cover"
+                  fallback={
+                    <View
+                      style={[styles.infoListAvatar, styles.infoListAvatarEmpty]}
+                    >
+                      <Ionicons
+                        name="person"
+                        size={moderateWidthScale(16)}
+                        color={theme.lightGreen5}
+                      />
+                    </View>
+                  }
+                />
+              ) : null}
+              <Text
+                style={[styles.infoListValue, styles.infoListValueName]}
+                numberOfLines={1}
+              >
                 {staffClientname}
               </Text>
-            </TouchableOpacity>
+            </InfoRow>
 
             {hasAssignedStaff ? (
-              <TouchableOpacity
-                style={styles.infoListRow}
-                activeOpacity={canOpenAssignedStaff ? 0.7 : 1}
-                onPress={canOpenAssignedStaff ? handleAssignedStaffPress : undefined}
-                disabled={!canOpenAssignedStaff}
-              >
-                <View style={styles.infoListIcon}>
+              <InfoRow
+                icon={
                   <Ionicons
                     name="person-circle-outline"
-                    size={moderateWidthScale(16)}
+                    size={moderateWidthScale(18)}
                     color={theme.darkGreen}
                   />
-                </View>
-                <Text style={styles.infoListLabel}>{t("assignedStaff")}</Text>
-                <Text style={[styles.infoListValue, styles.infoListValueName]} numberOfLines={1}>
+                }
+                label={t("assignedStaff")}
+                onPress={
+                  canOpenAssignedStaff ? handleAssignedStaffPress : undefined
+                }
+                styles={styles}
+                theme={theme}
+              >
+                <Text
+                  style={[styles.infoListValue, styles.infoListValueName]}
+                  numberOfLines={1}
+                >
                   {assignedStaffDisplayName || "---"}
                 </Text>
-              </TouchableOpacity>
+              </InfoRow>
             ) : null}
 
-            <View style={styles.infoListRow}>
-              <View style={styles.infoListIcon}>
+            <InfoRow
+              icon={
                 <CalendarIcon
-                  width={moderateWidthScale(16)}
-                  height={moderateWidthScale(16)}
+                  width={moderateWidthScale(18)}
+                  height={moderateWidthScale(18)}
                   color={theme.darkGreen}
                 />
-              </View>
-              <Text style={styles.infoListLabel}>{t("date")}</Text>
+              }
+              label={t("date")}
+              styles={styles}
+              theme={theme}
+            >
               <Text style={styles.infoListValue}>{dateLabel}</Text>
-            </View>
+            </InfoRow>
 
-            <View style={styles.infoListRow}>
-              <View style={styles.infoListIcon}>
+            <InfoRow
+              icon={
                 <Ionicons
                   name="time-outline"
-                  size={moderateWidthScale(16)}
+                  size={moderateWidthScale(18)}
                   color={theme.darkGreen}
                 />
-              </View>
-              <Text style={styles.infoListLabel}>{t("time")}</Text>
+              }
+              label={t("time")}
+              styles={styles}
+              theme={theme}
+            >
               <Text style={styles.infoListValue}>
                 {timeLabel || booking.duration}
               </Text>
-            </View>
+            </InfoRow>
 
-            <View style={styles.infoListRow}>
-              <View style={styles.infoListIcon}>
+            <InfoRow
+              icon={
                 <Ionicons
                   name="document-text-outline"
-                  size={moderateWidthScale(16)}
+                  size={moderateWidthScale(18)}
                   color={theme.darkGreen}
                 />
-              </View>
-              <Text style={styles.infoListLabel}>{t("appointmentStatus")}</Text>
+              }
+              label={t("appointmentStatus")}
+              styles={styles}
+              theme={theme}
+            >
               <View
                 style={[
                   styles.infoListBadge,
-                  { backgroundColor: getStatusBadgeStyle(booking.status).backgroundColor },
+                  {
+                    backgroundColor: getStatusBadgeStyle(booking.status)
+                      .backgroundColor,
+                  },
                 ]}
               >
                 <Text
@@ -2183,21 +2449,27 @@ export default function BookingDetailsById() {
                     styles.infoListBadgeText,
                     { color: getStatusTextStyle(booking.status).color },
                   ]}
+                  numberOfLines={1}
                 >
                   {getStatusLabel(booking.status, booking.user)}
                 </Text>
               </View>
-            </View>
+            </InfoRow>
 
-            <View style={[styles.infoListRow, styles.infoListRowLast]}>
-              <View style={styles.infoListIcon}>
+            <InfoRow
+              icon={
                 <WalletIcon
-                  width={moderateWidthScale(16)}
-                  height={moderateWidthScale(16)}
+                  width={moderateWidthScale(18)}
+                  height={moderateWidthScale(18)}
                   color={theme.darkGreen}
                 />
-              </View>
-              <Text style={styles.infoListLabel}>{t("paymentStatus")}</Text>
+              }
+              label={t("paymentStatus")}
+              onPress={canShowPayNow ? startPayOnlineFlow : undefined}
+              isLast
+              styles={styles}
+              theme={theme}
+            >
               <View
                 style={[
                   styles.infoListBadge,
@@ -2216,77 +2488,299 @@ export default function BookingDetailsById() {
                       color:
                         !booking.owesPayment && booking.paidAmount != null
                           ? theme.apptMintAccent
-                          : theme.selectCard,
+                          : theme.orangeBrownText,
                     },
                   ]}
+                  numberOfLines={1}
                 >
                   {!booking.owesPayment && booking.paidAmount != null
                     ? t("paidLabel")
                     : t("payLaterLabel")}
                 </Text>
               </View>
-            </View>
+            </InfoRow>
           </View>
 
-          {/* Try-on Images */}
+          {/* Attached images — first four in one row, rest via View all */}
           {booking.images &&
             Array.isArray(booking.images) &&
             booking.images.length > 0 && (
               <View style={[styles.imagesSection, styles.cardShadow]}>
-                <Text style={styles.imagesSectionTitle}>
-                  {t("attachedImages") || "Attached images"}
-                </Text>
-                <View style={styles.imagesGrid}>
-                  {booking.images.map((img, index) => (
-                    <View key={img.id || index} style={styles.imageCard}>
-                      <TouchableOpacity
-                        style={StyleSheet.absoluteFill}
-                        onPress={() => handleOpenFullImage(index)}
-                        activeOpacity={0.9}
-                      >
-                        <AppImage
-                          uri={img.url}
-                          style={styles.imageCardImage}
-                          resizeMode="cover"
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.imageShareIcon}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleShareImage(img.url);
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Feather
-                          name="share-2"
-                          size={moderateWidthScale(16)}
-                          color={theme.white}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.imageDownloadIcon}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          downloadMedia(img.url);
-                        }}
-                        disabled={downloadingUrl === img.url}
-                        activeOpacity={0.7}
-                      >
-                        {downloadingUrl === img.url ? (
-                          <ActivityIndicator size="small" color={theme.white} />
-                        ) : (
-                          <Feather
-                            name="download"
-                            size={moderateWidthScale(16)}
-                            color={theme.white}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.imagesSectionTitle} numberOfLines={1}>
+                    {`${t("attachedImages")} (${booking.images.length})`}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.viewAllButton}
+                    onPress={() => handleOpenFullImage(0)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    accessibilityRole="button"
+                  >
+                    <Text style={styles.viewAllText}>{t("viewAll")}</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={moderateWidthScale(14)}
+                      color={theme.darkGreen}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.imagesRow}>
+                  {booking.images
+                    .slice(0, MAX_VISIBLE_IMAGES)
+                    .map((img, index) => {
+                      const hiddenCount =
+                        index === MAX_VISIBLE_IMAGES - 1
+                          ? booking.images!.length - MAX_VISIBLE_IMAGES
+                          : 0;
+                      const actionStyle = {
+                        width: imageActionSize,
+                        height: imageActionSize,
+                        borderRadius: imageActionSize / 2,
+                      };
+                      return (
+                        <View
+                          key={img.id || index}
+                          style={[
+                            styles.imageCard,
+                            { width: imageTileSize, height: imageTileSize },
+                          ]}
+                        >
+                          <TouchableOpacity
+                            style={StyleSheet.absoluteFill}
+                            onPress={() => handleOpenFullImage(index)}
+                            activeOpacity={0.9}
+                          >
+                            <AppImage
+                              uri={img.url}
+                              style={styles.imageCardImage}
+                              resizeMode="cover"
+                            />
+                          </TouchableOpacity>
+                          {hiddenCount > 0 ? (
+                            <TouchableOpacity
+                              style={styles.imageMoreOverlay}
+                              onPress={() => handleOpenFullImage(index)}
+                              activeOpacity={0.8}
+                            >
+                              <Text style={styles.imageMoreText}>
+                                {`+${hiddenCount}`}
+                              </Text>
+                            </TouchableOpacity>
+                          ) : (
+                            <>
+                              <TouchableOpacity
+                                style={[styles.imageShareIcon, actionStyle]}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  handleShareImage(img.url);
+                                }}
+                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                activeOpacity={0.7}
+                              >
+                                <Feather
+                                  name="share-2"
+                                  size={Math.round(imageActionSize * 0.5)}
+                                  color={theme.white}
+                                />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.imageDownloadIcon, actionStyle]}
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  downloadMedia(img.url);
+                                }}
+                                disabled={downloadingUrl === img.url}
+                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                                activeOpacity={0.7}
+                              >
+                                {downloadingUrl === img.url ? (
+                                  <ActivityIndicator
+                                    size="small"
+                                    color={theme.white}
+                                  />
+                                ) : (
+                                  <Feather
+                                    name="download"
+                                    size={Math.round(imageActionSize * 0.5)}
+                                    color={theme.white}
+                                  />
+                                )}
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </View>
+                      );
+                    })}
                 </View>
               </View>
+            )}
+
+          {/* Location / Business */}
+          <View style={[styles.locationCard, styles.cardShadow]}>
+            <TouchableOpacity
+              style={styles.locationTouchable}
+              activeOpacity={0.7}
+              onPress={() => {
+                if (booking.businessId != null) {
+                  router.push({
+                    pathname: "/(main)/businessDetail",
+                    params: { business_id: booking.businessId.toString() },
+                  });
+                }
+              }}
+              disabled={booking.businessId == null}
+            >
+              <Ionicons
+                name="location-sharp"
+                size={moderateWidthScale(22)}
+                color={theme.red}
+              />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationName} numberOfLines={1}>
+                  {booking.businessName}
+                </Text>
+                <Text style={styles.locationAddress} numberOfLines={2}>
+                  {booking.businessAddress}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            {businessLatitude && businessLongitude ? (
+              <TouchableOpacity
+                style={styles.getDirectionsButton}
+                onPress={handleLocationPress}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+              >
+                <Text style={styles.getDirectionsText} numberOfLines={1}>
+                  {t("getDirections")}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={moderateWidthScale(14)}
+                  color={theme.darkGreen}
+                />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {/* Reschedule / Cancel */}
+          {canShowBottomButtonRow ? (
+            <View style={styles.inlineActionsRow}>
+              {canShowBottomReschedule ? (
+                <TouchableOpacity
+                  style={[styles.inlineActionButton, styles.rescheduleButton]}
+                  activeOpacity={0.7}
+                  onPress={handleReschedulePress}
+                  accessibilityRole="button"
+                >
+                  <CalendarIcon
+                    width={moderateWidthScale(20)}
+                    height={moderateWidthScale(20)}
+                    color={theme.darkGreen}
+                  />
+                  <Text
+                    style={styles.rescheduleButtonText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    {t("reschedule")}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+              {canShowBottomCancel ? (
+                <TouchableOpacity
+                  style={[styles.inlineActionButton, styles.cancelButton]}
+                  activeOpacity={0.7}
+                  onPress={handleOpenCancelModal}
+                  accessibilityRole="button"
+                >
+                  <Ionicons
+                    name="close"
+                    size={moderateWidthScale(22)}
+                    color={theme.red}
+                  />
+                  <Text
+                    style={styles.cancelButtonText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
+                    {t("cancelAppointment")}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+
+          {/* Agreed cancellation policy — summary, tap for the details */}
+          {userRole === "customer" &&
+            booking.cancellationPolicy &&
+            booking.type !== "subscription" &&
+            (booking.status === "ongoing" || booking.status === "active") && (
+              <TouchableOpacity
+                style={styles.policyCard}
+                activeOpacity={0.8}
+                onPress={() => setPolicyExpanded((prev) => !prev)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: policyExpanded }}
+              >
+                <View style={styles.policyHeaderRow}>
+                  <View style={styles.policyIconWrap}>
+                    <Ionicons
+                      name="document-outline"
+                      size={moderateWidthScale(20)}
+                      color={theme.darkGreen}
+                    />
+                  </View>
+                  <View style={styles.policyTextCol}>
+                    <Text style={styles.policyTitle}>
+                      {t("cancellationPolicy")}
+                    </Text>
+                    {cancellationPolicySummary ? (
+                      <Text style={styles.policySummary}>
+                        {cancellationPolicySummary}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Ionicons
+                    name={policyExpanded ? "chevron-up" : "chevron-down"}
+                    size={moderateWidthScale(18)}
+                    color={theme.darkGreen}
+                  />
+                </View>
+                {policyExpanded ? (
+                  <View style={styles.policyDetails}>
+                    <View style={styles.cancellationPolicyRow}>
+                      <Text style={styles.cancellationPolicyRowLabel}>
+                        {t("freeCancellation")}
+                      </Text>
+                      <Text style={styles.cancellationPolicyRowValue}>
+                        {getFreeCancellationLabel(
+                          booking.cancellationPolicy,
+                          t,
+                        )}
+                      </Text>
+                    </View>
+                    <View style={styles.cancellationPolicyRow}>
+                      <Text style={styles.cancellationPolicyRowLabel}>
+                        {t("lateCancellationFee")}
+                      </Text>
+                      <Text style={styles.cancellationPolicyRowValue}>
+                        {`${booking.cancellationPolicy.cancellationFeePercent}%`}
+                      </Text>
+                    </View>
+                    <View style={styles.cancellationPolicyRow}>
+                      <Text style={styles.cancellationPolicyRowLabel}>
+                        {t("noShowFee")}
+                      </Text>
+                      <Text style={styles.cancellationPolicyRowValue}>
+                        {`${booking.cancellationPolicy.noShowFeePercent}%`}
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+              </TouchableOpacity>
             )}
 
           {/* Payment */}
@@ -2315,17 +2809,6 @@ export default function BookingDetailsById() {
                     {savedCardLabel}
                   </Text>
                 ) : null}
-                {!isCancelled &&
-                  userRole === "customer" &&
-                  booking.type === "service" &&
-                  booking.owesPayment && (
-                    <Button
-                      title={t("payOnline")}
-                      onPress={startPayOnlineFlow}
-                      containerStyle={styles.payOnlineButton}
-                      textStyle={styles.payOnlineButtonText}
-                    />
-                  )}
               </View>
             </View>
             <View style={styles.paymentDivider} />
@@ -2518,94 +3001,6 @@ export default function BookingDetailsById() {
             </View>
           )}
 
-          {/* Chat */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[styles.actionCard, styles.actionCardPrimary]}
-            onPress={handleContactPress}
-          >
-            <ContactIcon
-              width={moderateWidthScale(20)}
-              height={moderateWidthScale(20)}
-              color={theme.white}
-            />
-            <View style={styles.actionCardTextWrap}>
-              <Text
-                style={[
-                  styles.actionCardTitle,
-                  styles.actionCardTitlePrimary,
-                ]}
-                numberOfLines={1}
-              >
-                {userRole === "customer"
-                  ? "Business Chat"
-                  : "Customer Chat"}
-              </Text>
-              <Text
-                style={[
-                  styles.actionCardSubtitle,
-                  styles.actionCardSubtitlePrimary,
-                ]}
-                numberOfLines={2}
-              >
-                {userRole === "customer"
-                  ? "Message the business"
-                  : "Message your customer"}
-              </Text>
-            </View>
-            <Ionicons
-              name="chevron-forward"
-              size={moderateWidthScale(14)}
-              color={theme.white}
-              style={styles.actionCardChevron}
-            />
-          </TouchableOpacity>
-
-          {/* Location / Business */}
-          <View style={styles.locationCard}>
-            <TouchableOpacity
-              style={styles.locationTouchable}
-              activeOpacity={0.7}
-              onPress={() => {
-                if (booking.businessId != null) {
-                  router.push({
-                    pathname: "/(main)/businessDetail",
-                    params: { business_id: booking.businessId.toString() },
-                  });
-                }
-              }}
-              disabled={booking.businessId == null}
-            >
-              <Ionicons
-                name="location-sharp"
-                size={moderateWidthScale(18)}
-                color={theme.red}
-              />
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationName} numberOfLines={1}>
-                  {booking.businessName}
-                </Text>
-                <Text style={styles.locationAddress} numberOfLines={1}>
-                  {booking.businessAddress}
-                </Text>
-              </View>
-            </TouchableOpacity>
-            {businessLatitude && businessLongitude ? (
-              <TouchableOpacity
-                style={styles.getDirectionsButton}
-                onPress={handleLocationPress}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.getDirectionsText}>Get Directions</Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={moderateWidthScale(12)}
-                  color={theme.darkGreen}
-                />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
           {/* Support */}
           <TouchableOpacity
             activeOpacity={0.7}
@@ -2721,55 +3116,7 @@ export default function BookingDetailsById() {
               />
             )}
 
-          {/* Agreed cancellation / membership policy */}
-          {userRole === "customer" &&
-            booking.cancellationPolicy &&
-            booking.type !== "subscription" &&
-            (booking.status === "ongoing" || booking.status === "active") && (
-              <View style={styles.cancellationPolicyCard}>
-                <View style={styles.cancellationPolicyAccent} />
-                <View style={styles.cancellationPolicyHeader}>
-                  <View style={styles.cancellationPolicyIconWrap}>
-                    <MaterialCommunityIcons
-                      name="shield-check-outline"
-                      size={iconScale(18)}
-                      color={theme.white}
-                    />
-                  </View>
-                  <Text style={styles.cancellationPolicyTitle}>
-                    {t("cancellationPolicy")}
-                  </Text>
-                </View>
-
-                <View style={styles.cancellationPolicyRow}>
-                  <Text style={styles.cancellationPolicyRowLabel}>
-                    {t("freeCancellation")}
-                  </Text>
-                  <Text style={styles.cancellationPolicyRowValue}>
-                    {getFreeCancellationLabel(booking.cancellationPolicy, t)}
-                  </Text>
-                </View>
-
-                <View style={styles.cancellationPolicyRow}>
-                  <Text style={styles.cancellationPolicyRowLabel}>
-                    {t("lateCancellationFee")}
-                  </Text>
-                  <Text style={styles.cancellationPolicyRowValue}>
-                    {`${booking.cancellationPolicy.cancellationFeePercent}%`}
-                  </Text>
-                </View>
-
-                <View style={styles.cancellationPolicyRow}>
-                  <Text style={styles.cancellationPolicyRowLabel}>
-                    {t("noShowFee")}
-                  </Text>
-                  <Text style={styles.cancellationPolicyRowValue}>
-                    {`${booking.cancellationPolicy.noShowFeePercent}%`}
-                  </Text>
-                </View>
-              </View>
-            )}
-
+          {/* Membership policy */}
           {userRole === "customer" &&
             booking.membershipPolicy &&
             booking.type === "subscription" &&
@@ -2846,11 +3193,7 @@ export default function BookingDetailsById() {
 
         </ScrollView>
 
-        {(canShowOutcomeActions ||
-          canShowCorrectOutcome ||
-          canShowRestoreVisit ||
-          canShowBottomReschedule ||
-          canShowBottomCancel) && (
+        {canShowBottomBar && (
           <View
             style={[
               styles.bottomActions,
@@ -2892,42 +3235,6 @@ export default function BookingDetailsById() {
                 onPress={() => setRestoreVisitSheetVisible(true)}
                 containerStyle={styles.completeButton}
               />
-            ) : null}
-            {canShowBottomButtonRow ? (
-              <View style={styles.bottomButtonsRow}>
-                {canShowBottomReschedule ? (
-                  <TouchableOpacity
-                    style={styles.bottomOutlineButton}
-                    activeOpacity={0.7}
-                    onPress={handleReschedulePress}
-                  >
-                    <CalendarIcon
-                      width={moderateWidthScale(18)}
-                      height={moderateWidthScale(18)}
-                      color={theme.darkGreen}
-                    />
-                    <Text style={styles.bottomOutlineButtonText}>
-                      {t("reschedule")}
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-                {canShowBottomCancel ? (
-                  <TouchableOpacity
-                    style={styles.bottomCancelButton}
-                    activeOpacity={0.7}
-                    onPress={handleOpenCancelModal}
-                  >
-                    <Ionicons
-                      name="close-circle-outline"
-                      size={moderateWidthScale(18)}
-                      color={theme.red}
-                    />
-                    <Text style={styles.bottomCancelButtonText}>
-                      Cancel Booking
-                    </Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
             ) : null}
           </View>
         )}

@@ -477,7 +477,7 @@ export default function AppointmentDetail({
               <View style={styles.statusBadge}>
                 <Text style={styles.statusText} numberOfLines={1}>
                   {appointment.status === "scheduled"
-                    ? "On-going apt."
+                    ? t("upcomingApt")
                     : appointment.status === "awaiting_outcome"
                       ? "Awaiting outcome"
                       : appointment.status === "no_show"

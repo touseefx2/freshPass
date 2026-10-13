@@ -373,7 +373,7 @@ export default function AppointmentsSection({
                   <View style={styles.appointmentBadge}>
                     <Text style={styles.appointmentBadgeText}>
                       {firstAppointment.status === "scheduled"
-                        ? t("onGoingApt")
+                        ? t("upcomingApt")
                         : firstAppointment.status === "awaiting_outcome"
                           ? t("statusAwaitingOutcome")
                           : firstAppointment.status === "no_show"
