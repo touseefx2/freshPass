@@ -90,6 +90,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import AddServiceBottomSheet from "@/src/components/AddServiceBottomSheet";
+import OutcomeConfirmSheet from "@/src/components/OutcomeConfirmSheet";
 import ImagePickerModal from "@/src/components/imagePickerModal";
 import { IMAGES } from "@/src/constant/images";
 import dayjs from "dayjs";
@@ -1680,6 +1681,8 @@ export default function BookingNow() {
     staff_id?: string;
     reel_id?: string;
     saved_look_id?: string;
+    /** "1" when the customer already agreed to the late reschedule fee. */
+    late_fee_accepted?: string;
   }>();
 
   const attributionReelId = params.reel_id ? Number(params.reel_id) : null;
@@ -1801,6 +1804,10 @@ export default function BookingNow() {
   const [galleryImageUris, setGalleryImageUris] = useState<string[]>([]);
   const [imagePickerVisible, setImagePickerVisible] = useState(false);
   const [rescheduleLoading, setRescheduleLoading] = useState(false);
+  // Backend refused the reschedule until the late fee is accepted.
+  const [rescheduleFeeMessage, setRescheduleFeeMessage] = useState<
+    string | null
+  >(null);
   const [continueLoading, setContinueLoading] = useState(false);
   const hasInitializedReschedulePreset = useRef(false);
   const hasScrolledToRescheduleSlot = useRef(false);
@@ -2635,6 +2642,162 @@ export default function BookingNow() {
       </SafeAreaView>
     );
   }
+
+  const submitReschedule = async (lateFeeAccepted: boolean) => {
+    const bookingId = params.booking_id;
+    const businessId = params.business_id;
+    if (!bookingId || !businessId) {
+      showBanner(
+        t("error"),
+        "Booking or business missing.",
+        "error",
+        4000,
+      );
+      return;
+    }
+    if (!selectedTimeSlot) {
+      showBanner(
+        "Select time",
+        "Please select a date and time slot.",
+        "warning",
+        4000,
+      );
+      return;
+    }
+    const appointmentDate = selectedDate.format("YYYY-MM-DD");
+    const appointmentTime = selectedTimeSlot;
+    const appointmentType =
+      params.appointment_type === "subscription"
+        ? "subscription"
+        : "service";
+
+    let serviceIds: number[] = [];
+    if (appointmentType === "service" && params.service_ids) {
+      try {
+        serviceIds = JSON.parse(params.service_ids) as number[];
+      } catch (_) {
+        serviceIds = params.service_ids
+          .split(",")
+          .map((id) => parseInt(id.trim(), 10))
+          .filter((n) => !Number.isNaN(n));
+      }
+    }
+    if (serviceIds.length === 0 && selectedServices.length > 0) {
+      serviceIds = selectedServices.map((s) => s.id);
+    }
+
+    setRescheduleLoading(true);
+    try {
+      let resolvedStaffId = resolveAppointmentStaffId({
+        selectedStaff,
+        assignedStaffId: businessData?.assignedStaffId ?? null,
+      });
+
+      if (selectedStaff === "anyone") {
+        if (serviceIds.length === 0) {
+          showBanner(
+            t("error"),
+            "Services are required to assign staff.",
+            "error",
+            4000,
+          );
+          return;
+        }
+        const assigned = await assignAnyoneStaff({
+          business_id: parseInt(businessId, 10),
+          service_ids: serviceIds,
+          date: appointmentDate,
+          start_time: appointmentTime,
+        });
+        resolvedStaffId = assigned.staff_id;
+        dispatch(setAssignedStaffId(assigned.staff_id));
+      }
+
+      const body: {
+        business_id: number;
+        appointment_type: string;
+        staff_id?: number;
+        appointment_date: string;
+        appointment_time: string;
+        notes?: string;
+        service_ids?: number[];
+        subscription_id?: number;
+        late_fee_accepted?: boolean;
+      } = {
+        business_id: parseInt(businessId, 10),
+        appointment_type: appointmentType,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        notes: note.trim() || undefined,
+      };
+      if (resolvedStaffId != null) {
+        body.staff_id = resolvedStaffId;
+      }
+      if (appointmentType === "service" && serviceIds.length > 0) {
+        body.service_ids = serviceIds;
+      }
+      if (
+        appointmentType === "subscription" &&
+        params.subscription_id != null &&
+        params.subscription_id !== ""
+      ) {
+        body.subscription_id = parseInt(params.subscription_id, 10);
+      }
+
+      if (lateFeeAccepted) {
+        body.late_fee_accepted = true;
+      }
+
+      const response = await ApiService.put<{
+        success: boolean;
+        message: string;
+        data?: {
+          id: number;
+          appointmentDate: string;
+          appointmentTime: string;
+          status: string;
+        };
+      }>(appointmentsEndpoints.reschedule(bookingId), body);
+      if (response.success) {
+        showBanner(
+          t("success"),
+          response.message || "Appointment rescheduled successfully.",
+          "success",
+          3000,
+        );
+        router.back();
+      } else {
+        showBanner(
+          t("error"),
+          response.message || "Failed to reschedule.",
+          "error",
+          4000,
+        );
+      }
+    } catch (err: any) {
+      // Late reschedule fee not confirmed yet (e.g. the free window passed
+      // while the customer was picking a slot). Nothing changed; ask and resend.
+      if (err?.status === 422 && err?.data?.errors?.late_fee_accepted) {
+        setRescheduleFeeMessage(err?.data?.message || err?.message || "");
+        return;
+      }
+      showBanner(
+        t("error"),
+        err?.message ||
+          err?.data?.message ||
+          "Failed to reschedule. Please try again.",
+        "error",
+        4000,
+      );
+    } finally {
+      setRescheduleLoading(false);
+    }
+  };
+
+  const handleConfirmRescheduleFee = () => {
+    setRescheduleFeeMessage(null);
+    submitReschedule(true);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -3593,145 +3756,7 @@ export default function BookingNow() {
         {isReschedule ? (
           <Button
             title="Reschedule Appointment"
-            onPress={async () => {
-              const bookingId = params.booking_id;
-              const businessId = params.business_id;
-              if (!bookingId || !businessId) {
-                showBanner(
-                  t("error"),
-                  "Booking or business missing.",
-                  "error",
-                  4000,
-                );
-                return;
-              }
-              if (!selectedTimeSlot) {
-                showBanner(
-                  "Select time",
-                  "Please select a date and time slot.",
-                  "warning",
-                  4000,
-                );
-                return;
-              }
-              const appointmentDate = selectedDate.format("YYYY-MM-DD");
-              const appointmentTime = selectedTimeSlot;
-              const appointmentType =
-                params.appointment_type === "subscription"
-                  ? "subscription"
-                  : "service";
-
-              let serviceIds: number[] = [];
-              if (appointmentType === "service" && params.service_ids) {
-                try {
-                  serviceIds = JSON.parse(params.service_ids) as number[];
-                } catch (_) {
-                  serviceIds = params.service_ids
-                    .split(",")
-                    .map((id) => parseInt(id.trim(), 10))
-                    .filter((n) => !Number.isNaN(n));
-                }
-              }
-              if (serviceIds.length === 0 && selectedServices.length > 0) {
-                serviceIds = selectedServices.map((s) => s.id);
-              }
-
-              setRescheduleLoading(true);
-              try {
-                let resolvedStaffId = resolveAppointmentStaffId({
-                  selectedStaff,
-                  assignedStaffId: businessData?.assignedStaffId ?? null,
-                });
-
-                if (selectedStaff === "anyone") {
-                  if (serviceIds.length === 0) {
-                    showBanner(
-                      t("error"),
-                      "Services are required to assign staff.",
-                      "error",
-                      4000,
-                    );
-                    return;
-                  }
-                  const assigned = await assignAnyoneStaff({
-                    business_id: parseInt(businessId, 10),
-                    service_ids: serviceIds,
-                    date: appointmentDate,
-                    start_time: appointmentTime,
-                  });
-                  resolvedStaffId = assigned.staff_id;
-                  dispatch(setAssignedStaffId(assigned.staff_id));
-                }
-
-                const body: {
-                  business_id: number;
-                  appointment_type: string;
-                  staff_id?: number;
-                  appointment_date: string;
-                  appointment_time: string;
-                  notes?: string;
-                  service_ids?: number[];
-                  subscription_id?: number;
-                } = {
-                  business_id: parseInt(businessId, 10),
-                  appointment_type: appointmentType,
-                  appointment_date: appointmentDate,
-                  appointment_time: appointmentTime,
-                  notes: note.trim() || undefined,
-                };
-                if (resolvedStaffId != null) {
-                  body.staff_id = resolvedStaffId;
-                }
-                if (appointmentType === "service" && serviceIds.length > 0) {
-                  body.service_ids = serviceIds;
-                }
-                if (
-                  appointmentType === "subscription" &&
-                  params.subscription_id != null &&
-                  params.subscription_id !== ""
-                ) {
-                  body.subscription_id = parseInt(params.subscription_id, 10);
-                }
-
-                const response = await ApiService.put<{
-                  success: boolean;
-                  message: string;
-                  data?: {
-                    id: number;
-                    appointmentDate: string;
-                    appointmentTime: string;
-                    status: string;
-                  };
-                }>(appointmentsEndpoints.reschedule(bookingId), body);
-                if (response.success) {
-                  showBanner(
-                    t("success"),
-                    response.message || "Appointment rescheduled successfully.",
-                    "success",
-                    3000,
-                  );
-                  router.back();
-                } else {
-                  showBanner(
-                    t("error"),
-                    response.message || "Failed to reschedule.",
-                    "error",
-                    4000,
-                  );
-                }
-              } catch (err: any) {
-                showBanner(
-                  t("error"),
-                  err?.message ||
-                    err?.data?.message ||
-                    "Failed to reschedule. Please try again.",
-                  "error",
-                  4000,
-                );
-              } finally {
-                setRescheduleLoading(false);
-              }
-            }}
+            onPress={() => submitReschedule(params.late_fee_accepted === "1")}
             disabled={rescheduleLoading}
             loading={rescheduleLoading}
           />
@@ -3909,6 +3934,16 @@ export default function BookingNow() {
       </View>
 
       {/* Add Service Bottom Sheet */}
+      <OutcomeConfirmSheet
+        visible={rescheduleFeeMessage != null}
+        onClose={() => setRescheduleFeeMessage(null)}
+        onConfirm={handleConfirmRescheduleFee}
+        title={t("lateRescheduleFeeTitle")}
+        question={t("lateRescheduleFeeQuestion")}
+        message={rescheduleFeeMessage ?? ""}
+        confirmLabel={t("acceptFeeAndReschedule")}
+      />
+
       <AddServiceBottomSheet
         visible={addServiceModalVisible}
         onClose={handleCloseModal}

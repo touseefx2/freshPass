@@ -399,6 +399,8 @@ export const appointmentsEndpoints = {
     `/api/appointments/checkout/${checkoutId}`,
   cancellationPreview: (id: string | number) =>
     `/api/appointments/${id}/cancellation-preview`,
+  reschedulePreview: (id: string | number) =>
+    `/api/appointments/${id}/reschedule-preview`,
   awaitingOutcome: (params?: { per_page?: number; page?: number }) => {
     const q = new URLSearchParams();
     if (params?.per_page != null)

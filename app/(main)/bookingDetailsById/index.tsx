@@ -418,6 +418,10 @@ export default function BookingDetailsById() {
   const { downloadMedia, downloadingUrl } = useDownloadMedia();
   const [cancelModalVisible, setCancelModalVisible] = useState(false);
   const [cancelFeeNotice, setCancelFeeNotice] = useState<string | null>(null);
+  // Late reschedule fee prompt (reschedule-preview chargeAmount > 0).
+  const [rescheduleFeeMessage, setRescheduleFeeMessage] = useState<
+    string | null
+  >(null);
   const [outcomeSheetVisible, setOutcomeSheetVisible] = useState(false);
   const [outcomeConfirming, setOutcomeConfirming] = useState(false);
   const [outcomePreviewLoading, setOutcomePreviewLoading] = useState(false);
@@ -1233,7 +1237,7 @@ export default function BookingDetailsById() {
     });
   }, [inspirationReel?.id, router]);
 
-  const handleReschedulePress = () => {
+  const openReschedulePicker = (lateFeeAccepted: boolean) => {
     if (!booking) return;
     const baseParams: Record<string, string> = {
       business_id: booking.businessId?.toString() ?? "",
@@ -1246,6 +1250,9 @@ export default function BookingDetailsById() {
       appointment_time: booking.appointmentTime ?? "",
       staff_id: booking.staffId != null ? String(booking.staffId) : "anyone",
     };
+    if (lateFeeAccepted) {
+      baseParams.late_fee_accepted = "1";
+    }
     if (booking.type === "service" && booking.service_ids?.length) {
       baseParams.service_ids = JSON.stringify(booking.service_ids);
     }
@@ -1256,6 +1263,40 @@ export default function BookingDetailsById() {
       pathname: "/(main)/bookingNow",
       params: baseParams,
     });
+  };
+
+  // A late reschedule counts as a late cancellation: check the fee first and
+  // ask the customer to agree before opening the picker.
+  const handleReschedulePress = async () => {
+    if (!booking || !bookingId) return;
+
+    dispatch(setActionLoader(true));
+    try {
+      const response = await ApiService.get<{
+        success: boolean;
+        message?: string;
+        data?: { chargeAmount?: number; message?: string };
+      }>(appointmentsEndpoints.reschedulePreview(bookingId));
+
+      const chargeAmount = Number(response?.data?.chargeAmount ?? 0);
+      if (chargeAmount > 0) {
+        setRescheduleFeeMessage(response?.data?.message ?? "");
+        return;
+      }
+      openReschedulePicker(false);
+    } catch (error: any) {
+      Logger.error("Reschedule preview error:", error);
+      // The reschedule PUT still refuses an unconfirmed late fee (422), and
+      // bookingNow asks for confirmation then, so let the customer continue.
+      openReschedulePicker(false);
+    } finally {
+      dispatch(setActionLoader(false));
+    }
+  };
+
+  const handleConfirmRescheduleFee = () => {
+    setRescheduleFeeMessage(null);
+    openReschedulePicker(true);
   };
 
   const getAppointmentStartDate = (): Date | null => {
@@ -2896,6 +2937,16 @@ export default function BookingDetailsById() {
           onClose={handleCloseCancelModal}
           onSubmit={handleCancelBooking}
           feeNotice={cancelFeeNotice}
+        />
+
+        <OutcomeConfirmSheet
+          visible={rescheduleFeeMessage != null}
+          onClose={() => setRescheduleFeeMessage(null)}
+          onConfirm={handleConfirmRescheduleFee}
+          title={t("lateRescheduleFeeTitle")}
+          question={t("lateRescheduleFeeQuestion")}
+          message={rescheduleFeeMessage ?? ""}
+          confirmLabel={t("acceptFeeAndContinue")}
         />
 
         <RestoreVisitSheet
