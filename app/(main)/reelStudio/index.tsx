@@ -1458,12 +1458,13 @@ export default function ReelStudioScreen() {
       const slot = otherSlot(activeSlotRef.current);
       try {
         players[slot].pause();
+        slotClipIdRef.current[slot] = clip.id;
         await ensureSlotSource(slot, clip.uri);
         if (gen !== engineGenRef.current) return;
         players[slot].pause();
         players[slot].currentTime = clipPlayRange(clip).startMs / 1000;
-        players[slot].muted = !!clip.muted;
-        slotClipIdRef.current[slot] = clip.id;
+        // Mute may have been toggled while the file loaded — read it fresh
+        players[slot].muted = !!clipsRef.current.find((c) => c.id === clip.id)?.muted;
         preloadRef.current = { slot, index: nextIndex, clipId: clip.id };
       } catch (error) {
         Logger.error("Preload next clip failed:", error);
@@ -1501,12 +1502,13 @@ export default function ReelStudioScreen() {
       engineLoadingRef.current = true;
       try {
         players[otherSlot(slot)].pause();
+        slotClipIdRef.current[slot] = clip.id;
         await ensureSlotSource(slot, clip.uri);
         if (gen !== engineGenRef.current) return;
         activeIndexRef.current = index;
         p.currentTime = clipPlayRange(clip).startMs / 1000;
-        p.muted = !!clip.muted;
-        slotClipIdRef.current[slot] = clip.id;
+        // Mute may have been toggled while the file loaded — read it fresh
+        p.muted = !!clipsRef.current.find((c) => c.id === clip.id)?.muted;
         if (playingRef.current && engineVisibleRef.current) p.play();
         else p.pause();
         setPreviewTimeMs(
@@ -1593,6 +1595,12 @@ export default function ReelStudioScreen() {
           const idx = activeIndexRef.current;
           const clip = list[idx];
           if (!clip) return;
+          // Self-heal: the playing clip's sound always follows its Mute
+          if (p.muted !== !!clip.muted) {
+            try {
+              p.muted = !!clip.muted;
+            } catch {}
+          }
           const ms = Math.max(0, currentTime * 1000);
           const range = clipPlayRange(clip);
           if (ms >= range.endMs - 40) {
@@ -2825,6 +2833,7 @@ export default function ReelStudioScreen() {
       players.map((p) => p.replaceAsync(null).catch(() => undefined)),
     );
     slotUriRef.current = [null, null];
+    slotClipIdRef.current = [null, null];
   }, [players]);
 
   const restorePreview = useCallback(() => {
