@@ -149,6 +149,10 @@ export const createStyles = (theme: Theme) =>
     jobCardStatusBadgeProcessing: {
       backgroundColor: theme.orangeBrown01,
     },
+    // Waiting on the user: same amber text, stronger fill than Processing
+    jobCardStatusBadgeNeedsInput: {
+      backgroundColor: theme.orangeBrown30,
+    },
     jobCardStatusText: {
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,

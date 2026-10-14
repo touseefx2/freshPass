@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
+  AppState,
   Modal,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -36,7 +38,7 @@ import Svg, {
   Rect,
   Stop,
 } from "react-native-svg";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -50,12 +52,14 @@ import Button from "@/src/components/button";
 import { useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
 import {
+  getReelCredits,
   listAutoReelTemplates,
   listReelTemplates,
 } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
 import { iconScale, moderateWidthScale } from "@/src/theme/dimensions";
 import { fontSize } from "@/src/theme/fonts";
+import type { ReelCredits } from "@/src/types/reels";
 import type {
   TemplateGalleryItem,
   TemplateGalleryKind,
@@ -64,6 +68,7 @@ import {
   autoReelGalleryItem,
   photoReelGalleryItem,
 } from "@/src/utils/templateGallery";
+import { formatVideoDuration } from "@/src/utils/videoDuration";
 import {
   ART_CENTER,
   CARD_GAP,
@@ -150,6 +155,47 @@ function coverTitleSize(words: string[], maxWidth: number): number {
   return Math.floor(Math.min(base, maxWidth / (longest * 0.68)));
 }
 
+type CoverFact = {
+  key: string;
+  icon: IconName;
+  text: string;
+  /** Read out instead of the bare number */
+  a11y?: string;
+};
+
+/**
+ * Facts row under the cover title, CapCut style: reel length (m:ss) and clip
+ * count. With no set length the tagline stands in (how long / what kind) —
+ * except on Photo Reels, where it would repeat the clip count.
+ */
+function coverFacts(
+  item: TemplateGalleryItem,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): CoverFact[] {
+  const facts: CoverFact[] = [];
+  if (item.lengthSeconds) {
+    const time = formatVideoDuration(item.lengthSeconds);
+    facts.push({
+      key: "length",
+      icon: "timer",
+      text: time,
+      a11y: t("templateGalleryLengthA11y", { time }),
+    });
+  } else if (item.tagline && (item.kind === "video" || !item.clipCount)) {
+    facts.push({ key: "tagline", icon: item.taglineIcon, text: item.tagline });
+  }
+  if (item.clipCount) {
+    facts.push({
+      key: "clips",
+      icon: "view-carousel",
+      text: String(item.clipCount),
+      a11y: t("templateGalleryClipsA11y", { count: item.clipCount }),
+    });
+  }
+  return facts;
+}
+
+/** Full screen sample: loops with sound */
 function useLoopingPlayer(uri: string) {
   return useVideoPlayer(uri, (p) => {
     p.loop = true;
@@ -157,15 +203,55 @@ function useLoopingPlayer(uri: string) {
   });
 }
 
-/** Inline sample playback; mounted only while a cover is playing */
-function PreviewVideo({ uri }: { uri: string }) {
-  const player = useLoopingPlayer(uri);
+/**
+ * Sample on the centred cover: loops, muted unless the viewer turned the
+ * sound on. Mounted only while its template is centred and this screen is in
+ * front; a pause keeps the frame.
+ */
+function PreviewVideo({
+  uri,
+  playing,
+  muted,
+  onFirstFrame,
+}: {
+  uri: string;
+  playing: boolean;
+  muted: boolean;
+  onFirstFrame: () => void;
+}) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.muted = muted;
+  });
+
+  useEffect(() => {
+    player.muted = muted;
+  }, [player, muted]);
+
+  useEffect(() => {
+    if (!playing) {
+      player.pause();
+      return;
+    }
+    player.play();
+    // The OS pauses players in the background; carry on once the app is back
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") player.play();
+    });
+    return () => sub.remove();
+  }, [player, playing]);
+
   return (
     <VideoView
       player={player}
       style={StyleSheet.absoluteFill}
       contentFit="cover"
       nativeControls={false}
+      // SurfaceView under overlays (and a scaling cover) freezes on Android
+      {...(Platform.OS === "android"
+        ? { surfaceType: "textureView" as const }
+        : null)}
+      onFirstFrameRender={onFirstFrame}
     />
   );
 }
@@ -355,8 +441,11 @@ function TemplateCover({
   progress,
   reduceMotion,
   chip,
+  videoOn,
   playing,
+  muted,
   onTogglePlay,
+  onToggleSound,
   onExpand,
   styles,
   theme,
@@ -369,13 +458,24 @@ function TemplateCover({
   progress: SharedValue<number>;
   reduceMotion: boolean;
   chip: { label: string; icon: IconName };
+  /** Its sample is loaded: the centred template, with this screen in front */
+  videoOn: boolean;
+  /** …and playing: not paused by the viewer or under the full screen preview */
   playing: boolean;
+  muted: boolean;
   onTogglePlay: () => void;
+  onToggleSound: () => void;
   onExpand: () => void;
   styles: Styles;
   theme: Theme;
 }) {
   const { t } = useTranslation();
+  // The poster stays under the sample until its first frame is on screen
+  const [frameShown, setFrameShown] = useState(false);
+  useEffect(() => {
+    if (!videoOn) setFrameShown(false);
+  }, [videoOn]);
+  const showFrame = useCallback(() => setFrameShown(true), []);
 
   const motion = useAnimatedStyle(() => {
     const range = [index - 1, index, index + 1];
@@ -417,13 +517,15 @@ function TemplateCover({
     borderRadius: medallion / 2,
   };
   const artSide = { width: width * (1 - ART_CENTER) * 2 };
-  const layer = (order: number, children: React.ReactNode) => (
+  const facts = coverFacts(item, t);
+  const layer = (order: number, children: React.ReactNode, style?: object) => (
     <SwipeLayer
       progress={progress}
       index={index}
       order={order}
       distance={width}
       reduceMotion={reduceMotion}
+      style={style}
     >
       {children}
     </SwipeLayer>
@@ -432,10 +534,15 @@ function TemplateCover({
   return (
     <Animated.View style={[styles.cardShadow, { width, height }, motion]}>
       <View style={styles.card}>
-        {playing ? (
-          <PreviewVideo uri={item.previewVideoUrl!} />
-        ) : item.coverUrl ? (
-          <>
+        {/* Poster (photo, else brand art) under the sample until its first frame */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            videoOn && frameShown && styles.posterHidden,
+          ]}
+          pointerEvents="none"
+        >
+          {item.coverUrl ? (
             <Image
               source={{ uri: item.coverUrl }}
               style={StyleSheet.absoluteFill}
@@ -444,45 +551,62 @@ function TemplateCover({
               cachePolicy="memory-disk"
               accessibilityIgnoresInvertColors
             />
-            {/* Keeps the title readable on any photo */}
-            <LinearGradient
-              colors={[
-                "rgba(24, 33, 14, 0.92)",
-                "rgba(24, 33, 14, 0.5)",
-                "transparent",
-              ]}
-              start={{ x: 0, y: 1 }}
-              end={{ x: 0.9, y: 0.1 }}
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
+          ) : (
+            <CoverArt
+              id={`${item.kind}-${item.id}`}
+              width={width}
+              height={height}
+              theme={theme}
             />
-          </>
-        ) : (
-          <CoverArt
-            id={`${item.kind}-${item.id}`}
-            width={width}
-            height={height}
-            theme={theme}
+          )}
+        </View>
+        {videoOn ? (
+          <PreviewVideo
+            uri={item.previewVideoUrl!}
+            playing={playing}
+            muted={muted}
+            onFirstFrame={showFrame}
           />
-        )}
+        ) : null}
+        {item.coverUrl || (videoOn && frameShown) ? (
+          // Keeps the title and facts readable on any photo or video frame
+          <LinearGradient
+            colors={[
+              "rgba(24, 33, 14, 0.92)",
+              "rgba(24, 33, 14, 0.5)",
+              "transparent",
+            ]}
+            start={{ x: 0, y: 1 }}
+            end={{ x: 0.9, y: 0.1 }}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+        ) : null}
 
-        {!playing ? (
-          <View style={styles.cardInner} pointerEvents="none">
-            <View style={styles.cardTop}>
-              {layer(
-                0,
-                <View style={styles.kindChip}>
-                  <MaterialIcons
-                    name={chip.icon}
-                    size={moderateWidthScale(13)}
-                    color={theme.orangeBrown}
-                  />
-                  <Text style={styles.kindChipText} numberOfLines={1}>
-                    {chip.label}
-                  </Text>
-                </View>,
-              )}
-            </View>
+        <View style={styles.cardInner} pointerEvents="none">
+          {/* Room on the right for the sound button */}
+          <View
+            style={[
+              styles.cardTop,
+              item.previewVideoUrl ? styles.cardTopSound : null,
+            ]}
+          >
+            {layer(
+              0,
+              <View style={styles.kindChip}>
+                <MaterialIcons
+                  name={chip.icon}
+                  size={moderateWidthScale(13)}
+                  color={theme.orangeBrown}
+                />
+                <Text style={styles.kindChipText} numberOfLines={1}>
+                  {chip.label}
+                </Text>
+              </View>,
+              styles.shrink,
+            )}
+          </View>
+          <View>
             <View style={styles.titleBlock}>
               {first
                 ? layer(
@@ -512,24 +636,64 @@ function TemplateCover({
                   )
                 : null}
               {layer(3, <View style={styles.accentBar} />)}
-              {item.tagline
-                ? layer(
-                    4,
-                    <View style={styles.metaRow}>
-                      <MaterialIcons
-                        name={item.taglineIcon}
-                        size={moderateWidthScale(15)}
-                        color={theme.orangeBrown}
-                      />
-                      <Text style={styles.metaText} numberOfLines={1}>
-                        {item.tagline}
-                      </Text>
-                    </View>,
-                  )
-                : null}
             </View>
+            {facts.length
+              ? layer(
+                  4,
+                  <View style={styles.coverFacts}>
+                    {facts.map((fact) => (
+                      <View
+                        key={fact.key}
+                        style={[
+                          styles.coverFact,
+                          fact.key === "tagline" && styles.shrink,
+                        ]}
+                        accessible
+                        accessibilityLabel={fact.a11y ?? fact.text}
+                      >
+                        <MaterialIcons
+                          name={fact.icon}
+                          size={moderateWidthScale(15)}
+                          color={theme.orangeBrown}
+                        />
+                        <Text
+                          style={
+                            fact.key === "tagline"
+                              ? styles.metaText
+                              : styles.coverFactText
+                          }
+                          numberOfLines={1}
+                        >
+                          {fact.text}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>,
+                )
+              : null}
+            {item.musicTitle
+              ? layer(
+                  5,
+                  <View
+                    style={styles.coverMusic}
+                    accessible
+                    accessibilityLabel={t("includesMusicNamed", {
+                      name: item.musicTitle,
+                    })}
+                  >
+                    <MaterialIcons
+                      name="music-note"
+                      size={moderateWidthScale(15)}
+                      color={theme.orangeBrown}
+                    />
+                    <Text style={styles.metaText} numberOfLines={1}>
+                      {item.musicTitle}
+                    </Text>
+                  </View>,
+                )
+              : null}
           </View>
-        ) : null}
+        </View>
 
         {/* Play button (sample video) or medallion, centred on the rings */}
         {item.previewVideoUrl ? (
@@ -571,6 +735,26 @@ function TemplateCover({
               </View>,
             )}
           </View>
+        ) : null}
+
+        {/* Sound on / off; the choice holds for every sample while swiping */}
+        {item.previewVideoUrl ? (
+          <TouchableOpacity
+            style={styles.soundButton}
+            onPress={onToggleSound}
+            activeOpacity={0.7}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              muted ? t("templateGallerySoundOn") : t("templateGallerySoundOff")
+            }
+          >
+            <MaterialIcons
+              name={muted ? "volume-off" : "volume-up"}
+              size={moderateWidthScale(18)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
         ) : null}
 
         {hasMedia ? (
@@ -690,8 +874,13 @@ export default function TemplateGalleryScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const reduceMotion = useReducedMotion();
-  // Photo Reel opens on the Photo tab, AI Auto Reel on the Video tab
-  const params = useLocalSearchParams<{ kind?: string }>();
+  // Photo Reel opens on the Photo tab, AI Auto Reel on the Video tab.
+  // sourceMediaAssetId: "Try a different template" on a made reel — its
+  // uploaded video goes on with the new template (Video tab only)
+  const params = useLocalSearchParams<{
+    kind?: string;
+    sourceMediaAssetId?: string;
+  }>();
 
   // One cover centred, the neighbours peeking in on both sides
   const sideInset = PEEK + CARD_GAP;
@@ -707,7 +896,14 @@ export default function TemplateGalleryScreen() {
     photo: LOADING_TAB,
   });
   const [index, setIndex] = useState(0);
-  const [playingId, setPlayingId] = useState<number | null>(null);
+  // The centred template's sample plays on its own; this one was paused
+  const [pausedId, setPausedId] = useState<number | null>(null);
+  // Samples start muted; the viewer's choice holds while swiping
+  const [muted, setMuted] = useState(true);
+  // False while another screen is in front (set early by Use This Template)
+  const [focused, setFocused] = useState(true);
+  // This month's reel credits (Video tab); null = unknown, nothing blocked
+  const [credits, setCredits] = useState<ReelCredits | null>(null);
   const [fullItem, setFullItem] = useState<TemplateGalleryItem | null>(null);
   // Swipe position in templates (0 = first); fractional mid-swipe
   const progress = useSharedValue(0);
@@ -754,10 +950,43 @@ export default function TemplateGalleryScreen() {
     void loadTemplates("photo");
   }, [loadTemplates]);
 
+  // Samples play only while this screen is in front: leaving unmounts the
+  // player, so no sound follows onto the next screen
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      setPausedId(null);
+      return () => setFocused(false);
+    }, []),
+  );
+
+  // Video tab: credits are read again on every visit — a reel made since
+  // may have used one
+  useFocusEffect(
+    useCallback(() => {
+      if (kind !== "video") return;
+      let alive = true;
+      void getReelCredits().then((next) => {
+        if (alive) setCredits(next);
+      });
+      return () => {
+        alive = false;
+      };
+    }, [kind]),
+  );
+
   const tab = tabs[kind];
   const templates = tab.items;
   const count = templates.length;
   const current = templates[index] ?? templates[0];
+  // Only the centred template's sample is loaded
+  const videoId = focused && current?.previewVideoUrl ? current.id : null;
+  // Out of credits: one-video designs can't be made (null credits never block)
+  const noCredits =
+    kind === "video" &&
+    credits != null &&
+    credits.remaining <= 0 &&
+    !!current?.autoBuild;
   const activeKind = KINDS.find((k) => k.kind === kind) ?? KINDS[0];
   const chip = useMemo(
     () => ({ label: t(activeKind.chipKey), icon: activeKind.chipIcon }),
@@ -769,7 +998,7 @@ export default function TemplateGalleryScreen() {
     cancelAnimation(progress);
     progress.value = 0;
     setIndex(0);
-    setPlayingId(null);
+    setPausedId(null);
   }, [progress]);
 
   // Opened again with another kind (e.g. a link to this same screen)
@@ -789,9 +1018,9 @@ export default function TemplateGalleryScreen() {
     [count],
   );
 
-  // A sample video stops when another template comes in
+  // Each template that comes in plays, even one that was paused before
   useEffect(() => {
-    setPlayingId(null);
+    setPausedId(null);
   }, [index]);
 
   const selectKind = (next: TemplateGalleryKind) => {
@@ -854,14 +1083,21 @@ export default function TemplateGalleryScreen() {
     Alert.alert(t("templateGalleryInfoTitle"), t("templateGalleryInfoBody"));
 
   const handleUseTemplate = () => {
-    if (!current) return;
-    setPlayingId(null);
+    if (!current || noCredits) return;
+    // Stop the sample now, before the next screen opens over it
+    setFocused(false);
+    const sourceMediaAssetId =
+      current.kind === "video" ? params.sourceMediaAssetId : undefined;
     // Step 1 of that reel flow, with this template already picked
     router.push({
       pathname: (current.kind === "photo"
         ? "/(main)/templateReels"
         : "/(main)/reelTemplates") as any,
-      params: { templateId: String(current.id) },
+      params: {
+        templateId: String(current.id),
+        // The video already uploaded for another reel is used again
+        ...(sourceMediaAssetId ? { sourceMediaAssetId } : null),
+      },
     });
   };
 
@@ -948,14 +1184,24 @@ export default function TemplateGalleryScreen() {
                   progress={progress}
                   reduceMotion={reduceMotion}
                   chip={chip}
-                  playing={playingId === item.id && !!item.previewVideoUrl}
-                  onTogglePlay={() =>
-                    setPlayingId(playingId === item.id ? null : item.id)
+                  videoOn={videoId === item.id}
+                  // Held while the full screen preview plays it with sound
+                  playing={
+                    videoId === item.id &&
+                    pausedId !== item.id &&
+                    fullItem == null
                   }
-                  onExpand={() => {
-                    setPlayingId(null);
-                    setFullItem(item);
+                  muted={muted}
+                  onTogglePlay={() => {
+                    // A side cover's button brings it to the centre (it plays there)
+                    if (i !== index) {
+                      goTo(i);
+                      return;
+                    }
+                    setPausedId(pausedId === item.id ? null : item.id);
                   }}
+                  onToggleSound={() => setMuted((m) => !m)}
+                  onExpand={() => setFullItem(item)}
                   styles={styles}
                   theme={theme}
                 />
@@ -1045,6 +1291,19 @@ export default function TemplateGalleryScreen() {
   };
 
   const showCounter = !tab.loading && !tab.error && count > 0;
+  // Video tab, once the credits are known: how many are left, or that none
+  // are for this one-video design
+  const creditsLine =
+    kind !== "video" || !credits
+      ? null
+      : noCredits
+        ? t("templateGalleryNoCredits")
+        : typeof credits.monthly_limit === "number"
+          ? t("templateGalleryCreditsLeft", {
+              count: Math.max(0, credits.remaining),
+              total: credits.monthly_limit,
+            })
+          : t("autoBuildCreditsLeft", { count: Math.max(0, credits.remaining) });
 
   return (
     <View style={styles.safeArea}>
@@ -1186,10 +1445,29 @@ export default function TemplateGalleryScreen() {
             ))}
           </View>
         ) : null}
+        {creditsLine ? (
+          <View
+            style={[styles.credits, noCredits && styles.creditsEmpty]}
+            accessible
+            accessibilityLabel={creditsLine}
+            accessibilityRole={noCredits ? "alert" : undefined}
+          >
+            <MaterialIcons
+              name={noCredits ? "block" : "toll"}
+              size={moderateWidthScale(16)}
+              color={noCredits ? theme.red : theme.darkGreenLight}
+            />
+            <Text
+              style={[styles.creditsText, noCredits && styles.creditsTextEmpty]}
+            >
+              {creditsLine}
+            </Text>
+          </View>
+        ) : null}
         <Button
           title={t("templateGalleryUse")}
           onPress={handleUseTemplate}
-          disabled={!current || tab.loading}
+          disabled={!current || tab.loading || noCredits}
           containerStyle={styles.ctaButton}
           textStyle={styles.ctaText}
         />

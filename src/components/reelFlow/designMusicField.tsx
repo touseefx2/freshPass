@@ -1,5 +1,12 @@
-import React, { useMemo, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Audio, type AVPlaybackStatus } from "expo-av";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/src/hooks/hooks";
@@ -13,6 +20,7 @@ import MusicLibrarySheet from "@/src/components/videoEditor/musicLibrarySheet";
 import { OptionRow, SectionLabel } from "@/src/components/reelFlow/flowParts";
 import type { LibraryTrack } from "@/src/services/musicLibraryService";
 import type { AutoReelMusic } from "@/src/types/reels";
+import Logger from "@/src/services/logger";
 
 /**
  * Silent design (`has_sound: false`): the user must pick a library track or
@@ -70,6 +78,14 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     disabled: { opacity: 0.45 },
+    playButton: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
+      backgroundColor: theme.selectCard,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     error: {
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
@@ -90,6 +106,83 @@ export default function DesignMusicField({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const noMusic = value === null;
+  const previewUrl = value?.url ?? null;
+
+  // ── Preview of the picked track ───────────────────────────────────
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const mountedRef = useRef(true);
+  const finishedRef = useRef(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+
+  const stopPreview = useCallback(async () => {
+    const sound = soundRef.current;
+    soundRef.current = null;
+    setPreviewPlaying(false);
+    setPreviewLoading(false);
+    if (sound) {
+      try {
+        await sound.unloadAsync();
+      } catch {}
+    }
+  }, []);
+
+  const onPreviewStatus = useCallback((status: AVPlaybackStatus) => {
+    if (!mountedRef.current || !status.isLoaded) return;
+    setPreviewPlaying(status.isPlaying);
+    if (status.didJustFinish) {
+      finishedRef.current = true;
+      setPreviewPlaying(false);
+    }
+  }, []);
+
+  const togglePreview = useCallback(async () => {
+    if (!previewUrl) return;
+    if (soundRef.current) {
+      try {
+        if (previewPlaying) await soundRef.current.pauseAsync();
+        else if (finishedRef.current) await soundRef.current.replayAsync();
+        else await soundRef.current.playAsync();
+        finishedRef.current = false;
+      } catch {}
+      return;
+    }
+    setPreviewLoading(true);
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: previewUrl },
+        { shouldPlay: true },
+        onPreviewStatus,
+      );
+      if (!mountedRef.current) {
+        await sound.unloadAsync();
+        return;
+      }
+      soundRef.current = sound;
+    } catch (error) {
+      Logger.error("Music preview failed:", error);
+    } finally {
+      if (mountedRef.current) setPreviewLoading(false);
+    }
+  }, [onPreviewStatus, previewPlaying, previewUrl]);
+
+  // New track / no music / sheet open → stop the old preview
+  useEffect(() => {
+    stopPreview();
+  }, [previewUrl, sheetOpen, stopPreview]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      soundRef.current?.unloadAsync().catch(() => {});
+      soundRef.current = null;
+    };
+  }, []);
 
   const lengthLabel = lengthSeconds
     ? t("designMusicMinLength", { seconds: Math.ceil(lengthSeconds) })
@@ -120,6 +213,29 @@ export default function DesignMusicField({
       <Text style={styles.hint}>{t("designMusicHint")}</Text>
       <OptionRow
         icon="library-music"
+        iconNode={
+          value ? (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={togglePreview}
+              disabled={disabled || previewLoading}
+              hitSlop={6}
+              style={styles.playButton}
+              accessibilityRole="button"
+              accessibilityLabel={previewPlaying ? t("pause") : t("play")}
+            >
+              {previewLoading ? (
+                <ActivityIndicator size="small" color={theme.white} />
+              ) : (
+                <MaterialIcons
+                  name={previewPlaying ? "pause" : "play-arrow"}
+                  size={moderateWidthScale(26)}
+                  color={theme.white}
+                />
+              )}
+            </TouchableOpacity>
+          ) : undefined
+        }
         title={value ? value.title : t("designMusicPickTrack")}
         subtitle={value ? value.artist : lengthLabel}
         done={!!value}

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,7 +30,9 @@ import { useDownloadMedia } from "@/src/hooks/useDownloadMedia";
 import ReelVideoShareSheet from "@/src/components/ReelVideoShareSheet";
 import {
   getAutoReel,
+  getReelCredits,
   publishAutoReel,
+  regenerateAutoReel,
   retryAutoReel,
 } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
@@ -41,16 +44,25 @@ import {
 } from "@/src/theme/dimensions";
 import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  AUTO_REEL_MAX_REGENERATIONS,
   AUTO_REEL_RETRYABLE_ERRORS,
+  autoReelEditsLeft,
+  autoReelMissingStages,
+  autoReelRegenerationsLeft,
   canChangeReel,
+  isAutoBuiltReel,
   isAutoReelInProgress,
+  mediaSlots,
+  textSlots,
   type AutoReel,
+  type ReelCredits,
   autoReelVideo,
 } from "@/src/types/reels";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
 import ProgressTracker, {
+  type TrackerStep,
   type TrackerStepState,
 } from "@/src/components/reelFlow/progressTracker";
 import {
@@ -59,12 +71,18 @@ import {
   InfoNote,
   OptionRow,
 } from "@/src/components/reelFlow/flowParts";
-import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
+import {
+  ChoiceChips,
+  FlowTextField,
+  SelectField,
+} from "@/src/components/reelFlow/detailsFields";
 import DesignReview from "@/src/components/autoReel/designReview";
+import ModalizeBottomSheet from "@/src/components/modalizeBottomSheet";
 import ProductPickerSheet, {
   isLinkedProductError,
   useInventoryProducts,
 } from "@/src/components/reelFlow/productPickerSheet";
+import { useReelCategoryOptions } from "@/src/hooks/useReelCategoryOptions";
 
 /**
  * AI Auto Reel after it's started (from the AI auto reel steps, a push or
@@ -72,6 +90,9 @@ import ProductPickerSheet, {
  * "Publish your reel" (caption, product, publish, download / share).
  * Video design templates stop at `review` first: polling stops and the
  * review screen (keep / move / own file per slot) builds the reel.
+ * Auto-built reels (one video, the server builds it) stop at `review` only
+ * when the AI missed a stage; once ready they can be regenerated or edited
+ * (1 reel credit each) and get their category on Publish.
  * These continue the flow, so no "Step N of M" here.
  */
 
@@ -82,6 +103,8 @@ const CAPTION_MAX = 2200;
 const RENDER_STATUS_KEYS: Record<string, string> = {
   queued: "autoReelRenderQueued",
   fetching: "autoReelRenderFetching",
+  // Shotstack's step between fetching and rendering
+  preprocessing: "autoReelRenderRendering",
   rendering: "autoReelRenderRendering",
   saving: "autoReelRenderSaving",
   done: "autoReelRenderDone",
@@ -99,10 +122,47 @@ const NEW_VIDEO_ERRORS = [
 /** Errors where retry may help even though it is not a server fault */
 const RARELY_RETRYABLE_ERRORS = ["not_suitable", "too_many_moments"];
 
+/** Auto build: `design.missing_stages` names the app has labels for */
+const STAGE_LABEL_KEYS: Record<string, string> = {
+  before: "autoBuildStageBefore",
+  progress: "autoBuildStageProgress",
+  after: "autoBuildStageAfter",
+};
+
+/** Part of an auto-built reel the Edit sheet opens */
+type EditSection = "clips" | "text" | "music";
+
+/**
+ * "status" is the main view for the reel's status; the others open from it
+ * (Publish / Edit from ready, the review step from "AI needs a little help")
+ * and back closes them.
+ */
+type ScreenView = "status" | "publish" | "edit" | "review";
+
 function fieldError(error: any, field: string): string | null {
   const value = error?.data?.errors?.[field];
   if (Array.isArray(value) && typeof value[0] === "string") return value[0];
   return null;
+}
+
+/** First message of a 422, whatever the field. */
+function firstFieldError(error: any): string | null {
+  const errors = error?.data?.errors;
+  if (!errors || typeof errors !== "object") return null;
+  for (const value of Object.values(errors)) {
+    if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+    if (typeof value === "string") return value;
+  }
+  return null;
+}
+
+/** "finished_look" → "Finished Look" (a stage the app has no label for) */
+function titleCase(value: string): string {
+  return value
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 }
 
 function formatClock(seconds: number | null | undefined): string {
@@ -187,35 +247,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    playerBar: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: moderateWidthScale(10),
-      paddingHorizontal: moderateWidthScale(14),
-      paddingVertical: moderateHeightScale(10),
-      backgroundColor: "rgba(0, 0, 0, 0.45)",
-    },
-    playerTime: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontBold,
-      color: theme.white,
-      fontVariant: ["tabular-nums"],
-    },
-    playerTrack: {
-      flex: 1,
-      height: heightScale(4),
-      borderRadius: heightScale(2),
-      backgroundColor: theme.white50,
-      overflow: "hidden",
-    },
-    playerFill: {
-      height: "100%",
-      backgroundColor: theme.white,
-    },
     rowButtons: {
       flexDirection: "row",
       gap: moderateWidthScale(12),
@@ -275,6 +306,12 @@ const createStyles = (theme: Theme) =>
       lineHeight: fontSize.size20,
     },
     actions: {
+      gap: moderateHeightScale(12),
+    },
+    remakeBlock: {
+      gap: moderateHeightScale(10),
+    },
+    sheetContent: {
       gap: moderateHeightScale(12),
     },
   });
@@ -339,6 +376,10 @@ function ReelPlayer({
   );
 }
 
+/**
+ * Native player controls (same as the AI results "Your Reel" screen):
+ * play/pause, seek bar, mute and full screen.
+ */
 function StartedPlayer({
   uri,
   styles,
@@ -348,70 +389,28 @@ function StartedPlayer({
   styles: Styles;
   theme: Theme;
 }) {
-  const { t } = useTranslation();
-  const [timeMs, setTimeMs] = useState(0);
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
-    p.timeUpdateEventInterval = 0.25;
     p.play();
-  });
-  const { isPlaying } = useEvent(player, "playingChange", {
-    isPlaying: player.playing,
   });
   const { status } = useEvent(player, "statusChange", {
     status: player.status,
   });
-  useEffect(() => {
-    const sub = player.addListener("timeUpdate", ({ currentTime }) => {
-      setTimeMs(Math.max(0, currentTime * 1000));
-    });
-    return () => sub.remove();
-  }, [player]);
-  const durationMs = Math.max(0, (player.duration || 0) * 1000);
-  const progress = durationMs > 0 ? Math.min(1, timeMs / durationMs) : 0;
 
   return (
-    <Pressable
-      style={StyleSheet.absoluteFill}
-      onPress={() => (isPlaying ? player.pause() : player.play())}
-      accessibilityRole="button"
-      accessibilityLabel={isPlaying ? t("pause") : t("play")}
-    >
+    <View style={StyleSheet.absoluteFill}>
       <VideoView
         player={player}
         style={StyleSheet.absoluteFill}
         contentFit="contain"
-        nativeControls={false}
+        nativeControls
       />
       {status === "loading" ? (
         <View style={styles.playOverlay} pointerEvents="none">
           <ActivityIndicator color={theme.white} />
         </View>
-      ) : !isPlaying ? (
-        <View style={styles.playOverlay} pointerEvents="none">
-          <View style={styles.playCircle}>
-            <MaterialIcons
-              name="play-arrow"
-              size={moderateWidthScale(46)}
-              color={theme.white}
-            />
-          </View>
-        </View>
       ) : null}
-      <View style={styles.playerBar} pointerEvents="none">
-        <MaterialIcons
-          name={isPlaying ? "pause" : "play-arrow"}
-          size={moderateWidthScale(22)}
-          color={theme.white}
-        />
-        <Text style={styles.playerTime}>
-          {formatClock(timeMs / 1000)} / {formatClock(durationMs / 1000)}
-        </Text>
-        <View style={styles.playerTrack}>
-          <View style={[styles.playerFill, { width: `${progress * 100}%` }]} />
-        </View>
-      </View>
-    </Pressable>
+    </View>
   );
 }
 
@@ -431,19 +430,29 @@ export default function AutoReelScreen() {
     fromFlow?: string;
     templateImage?: string;
     caption?: string;
+    /** "1": started with auto build — known before the reel's design loads */
+    autoBuild?: string;
+    /** The design's reel length, shown before the reel's design loads */
+    reelSeconds?: string;
   }>();
   const autoReelId = params.autoReelId ? Number(params.autoReelId) : null;
 
   const [autoReel, setAutoReel] = useState<AutoReel | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  // Set once the user regenerates / edits here: the wait is a remake
+  const [remaking, setRemaking] = useState(false);
   const userRole = useAppSelector((s) => s.user.userRole);
   // Staff have no product inventory yet — hidden until the backend supports it
   const canLinkProduct = userRole !== "staff";
   const [publishing, setPublishing] = useState(false);
   const [shareVisible, setShareVisible] = useState(false);
-  /** Ready reel: preview first, then the publish screen. */
-  const [view, setView] = useState<"status" | "publish">("status");
+  /** Ready reel: preview first, then the publish (or edit) screen. */
+  const [view, setView] = useState<ScreenView>("status");
+  const [editSection, setEditSection] = useState<EditSection>("clips");
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [credits, setCredits] = useState<ReelCredits | null>(null);
   const [caption, setCaption] = useState(params.caption ?? "");
   const captionTouchedRef = useRef(!!params.caption);
   const captionInputRef = useRef<TextInput>(null);
@@ -453,17 +462,48 @@ export default function AutoReelScreen() {
   // created_at stays the original time after a retry — time the retry locally
   const [retryStartedAt, setRetryStartedAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
+  // Bumped when an action returns the reel — a poll sent before it is stale
+  const reelVersionRef = useRef(0);
 
   const status = autoReel?.status ?? null;
   const inProgress = autoReel == null || isAutoReelInProgress(status);
+  const autoBuilt = isAutoBuiltReel(autoReel) || params.autoBuild === "1";
 
-  // Fill the caption from the reel's draft once (unless typed / handed in)
-  const draftCaption = autoReel?.reel?.caption ?? null;
+  // Staff may only retry / publish / edit / delete what they started (403 otherwise)
+  const canChange = canChangeReel(autoReel, userRole);
+  const reelStatus = autoReel?.reel?.status ?? null;
+  const isPublished = reelStatus === "published";
+  const isRemoved = reelStatus === "removed";
+
+  // Unknown (null) never blocks — the server's 422 is the final word
+  const creditsLeft = credits?.remaining ?? autoReel?.credits_remaining ?? null;
+  const outOfCredits = creditsLeft != null && creditsLeft <= 0;
+
+  // Auto-built reels pick their category on Publish (none was asked before)
+  const {
+    categoryId,
+    categoryName,
+    categories,
+    loadingCategories,
+    pickerOpen: categoryPickerOpen,
+    togglePicker: toggleCategoryPicker,
+    selectCategory,
+    services,
+    serviceId,
+    setServiceId,
+  } = useReelCategoryOptions(autoBuilt && view === "publish");
+
+  // Fill the caption once (unless typed / handed in): the reel's draft, else
+  // the AI's suggestion on auto-built reels
+  const draftCaption = autoReel?.reel?.caption || null;
+  const aiCaption = autoReel?.design?.suggestions?.caption?.trim() || null;
   useEffect(() => {
-    if (captionTouchedRef.current || !draftCaption) return;
+    if (captionTouchedRef.current) return;
+    const prefill = draftCaption || aiCaption;
+    if (!prefill) return;
     captionTouchedRef.current = true;
-    setCaption(draftCaption);
-  }, [draftCaption]);
+    setCaption(prefill.slice(0, CAPTION_MAX));
+  }, [aiCaption, draftCaption]);
 
   // Elapsed time since the request — makes the 1–4 minute wait feel accounted for
   const [now, setNow] = useState(() => Date.now());
@@ -485,11 +525,20 @@ export default function AutoReelScreen() {
     return `${m}:${String(sec).padStart(2, "0")}`;
   }, [autoReel?.created_at, now, retryStartedAt]);
 
+  /** The reel as returned by an action (retry, build, regenerate, publish). */
+  const applyReel = useCallback((data: AutoReel) => {
+    reelVersionRef.current += 1;
+    setAutoReel(data);
+  }, []);
+
   const fetchOnce = useCallback(async () => {
     if (!autoReelId || inFlightRef.current) return;
     inFlightRef.current = true;
+    const version = reelVersionRef.current;
     try {
       const data = await getAutoReel(autoReelId);
+      // An action answered meanwhile — this may still be the old status
+      if (version !== reelVersionRef.current) return;
       setAutoReel(data);
       setLoadError(null);
     } catch (error: any) {
@@ -521,6 +570,29 @@ export default function AutoReelScreen() {
       return () => clearInterval(id);
     }, [autoReelId, fetchOnce, inProgress, loadError]),
   );
+
+  // null when they can't be loaded — counts are hidden and nothing is blocked
+  const refreshCredits = useCallback(async () => {
+    setCredits(await getReelCredits());
+  }, []);
+
+  // Regenerate / Edit cost a credit — show what's left (fresh on every visit)
+  useFocusEffect(
+    useCallback(() => {
+      if (!autoBuilt || !canChange) return;
+      void refreshCredits();
+    }, [autoBuilt, canChange, refreshCredits]),
+  );
+
+  // Publish / Edit / review belong to the status they were opened from: when
+  // a remake comes back ready, show the new reel, not the old sub-view
+  const lastStatusRef = useRef(status);
+  useEffect(() => {
+    if (lastStatusRef.current === status) return;
+    lastStatusRef.current = status;
+    setView("status");
+    setEditSheetOpen(false);
+  }, [status]);
 
   /** Pop back to a screen already in the stack, or open it in place of this one. */
   const goToRoute = useCallback(
@@ -555,7 +627,7 @@ export default function AutoReelScreen() {
     try {
       const data = await retryAutoReel(autoReelId);
       setRetryStartedAt(Date.now());
-      setAutoReel(data);
+      applyReel(data);
     } catch (error: any) {
       Logger.error("Failed to retry auto reel:", error);
       const message =
@@ -568,17 +640,32 @@ export default function AutoReelScreen() {
     } finally {
       setRetrying(false);
     }
-  }, [autoReelId, fetchOnce, retrying, showBanner, t]);
+  }, [applyReel, autoReelId, fetchOnce, retrying, showBanner, t]);
+
+  /** Auto build: the template gallery — it reuses the uploaded video. */
+  const handleGalleryWithVideo = useCallback(() => {
+    const sourceId = autoReel?.source_media_asset_id;
+    router.replace({
+      pathname: "/(main)/templateGallery" as any,
+      params: sourceId
+        ? { kind: "video", sourceMediaAssetId: String(sourceId) }
+        : { kind: "video" },
+    });
+  }, [autoReel?.source_media_asset_id, router]);
 
   /** Same uploaded video, another template ("Change style" / "Try another template"). */
   const handleAnotherTemplate = useCallback(() => {
+    if (autoBuilt) {
+      handleGalleryWithVideo();
+      return;
+    }
     router.replace({
       pathname: "/(main)/reelTemplates" as any,
       params: autoReel?.source_media_asset_id
         ? { sourceMediaAssetId: String(autoReel.source_media_asset_id) }
         : {},
     });
-  }, [autoReel?.source_media_asset_id, router]);
+  }, [autoBuilt, autoReel?.source_media_asset_id, handleGalleryWithVideo, router]);
 
   /** Upload another video — same template (e.g. after source_too_short) */
   const handleNewVideo = useCallback(() => {
@@ -589,20 +676,104 @@ export default function AutoReelScreen() {
     });
   }, [autoReel?.template?.id, router]);
 
+  /** Auto-built reel: other moments from the same analysis (1 credit, max 5). */
+  const handleRegenerate = useCallback(async () => {
+    if (!autoReelId || regenerating) return;
+    setRegenerating(true);
+    try {
+      const data = await regenerateAutoReel(autoReelId);
+      setRetryStartedAt(Date.now());
+      setRemaking(true);
+      setView("status");
+      applyReel(data);
+    } catch (error: any) {
+      Logger.error("Failed to regenerate auto reel:", error);
+      const message =
+        fieldError(error, "auto_reel") ||
+        firstFieldError(error) ||
+        error?.message ||
+        t("failedToStartGeneration");
+      showBanner(t("error"), message, "error", 4000);
+      void fetchOnce();
+    } finally {
+      setRegenerating(false);
+      void refreshCredits();
+    }
+  }, [
+    applyReel,
+    autoReelId,
+    fetchOnce,
+    refreshCredits,
+    regenerating,
+    showBanner,
+    t,
+  ]);
+
+  // It costs a credit — confirm first, with what's left when known
+  const confirmRegenerate = useCallback(() => {
+    if (regenerating) return;
+    Alert.alert(
+      t("autoBuildRegenerateTitle"),
+      creditsLeft != null
+        ? t("autoBuildRegenerateBodyCount", { count: creditsLeft })
+        : t("autoBuildRegenerateBody"),
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("autoBuildRegenerate"),
+          onPress: () => void handleRegenerate(),
+        },
+      ],
+    );
+  }, [creditsLeft, handleRegenerate, regenerating, t]);
+
+  /** Edit sheet → the chosen part of the reel (DesignReview in edit mode). */
+  const openEditSection = useCallback((section: EditSection) => {
+    setEditSheetOpen(false);
+    setEditSection(section);
+    setView("edit");
+  }, []);
+
+  // Edit accepted (202): back to the progress view while it's remade
+  const handleEditBuilt = useCallback(
+    (data: AutoReel) => {
+      setView("status");
+      setRetryStartedAt(Date.now());
+      setRemaking(true);
+      applyReel(data);
+      void refreshCredits();
+    },
+    [applyReel, refreshCredits],
+  );
+
+  // Left without saving (maybe after a credit / limit error)
+  const handleEditCancel = useCallback(() => {
+    setView("status");
+    void refreshCredits();
+  }, [refreshCredits]);
+
   // Publishing makes the reel from the AI result. Fields left out keep the
-  // values chosen when the auto reel was started.
+  // values chosen when the auto reel was started (auto-built reels had none,
+  // so their category / service are sent here).
   const handlePublish = useCallback(async () => {
     if (!autoReelId || publishing) return;
+    if (autoBuilt && categoryId == null) return;
     setPublishing(true);
     try {
       const trimmed = caption.trim();
       const data = await publishAutoReel(autoReelId, {
         ...(trimmed ? { caption: trimmed } : {}),
+        ...(autoBuilt && categoryId != null
+          ? {
+              category_id: categoryId,
+              ...(serviceId != null ? { service_id: serviceId } : {}),
+            }
+          : {}),
         ...(selectedProductId != null
           ? { product_id: selectedProductId, product_tag: productTag || null }
           : {}),
       });
-      setAutoReel(data);
+      applyReel(data);
       showBanner(t("success"), t("reelPublished"), "success", 2500);
     } catch (error: any) {
       Logger.error("Failed to publish auto reel:", error);
@@ -623,13 +794,19 @@ export default function AutoReelScreen() {
     } finally {
       setPublishing(false);
     }
-  }, [autoReelId, caption, productTag, publishing, selectedProductId, showBanner, t]);
-
-  // Staff may only retry / publish / edit / delete what they started (403 otherwise)
-  const canChange = canChangeReel(autoReel, userRole);
-  const reelStatus = autoReel?.reel?.status ?? null;
-  const isPublished = reelStatus === "published";
-  const isRemoved = reelStatus === "removed";
+  }, [
+    applyReel,
+    autoBuilt,
+    autoReelId,
+    caption,
+    categoryId,
+    productTag,
+    publishing,
+    selectedProductId,
+    serviceId,
+    showBanner,
+    t,
+  ]);
 
   const products = useInventoryProducts(canLinkProduct && view === "publish");
   const selectedProduct =
@@ -641,7 +818,10 @@ export default function AutoReelScreen() {
   const templateName = autoReel
     ? autoReel.template?.name || t("autoReelTemplateRemoved")
     : null;
-  const designLength = autoReel?.design?.length_seconds ?? null;
+  const paramSeconds = Number(params.reelSeconds);
+  const designLength =
+    autoReel?.design?.length_seconds ??
+    (Number.isFinite(paramSeconds) && paramSeconds > 0 ? paramSeconds : null);
   const reelLengthLabel = designLength
     ? t("designReelSeconds", { seconds: Math.round(designLength) })
     : t("autoReelReqLength");
@@ -653,23 +833,61 @@ export default function AutoReelScreen() {
     video?.width && video?.height ? video.width / video.height : 9 / 16;
   const downloading = !!videoUrl && downloadingUrl === videoUrl;
   const canPublish = canChange && !isPublished && !isRemoved && !!videoUrl;
+  // Auto-built: the category is required on Publish; the caption hint stays
+  // while it is still the AI's suggestion
+  const needsCategory = autoBuilt && categoryId == null;
+  const captionIsAi = aiCaption != null && caption.trim() === aiCaption;
 
-  // Header back: Publish → preview, otherwise leave.
+  // Regenerate / Edit (auto-built reels, until published)
+  const design = autoReel?.design ?? null;
+  const hasDesignSlots = (design?.slots?.length ?? 0) > 0;
+  const editClips = mediaSlots(design?.slots).length > 0;
+  const editTexts = textSlots(design?.slots).length > 0;
+  const editMusic = design != null && design.has_sound !== true;
+  const hasEditable = editClips || editTexts || editMusic;
+  const regenerationsLeft = autoReelRegenerationsLeft(autoReel);
+  const editsLeft = autoReelEditsLeft(autoReel);
+  const remakeOpen = autoBuilt && canChange && !isPublished && !isRemoved;
+  const canRegenerate = remakeOpen && regenerationsLeft > 0 && !outOfCredits;
+  const canEdit = remakeOpen && hasEditable && editsLeft > 0 && !outOfCredits;
+
+  // Auto build stopped at `review`: the AI missed a stage (Before / After …)
+  const missingStages = autoReelMissingStages(autoReel);
+  const missingMessage = design?.missing_stages_message?.trim() || null;
+  const missingViewActive =
+    status === "review" &&
+    hasDesignSlots &&
+    (missingStages.length > 0 || (autoBuilt && !!missingMessage));
+
+  // The sub-view actually on screen (one left from another status is ignored)
+  const subView: Exclude<ScreenView, "status"> | null =
+    view === "publish" && status === "ready"
+      ? "publish"
+      : view === "edit" &&
+          design != null &&
+          (status === "ready" || status === "failed")
+        ? "edit"
+        : view === "review" && missingViewActive
+          ? "review"
+          : null;
+
+  // Header back: Publish / Edit → preview, review step → "AI needs a little
+  // help", otherwise leave.
   const onHeaderBack = useCallback(() => {
-    if (view === "publish") {
+    if (subView) {
       setView("status");
       return;
     }
     if (router.canGoBack()) router.back();
     else router.replace({ pathname: "/(main)/aiTools/toolList" as any, params: { mode: "aiTools" } });
-  }, [router, view]);
+  }, [router, subView]);
 
-  // Hardware back on the Publish screen → back to the preview
-  const viewRef = useRef(view);
-  viewRef.current = view;
+  // Hardware back on a sub-view → back to its main view
+  const subViewRef = useRef(subView);
+  subViewRef.current = subView;
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
-      if (viewRef.current !== "publish") return;
+      if (!subViewRef.current) return;
       // Only back presses — "Go to My Reels" / robot icon (POP / REPLACE) leave
       if (event?.data?.action?.type !== "GO_BACK") return;
       event.preventDefault();
@@ -731,7 +949,7 @@ export default function AutoReelScreen() {
     // Built after review: the highlights are already chosen
     const reviewed = Object.keys(autoReel.design?.picks ?? {}).length > 0;
     // Photo designs start without a video (every other kind has one) — no AI step
-    const photoDesign = autoReel.source_media_asset_id == null;
+    const photoDesign = !autoBuilt && autoReel.source_media_asset_id == null;
     const highlights: TrackerStepState =
       rendering || reviewed ? "done" : "active";
     const building: TrackerStepState =
@@ -739,6 +957,82 @@ export default function AutoReelScreen() {
     const renderKey = autoReel.render_status
       ? RENDER_STATUS_KEYS[autoReel.render_status]
       : null;
+    // Auto build: a new version of a reel made before (Regenerate / Edit,
+    // here or on another device)
+    const isRemake =
+      autoBuilt &&
+      (remaking ||
+        (rendering &&
+          ((autoReel.regenerations_used ?? 0) > 0 ||
+            (autoReel.edit_renders ?? 0) > 0)));
+    // Remakes and builds after review reuse moments the AI already found
+    const momentsFound =
+      rendering || (status === "pending" && (reviewed || isRemake));
+    const steps: TrackerStep[] = autoBuilt
+      ? [
+          {
+            key: "upload",
+            title: t("flowUploadComplete"),
+            subtitle: t("flowUploadCompleteSub"),
+            state: "done",
+          },
+          {
+            key: "moments",
+            title: momentsFound
+              ? t("autoBuildStepMomentsDone")
+              : t("autoBuildStepMoments"),
+            subtitle: momentsFound ? null : t("autoBuildStepMomentsSub"),
+            state: momentsFound ? "done" : "active",
+          },
+          {
+            key: "build",
+            title: t("autoBuildStepBuild"),
+            subtitle:
+              rendering && renderKey
+                ? t(renderKey)
+                : momentsFound && status === "pending"
+                  ? t("autoReelStatusPending")
+                  : t("autoBuildStepBuildSub"),
+            state: momentsFound ? "active" : "pending",
+          },
+        ]
+      : [
+          {
+            key: "upload",
+            title: t("flowUploadComplete"),
+            subtitle: photoDesign
+              ? t("designPhotosUploaded")
+              : t("flowUploadCompleteSub"),
+            state: "done",
+          },
+          ...(photoDesign
+            ? []
+            : [
+                {
+                  key: "highlights",
+                  title: reviewed
+                    ? t("designHighlightsChosen")
+                    : t("flowSelectingHighlights"),
+                  subtitle: reviewed
+                    ? t("designHighlightsChosenSub")
+                    : status === "pending"
+                      ? t("autoReelStatusPending")
+                      : t("flowSelectingHighlightsSub"),
+                  state: highlights,
+                },
+              ]),
+          {
+            key: "build",
+            title: t("flowBuildingReel"),
+            subtitle:
+              rendering && renderKey
+                ? t(renderKey)
+                : (reviewed || photoDesign) && status === "pending"
+                  ? t("autoReelStatusPending")
+                  : t("flowBuildingReelSub"),
+            state: building,
+          },
+        ];
     return (
       <>
         <ScrollView
@@ -747,11 +1041,21 @@ export default function AutoReelScreen() {
           showsVerticalScrollIndicator={false}
         >
           <FlowTitle
-            title={t("flowCreatingTitle")}
+            title={
+              isRemake
+                ? t("autoBuildRemakingTitle")
+                : autoBuilt
+                  ? t("autoBuildMakingTitle")
+                  : t("flowCreatingTitle")
+            }
             subtitle={
-              photoDesign
-                ? t("designCreatingPhotosSubtitle")
-                : t("flowCreatingSubtitle")
+              isRemake
+                ? t("autoBuildRemakingSubtitle")
+                : autoBuilt
+                  ? t("autoBuildMakingSubtitle")
+                  : photoDesign
+                    ? t("designCreatingPhotosSubtitle")
+                    : t("flowCreatingSubtitle")
             }
           />
           {elapsedLabel ? (
@@ -759,51 +1063,17 @@ export default function AutoReelScreen() {
               {t("autoReelElapsed", { time: elapsedLabel })}
             </Text>
           ) : null}
-          <ProgressTracker
-            steps={[
-              {
-                key: "upload",
-                title: t("flowUploadComplete"),
-                subtitle: photoDesign
-                  ? t("designPhotosUploaded")
-                  : t("flowUploadCompleteSub"),
-                state: "done",
-              },
-              ...(photoDesign
-                ? []
-                : [
-                    {
-                      key: "highlights",
-                      title: reviewed
-                        ? t("designHighlightsChosen")
-                        : t("flowSelectingHighlights"),
-                      subtitle: reviewed
-                        ? t("designHighlightsChosenSub")
-                        : status === "pending"
-                          ? t("autoReelStatusPending")
-                          : t("flowSelectingHighlightsSub"),
-                      state: highlights,
-                    },
-                  ]),
-              {
-                key: "build",
-                title: t("flowBuildingReel"),
-                subtitle:
-                  rendering && renderKey
-                    ? t(renderKey)
-                    : (reviewed || photoDesign) && status === "pending"
-                      ? t("autoReelStatusPending")
-                      : t("flowBuildingReelSub"),
-                state: building,
-              },
-            ]}
-          />
+          <ProgressTracker steps={steps} />
           {renderTemplateCard(reelLengthLabel)}
           <InfoNote
             tone="warm"
             icon="notifications-none"
             title={
-              photoDesign ? t("designPhotosUploaded") : t("flowVideoUploadedTitle")
+              isRemake
+                ? null
+                : photoDesign
+                  ? t("designPhotosUploaded")
+                  : t("flowVideoUploadedTitle")
             }
             text={t("autoReelInProgressHint")}
           />
@@ -829,6 +1099,10 @@ export default function AutoReelScreen() {
       canChange && RARELY_RETRYABLE_ERRORS.includes(code);
     const offerAnotherTemplate =
       code === "not_found" && !!autoReel?.source_media_asset_id;
+    // Needs the AI's stage map (design.suggestions) — none if analysis failed
+    const offerRegenerate = canRegenerate && isAutoBuiltReel(autoReel);
+    // A failed remake can be fixed by changing the part that broke it
+    const offerEdit = canEdit && isAutoBuiltReel(autoReel);
 
     return (
       <ScrollView
@@ -851,6 +1125,7 @@ export default function AutoReelScreen() {
               icon="refresh"
               onPress={() => void handleRetry()}
               loading={retrying}
+              disabled={regenerating}
             />
           ) : offerAnotherTemplate ? (
             <FlowButton
@@ -865,6 +1140,25 @@ export default function AutoReelScreen() {
               onPress={handleNewVideo}
             />
           )}
+          {offerRegenerate ? (
+            <FlowButton
+              variant="outline"
+              label={t("autoBuildRegenerate")}
+              icon="autorenew"
+              onPress={confirmRegenerate}
+              loading={regenerating}
+              disabled={retrying}
+            />
+          ) : null}
+          {offerEdit ? (
+            <FlowButton
+              variant="outline"
+              label={t("autoBuildEdit")}
+              icon="edit"
+              onPress={() => setEditSheetOpen(true)}
+              disabled={retrying || regenerating}
+            />
+          ) : null}
           {offerAnotherTemplate ? (
             <FlowButton
               variant="outline"
@@ -880,6 +1174,7 @@ export default function AutoReelScreen() {
               icon="refresh"
               onPress={() => void handleRetry()}
               loading={retrying}
+              disabled={regenerating}
             />
           ) : null}
         </View>
@@ -963,6 +1258,171 @@ export default function AutoReelScreen() {
     );
   };
 
+  /** Auto-built reel: publish it, make a new version (Regenerate) or Edit it. */
+  const renderAutoBuiltReady = () => {
+    // One note for why Regenerate / Edit are off (no credits blocks both)
+    const remakeLimitNote = outOfCredits
+      ? t("autoBuildNoCreditsAction")
+      : hasEditable && editsLeft <= 0
+        ? t("autoBuildEditLimit")
+        : regenerationsLeft <= 0
+          ? t("autoBuildRegenerateLimit", { max: AUTO_REEL_MAX_REGENERATIONS })
+          : null;
+    const remakeCounts = [
+      t("autoBuildRegenerationsLeft", { count: regenerationsLeft }),
+      creditsLeft != null
+        ? t("autoBuildCreditsLeft", { count: Math.max(0, creditsLeft) })
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    return (
+      <>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <FlowTitle
+            title={t("flowReadyTitle")}
+            subtitle={remakeOpen ? t("autoBuildReadySubtitle") : null}
+          />
+          {videoUrl ? (
+            <ReelPlayer
+              uri={videoUrl}
+              ratio={ratio}
+              posterUri={posterUri}
+              styles={styles}
+              theme={theme}
+            />
+          ) : null}
+          {remakeOpen ? (
+            <View style={styles.remakeBlock}>
+              <View style={styles.rowButtons}>
+                <FlowButton
+                  variant="outline"
+                  compact
+                  icon="refresh"
+                  label={t("autoBuildRegenerate")}
+                  onPress={confirmRegenerate}
+                  disabled={!canRegenerate}
+                  loading={regenerating}
+                  style={styles.rowButton}
+                />
+                {hasEditable ? (
+                  <FlowButton
+                    variant="outline"
+                    compact
+                    icon="edit"
+                    label={t("autoBuildEdit")}
+                    onPress={() => setEditSheetOpen(true)}
+                    disabled={!canEdit || regenerating}
+                    style={styles.rowButton}
+                  />
+                ) : null}
+              </View>
+              <Text style={styles.smallNote}>{remakeCounts}</Text>
+            </View>
+          ) : null}
+          {remakeOpen && remakeLimitNote ? (
+            <InfoNote
+              tone="warm"
+              icon={outOfCredits ? "toll" : "info-outline"}
+              text={remakeLimitNote}
+            />
+          ) : null}
+          {isPublished ? (
+            <InfoNote
+              icon="public"
+              title={t("flowAlreadyPublished")}
+              text={t("autoBuildPublishedNote")}
+            />
+          ) : isRemoved ? (
+            <InfoNote icon="block" text={t("autoReelRemovedHint")} />
+          ) : null}
+          {!canChange ? renderViewOnlyNote() : null}
+        </ScrollView>
+        <FlowFooter
+          primary={{
+            label: canPublish ? t("autoBuildPublish") : t("flowSaveOrShare"),
+            onPress: () => setView("publish"),
+            disabled: !videoUrl || regenerating,
+            icon: canPublish ? "publish" : undefined,
+            trailingIcon: canPublish ? undefined : "chevron-right",
+          }}
+        />
+      </>
+    );
+  };
+
+  /** Auto build stopped at `review`: which moment the AI couldn't find. */
+  const renderMissing = () => {
+    const stages = missingStages.map((s) => s.trim()).filter(Boolean);
+    const known = stages.some((s) => STAGE_LABEL_KEYS[s.toLowerCase()] != null);
+    const stageNames = stages.map((s) => {
+      const key = STAGE_LABEL_KEYS[s.toLowerCase()];
+      return key ? t(key) : titleCase(s);
+    });
+    // The server's own wording only when it named no stage
+    const body = known
+      ? t("autoBuildMissingBody", {
+          stages: stageNames.join(t("autoBuildStageJoin")),
+        })
+      : stages.length === 0 && missingMessage
+        ? missingMessage
+        : t("autoBuildMissingBodyGeneric");
+    return (
+      <>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <FlowTitle title={t("autoBuildMissingTitle")} />
+          <InfoNote tone="warm" icon="search-off" text={body} />
+          {renderTemplateCard(reelLengthLabel)}
+          {!canChange ? renderViewOnlyNote() : null}
+        </ScrollView>
+        {canChange ? (
+          <FlowFooter
+            secondary={{
+              label: t("autoBuildPickAnotherTemplate"),
+              onPress: handleGalleryWithVideo,
+              icon: "auto-awesome",
+              // A new reel costs a credit; choosing the moments here is free
+              disabled: outOfCredits,
+            }}
+            primary={{
+              label: t("autoBuildChooseMoments"),
+              onPress: () => setView("review"),
+              trailingIcon: "chevron-right",
+            }}
+            hint={
+              outOfCredits
+                ? t("autoBuildNoCredits")
+                : t("autoBuildAnotherTemplateNote")
+            }
+          />
+        ) : null}
+      </>
+    );
+  };
+
+  /** Edit (from the Edit sheet): one part of the reel, remade for 1 credit. */
+  const renderEdit = () =>
+    autoReel ? (
+      <DesignReview
+        key={`edit-${autoReel.id}-${editSection}`}
+        autoReel={autoReel}
+        canChange={canChange}
+        mode="edit"
+        section={editSection}
+        onCancel={handleEditCancel}
+        creditsRemaining={creditsLeft}
+        onBuilt={handleEditBuilt}
+      />
+    ) : null;
+
   const renderPublish = () => (
     <>
       <KeyboardAwareScrollView
@@ -974,7 +1434,11 @@ export default function AutoReelScreen() {
       >
         <FlowTitle
           title={t("flowPublishReelTitle")}
-          subtitle={t("flowPublishReelSubtitle")}
+          subtitle={
+            autoBuilt && canPublish
+              ? t("autoBuildPublishSubtitle")
+              : t("flowPublishReelSubtitle")
+          }
         />
         <TouchableOpacity
           activeOpacity={0.8}
@@ -1029,9 +1493,42 @@ export default function AutoReelScreen() {
               placeholder={t("flowCaptionPlaceholder")}
               multiline
               maxCount={CAPTION_MAX}
-              helper={caption.trim() ? null : t("flowCaptionKeepHint")}
+              helper={
+                autoBuilt
+                  ? captionIsAi
+                    ? t("autoBuildCaptionAiHint")
+                    : null
+                  : caption.trim()
+                    ? null
+                    : t("flowCaptionKeepHint")
+              }
               editable={!publishing}
             />
+            {autoBuilt ? (
+              <>
+                <SelectField
+                  label={t("category")}
+                  required
+                  value={categoryName || null}
+                  placeholder={t("selectCategory")}
+                  open={categoryPickerOpen}
+                  loading={loadingCategories}
+                  options={categories}
+                  selectedId={categoryId}
+                  onToggle={() => void toggleCategoryPicker()}
+                  onSelect={selectCategory}
+                  helper={needsCategory ? t("autoReelNeedCategory") : null}
+                />
+                {services.length > 0 ? (
+                  <ChoiceChips
+                    label={t("serviceOptional")}
+                    options={services}
+                    selectedId={serviceId}
+                    onSelect={setServiceId}
+                  />
+                ) : null}
+              </>
+            ) : null}
             {canLinkProduct ? (
               <OptionRow
                 icon="sell"
@@ -1045,10 +1542,11 @@ export default function AutoReelScreen() {
               />
             ) : null}
             <FlowButton
-              label={t("flowPublishCta")}
+              label={autoBuilt ? t("autoBuildPublishNow") : t("flowPublishCta")}
               icon="publish"
               onPress={() => void handlePublish()}
               loading={publishing}
+              disabled={needsCategory}
             />
           </>
         ) : isPublished ? (
@@ -1123,8 +1621,10 @@ export default function AutoReelScreen() {
         </ScrollView>
       );
     }
+    if (subView === "edit") return renderEdit();
     if (status === "ready") {
-      return view === "publish" ? renderPublish() : renderReady();
+      if (subView === "publish") return renderPublish();
+      return autoBuilt ? renderAutoBuiltReady() : renderReady();
     }
     if (status === "failed") return renderFailed();
     if (status === "review" && autoReel) {
@@ -1139,6 +1639,8 @@ export default function AutoReelScreen() {
           </ScrollView>
         );
       }
+      // Auto build: explain the missing moment first; the review step is opt-in
+      if (missingViewActive && subView !== "review") return renderMissing();
       return (
         <DesignReview
           key={autoReel.id}
@@ -1146,7 +1648,7 @@ export default function AutoReelScreen() {
           canChange={canChange}
           onBuilt={(data) => {
             setRetryStartedAt(Date.now());
-            setAutoReel(data);
+            applyReel(data);
           }}
         />
       );
@@ -1181,6 +1683,50 @@ export default function AutoReelScreen() {
         onClose={() => setShareVisible(false)}
         videoUrl={videoUrl}
       />
+      {autoBuilt ? (
+        <ModalizeBottomSheet
+          visible={editSheetOpen}
+          onClose={() => setEditSheetOpen(false)}
+          title={t("autoBuildEditSheetTitle")}
+        >
+          <View style={styles.sheetContent}>
+            {editClips ? (
+              <OptionRow
+                icon="video-library"
+                title={t("autoBuildEditClips")}
+                subtitle={t("autoBuildEditClipsSub")}
+                onPress={() => openEditSection("clips")}
+              />
+            ) : null}
+            {editMusic ? (
+              <OptionRow
+                icon="library-music"
+                title={t("autoBuildEditMusic")}
+                subtitle={t("autoBuildEditMusicSub")}
+                onPress={() => openEditSection("music")}
+              />
+            ) : null}
+            {editTexts ? (
+              <OptionRow
+                icon="text-fields"
+                title={t("autoBuildEditText")}
+                subtitle={t("autoBuildEditTextSub")}
+                onPress={() => openEditSection("text")}
+              />
+            ) : null}
+            <Text style={styles.smallNote}>
+              {[
+                t("autoBuildEditCreditNote"),
+                creditsLeft != null
+                  ? t("autoBuildCreditsLeft", { count: Math.max(0, creditsLeft) })
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            </Text>
+          </View>
+        </ModalizeBottomSheet>
+      ) : null}
     </View>
   );
 }

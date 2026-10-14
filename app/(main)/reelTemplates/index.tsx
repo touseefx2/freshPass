@@ -46,6 +46,7 @@ import {
 } from "@/src/services/mediaPermissionService";
 import {
   createAutoReel,
+  getReelCredits,
   listAutoReelTemplates,
 } from "@/src/services/reelsService";
 import {
@@ -102,14 +103,18 @@ import {
 import { fontSize, fonts } from "@/src/theme/fonts";
 import type { MediaUploadSourceType } from "@/src/types/media";
 import {
+  isAutoBuildTemplate,
   isDesignTemplate,
   keyedFieldErrors,
   mediaSlots,
   musicFieldError,
+  templateSourceMaxMinutes,
+  templateSourceMaxSeconds,
   textSlots,
   type AutoReelMusic,
   type AutoReelSlot,
   type AutoReelTemplate,
+  type ReelCredits,
 } from "@/src/types/reels";
 import {
   pickSlotFile,
@@ -134,9 +139,11 @@ import {
  * screen tracks it (selecting highlights → building) → preview → publish.
  *
  * Design templates (`has_design`) list what they need from their slots:
- *   needs "video"  — same steps; the video must be at least
- *                    `min_video_seconds`. The AI's picks are reviewed on the
- *                    AI Auto Reel screen before the reel is built.
+ *   needs "video"  — one-video auto build: 1 style, 2 one video (up to the
+ *                    template's `max_source_seconds`, else 5 min; no editor)
+ *                    → "Make my reel" starts it with `auto_build: true`. The
+ *                    server picks the moments and builds the reel; category
+ *                    and caption are asked when publishing. Costs 1 reel credit.
  *   needs "photos" — 1 style, 2 one photo per slot + texts, 3 details (and
  *                    music when the design is silent). No video, no AI.
  */
@@ -197,6 +204,8 @@ type SourceVideo = {
   local: PickedVideoFile | null;
   name: string | null;
   durationSeconds: number | null;
+  /** One-video design: the exact length when known (the limits are checked on it) */
+  exactSeconds?: number | null;
   thumbnailUri: string | null;
 };
 
@@ -204,6 +213,17 @@ type SourceVideo = {
 function fieldError(error: any, field: string): string | null {
   const value = error?.data?.errors?.[field];
   if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  return null;
+}
+
+/** First 422 message of any field (e.g. a credits error under an unknown key) */
+function firstFieldError(error: any): string | null {
+  const errors = error?.data?.errors;
+  if (!errors || typeof errors !== "object") return null;
+  for (const value of Object.values(errors)) {
+    if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+    if (typeof value === "string" && value) return value;
+  }
   return null;
 }
 
@@ -362,6 +382,8 @@ export default function ReelTemplatesScreen() {
     null,
   );
   const [quotaResetLabel, setQuotaResetLabel] = useState<string | null>(null);
+  /** One-video designs: reel credits this month (null = unknown → the server decides) */
+  const [credits, setCredits] = useState<ReelCredits | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
@@ -378,6 +400,10 @@ export default function ReelTemplatesScreen() {
   // ── Design templates ──────────────────────────────────────────────
   const isDesign = isDesignTemplate(selected);
   const needsPhotos = isDesign && selected?.needs === "photos";
+  /** One-video design: upload one video, the server builds the reel (no editor, no details) */
+  const isAutoBuild = isAutoBuildTemplate(selected);
+  /** Longest video the one-video design takes (its own max, else 5 min) */
+  const sourceMaxSeconds = templateSourceMaxSeconds(selected);
   /** Video designs: shorter videos are refused before upload */
   const minVideoSeconds =
     isDesign && selected?.needs === "video"
@@ -522,6 +548,22 @@ export default function ReelTemplatesScreen() {
   useEffect(() => {
     void loadReelLimits();
   }, [loadReelLimits]);
+
+  // Reel credits (one-video designs). Never throws; null hides the counts and
+  // the server's 422 is the final word. Fresh on every focus (and on open).
+  const creditsRequestRef = useRef(0);
+  const refreshCredits = useCallback(async () => {
+    const request = ++creditsRequestRef.current;
+    const data = await getReelCredits();
+    // A newer refresh started meanwhile — it has the latest count
+    if (request === creditsRequestRef.current) setCredits(data);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshCredits();
+    }, [refreshCredits]),
+  );
 
   useEffect(() => {
     if (userRole !== "staff") return;
@@ -944,6 +986,114 @@ export default function ReelTemplatesScreen() {
     }
   }, [addPicks, showBanner, t]);
 
+  /**
+   * One-video design: the one video the AI cuts. Any length up to the
+   * template's max — no editor; picking again replaces it.
+   */
+  const pickAutoBuildVideo = useCallback(
+    async (from: "gallery" | "camera") => {
+      setAddingMedia(true);
+      setPickingFrom(from);
+      try {
+        const hasPermission =
+          from === "camera"
+            ? await handleCameraPermission()
+            : await handleMediaLibraryPermission();
+        if (!hasPermission) return;
+        const result =
+          from === "camera"
+            ? await ImagePicker.launchCameraAsync({
+                mediaTypes: ["videos"],
+                quality: 1,
+                allowsEditing: false,
+                // A second under the max: a clip stopped at the cap can run a little over
+                videoMaxDuration: Math.max(1, Math.floor(sourceMaxSeconds) - 1),
+                ...iosCompatiblePickerOptions,
+              })
+            : await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ["videos"],
+                allowsMultipleSelection: false,
+                quality: 1,
+                allowsEditing: false,
+                ...iosCompatiblePickerOptions,
+              });
+        const asset = result.canceled ? null : result.assets?.[0];
+        if (!asset?.uri) return;
+        const sourceType: MediaUploadSourceType =
+          from === "camera" ? "camera" : "device";
+        // expo-image-picker reports video length in milliseconds; some
+        // Android gallery items report none — measure it then
+        const seconds =
+          typeof asset.duration === "number" && asset.duration > 0
+            ? asset.duration / 1000
+            : await measureVideoDurationSeconds(asset.uri);
+        // Whole seconds, as shown ("5:00") — unknown stays null (the server checks)
+        const durationSeconds =
+          seconds != null ? Math.max(1, Math.round(seconds)) : null;
+        let thumbnailUri: string | null = null;
+        try {
+          const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, {
+            time: 0,
+            quality: 0.6,
+          });
+          thumbnailUri = thumb.uri;
+        } catch {
+          // Thumbnail is cosmetic only
+        }
+        const mimeType = asset.mimeType || "video/mp4";
+        const fileName = asset.fileName || "video.mp4";
+        const width = asset.width || undefined;
+        const height = asset.height || undefined;
+        setSourceVideo({
+          id: null,
+          local: {
+            uri: asset.uri,
+            mimeType,
+            fileName,
+            sourceType,
+            // Required by the upload; the server measures the real length
+            durationSeconds: durationSeconds ?? 1,
+            width,
+            height,
+          },
+          name: asset.fileName || null,
+          durationSeconds,
+          exactSeconds: seconds ?? null,
+          thumbnailUri,
+        });
+        // Same video as the only pick, so another template's editor opens with it
+        const tile: PickedMedia = {
+          id: nextPickId(),
+          kind: "video",
+          uri: asset.uri,
+          mimeType,
+          fileName,
+          sourceType,
+          durationSeconds,
+          width,
+          height,
+          thumbnailUri,
+        };
+        picksRef.current = [tile];
+        setPicks([tile]);
+      } catch (error) {
+        Logger.error("Error selecting auto build video:", error);
+        showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
+      } finally {
+        setAddingMedia(false);
+        setPickingFrom(null);
+      }
+    },
+    [showBanner, sourceMaxSeconds, t],
+  );
+
+  /** One-video design: drop the video (an uploaded one too) to pick another. */
+  const clearAutoBuildVideo = useCallback(() => {
+    picksRef.current = [];
+    setPicks([]);
+    setSourceVideo(null);
+  }, []);
+
   const noReelsLeft = reelsRemaining != null && reelsRemaining <= 0;
 
   const canGenerate = needsPhotos
@@ -958,9 +1108,37 @@ export default function ReelTemplatesScreen() {
       !!categoryId &&
       !noReelsLeft;
 
+  // One-video design: the length is checked before uploading (unknown → the
+  // server checks it). Credits replace the monthly AI-reel limit here.
+  const sourceSeconds = sourceVideo?.durationSeconds ?? null;
+  // Exact length: a 9.6 s clip must not pass a 10 s minimum by rounding up
+  const sourceExactSeconds = sourceVideo?.exactSeconds ?? sourceSeconds;
+  const sourceTooLong =
+    isAutoBuild &&
+    sourceExactSeconds != null &&
+    sourceExactSeconds > sourceMaxSeconds;
+  const sourceTooShort =
+    isAutoBuild &&
+    minVideoSeconds != null &&
+    sourceExactSeconds != null &&
+    sourceExactSeconds < minVideoSeconds;
+  const noCreditsLeft = credits != null && credits.remaining <= 0;
+  const canAutoBuild =
+    !!selected &&
+    !!sourceVideo &&
+    (sourceVideo.id != null || sourceVideo.local != null) &&
+    !sourceTooLong &&
+    !sourceTooShort &&
+    !noCreditsLeft;
+
   /** Upload the picked file (compress → POST /api/media) and keep its id. */
   const uploadSelectedVideo = useCallback(
-    async (video: SourceVideo, signal?: AbortSignal): Promise<number | null> => {
+    async (
+      video: SourceVideo,
+      signal?: AbortSignal,
+      /** One-video design: keep the picked length — the upload caps `duration_seconds` at 3 min */
+      keepLength = false,
+    ): Promise<number | null> => {
       const local = video.local;
       if (!local) return null;
       setUploadPhase("preparing");
@@ -993,8 +1171,9 @@ export default function ReelTemplatesScreen() {
             ? {
                 ...prev,
                 id: uploaded.id,
-                durationSeconds:
-                  uploaded.duration_seconds ?? prev.durationSeconds,
+                durationSeconds: keepLength
+                  ? prev.durationSeconds
+                  : (uploaded.duration_seconds ?? prev.durationSeconds),
               }
             : prev,
         );
@@ -1125,6 +1304,8 @@ export default function ReelTemplatesScreen() {
         ...(trimmedCaption ? { caption: trimmedCaption } : {}),
         ...(needsMusicChoice ? { music: music ?? null } : {}),
       });
+      // Left while it was starting — don't pull them back
+      if (controller.signal.aborted) return;
       allowLeaveRef.current = true;
       router.replace({
         pathname: "/(main)/autoReel" as any,
@@ -1133,6 +1314,9 @@ export default function ReelTemplatesScreen() {
           fromFlow: "1",
           ...(selected.preview_image_url
             ? { templateImage: selected.preview_image_url }
+            : {}),
+          ...(selected.length_seconds
+            ? { reelSeconds: String(selected.length_seconds) }
             : {}),
           ...(trimmedCaption ? { caption: trimmedCaption } : {}),
         },
@@ -1253,6 +1437,8 @@ export default function ReelTemplatesScreen() {
         ...(serviceId ? { service_id: serviceId } : {}),
         ...(trimmedCaption ? { caption: trimmedCaption } : {}),
       });
+      // Left while it was starting — don't pull them back
+      if (controller.signal.aborted) return;
       // 3. Server does the rest — follow it on the AI Auto Reel screen
       // (selecting highlights → building → preview → publish). The
       // auto_reel push and AI Requests → Reels still show it too.
@@ -1264,6 +1450,9 @@ export default function ReelTemplatesScreen() {
           fromFlow: "1",
           ...(selected.preview_image_url
             ? { templateImage: selected.preview_image_url }
+            : {}),
+          ...(selected.length_seconds
+            ? { reelSeconds: String(selected.length_seconds) }
             : {}),
           ...(trimmedCaption ? { caption: trimmedCaption } : {}),
         },
@@ -1317,12 +1506,114 @@ export default function ReelTemplatesScreen() {
     uploadSelectedVideo,
   ]);
 
+  /**
+   * One-video design: upload the video (unless it's already on the server)
+   * and start with `auto_build: true` — no category or caption yet, they're
+   * asked when publishing. Costs 1 reel credit instead of the monthly AI-reel
+   * limit; the server's 422 is the final check.
+   */
+  const handleAutoBuild = useCallback(async () => {
+    if (!selected || !sourceVideo || submitting) return;
+    if (sourceTooLong || sourceTooShort) return;
+    if (noCreditsLeft) {
+      showBanner(t("credits"), t("autoBuildNoCredits"), "error", 5000);
+      return;
+    }
+
+    setSubmitting(true);
+    // "Creating your reel" — upload progress first, then the AI steps
+    setStep("creating");
+    // Cancelled when the user leaves mid-upload ("Leave" / screen closed)
+    const controller = new AbortController();
+    uploadAbortRef.current = controller;
+    try {
+      const mediaId =
+        sourceVideo.id ??
+        (await uploadSelectedVideo(sourceVideo, controller.signal, true));
+      // Left before it finished → don't start the reel (no credit is used)
+      if (controller.signal.aborted) return;
+      if (mediaId == null) {
+        setStep("video");
+        return;
+      }
+
+      const autoReel = await createAutoReel({
+        media_asset_id: mediaId,
+        template_id: selected.id,
+        auto_build: true,
+      });
+      // Left while it was starting — it's in AI Requests; don't pull them back
+      if (controller.signal.aborted) return;
+      // Server picks the moments and builds it — follow it on the AI Auto Reel
+      // screen (preview → publish / regenerate / edit)
+      allowLeaveRef.current = true;
+      router.replace({
+        pathname: "/(main)/autoReel" as any,
+        params: {
+          autoReelId: String(autoReel.id),
+          fromFlow: "1",
+          autoBuild: "1",
+          ...(selected.preview_image_url
+            ? { templateImage: selected.preview_image_url }
+            : {}),
+          ...(selected.length_seconds
+            ? { reelSeconds: String(selected.length_seconds) }
+            : {}),
+        },
+      });
+    } catch (error: any) {
+      if (controller.signal.aborted || isUploadCancelled(error)) return;
+      Logger.error("Failed to start auto build reel:", error);
+      const mediaError = fieldError(error, "media_asset_id");
+      const templateError = fieldError(error, "template_id");
+      if (mediaError) {
+        // Server can't use that upload — drop the id so the next tap uploads
+        // the picked file again (or asks for a video if there's no local file)
+        setSourceVideo((prev) =>
+          prev?.local ? { ...prev, id: null } : null,
+        );
+      }
+      if (templateError) {
+        // Admin may have turned it off — refresh the list and let them choose
+        void loadTemplates();
+      }
+      setStep(templateError ? "style" : "video");
+      // Any other 422 (e.g. no credits left) keeps the uploaded id
+      const message =
+        fieldError(error, "reel") ||
+        fieldError(error, "auto_reel") ||
+        mediaError ||
+        templateError ||
+        firstFieldError(error) ||
+        error?.message ||
+        t("failedToStartGeneration");
+      showBanner(t("error"), message, "error", 5000);
+      // Credits may have run out meanwhile
+      void refreshCredits();
+    } finally {
+      setSubmitting(false);
+    }
+  }, [
+    loadTemplates,
+    noCreditsLeft,
+    refreshCredits,
+    router,
+    selected,
+    showBanner,
+    sourceTooLong,
+    sourceTooShort,
+    sourceVideo,
+    submitting,
+    t,
+    uploadSelectedVideo,
+  ]);
+
   const isHaircut = selected?.kind === "haircut";
   // Server-only video (from "Try another template") can't be edited here
   const serverOnly =
     !needsPhotos && picks.length === 0 && !!sourceVideo && !sourceVideo.local;
-  // Photo design: style → photos + texts → details
-  const stepTotal = serverOnly || needsPhotos ? 3 : 5;
+  // Photo design: style → photos + texts → details; one-video design: style → video
+  const stepTotal = isAutoBuild ? 2 : serverOnly || needsPhotos ? 3 : 5;
   const stepNumber =
     step === "style" ? 1 : step === "video" ? 2 : stepTotal;
 
@@ -1342,15 +1633,32 @@ export default function ReelTemplatesScreen() {
     return false;
   }, [fromGallery, step]);
 
-  // Compress + upload of a 3-minute video can take a minute — the screen must
-  // stay open until it finishes, so confirm before leaving mid-upload.
+  // Compress + upload of a 3-minute video (5 for one-video designs) can take
+  // minutes — the screen must stay open until it finishes, so confirm before
+  // leaving mid-upload.
   // Hardware back otherwise goes one step back.
   const navigation = useNavigation();
-  const guardRef = useRef({ uploading: false, stepBack });
-  guardRef.current = { uploading: uploadPercent != null || step === "creating", stepBack };
+  const guardRef = useRef({ uploading: false, starting: false, stepBack });
+  guardRef.current = {
+    uploading: uploadPercent != null,
+    // Upload done, the reel is being started: leaving can't stop it any more
+    // (the alert would wrongly say no reel is made) — a short wait, so stay
+    starting: step === "creating" && uploadPercent == null,
+    stepBack,
+  };
   useEffect(() => {
     const unsubscribe = navigation.addListener("beforeRemove", (event: any) => {
       if (allowLeaveRef.current) return;
+      if (guardRef.current.starting) {
+        // Back presses wait for the start; resets (e.g. sign-out) go through
+        const type = event?.data?.action?.type;
+        if (type === "GO_BACK" || type === "POP") {
+          event.preventDefault();
+          return;
+        }
+        uploadAbortRef.current?.abort();
+        return;
+      }
       if (guardRef.current.uploading) {
         event.preventDefault();
         Alert.alert(t("autoReelLeaveUploadTitle"), t("autoReelLeaveUploadMessage"), [
@@ -1360,6 +1668,8 @@ export default function ReelTemplatesScreen() {
             style: "destructive",
             // Really cancel: stop compression / upload, no reel is started
             onPress: () => {
+              // Upload finished meanwhile: the reel is starting — stay
+              if (!guardRef.current.uploading) return;
               uploadAbortRef.current?.abort();
               allowLeaveRef.current = true;
               navigation.dispatch(event.data.action);
@@ -1435,7 +1745,28 @@ export default function ReelTemplatesScreen() {
         { icon: "videocam", text: t("autoReelReqVideo") },
         { icon: "timer", text: t("autoReelReqLength") },
         { icon: "graphic-eq", text: t("autoReelReqAudio") },
-        { icon: "toll", text: t("autoReelReqNoCredits") },
+      ];
+    }
+    if (isAutoBuild) {
+      const musicTitle = selected.music?.title?.trim();
+      return [
+        {
+          icon: "video-library",
+          text: t("autoBuildFeatureVideo", {
+            minutes: templateSourceMaxMinutes(selected),
+          }),
+        },
+        { icon: "auto-awesome", text: t("autoBuildFeatureAi") },
+        { icon: "timer", text: reelLengthLabel },
+        musicTitle
+          ? {
+              icon: "music-note",
+              text: t("includesMusicNamed", { name: musicTitle }),
+            }
+          : selected.has_sound === false
+            ? // Silent design: made without music; a song can be added with Edit
+              { icon: "library-music", text: t("autoBuildMusicAfter") }
+            : { icon: "music-note", text: t("includesMusic") },
       ];
     }
     const list: Requirement[] = [];
@@ -1459,7 +1790,15 @@ export default function ReelTemplatesScreen() {
       list.push({ icon: "library-music", text: t("designReqMusic") });
     }
     return list;
-  }, [isDesign, minVideoSeconds, reelLengthLabel, selected, t]);
+  }, [
+    isAutoBuild,
+    isDesign,
+    minVideoSeconds,
+    reelLengthLabel,
+    selected,
+    sourceMaxSeconds,
+    t,
+  ]);
 
   const summaryThumbUri = needsPhotos
     ? (designMediaSlots
@@ -1486,7 +1825,26 @@ export default function ReelTemplatesScreen() {
           title={t("flowChooseStyleTitle")}
           subtitle={t("flowChooseStyleSubtitle")}
         />
-        {reelsRemaining != null ? (
+        {isAutoBuild ? (
+          // One-video designs use reel credits, not the monthly AI-reel limit
+          credits ? (
+            <InfoNote
+              icon={noCreditsLeft ? "block" : "toll"}
+              tone={
+                noCreditsLeft
+                  ? "error"
+                  : credits.remaining <= 2
+                    ? "warm"
+                    : "info"
+              }
+              text={
+                noCreditsLeft
+                  ? t("autoBuildNoCredits")
+                  : t("autoBuildCreditsLeft", { count: credits.remaining })
+              }
+            />
+          ) : null
+        ) : reelsRemaining != null ? (
           <QuotaBanner
             remaining={reelsRemaining}
             blockedMessage={quotaBlockedMessage}
@@ -1675,6 +2033,137 @@ export default function ReelTemplatesScreen() {
       />
     </>
   );
+
+  /** One-video design: one video in, the AI does the rest — no editor, no details */
+  const renderAutoBuildVideoStep = () => {
+    const maxLabel = formatVideoDuration(sourceMaxSeconds);
+    // One length everywhere: rounded up when too long, down when too short,
+    // so the row and the note never disagree ("5:00 … up to 5:00")
+    const lengthLabel = formatVideoDuration(
+      sourceExactSeconds == null
+        ? null
+        : sourceTooLong
+          ? Math.ceil(sourceExactSeconds)
+          : sourceTooShort
+            ? Math.floor(sourceExactSeconds)
+            : sourceSeconds,
+    );
+    // Uploaded earlier (e.g. "Try a different template") — nothing to upload
+    const uploaded = !!sourceVideo && !sourceVideo.local;
+    const videoSub = !sourceVideo
+      ? null
+      : uploaded
+        ? [lengthLabel, t("flowAlreadyUploaded")].filter(Boolean).join(" · ")
+        : lengthLabel && !sourceTooLong && !sourceTooShort
+          ? t("autoBuildVideoReady", { length: lengthLabel })
+          : lengthLabel || null;
+    return (
+      <>
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <FlowTitle
+            title={t("autoBuildUploadTitle")}
+            subtitle={t("autoBuildUploadSubtitle", { max: maxLabel })}
+          />
+          <SourceCardRow>
+            <SourceCard
+              icon="video-library"
+              label={t("flowChooseFromGallery")}
+              sublabel={t("designReqOneVideo")}
+              sublabelIcon="movie"
+              // One video only — a new pick replaces it
+              badgeIcon={sourceVideo ? "swap-horiz" : "add"}
+              onPress={() => void pickAutoBuildVideo("gallery")}
+              disabled={addingMedia}
+              loading={addingMedia && pickingFrom === "gallery"}
+            />
+            <SourceCard
+              icon="videocam"
+              label={t("flowRecordVideo")}
+              tone="warm"
+              sublabel={t("flowRecordUpTo", { time: maxLabel })}
+              sublabelIcon="timer"
+              badgeIcon="fiber-manual-record"
+              onPress={() => void pickAutoBuildVideo("camera")}
+              disabled={addingMedia}
+              loading={addingMedia && pickingFrom === "camera"}
+            />
+          </SourceCardRow>
+          {sourceVideo ? (
+            <>
+              <View style={styles.divider} />
+              <SectionLabel label={t("flowSelectedVideo")} />
+              <SelectedMediaRow
+                thumbUri={sourceVideo.thumbnailUri}
+                title={sourceVideo.name || t("autoReelVideoAdded")}
+                subtitle={videoSub}
+                // The uploaded video's details load after the screen opens
+                loading={uploaded && !sourceVideo.thumbnailUri}
+                onAction={clearAutoBuildVideo}
+                actionIcon={uploaded ? "swap-horiz" : "close"}
+                actionLabel={uploaded ? t("autoBuildChangeVideo") : t("remove")}
+              />
+              {sourceTooLong ? (
+                <InfoNote
+                  tone="error"
+                  icon="timer"
+                  text={t("autoBuildVideoTooLong", {
+                    length: lengthLabel,
+                    max: maxLabel,
+                  })}
+                />
+              ) : null}
+              {sourceTooShort ? (
+                <InfoNote
+                  tone="warm"
+                  icon="timer"
+                  text={t("autoBuildVideoTooShort", {
+                    length: lengthLabel,
+                    min: formatVideoDuration(Math.ceil(minVideoSeconds ?? 0)),
+                  })}
+                />
+              ) : null}
+            </>
+          ) : null}
+          <InfoNote
+            icon="auto-awesome"
+            text={[
+              t("autoBuildNoTrimNote"),
+              minVideoSeconds
+                ? t("designVideoMinNote", {
+                    seconds: Math.ceil(minVideoSeconds),
+                  })
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          />
+        </ScrollView>
+        <FlowFooter
+          primary={{
+            label: t("autoReelMakeReel"),
+            onPress: () => void handleAutoBuild(),
+            disabled: !canAutoBuild || submitting || addingMedia,
+            icon: "auto-awesome",
+          }}
+          hint={
+            noCreditsLeft
+              ? t("autoBuildNoCredits")
+              : !sourceVideo
+                ? addingMedia
+                  ? null
+                  : t("flowPickVideoHint")
+                : credits
+                  ? t("autoBuildCreditCost", { count: credits.remaining })
+                  : t("autoBuildCreditCostUnknown")
+          }
+        />
+      </>
+    );
+  };
 
   /** Photo design: one photo per slot + the texts */
   const renderPhotosStep = () => (
@@ -1941,7 +2430,9 @@ export default function ReelTemplatesScreen() {
             subtitle={
               needsPhotos
                 ? t("designCreatingPhotosSubtitle")
-                : t("flowCreatingSubtitle")
+                : isAutoBuild
+                  ? t("autoBuildMakingSubtitle")
+                  : t("flowCreatingSubtitle")
             }
           />
           <ProgressTracker
@@ -1966,9 +2457,14 @@ export default function ReelTemplatesScreen() {
                 : [
                     {
                       key: "highlights",
-                      title: t("flowSelectingHighlights"),
+                      // One-video design: same words as the AI Auto Reel screen
+                      title: isAutoBuild
+                        ? t("autoBuildStepMoments")
+                        : t("flowSelectingHighlights"),
                       subtitle: uploading
-                        ? t("flowSelectingHighlightsSub")
+                        ? isAutoBuild
+                          ? t("autoBuildStepMomentsSub")
+                          : t("flowSelectingHighlightsSub")
                         : t("flowStartingReel"),
                       state: (uploading ? "pending" : "active") as
                         | "pending"
@@ -1977,10 +2473,14 @@ export default function ReelTemplatesScreen() {
                   ]),
               {
                 key: "build",
-                title: t("flowBuildingReel"),
+                title: isAutoBuild
+                  ? t("autoBuildStepBuild")
+                  : t("flowBuildingReel"),
                 subtitle: needsPhotos && !uploading
                   ? t("flowStartingReel")
-                  : t("flowBuildingReelSub"),
+                  : isAutoBuild
+                    ? t("autoBuildStepBuildSub")
+                    : t("flowBuildingReelSub"),
                 state: needsPhotos && !uploading ? "active" : "pending",
               },
             ]}
@@ -2058,7 +2558,9 @@ export default function ReelTemplatesScreen() {
           )
           : needsPhotos
             ? renderPhotosStep()
-            : renderVideoStep()
+            : isAutoBuild
+              ? renderAutoBuildVideoStep()
+              : renderVideoStep()
         : null}
       {step === "details" ? renderDetailsStep() : null}
       {step === "creating" ? renderCreatingStep() : null}

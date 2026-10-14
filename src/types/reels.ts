@@ -462,6 +462,14 @@ export type AutoReelTemplate = {
   has_sound?: boolean | null;
   /** Length of the finished reel (designs) */
   length_seconds?: number | null;
+  /** Longest source video for this template; null = the server's global max */
+  max_source_seconds?: number | null;
+  /** Number of photo / video slots ("6 clips") */
+  clip_count?: number | null;
+  /** Stages the template needs, e.g. ["before", "progress", "after"] */
+  stages?: string[] | null;
+  /** The template's own music track, if it has one */
+  music?: AutoReelMusic | null;
 };
 
 /** Design template with slots (has_design + needs). */
@@ -470,6 +478,59 @@ export function isDesignTemplate(
 ): boolean {
   return !!tpl?.has_design && (tpl.needs === "video" || tpl.needs === "photos");
 }
+
+/**
+ * One-video design: the user gives one video and the server picks the
+ * moments and builds the reel itself (`auto_build: true`) — no details step,
+ * no review unless the AI misses a stage.
+ */
+export function isAutoBuildTemplate(
+  tpl: Pick<AutoReelTemplate, "has_design" | "needs"> | null | undefined,
+): boolean {
+  return !!tpl?.has_design && tpl.needs === "video";
+}
+
+/** Server-wide longest auto reel source when a template doesn't set its own (5 min). */
+export const AUTO_BUILD_SOURCE_MAX_SECONDS = 300;
+
+/** Regenerations per reel, and the (hidden) cap on edit renders per reel. */
+export const AUTO_REEL_MAX_REGENERATIONS = 5;
+export const AUTO_REEL_MAX_EDIT_RENDERS = 20;
+
+/** Longest video this template takes (its own max, else the 5-minute default). */
+export function templateSourceMaxSeconds(
+  tpl: Pick<AutoReelTemplate, "max_source_seconds"> | null | undefined,
+): number {
+  const max = tpl?.max_source_seconds;
+  return typeof max === "number" && max > 0 ? max : AUTO_BUILD_SOURCE_MAX_SECONDS;
+}
+
+/**
+ * The longest source in minutes for labels ("up to 5 min"), rounded down to
+ * 0.1 so it never reads longer than the app allows (150 s → 2.5).
+ */
+export function templateSourceMaxMinutes(
+  tpl: Pick<AutoReelTemplate, "max_source_seconds"> | null | undefined,
+): number {
+  return Math.floor((templateSourceMaxSeconds(tpl) / 60) * 10) / 10;
+}
+
+/** "6 clips": the template's count, else its photo / video slots. */
+export function templateClipCount(
+  tpl: Pick<AutoReelTemplate, "clip_count" | "slots"> | null | undefined,
+): number | null {
+  if (typeof tpl?.clip_count === "number" && tpl.clip_count > 0) {
+    return tpl.clip_count;
+  }
+  const count = (tpl?.slots ?? []).filter((s) => s.kind !== "text").length;
+  return count > 0 ? count : null;
+}
+
+/** GET /api/auto-reels/credits — the business's reel credits this month. */
+export type ReelCredits = {
+  remaining: number;
+  monthly_limit: number;
+};
 
 /** Slots the user fills with a photo / video (not text). */
 export function mediaSlots(slots: AutoReelSlot[] | null | undefined): AutoReelSlot[] {
@@ -483,7 +544,10 @@ export function textSlots(slots: AutoReelSlot[] | null | undefined): AutoReelSlo
 export type AutoReelStatus =
   | "pending"
   | "analyzing"
-  /** Video design: AI picked the moments — the user reviews them, then builds */
+  /**
+   * Video design: AI picked the moments — the user reviews them, then builds.
+   * Auto build stops here only when the AI missed a stage (`design.missing_stages`).
+   */
   | "review"
   | "rendering"
   | "ready"
@@ -492,6 +556,7 @@ export type AutoReelStatus =
 export type AutoReelRenderStatus =
   | "queued"
   | "fetching"
+  | "preprocessing"
   | "rendering"
   | "saving"
   | "done";
@@ -518,6 +583,22 @@ export type AutoReelPick = {
   found: boolean;
   /** Set when the user's own file was used */
   media_asset_id?: number | null;
+  /** Auto build: the stage it shows ("before" / "progress" / "after") */
+  stage?: string | null;
+  /** Auto build: how sure the AI is (0–1) */
+  confidence?: number | null;
+  /** Auto build: short words on what the clip shows */
+  description?: string | null;
+};
+
+/**
+ * What was last built for one photo / video slot (`design.choices`): a moment
+ * of the uploaded video, or the user's own file. Read loosely — older reels
+ * may not send it.
+ */
+export type AutoReelChoice = {
+  at?: number | null;
+  media_asset_id?: number | null;
 };
 
 /** `autoReel.design` on a video design (filled once it reaches `review`). */
@@ -532,6 +613,16 @@ export type AutoReelDesign = {
   texts: Record<string, string> | null;
   has_sound?: boolean | null;
   length_seconds?: number | null;
+  /** The last build's choice per photo / video slot (edit starts from these) */
+  choices?: Record<string, AutoReelChoice | null> | null;
+  /** Music in the current reel (null = none); not sent on older reels */
+  music?: AutoReelMusic | null;
+  /** Auto build: stages the AI couldn't find (empty when all were found) */
+  missing_stages?: string[] | null;
+  /** Auto build: message to show when stages are missing */
+  missing_stages_message?: string | null;
+  /** Auto build: the AI's suggestions (null on other reels) */
+  suggestions?: { caption?: string | null } | null;
 };
 
 /** Library track for a silent design (`null` = "No music"). */
@@ -544,10 +635,14 @@ export type AutoReelMusic = {
   source_url: string | null;
 };
 
-/** POST /api/auto-reels/{id}/build — one choice per photo/video slot + every text. */
+/**
+ * POST /api/auto-reels/{id}/build — from `review`: one choice per photo/video
+ * slot + every text. From `ready` / `failed` (Edit, 1 credit): only the slots
+ * that changed; the server keeps the rest.
+ */
 export type BuildAutoReelPayload = {
-  slots: Record<string, { at: number } | { media_asset_id: number }>;
-  texts: Record<string, string>;
+  slots?: Record<string, { at: number } | { media_asset_id: number }>;
+  texts?: Record<string, string>;
   music?: AutoReelMusic | null;
 };
 
@@ -593,6 +688,13 @@ export type AutoReel = {
   created_by?: number | null;
   /** True when the logged-in user started it — staff may only retry their own */
   is_mine?: boolean;
+  /** Regenerations used / left on this reel (max 5) */
+  regenerations_used?: number | null;
+  regenerations_left?: number | null;
+  /** Edit renders done from ready / failed (max 20) */
+  edit_renders?: number | null;
+  /** The business's credits left this month (null when not loaded) */
+  credits_remaining?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -639,7 +741,10 @@ export type CreateAutoReelPayload = {
   /** One video (non-design and video designs); not sent for photo designs */
   media_asset_id?: number;
   template_id: number;
-  category_id: number;
+  /** Required unless `auto_build` (then it's picked on Publish) */
+  category_id?: number;
+  /** One-video designs: the server picks the moments and builds the reel itself */
+  auto_build?: boolean;
   service_id?: number;
   caption?: string;
   /** Photo designs: uploaded media id per slot key */
@@ -663,6 +768,42 @@ export function canChangeReel(
 
 export function isAutoReelInProgress(status: AutoReelStatus | null | undefined) {
   return status === "pending" || status === "analyzing" || status === "rendering";
+}
+
+/** Auto build stopped at `review`: stages the AI couldn't find ([] otherwise). */
+export function autoReelMissingStages(
+  autoReel: Pick<AutoReel, "status" | "design"> | null | undefined,
+): string[] {
+  if (autoReel?.status !== "review") return [];
+  const stages = autoReel.design?.missing_stages;
+  return Array.isArray(stages) ? stages.filter((s) => typeof s === "string") : [];
+}
+
+/** Made with `auto_build` — it has the AI's suggestions (and can be regenerated). */
+export function isAutoBuiltReel(
+  autoReel: Pick<AutoReel, "design"> | null | undefined,
+): boolean {
+  return autoReel?.design?.suggestions != null;
+}
+
+/** Regenerations left on this reel (the server's count, else 5 − used). */
+export function autoReelRegenerationsLeft(
+  autoReel: Pick<AutoReel, "regenerations_left" | "regenerations_used"> | null | undefined,
+): number {
+  if (typeof autoReel?.regenerations_left === "number") {
+    return Math.max(0, autoReel.regenerations_left);
+  }
+  const used =
+    typeof autoReel?.regenerations_used === "number" ? autoReel.regenerations_used : 0;
+  return Math.max(0, AUTO_REEL_MAX_REGENERATIONS - used);
+}
+
+/** Edit renders left on this reel (hidden cap of 20). */
+export function autoReelEditsLeft(
+  autoReel: Pick<AutoReel, "edit_renders"> | null | undefined,
+): number {
+  const done = typeof autoReel?.edit_renders === "number" ? autoReel.edit_renders : 0;
+  return Math.max(0, AUTO_REEL_MAX_EDIT_RENDERS - done);
 }
 
 /** Failures where POST /retry is worth offering (server-side problems). */

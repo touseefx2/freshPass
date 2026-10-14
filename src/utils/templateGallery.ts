@@ -1,8 +1,11 @@
 import { MAX_AUTO_REEL_SOURCE_SECONDS } from "@/src/services/mediaLibraryService";
 import {
+  isAutoBuildTemplate,
   isDesignTemplate,
   mediaSlots,
   normalizeReelTemplateMediaFields,
+  templateClipCount,
+  templateSourceMaxMinutes,
   textSlots,
   type AutoReelSlot,
   type AutoReelTemplate,
@@ -112,6 +115,12 @@ export function photoReelGalleryItem(
     previewVideoUrl: tpl.preview_video_url || null,
     icon: mediaIcon,
     features,
+    autoBuild: false,
+    // The API sends no reel length; each media field is one clip
+    lengthSeconds: null,
+    clipCount: fields.length || null,
+    // `music_name` is a stock id, not a song title
+    musicTitle: null,
   };
 }
 
@@ -207,13 +216,53 @@ function designFeatures(
   return features;
 }
 
+/**
+ * One-video design features: the one upload it takes, what the AI does with
+ * it, the reel length and its music (the song's title when it has its own).
+ */
+function autoBuildFeatures(
+  tpl: AutoReelTemplate,
+  t: Translate,
+): TemplateGalleryFeature[] {
+  const features: TemplateGalleryFeature[] = [
+    {
+      icon: "video-library",
+      label: t("autoBuildFeatureVideo", {
+        minutes: templateSourceMaxMinutes(tpl),
+      }),
+    },
+    { icon: "auto-awesome", label: t("autoBuildFeatureAi") },
+  ];
+  if (tpl.length_seconds) {
+    features.push({
+      icon: "timer",
+      label: t("designReelSeconds", { seconds: Math.round(tpl.length_seconds) }),
+    });
+  }
+  const song = tpl.music?.title?.trim();
+  features.push(
+    song
+      ? { icon: "music-note", label: song }
+      : tpl.has_sound === false
+        ? // Silent design with no song: the reel is made without music
+          { icon: "library-music", label: t("autoBuildMusicAfter") }
+        : { icon: "music-note", label: t("includesMusic") },
+  );
+  return features;
+}
+
 /** AI auto reel template (auto-reel templates API) → gallery item. */
 export function autoReelGalleryItem(
   tpl: AutoReelTemplate,
   t: Translate,
 ): TemplateGalleryItem {
+  // Cover facts ("0:30 · 6 clips")
+  const lengthSeconds =
+    tpl.length_seconds && tpl.length_seconds > 0 ? tpl.length_seconds : null;
+  const clipCount = templateClipCount(tpl);
   if (isDesignTemplate(tpl)) {
     const photos = tpl.needs === "photos";
+    const autoBuild = isAutoBuildTemplate(tpl);
     return {
       id: tpl.id,
       kind: "video",
@@ -233,12 +282,21 @@ export function autoReelGalleryItem(
         : tpl.kind === "haircut"
           ? "content-cut"
           : "movie-filter",
-      features: designFeatures(tpl, t),
-      slots: (tpl.slots ?? []).map((slot) => ({
-        icon: slotIcon(slot),
-        label: slot.label,
-        detail: slotDetail(slot, t),
-      })),
+      features: autoBuild
+        ? autoBuildFeatures(tpl, t)
+        : designFeatures(tpl, t),
+      // One-video designs: the AI fills every slot, so no "What you'll need"
+      slots: autoBuild
+        ? undefined
+        : (tpl.slots ?? []).map((slot) => ({
+            icon: slotIcon(slot),
+            label: slot.label,
+            detail: slotDetail(slot, t),
+          })),
+      autoBuild,
+      lengthSeconds,
+      clipCount,
+      musicTitle: tpl.music?.title?.trim() || null,
     };
   }
   return {
@@ -262,7 +320,11 @@ export function autoReelGalleryItem(
       },
       { icon: "timer", label: t("autoReelReqLength") },
       { icon: "graphic-eq", label: t("autoReelReqAudio") },
-      { icon: "toll", label: t("autoReelReqNoCredits") },
     ],
+    autoBuild: false,
+    lengthSeconds,
+    clipCount,
+    // The user's own audio is kept, so no template song to name
+    musicTitle: null,
   };
 }

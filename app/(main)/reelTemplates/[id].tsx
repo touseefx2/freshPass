@@ -1,13 +1,17 @@
 import { useEffect } from "react";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
-/** Configure flow lives on the templates list screen now. */
+/** Configure flow lives on the templates list screen now — open it on this template. */
 export default function ReelTemplateDetailRedirect() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id?: string }>();
 
   useEffect(() => {
-    router.replace("/(main)/reelTemplates" as any);
-  }, [router]);
+    router.replace({
+      pathname: "/(main)/reelTemplates" as any,
+      params: id ? { templateId: id } : {},
+    });
+  }, [id, router]);
 
   return null;
 }

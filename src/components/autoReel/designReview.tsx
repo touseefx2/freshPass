@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
-import { useTheme } from "@/src/hooks/hooks";
+import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
 import {
   buildAutoReel,
@@ -13,13 +13,17 @@ import {
 import { VideoTooLargeError } from "@/src/services/mediaLibraryService";
 import { Theme } from "@/src/theme/colors";
 import { moderateHeightScale, moderateWidthScale } from "@/src/theme/dimensions";
+import { fontSize, fonts } from "@/src/theme/fonts";
 import {
+  autoReelEditsLeft,
+  isAutoBuiltReel,
   keyedFieldErrors,
   mediaSlots,
   musicFieldError,
   textSlots,
   type AutoReel,
   type AutoReelMusic,
+  type AutoReelPick,
   type AutoReelSlot,
   type BuildAutoReelPayload,
 } from "@/src/types/reels";
@@ -38,6 +42,12 @@ import {
 } from "@/src/components/reelFlow/flowParts";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
 import DesignSlotCard from "@/src/components/reelFlow/designSlotCard";
+import FlowButton from "@/src/components/reelFlow/flowButton";
+import {
+  ClipPreview,
+  ClipStrip,
+  type ClipItem,
+} from "@/src/components/autoReel/clipStrip";
 import DesignMusicField from "@/src/components/reelFlow/designMusicField";
 import MomentPickerModal, {
   formatMoment,
@@ -49,11 +59,27 @@ import MomentPickerModal, {
  * their own file; texts start from `design.texts`; silent designs need music
  * or "No music". "Generate reel" → POST …/build (202 → pending), then the
  * parent polls to `ready` as usual. Changing picks never calls the AI again.
+ *
+ * `mode="edit"` (a `ready` / `failed` reel): one part — clips, text or music —
+ * starts from the last build and only what changed is sent (the server keeps
+ * the rest). Saving remakes the reel and costs 1 reel credit.
  */
 
 type SlotChoice =
   | { mode: "pick"; at: number | null; moved: boolean }
-  | { mode: "file"; file: SlotFile };
+  | { mode: "file"; file: SlotFile }
+  /** Edit: the user's own file from the last build — no copy on the phone */
+  | { mode: "asset"; mediaId: number; kind: "image" | "video" };
+
+/** What the last build used for one photo / video slot */
+type BuiltChoice =
+  | { mode: "pick"; at: number }
+  | { mode: "asset"; mediaId: number; kind: "image" | "video" };
+
+type LastBuild = {
+  slots: Record<string, BuiltChoice>;
+  texts: Record<string, unknown> | null;
+};
 
 type Props = {
   autoReel: AutoReel;
@@ -61,7 +87,18 @@ type Props = {
   canChange: boolean;
   /** Build accepted (202) — the auto reel is `pending` again */
   onBuilt: (autoReel: AutoReel) => void;
+  /** "edit": a ready / failed reel — starts from the last build, sends only what changed, costs 1 reel credit */
+  mode?: "review" | "edit";
+  /** Edit: which part to show */
+  section?: "clips" | "text" | "music";
+  /** Edit: leave without saving */
+  onCancel?: () => void;
+  /** Edit: reel credits left this month (null = unknown) */
+  creditsRemaining?: number | null;
 };
+
+/** The moment picker rounds to 0.1 s — closer than this is the same moment */
+const SAME_MOMENT_SECONDS = 0.05;
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -76,34 +113,252 @@ const createStyles = (theme: Theme) =>
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.borderNormal,
     },
+    clipHead: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      flexWrap: "wrap",
+      columnGap: moderateWidthScale(10),
+    },
+    clipLabel: {
+      fontSize: fontSize.size18,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    clipStatus: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    clipStatusMissing: {
+      color: theme.red,
+    },
+    clipError: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.red,
+    },
+    clipActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: moderateWidthScale(10),
+    },
+    clipAction: {
+      flexGrow: 1,
+    },
   });
 
-function initialChoices(autoReel: AutoReel): Record<string, SlotChoice> {
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value != null && !Array.isArray(value);
+}
+
+/** `design.choices` is read loosely — numbers may come as strings */
+function toNumber(value: unknown): number | null {
+  const n = typeof value === "string" && value.trim() ? Number(value) : value;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+}
+
+/** Same track (by its url), or both "no music". undefined = unknown → never the same as a choice. */
+function sameMusic(
+  a: AutoReelMusic | null | undefined,
+  b: AutoReelMusic | null | undefined,
+) {
+  if (a === undefined || b === undefined) return false;
+  if (a === null || b === null) return a === b;
+  return a.url === b.url;
+}
+
+function sameMoment(a: number, b: number) {
+  // Inclusive (+ float slack): the picker rounds to 0.1 s, so 3.55 → 3.6 is
+  // an untouched moment, not a change
+  return Math.abs(a - b) <= SAME_MOMENT_SECONDS + 1e-6;
+}
+
+/** Badge only: a moment away from the AI's pick reads "Your moment" */
+function movedFromAi(
+  pick: AutoReelPick | undefined,
+  at: number,
+  loose: boolean,
+): boolean {
+  if (pick?.found === false || pick?.at == null) return true;
+  return loose ? !sameMoment(pick.at, at) : pick.at !== at;
+}
+
+/** One slot of the last build: a moment of the uploaded video, or an own file */
+function readBuiltChoice(
+  value: unknown,
+  slot: AutoReelSlot,
+  sourceId: number | null,
+): BuiltChoice | null {
+  const seconds = toNumber(value);
+  if (seconds != null) return { mode: "pick", at: seconds };
+  if (!isRecord(value)) return null;
+  const at = toNumber(value.at);
+  const mediaId = toNumber(value.media_asset_id);
+  // A moment may name the uploaded video itself as its asset
+  if (mediaId != null && (at == null || mediaId !== sourceId)) {
+    const kind = value.kind ?? value.type;
+    return {
+      mode: "asset",
+      mediaId,
+      kind:
+        kind === "image" || kind === "video"
+          ? kind
+          : slot.kind === "video"
+            ? "video"
+            : "image",
+    };
+  }
+  return at != null && value.found !== false ? { mode: "pick", at } : null;
+}
+
+/**
+ * Edit starts from the last build. `design.choices` comes keyed per slot
+ * ({ KEY: { at } | { media_asset_id } | seconds }) or shaped like the build
+ * payload ({ slots, texts, music }) — both are read. A slot it doesn't cover
+ * falls back to the picks: an own file first, then the AI's moment.
+ */
+function readLastBuild(autoReel: AutoReel): LastBuild {
+  const design = autoReel.design;
+  const media = mediaSlots(design?.slots);
+  const keys = new Set(media.map((slot) => slot.key));
+  const raw: unknown = design?.choices;
+  const choices = isRecord(raw) ? raw : {};
+  // Payload shape — unless a slot really is called "slots" / "texts"
+  const slotChoices =
+    isRecord(choices.slots) && !keys.has("slots") ? choices.slots : choices;
+  const texts =
+    isRecord(choices.texts) && !keys.has("texts") ? choices.texts : null;
+  const sourceId = autoReel.source_media_asset_id ?? null;
+  const slots: Record<string, BuiltChoice> = {};
+  for (const slot of media) {
+    const built =
+      readBuiltChoice(slotChoices[slot.key], slot, sourceId) ??
+      readBuiltChoice(design?.picks?.[slot.key], slot, sourceId);
+    if (built) slots[slot.key] = built;
+  }
+  return { slots, texts };
+}
+
+/** Edit: a slot as the last build left it (not known → nothing is sent for it) */
+function builtToChoice(
+  built: BuiltChoice | undefined,
+  pick: AutoReelPick | undefined,
+): SlotChoice {
+  if (built?.mode === "asset") {
+    return { mode: "asset", mediaId: built.mediaId, kind: built.kind };
+  }
+  if (built?.mode === "pick") {
+    return { mode: "pick", at: built.at, moved: movedFromAi(pick, built.at, true) };
+  }
+  return { mode: "pick", at: null, moved: false };
+}
+
+/** Edit: differs from the last build — only these slots are sent */
+function choiceChanged(
+  choice: SlotChoice | undefined,
+  built: BuiltChoice | undefined,
+): boolean {
+  if (choice?.mode === "file") return true;
+  if (choice?.mode === "asset") {
+    return built?.mode !== "asset" || built.mediaId !== choice.mediaId;
+  }
+  if (choice?.mode !== "pick" || choice.at == null) return false;
+  return built?.mode !== "pick" || !sameMoment(built.at, choice.at);
+}
+
+function initialChoices(
+  autoReel: AutoReel,
+  lastBuild: LastBuild | null,
+): Record<string, SlotChoice> {
   const design = autoReel.design;
   const out: Record<string, SlotChoice> = {};
   for (const slot of mediaSlots(design?.slots)) {
     const pick = design?.picks?.[slot.key];
-    out[slot.key] = {
-      mode: "pick",
-      at: pick?.found !== false && pick?.at != null ? pick.at : null,
-      moved: false,
-    };
+    out[slot.key] = lastBuild
+      ? builtToChoice(lastBuild.slots[slot.key], pick)
+      : {
+          mode: "pick",
+          at: pick?.found !== false && pick?.at != null ? pick.at : null,
+          moved: false,
+        };
   }
   return out;
 }
 
-export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
+/**
+ * Review: `design.texts`. Edit: the last build's texts, else `design.texts`,
+ * else the business name for a `prefill` slot (every text is sent again).
+ */
+function initialTexts(
+  autoReel: AutoReel,
+  lastBuild: LastBuild | null,
+  businessName: string,
+): Record<string, string> {
+  const design = autoReel.design;
+  const out: Record<string, string> = {};
+  for (const slot of textSlots(design?.slots)) {
+    const built = lastBuild?.texts?.[slot.key];
+    const start = design?.texts?.[slot.key];
+    let value =
+      typeof built === "string" && built.trim()
+        ? built
+        : typeof start === "string"
+          ? start
+          : "";
+    if (
+      lastBuild &&
+      !value.trim() &&
+      slot.prefill === "business_name" &&
+      businessName
+    ) {
+      value = slot.max_length ? businessName.slice(0, slot.max_length) : businessName;
+    }
+    out[slot.key] = value;
+  }
+  return out;
+}
+
+/** First 422 message that no field shows — credits, the edit limit… */
+function otherFieldError(error: any): string | null {
+  const errors = error?.data?.errors ?? error?.response?.errors;
+  if (!isRecord(errors)) return null;
+  for (const [field, value] of Object.entries(errors)) {
+    if (/^(slots|texts)\./.test(field) || /^music(\.|$)/.test(field)) continue;
+    const message = Array.isArray(value) ? value[0] : value;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return null;
+}
+
+export default function DesignReview({
+  autoReel,
+  canChange,
+  onBuilt,
+  mode = "review",
+  section,
+  onCancel,
+  creditsRemaining,
+}: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { showBanner } = useNotificationContext();
+  const businessName = useAppSelector(
+    (s) => s.user.businessStatus?.business_name ?? s.user.business_name ?? "",
+  );
 
+  const edit = mode === "edit";
   const design = autoReel.design;
+  // Edit / auto build: the compact CapCut-style clip editor, no AI instructions
+  const plainCards = edit || isAutoBuiltReel(autoReel);
   const videoUrl = design?.video_url ?? null;
   const videoSeconds = design?.video_seconds ?? null;
   const slots = useMemo(() => mediaSlots(design?.slots), [design?.slots]);
   const texts = useMemo(() => textSlots(design?.slots), [design?.slots]);
+  // Edit shows one part (no section = all of them)
+  const showClips = !edit || !section || section === "clips";
   // `design.has_sound` first; when it isn't sent, the template's own fields
   const [templateSound, setTemplateSound] = useState<{
     hasSound: boolean | null;
@@ -111,7 +366,9 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
   } | null>(null);
   const templateId = autoReel.template?.id ?? null;
   const needsTemplateInfo =
-    design?.has_sound == null || design?.length_seconds == null;
+    (design?.has_sound == null || design?.length_seconds == null) &&
+    // Only the music field uses it
+    (!edit || !section || section === "music");
   useEffect(() => {
     if (!needsTemplateInfo || templateId == null) return;
     let cancelled = false;
@@ -140,26 +397,59 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
     templateSound?.lengthSeconds ??
     autoReel.total_seconds ??
     null;
+  // The reel's music now (null = none; undefined when the server doesn't say).
+  // Edits and auto-built reels start from it — nothing to choose unless changed.
+  const currentMusic =
+    (edit || isAutoBuiltReel(autoReel)) && design && "music" in design
+      ? (design.music ?? null)
+      : undefined;
+  // Silent designs need music on every build (the server doesn't keep it):
+  // an edit sends the current one unless changed, and asks when it's unknown
+  const showMusic = edit
+    ? section === "music" ||
+      (!section && silent) ||
+      (silent && currentMusic === undefined)
+    : silent;
 
+  // Edit: the last build, read once — changes are measured against it
+  const [lastBuild] = useState(() => (edit ? readLastBuild(autoReel) : null));
   const [choices, setChoices] = useState<Record<string, SlotChoice>>(() =>
-    initialChoices(autoReel),
+    initialChoices(autoReel, lastBuild),
   );
   const choicesRef = useRef(choices);
-  choicesRef.current = choices;
-  const [textValues, setTextValues] = useState<Record<string, string>>(() => {
-    const out: Record<string, string> = {};
-    for (const slot of textSlots(autoReel.design?.slots)) {
-      out[slot.key] = autoReel.design?.texts?.[slot.key] ?? "";
-    }
-    return out;
+  // Compact editor: the clip being changed (a missing one first)
+  const [selectedKey, setSelectedKey] = useState<string | null>(() => {
+    const missing = slots.find((slot) => {
+      const choice = choices[slot.key];
+      return choice?.mode === "pick" && choice.at == null && !edit;
+    });
+    return missing?.key ?? slots[0]?.key ?? null;
   });
-  const [music, setMusic] = useState<AutoReelMusic | null | undefined>(undefined);
+  choicesRef.current = choices;
+  const [startTexts] = useState(() =>
+    initialTexts(autoReel, lastBuild, businessName),
+  );
+  const [textValues, setTextValues] =
+    useState<Record<string, string>>(startTexts);
+  // Every text is sent, so one the last build didn't give is asked for in any part
+  const showTexts =
+    !edit ||
+    !section ||
+    section === "text" ||
+    texts.some((slot) => !startTexts[slot.key]?.trim());
+  // Review: undefined = not chosen yet. Edit: starts at the current music
+  // (undefined only when the server doesn't say)
+  const [music, setMusic] = useState<AutoReelMusic | null | undefined>(
+    currentMusic,
+  );
+  const musicChanged = music !== undefined && !sameMusic(music, currentMusic);
   const [slotErrors, setSlotErrors] = useState<Record<string, string>>({});
   const [textErrors, setTextErrors] = useState<Record<string, string>>({});
   const [musicError, setMusicError] = useState<string | null>(null);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   const [movingSlot, setMovingSlot] = useState<AutoReelSlot | null>(null);
   const [building, setBuilding] = useState(false);
+  const buildingRef = useRef(false);
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
 
   // Frames for the picks — taken from the uploaded video at each moment
@@ -177,7 +467,8 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
     .filter((key) => frames[key] === undefined)
     .join(",");
   useEffect(() => {
-    if (!videoUrl || !missingFrames) return;
+    // Edit's text / music parts show no slot cards
+    if (!showClips || !videoUrl || !missingFrames) return;
     let cancelled = false;
     (async () => {
       for (const key of missingFrames.split(",")) {
@@ -199,7 +490,7 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [missingFrames, videoUrl]);
+  }, [missingFrames, showClips, videoUrl]);
 
   const clearSlotError = (key: string) =>
     setSlotErrors((prev) => {
@@ -235,39 +526,70 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
     [pickingSlot, showBanner, t],
   );
 
-  const resetToAi = (slot: AutoReelSlot) => {
+  // Review: back to the AI's pick. Edit: back to the last build.
+  const undoSlot = (slot: AutoReelSlot) => {
     const pick = design?.picks?.[slot.key];
     setChoices((prev) => ({
       ...prev,
-      [slot.key]: {
-        mode: "pick",
-        at: pick?.found !== false && pick?.at != null ? pick.at : null,
-        moved: false,
-      },
+      [slot.key]: lastBuild
+        ? builtToChoice(lastBuild.slots[slot.key], pick)
+        : {
+            mode: "pick",
+            at: pick?.found !== false && pick?.at != null ? pick.at : null,
+            moved: false,
+          },
     }));
     clearSlotError(slot.key);
   };
 
+  const slotsFilled = slots.every((slot) => {
+    const choice = choices[slot.key];
+    return (
+      choice?.mode === "file" ||
+      choice?.mode === "asset" ||
+      (choice?.mode === "pick" && choice.at != null)
+    );
+  });
   const complete =
-    slots.every((slot) => {
-      const choice = choices[slot.key];
-      return choice?.mode === "file" || (choice?.mode === "pick" && choice.at != null);
-    }) &&
+    // Edit: a slot the last build didn't tell us about stays as it is
+    (edit || slotsFilled) &&
     texts.every((slot) => !!textValues[slot.key]?.trim()) &&
+    // Silent designs always send music (an edit starts at the current one)
     (!silent || music !== undefined);
 
-  const notFound = slots.filter(
-    (slot) => design?.picks?.[slot.key]?.found === false,
-  );
+  // Edit: something to save
+  const dirty =
+    edit &&
+    (slots.some((slot) =>
+      choiceChanged(choices[slot.key], lastBuild?.slots[slot.key]),
+    ) ||
+      texts.some(
+        (slot) =>
+          (textValues[slot.key] ?? "").trim() !==
+          (startTexts[slot.key] ?? "").trim(),
+      ) ||
+      (showMusic && musicChanged));
+
+  // Review only — an edit starts from a finished build
+  const notFound = edit
+    ? []
+    : slots.filter((slot) => design?.picks?.[slot.key]?.found === false);
+
+  // The parent's count, else the reel's (null = unknown — the server still checks)
+  const credits = creditsRemaining ?? autoReel.credits_remaining ?? null;
+  const noCredits = edit && credits != null && credits <= 0;
+  const noEditsLeft = edit && autoReelEditsLeft(autoReel) <= 0;
 
   const uploadAbortRef = useRef<AbortController | null>(null);
   useEffect(() => () => uploadAbortRef.current?.abort(), []);
 
   const handleBuild = useCallback(async () => {
-    if (building || !complete) return;
+    if (buildingRef.current || !complete || (edit && !dirty)) return;
+    buildingRef.current = true;
     setBuilding(true);
     const controller = new AbortController();
     uploadAbortRef.current = controller;
+    let accepted = false;
     try {
       // Own files first (POST /api/media, no purpose) — kept if the build fails
       const toUpload = slots.filter((slot) => {
@@ -276,11 +598,17 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
       });
       let uploaded = 0;
       if (toUpload.length) setUploadPercent(0);
-      const payloadSlots: BuildAutoReelPayload["slots"] = {};
+      const payloadSlots: NonNullable<BuildAutoReelPayload["slots"]> = {};
       for (const slot of slots) {
         const choice = choicesRef.current[slot.key];
+        // Edit: only what changed — the server keeps the rest of the last build
+        if (edit && !choiceChanged(choice, lastBuild?.slots[slot.key])) continue;
         if (choice?.mode === "pick" && choice.at != null) {
           payloadSlots[slot.key] = { at: choice.at };
+          continue;
+        }
+        if (choice?.mode === "asset") {
+          payloadSlots[slot.key] = { media_asset_id: choice.mediaId };
           continue;
         }
         if (choice?.mode !== "file") continue;
@@ -315,11 +643,23 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
       for (const slot of texts) {
         payloadTexts[slot.key] = (textValues[slot.key] ?? "").trim();
       }
+      // Silent designs always say (null = No music) — the server refuses a build
+      // without it, an edit too (it sends the current music unless changed).
+      // Designs with their own sound: only a new choice.
+      const musicPayload: Pick<BuildAutoReelPayload, "music"> = silent
+        ? { music: music ?? null }
+        : edit && showMusic && musicChanged
+          ? { music: music ?? null }
+          : {};
       const data = await buildAutoReel(autoReel.id, {
-        slots: payloadSlots,
+        // Edit: no `slots` at all when no clip changed
+        ...(edit && !Object.keys(payloadSlots).length
+          ? {}
+          : { slots: payloadSlots }),
         texts: payloadTexts,
-        ...(silent ? { music: music ?? null } : {}),
+        ...musicPayload,
       });
+      accepted = true;
       onBuilt(data);
     } catch (error: any) {
       if (controller.signal.aborted || isUploadCancelled(error)) return;
@@ -327,7 +667,7 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
       const slotErrs = keyedFieldErrors(error, "slots");
       const textErrs = keyedFieldErrors(error, "texts");
       const musicErr = musicFieldError(error);
-      // A refused own file goes up again next time
+      // A refused own file goes up again next time (a kept one keeps its id)
       setChoices((prev) => {
         const next = { ...prev };
         for (const key of Object.keys(slotErrs)) {
@@ -346,21 +686,29 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
         Object.values(textErrs)[0] ||
         musicErr ||
         error?.data?.errors?.auto_reel?.[0] ||
+        // No credits left / edit limit reached
+        otherFieldError(error) ||
         (error instanceof VideoTooLargeError ? t("autoReelVideoTooLarge") : null) ||
         error?.message ||
         t("failedToStartGeneration");
       showBanner(t("error"), message, "error", 4500);
     } finally {
+      // After a 202 the reel is being made — no second build from this screen
+      if (!accepted) buildingRef.current = false;
       setUploadPercent(null);
       setBuilding(false);
     }
   }, [
     autoReel.id,
-    building,
     complete,
+    dirty,
+    edit,
+    lastBuild,
     music,
+    musicChanged,
     onBuilt,
     showBanner,
+    showMusic,
     silent,
     slots,
     t,
@@ -368,13 +716,25 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
     texts,
   ]);
 
+  // Edit costs a reel credit — ask first
+  const confirmRemake = () => {
+    Alert.alert(
+      t("autoBuildRemakeTitle"),
+      credits != null
+        ? t("autoBuildRemakeBodyCount", { count: Math.max(0, credits) })
+        : t("autoBuildRemakeBody"),
+      [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("autoBuildSaveRemake"), onPress: () => void handleBuild() },
+      ],
+    );
+  };
+
   const badgeFor = (slot: AutoReelSlot, choice: SlotChoice | undefined) => {
-    if (choice?.mode === "file") {
+    if (choice?.mode === "file" || choice?.mode === "asset") {
+      const kind = choice.mode === "file" ? choice.file.kind : choice.kind;
       return {
-        label:
-          choice.file.kind === "video"
-            ? t("designYourVideo")
-            : t("designYourPhoto"),
+        label: kind === "video" ? t("designYourVideo") : t("designYourPhoto"),
         tone: "own" as const,
       };
     }
@@ -390,10 +750,197 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
         tone: "ai" as const,
       };
     }
+    // Edit: the last build is there, we just weren't told — not "Not found"
+    if (edit) return null;
     return { label: t("designNotFound"), tone: "missing" as const };
   };
 
   const disabled = !canChange || building;
+
+  const titles = !edit
+    ? {
+        title: t("designReviewTitle"),
+        subtitle: plainCards ? t("autoBuildTapClip") : t("designReviewSubtitle"),
+      }
+    : section === "clips"
+      ? { title: t("autoBuildEditClipsTitle"), subtitle: t("autoBuildTapClip") }
+      : section === "text"
+        ? {
+            title: t("autoBuildEditTextTitle"),
+            subtitle: t("autoBuildEditTextSubtitle"),
+          }
+        : section === "music"
+          ? {
+              title: t("autoBuildEditMusicTitle"),
+              subtitle: t("autoBuildEditMusicSubtitle"),
+            }
+          : { title: t("autoBuildEdit"), subtitle: null };
+
+  const footerHint = (() => {
+    if (edit) {
+      if (noCredits) return t("autoBuildNoCreditsAction");
+      if (noEditsLeft) return t("autoBuildEditLimit");
+      if (!dirty) return t("autoBuildEditNoChanges");
+      if (complete) return null;
+      // Silent design whose current music is unknown: the music is missing
+      if (silent && music === undefined) return t("designMusicRequired");
+      return t("autoBuildEditFillText");
+    }
+    if (complete) return null;
+    return silent && music === undefined && slotsFilled
+      ? t("designMusicRequired")
+      : t("designReviewIncomplete");
+  })();
+
+  /** What one slot holds now, and whether it differs from where it started. */
+  const clipInfo = (slot: AutoReelSlot) => {
+    const choice = choices[slot.key];
+    const pickAt = choice?.mode === "pick" ? choice.at : null;
+    const ownFile = choice?.mode === "file" || choice?.mode === "asset";
+    const original = design?.picks?.[slot.key];
+    const changed = edit
+      ? choiceChanged(choice, lastBuild?.slots[slot.key])
+      : choice?.mode === "file" || (choice?.mode === "pick" && choice.moved);
+    const canUndo = edit
+      ? changed
+      : changed && original?.found !== false && original?.at != null;
+    const missing = !ownFile && pickAt == null && !edit;
+    const thumbUri =
+      choice?.mode === "file"
+        ? choice.file.thumbnailUri
+        : pickAt != null
+          ? frames[frameKey(pickAt)] || null
+          : null;
+    return { choice, pickAt, ownFile, changed, canUndo, missing, thumbUri };
+  };
+
+  /** CapCut-style: the selected clip plays, all clips in one row, its actions below. */
+  const renderCompactClips = () => {
+    const items: ClipItem[] = slots.map((slot) => {
+      const info = clipInfo(slot);
+      return {
+        key: slot.key,
+        label: slot.label,
+        secondsLabel:
+          slot.kind === "video" && slot.min_seconds
+            ? `${Math.round(slot.min_seconds)}s`
+            : null,
+        thumbUri: info.thumbUri,
+        thumbLoading:
+          pickingSlot === slot.key ||
+          (info.pickAt != null && frames[frameKey(info.pickAt)] === undefined),
+        isVideo: slot.kind === "video",
+        state: info.missing
+          ? "missing"
+          : info.ownFile
+            ? "own"
+            : info.changed
+              ? "changed"
+              : "ai",
+      };
+    });
+    const index = Math.max(
+      0,
+      slots.findIndex((slot) => slot.key === selectedKey),
+    );
+    const slot = slots[index];
+    if (!slot) return null;
+    const info = clipInfo(slot);
+    const choice = info.choice;
+    const seconds =
+      slot.kind === "video" && slot.min_seconds ? slot.min_seconds : null;
+    const fileVideo = choice?.mode === "file" && choice.file.kind === "video";
+    const badge = badgeFor(slot, choice);
+    return (
+      <>
+        <ClipPreview
+          videoUri={
+            fileVideo
+              ? choice.file.uri
+              : info.pickAt != null && slot.kind === "video"
+                ? videoUrl
+                : null
+          }
+          at={fileVideo ? 0 : (info.pickAt ?? 0)}
+          seconds={seconds}
+          imageUri={
+            choice?.mode === "file" && !fileVideo
+              ? choice.file.uri
+              : info.thumbUri
+          }
+          tag={`${index + 1} · ${slot.label}`}
+          emptyText={
+            info.missing ? t("designChooseMoment") : (badge?.label ?? slot.label)
+          }
+        />
+        <ClipStrip
+          items={items}
+          selectedKey={slot.key}
+          onSelect={setSelectedKey}
+        />
+        <View style={styles.clipHead}>
+          <Text style={styles.clipLabel}>
+            {[slot.label, seconds ? `${Math.round(seconds)}s` : null]
+              .filter(Boolean)
+              .join(" · ")}
+          </Text>
+          {badge ? (
+            <Text
+              style={[
+                styles.clipStatus,
+                badge.tone === "missing" && styles.clipStatusMissing,
+              ]}
+            >
+              {badge.label}
+            </Text>
+          ) : null}
+        </View>
+        {slotErrors[slot.key] ? (
+          <Text style={styles.clipError}>{slotErrors[slot.key]}</Text>
+        ) : null}
+        {canChange ? (
+          <View style={styles.clipActions}>
+            {videoUrl ? (
+              <FlowButton
+                variant={info.missing ? "primary" : "outline"}
+                compact
+                icon="tune"
+                label={
+                  info.pickAt != null || info.ownFile
+                    ? t("designMoveMoment")
+                    : t("designChooseMoment")
+                }
+                onPress={() => setMovingSlot(slot)}
+                disabled={disabled}
+                style={styles.clipAction}
+              />
+            ) : null}
+            <FlowButton
+              variant="outline"
+              compact
+              icon="swap-horiz"
+              label={info.ownFile ? t("designReplace") : t("designUseOwnFile")}
+              onPress={() => void attachFile(slot)}
+              disabled={disabled || !!pickingSlot}
+              loading={pickingSlot === slot.key}
+              style={styles.clipAction}
+            />
+            {info.canUndo ? (
+              <FlowButton
+                variant="text"
+                compact
+                icon="undo"
+                label={edit ? t("autoBuildUndoChange") : t("designKeepAiPick")}
+                onPress={() => undoSlot(slot)}
+                disabled={disabled}
+                style={styles.clipAction}
+              />
+            ) : null}
+          </View>
+        ) : null}
+      </>
+    );
+  };
 
   return (
     <>
@@ -404,11 +951,8 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
         showsVerticalScrollIndicator={false}
         bottomOffset={moderateHeightScale(120)}
       >
-        <FlowTitle
-          title={t("designReviewTitle")}
-          subtitle={t("designReviewSubtitle")}
-        />
-        {notFound.length ? (
+        <FlowTitle title={titles.title} subtitle={titles.subtitle} />
+        {notFound.length && !plainCards ? (
           <InfoNote
             tone="warm"
             icon="search-off"
@@ -422,86 +966,100 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
           <InfoNote icon="lock-outline" text={t("autoReelViewOnlyHint")} />
         ) : null}
 
-        {slots.map((slot) => {
-          const choice = choices[slot.key];
-          const pickAt = choice?.mode === "pick" ? choice.at : null;
-          const original = design?.picks?.[slot.key];
-          const changed =
-            choice?.mode === "file" || (choice?.mode === "pick" && choice.moved);
-          const thumbUri =
-            choice?.mode === "file"
-              ? choice.file.thumbnailUri
-              : pickAt != null
-                ? frames[frameKey(pickAt)] || null
-                : null;
-          const actions = canChange
-            ? [
-                ...(videoUrl
-                  ? [
-                      {
-                        icon: "tune" as const,
-                        label:
-                          pickAt != null || choice?.mode === "file"
-                            ? t("designMoveMoment")
-                            : t("designChooseMoment"),
-                        onPress: () => setMovingSlot(slot),
-                        disabled,
-                      },
-                    ]
-                  : []),
-                {
-                  icon: "upload-file" as const,
-                  label:
-                    choice?.mode === "file"
-                      ? t("designReplace")
-                      : t("designUseOwnFile"),
-                  onPress: () => void attachFile(slot),
-                  disabled: disabled || !!pickingSlot,
-                },
-                ...(changed && original?.found !== false && original?.at != null
-                  ? [
-                      {
-                        icon: "undo" as const,
-                        label: t("designKeepAiPick"),
-                        onPress: () => resetToAi(slot),
-                        disabled,
-                      },
-                    ]
-                  : []),
-              ]
-            : [];
-          return (
-            <DesignSlotCard
-              key={slot.key}
-              icon={slotIcon(slot) as "photo-camera"}
-              label={slot.label}
-              detail={slotWhat(slot)}
-              meta={slotMeta(slot, t)}
-              thumbUri={thumbUri}
-              thumbLoading={
-                pickingSlot === slot.key ||
-                (pickAt != null && frames[frameKey(pickAt)] === undefined)
-              }
-              isVideo={
-                slot.kind === "video" ||
-                (choice?.mode === "file" && choice.file.kind === "video")
-              }
-              badge={badgeFor(slot, choice)}
-              error={slotErrors[slot.key]}
-              onThumbPress={
-                canChange && videoUrl && choice?.mode !== "file"
-                  ? () => setMovingSlot(slot)
-                  : null
-              }
-              actions={actions}
-            />
-          );
-        })}
+        {showClips && plainCards ? renderCompactClips() : null}
+        {showClips && !plainCards
+          ? slots.map((slot) => {
+              const choice = choices[slot.key];
+              const pickAt = choice?.mode === "pick" ? choice.at : null;
+              const ownFile = choice?.mode === "file" || choice?.mode === "asset";
+              const original = design?.picks?.[slot.key];
+              const changed = edit
+                ? choiceChanged(choice, lastBuild?.slots[slot.key])
+                : choice?.mode === "file" ||
+                  (choice?.mode === "pick" && choice.moved);
+              const canUndo = edit
+                ? changed
+                : changed && original?.found !== false && original?.at != null;
+              const thumbUri =
+                choice?.mode === "file"
+                  ? choice.file.thumbnailUri
+                  : pickAt != null
+                    ? frames[frameKey(pickAt)] || null
+                    : null;
+              const actions = canChange
+                ? [
+                    ...(videoUrl
+                      ? [
+                          {
+                            icon: "tune" as const,
+                            label:
+                              pickAt != null || ownFile
+                                ? t("designMoveMoment")
+                                : t("designChooseMoment"),
+                            onPress: () => setMovingSlot(slot),
+                            disabled,
+                          },
+                        ]
+                      : []),
+                    {
+                      icon: "upload-file" as const,
+                      label: ownFile ? t("designReplace") : t("designUseOwnFile"),
+                      onPress: () => void attachFile(slot),
+                      disabled: disabled || !!pickingSlot,
+                    },
+                    ...(canUndo
+                      ? [
+                          {
+                            icon: "undo" as const,
+                            label: edit
+                              ? t("autoBuildUndoChange")
+                              : t("designKeepAiPick"),
+                            onPress: () => undoSlot(slot),
+                            disabled,
+                          },
+                        ]
+                      : []),
+                  ]
+                : [];
+              return (
+                <DesignSlotCard
+                  key={slot.key}
+                  icon={slotIcon(slot) as "photo-camera"}
+                  label={slot.label}
+                  detail={slotWhat(slot)}
+                  meta={slotMeta(slot, t)}
+                  thumbUri={thumbUri}
+                  thumbLoading={
+                    pickingSlot === slot.key ||
+                    (pickAt != null && frames[frameKey(pickAt)] === undefined)
+                  }
+                  isVideo={
+                    slot.kind === "video" ||
+                    (choice?.mode === "file" && choice.file.kind === "video") ||
+                    (choice?.mode === "asset" && choice.kind === "video")
+                  }
+                  badge={badgeFor(slot, choice)}
+                  error={slotErrors[slot.key]}
+                  onThumbPress={
+                    canChange && videoUrl && !ownFile
+                      ? () => setMovingSlot(slot)
+                      : null
+                  }
+                  actions={actions}
+                />
+              );
+            })
+          : null}
 
-        {texts.length ? (
+        {showTexts && texts.length ? (
           <>
-            <View style={styles.divider} />
-            <SectionLabel label={t("designTextsTitle")} />
+            {!edit || (showClips && slots.length > 0) ? (
+              <View style={styles.divider} />
+            ) : null}
+            {/* Edit's text part sits right under its own title */}
+            {!edit || section !== "text" ? (
+              <SectionLabel label={t("designTextsTitle")} />
+            ) : null}
             {texts.map((slot) => (
               <FlowTextField
                 key={slot.key}
@@ -529,9 +1087,13 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
           </>
         ) : null}
 
-        {silent ? (
+        {showMusic ? (
           <>
-            <View style={styles.divider} />
+            {!edit ||
+            (showClips && slots.length > 0) ||
+            (showTexts && texts.length > 0) ? (
+              <View style={styles.divider} />
+            ) : null}
             <DesignMusicField
               value={music}
               onChange={(next) => {
@@ -545,7 +1107,21 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
           </>
         ) : null}
 
-        <InfoNote icon="auto-awesome" text={t("designReviewFreeNote")} />
+        {plainCards && showClips ? null : edit ? (
+          <InfoNote
+            icon="toll"
+            tone={noCredits ? "warm" : "info"}
+            text={
+              credits != null
+                ? `${t("autoBuildEditCreditNote")} ${t("autoBuildCreditsLeft", {
+                    count: Math.max(0, credits),
+                  })}`
+                : t("autoBuildEditCreditNote")
+            }
+          />
+        ) : (
+          <InfoNote icon="auto-awesome" text={t("designReviewFreeNote")} />
+        )}
       </KeyboardAwareScrollView>
 
       {canChange ? (
@@ -558,23 +1134,35 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
                 }
               : null
           }
-          primary={{
-            label: t("designBuildCta"),
-            icon: "auto-awesome",
-            onPress: () => void handleBuild(),
-            disabled: !complete || building || !!pickingSlot,
-            loading: building,
-          }}
-          hint={
-            complete
-              ? null
-              : silent && music === undefined && slots.every((s) => {
-                    const c = choices[s.key];
-                    return c?.mode === "file" || (c?.mode === "pick" && c.at != null);
-                  })
-                ? t("designMusicRequired")
-                : t("designReviewIncomplete")
+          primary={
+            edit
+              ? {
+                  label: t("autoBuildSaveRemake"),
+                  icon: "auto-awesome",
+                  onPress: confirmRemake,
+                  disabled:
+                    !dirty ||
+                    !complete ||
+                    building ||
+                    !!pickingSlot ||
+                    noCredits ||
+                    noEditsLeft,
+                  loading: building,
+                }
+              : {
+                  label: t("designBuildCta"),
+                  icon: "auto-awesome",
+                  onPress: () => void handleBuild(),
+                  disabled: !complete || building || !!pickingSlot,
+                  loading: building,
+                }
           }
+          tertiary={
+            edit && onCancel
+              ? { label: t("cancel"), onPress: onCancel, disabled: building }
+              : null
+          }
+          hint={footerHint}
         />
       ) : null}
 
@@ -591,16 +1179,22 @@ export default function DesignReview({ autoReel, canChange, onBuilt }: Props) {
             const choice = choices[movingSlot.key];
             return choice?.mode === "pick" ? choice.at : null;
           })()}
+          posterUri={(() => {
+            const choice = choices[movingSlot.key];
+            return choice?.mode === "pick" && choice.at != null
+              ? frames[frameKey(choice.at)] || null
+              : null;
+          })()}
           onCancel={() => setMovingSlot(null)}
           onDone={(at) => {
             const key = movingSlot.key;
-            const original = design?.picks?.[key];
             setChoices((prev) => ({
               ...prev,
               [key]: {
                 mode: "pick",
                 at,
-                moved: !(original?.found !== false && original?.at === at),
+                // Edit compares within the picker's rounding; review as before
+                moved: movedFromAi(design?.picks?.[key], at, edit),
               },
             }));
             clearSlotError(key);

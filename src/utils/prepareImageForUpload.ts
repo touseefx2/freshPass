@@ -216,9 +216,13 @@ export async function prepareImagesForUpload(
   return prepared;
 }
 
+/** Uploads over 200 MB are refused — a file this big always goes through compression. */
+const VIDEO_PASS_THROUGH_MAX_BYTES = 195 * 1024 * 1024;
+
 /**
  * True when the file is already within the upload settings (size ÷ duration
- * at or under ~5.6 Mbps and longest side ≤ 1920). Unknown → false (compress).
+ * at or under ~5.6 Mbps, longest side ≤ 1920 and under the upload size cap).
+ * Unknown → false (compress).
  */
 async function isVideoAlreadyLight(uri: string): Promise<boolean> {
   try {
@@ -228,7 +232,11 @@ async function isVideoAlreadyLight(uri: string): Promise<boolean> {
     const longestSide = Math.max(Number(meta?.width), Number(meta?.height));
     if (!(size > 0 && duration > 0 && longestSide > 0)) return false;
     const bitrate = (size * 8) / duration;
-    return bitrate <= VIDEO_SKIP_BITRATE && longestSide <= VIDEO_MAX_SIZE;
+    return (
+      bitrate <= VIDEO_SKIP_BITRATE &&
+      longestSide <= VIDEO_MAX_SIZE &&
+      size <= VIDEO_PASS_THROUGH_MAX_BYTES
+    );
   } catch {
     return false;
   }

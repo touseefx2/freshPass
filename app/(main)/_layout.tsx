@@ -64,6 +64,8 @@ export default function MainLayout() {
       <Stack.Screen name="reelStudio/index" options={{ gestureEnabled: false }} />
       <Stack.Screen name="reelTemplates/index" options={{ gestureEnabled: false }} />
       <Stack.Screen name="templateReels/index" options={{ gestureEnabled: false }} />
+      {/* AI reel result: Publish / Edit open inside the screen and back closes them */}
+      <Stack.Screen name="autoReel/index" options={{ gestureEnabled: false }} />
     </Stack>
   );
 }

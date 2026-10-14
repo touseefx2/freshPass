@@ -34,6 +34,20 @@ export type TemplateGalleryItem = {
   previewVideoUrl: string | null;
   icon: IconName;
   features: TemplateGalleryFeature[];
-  /** Design templates: what goes in each slot, in reel order */
+  /**
+   * Design templates: what goes in each slot, in reel order. Not set for
+   * one-video designs — the AI fills those slots, the user doesn't
+   */
   slots?: { icon: IconName; label: string; detail: string }[];
+  /**
+   * One-video design: the user uploads one video and the server builds the
+   * whole reel (`auto_build`), which uses a reel credit
+   */
+  autoBuild: boolean;
+  /** Finished reel length (cover facts); null when the template sets none */
+  lengthSeconds: number | null;
+  /** Photo / video clips in the reel (cover facts); null when unknown */
+  clipCount: number | null;
+  /** The template's own song, shown on the cover; null when none / unknown */
+  musicTitle: string | null;
 };

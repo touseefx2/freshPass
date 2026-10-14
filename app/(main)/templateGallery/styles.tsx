@@ -173,6 +173,18 @@ export const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       gap: moderateWidthScale(8),
     },
+    // Keeps the chip clear of the sound button (32 + 8 gap)
+    cardTopSound: {
+      paddingRight: moderateWidthScale(40),
+    },
+    // Long labels shrink with an ellipsis instead of running under a button
+    shrink: {
+      flexShrink: 1,
+    },
+    // Poster under a sample that's showing frames
+    posterHidden: {
+      opacity: 0,
+    },
     kindChip: {
       flexDirection: "row",
       alignItems: "center",
@@ -185,6 +197,7 @@ export const createStyles = (theme: Theme) =>
       borderColor: GLASS_BORDER,
     },
     kindChipText: {
+      flexShrink: 1,
       fontSize: fontSize.size11,
       fontFamily: fonts.fontBold,
       color: theme.white,
@@ -210,11 +223,31 @@ export const createStyles = (theme: Theme) =>
       borderRadius: 2,
       backgroundColor: theme.orangeBrown,
     },
-    metaRow: {
+    // Under the title: "⏱ 0:30  ▦ 6", then the template's song. Ends 64 from
+    // the cover's right edge (48 + the 16 padding), clear of the expand button
+    coverFacts: {
       marginTop: moderateHeightScale(10),
+      marginRight: moderateWidthScale(48),
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(6),
+      gap: moderateWidthScale(14),
+    },
+    coverFact: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+    },
+    coverFactText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.white,
+    },
+    coverMusic: {
+      marginTop: moderateHeightScale(6),
+      marginRight: moderateWidthScale(48),
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
     },
     metaText: {
       flexShrink: 1,
@@ -245,6 +278,18 @@ export const createStyles = (theme: Theme) =>
       width: moderateWidthScale(44),
       height: moderateWidthScale(44),
       borderRadius: moderateWidthScale(22),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: DEEP_SCRIM,
+    },
+    // Sound on / off, level with the kind chip; centred over the expand button
+    soundButton: {
+      position: "absolute",
+      top: moderateWidthScale(12),
+      right: moderateWidthScale(16),
+      width: moderateWidthScale(32),
+      height: moderateWidthScale(32),
+      borderRadius: moderateWidthScale(16),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: DEEP_SCRIM,
@@ -483,6 +528,32 @@ export const createStyles = (theme: Theme) =>
       right: 0,
       top: -moderateHeightScale(24),
       height: moderateHeightScale(24),
+    },
+    // Reel credits left this month (Video tab), just above the button
+    credits: {
+      alignSelf: "center",
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      marginBottom: moderateHeightScale(8),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(999),
+      backgroundColor: theme.lightGreen07,
+    },
+    // None left for this template: error tone
+    creditsEmpty: {
+      backgroundColor: theme.lightRed,
+    },
+    creditsText: {
+      flexShrink: 1,
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+      textAlign: "center",
+    },
+    creditsTextEmpty: {
+      color: theme.red,
     },
     ctaButton: {
       backgroundColor: theme.darkGreen,

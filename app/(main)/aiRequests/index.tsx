@@ -23,9 +23,9 @@ import {
   listMyReels,
 } from "@/src/services/reelsService";
 import {
+  autoReelMissingStages,
   isAutoReelInProgress,
   type AutoReel,
-  type AutoReelStatus,
   type GenerationStatus,
   type OwnerReel,
 } from "@/src/types/reels";
@@ -86,7 +86,7 @@ type RequestListItem = {
   key: string;
   kind: "job" | "autoReel" | "templateReel";
   title: string;
-  /** UI status: completed | failed | processing */
+  /** UI status: completed | failed | processing | review | needs_input */
   status: string;
   jobIdDisplay: string;
   createdAt: string;
@@ -136,12 +136,37 @@ function mapGenerationToUiStatus(
   return "processing";
 }
 
-function mapAutoReelToUiStatus(status: AutoReelStatus | null | undefined): string {
+function mapAutoReelToUiStatus(autoReel: AutoReel): string {
+  const { status } = autoReel;
   if (status === "ready") return "completed";
   if (status === "failed") return "failed";
-  // Video design waiting for the user to check the AI's picks
-  if (status === "review") return "review";
+  if (status === "review") {
+    // Auto build stops here only when the AI missed a moment; otherwise it's a
+    // video design waiting for its picks (also when the row has no `design`)
+    return autoReelMissingStages(autoReel).length > 0 ? "needs_input" : "review";
+  }
   return "processing";
+}
+
+/** `design.missing_stages` values → label keys */
+const STAGE_LABEL_KEYS: Record<string, string> = {
+  before: "autoBuildStageBefore",
+  progress: "autoBuildStageProgress",
+  after: "autoBuildStageAfter",
+};
+
+/** Why an auto build needs the user, e.g. "AI couldn't find a clear Before…" */
+function missingStagesText(
+  stages: string[],
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  const labelKeys = stages.map((stage) => STAGE_LABEL_KEYS[stage.toLowerCase()]);
+  if (labelKeys.length === 0 || labelKeys.some((key) => !key)) {
+    return t("autoBuildMissingBodyGeneric");
+  }
+  return t("autoBuildMissingBody", {
+    stages: labelKeys.map((key) => t(key)).join(t("autoBuildStageJoin")),
+  });
 }
 
 /**
@@ -256,19 +281,32 @@ function jobToListItem(job: AiRequestJob): RequestListItem {
   };
 }
 
+/** Second line of an auto reel row */
+function autoReelDetail(
+  autoReel: AutoReel,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string | null | undefined {
+  if (autoReel.status === "failed") return autoReel.error_message;
+  const missingStages = autoReelMissingStages(autoReel);
+  if (missingStages.length > 0) return missingStagesText(missingStages, t);
+  const caption = autoReel.reel?.caption?.trim();
+  // Auto-built and not published yet: the caption the AI suggested
+  if (!caption && autoReel.status === "ready" && autoReel.reel == null) {
+    return autoReel.design?.suggestions?.caption;
+  }
+  return caption;
+}
+
 function autoReelToListItem(
   autoReel: AutoReel,
-  fallbackTitle: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
 ): RequestListItem {
-  const detail =
-    autoReel.status === "failed"
-      ? autoReel.error_message
-      : autoReel.reel?.caption;
+  const detail = autoReelDetail(autoReel, t);
   return {
     key: `auto-reel-${autoReel.id}`,
     kind: "autoReel",
-    title: autoReel.template?.name || fallbackTitle,
-    status: mapAutoReelToUiStatus(autoReel.status),
+    title: autoReel.template?.name || t("autoReelTitle"),
+    status: mapAutoReelToUiStatus(autoReel),
     jobIdDisplay: `auto_reel_${autoReel.id}`,
     createdAt:
       autoReel.created_at ?? autoReel.updated_at ?? new Date().toISOString(),
@@ -660,7 +698,7 @@ export default function AiRequests() {
     if (activeTab === "reels") {
       // Both kinds in one list, newest first
       return [
-        ...reels.map((r) => autoReelToListItem(r, t("autoReelTitle"))),
+        ...reels.map((r) => autoReelToListItem(r, t)),
         ...templateReels.map((r) =>
           templateReelToListItem(r, t("reelTypeTemplateTitle")),
         ),
@@ -681,6 +719,7 @@ export default function AiRequests() {
       const s = (status ?? "").toLowerCase();
       if (s === "completed") return styles.jobCardStatusBadgeCompleted;
       if (s === "failed") return styles.jobCardStatusBadgeFailed;
+      if (s === "needs_input") return styles.jobCardStatusBadgeNeedsInput;
       return styles.jobCardStatusBadgeProcessing;
     },
     [styles],
@@ -701,6 +740,7 @@ export default function AiRequests() {
     if (s === "completed") return "check-circle";
     if (s === "failed") return "error-outline";
     if (s === "review") return "rate-review";
+    if (s === "needs_input") return "touch-app";
     return "schedule";
   }, []);
 
@@ -711,6 +751,7 @@ export default function AiRequests() {
       if (s === "failed") return t("generationFailed");
       if (s === "processing") return t("processingText").replace(/\.\.\.$/, "");
       if (s === "review") return t("designNeedsReview");
+      if (s === "needs_input") return t("autoReelNeedsInput");
       return status?.charAt(0).toUpperCase() + (status?.slice(1) ?? "");
     },
     [t],

@@ -185,7 +185,13 @@ export async function deleteVideos(
 /** Backend rejects videos longer than this (POST /api/media). */
 export const MAX_VIDEO_UPLOAD_SECONDS = 30;
 
-/** Raw videos for AI Auto Reels (`purpose=auto_reel_source`) may be up to 3 minutes. */
+/**
+ * Raw videos for the older AI Auto Reel flow (Reel Studio trims to this). It is
+ * also the cap for the `duration_seconds` field sent with
+ * `purpose=auto_reel_source`: the server measures the real length itself, so a
+ * one-video design source of up to 5 minutes (`templateSourceMaxSeconds`) is
+ * still sent as at most 180.
+ */
 export const MAX_AUTO_REEL_SOURCE_SECONDS = 180;
 
 /** Server rejects video uploads over 200 MB (nginx answers > 210 MB with HTML 413). */
@@ -398,8 +404,10 @@ export function uploadVideo(
         reject(new Error("Upload timed out"));
       };
 
-      // Large videos — allow up to 10 minutes
-      xhr.timeout = 10 * 60 * 1000;
+      // Large videos — allow up to 10 minutes; auto reel sources (up to 5 min,
+      // ~175 MB) get 20 so slow uploads aren't cut off (Android caps the whole call)
+      xhr.timeout =
+        (params.purpose === "auto_reel_source" ? 20 : 10) * 60 * 1000;
       const onAbort = () => xhr.abort();
       params.signal?.addEventListener("abort", onAbort);
       xhr.onloadend = () => params.signal?.removeEventListener("abort", onAbort);

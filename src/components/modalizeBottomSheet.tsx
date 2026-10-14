@@ -152,8 +152,12 @@ export default function ModalizeBottomSheet({
       }, 100);
       return () => clearTimeout(timer);
     }
+    // Not rendered yet (first mount: the portal renders it after this effect)
+    // — nothing to close, and no onClosed would clear the flag
+    const sheet = modalizeRef.current;
+    if (!sheet) return;
     programmaticCloseRef.current = true;
-    modalizeRef.current?.close();
+    sheet.close();
   }, [visible]);
 
   // Modalize fires onClosed even when its close animation is interrupted by a

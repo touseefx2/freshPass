@@ -28,6 +28,7 @@ import type {
   ReelComment,
   ReelEventType,
   ReelLookResponse,
+  ReelCredits,
   ReelPerformanceStats,
   ReelTemplate,
   ReelTryOnStartResponse,
@@ -163,6 +164,9 @@ export async function publishAutoReel(
  * Video design in `review` → build it with the user's choices (one per
  * photo/video slot, every text, music for silent designs). 202 → `pending`;
  * poll to `ready` as usual. 422s are keyed `slots.KEY` / `texts.KEY` / `music`.
+ * From `ready` / `failed` this is Edit: only the changed slots are needed (every
+ * text still is, and music on silent designs — the server keeps neither); it
+ * costs 1 credit and is capped at 20 per reel.
  */
 export async function buildAutoReel(
   id: number | string,
@@ -176,6 +180,38 @@ export async function buildAutoReel(
     throw new Error(response?.message || "Failed to build reel");
   }
   return response.data;
+}
+
+/**
+ * Auto-built reel (`ready` / `failed`) → a new version with other moments
+ * from the same analysis. 202 → `rendering`. 1 credit, max 5 per reel.
+ */
+export async function regenerateAutoReel(id: number | string): Promise<AutoReel> {
+  const response = await ApiService.post<Envelope<AutoReel>>(
+    autoReelEndpoints.regenerate(id),
+  );
+  if (!response?.data) {
+    throw new Error(response?.message || "Failed to regenerate reel");
+  }
+  return response.data;
+}
+
+/**
+ * The business's reel credits this month (create / regenerate / edit cost 1).
+ * null when they can't be loaded — callers then rely on the server's 422.
+ */
+export async function getReelCredits(): Promise<ReelCredits | null> {
+  try {
+    const response = await ApiService.get<Envelope<ReelCredits>>(
+      autoReelEndpoints.credits,
+    );
+    const data = response?.data;
+    if (data && typeof data.remaining === "number") return data;
+    return null;
+  } catch (error) {
+    Logger.warn("Reel credits not available:", error);
+    return null;
+  }
 }
 
 export async function getGenerationStatus(
