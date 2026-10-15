@@ -118,25 +118,13 @@ const createStyles = (theme: Theme) =>
       height: StyleSheet.hairlineWidth,
       backgroundColor: theme.borderNormal,
     },
-    clipHead: {
-      flexDirection: "row",
-      alignItems: "baseline",
-      flexWrap: "wrap",
-      columnGap: moderateWidthScale(10),
-    },
-    clipLabel: {
-      fontSize: fontSize.size18,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-    },
-    clipStatus: {
-      fontSize: fontSize.size14,
-      fontFamily: fonts.fontMedium,
-      color: theme.lightGreen,
-      fontVariant: ["tabular-nums"],
-    },
-    clipStatusMissing: {
-      color: theme.red,
+    /** Clip row pinned above the footer — always in reach while scrolling */
+    clipBar: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(10),
+      backgroundColor: theme.background,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.borderNormal,
     },
     clipError: {
       fontSize: fontSize.size14,
@@ -981,8 +969,13 @@ export default function DesignReview({
     );
   };
 
-  /** CapCut-style: the selected clip plays, all clips in one row, its actions below. */
-  const renderCompactClips = () => {
+  const selectedIndex = Math.max(
+    0,
+    slots.findIndex((slot) => slot.key === selectedKey),
+  );
+
+  /** The clip row, pinned above Build reel; tap → select + options. */
+  const renderClipBar = () => {
     const items: ClipItem[] = slots.map((slot) => {
       const info = clipInfo(slot);
       return {
@@ -1006,10 +999,25 @@ export default function DesignReview({
               : "ai",
       };
     });
-    const index = Math.max(
-      0,
-      slots.findIndex((slot) => slot.key === selectedKey),
+    const slot = slots[selectedIndex];
+    if (!slot) return null;
+    return (
+      <View style={styles.clipBar}>
+        <ClipStrip
+          items={items}
+          selectedKey={slot.key}
+          onSelect={(key) => {
+            setSelectedKey(key);
+            if (canChange) openClipSheet(key);
+          }}
+        />
+      </View>
     );
+  };
+
+  /** CapCut-style: the selected clip plays on top; its name and state are on it. */
+  const renderCompactClips = () => {
+    const index = selectedIndex;
     const slot = slots[index];
     if (!slot) return null;
     const info = clipInfo(slot);
@@ -1035,37 +1043,17 @@ export default function DesignReview({
               ? choice.file.uri
               : info.thumbUri
           }
-          tag={`${index + 1} · ${slot.label}`}
+          tag={[
+            `${index + 1} · ${slot.label}`,
+            seconds ? `${Math.round(seconds)}s` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
           emptyText={
             info.missing ? t("designChooseMoment") : (badge?.label ?? slot.label)
           }
           onPress={canChange ? () => openClipSheet(slot.key) : undefined}
         />
-        <ClipStrip
-          items={items}
-          selectedKey={slot.key}
-          onSelect={(key) => {
-            setSelectedKey(key);
-            if (canChange) openClipSheet(key);
-          }}
-        />
-        <View style={styles.clipHead}>
-          <Text style={styles.clipLabel}>
-            {[slot.label, seconds ? `${Math.round(seconds)}s` : null]
-              .filter(Boolean)
-              .join(" · ")}
-          </Text>
-          {badge ? (
-            <Text
-              style={[
-                styles.clipStatus,
-                badge.tone === "missing" && styles.clipStatusMissing,
-              ]}
-            >
-              {badge.label}
-            </Text>
-          ) : null}
-        </View>
         {slotErrors[slot.key] ? (
           <Text style={styles.clipError}>{slotErrors[slot.key]}</Text>
         ) : null}
@@ -1254,6 +1242,8 @@ export default function DesignReview({
           <InfoNote icon="auto-awesome" text={t("designReviewFreeNote")} />
         )}
       </KeyboardAwareScrollView>
+
+      {showClips && plainCards ? renderClipBar() : null}
 
       {canChange ? (
         <FlowFooter
