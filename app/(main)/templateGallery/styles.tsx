@@ -321,18 +321,28 @@ export const createStyles = (theme: Theme) =>
     videoScrollContent: {
       paddingBottom: 0,
     },
+    // Title, facts and song sit at the bottom; nothing at the top
     videoCardInner: {
       paddingBottom: moderateWidthScale(20),
+      justifyContent: "flex-end",
     },
-    // Dark fades over the sample: behind the chip / sound button, and under
-    // the title, facts and song at the bottom
-    videoTopFade: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      right: 0,
-      height: "22%",
+    // Paused by a tap: play sign in the middle of the cover
+    videoPausedCentre: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
     },
+    videoPlayBadge: {
+      width: moderateWidthScale(72),
+      height: moderateWidthScale(72),
+      borderRadius: moderateWidthScale(36),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: DEEP_SCRIM,
+      borderWidth: 1,
+      borderColor: GLASS_BORDER,
+    },
+    // Dark fade under the title, facts and song at the bottom
     videoBottomFade: {
       position: "absolute",
       left: 0,

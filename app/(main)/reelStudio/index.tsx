@@ -2679,6 +2679,27 @@ export default function ReelStudioScreen() {
     [pushHistory],
   );
 
+  /** Hold-and-drag result from the clips strip. */
+  const reorderClips = useCallback(
+    (orderedIds: string[]) => {
+      const list = clipsRef.current;
+      const byId = new Map(list.map((c) => [c.id, c]));
+      const next = orderedIds
+        .map((id) => byId.get(id))
+        .filter((c): c is EditorClip => !!c);
+      if (
+        next.length !== list.length ||
+        next.every((c, i) => c.id === list[i].id)
+      ) {
+        return;
+      }
+      pushHistory();
+      clipsRef.current = next;
+      setClips(next);
+    },
+    [pushHistory],
+  );
+
   /** Remove a clip. The Add video step may remove the last one too. */
   const removeClip = useCallback(
     (id: string, allowEmpty = false) => {
@@ -3777,7 +3798,9 @@ export default function ReelStudioScreen() {
           disabled={busy}
           onSelect={setEditingClipId}
           onAdd={openAddClipChooser}
-          onMove={(direction) => moveClip(editingClip.id, direction)}
+          onRemove={(id) => removeClip(id)}
+          onReorder={reorderClips}
+          onMove={moveClip}
         />
         <StudioTrimPanel
           compact={compact}
@@ -3795,7 +3818,7 @@ export default function ReelStudioScreen() {
           // no Mute for an AI auto reel (its clips are always silent)
           simple
           simpleMute={!trimOnly}
-          onRemoveClip={() => removeClip(editingClip.id)}
+          clipNumber={clips.findIndex((c) => c.id === editingClip.id) + 1}
           onSplit={() => splitSelectedClip(editingClip.id)}
           onReset={() => resetClip(editingClip.id)}
           onToggleMute={() => toggleClipMuted(editingClip.id)}

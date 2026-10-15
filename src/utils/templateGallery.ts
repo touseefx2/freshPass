@@ -58,13 +58,9 @@ export function mediaRequirementLabel(
       : t("photosNeededImages", { count });
   }
   if (hasVideo && !hasImage) {
-    return count === 1
-      ? t("videosNeededOne")
-      : t("videosNeeded", { count });
+    return count === 1 ? t("videosNeededOne") : t("videosNeeded", { count });
   }
-  return count === 1
-    ? t("photosNeededOne")
-    : t("photosNeeded", { count });
+  return count === 1 ? t("photosNeededOne") : t("photosNeeded", { count });
 }
 
 export function formatMusicName(name: string | null): string {
@@ -72,7 +68,8 @@ export function formatMusicName(name: string | null): string {
   return name.replace(/\.(mp3|wav|m4a|aac)$/i, "").replace(/-/g, " ");
 }
 
-const headlineWords = (name: string) => name.trim().split(/\s+/).filter(Boolean);
+const headlineWords = (name: string) =>
+  name.trim().split(/\s+/).filter(Boolean);
 
 /** Photo Reel template (/api/reel-templates) → gallery item. */
 export function photoReelGalleryItem(
@@ -131,6 +128,7 @@ export function photoReelGalleryItem(
     clipCount: fields.length || null,
     // `music_name` is a stock id, not a song title
     musicTitle: null,
+    musicUrl: null,
   };
 }
 
@@ -156,7 +154,9 @@ export function slotWhat(slot: AutoReelSlot): string {
 export function slotMeta(slot: AutoReelSlot, t: Translate): string {
   const parts: string[] = [];
   if (slot.kind === "video" && slot.min_seconds) {
-    parts.push(t("designSlotMinSeconds", { seconds: Math.ceil(slot.min_seconds) }));
+    parts.push(
+      t("designSlotMinSeconds", { seconds: Math.ceil(slot.min_seconds) }),
+    );
   }
   if (slot.kind === "text" && slot.max_length) {
     parts.push(t("designSlotMaxLength", { count: slot.max_length }));
@@ -252,7 +252,9 @@ function autoBuildFeatures(
   if (tpl.length_seconds) {
     features.push({
       icon: "timer",
-      label: t("designReelSeconds", { seconds: Math.round(tpl.length_seconds) }),
+      label: t("designReelSeconds", {
+        seconds: Math.round(tpl.length_seconds),
+      }),
     });
   }
   const song = tpl.music?.title?.trim();
@@ -298,9 +300,7 @@ export function autoReelGalleryItem(
         : tpl.kind === "haircut"
           ? "content-cut"
           : "movie-filter",
-      features: autoBuild
-        ? autoBuildFeatures(tpl, t)
-        : designFeatures(tpl, t),
+      features: autoBuild ? autoBuildFeatures(tpl, t) : designFeatures(tpl, t),
       // One-video designs: the AI fills every slot, so no "What you'll need"
       slots: autoBuild
         ? undefined
@@ -313,6 +313,7 @@ export function autoReelGalleryItem(
       lengthSeconds,
       clipCount,
       musicTitle: tpl.music?.title?.trim() || null,
+      musicUrl: tpl.music?.url?.trim() || null,
     };
   }
   return {
@@ -342,5 +343,6 @@ export function autoReelGalleryItem(
     clipCount,
     // The user's own audio is kept, so no template song to name
     musicTitle: null,
+    musicUrl: null,
   };
 }

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   AppState,
@@ -44,6 +50,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -794,6 +801,62 @@ function TemplateCover({
 }
 
 /**
+ * The template's own song under its Video Reel sample: loops while `playing`,
+ * pauses with it and stops when the cover is left (unmount / new url).
+ */
+function useTemplateMusic(url: string | null, playing: boolean) {
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const playingRef = useRef(playing);
+  playingRef.current = playing;
+
+  useEffect(() => {
+    if (!url) return;
+    let alive = true;
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: url },
+          { isLooping: true, shouldPlay: playingRef.current },
+        );
+        if (!alive) {
+          await sound.unloadAsync();
+          return;
+        }
+        soundRef.current = sound;
+      } catch (error) {
+        Logger.warn("Template music preview failed:", error);
+      }
+    })();
+    return () => {
+      alive = false;
+      const sound = soundRef.current;
+      soundRef.current = null;
+      void sound?.unloadAsync().catch(() => {});
+    };
+  }, [url]);
+
+  useEffect(() => {
+    const sound = soundRef.current;
+    if (!sound) return;
+    (playing ? sound.playAsync() : sound.pauseAsync()).catch(() => {});
+  }, [playing]);
+
+  // The OS stops audio in the background; carry on once the app is back
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active" && playingRef.current) {
+        soundRef.current?.playAsync().catch(() => {});
+      }
+    });
+    return () => sub.remove();
+  }, []);
+}
+
+/**
  * Template name for a Video Reel cover without the "Template" word, the
  * number and the brackets: "Template #1 - ( Before & After)" → "Before &
  * After". The full name when nothing is left.
@@ -811,9 +874,10 @@ function videoCoverTitle(name: string): string {
 
 /**
  * Video Reel cover, CapCut style: the sample fills the tall card and plays on
- * its own with its music (no seek bar or play / pause); title, facts and song
- * sit over a dark fade at the bottom. Neighbours shrink and fade while
- * swiping; tapping one brings it to the centre.
+ * its own, with the template's song when it has one (else the video's own
+ * sound); tapping it pauses / plays. Title, facts and song sit over a dark
+ * fade at the bottom. Neighbours shrink and fade while swiping; tapping one
+ * brings it to the centre.
  */
 function VideoTemplateCover({
   item,
@@ -822,12 +886,9 @@ function VideoTemplateCover({
   height,
   progress,
   reduceMotion,
-  chip,
   videoOn,
-  muted,
   centred,
   onSelect,
-  onToggleSound,
   styles,
   theme,
 }: {
@@ -838,14 +899,11 @@ function VideoTemplateCover({
   /** Swipe position in templates (0 = first) */
   progress: SharedValue<number>;
   reduceMotion: boolean;
-  chip: { label: string; icon: IconName };
-  /** Its sample plays: the centred template, with this screen in front */
+  /** Its sample is loaded: the centred template, with this screen in front */
   videoOn: boolean;
-  muted: boolean;
-  /** The template in the middle (side covers are tappable) */
+  /** The template in the middle (tap = pause / play; side covers come to the centre) */
   centred: boolean;
   onSelect: () => void;
-  onToggleSound: () => void;
   styles: Styles;
   theme: Theme;
 }) {
@@ -856,6 +914,14 @@ function VideoTemplateCover({
     if (!videoOn) setFrameShown(false);
   }, [videoOn]);
   const showFrame = useCallback(() => setFrameShown(true), []);
+  // Paused by a tap; each time the sample comes back it plays again
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (!videoOn) setPaused(false);
+  }, [videoOn]);
+  const playing = videoOn && !paused;
+  // The template's song starts with the first frame, in place of the video's sound
+  useTemplateMusic(videoOn ? item.musicUrl : null, playing && frameShown);
 
   const motion = useAnimatedStyle(() => {
     const range = [index - 1, index, index + 1];
@@ -923,12 +989,23 @@ function VideoTemplateCover({
     >
       <TouchableOpacity
         style={styles.card}
-        onPress={onSelect}
-        disabled={centred}
-        activeOpacity={0.9}
-        accessible={!centred}
-        accessibilityRole={centred ? undefined : "button"}
-        accessibilityLabel={centred ? undefined : item.name}
+        onPress={() => {
+          if (!centred) {
+            onSelect();
+            return;
+          }
+          if (item.previewVideoUrl) setPaused((p) => !p);
+        }}
+        disabled={centred && !item.previewVideoUrl}
+        activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={
+          !centred
+            ? item.name
+            : paused
+              ? t("templateGalleryPlay")
+              : t("templateGalleryPause")
+        }
       >
         {/* Poster (photo, else brand art) under the sample until its first frame */}
         <View
@@ -979,18 +1056,26 @@ function VideoTemplateCover({
         {videoOn ? (
           <PreviewVideo
             uri={item.previewVideoUrl!}
-            playing
-            muted={muted}
+            playing={playing}
+            muted={!!item.musicUrl}
             onFirstFrame={showFrame}
           />
         ) : null}
 
-        {/* Keeps the chip / sound button and the bottom text readable on any frame */}
-        <LinearGradient
-          colors={["rgba(24, 33, 14, 0.45)", "transparent"]}
-          style={styles.videoTopFade}
-          pointerEvents="none"
-        />
+        {/* Paused by a tap: a play sign in the middle */}
+        {videoOn && paused ? (
+          <View style={styles.videoPausedCentre} pointerEvents="none">
+            <View style={styles.videoPlayBadge}>
+              <MaterialIcons
+                name="play-arrow"
+                size={moderateWidthScale(40)}
+                color={theme.white}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        {/* Keeps the title, facts and song readable on any frame */}
         <LinearGradient
           colors={[
             "transparent",
@@ -1006,28 +1091,6 @@ function VideoTemplateCover({
           style={[styles.cardInner, styles.videoCardInner]}
           pointerEvents="none"
         >
-          {/* Room on the right for the sound button */}
-          <View
-            style={[
-              styles.cardTop,
-              item.previewVideoUrl ? styles.cardTopSound : null,
-            ]}
-          >
-            {layer(
-              0,
-              <View style={styles.kindChip}>
-                <MaterialIcons
-                  name={chip.icon}
-                  size={moderateWidthScale(13)}
-                  color={theme.orangeBrown}
-                />
-                <Text style={styles.kindChipText} numberOfLines={1}>
-                  {chip.label}
-                </Text>
-              </View>,
-              styles.shrink,
-            )}
-          </View>
           <View>
             <View style={styles.videoTitleBlock}>
               {words.length
@@ -1103,26 +1166,6 @@ function VideoTemplateCover({
               : null}
           </View>
         </View>
-
-        {/* Sound on / off; the choice holds for every sample while swiping */}
-        {item.previewVideoUrl && centred ? (
-          <TouchableOpacity
-            style={styles.soundButton}
-            onPress={onToggleSound}
-            activeOpacity={0.7}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={
-              muted ? t("templateGallerySoundOn") : t("templateGallerySoundOff")
-            }
-          >
-            <MaterialIcons
-              name={muted ? "volume-off" : "volume-up"}
-              size={moderateWidthScale(18)}
-              color={theme.white}
-            />
-          </TouchableOpacity>
-        ) : null}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -1259,8 +1302,6 @@ export default function TemplateGalleryScreen() {
   const [pausedId, setPausedId] = useState<number | null>(null);
   // Samples start muted; the viewer's choice holds while swiping
   const [muted, setMuted] = useState(true);
-  // Video tab samples play with their music unless muted there
-  const [videoMuted, setVideoMuted] = useState(false);
   // False while another screen is in front (set early by Use This Template)
   const [focused, setFocused] = useState(true);
   // This month's reel credits (Video tab); null = unknown, nothing blocked
@@ -1570,12 +1611,9 @@ export default function TemplateGalleryScreen() {
                     height={cardHeight}
                     progress={progress}
                     reduceMotion={reduceMotion}
-                    chip={chip}
                     videoOn={videoId === item.id}
-                    muted={videoMuted}
                     centred={i === index}
                     onSelect={() => goTo(i)}
-                    onToggleSound={() => setVideoMuted((m) => !m)}
                     styles={styles}
                     theme={theme}
                   />

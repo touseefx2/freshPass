@@ -50,4 +50,9 @@ export type TemplateGalleryItem = {
   clipCount: number | null;
   /** The template's own song, shown on the cover; null when none / unknown */
   musicTitle: string | null;
+  /**
+   * The template's own song, played over the Video Reel sample in place of
+   * the video's sound; null → the sample plays with its own sound
+   */
+  musicUrl: string | null;
 };
