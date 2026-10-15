@@ -7,6 +7,29 @@ import type {
 
 export type UserRole = "business" | "customer" | "staff" | null;
 
+/** Which side of the app a Business/Staff account is using right now. */
+export type UserMode = "business" | "customer";
+
+export const normalizeUserMode = (value: unknown): UserMode | null =>
+  value === "business" || value === "customer" ? value : null;
+
+/** Only Business/Staff accounts can switch to customer mode. */
+export const isModeSwitchableRole = (role: UserRole): boolean =>
+  role === "business" || role === "staff";
+
+/**
+ * The role the UI acts on. A Business/Staff account in customer mode behaves
+ * exactly like a customer (tabs, home, explore, chat, notifications).
+ * `null` mode means business — the account has never switched.
+ */
+export const resolveEffectiveRole = (
+  accountRole: UserRole,
+  mode: UserMode | null,
+): UserRole =>
+  mode === "customer" && isModeSwitchableRole(accountRole)
+    ? "customer"
+    : accountRole;
+
 export interface OwnerAsStaffStatus {
   available: boolean;
   enabled: boolean;
@@ -137,7 +160,14 @@ export interface UserState {
   profile_image_url: string | null;
   accessToken: string | null;
   refreshToken: string | null;
+  /** Role the UI acts on — "customer" while a Business/Staff account is in customer mode */
   userRole: UserRole;
+  /** Real account role from the server; never changes with mode */
+  accountRole: UserRole;
+  active_mode: UserMode | null;
+  can_switch_mode: boolean;
+  /** Customer-mode AI balance; null until the account first switches */
+  customer_ai_quota: number | null;
   unreadCount: number;
   totalUnreadChat: number;
   businessStatus: BusinessStatus | null;
@@ -178,6 +208,10 @@ const initialState: UserState = {
   accessToken: null,
   refreshToken: null,
   userRole: null,
+  accountRole: null,
+  active_mode: null,
+  can_switch_mode: false,
+  customer_ai_quota: null,
   businessStatus: null,
   unreadCount: 0,
   totalUnreadChat: 0,
@@ -206,6 +240,38 @@ const initialState: UserState = {
   ai_quota: 0,
 };
 
+/** Real account role — installs persisted before modes existed only have userRole. */
+export const getAccountRole = (user: UserState): UserRole =>
+  user.accountRole ?? user.userRole;
+
+export const isInCustomerMode = (user: UserState): boolean =>
+  user.active_mode === "customer" && isModeSwitchableRole(getAccountRole(user));
+
+/**
+ * Businesses customer mode can't act on (book, review, follow, buy, tip).
+ * Owner: their own business. Staff: the business they work at (`business_id`
+ * is filled from the staff status call).
+ */
+export const getOwnBusinessIds = (user: UserState): number[] => {
+  const role = getAccountRole(user);
+  const ids =
+    role === "staff"
+      ? [user.working_with_business_id, user.business_id]
+      : role === "business"
+        ? [user.business_id]
+        : [];
+  return ids.filter(
+    (id): id is number => typeof id === "number" && Number.isFinite(id),
+  );
+};
+
+const applyActiveMode = (state: UserState, mode: UserMode | null) => {
+  const accountRole = getAccountRole(state);
+  state.accountRole = accountRole;
+  state.active_mode = mode;
+  state.userRole = resolveEffectiveRole(accountRole, mode);
+};
+
 const userSlice = createSlice({
   name: "user",
   initialState,
@@ -224,6 +290,8 @@ const userSlice = createSlice({
         accessToken: string;
         refreshToken?: string;
         userRole?: UserRole;
+        active_mode?: UserMode | null;
+        can_switch_mode?: boolean;
       }>,
     ) {
       state.id = action.payload.id;
@@ -236,10 +304,24 @@ const userSlice = createSlice({
       state.profile_image_url = action.payload.profile_image_url || null;
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken || null;
-      state.userRole = action.payload.userRole || null;
+      // New session: mode comes from the login payload (or the next details fetch)
+      state.accountRole = action.payload.userRole || null;
+      state.can_switch_mode = action.payload.can_switch_mode === true;
+      state.customer_ai_quota = null;
+      applyActiveMode(state, normalizeUserMode(action.payload.active_mode));
     },
     setUserRole(state, action: PayloadAction<UserRole>) {
-      state.userRole = action.payload;
+      state.accountRole = action.payload;
+      applyActiveMode(state, state.active_mode);
+    },
+    setActiveMode(state, action: PayloadAction<UserMode | null>) {
+      applyActiveMode(state, action.payload);
+    },
+    setCanSwitchMode(state, action: PayloadAction<boolean>) {
+      state.can_switch_mode = action.payload;
+    },
+    setCustomerAiQuota(state, action: PayloadAction<number | null>) {
+      state.customer_ai_quota = action.payload;
     },
     setTokens(
       state,
@@ -290,6 +372,9 @@ const userSlice = createSlice({
         working_with_business?: AffiliatedBusiness | null;
         working_with_business_request?: WorkingWithBusinessRequest | null;
         ai_quota?: number;
+        active_mode?: UserMode | null;
+        can_switch_mode?: boolean;
+        customer_ai_quota?: number | null;
       }>,
     ) {
       if (action.payload.name !== undefined) {
@@ -343,6 +428,15 @@ const userSlice = createSlice({
       if (action.payload.ai_quota !== undefined) {
         state.ai_quota = action.payload.ai_quota;
       }
+      if (action.payload.can_switch_mode !== undefined) {
+        state.can_switch_mode = action.payload.can_switch_mode;
+      }
+      if (action.payload.customer_ai_quota !== undefined) {
+        state.customer_ai_quota = action.payload.customer_ai_quota;
+      }
+      if (action.payload.active_mode !== undefined) {
+        applyActiveMode(state, action.payload.active_mode);
+      }
     },
     setUnreadCount(state, action: PayloadAction<number>) {
       state.unreadCount = action.payload;
@@ -391,6 +485,9 @@ export const {
   setUser,
   setTokens,
   setUserRole,
+  setActiveMode,
+  setCanSwitchMode,
+  setCustomerAiQuota,
   setBusinessStatus,
   setBusinessStatusLoading,
   setBusinessStatusError,

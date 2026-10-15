@@ -6,7 +6,8 @@ import Logger from "@/src/services/logger";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { fetchNotificationUnreadCount } from "../state/thunks/notificationThunks";
 import { useAppDispatch, useAppSelector } from "../hooks/hooks";
-import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
+import { useTranslation } from "react-i18next";
+import { navigateFromPushNotification } from "@/src/services/notificationNavigation";
 import { syncExpoPushTokenToBackend } from "@/src/services/pushTokenService";
 
 /**
@@ -20,6 +21,7 @@ export default function ExpoNotificationHandler() {
   const accessToken = useAppSelector((state) => state.user.accessToken);
   const isGuest = useAppSelector((state) => state.user.isGuest);
   const { showBanner } = useNotificationContext();
+  const { t } = useTranslation();
   const responseListenerRef = useRef<Notifications.EventSubscription | null>(
     null,
   );
@@ -93,7 +95,17 @@ export default function ExpoNotificationHandler() {
           data,
         );
         if (accessToken) {
-          navigateFromNotificationData(router, data);
+          void navigateFromPushNotification(router, data, {
+            onModeSwitched: (mode) =>
+              showBanner(
+                mode === "customer"
+                  ? t("modeSwitchedCustomerTitle")
+                  : t("modeSwitchedBusinessTitle"),
+                t("modeSwitchBackHint"),
+                "info",
+                2500,
+              ),
+          });
         }
       });
 
@@ -107,7 +119,7 @@ export default function ExpoNotificationHandler() {
         responseListenerRef.current = null;
       }
     };
-  }, [showBanner, router, accessToken, dispatch]);
+  }, [showBanner, router, accessToken, dispatch, t]);
 
   return null;
 }

@@ -31,6 +31,7 @@ import StripeConnectedCongratsModalHandler from "@/src/components/StripeConnecte
 import TryOnPurchaseSuccessModalHandler from "@/src/components/TryOnPurchaseSuccessModalHandler";
 import BusinessPlanPurchasedCongratsModalHandler from "@/src/components/BusinessPlanPurchasedCongratsModalHandler";
 import BusinessPlansModalHandler from "@/src/components/BusinessPlansModalHandler";
+import ModeSwitchModalHandler from "@/src/components/ModeSwitchModalHandler";
 import {
   prefetchDefaultMediaRemoteConfig,
   prefetchPurchaseRemoteConfig,
@@ -138,6 +139,7 @@ export default function RootLayout() {
                     <TryOnPurchaseSuccessModalHandler />
                     <BusinessPlanPurchasedCongratsModalHandler />
                     <BusinessPlansModalHandler />
+                    <ModeSwitchModalHandler />
                     <ForceUpdateHandler />
                     <MaintenanceModeHandler />
                     <FirebaseMonitoringHandler />

@@ -26,6 +26,9 @@ export type SocialLoginApiResponse = {
       is_onboarded?: boolean;
       business_name?: string;
       description?: string;
+      /** Business/Staff: "customer" when last left in customer mode; null = business */
+      active_mode?: string | null;
+      can_switch_mode?: boolean;
     };
     token: string;
     isNewCreated?: boolean;

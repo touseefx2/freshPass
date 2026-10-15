@@ -32,6 +32,10 @@ import { getEcho } from "@/src/services/echo";
 import { refreshChatInbox } from "@/src/state/thunks/chatThunks";
 import { parseDateOfBirth } from "@/src/constant/functions";
 import type { UserAffiliationFields } from "@/src/types/affiliation";
+import {
+  pickUserModeDetails,
+  type UserModeDetailsFields,
+} from "@/src/services/userModeService";
 
 const CHAT_MESSAGE_SENT = ".message.sent";
 
@@ -181,7 +185,8 @@ export default function DashboardLayout() {
           business: { id: number; title: string };
           ai_quota?: number;
           date_of_birth: string | null;
-        } & UserAffiliationFields;
+        } & UserAffiliationFields &
+          UserModeDetailsFields;
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
@@ -202,7 +207,7 @@ export default function DashboardLayout() {
               response.data.working_with_business ?? null,
             working_with_business_request:
               response.data.working_with_business_request ?? null,
-            ai_quota: response.data.ai_quota ?? 0,
+            ...pickUserModeDetails(response.data),
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)
               : null,

@@ -14,6 +14,7 @@ import { IMAGES } from "@/src/constant/images";
 import { NotificationIcon } from "@/assets/icons";
 import { fontSize, fonts } from "../theme/fonts";
 import { router } from "expo-router";
+import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -74,7 +75,9 @@ export default function DashboardHeaderClient() {
         { paddingTop: insets.top + moderateHeightScale(10) },
       ]}
     >
-      <Image source={IMAGES.logo3d} style={styles.logoImage} />
+      <ModeSwitchLogo centered>
+        <Image source={IMAGES.logo3d} style={styles.logoImage} />
+      </ModeSwitchLogo>
 
       <TouchableOpacity
         onPress={() => router.push("/notification" as any)}

@@ -42,6 +42,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useFocusEffect } from "expo-router";
 import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
 import { navigateFromNotificationData } from "@/src/services/notificationNavigation";
+import { getNotificationMode } from "@/src/services/userModeService";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import StackHeader from "@/src/components/StackHeader";
@@ -291,6 +292,8 @@ export default function NotificationsScreen() {
   // Same race as chat: after guest Sign In, logout clears isGuest before
   // navigation finishes — calling with only the env guest token 401s.
   const canFetchNotifications = !isGuest && Boolean(accessToken);
+  // Business/Staff: only the active mode's notifications (+ legacy ones without a mode)
+  const notificationMode = getNotificationMode(user);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -429,7 +432,13 @@ export default function NotificationsScreen() {
           total: number;
           last_page: number;
         };
-      }>(notificationsEndpoints.list({ page, per_page: 16 }));
+      }>(
+        notificationsEndpoints.list({
+          page,
+          per_page: 16,
+          mode: notificationMode,
+        }),
+      );
 
       if (response.success && response.data) {
         const mappedNotifications = response.data.data.map(mapApiNotification);
@@ -527,7 +536,7 @@ export default function NotificationsScreen() {
       } else {
         setLoading(false);
       }
-    }, [canFetchNotifications]),
+    }, [canFetchNotifications, notificationMode]),
   );
 
   const handleRefresh = async () => {

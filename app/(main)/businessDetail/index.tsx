@@ -31,6 +31,10 @@ import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import { setBusinessData as setBusinessDataAction } from "@/src/state/slices/bsnsSlice";
 import {
+  getOwnBusinessIds,
+  isInCustomerMode,
+} from "@/src/state/slices/userSlice";
+import {
   setGuestModeModalVisible,
   openFullImageModal,
 } from "@/src/state/slices/generalSlice";
@@ -1589,9 +1593,21 @@ export default function BusinessDetailScreen() {
     !!user.business_id &&
     !!params.business_id &&
     user.business_id.toString() === params.business_id.toString();
+  // Customer mode at the business this account owns / works at: the server
+  // 403s booking, reviews, follows and purchases there, so turn them off up front.
+  const isOwnBusinessInCustomerMode =
+    !isGuest &&
+    isInCustomerMode(user) &&
+    !!params.business_id &&
+    getOwnBusinessIds(user).some(
+      (id) => id.toString() === params.business_id!.toString(),
+    );
   const isBusinessOwnerView =
-    isOwnerPreviewMode || user.userRole === "staff";
-  const viewerBannerOffset = isOwnerPreviewMode
+    isOwnerPreviewMode ||
+    user.userRole === "staff" ||
+    isOwnBusinessInCustomerMode;
+  const showViewerBanner = isOwnerPreviewMode || isOwnBusinessInCustomerMode;
+  const viewerBannerOffset = showViewerBanner
     ? insets.top + VIEWER_BANNER_CONTENT_HEIGHT + moderateHeightScale(6)
     : 0;
 
@@ -4049,7 +4065,7 @@ export default function BusinessDetailScreen() {
   };
 
   const renderViewerModeBanner = () => {
-    if (!isOwnerPreviewMode) {
+    if (!showViewerBanner) {
       return null;
     }
 
@@ -4071,7 +4087,9 @@ export default function BusinessDetailScreen() {
         <View style={styles.viewerModeBannerOverlay} />
         <View style={styles.viewerModeBannerContent}>
           <Text style={styles.viewerModeBannerText} numberOfLines={1}>
-            {t("viewingAsViewer")}
+            {isOwnBusinessInCustomerMode
+              ? t("ownBusinessCustomerModeBanner")
+              : t("viewingAsViewer")}
           </Text>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -4088,7 +4106,7 @@ export default function BusinessDetailScreen() {
     <View
       style={[
         styles.header,
-        isOwnerPreviewMode && {
+        showViewerBanner && {
           top: viewerBannerOffset,
           paddingTop: moderateHeightScale(10),
         },

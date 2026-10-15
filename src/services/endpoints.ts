@@ -159,6 +159,8 @@ export const userEndpoints = {
   deleteAccount: `/api/user/account`,
   status: `/api/user/status`,
   pushToken: `/api/user/push-token`,
+  /** GET: current mode + both AI balances · POST { mode }: switch business ↔ customer */
+  mode: `/api/user/mode`,
 };
 
 /**
@@ -474,12 +476,18 @@ export const reviewsEndpoints = {
  * Notifications endpoints
  */
 export const notificationsEndpoints = {
-  list: (params?: { page?: number; per_page?: number }) => {
+  /** `mode` (Business/Staff only): that side's notifications + legacy ones without a mode */
+  list: (params?: {
+    page?: number;
+    per_page?: number;
+    mode?: "business" | "customer";
+  }) => {
     const queryParams = new URLSearchParams();
 
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.per_page)
       queryParams.append("per_page", params.per_page.toString());
+    if (params?.mode) queryParams.append("mode", params.mode);
 
     const queryString = queryParams.toString();
     return `/api/notifications${queryString ? `?${queryString}` : ""}`;
@@ -487,7 +495,8 @@ export const notificationsEndpoints = {
   markAsRead: (notificationId: number) =>
     `/api/notifications/${notificationId}/read`,
   markAllAsRead: `/api/notifications/mark-all-read`,
-  unreadCount: `/api/notifications/unread-count`,
+  unreadCount: (mode?: "business" | "customer") =>
+    `/api/notifications/unread-count${mode ? `?mode=${mode}` : ""}`,
   preferences: `/api/notification-preferences`,
 };
 

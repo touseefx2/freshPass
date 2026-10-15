@@ -25,6 +25,7 @@ import {
   setActionLoaderTitle,
 } from "@/src/state/slices/generalSlice";
 import {
+  normalizeUserMode,
   setBusinessStatus,
   setUser,
   UserRole,
@@ -101,6 +102,8 @@ export function useSocialLogin() {
                 profile_image_url: user.profile_image_url || "",
                 accessToken: token,
                 userRole: (userRoleLower as UserRole) || null,
+                active_mode: normalizeUserMode(user.active_mode),
+                can_switch_mode: user.can_switch_mode === true,
               }),
             );
 
@@ -124,6 +127,8 @@ export function useSocialLogin() {
                 profile_image_url: user.profile_image_url || "",
                 accessToken: token,
                 userRole: (userRoleLower as UserRole) || null,
+                active_mode: normalizeUserMode(user.active_mode),
+                can_switch_mode: user.can_switch_mode === true,
               }),
             );
 
@@ -147,6 +152,8 @@ export function useSocialLogin() {
                 profile_image_url: user.profile_image_url || "",
                 accessToken: token,
                 userRole: (userRoleLower as UserRole) || null,
+                active_mode: normalizeUserMode(user.active_mode),
+                can_switch_mode: user.can_switch_mode === true,
               }),
             );
 

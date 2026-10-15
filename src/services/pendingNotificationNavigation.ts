@@ -3,7 +3,7 @@ import type { Router } from "expo-router";
 import { InteractionManager } from "react-native";
 import Logger from "@/src/services/logger";
 import {
-  navigateFromNotificationData,
+  navigateFromPushNotification,
   type NotificationNavigationData,
 } from "@/src/services/notificationNavigation";
 
@@ -70,7 +70,7 @@ export function consumePendingNotificationNavigation(router: Router): void {
 
   InteractionManager.runAfterInteractions(() => {
     setTimeout(() => {
-      navigateFromNotificationData(router, data);
+      void navigateFromPushNotification(router, data);
       void clearLastNotificationResponse();
       Logger.log("------>consumePendingNotificationNavigation", data);
     }, COLD_START_NAVIGATION_DELAY_MS);

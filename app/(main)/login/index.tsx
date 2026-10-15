@@ -39,7 +39,11 @@ import {
 } from "@/src/utils/navigation";
 import { ApiService } from "@/src/services/api";
 import { businessEndpoints } from "@/src/services/endpoints";
-import { setBusinessStatus, setUser } from "@/src/state/slices/userSlice";
+import {
+  normalizeUserMode,
+  setBusinessStatus,
+  setUser,
+} from "@/src/state/slices/userSlice";
 import {
   setRegisterEmail,
   setSavedPassword,
@@ -230,6 +234,8 @@ export default function Login() {
         profile_image_url: user?.profile_image_url || "",
         accessToken: token,
         userRole: user?.role?.toLowerCase() || null,
+        active_mode: normalizeUserMode(user?.active_mode),
+        can_switch_mode: user?.can_switch_mode === true,
       }),
     );
   };

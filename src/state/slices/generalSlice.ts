@@ -94,6 +94,8 @@ export interface GeneralState {
   /** When true, BusinessPlansModal shows only Business plans (Solo → Business upgrade). */
   businessPlansModalBusinessOnly: boolean;
   stripeConnectModalVisible: boolean;
+  /** Business ↔ customer mode switch (opened from the header logo) */
+  modeSwitchModalVisible: boolean;
   /** After Create from Stripe congrats — don't auto-open business plans this session */
   suppressBusinessPlansAutoOpen: boolean;
   /** After Solo/Business plan purchase success; not persisted */
@@ -175,6 +177,7 @@ const initialState: GeneralState = {
   businessPlansModalVisible: false,
   businessPlansModalBusinessOnly: false,
   stripeConnectModalVisible: false,
+  modeSwitchModalVisible: false,
   suppressBusinessPlansAutoOpen: false,
   businessPlanPurchasedCongratsVisible: false,
   tryOnPurchaseSuccessModalVisible: false,
@@ -316,6 +319,9 @@ const generalSlice = createSlice({
     },
     setStripeConnectModalVisible(state, action: PayloadAction<boolean>) {
       state.stripeConnectModalVisible = action.payload;
+    },
+    setModeSwitchModalVisible(state, action: PayloadAction<boolean>) {
+      state.modeSwitchModalVisible = action.payload;
     },
     setSuppressBusinessPlansAutoOpen(state, action: PayloadAction<boolean>) {
       state.suppressBusinessPlansAutoOpen = action.payload;
@@ -528,6 +534,7 @@ const generalSlice = createSlice({
       state.businessPlansModalVisible = false;
       state.businessPlansModalBusinessOnly = false;
       state.stripeConnectModalVisible = false;
+      state.modeSwitchModalVisible = false;
       state.suppressBusinessPlansAutoOpen = false;
       state.tryOnPurchaseSuccessModalVisible = false;
       state.tryOnPurchaseSuccessSource = null;
@@ -568,6 +575,7 @@ export const {
   setBusinessPlansModalVisible,
   setBusinessPlansModalBusinessOnly,
   setStripeConnectModalVisible,
+  setModeSwitchModalVisible,
   setSuppressBusinessPlansAutoOpen,
   setBusinessPlanPurchasedCongratsVisible,
   setTryOnPurchaseSuccessModalVisible,

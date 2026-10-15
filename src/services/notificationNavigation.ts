@@ -1,6 +1,10 @@
 import type { Router } from "expo-router";
+import { InteractionManager } from "react-native";
 import Logger from "@/src/services/logger";
 import { store } from "@/src/state/store";
+import { normalizeUserMode, type UserMode } from "@/src/state/slices/userSlice";
+import { switchActiveMode } from "@/src/state/thunks/userModeThunks";
+import { resetToDashboardHome } from "@/src/utils/navigation";
 import { fetchProductById } from "@/src/services/productService";
 import { addProduct, updateProduct } from "@/src/state/slices/inventorySlice";
 
@@ -57,6 +61,8 @@ export type NotificationNavigationData = {
   subType?: string | null;
   sub_type?: string | null;
   job_id?: string | null;
+  /** Push only: "business" | "customer" side this alert belongs to; null = either */
+  mode?: string | null;
   sender?: {
     id: number;
     name?: string;
@@ -301,6 +307,55 @@ async function openProductForRestock(router: Router, productId: number) {
     Logger.error("Failed to open product from notification:", error);
     router.push(PRODUCTS_PATH as any);
   }
+}
+
+/** Let the dashboard remount for the new mode before pushing the target screen */
+const MODE_SWITCH_NAVIGATION_DELAY_MS = 150;
+
+/**
+ * Push tap (background or cold start). The payload's `mode` says which side the
+ * alert belongs to; when it isn't the active mode, switch first so the target
+ * opens on the right side (e.g. a customer booking alert while in business mode).
+ * `mode` missing/null (older or mode-neutral alerts) → navigate as-is.
+ */
+export async function navigateFromPushNotification(
+  router: Router,
+  data: NotificationNavigationData | undefined,
+  options?: { onModeSwitched?: (mode: UserMode) => void },
+): Promise<void> {
+  if (!data?.type) return;
+
+  const targetMode = normalizeUserMode(data.mode);
+  const user = store.getState().user;
+  const currentMode: UserMode = user.active_mode ?? "business";
+
+  if (
+    targetMode &&
+    targetMode !== currentMode &&
+    user.can_switch_mode &&
+    !user.isGuest
+  ) {
+    try {
+      await store.dispatch(switchActiveMode(targetMode)).unwrap();
+      Logger.log("------>navigateFromPushNotification switched mode", {
+        from: currentMode,
+        to: targetMode,
+      });
+      options?.onModeSwitched?.(targetMode);
+      resetToDashboardHome();
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
+          navigateFromNotificationData(router, data);
+        }, MODE_SWITCH_NAVIGATION_DELAY_MS);
+      });
+      return;
+    } catch (error) {
+      // Still open the alert in the current mode rather than dropping the tap
+      Logger.error("Push mode switch failed:", error);
+    }
+  }
+
+  navigateFromNotificationData(router, data);
 }
 
 export function navigateFromNotificationData(

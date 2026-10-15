@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { AppDispatch, RootState } from "../store";
 import {
+  setActiveMode,
   setBusinessStatus,
   setBusinessStatusLoading,
   setBusinessStatusError,
@@ -13,6 +14,7 @@ import {
   userEndpoints,
 } from "@/src/services/endpoints";
 import { BusinessStatus, deriveHasAddStaff, DEFAULT_OWNER_AS_STAFF, normalizeOwnerAsStaff } from "../slices/userSlice";
+import { canApplyServerMode } from "@/src/services/userModeService";
 
 interface fetchUserStatusOptions {
   showError?: boolean;
@@ -27,6 +29,19 @@ export const fetchUserStatus = createAsyncThunk<
 
   dispatch(setBusinessStatusLoading(true));
   dispatch(setBusinessStatusError(false));
+
+  /**
+   * Business/Staff in customer mode get a slim status ({ user_role, active_mode, active }).
+   * Never store it as business status — it has no onboarding fields and would trip
+   * the onboarding gate. Sync the mode instead (e.g. switched on another device).
+   */
+  const handleCustomerModeStatus = (data?: { active_mode?: string | null }) => {
+    if (data?.active_mode !== "customer") return false;
+    if (canApplyServerMode()) {
+      dispatch(setActiveMode("customer"));
+    }
+    return true;
+  };
 
   try {
     const state = getState();
@@ -43,9 +58,14 @@ export const fetchUserStatus = createAsyncThunk<
             title: string;
           };
           active: boolean;
+          active_mode?: string | null;
         };
         active: boolean;
       }>(userEndpoints.status);
+
+      if (handleCustomerModeStatus(response?.data)) {
+        return null;
+      }
 
       if (response.success && response.data) {
         const businessStatusData: BusinessStatus = {
@@ -90,8 +110,14 @@ export const fetchUserStatus = createAsyncThunk<
       const response = await ApiService.get<{
         success: boolean;
         message: string;
-        data: Omit<BusinessStatus, "hasAddStaff">;
+        data: Omit<BusinessStatus, "hasAddStaff"> & {
+          active_mode?: string | null;
+        };
       }>(userEndpoints.status);
+
+      if (handleCustomerModeStatus(response?.data)) {
+        return null;
+      }
 
       if (response.success && response.data) {
         // Ensure active field exists, default to false if not provided

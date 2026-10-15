@@ -10,6 +10,12 @@ import {
 } from "react-native";
 import LottieView from "lottie-react-native";
 import { useTheme, useAppDispatch, useAppSelector } from "@/src/hooks/hooks";
+import { useStore } from "react-redux";
+import type { RootState } from "@/src/state/store";
+import {
+  pickUserModeDetails,
+  type UserModeDetailsFields,
+} from "@/src/services/userModeService";
 import { useTranslation } from "react-i18next";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -112,6 +118,7 @@ export default function HomeScreen() {
   const theme = colors as Theme;
   const styles = useMemo(() => createStyles(theme), [colors]);
   const dispatch = useAppDispatch();
+  const store = useStore<RootState>();
   const { showBanner } = useNotificationContext();
   const userRole = useAppSelector((state) => state.user.userRole) as UserRole;
   const businessStatus = useAppSelector((state) => state.user.businessStatus);
@@ -138,6 +145,9 @@ export default function HomeScreen() {
   const handleFetchUserStatus = async (): Promise<boolean> => {
     try {
       await dispatch(fetchUserStatus({ showError: true })).unwrap();
+      // Server says this account is in customer mode — Home swaps to the client
+      // screen, so skip the business-only calls below.
+      if (store.getState().user.active_mode === "customer") return false;
       return true;
     } catch (error: any) {
       if (isRequestCanceled(error)) return false;
@@ -169,7 +179,8 @@ export default function HomeScreen() {
           };
           ai_quota?: number;
           date_of_birth: string | null;
-        } & UserAffiliationFields;
+        } & UserAffiliationFields &
+          UserModeDetailsFields;
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
@@ -192,9 +203,7 @@ export default function HomeScreen() {
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)
               : null,
-            ...(response.data.ai_quota !== undefined && {
-              ai_quota: response.data.ai_quota,
-            }),
+            ...pickUserModeDetails(response.data),
           }),
         );
       }

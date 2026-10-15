@@ -30,6 +30,10 @@ import {
 import { fetchNotificationUnreadCount } from "@/src/state/thunks/notificationThunks";
 import { useFocusEffect } from "expo-router";
 import type { UserAffiliationFields } from "@/src/types/affiliation";
+import {
+  pickUserModeDetails,
+  type UserModeDetailsFields,
+} from "@/src/services/userModeService";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
@@ -228,7 +232,8 @@ export default function HomeScreen() {
             title: string;
           };
           ai_quota?: number;
-        } & UserAffiliationFields;
+        } & UserAffiliationFields &
+          UserModeDetailsFields;
       }>(userEndpoints.details);
 
       if (response.success && response.data) {
@@ -248,7 +253,7 @@ export default function HomeScreen() {
               response.data.working_with_business ?? null,
             working_with_business_request:
               response.data.working_with_business_request ?? null,
-            ai_quota: response.data.ai_quota ?? 0,
+            ...pickUserModeDetails(response.data),
             dateOfBirth: response.data.date_of_birth
               ? parseDateOfBirth(response.data.date_of_birth)
               : null,

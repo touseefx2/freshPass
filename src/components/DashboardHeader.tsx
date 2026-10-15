@@ -30,6 +30,7 @@ import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { IMAGES } from "../constant/images";
 import { Feather } from "@expo/vector-icons";
 import { resolveApiImageUrl } from "@/src/utils/media";
+import ModeSwitchLogo from "@/src/components/ModeSwitchLogo";
 
 const AVATAR_SIZE = 36;
 
@@ -279,7 +280,9 @@ function DashboardHeader({
       >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image source={IMAGES.logo3d} style={styles.logoImage} />
+            <ModeSwitchLogo>
+              <Image source={IMAGES.logo3d} style={styles.logoImage} />
+            </ModeSwitchLogo>
           </View>
           {isCustomer ? (
             <View style={{ width: 16, height: moderateHeightScale(38) }} />
