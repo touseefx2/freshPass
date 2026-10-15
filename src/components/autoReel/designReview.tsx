@@ -759,7 +759,7 @@ export default function DesignReview({
         : silent && !keepsTemplateSong
           ? { music: music ?? null }
           : {};
-      const data = await buildAutoReel(autoReel.id, {
+      const basePayload: BuildAutoReelPayload = {
         // Edit: no `slots` / `texts` at all when none changed
         ...(edit && !Object.keys(payloadSlots).length
           ? {}
@@ -767,8 +767,26 @@ export default function DesignReview({
         ...(edit && !Object.keys(payloadTexts).length
           ? {}
           : { texts: payloadTexts }),
-        ...musicPayload,
-      });
+      };
+      let data: AutoReel;
+      try {
+        data = await buildAutoReel(autoReel.id, {
+          ...basePayload,
+          ...musicPayload,
+        });
+      } catch (error: any) {
+        // The template's own song was left out (older servers refused it in
+        // `music`), but this server wants the choice said out loud: send it.
+        // A refused build makes nothing and uses no credit, so one more try
+        // is safe.
+        const leftOutSong =
+          !("music" in musicPayload) &&
+          !!music &&
+          (silent || (edit && showMusic));
+        if (!leftOutSong || !musicFieldError(error)) throw error;
+        if (controller.signal.aborted) return;
+        data = await buildAutoReel(autoReel.id, { ...basePayload, music });
+      }
       accepted = true;
       onBuilt(data);
     } catch (error: any) {
