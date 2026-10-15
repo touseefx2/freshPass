@@ -34,6 +34,8 @@ type Props = {
   totalMs: number;
   maxMs: number;
   canAdd: boolean;
+  /** false → no "+" tile at all (e.g. a plain trim) */
+  showAdd?: boolean;
   adding: boolean;
   disabled: boolean;
   formatMs: (ms: number) => string;
@@ -393,6 +395,7 @@ export default function ClipTimeline({
   totalMs,
   maxMs,
   canAdd,
+  showAdd = true,
   adding,
   disabled,
   formatMs,
@@ -499,22 +502,24 @@ export default function ClipTimeline({
           ))}
         </View>
 
-        <TouchableOpacity
-          style={[styles.addTile, addDisabled && styles.addTileDisabled]}
-          onPress={onAdd}
-          disabled={addDisabled}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel={t("addClip")}
-          accessibilityState={{ disabled: addDisabled, busy: adding }}
-        >
-          <MaterialIcons
-            name={adding ? "hourglass-empty" : "add"}
-            size={moderateWidthScale(24)}
-            color={light ? theme.darkGreen : theme.white}
-          />
-          <Text style={styles.addLabel}>{t("addClipShort")}</Text>
-        </TouchableOpacity>
+        {showAdd ? (
+          <TouchableOpacity
+            style={[styles.addTile, addDisabled && styles.addTileDisabled]}
+            onPress={onAdd}
+            disabled={addDisabled}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t("addClip")}
+            accessibilityState={{ disabled: addDisabled, busy: adding }}
+          >
+            <MaterialIcons
+              name={adding ? "hourglass-empty" : "add"}
+              size={moderateWidthScale(24)}
+              color={light ? theme.darkGreen : theme.white}
+            />
+            <Text style={styles.addLabel}>{t("addClipShort")}</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
 
       {hint === null ? null : (

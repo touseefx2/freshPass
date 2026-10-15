@@ -11,6 +11,8 @@ type Props = {
   onClose: () => void;
   onPick: (source: AddClipSource) => void;
   tone?: "dark" | "light";
+  /** No "Take a photo" (e.g. an AI auto reel source: videos only) */
+  videoOnly?: boolean;
 };
 
 export default function AddClipSheet({
@@ -19,6 +21,7 @@ export default function AddClipSheet({
   onClose,
   onPick,
   tone,
+  videoOnly = false,
 }: Props) {
   const { t } = useTranslation();
   return (
@@ -39,12 +42,16 @@ export default function AddClipSheet({
           title: t("addClipRecord"),
           sub: t("addClipRecordSub"),
         },
-        {
-          key: "takePhoto",
-          icon: "photo-camera",
-          title: t("addClipPhoto"),
-          sub: t("addClipPhotoSub"),
-        },
+        ...(videoOnly
+          ? []
+          : [
+              {
+                key: "takePhoto" as const,
+                icon: "photo-camera" as const,
+                title: t("addClipPhoto"),
+                sub: t("addClipPhotoSub"),
+              },
+            ]),
       ]}
       onClose={onClose}
       onPick={onPick}

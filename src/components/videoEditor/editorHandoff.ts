@@ -1,5 +1,6 @@
 import { makeClipId } from "expo-media-edit";
 import type { MediaUploadSourceType } from "@/src/types/media";
+import type { AutoReelMusic } from "@/src/types/reels";
 
 /**
  * One-shot hand-off from the editor's "save" mode back to the screen that
@@ -22,6 +23,8 @@ export type EditedVideoResult = {
   savedToGallery: boolean;
   /** Creative Commons credit for library music — must go in the reel caption. */
   musicCredit?: string | null;
+  /** AI auto reel: the music chosen under Trim (undefined = not asked there) */
+  reelMusic?: AutoReelMusic | null;
 };
 
 let pending: EditedVideoResult | null = null;
@@ -67,4 +70,41 @@ export function setEditorSeed(requestId: string, assets: EditorSeedAsset[]): voi
 export function getEditorSeed(requestId: string | null | undefined): EditorSeedAsset[] | null {
   if (!requestId || !seed || seed.requestId !== requestId) return null;
   return seed.assets;
+}
+
+/**
+ * AI auto reel (trim-only studio): the last step before the reel is made —
+ * the button's words, the note under it and, for a silent design, the music
+ * choice shown under Trim. Set with the seed, same request id.
+ */
+export type EditorAutoReelOptions = {
+  doneLabel: string;
+  doneHint: string | null;
+  music: {
+    /** The template's own song (selected to start) */
+    defaultMusic: AutoReelMusic | null;
+    /** Start choice: undefined = none yet, null = No music */
+    value: AutoReelMusic | null | undefined;
+    /** Reel length — shorter library tracks are hidden */
+    lengthSeconds: number | null;
+  } | null;
+};
+
+let autoReelOptions: { requestId: string; options: EditorAutoReelOptions } | null =
+  null;
+
+export function setEditorAutoReelOptions(
+  requestId: string,
+  options: EditorAutoReelOptions | null,
+): void {
+  autoReelOptions = options ? { requestId, options } : null;
+}
+
+export function getEditorAutoReelOptions(
+  requestId: string | null | undefined,
+): EditorAutoReelOptions | null {
+  if (!requestId || !autoReelOptions || autoReelOptions.requestId !== requestId) {
+    return null;
+  }
+  return autoReelOptions.options;
 }

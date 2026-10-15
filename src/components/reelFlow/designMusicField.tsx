@@ -221,11 +221,21 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       gap: moderateWidthScale(6),
     },
+    // Its own small button: opens the library (the row selects the song)
+    changeButton: {
+      minHeight: moderateHeightScale(32),
+      paddingHorizontal: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(16),
+      borderWidth: 1,
+      borderColor: theme.borderMedium,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     changeText: {
       fontSize: fontSize.size13,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      textDecorationLine: "underline",
     },
     note: {
       fontSize: fontSize.size12,
@@ -254,6 +264,11 @@ export default function DesignMusicField({
   // Last track chosen — "No music" unchecked goes back to it
   const lastTrackRef = useRef<AutoReelMusic | null>(value ?? null);
   if (value) lastTrackRef.current = value;
+  // Last library pick (not the template's song) — its row keeps it to tap again
+  const lastLibraryRef = useRef<AutoReelMusic | null>(
+    value && value.url !== defaultMusic?.url ? value : null,
+  );
+  if (value && value.url !== defaultMusic?.url) lastLibraryRef.current = value;
 
   // ── Preview of the picked track ───────────────────────────────────
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -386,7 +401,8 @@ export default function DesignMusicField({
 
   if (defaultMusic) {
     const isDefault = !!value && value.url === defaultMusic.url;
-    const libraryTrack = value && !isDefault ? value : null;
+    const libraryTrack = lastLibraryRef.current;
+    const libraryOn = !!value && !!libraryTrack && value.url === libraryTrack.url;
     const tileOff = disabled || noMusic;
     const row = ({
       selected,
@@ -489,8 +505,9 @@ export default function DesignMusicField({
           })}
           <View style={styles.choiceDivider} />
           {row({
-            selected: !!libraryTrack,
-            role: "button",
+            selected: libraryOn,
+            // A picked song: the row selects it; nothing yet: it opens the library
+            role: libraryTrack ? "radio" : "button",
             leading: libraryTrack ? (
               renderPlayButton(libraryTrack, true)
             ) : (
@@ -502,14 +519,31 @@ export default function DesignMusicField({
                 />
               </View>
             ),
-            // Picked: "Change" + check; not yet: just the arrow
-            trailing:
-              libraryTrack && !noMusic ? (
-                <>
+            // Picked: "Change" (opens the library) + check / circle; not yet: the arrow
+            trailing: libraryTrack ? (
+              <>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setSheetOpen(true)}
+                  disabled={tileOff}
+                  hitSlop={8}
+                  style={styles.changeButton}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("change")}, ${t("musicFromLibrary")}`}
+                >
                   <Text style={styles.changeText}>{t("change")}</Text>
-                  {checkIcon}
-                </>
-              ) : (
+                </TouchableOpacity>
+                {libraryOn && !noMusic ? (
+                  checkIcon
+                ) : (
+                  <MaterialIcons
+                    name="radio-button-unchecked"
+                    size={moderateWidthScale(22)}
+                    color={theme.lightGreen}
+                  />
+                )}
+              </>
+            ) : (
                 <MaterialIcons
                   name="chevron-right"
                   size={moderateWidthScale(24)}
@@ -522,7 +556,8 @@ export default function DesignMusicField({
               : lengthSeconds
                 ? t("designMusicPickMin", { seconds: Math.ceil(lengthSeconds) })
                 : t("musicFromLibrarySub"),
-            onPress: () => setSheetOpen(true),
+            onPress: () =>
+              libraryTrack ? onChange(libraryTrack) : setSheetOpen(true),
           })}
         </View>
         {error ? (

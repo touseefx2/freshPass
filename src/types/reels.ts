@@ -506,6 +506,19 @@ export function templateSourceMaxSeconds(
 }
 
 /**
+ * Shortest video a one-video design takes: at least the finished reel's
+ * length, so every part can come from a different moment (no clip is
+ * stretched or played twice). The server's `min_video_seconds` is often
+ * lower (the longest single slot) — the higher of the two wins.
+ */
+export function templateSourceMinSeconds(
+  tpl: Pick<AutoReelTemplate, "min_video_seconds" | "length_seconds"> | null | undefined,
+): number | null {
+  const min = Math.max(tpl?.min_video_seconds ?? 0, tpl?.length_seconds ?? 0);
+  return min > 0 ? Math.ceil(min) : null;
+}
+
+/**
  * The longest source in minutes for labels ("up to 5 min"), rounded down to
  * 0.1 so it never reads longer than the app allows (150 s → 2.5).
  */

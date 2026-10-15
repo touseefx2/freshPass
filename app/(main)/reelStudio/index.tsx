@@ -103,9 +103,12 @@ import {
 } from "@/src/services/musicLibraryService";
 import {
   deliverEditedVideo,
+  getEditorAutoReelOptions,
   getEditorSeed,
   type EditorSeedAsset,
 } from "@/src/components/videoEditor/editorHandoff";
+import DesignMusicField from "@/src/components/reelFlow/designMusicField";
+import type { AutoReelMusic } from "@/src/types/reels";
 import { saveLocalVideoToGallery } from "@/src/services/downloadMediaService";
 import {
   IMAGE_CLIP_MAX_MS,
@@ -553,6 +556,7 @@ const createStyles = (theme: Theme, compact: boolean) =>
       paddingBottom: moderateHeightScale(compact ? 4 : 6),
       gap: moderateHeightScale(compact ? 8 : 12),
     },
+    reelMusic: { marginTop: moderateHeightScale(compact ? 4 : 8) },
     rows: {
       paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(compact ? 12 : 16),
@@ -996,9 +1000,22 @@ export default function ReelStudioScreen() {
     stepTotal?: string;
     /** "1" → every studio step shows `stepStart` (a sub-step of the opener). */
     stepFixed?: string;
+    /** "1" (save mode) → Trim only: cut / join the clips and hand them back, no Style step */
+    trimOnly?: string;
   }>();
 
   const isSaveMode = params.mode === "save" && !!params.requestId;
+  const trimOnly = isSaveMode && params.trimOnly === "1";
+  // AI auto reel: last step before the reel is made (button words, music choice)
+  const [autoReelOptions] = useState(() =>
+    trimOnly ? getEditorAutoReelOptions(params.requestId) : null,
+  );
+  const reelMusicOptions = autoReelOptions?.music ?? null;
+  const [reelMusic, setReelMusic] = useState<AutoReelMusic | null | undefined>(
+    () => reelMusicOptions?.value,
+  );
+  // Silent design: a track or "No music" must be chosen first
+  const reelMusicMissing = !!reelMusicOptions && reelMusic === undefined;
   // Save mode for an AI auto reel source (3 min) vs a template slot (reel length)
   const isAutoSource = isSaveMode && params.limitContext !== "reel";
 
@@ -1041,10 +1058,12 @@ export default function ReelStudioScreen() {
 
   const steps = useMemo<StudioStep[]>(
     () =>
-      isSaveMode
-        ? ["trim", "style"]
-        : ["upload", "trim", "style", "preview", "publish"],
-    [isSaveMode],
+      trimOnly
+        ? ["trim"]
+        : isSaveMode
+          ? ["trim", "style"]
+          : ["upload", "trim", "style", "preview", "publish"],
+    [isSaveMode, trimOnly],
   );
   // Media handed in (save mode / Media Library) starts at Trim
   const [step, setStep] = useState<StudioStep>(() =>
@@ -1161,6 +1180,10 @@ export default function ReelStudioScreen() {
   const focusIndexRef = useRef<number | null>(focusIndex);
   focusIndexRef.current = focusIndex;
   const playingRef = useRef(playing);
+  // AI auto reel: the clips' own sound is never heard (only the chosen song,
+  // or silence with No music)
+  const previewSilentRef = useRef(false);
+  previewSilentRef.current = !!autoReelOptions;
   playingRef.current = playing;
   const activeSlotRef = useRef<PlayerSlot>(0);
   const activeIndexRef = useRef(0);
@@ -1464,7 +1487,9 @@ export default function ReelStudioScreen() {
         players[slot].pause();
         players[slot].currentTime = clipPlayRange(clip).startMs / 1000;
         // Mute may have been toggled while the file loaded — read it fresh
-        players[slot].muted = !!clipsRef.current.find((c) => c.id === clip.id)?.muted;
+        players[slot].muted =
+          !!clipsRef.current.find((c) => c.id === clip.id)?.muted ||
+          previewSilentRef.current;
         preloadRef.current = { slot, index: nextIndex, clipId: clip.id };
       } catch (error) {
         Logger.error("Preload next clip failed:", error);
@@ -1508,7 +1533,9 @@ export default function ReelStudioScreen() {
         activeIndexRef.current = index;
         p.currentTime = clipPlayRange(clip).startMs / 1000;
         // Mute may have been toggled while the file loaded — read it fresh
-        p.muted = !!clipsRef.current.find((c) => c.id === clip.id)?.muted;
+        p.muted =
+          !!clipsRef.current.find((c) => c.id === clip.id)?.muted ||
+          previewSilentRef.current;
         if (playingRef.current && engineVisibleRef.current) p.play();
         else p.pause();
         setPreviewTimeMs(
@@ -1596,9 +1623,11 @@ export default function ReelStudioScreen() {
           const clip = list[idx];
           if (!clip) return;
           // Self-heal: the playing clip's sound always follows its Mute
-          if (p.muted !== !!clip.muted) {
+          // (and stays off under an AI auto reel's song)
+          const shouldMute = !!clip.muted || previewSilentRef.current;
+          if (p.muted !== shouldMute) {
             try {
-              p.muted = !!clip.muted;
+              p.muted = shouldMute;
             } catch {}
           }
           const ms = Math.max(0, currentTime * 1000);
@@ -1650,7 +1679,7 @@ export default function ReelStudioScreen() {
       players.forEach((p, slot) => {
         const id = slotClipIdRef.current[slot];
         const clip = clipsRef.current.find((c) => c.id === id);
-        p.muted = !!clip?.muted;
+        p.muted = !!clip?.muted || previewSilentRef.current;
       });
     } catch {}
   }, [mutedKey, players]);
@@ -1970,6 +1999,66 @@ export default function ReelStudioScreen() {
   const reelPlayheadMs =
     focusIndex != null ? clipOffsetMs(clips, focusIndex) + previewTimeMs : previewTimeMs;
 
+  // ── AI auto reel: the chosen song plays with the preview ──────────
+  // Preview only — it isn't put in the file (the server adds it to the reel).
+  const reelSongUrl = reelMusicOptions ? (reelMusic?.url ?? null) : null;
+  const reelSongRef = useRef<Audio.Sound | null>(null);
+  const reelSongDurationRef = useRef(0);
+  const syncReelSong = useCallback(async (reelMs: number) => {
+    const snd = reelSongRef.current;
+    if (!snd) return;
+    try {
+      if (!playingRef.current) {
+        await snd.pauseAsync();
+        return;
+      }
+      const duration = reelSongDurationRef.current;
+      await snd.setPositionAsync(duration > 0 ? reelMs % duration : reelMs);
+      await snd.playAsync();
+    } catch {}
+  }, []);
+  useEffect(() => {
+    let cancelled = false;
+    const old = reelSongRef.current;
+    reelSongRef.current = null;
+    reelSongDurationRef.current = 0;
+    old?.unloadAsync().catch(() => {});
+    if (!reelSongUrl) return;
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        const { sound, status } = await Audio.Sound.createAsync(
+          { uri: reelSongUrl },
+          { shouldPlay: false, isLooping: true },
+        );
+        if (cancelled) {
+          await sound.unloadAsync();
+          return;
+        }
+        reelSongRef.current = sound;
+        reelSongDurationRef.current =
+          status.isLoaded && status.durationMillis ? status.durationMillis : 0;
+        void syncReelSong(reelPlayheadRef.current);
+      } catch (error) {
+        Logger.error("Reel song preview failed:", error);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reelSongUrl]);
+  useEffect(
+    () => () => {
+      reelSongRef.current?.unloadAsync().catch(() => {});
+      reelSongRef.current = null;
+    },
+    [],
+  );
+
   const musicSoundsRef = useRef<Map<string, Audio.Sound>>(new Map());
   const musicScheduleRef = useRef<MusicSlot[]>(musicSchedule);
   musicScheduleRef.current = musicSchedule;
@@ -2076,7 +2165,15 @@ export default function ReelStudioScreen() {
     const last = lastReelPlayheadRef.current;
     lastReelPlayheadRef.current = reelPlayheadMs;
     void syncMusic(reelPlayheadMs, reelPlayheadMs < last - 800);
-  }, [reelPlayheadMs, syncMusic]);
+    // The reel's song follows a jump (seek, trim, next loop)
+    if (Math.abs(reelPlayheadMs - last) > 1500 || reelPlayheadMs < last - 300) {
+      void syncReelSong(reelPlayheadMs);
+    }
+  }, [reelPlayheadMs, syncMusic, syncReelSong]);
+  // Play ↔ pause
+  useEffect(() => {
+    void syncReelSong(reelPlayheadRef.current);
+  }, [playing, syncReelSong]);
 
   /** Move the reel preview to `reelMs` and play from there (Style step only). */
   const seekReelTo = useCallback(
@@ -2500,7 +2597,8 @@ export default function ReelStudioScreen() {
     setPlaying(false);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos", "images"],
+        // AI auto reel source: haircut clips only
+        mediaTypes: trimOnly ? ["videos"] : ["videos", "images"],
         allowsMultipleSelection: true,
         orderedSelection: true,
         selectionLimit: Math.max(1, MAX_EDITOR_CLIPS - clipsRef.current.length),
@@ -2523,6 +2621,7 @@ export default function ReelStudioScreen() {
     dismissKeyboard,
     showBanner,
     t,
+    trimOnly,
   ]);
 
   const addClipFromCamera = useCallback(async (mode: "video" | "photo" = "video") => {
@@ -3079,9 +3178,18 @@ export default function ReelStudioScreen() {
       edited: result.edited,
       savedToGallery,
       musicCredit: result.musicCredit,
+      ...(reelMusicOptions ? { reelMusic: reelMusic ?? null } : {}),
     });
     leaveStudio();
-  }, [dismissKeyboard, exportReel, leaveStudio, params.requestId, validateLength]);
+  }, [
+    dismissKeyboard,
+    exportReel,
+    leaveStudio,
+    params.requestId,
+    reelMusic,
+    reelMusicOptions,
+    validateLength,
+  ]);
 
   const backToEditing = useCallback(() => {
     setStep("style");
@@ -3709,6 +3817,8 @@ export default function ReelStudioScreen() {
           multi={clips.length > 1}
           canAddClip={clips.length < MAX_EDITOR_CLIPS}
           addingClip={addingClips}
+          // Trim only (AI auto reel source): cut / split and add clips
+          onlyTools={trimOnly ? ["split", "add"] : null}
           onSplit={() => splitSelectedClip(editingClip.id)}
           onReset={() => resetClip(editingClip.id)}
           onToggleMute={() => toggleClipMuted(editingClip.id)}
@@ -3723,6 +3833,19 @@ export default function ReelStudioScreen() {
           onImageDurationBegin={pushHistory}
           onImageDurationChange={setSelectedPhotoDuration}
         />
+        {/* AI auto reel (silent design): the reel's music, under the cut */}
+        {reelMusicOptions ? (
+          <View style={styles.reelMusic}>
+            <DesignMusicField
+              value={reelMusic}
+              onChange={setReelMusic}
+              lengthSeconds={reelMusicOptions.lengthSeconds}
+              disabled={busy}
+              compact={!reelMusicOptions.defaultMusic}
+              defaultMusic={reelMusicOptions.defaultMusic}
+            />
+          </View>
+        ) : null}
       </View>
     );
   };
@@ -4340,7 +4463,13 @@ export default function ReelStudioScreen() {
     const isTrim = step === "trim";
     const title = isTrim ? t("flowTrimTitle") : t("flowStyleTitle");
     const subtitle = isTrim
-      ? isAutoSource
+      ? trimOnly && templateMinSeconds
+        ? // AI auto reel: the reel's length is the shortest it may be
+          t("flowTrimSubtitleReel", {
+            min: formatVideoDuration(templateMinSeconds),
+            max: formatVideoDuration(maxSeconds),
+          })
+        : isAutoSource
         ? templateMinSeconds
           ? t("flowTrimSubtitleAutoMin", {
               min: formatVideoDuration(templateMinSeconds),
@@ -4415,12 +4544,29 @@ export default function ReelStudioScreen() {
         </View>
         {isTrim ? (
           <FlowFooter
-            primary={{
-              label: t("flowNextStyle"),
-              onPress: goToStyle,
-              disabled: busy || addingClips,
-              trailingIcon: "chevron-right",
-            }}
+            primary={
+              trimOnly
+                ? {
+                    label: autoReelOptions?.doneLabel ?? t("flowSaveVideo"),
+                    onPress: () => void saveAndReturn(),
+                    disabled:
+                      busy || addingClips || !project || reelMusicMissing,
+                    icon: autoReelOptions ? "auto-awesome" : "check",
+                  }
+                : {
+                    label: t("flowNextStyle"),
+                    onPress: goToStyle,
+                    disabled: busy || addingClips,
+                    trailingIcon: "chevron-right",
+                  }
+            }
+            hint={
+              autoReelOptions
+                ? reelMusicMissing
+                  ? t("designMusicRequired")
+                  : autoReelOptions.doneHint
+                : undefined
+            }
           />
         ) : !styleTool ? (
           <FlowFooter
@@ -4530,6 +4676,7 @@ export default function ReelStudioScreen() {
         }
         onClose={() => setAddClipOpen(false)}
         onPick={onAddClipSource}
+        videoOnly={trimOnly}
       />
 
       <SourcePickerSheet<"library" | "phone">

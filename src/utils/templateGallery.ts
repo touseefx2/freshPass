@@ -6,12 +6,15 @@ import {
   normalizeReelTemplateMediaFields,
   templateClipCount,
   templateSourceMaxMinutes,
+  templateSourceMaxSeconds,
+  templateSourceMinSeconds,
   textSlots,
   type AutoReelSlot,
   type AutoReelTemplate,
   type ReelTemplate,
   type ReelTemplateMediaField,
 } from "@/src/types/reels";
+import { formatVideoDuration } from "@/src/utils/videoDuration";
 import type {
   TemplateGalleryFeature,
   TemplateGalleryItem,
@@ -227,9 +230,15 @@ function autoBuildFeatures(
   const features: TemplateGalleryFeature[] = [
     {
       icon: "video-library",
-      label: t("autoBuildFeatureVideo", {
-        minutes: templateSourceMaxMinutes(tpl),
-      }),
+      // "1 video, 0:30 – 5:00": shortest (the reel's length) and longest
+      label: templateSourceMinSeconds(tpl)
+        ? t("autoBuildFeatureVideoRange", {
+            min: formatVideoDuration(templateSourceMinSeconds(tpl)),
+            max: formatVideoDuration(templateSourceMaxSeconds(tpl)),
+          })
+        : t("autoBuildFeatureVideo", {
+            minutes: templateSourceMaxMinutes(tpl),
+          }),
     },
     { icon: "auto-awesome", label: t("autoBuildFeatureAi") },
   ];

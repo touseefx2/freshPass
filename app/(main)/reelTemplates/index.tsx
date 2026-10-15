@@ -56,6 +56,7 @@ import {
 import { fetchUserStatus } from "@/src/state/thunks/businessThunks";
 import {
   createEditRequestId,
+  setEditorAutoReelOptions,
   setEditorSeed,
   takeEditedVideo,
   type EditedVideoResult,
@@ -111,6 +112,7 @@ import {
   musicFieldError,
   templateSourceMaxMinutes,
   templateSourceMaxSeconds,
+  templateSourceMinSeconds,
   textSlots,
   type AutoReelMusic,
   type AutoReelSlot,
@@ -405,9 +407,13 @@ export default function ReelTemplatesScreen() {
   const isAutoBuild = isAutoBuildTemplate(selected);
   /** Longest video the one-video design takes (its own max, else 5 min) */
   const sourceMaxSeconds = templateSourceMaxSeconds(selected);
-  /** Video designs: shorter videos are refused before upload */
-  const minVideoSeconds =
-    isDesign && selected?.needs === "video"
+  /**
+   * Video designs: shorter videos are refused before upload. One-video
+   * designs need at least the reel's length (every part a new moment).
+   */
+  const minVideoSeconds = isAutoBuild
+    ? templateSourceMinSeconds(selected)
+    : isDesign && selected?.needs === "video"
       ? (selected?.min_video_seconds ?? null)
       : null;
   const designMediaSlots = useMemo(
@@ -440,6 +446,8 @@ export default function ReelTemplatesScreen() {
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   /** undefined = not chosen yet, null = "No music" */
   const [music, setMusic] = useState<AutoReelMusic | null | undefined>(undefined);
+  /** One-video design: set when the editor hands the video back — starts the reel */
+  const [autoStartAt, setAutoStartAt] = useState(0);
   const [musicError, setMusicError] = useState<string | null>(null);
 
   // Another template → its own slots; texts start from `prefill`
@@ -725,11 +733,32 @@ export default function ReelTemplatesScreen() {
           sourceType: item.sourceType,
         })),
       );
+      // One-video design: Trim is the last step — music there, then "Make my reel"
+      setEditorAutoReelOptions(
+        requestId,
+        isAutoBuild
+          ? {
+              doneLabel: t("autoReelMakeReel"),
+              doneHint: credits
+                ? t("autoBuildCreditCost", { count: credits.remaining })
+                : t("autoBuildCreditCostUnknown"),
+              music: autoBuildSilent
+                ? {
+                    defaultMusic: autoBuildDefaultMusic,
+                    value: music,
+                    lengthSeconds: selected?.length_seconds ?? null,
+                  }
+                : null,
+            }
+          : null,
+      );
       router.push({
         pathname: "/(main)/reelStudio" as any,
         params: {
           sourceType,
-          maxSeconds: String(MAX_AUTO_REEL_SOURCE_SECONDS),
+          maxSeconds: String(
+            isAutoBuild ? sourceMaxSeconds : MAX_AUTO_REEL_SOURCE_SECONDS,
+          ),
           // Video design: the trim step won't let it go below this
           ...(minVideoSeconds != null
             ? { minSeconds: String(minVideoSeconds) }
@@ -737,12 +766,25 @@ export default function ReelTemplatesScreen() {
           mode: "save",
           requestId,
           flowTitle: t("autoReelIntroTitle"),
-          stepStart: "3",
-          stepTotal: "5",
+          // One-video design: only cut / join, then back to "Upload your video"
+          ...(isAutoBuild
+            ? { trimOnly: "1", stepStart: "2", stepTotal: "2", stepFixed: "1" }
+            : { stepStart: "3", stepTotal: "5" }),
         },
       });
     },
-    [minVideoSeconds, router, t],
+    [
+      autoBuildDefaultMusic,
+      autoBuildSilent,
+      credits,
+      isAutoBuild,
+      minVideoSeconds,
+      music,
+      router,
+      selected?.length_seconds,
+      sourceMaxSeconds,
+      t,
+    ],
   );
 
   /** Picker asset → tile. Any length — the editor trims on Next. */
@@ -809,7 +851,7 @@ export default function ReelTemplatesScreen() {
         .slice(0, Math.max(0, room))
         .map((asset) => toPickedMedia(asset, sourceType))
         .filter((item): item is PickedMedia => item != null);
-      if (items.length === 0) return;
+      if (items.length === 0) return null;
       const next = [...picksRef.current, ...items];
       picksRef.current = next;
       setPicks(next);
@@ -817,8 +859,21 @@ export default function ReelTemplatesScreen() {
       // replaces an earlier upload — that id is no longer used)
       setSourceVideo(null);
       void fillVideoDetails(items);
+      return next;
     },
     [fillVideoDetails, toPickedMedia],
+  );
+
+  /**
+   * One-video design: straight on to "Cut & music" with any length — clips
+   * are added / cut there to fit the reel's length and the 5:00 limit.
+   */
+  const openAutoBuildEditor = useCallback(
+    (items: PickedMedia[] | null) => {
+      if (!isAutoBuild || !items?.length) return;
+      openTrimEditor(items);
+    },
+    [isAutoBuild, openTrimEditor],
   );
 
   const removePick = useCallback((id: string) => {
@@ -859,6 +914,7 @@ export default function ReelTemplatesScreen() {
         },
         name: fileName,
         durationSeconds,
+        exactSeconds: result.durationMs / 1000,
         thumbnailUri,
       });
       const tile: PickedMedia = {
@@ -910,6 +966,17 @@ export default function ReelTemplatesScreen() {
           5000,
         );
       }
+      // One-video design: the music chosen under Trim, then the reel starts
+      if (isAutoBuild) {
+        if (result.reelMusic !== undefined) setMusic(result.reelMusic);
+        const start = () => {
+          setStep("video");
+          if (!tooShort) setAutoStartAt(Date.now());
+        };
+        if (request.fromSelected && !result.edited) start();
+        else void applyEditorResult(result, request.sourceType).then(start);
+        return;
+      }
       const nextStep: WizardStep = tooShort ? "video" : "details";
       // Nothing changed — keep the current selection (and any upload id)
       if (request.fromSelected && !result.edited) {
@@ -927,7 +994,7 @@ export default function ReelTemplatesScreen() {
       } else if (result.edited) {
         showBanner(t("autoReelTrimTitle"), t("editedVideoNotSaved"), "warning", 4000);
       }
-    }, [applyEditorResult, minVideoSeconds, showBanner, t]),
+    }, [applyEditorResult, isAutoBuild, minVideoSeconds, showBanner, t]),
   );
 
   /** Gallery: several videos and photos at once, in the order tapped. */
@@ -949,7 +1016,8 @@ export default function ReelTemplatesScreen() {
       const hasPermission = await handleMediaLibraryPermission();
       if (!hasPermission) return;
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["videos", "images"],
+        // One-video design: clips of the haircut only (no photos)
+        mediaTypes: isAutoBuild ? ["videos"] : ["videos", "images"],
         allowsMultipleSelection: true,
         orderedSelection: true,
         selectionLimit: Math.max(1, MAX_EDITOR_CLIPS - picksRef.current.length),
@@ -958,7 +1026,7 @@ export default function ReelTemplatesScreen() {
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.length) {
-        addPicks(result.assets, "device");
+        openAutoBuildEditor(addPicks(result.assets, "device"));
       }
     } catch (error) {
       Logger.error("Error selecting auto reel media from gallery:", error);
@@ -967,7 +1035,7 @@ export default function ReelTemplatesScreen() {
       setAddingMedia(false);
       setPickingFrom(null);
     }
-  }, [addPicks, showBanner, t]);
+  }, [addPicks, isAutoBuild, openAutoBuildEditor, showBanner, t]);
 
   const handleRecordVideo = useCallback(async () => {
     if (picksRef.current.length >= MAX_EDITOR_CLIPS) {
@@ -991,7 +1059,7 @@ export default function ReelTemplatesScreen() {
         ...iosCompatiblePickerOptions,
       });
       if (!result.canceled && result.assets?.[0]) {
-        addPicks([result.assets[0]], "camera");
+        openAutoBuildEditor(addPicks([result.assets[0]], "camera"));
       }
     } catch (error) {
       Logger.error("Error recording auto reel video:", error);
@@ -1000,108 +1068,7 @@ export default function ReelTemplatesScreen() {
       setAddingMedia(false);
       setPickingFrom(null);
     }
-  }, [addPicks, showBanner, t]);
-
-  /**
-   * One-video design: the one video the AI cuts. Any length up to the
-   * template's max — no editor; picking again replaces it.
-   */
-  const pickAutoBuildVideo = useCallback(
-    async (from: "gallery" | "camera") => {
-      setAddingMedia(true);
-      setPickingFrom(from);
-      try {
-        const hasPermission =
-          from === "camera"
-            ? await handleCameraPermission()
-            : await handleMediaLibraryPermission();
-        if (!hasPermission) return;
-        const result =
-          from === "camera"
-            ? await ImagePicker.launchCameraAsync({
-                mediaTypes: ["videos"],
-                quality: 1,
-                allowsEditing: false,
-                // A second under the max: a clip stopped at the cap can run a little over
-                videoMaxDuration: Math.max(1, Math.floor(sourceMaxSeconds) - 1),
-                ...iosCompatiblePickerOptions,
-              })
-            : await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ["videos"],
-                allowsMultipleSelection: false,
-                quality: 1,
-                allowsEditing: false,
-                ...iosCompatiblePickerOptions,
-              });
-        const asset = result.canceled ? null : result.assets?.[0];
-        if (!asset?.uri) return;
-        const sourceType: MediaUploadSourceType =
-          from === "camera" ? "camera" : "device";
-        // expo-image-picker reports video length in milliseconds; some
-        // Android gallery items report none — measure it then
-        const seconds =
-          typeof asset.duration === "number" && asset.duration > 0
-            ? asset.duration / 1000
-            : await measureVideoDurationSeconds(asset.uri);
-        // Whole seconds, as shown ("5:00") — unknown stays null (the server checks)
-        const durationSeconds =
-          seconds != null ? Math.max(1, Math.round(seconds)) : null;
-        let thumbnailUri: string | null = null;
-        try {
-          const thumb = await VideoThumbnails.getThumbnailAsync(asset.uri, {
-            time: 0,
-            quality: 0.6,
-          });
-          thumbnailUri = thumb.uri;
-        } catch {
-          // Thumbnail is cosmetic only
-        }
-        const mimeType = asset.mimeType || "video/mp4";
-        const fileName = asset.fileName || "video.mp4";
-        const width = asset.width || undefined;
-        const height = asset.height || undefined;
-        setSourceVideo({
-          id: null,
-          local: {
-            uri: asset.uri,
-            mimeType,
-            fileName,
-            sourceType,
-            // Required by the upload; the server measures the real length
-            durationSeconds: durationSeconds ?? 1,
-            width,
-            height,
-          },
-          name: asset.fileName || null,
-          durationSeconds,
-          exactSeconds: seconds ?? null,
-          thumbnailUri,
-        });
-        // Same video as the only pick, so another template's editor opens with it
-        const tile: PickedMedia = {
-          id: nextPickId(),
-          kind: "video",
-          uri: asset.uri,
-          mimeType,
-          fileName,
-          sourceType,
-          durationSeconds,
-          width,
-          height,
-          thumbnailUri,
-        };
-        picksRef.current = [tile];
-        setPicks([tile]);
-      } catch (error) {
-        Logger.error("Error selecting auto build video:", error);
-        showBanner(t("error"), t("failedToSelectMedia"), "error", 3000);
-      } finally {
-        setAddingMedia(false);
-        setPickingFrom(null);
-      }
-    },
-    [showBanner, sourceMaxSeconds, t],
-  );
+  }, [addPicks, openAutoBuildEditor, showBanner, t]);
 
   /** One-video design: drop the video (an uploaded one too) to pick another. */
   const clearAutoBuildVideo = useCallback(() => {
@@ -1648,6 +1615,15 @@ export default function ReelTemplatesScreen() {
     uploadSelectedVideo,
   ]);
 
+  // Back from the studio with the cut video (and music): make the reel
+  useEffect(() => {
+    if (!autoStartAt) return;
+    setAutoStartAt(0);
+    void handleAutoBuild();
+    // Only when the studio hands a video back — handleAutoBuild reads this render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartAt]);
+
   const isHaircut = selected?.kind === "haircut";
   // Server-only video (from "Try another template") can't be edited here
   const serverOnly =
@@ -1756,7 +1732,10 @@ export default function ReelTemplatesScreen() {
         : p.durationSeconds ?? 0),
     0,
   );
-  const picksTooLong = picksSeconds > MAX_AUTO_REEL_SOURCE_SECONDS;
+  const picksMaxSeconds = isAutoBuild
+    ? sourceMaxSeconds
+    : MAX_AUTO_REEL_SOURCE_SECONDS;
+  const picksTooLong = picksSeconds > picksMaxSeconds;
   // Video design: clips shorter than the template needs (photos/clips can still be added)
   const picksTooShort =
     minVideoSeconds != null &&
@@ -1792,9 +1771,15 @@ export default function ReelTemplatesScreen() {
       return [
         {
           icon: "video-library",
-          text: t("autoBuildFeatureVideo", {
-            minutes: templateSourceMaxMinutes(selected),
-          }),
+          text:
+            minVideoSeconds != null
+              ? t("autoBuildFeatureVideoRange", {
+                  min: formatVideoDuration(minVideoSeconds),
+                  max: formatVideoDuration(sourceMaxSeconds),
+                })
+              : t("autoBuildFeatureVideo", {
+                  minutes: templateSourceMaxMinutes(selected),
+                }),
         },
         { icon: "auto-awesome", text: t("autoBuildFeatureAi") },
         { icon: "timer", text: reelLengthLabel },
@@ -2074,12 +2059,19 @@ export default function ReelTemplatesScreen() {
     </>
   );
 
-  /** One-video design: one video in, the AI does the rest — no editor, no details */
+  /**
+   * One-video design: add the haircut video (or several clips) → Next opens
+   * the trim-only studio (cut / split + music) → its "Make my reel" starts
+   * the reel. A video uploaded earlier ("Try a different template") can't be
+   * edited — it goes straight to "Make my reel" from here.
+   */
   const renderAutoBuildVideoStep = () => {
     const maxLabel = formatVideoDuration(sourceMaxSeconds);
-    // One length everywhere: rounded up when too long, down when too short,
-    // so the row and the note never disagree ("5:00 … up to 5:00")
-    const lengthLabel = formatVideoDuration(
+    const minLabel =
+      minVideoSeconds != null ? formatVideoDuration(minVideoSeconds) : null;
+    const serverVideo = !!sourceVideo && !sourceVideo.local && picks.length === 0;
+    // Same rounding as the warnings ("0:25 … at least 0:30")
+    const serverLength = formatVideoDuration(
       sourceExactSeconds == null
         ? null
         : sourceTooLong
@@ -2088,15 +2080,6 @@ export default function ReelTemplatesScreen() {
             ? Math.floor(sourceExactSeconds)
             : sourceSeconds,
     );
-    // Uploaded earlier (e.g. "Try a different template") — nothing to upload
-    const uploaded = !!sourceVideo && !sourceVideo.local;
-    const videoSub = !sourceVideo
-      ? null
-      : uploaded
-        ? [lengthLabel, t("flowAlreadyUploaded")].filter(Boolean).join(" · ")
-        : lengthLabel && !sourceTooLong && !sourceTooShort
-          ? t("autoBuildVideoReady", { length: lengthLabel })
-          : lengthLabel || null;
     return (
       <>
         <ScrollView
@@ -2105,118 +2088,176 @@ export default function ReelTemplatesScreen() {
           showsVerticalScrollIndicator={false}
         >
           <FlowTitle
-            title={t("autoBuildUploadTitle")}
-            subtitle={t("autoBuildUploadSubtitle", { max: maxLabel })}
+            title={t("autoBuildAddTitle")}
+            subtitle={t("autoBuildAddSubtitle")}
           />
           <SourceCardRow>
             <SourceCard
               icon="video-library"
               label={t("flowChooseFromGallery")}
-              sublabel={t("designReqOneVideo")}
+              sublabel={t("autoBuildGallerySub")}
               sublabelIcon="movie"
-              // One video only — a new pick replaces it
-              badgeIcon={sourceVideo ? "swap-horiz" : "add"}
-              onPress={() => void pickAutoBuildVideo("gallery")}
-              disabled={addingMedia}
+              badgeIcon="add"
+              onPress={() => void handleSelectFromGallery()}
+              disabled={addingMedia || submitting}
               loading={addingMedia && pickingFrom === "gallery"}
             />
             <SourceCard
               icon="videocam"
               label={t("flowRecordVideo")}
               tone="warm"
-              sublabel={t("flowRecordUpTo", { time: maxLabel })}
-              sublabelIcon="timer"
+              sublabel={t("autoBuildRecordSub")}
+              sublabelIcon="add"
               badgeIcon="fiber-manual-record"
-              onPress={() => void pickAutoBuildVideo("camera")}
-              disabled={addingMedia}
+              onPress={() => void handleRecordVideo()}
+              disabled={addingMedia || submitting}
               loading={addingMedia && pickingFrom === "camera"}
             />
           </SourceCardRow>
-          {sourceVideo ? (
+          {picks.length > 0 ? (
+            <>
+              <View style={styles.divider} />
+              <SectionLabel
+                label={picksLabel}
+                meta={
+                  picksSeconds > 0
+                    ? t("autoBuildTotalLength", {
+                        length: formatVideoDuration(picksSeconds),
+                      })
+                    : null
+                }
+              />
+              <MediaTileGrid
+                items={picks.map((p) => ({
+                  id: p.id,
+                  thumbUri: p.thumbnailUri,
+                  isPhoto: p.kind === "image",
+                  badge: formatVideoDuration(p.durationSeconds),
+                }))}
+                onRemove={removePick}
+                disabled={addingMedia}
+              />
+              {picksTooShort ? (
+                <InfoNote
+                  tone="warm"
+                  icon="timer"
+                  text={t("designPicksTooShort", {
+                    length: formatVideoDuration(picksSeconds),
+                    min: minLabel ?? "",
+                  })}
+                />
+              ) : picksTooLong ? (
+                <InfoNote
+                  icon="content-cut"
+                  text={t(
+                    picks.length > 1
+                      ? "flowAutoTooLongMany"
+                      : "flowAutoTooLongNote",
+                    { max: maxLabel },
+                  )}
+                />
+              ) : null}
+            </>
+          ) : serverVideo && sourceVideo ? (
             <>
               <View style={styles.divider} />
               <SectionLabel label={t("flowSelectedVideo")} />
               <SelectedMediaRow
                 thumbUri={sourceVideo.thumbnailUri}
                 title={sourceVideo.name || t("autoReelVideoAdded")}
-                subtitle={videoSub}
+                subtitle={[serverLength, t("flowAlreadyUploaded")]
+                  .filter(Boolean)
+                  .join(" · ")}
                 // The uploaded video's details load after the screen opens
-                loading={uploaded && !sourceVideo.thumbnailUri}
+                loading={!sourceVideo.thumbnailUri}
                 onAction={clearAutoBuildVideo}
-                actionIcon={uploaded ? "swap-horiz" : "close"}
-                actionLabel={uploaded ? t("autoBuildChangeVideo") : t("remove")}
+                actionIcon="close"
+                actionLabel={t("remove")}
               />
               {sourceTooLong ? (
                 <InfoNote
                   tone="error"
                   icon="timer"
                   text={t("autoBuildVideoTooLong", {
-                    length: lengthLabel,
+                    length: serverLength,
                     max: maxLabel,
                   })}
                 />
-              ) : null}
-              {sourceTooShort ? (
+              ) : sourceTooShort ? (
                 <InfoNote
                   tone="warm"
                   icon="timer"
                   text={t("autoBuildVideoTooShort", {
-                    length: lengthLabel,
-                    min: formatVideoDuration(Math.ceil(minVideoSeconds ?? 0)),
+                    length: serverLength,
+                    min: minLabel ?? "",
                   })}
                 />
               ) : null}
-            </>
-          ) : null}
-          {autoBuildSilent && sourceVideo ? (
-            <>
-              <View style={styles.divider} />
-              <DesignMusicField
-                value={music}
-                onChange={(next) => {
-                  setMusic(next);
-                  setMusicError(null);
-                }}
-                lengthSeconds={selected?.length_seconds}
-                error={musicError}
-                disabled={submitting}
-                defaultMusic={autoBuildDefaultMusic}
-              />
+              {/* No studio for it — the music is chosen here */}
+              {autoBuildSilent ? (
+                <>
+                  <View style={styles.divider} />
+                  <DesignMusicField
+                    value={music}
+                    onChange={(next) => {
+                      setMusic(next);
+                      setMusicError(null);
+                    }}
+                    lengthSeconds={selected?.length_seconds}
+                    error={musicError}
+                    disabled={submitting}
+                    defaultMusic={autoBuildDefaultMusic}
+                  />
+                </>
+              ) : null}
             </>
           ) : null}
           <InfoNote
             icon="auto-awesome"
-            text={[
-              t("autoBuildNoTrimNote"),
-              minVideoSeconds
-                ? t("designVideoMinNote", {
-                    seconds: Math.ceil(minVideoSeconds),
-                  })
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" ")}
+            text={`${t("autoBuildAddNote")} ${
+              minLabel
+                ? t("autoBuildLengthNote", { min: minLabel, max: maxLabel })
+                : t("autoBuildLengthNoteMax", { max: maxLabel })
+            }`}
           />
         </ScrollView>
         <FlowFooter
-          primary={{
-            label: t("autoReelMakeReel"),
-            onPress: () => void handleAutoBuild(),
-            disabled: !canAutoBuild || submitting || addingMedia,
-            icon: "auto-awesome",
-          }}
+          primary={
+            serverVideo
+              ? {
+                  label: t("autoReelMakeReel"),
+                  onPress: () => void handleAutoBuild(),
+                  disabled: !canAutoBuild || submitting || addingMedia,
+                  icon: "auto-awesome",
+                }
+              : {
+                  label: t("autoBuildNextCut"),
+                  onPress: handleEditPicks,
+                  // Too short is fine — clips are added in the studio
+                  disabled:
+                    picks.length === 0 ||
+                    addingMedia ||
+                    submitting ||
+                    noCreditsLeft,
+                  trailingIcon: "chevron-right",
+                }
+          }
           hint={
             noCreditsLeft
               ? t("autoBuildNoCredits")
-              : !sourceVideo
-                ? addingMedia
-                  ? null
-                  : t("flowPickVideoHint")
-                : autoBuildSilent && music === undefined
+              : serverVideo
+                ? autoBuildSilent && music === undefined
                   ? t("designMusicRequired")
                   : credits
-                  ? t("autoBuildCreditCost", { count: credits.remaining })
-                  : t("autoBuildCreditCostUnknown")
+                    ? t("autoBuildCreditCost", { count: credits.remaining })
+                    : t("autoBuildCreditCostUnknown")
+                : picks.length === 0
+                  ? addingMedia
+                    ? null
+                    : t("autoBuildPickHint")
+                  : picksTooShort
+                    ? t("autoBuildAddMoreHint", { min: minLabel ?? "" })
+                    : t("autoBuildNextCutHint")
           }
         />
       </>

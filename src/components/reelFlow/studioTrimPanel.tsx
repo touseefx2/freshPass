@@ -51,6 +51,8 @@ type Props = {
   addingClip: boolean;
   /** Smaller paddings on short screens. */
   compact?: boolean;
+  /** Only these tool buttons (e.g. ["split"] for a plain trim); all when unset */
+  onlyTools?: string[] | null;
   onSplit: () => void;
   onReset: () => void;
   onToggleMute: () => void;
@@ -217,6 +219,7 @@ export default function StudioTrimPanel({
   canAddClip,
   addingClip,
   compact = false,
+  onlyTools = null,
   onSplit,
   onReset,
   onToggleMute,
@@ -312,7 +315,7 @@ export default function StudioTrimPanel({
   const minLabel = minMs ? formatVideoDuration(minMs / 1000) : null;
   const selectedLabel = formatTimecode(multi ? reelTotalMs : lengthMs, overLimit);
 
-  const tools: {
+  const allTools: {
     key: string;
     icon: keyof typeof MaterialIcons.glyphMap;
     label: string;
@@ -360,6 +363,9 @@ export default function StudioTrimPanel({
         ]
       : []),
   ];
+  const tools = onlyTools
+    ? allTools.filter((tool) => onlyTools.includes(tool.key))
+    : allTools;
 
   return (
     <View style={styles.wrap}>
