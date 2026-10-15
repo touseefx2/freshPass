@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, StyleSheet, Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import * as VideoThumbnails from "expo-video-thumbnails";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -29,7 +29,10 @@ import {
 } from "@/src/types/reels";
 import { isUploadCancelled } from "@/src/utils/uploadCancel";
 import {
+  cutSlotVideo,
+  localSlotVideoUri,
   pickSlotFile,
+  slotNeedsCut,
   uploadSlotFile,
   type SlotFile,
 } from "@/src/utils/designSlots";
@@ -42,13 +45,15 @@ import {
 } from "@/src/components/reelFlow/flowParts";
 import { FlowTextField } from "@/src/components/reelFlow/detailsFields";
 import DesignSlotCard from "@/src/components/reelFlow/designSlotCard";
-import FlowButton from "@/src/components/reelFlow/flowButton";
 import {
   ClipPreview,
   ClipStrip,
   type ClipItem,
 } from "@/src/components/autoReel/clipStrip";
 import DesignMusicField from "@/src/components/reelFlow/designMusicField";
+import ClipActionSheet, {
+  type ClipAction,
+} from "@/src/components/autoReel/clipActionSheet";
 import MomentPickerModal, {
   formatMoment,
 } from "@/src/components/autoReel/momentPickerModal";
@@ -137,14 +142,6 @@ const createStyles = (theme: Theme) =>
       fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.red,
-    },
-    clipActions: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: moderateWidthScale(10),
-    },
-    clipAction: {
-      flexGrow: 1,
     },
   });
 
@@ -448,6 +445,20 @@ export default function DesignReview({
   const [musicError, setMusicError] = useState<string | null>(null);
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   const [movingSlot, setMovingSlot] = useState<AutoReelSlot | null>(null);
+  // Clip whose options sheet is open (compact clips)
+  const [sheetSlotKey, setSheetSlotKey] = useState<string | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const openClipSheet = (key: string) => {
+    setSheetSlotKey(key);
+    setSheetOpen(true);
+  };
+  // Phone video longer than its slot — picking which part to cut
+  const [cutting, setCutting] = useState<{
+    slot: AutoReelSlot;
+    file: SlotFile;
+    source: { uri: string; durationSeconds: number };
+    at: number;
+  } | null>(null);
   const [building, setBuilding] = useState(false);
   const buildingRef = useRef(false);
   const [uploadPercent, setUploadPercent] = useState<number | null>(null);
@@ -509,6 +520,21 @@ export default function DesignReview({
         if (!picked) return;
         if ("error" in picked) {
           setSlotErrors((prev) => ({ ...prev, [slot.key]: picked.error }));
+          showBanner(slot.label, picked.error, "error", 4000);
+          return;
+        }
+        if (slotNeedsCut(slot, picked.file)) {
+          const uri = await localSlotVideoUri(picked.file);
+          // iOS can't present the trimmer while the gallery is still closing
+          if (Platform.OS === "ios") {
+            await new Promise<void>((resolve) => setTimeout(resolve, 450));
+          }
+          setCutting({
+            slot,
+            file: picked.file,
+            source: { uri, durationSeconds: picked.file.durationSeconds ?? 0 },
+            at: 0,
+          });
           return;
         }
         setChoices((prev) => ({
@@ -525,6 +551,34 @@ export default function DesignReview({
     },
     [pickingSlot, showBanner, t],
   );
+
+  /** Move on a cut file: the trimmer again, on the same phone video. */
+  const moveInFile = (slot: AutoReelSlot) => {
+    const choice = choices[slot.key];
+    if (choice?.mode !== "file" || !choice.file.source) return;
+    const { uri, durationSeconds, at } = choice.file.source;
+    setCutting({ slot, file: choice.file, source: { uri, durationSeconds }, at });
+  };
+
+  const cutPart = async (at: number) => {
+    if (!cutting) return;
+    const { slot, file, source } = cutting;
+    const seconds = slot.min_seconds ?? 0;
+    setCutting(null);
+    setPickingSlot(slot.key);
+    try {
+      // Let the trimmer's player let go of the file before exporting from it
+      await new Promise<void>((resolve) => setTimeout(resolve, 500));
+      const cut = await cutSlotVideo(file, source, at, seconds);
+      setChoices((prev) => ({ ...prev, [slot.key]: { mode: "file", file: cut } }));
+      clearSlotError(slot.key);
+    } catch (error) {
+      Logger.error("Error cutting own video for design slot:", error);
+      setSlotErrors((prev) => ({ ...prev, [slot.key]: t("designCutFailed") }));
+    } finally {
+      setPickingSlot(null);
+    }
+  };
 
   // Review: back to the AI's pick. Edit: back to the last build.
   const undoSlot = (slot: AutoReelSlot) => {
@@ -814,6 +868,119 @@ export default function DesignReview({
     return { choice, pickAt, ownFile, changed, canUndo, missing, thumbUri };
   };
 
+  /** Options for the tapped clip — replaces the buttons under the strip. */
+  const renderClipSheet = () => {
+    const slot = sheetSlotKey
+      ? slots.find((item) => item.key === sheetSlotKey)
+      : null;
+    if (!slot || !canChange) return null;
+    const info = clipInfo(slot);
+    const index = slots.indexOf(slot);
+    const seconds =
+      slot.kind === "video" && slot.min_seconds ? slot.min_seconds : null;
+    const badge = badgeFor(slot, info.choice);
+    const close = () => setSheetOpen(false);
+    const cutFrom =
+      info.choice?.mode === "file" ? info.choice.file.source : null;
+    const actions: ClipAction[] = [
+      ...(cutFrom && seconds
+        ? [
+            {
+              key: "cut",
+              icon: "content-cut" as const,
+              label: t("designMoveInFile"),
+              subtitle: t("designSheetMoveInFileSub", {
+                seconds: Math.round(seconds),
+              }),
+              disabled: disabled || !!pickingSlot,
+              onPress: () => {
+                close();
+                moveInFile(slot);
+              },
+            },
+          ]
+        : []),
+      ...(videoUrl
+        ? [
+            {
+              key: "moment",
+              icon: "tune" as const,
+              label: info.ownFile
+                ? t("designUseMainVideo")
+                : info.pickAt != null
+                  ? t("designMoveMoment")
+                  : t("designChooseMoment"),
+              subtitle: info.ownFile
+                ? seconds
+                  ? t("designSheetMainVideoClipSub", {
+                      seconds: Math.round(seconds),
+                    })
+                  : t("designSheetMainVideoPhotoSub")
+                : seconds
+                  ? t("designSheetMomentClipSub", { seconds: Math.round(seconds) })
+                  : t("designSheetMomentPhotoSub"),
+              primary: info.missing,
+              disabled,
+              onPress: () => {
+                close();
+                setMovingSlot(slot);
+              },
+            },
+          ]
+        : []),
+      {
+        key: "file",
+        icon: "swap-horiz",
+        label: info.ownFile ? t("designReplace") : t("designUseOwnFile"),
+        subtitle:
+          slot.kind === "video"
+            ? seconds
+              ? t("designSheetFileVideoMinSub", { seconds: Math.round(seconds) })
+              : t("designSheetFileVideoSub")
+            : t("designSheetFilePhotoSub"),
+        primary: info.missing && !videoUrl,
+        disabled: disabled || !!pickingSlot,
+        loading: pickingSlot === slot.key,
+        onPress: () => {
+          close();
+          void attachFile(slot);
+        },
+      },
+      ...(info.canUndo
+        ? [
+            {
+              key: "undo",
+              icon: "undo" as const,
+              label: edit ? t("autoBuildUndoChange") : t("designKeepAiPick"),
+              subtitle: edit
+                ? t("designSheetUndoSub")
+                : t("designSheetKeepAiSub"),
+              disabled,
+              onPress: () => {
+                close();
+                undoSlot(slot);
+              },
+            },
+          ]
+        : []),
+    ];
+    return (
+      <ClipActionSheet
+        visible={sheetOpen}
+        onClose={close}
+        title={[
+          `${index + 1} · ${slot.label}`,
+          seconds ? `${Math.round(seconds)}s` : null,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        status={badge?.label}
+        statusMissing={badge?.tone === "missing"}
+        actions={actions}
+      />
+    );
+  };
+
   /** CapCut-style: the selected clip plays, all clips in one row, its actions below. */
   const renderCompactClips = () => {
     const items: ClipItem[] = slots.map((slot) => {
@@ -872,11 +1039,15 @@ export default function DesignReview({
           emptyText={
             info.missing ? t("designChooseMoment") : (badge?.label ?? slot.label)
           }
+          onPress={canChange ? () => openClipSheet(slot.key) : undefined}
         />
         <ClipStrip
           items={items}
           selectedKey={slot.key}
-          onSelect={setSelectedKey}
+          onSelect={(key) => {
+            setSelectedKey(key);
+            if (canChange) openClipSheet(key);
+          }}
         />
         <View style={styles.clipHead}>
           <Text style={styles.clipLabel}>
@@ -897,46 +1068,6 @@ export default function DesignReview({
         </View>
         {slotErrors[slot.key] ? (
           <Text style={styles.clipError}>{slotErrors[slot.key]}</Text>
-        ) : null}
-        {canChange ? (
-          <View style={styles.clipActions}>
-            {videoUrl ? (
-              <FlowButton
-                variant={info.missing ? "primary" : "outline"}
-                compact
-                icon="tune"
-                label={
-                  info.pickAt != null || info.ownFile
-                    ? t("designMoveMoment")
-                    : t("designChooseMoment")
-                }
-                onPress={() => setMovingSlot(slot)}
-                disabled={disabled}
-                style={styles.clipAction}
-              />
-            ) : null}
-            <FlowButton
-              variant="outline"
-              compact
-              icon="swap-horiz"
-              label={info.ownFile ? t("designReplace") : t("designUseOwnFile")}
-              onPress={() => void attachFile(slot)}
-              disabled={disabled || !!pickingSlot}
-              loading={pickingSlot === slot.key}
-              style={styles.clipAction}
-            />
-            {info.canUndo ? (
-              <FlowButton
-                variant="text"
-                compact
-                icon="undo"
-                label={edit ? t("autoBuildUndoChange") : t("designKeepAiPick")}
-                onPress={() => undoSlot(slot)}
-                disabled={disabled}
-                style={styles.clipAction}
-              />
-            ) : null}
-          </View>
         ) : null}
       </>
     );
@@ -1163,6 +1294,23 @@ export default function DesignReview({
               : null
           }
           hint={footerHint}
+        />
+      ) : null}
+
+      {renderClipSheet()}
+
+      {cutting ? (
+        <MomentPickerModal
+          visible
+          videoUrl={cutting.source.uri}
+          label={cutting.slot.label}
+          clipSeconds={cutting.slot.min_seconds ?? null}
+          videoSeconds={cutting.source.durationSeconds || null}
+          initialAt={cutting.at}
+          posterUri={cutting.file.thumbnailUri}
+          doneLabel={t("designCutThisPart")}
+          onCancel={() => setCutting(null)}
+          onDone={(at) => void cutPart(at)}
         />
       ) : null}
 

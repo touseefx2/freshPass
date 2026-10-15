@@ -2561,5 +2561,21 @@
   "autoBuildEditFillText": "Fülle den Text aus, um fortzufahren.",
   "autoBuildMusicAfter": "Füge danach deine Musik hinzu",
   "autoBuildTapClip": "Tippe auf einen Clip, um ihn zu ändern.",
-  "autoBuildDragHint": "Zieh den Rahmen, um die {{seconds}} Sekunden auszuwählen."
+  "autoBuildDragHint": "Zieh den Rahmen, um die {{seconds}} Sekunden auszuwählen.",
+  "designSheetMomentClipSub": "Wähle einen {{seconds}}-Sekunden-Teil deines Videos",
+  "designSheetMomentPhotoSub": "Wähle ein Bild aus deinem Video",
+  "designSheetFileVideoSub": "Füge ein Video von deinem Handy hinzu",
+  "designSheetFilePhotoSub": "Füge ein Foto von deinem Handy hinzu",
+  "designSheetKeepAiSub": "Zurück zum Moment, den die KI gewählt hat",
+  "designSheetUndoSub": "Zurück zum vorherigen Stand",
+  "designUseMainVideo": "Hauptvideo verwenden",
+  "designMoveInFile": "In meiner Datei verschieben",
+  "designSheetMoveInFileSub": "Wähle, welche {{seconds}} Sekunden deines Videos verwendet werden",
+  "designSheetMainVideoClipSub": "Wähle {{seconds}} Sekunden aus dem Hauptvideo",
+  "designSheetMainVideoPhotoSub": "Wähle ein Bild aus dem Hauptvideo",
+  "designCutThisPart": "Diesen Teil schneiden",
+  "designCutFailed": "Das Video konnte nicht geschnitten werden. Versuch es erneut oder wähle ein anderes.",
+  "designSlotVideoTooShortHave": "Dieses Video ist zu kurz. Dieser Teil braucht mindestens {{seconds}} Sekunden – deins hat {{have}} s.",
+  "designSlotVideoLengthUnknown": "Die Länge dieses Videos konnte nicht gelesen werden. Versuch ein anderes Video.",
+  "designSheetFileVideoMinSub": "Ein Video ab {{seconds}} s von deinem Handy"
 }

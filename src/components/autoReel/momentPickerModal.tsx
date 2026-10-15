@@ -57,6 +57,8 @@ type Props = {
   posterUri?: string | null;
   onCancel: () => void;
   onDone: (at: number) => void;
+  /** Done button text (default "Done") */
+  doneLabel?: string;
 };
 
 const createStyles = (theme: Theme) =>
@@ -182,6 +184,7 @@ function MomentPicker({
   posterUri,
   onCancel,
   onDone,
+  doneLabel,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -530,7 +533,7 @@ function MomentPicker({
             </Text>
           </View>
           <FlowButton
-            label={t("done")}
+            label={doneLabel ?? t("done")}
             icon="check"
             onPress={() => onDone(Math.round(at * 10) / 10)}
             disabled={duration == null}

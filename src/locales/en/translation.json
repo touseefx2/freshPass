@@ -2617,5 +2617,21 @@
   "autoBuildEditFillText": "Fill in the text to continue.",
   "autoBuildMusicAfter": "Add your music after",
   "autoBuildTapClip": "Tap a clip to change it.",
-  "autoBuildDragHint": "Drag the box to choose which {{seconds}} seconds to use."
+  "autoBuildDragHint": "Drag the box to choose which {{seconds}} seconds to use.",
+  "designSheetMomentClipSub": "Pick a {{seconds}}-second part of your video",
+  "designSheetMomentPhotoSub": "Pick a frame from your video",
+  "designSheetFileVideoSub": "Add a video from your phone",
+  "designSheetFilePhotoSub": "Add a photo from your phone",
+  "designSheetKeepAiSub": "Go back to the moment AI picked",
+  "designSheetUndoSub": "Go back to how it was",
+  "designUseMainVideo": "Use main video",
+  "designMoveInFile": "Move in my file",
+  "designSheetMoveInFileSub": "Choose which {{seconds}} seconds of your video to use",
+  "designSheetMainVideoClipSub": "Pick {{seconds}} seconds from the main video",
+  "designSheetMainVideoPhotoSub": "Pick a frame from the main video",
+  "designCutThisPart": "Cut this part",
+  "designCutFailed": "Couldn't cut this video. Try again or pick another one.",
+  "designSlotVideoTooShortHave": "This video is too short. This part needs at least {{seconds}} seconds — yours is {{have}} s.",
+  "designSlotVideoLengthUnknown": "Couldn't read this video's length. Try another video.",
+  "designSheetFileVideoMinSub": "A video of {{seconds}}s or longer from your phone"
 }

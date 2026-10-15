@@ -2561,5 +2561,21 @@
   "autoBuildEditFillText": "Completa el texto para continuar.",
   "autoBuildMusicAfter": "Añade tu música después",
   "autoBuildTapClip": "Toca un clip para cambiarlo.",
-  "autoBuildDragHint": "Arrastra el recuadro para elegir qué {{seconds}} segundos usar."
+  "autoBuildDragHint": "Arrastra el recuadro para elegir qué {{seconds}} segundos usar.",
+  "designSheetMomentClipSub": "Elige una parte de {{seconds}} segundos de tu video",
+  "designSheetMomentPhotoSub": "Elige un fotograma de tu video",
+  "designSheetFileVideoSub": "Añade un video desde tu teléfono",
+  "designSheetFilePhotoSub": "Añade una foto desde tu teléfono",
+  "designSheetKeepAiSub": "Vuelve al momento que eligió la IA",
+  "designSheetUndoSub": "Vuelve a como estaba",
+  "designUseMainVideo": "Usar el video principal",
+  "designMoveInFile": "Mover en mi archivo",
+  "designSheetMoveInFileSub": "Elige qué {{seconds}} segundos de tu video usar",
+  "designSheetMainVideoClipSub": "Elige {{seconds}} segundos del video principal",
+  "designSheetMainVideoPhotoSub": "Elige un fotograma del video principal",
+  "designCutThisPart": "Cortar esta parte",
+  "designCutFailed": "No se pudo cortar este video. Inténtalo de nuevo o elige otro.",
+  "designSlotVideoTooShortHave": "Este video es muy corto. Esta parte necesita al menos {{seconds}} segundos; el tuyo dura {{have}} s.",
+  "designSlotVideoLengthUnknown": "No se pudo leer la duración de este video. Prueba con otro.",
+  "designSheetFileVideoMinSub": "Un video de {{seconds}} s o más desde tu teléfono"
 }

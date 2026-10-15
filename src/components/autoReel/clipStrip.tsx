@@ -23,8 +23,8 @@ import { fontSize, fonts } from "@/src/theme/fonts";
 
 /**
  * CapCut-style clip editing: the selected clip plays on top, every clip sits
- * in one row underneath (number, frame, seconds). Tapping a clip selects it;
- * the screen shows its few actions below the row.
+ * in one row underneath (number, frame, seconds). Tapping a clip selects it
+ * and opens its options sheet.
  */
 
 export type ClipState = "ai" | "changed" | "own" | "missing";
@@ -101,6 +101,12 @@ const createStyles = (theme: Theme) =>
     tileImage: {
       ...StyleSheet.absoluteFillObject,
     },
+    tileBusy: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0, 0, 0, 0.45)",
+    },
     tileNumber: {
       position: "absolute",
       left: moderateWidthScale(5),
@@ -148,6 +154,7 @@ export function ClipPreview({
   imageUri,
   tag,
   emptyText,
+  onPress,
 }: {
   /** Video to play from `at` for `seconds` (null → image / empty state) */
   videoUri: string | null;
@@ -157,6 +164,8 @@ export function ClipPreview({
   tag: string | null;
   /** Shown when there's nothing to play yet (a missing moment) */
   emptyText: string;
+  /** Tap → this clip's options */
+  onPress?: () => void;
 }) {
   const { colors } = useTheme();
   const theme = colors as Theme;
@@ -165,7 +174,14 @@ export function ClipPreview({
   const height = Math.round(windowHeight * 0.25);
 
   return (
-    <View style={[styles.preview, { height }]}>
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      accessibilityLabel={onPress ? [tag, emptyText].filter(Boolean).join(", ") : undefined}
+      style={[styles.preview, { height }]}
+    >
       {videoUri ? (
         <LoopingClip key={videoUri} uri={videoUri} at={at} seconds={seconds} />
       ) : imageUri ? (
@@ -189,7 +205,7 @@ export function ClipPreview({
           <Text style={styles.previewTagText}>{tag}</Text>
         </View>
       ) : null}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -284,11 +300,18 @@ export function ClipStrip({
             ]}
           >
             {hasThumb ? (
-              <Image
-                source={{ uri: item.thumbUri! }}
-                style={styles.tileImage}
-                contentFit="cover"
-              />
+              <>
+                <Image
+                  source={{ uri: item.thumbUri! }}
+                  style={styles.tileImage}
+                  contentFit="cover"
+                />
+                {item.thumbLoading ? (
+                  <View style={styles.tileBusy}>
+                    <ActivityIndicator color={theme.white} />
+                  </View>
+                ) : null}
+              </>
             ) : item.thumbLoading ? (
               <ActivityIndicator color={theme.buttonBack} />
             ) : (

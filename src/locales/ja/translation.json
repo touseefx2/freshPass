@@ -2561,5 +2561,21 @@
   "autoBuildEditFillText": "続けるには、テキストを入力してください。",
   "autoBuildMusicAfter": "音楽はあとで追加できます",
   "autoBuildTapClip": "変更するクリップをタップしてください。",
-  "autoBuildDragHint": "枠をドラッグして、使う{{seconds}}秒を選んでください。"
+  "autoBuildDragHint": "枠をドラッグして、使う{{seconds}}秒を選んでください。",
+  "designSheetMomentClipSub": "動画から{{seconds}}秒の部分を選ぶ",
+  "designSheetMomentPhotoSub": "動画からフレームを選ぶ",
+  "designSheetFileVideoSub": "スマホから動画を追加",
+  "designSheetFilePhotoSub": "スマホから写真を追加",
+  "designSheetKeepAiSub": "AIが選んだ場面に戻す",
+  "designSheetUndoSub": "元の状態に戻す",
+  "designUseMainVideo": "メイン動画を使う",
+  "designMoveInFile": "自分のファイル内で移動",
+  "designSheetMoveInFileSub": "動画のどの{{seconds}}秒を使うか選ぶ",
+  "designSheetMainVideoClipSub": "メイン動画から{{seconds}}秒を選ぶ",
+  "designSheetMainVideoPhotoSub": "メイン動画からフレームを選ぶ",
+  "designCutThisPart": "この部分を切り取る",
+  "designCutFailed": "この動画を切り取れませんでした。もう一度試すか、別の動画を選んでください。",
+  "designSlotVideoTooShortHave": "この動画は短すぎます。このパートには{{seconds}}秒以上必要です（この動画は{{have}}秒）。",
+  "designSlotVideoLengthUnknown": "この動画の長さを読み取れませんでした。別の動画を試してください。",
+  "designSheetFileVideoMinSub": "スマホから{{seconds}}秒以上の動画"
 }

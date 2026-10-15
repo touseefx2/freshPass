@@ -2561,5 +2561,21 @@
   "autoBuildEditFillText": "املأ النص للمتابعة.",
   "autoBuildMusicAfter": "أضف موسيقاك بعد ذلك",
   "autoBuildTapClip": "اضغط على مقطع لتغييره.",
-  "autoBuildDragHint": "اسحب المربع لاختيار الـ {{seconds}} ثوانٍ التي تريد استخدامها."
+  "autoBuildDragHint": "اسحب المربع لاختيار الـ {{seconds}} ثوانٍ التي تريد استخدامها.",
+  "designSheetMomentClipSub": "اختر جزءًا مدته {{seconds}} ثوانٍ من الفيديو",
+  "designSheetMomentPhotoSub": "اختر لقطة من الفيديو",
+  "designSheetFileVideoSub": "أضف فيديو من هاتفك",
+  "designSheetFilePhotoSub": "أضف صورة من هاتفك",
+  "designSheetKeepAiSub": "ارجع إلى اللحظة التي اختارها الذكاء الاصطناعي",
+  "designSheetUndoSub": "ارجع إلى ما كان عليه",
+  "designUseMainVideo": "استخدم الفيديو الرئيسي",
+  "designMoveInFile": "حرّك داخل ملفي",
+  "designSheetMoveInFileSub": "اختر أي {{seconds}} ثوانٍ من الفيديو تريد استخدامها",
+  "designSheetMainVideoClipSub": "اختر {{seconds}} ثوانٍ من الفيديو الرئيسي",
+  "designSheetMainVideoPhotoSub": "اختر لقطة من الفيديو الرئيسي",
+  "designCutThisPart": "قص هذا الجزء",
+  "designCutFailed": "تعذّر قص هذا الفيديو. حاول مرة أخرى أو اختر فيديو آخر.",
+  "designSlotVideoTooShortHave": "هذا الفيديو قصير جدًا. يحتاج هذا الجزء إلى {{seconds}} ثوانٍ على الأقل — مدة الفيديو {{have}} ث.",
+  "designSlotVideoLengthUnknown": "تعذّرت قراءة مدة هذا الفيديو. جرّب فيديو آخر.",
+  "designSheetFileVideoMinSub": "فيديو مدته {{seconds}} ث أو أكثر من هاتفك"
 }
