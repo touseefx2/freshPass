@@ -23,6 +23,7 @@ import { Image } from "expo-image";
 import { useEvent } from "expo";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNotificationContext } from "@/src/contexts/NotificationContext";
 import { useAppSelector, useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
@@ -34,6 +35,7 @@ import {
   publishAutoReel,
   regenerateAutoReel,
   retryAutoReel,
+  unpublishReel,
 } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
 import {
@@ -59,7 +61,9 @@ import {
   autoReelVideo,
 } from "@/src/types/reels";
 import FlowHeader from "@/src/components/reelFlow/flowHeader";
-import FlowFooter from "@/src/components/reelFlow/flowFooter";
+import FlowFooter, {
+  flowFooterBottomPad,
+} from "@/src/components/reelFlow/flowFooter";
 import FlowButton from "@/src/components/reelFlow/flowButton";
 import ProgressTracker, {
   type TrackerStep,
@@ -312,6 +316,13 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    // Ready screen footer once published (same padding as FlowFooter)
+    publishedFooter: {
+      paddingHorizontal: moderateWidthScale(20),
+      paddingTop: moderateHeightScale(12),
+      backgroundColor: theme.background,
+      gap: moderateHeightScale(6),
+    },
     publishedPill: {
       flexDirection: "row",
       alignItems: "center",
@@ -477,6 +488,7 @@ export default function AutoReelScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { showBanner } = useNotificationContext();
+  const insets = useSafeAreaInsets();
 
   const params = useLocalSearchParams<{
     autoReelId?: string;
@@ -780,6 +792,48 @@ export default function AutoReelScreen() {
       ],
     );
   }, [creditsLeft, handleRegenerate, regenerating, t]);
+
+  // Published: take the reel off FreshPass (same call as the media library)
+  const [unpublishing, setUnpublishing] = useState(false);
+  const handleUnpublish = useCallback(async () => {
+    const reelId = autoReel?.reel_id ?? autoReel?.reel?.id;
+    if (!reelId || unpublishing) return;
+    setUnpublishing(true);
+    try {
+      await unpublishReel(reelId);
+      showBanner(t("success"), t("reelUnpublished"), "success", 2500);
+      await fetchOnce();
+    } catch (error: any) {
+      Logger.error("Failed to unpublish auto reel:", error);
+      showBanner(
+        t("error"),
+        error?.message || t("failedToUpdateReel"),
+        "error",
+        3000,
+      );
+    } finally {
+      setUnpublishing(false);
+    }
+  }, [
+    autoReel?.reel?.id,
+    autoReel?.reel_id,
+    fetchOnce,
+    showBanner,
+    t,
+    unpublishing,
+  ]);
+
+  const confirmUnpublish = useCallback(() => {
+    if (unpublishing) return;
+    Alert.alert(t("autoReelUnpublishTitle"), t("autoReelUnpublishBody"), [
+      { text: t("cancel"), style: "cancel" },
+      {
+        text: t("unpublish"),
+        style: "destructive",
+        onPress: () => void handleUnpublish(),
+      },
+    ]);
+  }, [handleUnpublish, t, unpublishing]);
 
   /** Edit sheet → the chosen part of the reel (DesignReview in edit mode). */
   const openEditSection = useCallback((section: EditSection) => {
@@ -1365,9 +1419,7 @@ export default function AutoReelScreen() {
           ])}
           {/* "Change style" hidden for now — not needed yet (was a row button
               calling handleAnotherTemplate when changeStyleAvailable). */}
-          {isPublished ? (
-            <InfoNote icon="public" text={t("flowAlreadyPublished")} />
-          ) : isRemoved ? (
+          {isRemoved ? (
             <InfoNote icon="block" text={t("autoReelRemovedHint")} />
           ) : null}
           {isHaircut && autoReel?.has_before === false ? (
@@ -1378,15 +1430,73 @@ export default function AutoReelScreen() {
           ) : null}
           {!canChange ? renderViewOnlyNote() : null}
         </ScrollView>
-        <FlowFooter
-          primary={{
-            label: canPublish ? t("flowNextPublish") : t("flowSaveOrShare"),
-            onPress: () => setView("publish"),
-            disabled: !videoUrl,
-            trailingIcon: "chevron-right",
-          }}
-        />
+        {/* Published: its status (+ Unpublish). Nothing to publish: no
+            footer — Save / Share are on this screen */}
+        {isPublished ? (
+          renderPublishedFooter()
+        ) : canPublish ? (
+          <FlowFooter
+            primary={{
+              label: t("flowNextPublish"),
+              onPress: () => setView("publish"),
+              disabled: !videoUrl,
+              trailingIcon: "chevron-right",
+            }}
+          />
+        ) : null}
       </>
+    );
+  };
+
+  /**
+   * Ready screen footer once the reel is live (nothing left to do on the
+   * publish step): Unpublish for whoever may change it, else a "Published"
+   * status.
+   */
+  const renderPublishedFooter = () => {
+    const canUnpublish =
+      canChange && !!(autoReel?.reel_id ?? autoReel?.reel?.id);
+    return (
+      <View
+        style={[
+          styles.publishedFooter,
+          { paddingBottom: flowFooterBottomPad(insets.bottom) },
+        ]}
+      >
+        {canUnpublish ? (
+          <TouchableOpacity
+            style={styles.publishedPill}
+            onPress={confirmUnpublish}
+            disabled={unpublishing}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`${t("published")}. ${t("unpublish")}`}
+            accessibilityState={{ busy: unpublishing }}
+          >
+            {unpublishing ? (
+              <ActivityIndicator color={theme.buttonBack} />
+            ) : (
+              <>
+                <MaterialIcons
+                  name="unpublished"
+                  size={moderateWidthScale(24)}
+                  color={theme.buttonBack}
+                />
+                <Text style={styles.publishedText}>{t("unpublish")}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.publishedPill} accessibilityRole="text">
+            <MaterialIcons
+              name="check-circle"
+              size={moderateWidthScale(24)}
+              color={theme.buttonBack}
+            />
+            <Text style={styles.publishedText}>{t("published")}</Text>
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -1493,26 +1603,23 @@ export default function AutoReelScreen() {
               text={remakeLimitNote}
             />
           ) : null}
-          {isPublished ? (
-            <InfoNote
-              icon="public"
-              title={t("flowAlreadyPublished")}
-              text={t("autoBuildPublishedNote")}
-            />
-          ) : isRemoved ? (
+          {isRemoved ? (
             <InfoNote icon="block" text={t("autoReelRemovedHint")} />
           ) : null}
           {!canChange ? renderViewOnlyNote() : null}
         </ScrollView>
-        <FlowFooter
-          primary={{
-            label: canPublish ? t("autoBuildPublish") : t("flowSaveOrShare"),
-            onPress: () => setView("publish"),
-            disabled: !videoUrl || regenerating,
-            icon: canPublish ? "publish" : undefined,
-            trailingIcon: canPublish ? undefined : "chevron-right",
-          }}
-        />
+        {isPublished ? (
+          renderPublishedFooter()
+        ) : canPublish ? (
+          <FlowFooter
+            primary={{
+              label: t("autoBuildPublish"),
+              onPress: () => setView("publish"),
+              disabled: !videoUrl || regenerating,
+              icon: "publish",
+            }}
+          />
+        ) : null}
       </>
     );
   };

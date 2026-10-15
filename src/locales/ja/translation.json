@@ -2255,6 +2255,8 @@
   "flowNextPreview": "次へ：プレビュー",
   "flowSaveVideo": "保存して続ける",
   "flowExportingTitle": "リールを準備中…",
+  "autoReelUnpublishTitle": "このリールの公開を取り消しますか？",
+  "autoReelUnpublishBody": "FreshPassに表示されなくなります。",
   "flowJoiningClipsTitle": "クリップを結合中…",
   "flowTrimmingVideoTitle": "動画をトリミング中…",
   "flowLoadingVideo": "動画を読み込み中…",

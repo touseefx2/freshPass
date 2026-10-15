@@ -2255,6 +2255,8 @@
   "flowNextPreview": "التالي: المعاينة",
   "flowSaveVideo": "حفظ ومتابعة",
   "flowExportingTitle": "جارٍ تجهيز ريلك…",
+  "autoReelUnpublishTitle": "إلغاء نشر هذا الريل؟",
+  "autoReelUnpublishBody": "لن يظهر بعد الآن على FreshPass.",
   "flowJoiningClipsTitle": "جارٍ دمج مقاطعك…",
   "flowTrimmingVideoTitle": "جارٍ قص الفيديو…",
   "flowLoadingVideo": "جارٍ تحميل فيديوك…",

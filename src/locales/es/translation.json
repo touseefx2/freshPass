@@ -2255,6 +2255,8 @@
   "flowNextPreview": "Siguiente: Vista previa",
   "flowSaveVideo": "Guardar y continuar",
   "flowExportingTitle": "Preparando tu reel…",
+  "autoReelUnpublishTitle": "¿Dejar de publicar este reel?",
+  "autoReelUnpublishBody": "Ya no se mostrará en FreshPass.",
   "flowJoiningClipsTitle": "Uniendo tus clips…",
   "flowTrimmingVideoTitle": "Recortando tu video…",
   "flowLoadingVideo": "Cargando tu video…",
