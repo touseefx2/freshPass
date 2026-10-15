@@ -173,6 +173,20 @@ function formatClock(seconds: number | null | undefined): string {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
+    titleActions: {
+      flexDirection: "row",
+      gap: moderateWidthScale(8),
+    },
+    titleAction: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(22),
+      borderWidth: 1,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     safeArea: {
       flex: 1,
       backgroundColor: theme.background,
@@ -833,6 +847,44 @@ export default function AutoReelScreen() {
     video?.width && video?.height ? video.width / video.height : 9 / 16;
   const downloading = !!videoUrl && downloadingUrl === videoUrl;
   const canPublish = canChange && !isPublished && !isRemoved && !!videoUrl;
+
+  // Ready screen: download / share as icons on the title's line
+  const readyActions = videoUrl ? (
+    <View style={styles.titleActions}>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => downloadMedia(videoUrl, { isVideo: true })}
+        disabled={downloading}
+        style={styles.titleAction}
+        accessibilityRole="button"
+        accessibilityLabel={t("download")}
+        accessibilityState={{ busy: downloading, disabled: downloading }}
+      >
+        {downloading ? (
+          <ActivityIndicator size="small" color={theme.darkGreen} />
+        ) : (
+          <MaterialIcons
+            name="file-download"
+            size={moderateWidthScale(22)}
+            color={theme.darkGreen}
+          />
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => setShareVisible(true)}
+        style={styles.titleAction}
+        accessibilityRole="button"
+        accessibilityLabel={t("flowShareVideo")}
+      >
+        <MaterialIcons
+          name="ios-share"
+          size={moderateWidthScale(20)}
+          color={theme.darkGreen}
+        />
+      </TouchableOpacity>
+    </View>
+  ) : null;
   // Auto-built: the category is required on Publish; the caption hint stays
   // while it is still the AI's suggestion
   const needsCategory = autoBuilt && categoryId == null;
@@ -1197,6 +1249,7 @@ export default function AutoReelScreen() {
           <FlowTitle
             title={t("flowReadyTitle")}
             subtitle={t("flowReadySubtitle")}
+            right={readyActions}
           />
           {videoUrl ? (
             <ReelPlayer
@@ -1286,6 +1339,7 @@ export default function AutoReelScreen() {
           <FlowTitle
             title={t("flowReadyTitle")}
             subtitle={remakeOpen ? t("autoBuildReadySubtitle") : null}
+            right={readyActions}
           />
           {videoUrl ? (
             <ReelPlayer

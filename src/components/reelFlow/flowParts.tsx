@@ -52,6 +52,11 @@ const createStyles = (theme: Theme) =>
     titleBlock: {
       gap: moderateHeightScale(6),
     },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+    },
     title: {
       fontSize: fontSize.size26,
       fontFamily: fonts.fontBold,
@@ -327,22 +332,35 @@ export function FlowTitle({
   title,
   subtitle,
   compact = false,
+  right,
   style,
 }: {
   title: string;
   subtitle?: string | null;
   compact?: boolean;
+  /** Small actions on the title's line (e.g. download / share icons) */
+  right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
   const { styles } = useFlowStyles();
+  const heading = (
+    <Text
+      style={[styles.title, compact && styles.titleCompact, right ? { flex: 1 } : null]}
+      accessibilityRole="header"
+    >
+      {title}
+    </Text>
+  );
   return (
     <View style={[styles.titleBlock, style]}>
-      <Text
-        style={[styles.title, compact && styles.titleCompact]}
-        accessibilityRole="header"
-      >
-        {title}
-      </Text>
+      {right ? (
+        <View style={styles.titleRow}>
+          {heading}
+          {right}
+        </View>
+      ) : (
+        heading
+      )}
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
   );
