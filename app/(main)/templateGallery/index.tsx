@@ -805,13 +805,17 @@ function TemplateCover({
 /**
  * The template's own song under its Video Reel sample: loops while `playing`,
  * pauses with it and stops when the cover is left (unmount / new url).
+ * Returns true when the song couldn't be loaded, so the video's own sound
+ * plays instead of silence.
  */
-function useTemplateMusic(url: string | null, playing: boolean) {
+function useTemplateMusic(url: string | null, playing: boolean): boolean {
   const soundRef = useRef<Audio.Sound | null>(null);
   const playingRef = useRef(playing);
   playingRef.current = playing;
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    setFailed(false);
     if (!url) return;
     let alive = true;
     (async () => {
@@ -822,15 +826,19 @@ function useTemplateMusic(url: string | null, playing: boolean) {
         });
         const { sound } = await Audio.Sound.createAsync(
           { uri: url },
-          { isLooping: true, shouldPlay: playingRef.current },
+          { isLooping: true, shouldPlay: false },
         );
         if (!alive) {
           await sound.unloadAsync();
           return;
         }
         soundRef.current = sound;
+        // The video usually starts while the song is still downloading:
+        // catch up with it now that the song is ready
+        if (playingRef.current) await sound.playAsync();
       } catch (error) {
         Logger.warn("Template music preview failed:", error);
+        if (alive) setFailed(true);
       }
     })();
     return () => {
@@ -856,6 +864,8 @@ function useTemplateMusic(url: string | null, playing: boolean) {
     });
     return () => sub.remove();
   }, []);
+
+  return failed;
 }
 
 /**
@@ -926,7 +936,10 @@ function VideoTemplateCover({
   }, [videoOn]);
   const playing = videoOn && !paused;
   // The template's song starts with the first frame, in place of the video's sound
-  useTemplateMusic(videoOn ? item.musicUrl : null, playing && frameShown);
+  const musicFailed = useTemplateMusic(
+    videoOn ? item.musicUrl : null,
+    playing && frameShown,
+  );
 
   const motion = useAnimatedStyle(() => {
     const range = [index - 1, index, index + 1];
@@ -1062,7 +1075,8 @@ function VideoTemplateCover({
           <PreviewVideo
             uri={item.previewVideoUrl!}
             playing={playing}
-            muted={!!item.musicUrl}
+            // The template's song plays instead (unless it failed to load)
+            muted={!!item.musicUrl && !musicFailed}
             onFirstFrame={showFrame}
           />
         ) : null}
