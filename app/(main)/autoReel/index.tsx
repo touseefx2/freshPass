@@ -173,19 +173,72 @@ function formatClock(seconds: number | null | undefined): string {
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
-    titleActions: {
+    readyHeader: {
+      alignItems: "center",
+      gap: moderateHeightScale(8),
+    },
+    readyBadge: {
       flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingVertical: moderateHeightScale(5),
+      borderRadius: moderateWidthScale(20),
+      backgroundColor: theme.lightGreen07,
+    },
+    readyBadgeText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      fontVariant: ["tabular-nums"],
+    },
+    readyTitle: {
+      fontSize: fontSize.size26,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      lineHeight: fontSize.size32,
+      textAlign: "center",
+    },
+    readySubtitle: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      lineHeight: fontSize.size22,
+      textAlign: "center",
+      paddingHorizontal: moderateWidthScale(12),
+    },
+    toolRow: {
+      flexDirection: "row",
+      justifyContent: "center",
       gap: moderateWidthScale(8),
     },
-    titleAction: {
-      width: moderateWidthScale(44),
-      height: moderateWidthScale(44),
-      borderRadius: moderateWidthScale(22),
-      borderWidth: 1,
-      borderColor: theme.borderNormal,
+    tool: {
+      flex: 1,
+      maxWidth: moderateWidthScale(96),
+      alignItems: "center",
+      gap: moderateHeightScale(6),
+      paddingVertical: moderateHeightScale(4),
+    },
+    toolDisabled: { opacity: 0.4 },
+    toolCircle: {
+      width: moderateWidthScale(54),
+      height: moderateWidthScale(54),
+      borderRadius: moderateWidthScale(27),
       backgroundColor: theme.white,
+      borderWidth: 1,
+      borderColor: theme.borderLight,
       alignItems: "center",
       justifyContent: "center",
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(3) },
+      shadowOpacity: 0.08,
+      shadowRadius: moderateWidthScale(8),
+      elevation: 2,
+    },
+    toolLabel: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
     },
     safeArea: {
       flex: 1,
@@ -848,43 +901,96 @@ export default function AutoReelScreen() {
   const downloading = !!videoUrl && downloadingUrl === videoUrl;
   const canPublish = canChange && !isPublished && !isRemoved && !!videoUrl;
 
-  // Ready screen: download / share as icons on the title's line
-  const readyActions = videoUrl ? (
-    <View style={styles.titleActions}>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => downloadMedia(videoUrl, { isVideo: true })}
-        disabled={downloading}
-        style={styles.titleAction}
-        accessibilityRole="button"
-        accessibilityLabel={t("download")}
-        accessibilityState={{ busy: downloading, disabled: downloading }}
-      >
-        {downloading ? (
-          <ActivityIndicator size="small" color={theme.darkGreen} />
-        ) : (
-          <MaterialIcons
-            name="file-download"
-            size={moderateWidthScale(22)}
-            color={theme.darkGreen}
-          />
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => setShareVisible(true)}
-        style={styles.titleAction}
-        accessibilityRole="button"
-        accessibilityLabel={t("flowShareVideo")}
-      >
+  // ── Ready screen: success header + one row of labelled tools ──
+  const readyLength =
+    durationSeconds && durationSeconds > 0
+      ? `${Math.floor(durationSeconds / 60)}:${String(
+          Math.round(durationSeconds % 60),
+        ).padStart(2, "0")}`
+      : null;
+
+  const renderReadyHeader = (subtitle: string | null) => (
+    <View style={styles.readyHeader}>
+      <View style={styles.readyBadge}>
         <MaterialIcons
-          name="ios-share"
-          size={moderateWidthScale(20)}
-          color={theme.darkGreen}
+          name="check-circle"
+          size={moderateWidthScale(16)}
+          color={theme.buttonBack}
         />
-      </TouchableOpacity>
+        <Text style={styles.readyBadgeText}>
+          {[t("flowReadyBadge"), readyLength].filter(Boolean).join(" · ")}
+        </Text>
+      </View>
+      <Text style={styles.readyTitle} accessibilityRole="header">
+        {t("flowReadyTitle")}
+      </Text>
+      {subtitle ? <Text style={styles.readySubtitle}>{subtitle}</Text> : null}
     </View>
-  ) : null;
+  );
+
+  type ReadyTool = {
+    key: string;
+    icon: React.ComponentProps<typeof MaterialIcons>["name"];
+    label: string;
+    onPress: () => void;
+    disabled?: boolean;
+    loading?: boolean;
+  };
+
+  // Save + Share sit with the other tools so every action has a label
+  const mediaTools: ReadyTool[] = videoUrl
+    ? [
+        {
+          key: "save",
+          icon: "file-download",
+          label: t("save"),
+          onPress: () => downloadMedia(videoUrl, { isVideo: true }),
+          loading: downloading,
+        },
+        {
+          key: "share",
+          icon: "ios-share",
+          label: t("share"),
+          onPress: () => setShareVisible(true),
+        },
+      ]
+    : [];
+
+  const renderTools = (tools: ReadyTool[]) =>
+    tools.length ? (
+      <View style={styles.toolRow}>
+        {tools.map((tool) => {
+          const inactive = tool.disabled || tool.loading;
+          return (
+            <TouchableOpacity
+              key={tool.key}
+              activeOpacity={0.7}
+              onPress={tool.onPress}
+              disabled={inactive}
+              style={[styles.tool, tool.disabled && styles.toolDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel={tool.label}
+              accessibilityState={{ disabled: !!inactive, busy: !!tool.loading }}
+            >
+              <View style={styles.toolCircle}>
+                {tool.loading ? (
+                  <ActivityIndicator size="small" color={theme.darkGreen} />
+                ) : (
+                  <MaterialIcons
+                    name={tool.icon}
+                    size={moderateWidthScale(24)}
+                    color={theme.darkGreen}
+                  />
+                )}
+              </View>
+              <Text style={styles.toolLabel} numberOfLines={1}>
+                {tool.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    ) : null;
   // Auto-built: the category is required on Publish; the caption hint stays
   // while it is still the AI's suggestion
   const needsCategory = autoBuilt && categoryId == null;
@@ -1246,11 +1352,7 @@ export default function AutoReelScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <FlowTitle
-            title={t("flowReadyTitle")}
-            subtitle={t("flowReadySubtitle")}
-            right={readyActions}
-          />
+          {renderReadyHeader(t("flowReadySubtitle"))}
           {videoUrl ? (
             <ReelPlayer
               uri={videoUrl}
@@ -1260,32 +1362,24 @@ export default function AutoReelScreen() {
               theme={theme}
             />
           ) : null}
-          {canPublish ? (
-            <View style={styles.rowButtons}>
-              <FlowButton
-                variant="outline"
-                compact
-                icon="edit"
-                label={t("flowEditCaption")}
-                onPress={() => {
-                  setView("publish");
-                  setTimeout(() => captionInputRef.current?.focus(), 350);
-                }}
-                style={styles.rowButton}
-              />
-              {/* "Change style" hidden for now — not needed yet.
-              {changeStyleAvailable ? (
-                <FlowButton
-                  variant="outline"
-                  compact
-                  icon="auto-awesome"
-                  label={t("flowChangeStyle")}
-                  onPress={handleAnotherTemplate}
-                  style={styles.rowButton}
-                />
-              ) : null} */}
-            </View>
-          ) : null}
+          {renderTools([
+            ...(canPublish
+              ? [
+                  {
+                    key: "caption",
+                    icon: "edit" as const,
+                    label: t("flowEditCaption"),
+                    onPress: () => {
+                      setView("publish");
+                      setTimeout(() => captionInputRef.current?.focus(), 350);
+                    },
+                  },
+                ]
+              : []),
+            ...mediaTools,
+          ])}
+          {/* "Change style" hidden for now — not needed yet (was a row button
+              calling handleAnotherTemplate when changeStyleAvailable). */}
           {isPublished ? (
             <InfoNote icon="public" text={t("flowAlreadyPublished")} />
           ) : isRemoved ? (
@@ -1336,11 +1430,7 @@ export default function AutoReelScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <FlowTitle
-            title={t("flowReadyTitle")}
-            subtitle={remakeOpen ? t("autoBuildReadySubtitle") : null}
-            right={readyActions}
-          />
+          {renderReadyHeader(remakeOpen ? t("autoBuildReadySubtitle") : null)}
           {videoUrl ? (
             <ReelPlayer
               uri={videoUrl}
@@ -1350,34 +1440,37 @@ export default function AutoReelScreen() {
               theme={theme}
             />
           ) : null}
-          {remakeOpen ? (
-            <View style={styles.remakeBlock}>
-              <View style={styles.rowButtons}>
-                <FlowButton
-                  variant="outline"
-                  compact
-                  icon="refresh"
-                  label={t("autoBuildRegenerate")}
-                  onPress={confirmRegenerate}
-                  disabled={!canRegenerate}
-                  loading={regenerating}
-                  style={styles.rowButton}
-                />
-                {hasEditable ? (
-                  <FlowButton
-                    variant="outline"
-                    compact
-                    icon="edit"
-                    label={t("autoBuildEdit")}
-                    onPress={() => setEditSheetOpen(true)}
-                    disabled={!canEdit || regenerating}
-                    style={styles.rowButton}
-                  />
-                ) : null}
-              </View>
+          <View style={styles.remakeBlock}>
+            {renderTools([
+              ...(remakeOpen
+                ? [
+                    {
+                      key: "regenerate",
+                      icon: "refresh" as const,
+                      label: t("autoBuildRegenerate"),
+                      onPress: confirmRegenerate,
+                      disabled: !canRegenerate,
+                      loading: regenerating,
+                    },
+                    ...(hasEditable
+                      ? [
+                          {
+                            key: "edit",
+                            icon: "edit" as const,
+                            label: t("autoBuildEdit"),
+                            onPress: () => setEditSheetOpen(true),
+                            disabled: !canEdit || regenerating,
+                          },
+                        ]
+                      : []),
+                  ]
+                : []),
+              ...mediaTools,
+            ])}
+            {remakeOpen ? (
               <Text style={styles.smallNote}>{remakeCounts}</Text>
-            </View>
-          ) : null}
+            ) : null}
+          </View>
           {remakeOpen && remakeLimitNote ? (
             <InfoNote
               tone="warm"
