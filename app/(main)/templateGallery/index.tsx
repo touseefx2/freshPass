@@ -652,7 +652,6 @@ function TemplateCover({
                     </Text>,
                   )
                 : null}
-              {layer(3, <View style={styles.accentBar} />)}
             </View>
             {facts.length
               ? layer(

@@ -237,13 +237,6 @@ export const createStyles = (theme: Theme) =>
     coverTitleAccent: {
       color: theme.orangeBrown,
     },
-    accentBar: {
-      marginTop: moderateHeightScale(10),
-      width: moderateWidthScale(32),
-      height: 3,
-      borderRadius: 2,
-      backgroundColor: theme.orangeBrown,
-    },
     // Under the title: "⏱ 0:30  ▦ 6", then the template's song. Ends 64 from
     // the cover's right edge (48 + the 16 padding), clear of the expand button
     coverFacts: {
