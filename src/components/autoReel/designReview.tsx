@@ -369,16 +369,10 @@ export default function DesignReview({
     music: AutoReelMusic | null;
   } | null>(null);
   const templateId = autoReel.template?.id ?? null;
-  const needsTemplateInfo =
-    (design?.has_sound == null ||
-      design?.length_seconds == null ||
-      // No track on the reel: the template's own song may be the music
-      design?.music == null ||
-      // Edit → music: the template's own song gets its own row (with the
-      // library and "Change" beside it), even when the reel already has a track
-      edit) &&
-    // Only the music field uses it
-    (!edit || !section || section === "music");
+  // Always read the template when the music field shows: its own song gets
+  // its own row (beside the library), even when the reel already has another
+  // track — so it can be picked again any time
+  const needsTemplateInfo = !edit || !section || section === "music";
   useEffect(() => {
     if (!needsTemplateInfo || templateId == null) return;
     let cancelled = false;
