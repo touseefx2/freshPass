@@ -24,25 +24,21 @@ export const ART_CENTER = 0.81;
 export const MEDALLION_RATIO = 0.38;
 
 /**
- * Video Reel cover, CapCut style: a tall card up to 9:16 (never squatter than
- * VIDEO_CARD_MIN_RATIO), sized to the space between the heading and the footer
+ * Video Reel tab, CapCut style: full-width covers from just under the tabs to
+ * the bottom of the screen (rounded top corners), VIDEO_CARD_GAP apart
  */
-export const VIDEO_CARD_MAX_RATIO = 16 / 9;
-export const VIDEO_CARD_MIN_RATIO = 1.25;
+export const VIDEO_STAGE_TOP = moderateHeightScale(8);
+export const VIDEO_CARD_GAP = moderateWidthScale(8);
 export const VIDEO_HEADLINE_WIDTH = 0.86;
 /** Brand art medallion centre (share of the cover height) and size (of its width) */
 export const VIDEO_ART_CENTER = 0.4;
 export const VIDEO_MEDALLION_RATIO = 0.34;
 
-/** Space around the covers, top to bottom: carousel margin + padding, page padding */
+/** Space around the covers (Photo tab) */
 const CAROUSEL_MARGIN = moderateHeightScale(6);
 const CAROUSEL_PAD_TOP = moderateHeightScale(12);
 const CAROUSEL_PAD_BOTTOM = moderateHeightScale(24);
 const PAGE_PAD_BOTTOM = moderateHeightScale(24);
-/** Video tab: the cover runs down to the dots, with room for its shadow only */
-const VIDEO_CAROUSEL_PAD_BOTTOM = moderateHeightScale(14);
-export const VIDEO_CAROUSEL_SPACE =
-  CAROUSEL_MARGIN + CAROUSEL_PAD_TOP + VIDEO_CAROUSEL_PAD_BOTTOM;
 
 /** Same colors as the app's other skeletons */
 export const SKELETON_BG = "#E8DFB8";
@@ -314,12 +310,51 @@ export const createStyles = (theme: Theme) =>
     videoCardFlat: {
       shadowOpacity: 0,
       elevation: 0,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
     },
-    videoCarouselContent: {
-      paddingBottom: VIDEO_CAROUSEL_PAD_BOTTOM,
+    // Everything under the tabs; the footer is laid over its bottom
+    videoStage: {
+      flex: 1,
+      overflow: "hidden",
     },
-    videoScrollContent: {
-      paddingBottom: 0,
+    videoSwipeArea: {
+      flex: 1,
+    },
+    videoCarousel: {
+      paddingTop: VIDEO_STAGE_TOP,
+    },
+    // Rounded at the top only: the cover runs off the bottom of the screen
+    videoCardShape: {
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
+    },
+    videoFooter: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    // Over a playing cover: no cream band, the cover's dark fade shows through
+    videoFooterOverlay: {
+      backgroundColor: "transparent",
+    },
+    videoDot: {
+      backgroundColor: "rgba(255, 255, 255, 0.45)",
+    },
+    videoDotActive: {
+      backgroundColor: theme.white,
+    },
+    videoCredits: {
+      backgroundColor: GLASS,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: GLASS_BORDER,
+    },
+    videoCreditsText: {
+      color: theme.white,
+    },
+    videoCta: {
+      backgroundColor: theme.white,
     },
     // Title, facts and song sit at the bottom; nothing at the top
     videoCardInner: {
@@ -343,12 +378,13 @@ export const createStyles = (theme: Theme) =>
       borderColor: GLASS_BORDER,
     },
     // Dark fade under the title, facts and song at the bottom
+    // Covers the title, facts and song and the footer laid over them
     videoBottomFade: {
       position: "absolute",
       left: 0,
       right: 0,
       bottom: 0,
-      height: "55%",
+      height: "62%",
     },
     videoTitleBlock: {
       maxWidth: `${VIDEO_HEADLINE_WIDTH * 100}%`,

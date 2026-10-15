@@ -64,7 +64,11 @@ import {
   listReelTemplates,
 } from "@/src/services/reelsService";
 import { Theme } from "@/src/theme/colors";
-import { iconScale, moderateWidthScale } from "@/src/theme/dimensions";
+import {
+  iconScale,
+  moderateHeightScale,
+  moderateWidthScale,
+} from "@/src/theme/dimensions";
 import { fontSize } from "@/src/theme/fonts";
 import type { ReelCredits } from "@/src/types/reels";
 import type {
@@ -88,10 +92,9 @@ import {
   SIDE_SCALE,
   SKELETON_BG,
   SKELETON_HIGHLIGHT,
-  VIDEO_CAROUSEL_SPACE,
+  VIDEO_CARD_GAP,
+  VIDEO_STAGE_TOP,
   VIDEO_ART_CENTER,
-  VIDEO_CARD_MAX_RATIO,
-  VIDEO_CARD_MIN_RATIO,
   VIDEO_HEADLINE_WIDTH,
   VIDEO_MEDALLION_RATIO,
   createStyles,
@@ -889,6 +892,7 @@ function VideoTemplateCover({
   videoOn,
   centred,
   onSelect,
+  bottomInset,
   styles,
   theme,
 }: {
@@ -904,6 +908,8 @@ function VideoTemplateCover({
   /** The template in the middle (tap = pause / play; side covers come to the centre) */
   centred: boolean;
   onSelect: () => void;
+  /** Height of the dots / credits / button laid over the bottom of the cover */
+  bottomInset: number;
   styles: Styles;
   theme: Theme;
 }) {
@@ -988,7 +994,7 @@ function VideoTemplateCover({
       ]}
     >
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, styles.videoCardShape]}
         onPress={() => {
           if (!centred) {
             onSelect();
@@ -1079,16 +1085,20 @@ function VideoTemplateCover({
         <LinearGradient
           colors={[
             "transparent",
-            "rgba(24, 33, 14, 0.55)",
-            "rgba(24, 33, 14, 0.94)",
+            "rgba(24, 33, 14, 0.6)",
+            "rgba(24, 33, 14, 0.96)",
           ]}
-          locations={[0, 0.45, 1]}
+          locations={[0, 0.4, 1]}
           style={styles.videoBottomFade}
           pointerEvents="none"
         />
 
         <View
-          style={[styles.cardInner, styles.videoCardInner]}
+          style={[
+            styles.cardInner,
+            styles.videoCardInner,
+            { paddingBottom: bottomInset + moderateHeightScale(14) },
+          ]}
           pointerEvents="none"
         >
           <View>
@@ -1190,6 +1200,24 @@ function GallerySkeleton({
   withInfo: boolean;
   styles: Styles;
 }) {
+  // Video tab: one full-width cover down to the bottom of the screen
+  if (!withInfo) {
+    return (
+      <SkeletonPlaceholder
+        backgroundColor={SKELETON_BG}
+        highlightColor={SKELETON_HIGHLIGHT}
+      >
+        <View
+          style={{
+            width: cardWidth,
+            height: cardHeight,
+            borderTopLeftRadius: CARD_RADIUS,
+            borderTopRightRadius: CARD_RADIUS,
+          }}
+        />
+      </SkeletonPlaceholder>
+    );
+  }
   return (
     <View>
       <SkeletonPlaceholder
@@ -1284,11 +1312,10 @@ export default function TemplateGalleryScreen() {
   // One cover centred, the neighbours peeking in on both sides
   const sideInset = PEEK + CARD_GAP;
   const cardWidth = width - sideInset * 2;
-  // Video tab: tall 9:16 cover filling the space between the heading and
-  // the footer; Photo tab: the wide cover with its info under it
-  const [viewportHeight, setViewportHeight] = useState(0);
-  const [headingHeight, setHeadingHeight] = useState(0);
-  const snap = cardWidth + CARD_GAP;
+  // Video tab: full-width cover from under the tabs to the bottom of the
+  // screen, with the dots / credits / button laid over its bottom
+  const [stageHeight, setStageHeight] = useState(0);
+  const [footerHeight, setFooterHeight] = useState(0);
 
   const [kind, setKind] = useState<TemplateGalleryKind>(
     params.kind === "photo" ? "photo" : "video",
@@ -1378,19 +1405,13 @@ export default function TemplateGalleryScreen() {
   );
 
   const isVideoTab = kind === "video";
-  const cardHeight = Math.round(
-    !isVideoTab
-      ? cardWidth * CARD_RATIO
-      : viewportHeight
-        ? Math.min(
-            cardWidth * VIDEO_CARD_MAX_RATIO,
-            Math.max(
-              cardWidth * VIDEO_CARD_MIN_RATIO,
-              viewportHeight - headingHeight - VIDEO_CAROUSEL_SPACE,
-            ),
-          )
-        : cardWidth * VIDEO_CARD_MIN_RATIO,
-  );
+  const coverWidth = isVideoTab ? width : cardWidth;
+  const cardHeight = isVideoTab
+    ? Math.max(0, Math.round(stageHeight - VIDEO_STAGE_TOP))
+    : Math.round(cardWidth * CARD_RATIO);
+  const gap = isVideoTab ? VIDEO_CARD_GAP : CARD_GAP;
+  const pageInset = isVideoTab ? 0 : sideInset;
+  const snap = coverWidth + gap;
 
   const tab = tabs[kind];
   const templates = tab.items;
@@ -1534,7 +1555,7 @@ export default function TemplateGalleryScreen() {
     if (tab.loading) {
       return (
         <GallerySkeleton
-          cardWidth={cardWidth}
+          cardWidth={coverWidth}
           cardHeight={cardHeight}
           sideInset={sideInset}
           withInfo={!isVideoTab}
@@ -1585,18 +1606,19 @@ export default function TemplateGalleryScreen() {
         entering={FadeIn.duration(220).reduceMotion(ReduceMotion.System)}
       >
         <View
-          style={[
-            styles.carousel,
-            styles.carouselContent,
-            isVideoTab && styles.videoCarouselContent,
-          ]}
+          style={
+            isVideoTab
+              ? styles.videoCarousel
+              : [styles.carousel, styles.carouselContent]
+          }
         >
           <Animated.View
             style={[
               styles.coverRow,
               {
-                width: sideInset * 2 + count * snap - CARD_GAP,
-                paddingHorizontal: sideInset,
+                gap,
+                width: pageInset * 2 + count * snap - gap,
+                paddingHorizontal: pageInset,
               },
               coverTrack,
             ]}
@@ -1607,13 +1629,14 @@ export default function TemplateGalleryScreen() {
                   <VideoTemplateCover
                     item={item}
                     index={i}
-                    width={cardWidth}
+                    width={coverWidth}
                     height={cardHeight}
                     progress={progress}
                     reduceMotion={reduceMotion}
                     videoOn={videoId === item.id}
                     centred={i === index}
                     onSelect={() => goTo(i)}
+                    bottomInset={footerHeight}
                     styles={styles}
                     theme={theme}
                   />
@@ -1754,6 +1777,124 @@ export default function TemplateGalleryScreen() {
               count: Math.max(0, credits.remaining),
             });
 
+  // Video tab with a cover showing: footer laid over the video
+  const overlay = isVideoTab && !tab.loading && !tab.error && !!current;
+
+  const renderFooter = () => (
+    <View
+      style={[
+        styles.footer,
+        isVideoTab && styles.videoFooter,
+        overlay && styles.videoFooterOverlay,
+        { paddingBottom: Math.max(insets.bottom, moderateWidthScale(12)) },
+      ]}
+      onLayout={
+        isVideoTab
+          ? (e) => setFooterHeight(e.nativeEvent.layout.height)
+          : undefined
+      }
+    >
+      {/* Content fades out under the footer instead of a hard cut (the
+              Video tab's footer sits over the cover's own dark fade) */}
+      {isVideoTab ? null : (
+        <LinearGradient
+          colors={[`${theme.background}00`, theme.background]}
+          style={styles.footerFade}
+          pointerEvents="none"
+        />
+      )}
+      {tab.loading ? (
+        <SkeletonPlaceholder
+          backgroundColor={SKELETON_BG}
+          highlightColor={SKELETON_HIGHLIGHT}
+        >
+          <View style={styles.dots}>
+            {[0, 1, 2, 3].map((i) => (
+              <View key={i} style={styles.dotHit}>
+                <View
+                  style={
+                    i === 0 ? styles.skeletonDotActive : styles.skeletonDot
+                  }
+                />
+              </View>
+            ))}
+          </View>
+        </SkeletonPlaceholder>
+      ) : !tab.error && count > 1 ? (
+        <View style={styles.dots}>
+          {templates.map((tpl, i) => (
+            <TouchableOpacity
+              key={tpl.id}
+              style={styles.dotHit}
+              onPress={() => goTo(i)}
+              accessibilityRole="button"
+              accessibilityLabel={t("templateGalleryCounter", {
+                current: i + 1,
+                total: count,
+              })}
+              accessibilityState={{ selected: i === index }}
+            >
+              <View
+                style={[
+                  styles.dot,
+                  overlay && styles.videoDot,
+                  i === index && styles.dotActive,
+                  overlay && i === index && styles.videoDotActive,
+                ]}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+      {creditsLine ? (
+        <View
+          style={[
+            styles.credits,
+            overlay && styles.videoCredits,
+            noCredits && styles.creditsEmpty,
+          ]}
+          accessible
+          accessibilityLabel={creditsLine}
+          accessibilityRole={noCredits ? "alert" : undefined}
+        >
+          <MaterialIcons
+            name={noCredits ? "block" : "toll"}
+            size={moderateWidthScale(16)}
+            color={
+              noCredits
+                ? theme.red
+                : overlay
+                  ? theme.white85
+                  : theme.darkGreenLight
+            }
+          />
+          <Text
+            style={[
+              styles.creditsText,
+              overlay && styles.videoCreditsText,
+              noCredits && styles.creditsTextEmpty,
+            ]}
+          >
+            {creditsLine}
+          </Text>
+        </View>
+      ) : null}
+      <Button
+        title={t("templateGalleryUse")}
+        onPress={handleUseTemplate}
+        disabled={!current || tab.loading || noCredits}
+        containerStyle={
+          overlay
+            ? { ...styles.ctaButton, ...styles.videoCta }
+            : styles.ctaButton
+        }
+        textStyle={styles.ctaText}
+        // Over the video: white for contrast on the dark fade
+        {...(overlay ? { textColor: theme.darkGreen } : null)}
+      />
+    </View>
+  );
+
   return (
     <View style={styles.safeArea}>
       <StackHeader
@@ -1802,137 +1943,71 @@ export default function TemplateGalleryScreen() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          isVideoTab && styles.videoScrollContent,
-        ]}
-        showsVerticalScrollIndicator={false}
-        onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
-      >
-        <GestureDetector gesture={swipe}>
-          <View style={styles.swipeArea} collapsable={false}>
-            <View
-              style={styles.padded}
-              onLayout={(e) => setHeadingHeight(e.nativeEvent.layout.height)}
-            >
-              <View style={styles.headingBlock}>
-                <View style={styles.headingRow}>
-                  <Text style={styles.title} accessibilityRole="header">
-                    {t("templateGalleryTitle")}
-                  </Text>
-                  {tab.loading ? (
-                    <SkeletonPlaceholder
-                      backgroundColor={SKELETON_BG}
-                      highlightColor={SKELETON_HIGHLIGHT}
-                    >
-                      <View style={styles.skeletonCounter} />
-                    </SkeletonPlaceholder>
-                  ) : showCounter ? (
-                    <View
-                      style={styles.counterPill}
-                      accessible
-                      accessibilityLabel={t("templateGalleryCounter", {
-                        current: index + 1,
-                        total: count,
-                      })}
-                    >
-                      <Text style={styles.counterNow}>
-                        {index + 1}
-                        <Text style={styles.counterTotal}>/{count}</Text>
+      {isVideoTab ? (
+        // Video tab: the covers fill everything under the tabs; dots,
+        // credits and the button sit over the bottom of the playing cover
+        <View
+          style={styles.videoStage}
+          onLayout={(e) => setStageHeight(e.nativeEvent.layout.height)}
+        >
+          <GestureDetector gesture={swipe}>
+            <View style={styles.videoSwipeArea} collapsable={false}>
+              {renderBody()}
+            </View>
+          </GestureDetector>
+          {renderFooter()}
+        </View>
+      ) : (
+        <>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <GestureDetector gesture={swipe}>
+              <View style={styles.swipeArea} collapsable={false}>
+                <View style={styles.padded}>
+                  <View style={styles.headingBlock}>
+                    <View style={styles.headingRow}>
+                      <Text style={styles.title} accessibilityRole="header">
+                        {t("templateGalleryTitle")}
                       </Text>
+                      {tab.loading ? (
+                        <SkeletonPlaceholder
+                          backgroundColor={SKELETON_BG}
+                          highlightColor={SKELETON_HIGHLIGHT}
+                        >
+                          <View style={styles.skeletonCounter} />
+                        </SkeletonPlaceholder>
+                      ) : showCounter ? (
+                        <View
+                          style={styles.counterPill}
+                          accessible
+                          accessibilityLabel={t("templateGalleryCounter", {
+                            current: index + 1,
+                            total: count,
+                          })}
+                        >
+                          <Text style={styles.counterNow}>
+                            {index + 1}
+                            <Text style={styles.counterTotal}>/{count}</Text>
+                          </Text>
+                        </View>
+                      ) : null}
                     </View>
-                  ) : null}
+                    <Text style={styles.subtitle}>
+                      {t("templateGallerySubtitle")}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.subtitle}>
-                  {t("templateGallerySubtitle")}
-                </Text>
+
+                {renderBody()}
               </View>
-            </View>
+            </GestureDetector>
+          </ScrollView>
 
-            {renderBody()}
-          </View>
-        </GestureDetector>
-      </ScrollView>
-
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, moderateWidthScale(12)) },
-        ]}
-      >
-        {/* Content fades out under the footer instead of a hard cut (the
-            Video tab's cover ends just above it, so no fade there) */}
-        {isVideoTab ? null : (
-          <LinearGradient
-            colors={[`${theme.background}00`, theme.background]}
-            style={styles.footerFade}
-            pointerEvents="none"
-          />
-        )}
-        {tab.loading ? (
-          <SkeletonPlaceholder
-            backgroundColor={SKELETON_BG}
-            highlightColor={SKELETON_HIGHLIGHT}
-          >
-            <View style={styles.dots}>
-              {[0, 1, 2, 3].map((i) => (
-                <View key={i} style={styles.dotHit}>
-                  <View
-                    style={
-                      i === 0 ? styles.skeletonDotActive : styles.skeletonDot
-                    }
-                  />
-                </View>
-              ))}
-            </View>
-          </SkeletonPlaceholder>
-        ) : !tab.error && count > 1 ? (
-          <View style={styles.dots}>
-            {templates.map((tpl, i) => (
-              <TouchableOpacity
-                key={tpl.id}
-                style={styles.dotHit}
-                onPress={() => goTo(i)}
-                accessibilityRole="button"
-                accessibilityLabel={t("templateGalleryCounter", {
-                  current: i + 1,
-                  total: count,
-                })}
-                accessibilityState={{ selected: i === index }}
-              >
-                <View style={[styles.dot, i === index && styles.dotActive]} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
-        {creditsLine ? (
-          <View
-            style={[styles.credits, noCredits && styles.creditsEmpty]}
-            accessible
-            accessibilityLabel={creditsLine}
-            accessibilityRole={noCredits ? "alert" : undefined}
-          >
-            <MaterialIcons
-              name={noCredits ? "block" : "toll"}
-              size={moderateWidthScale(16)}
-              color={noCredits ? theme.red : theme.darkGreenLight}
-            />
-            <Text
-              style={[styles.creditsText, noCredits && styles.creditsTextEmpty]}
-            >
-              {creditsLine}
-            </Text>
-          </View>
-        ) : null}
-        <Button
-          title={t("templateGalleryUse")}
-          onPress={handleUseTemplate}
-          disabled={!current || tab.loading || noCredits}
-          containerStyle={styles.ctaButton}
-          textStyle={styles.ctaText}
-        />
-      </View>
+          {renderFooter()}
+        </>
+      )}
 
       <FullPreview item={fullItem} onClose={() => setFullItem(null)} />
     </View>
