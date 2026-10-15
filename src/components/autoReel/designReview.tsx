@@ -120,7 +120,6 @@ const createStyles = (theme: Theme) =>
     },
     /** Clip row pinned above the footer — always in reach while scrolling */
     clipBar: {
-      paddingHorizontal: moderateWidthScale(20),
       paddingTop: moderateHeightScale(10),
       backgroundColor: theme.background,
       borderTopWidth: StyleSheet.hairlineWidth,

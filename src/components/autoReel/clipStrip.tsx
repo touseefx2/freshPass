@@ -77,7 +77,8 @@ const createStyles = (theme: Theme) =>
     row: {
       gap: moderateWidthScale(10),
       paddingVertical: moderateHeightScale(4),
-      paddingHorizontal: moderateWidthScale(2),
+      // Scrolls edge to edge; first / last clip line up with the page gutter
+      paddingHorizontal: moderateWidthScale(20),
     },
     tile: {
       width: moderateWidthScale(66),
@@ -90,13 +91,13 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    tileSelected: {
-      borderColor: theme.selectCard,
-    },
+    /** Nothing chosen yet — warm brand orange, not an error red */
     tileMissing: {
-      borderColor: theme.red,
-      borderStyle: "dashed",
-      backgroundColor: theme.lightRed,
+      borderColor: theme.orangeBrown,
+      backgroundColor: theme.orangeBrown01,
+    },
+    tileSelected: {
+      borderColor: theme.darkGreen,
     },
     tileImage: {
       ...StyleSheet.absoluteFillObject,
@@ -318,7 +319,7 @@ export function ClipStrip({
               <MaterialIcons
                 name={missing ? "priority-high" : item.isVideo ? "videocam" : "photo"}
                 size={moderateWidthScale(24)}
-                color={missing ? theme.red : theme.buttonBack}
+                color={missing ? theme.selectCard : theme.buttonBack}
               />
             )}
             <Text style={[styles.tileNumber, !hasThumb && styles.tileNumberDark]}>
