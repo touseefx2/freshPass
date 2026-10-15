@@ -2255,6 +2255,8 @@
   "flowNextPreview": "Weiter: Vorschau",
   "flowSaveVideo": "Speichern & weiter",
   "flowExportingTitle": "Dein Reel wird vorbereitet…",
+  "flowJoiningClipsTitle": "Deine Clips werden zusammengefügt…",
+  "flowTrimmingVideoTitle": "Dein Video wird gekürzt…",
   "flowLoadingVideo": "Dein Video wird geladen…",
   "flowPreviewTitle": "Vorschau deines Reels",
   "flowPreviewSubtitle": "Sieh dir an, wie es aussieht, bevor du es veröffentlichst.",

@@ -4638,7 +4638,17 @@ export default function ReelStudioScreen() {
 
       {busy ? (
         <ExportOverlay
-          title={savingToGallery ? t("savingVideo") : t("flowExportingTitle")}
+          title={
+            savingToGallery
+              ? t("savingVideo")
+              : // AI auto reel: only the clips are made into one file here,
+                // the reel itself is made after upload
+                trimOnly
+                ? clips.length > 1
+                  ? t("flowJoiningClipsTitle")
+                  : t("flowTrimmingVideoTitle")
+                : t("flowExportingTitle")
+          }
           percent={savingToGallery ? null : exportProgress}
           hint={t("exportKeepAppOpen")}
         />

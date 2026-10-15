@@ -2255,6 +2255,8 @@
   "flowNextPreview": "التالي: المعاينة",
   "flowSaveVideo": "حفظ ومتابعة",
   "flowExportingTitle": "جارٍ تجهيز ريلك…",
+  "flowJoiningClipsTitle": "جارٍ دمج مقاطعك…",
+  "flowTrimmingVideoTitle": "جارٍ قص الفيديو…",
   "flowLoadingVideo": "جارٍ تحميل فيديوك…",
   "flowPreviewTitle": "عاين ريلك",
   "flowPreviewSubtitle": "شاهد كيف يبدو قبل النشر.",
