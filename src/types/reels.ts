@@ -544,6 +544,8 @@ export function textSlots(slots: AutoReelSlot[] | null | undefined): AutoReelSlo
 export type AutoReelStatus =
   | "pending"
   | "analyzing"
+  /** Server is getting the video ready — shown like `analyzing` */
+  | "preprocessing"
   /**
    * Video design: AI picked the moments — the user reviews them, then builds.
    * Auto build stops here only when the AI missed a stage (`design.missing_stages`).
@@ -767,7 +769,12 @@ export function canChangeReel(
 }
 
 export function isAutoReelInProgress(status: AutoReelStatus | null | undefined) {
-  return status === "pending" || status === "analyzing" || status === "rendering";
+  return (
+    status === "pending" ||
+    status === "analyzing" ||
+    status === "preprocessing" ||
+    status === "rendering"
+  );
 }
 
 /** Auto build stopped at `review`: stages the AI couldn't find ([] otherwise). */

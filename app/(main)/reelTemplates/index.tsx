@@ -87,6 +87,7 @@ import RequirementsCard, {
 } from "@/src/components/reelFlow/requirementsCard";
 import DesignSlotCard from "@/src/components/reelFlow/designSlotCard";
 import DesignMusicField from "@/src/components/reelFlow/designMusicField";
+import { rememberCreateMusic } from "@/src/utils/autoReelCreateMusic";
 import QuotaBanner from "@/src/components/reelFlow/quotaBanner";
 import ProgressTracker from "@/src/components/reelFlow/progressTracker";
 import {
@@ -419,6 +420,14 @@ export default function ReelTemplatesScreen() {
   );
   /** Silent photo design: music (or "No music") is sent with the start */
   const needsMusicChoice = needsPhotos && selected?.has_sound === false;
+  /**
+   * Silent one-video design: its own song (`template.music`) is used unless
+   * the user changes it; without one they pick a track or "No music".
+   */
+  const autoBuildSilent = isAutoBuild && selected?.has_sound === false;
+  const autoBuildDefaultMusic = autoBuildSilent
+    ? (selected?.music ?? null)
+    : null;
   const businessName = useAppSelector(
     (s) => s.user.businessStatus?.business_name ?? s.user.business_name ?? "",
   );
@@ -439,7 +448,14 @@ export default function ReelTemplatesScreen() {
     setSlotFiles({});
     setSlotErrors({});
     setTextErrors({});
-    setMusic(undefined);
+    // A silent one-video design starts at its own song, if it has one
+    setMusic(
+      isAutoBuildTemplate(selected) &&
+        selected?.has_sound === false &&
+        selected?.music
+        ? selected.music
+        : undefined,
+    );
     setMusicError(null);
     const prefilled: Record<string, string> = {};
     for (const slot of textSlots(selected?.slots)) {
@@ -1129,7 +1145,8 @@ export default function ReelTemplatesScreen() {
     (sourceVideo.id != null || sourceVideo.local != null) &&
     !sourceTooLong &&
     !sourceTooShort &&
-    !noCreditsLeft;
+    !noCreditsLeft &&
+    (!autoBuildSilent || music !== undefined);
 
   /** Upload the picked file (compress → POST /api/media) and keep its id. */
   const uploadSelectedVideo = useCallback(
@@ -1515,6 +1532,10 @@ export default function ReelTemplatesScreen() {
   const handleAutoBuild = useCallback(async () => {
     if (!selected || !sourceVideo || submitting) return;
     if (sourceTooLong || sourceTooShort) return;
+    if (autoBuildSilent && music === undefined) {
+      setMusicError(t("designMusicRequired"));
+      return;
+    }
     if (noCreditsLeft) {
       showBanner(t("credits"), t("autoBuildNoCredits"), "error", 5000);
       return;
@@ -1537,11 +1558,24 @@ export default function ReelTemplatesScreen() {
         return;
       }
 
+      // Silent design: the template's own song goes unsaid (the server uses
+      // it); another track or "No music" is sent
+      const keepsDefaultMusic =
+        autoBuildDefaultMusic != null &&
+        music != null &&
+        music.url === autoBuildDefaultMusic.url;
       const autoReel = await createAutoReel({
         media_asset_id: mediaId,
         template_id: selected.id,
         auto_build: true,
+        ...(autoBuildSilent && !keepsDefaultMusic
+          ? { music: music ?? null }
+          : {}),
       });
+      // Review can't tell "kept the template's song" from "No music" — remember it
+      if (autoBuildSilent && music !== undefined) {
+        rememberCreateMusic(autoReel.id, music);
+      }
       // Left while it was starting — it's in AI Requests; don't pull them back
       if (controller.signal.aborted) return;
       // Server picks the moments and builds it — follow it on the AI Auto Reel
@@ -1578,12 +1612,15 @@ export default function ReelTemplatesScreen() {
         void loadTemplates();
       }
       setStep(templateError ? "style" : "video");
+      const musicErr = musicFieldError(error);
+      setMusicError(musicErr);
       // Any other 422 (e.g. no credits left) keeps the uploaded id
       const message =
         fieldError(error, "reel") ||
         fieldError(error, "auto_reel") ||
         mediaError ||
         templateError ||
+        musicErr ||
         firstFieldError(error) ||
         error?.message ||
         t("failedToStartGeneration");
@@ -1594,7 +1631,10 @@ export default function ReelTemplatesScreen() {
       setSubmitting(false);
     }
   }, [
+    autoBuildDefaultMusic,
+    autoBuildSilent,
     loadTemplates,
+    music,
     noCreditsLeft,
     refreshCredits,
     router,
@@ -1764,8 +1804,8 @@ export default function ReelTemplatesScreen() {
               text: t("includesMusicNamed", { name: musicTitle }),
             }
           : selected.has_sound === false
-            ? // Silent design: made without music; a song can be added with Edit
-              { icon: "library-music", text: t("autoBuildMusicAfter") }
+            ? // Silent design without its own song: picked with the video
+              { icon: "library-music", text: t("designReqMusic") }
             : { icon: "music-note", text: t("includesMusic") },
       ];
     }
@@ -2128,6 +2168,22 @@ export default function ReelTemplatesScreen() {
               ) : null}
             </>
           ) : null}
+          {autoBuildSilent && sourceVideo ? (
+            <>
+              <View style={styles.divider} />
+              <DesignMusicField
+                value={music}
+                onChange={(next) => {
+                  setMusic(next);
+                  setMusicError(null);
+                }}
+                lengthSeconds={selected?.length_seconds}
+                error={musicError}
+                disabled={submitting}
+                defaultMusic={autoBuildDefaultMusic}
+              />
+            </>
+          ) : null}
           <InfoNote
             icon="auto-awesome"
             text={[
@@ -2156,7 +2212,9 @@ export default function ReelTemplatesScreen() {
                 ? addingMedia
                   ? null
                   : t("flowPickVideoHint")
-                : credits
+                : autoBuildSilent && music === undefined
+                  ? t("designMusicRequired")
+                  : credits
                   ? t("autoBuildCreditCost", { count: credits.remaining })
                   : t("autoBuildCreditCostUnknown")
           }

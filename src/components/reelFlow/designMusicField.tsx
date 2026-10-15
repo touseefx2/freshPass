@@ -29,6 +29,8 @@ import Logger from "@/src/services/logger";
  * it disables "Pick a track"; unchecking goes back to not chosen.
  * The server adds the music credit to the caption — the app doesn't.
  * `compact`: one card (label, choice, "No music" chip) for busy screens.
+ * `defaultMusic` (the template's own song): "Select music" with three
+ * choices — that song (selected to start), a library track or No music.
  */
 
 export function trackToAutoReelMusic(track: LibraryTrack): AutoReelMusic {
@@ -51,6 +53,10 @@ type Props = {
   disabled?: boolean;
   /** One-card layout without the heading row and hint */
   compact?: boolean;
+  /** Replaces the default "no sound of its own" hint (e.g. a template's own song) */
+  hint?: string | null;
+  /** The template's own song → the three-choice layout */
+  defaultMusic?: AutoReelMusic | null;
 };
 
 const createStyles = (theme: Theme) =>
@@ -155,6 +161,23 @@ const createStyles = (theme: Theme) =>
       color: theme.darkGreen,
     },
     chipTextOn: { color: theme.white, fontFamily: fonts.fontBold },
+    // Template song / library rows
+    choiceList: { gap: moderateHeightScale(10) },
+    // Same border width when selected — only colours change (no jump)
+    choiceRow: { borderWidth: 1.5 },
+    // Border + check only: a see-through tint shows the Android shadow inside
+    choiceRowOn: { borderColor: theme.darkGreen },
+    choiceTrailing: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+    },
+    changeText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textDecorationLine: "underline",
+    },
     note: {
       fontSize: fontSize.size12,
       fontFamily: fonts.fontRegular,
@@ -169,6 +192,8 @@ export default function DesignMusicField({
   error,
   disabled = false,
   compact = false,
+  hint,
+  defaultMusic = null,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -176,18 +201,25 @@ export default function DesignMusicField({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [sheetOpen, setSheetOpen] = useState(false);
   const noMusic = value === null;
-  const previewUrl = value?.url ?? null;
+  const valueUrl = value?.url ?? null;
+  // Last track chosen — "No music" unchecked goes back to it
+  const lastTrackRef = useRef<AutoReelMusic | null>(value ?? null);
+  if (value) lastTrackRef.current = value;
 
   // ── Preview of the picked track ───────────────────────────────────
   const soundRef = useRef<Audio.Sound | null>(null);
   const mountedRef = useRef(true);
   const finishedRef = useRef(false);
+  // Track the preview player holds (rows can preview their own track)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState(false);
 
   const stopPreview = useCallback(async () => {
     const sound = soundRef.current;
     soundRef.current = null;
+    finishedRef.current = false;
+    setPreviewUrl(null);
     setPreviewPlaying(false);
     setPreviewLoading(false);
     if (sound) {
@@ -206,8 +238,10 @@ export default function DesignMusicField({
     }
   }, []);
 
-  const togglePreview = useCallback(async () => {
-    if (!previewUrl) return;
+  const togglePreview = useCallback(async (url: string) => {
+    // One track loads at a time
+    if (previewLoading) return;
+    if (soundRef.current && previewUrl !== url) await stopPreview();
     if (soundRef.current) {
       try {
         if (previewPlaying) await soundRef.current.pauseAsync();
@@ -217,6 +251,7 @@ export default function DesignMusicField({
       } catch {}
       return;
     }
+    setPreviewUrl(url);
     setPreviewLoading(true);
     try {
       await Audio.setAudioModeAsync({
@@ -224,7 +259,7 @@ export default function DesignMusicField({
         staysActiveInBackground: false,
       });
       const { sound } = await Audio.Sound.createAsync(
-        { uri: previewUrl },
+        { uri: url },
         { shouldPlay: true },
         onPreviewStatus,
       );
@@ -235,15 +270,16 @@ export default function DesignMusicField({
       soundRef.current = sound;
     } catch (error) {
       Logger.error("Music preview failed:", error);
+      setPreviewUrl(null);
     } finally {
       if (mountedRef.current) setPreviewLoading(false);
     }
-  }, [onPreviewStatus, previewPlaying, previewUrl]);
+  }, [onPreviewStatus, previewLoading, previewPlaying, previewUrl, stopPreview]);
 
-  // New track / no music / sheet open → stop the old preview
+  // New choice / no music / sheet open → stop the old preview
   useEffect(() => {
     stopPreview();
-  }, [previewUrl, sheetOpen, stopPreview]);
+  }, [valueUrl, sheetOpen, stopPreview]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -258,27 +294,32 @@ export default function DesignMusicField({
     ? t("designMusicMinLength", { seconds: Math.ceil(lengthSeconds) })
     : null;
 
-  const playButton = value ? (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={togglePreview}
-      disabled={disabled || previewLoading}
-      hitSlop={6}
-      style={styles.playButton}
-      accessibilityRole="button"
-      accessibilityLabel={previewPlaying ? t("pause") : t("play")}
-    >
-      {previewLoading ? (
-        <ActivityIndicator size="small" color={theme.white} />
-      ) : (
-        <MaterialIcons
-          name={previewPlaying ? "pause" : "play-arrow"}
-          size={moderateWidthScale(26)}
-          color={theme.white}
-        />
-      )}
-    </TouchableOpacity>
-  ) : undefined;
+  const renderPlayButton = (track: AutoReelMusic) => {
+    const mine = previewUrl === track.url;
+    const playing = mine && previewPlaying;
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => void togglePreview(track.url)}
+        disabled={disabled || (mine && previewLoading)}
+        hitSlop={6}
+        style={styles.playButton}
+        accessibilityRole="button"
+        accessibilityLabel={`${playing ? t("pause") : t("play")}, ${track.title}`}
+      >
+        {mine && previewLoading ? (
+          <ActivityIndicator size="small" color={theme.white} />
+        ) : (
+          <MaterialIcons
+            name={playing ? "pause" : "play-arrow"}
+            size={moderateWidthScale(26)}
+            color={theme.white}
+          />
+        )}
+      </TouchableOpacity>
+    );
+  };
+  const playButton = value ? renderPlayButton(value) : undefined;
 
   const librarySheet = (
     <MusicLibrarySheet
@@ -292,6 +333,165 @@ export default function DesignMusicField({
       minDurationMs={lengthSeconds ? Math.ceil(lengthSeconds) * 1000 : null}
     />
   );
+
+  if (defaultMusic) {
+    const isDefault = !!value && value.url === defaultMusic.url;
+    const libraryTrack = value && !isDefault ? value : null;
+    const tileOff = disabled || noMusic;
+    const row = ({
+      selected,
+      leading,
+      trailing,
+      title,
+      subtitle,
+      onPress,
+      role,
+    }: {
+      selected: boolean;
+      leading: React.ReactNode;
+      trailing: React.ReactNode;
+      title: string;
+      subtitle: string;
+      onPress: () => void;
+      role: "radio" | "button";
+    }) => {
+      const on = selected && !noMusic;
+      return (
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={onPress}
+          disabled={tileOff}
+          style={[
+            styles.card,
+            styles.choiceRow,
+            on && styles.choiceRowOn,
+            tileOff && styles.disabled,
+          ]}
+          accessibilityRole={role}
+          accessibilityLabel={`${title}, ${subtitle}${on ? `, ${t("selected")}` : ""}`}
+          accessibilityState={
+            role === "radio"
+              ? { checked: on, disabled: tileOff }
+              : { selected: on, disabled: tileOff }
+          }
+        >
+          {leading}
+          <View style={styles.cardTexts}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {title}
+            </Text>
+            <Text style={styles.cardValue} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
+          <View style={styles.choiceTrailing}>{trailing}</View>
+        </TouchableOpacity>
+      );
+    };
+    const checkIcon = (
+      <MaterialIcons
+        name="check-circle"
+        size={moderateWidthScale(26)}
+        color={theme.darkGreen}
+      />
+    );
+    return (
+      <View style={styles.wrap}>
+        <View style={styles.header}>
+          <SectionLabel label={t("musicSelectTitle")} required />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            // Unchecking goes back to the track chosen before
+            onPress={() =>
+              onChange(noMusic ? (lastTrackRef.current ?? defaultMusic) : null)
+            }
+            disabled={disabled}
+            hitSlop={8}
+            style={[styles.noMusicToggle, disabled && styles.disabled]}
+            accessibilityRole="checkbox"
+            accessibilityLabel={`${t("templateGalleryNoMusic")}, ${t("designNoMusicSub")}`}
+            accessibilityState={{ checked: noMusic, disabled }}
+          >
+            <Text style={styles.noMusicText}>{t("templateGalleryNoMusic")}</Text>
+            <MaterialIcons
+              name={noMusic ? "check-box" : "check-box-outline-blank"}
+              size={moderateWidthScale(24)}
+              color={theme.darkGreen}
+            />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.hint}>
+          {noMusic ? t("designNoMusicSub") : (hint ?? t("musicSelectHint"))}
+        </Text>
+        <View style={styles.choiceList}>
+          {row({
+            selected: isDefault,
+            role: "radio",
+            leading: renderPlayButton(defaultMusic),
+            trailing:
+              isDefault && !noMusic ? (
+                checkIcon
+              ) : (
+                <MaterialIcons
+                  name="radio-button-unchecked"
+                  size={moderateWidthScale(26)}
+                  color={theme.lightGreen}
+                />
+              ),
+            title: defaultMusic.title,
+            subtitle: [t("musicTemplateSong"), defaultMusic.artist]
+              .filter(Boolean)
+              .join(" · "),
+            onPress: () => onChange(defaultMusic),
+          })}
+          {row({
+            selected: !!libraryTrack,
+            role: "button",
+            leading: libraryTrack ? (
+              renderPlayButton(libraryTrack)
+            ) : (
+              <View style={styles.cardIcon}>
+                <MaterialIcons
+                  name="library-music"
+                  size={moderateWidthScale(24)}
+                  color={theme.selectCard}
+                />
+              </View>
+            ),
+            // Picked: "Change" + check; not yet: just the arrow
+            trailing:
+              libraryTrack && !noMusic ? (
+                <>
+                  <Text style={styles.changeText}>{t("change")}</Text>
+                  {checkIcon}
+                </>
+              ) : (
+                <MaterialIcons
+                  name="chevron-right"
+                  size={moderateWidthScale(26)}
+                  color={theme.darkGreen}
+                />
+              ),
+            title: libraryTrack ? libraryTrack.title : t("musicFromLibrary"),
+            subtitle: libraryTrack
+              ? libraryTrack.artist
+              : lengthSeconds
+                ? t("designMusicPickMin", { seconds: Math.ceil(lengthSeconds) })
+                : t("musicFromLibrarySub"),
+            onPress: () => setSheetOpen(true),
+          })}
+        </View>
+        {error ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
+        ) : value ? (
+          <Text style={styles.note}>{t("designMusicCreditNote")}</Text>
+        ) : null}
+        {librarySheet}
+      </View>
+    );
+  }
 
   if (compact) {
     const valueText = value
@@ -388,7 +588,7 @@ export default function DesignMusicField({
           />
         </TouchableOpacity>
       </View>
-      <Text style={styles.hint}>{t("designMusicHint")}</Text>
+      <Text style={styles.hint}>{hint ?? t("designMusicHint")}</Text>
       <OptionRow
         icon="library-music"
         iconNode={playButton}

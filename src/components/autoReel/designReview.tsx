@@ -28,6 +28,7 @@ import {
   type BuildAutoReelPayload,
 } from "@/src/types/reels";
 import { isUploadCancelled } from "@/src/utils/uploadCancel";
+import { createMusicFor } from "@/src/utils/autoReelCreateMusic";
 import {
   cutSlotVideo,
   localSlotVideoUri,
@@ -66,8 +67,9 @@ import MomentPickerModal, {
  * parent polls to `ready` as usual. Changing picks never calls the AI again.
  *
  * `mode="edit"` (a `ready` / `failed` reel): one part — clips, text or music —
- * starts from the last build and only what changed is sent (the server keeps
- * the rest). Saving remakes the reel and costs 1 reel credit.
+ * starts from the last build and only what changed is sent: slots, texts and
+ * music the user didn't touch are left out and the server keeps them. Saving
+ * remakes the reel and costs 1 reel credit.
  */
 
 type SlotChoice =
@@ -272,7 +274,7 @@ function initialChoices(
 
 /**
  * Review: `design.texts`. Edit: the last build's texts, else `design.texts`,
- * else the business name for a `prefill` slot (every text is sent again).
+ * else the business name for a `prefill` slot (only changed texts are sent).
  */
 function initialTexts(
   autoReel: AutoReel,
@@ -347,10 +349,14 @@ export default function DesignReview({
   const [templateSound, setTemplateSound] = useState<{
     hasSound: boolean | null;
     lengthSeconds: number | null;
+    music: AutoReelMusic | null;
   } | null>(null);
   const templateId = autoReel.template?.id ?? null;
   const needsTemplateInfo =
-    (design?.has_sound == null || design?.length_seconds == null) &&
+    (design?.has_sound == null ||
+      design?.length_seconds == null ||
+      // No track on the reel: the template's own song may be the music
+      design?.music == null) &&
     // Only the music field uses it
     (!edit || !section || section === "music");
   useEffect(() => {
@@ -363,6 +369,7 @@ export default function DesignReview({
           setTemplateSound({
             hasSound: tpl.has_sound ?? null,
             lengthSeconds: tpl.length_seconds ?? null,
+            music: tpl.music ?? null,
           });
         }
       })
@@ -381,19 +388,28 @@ export default function DesignReview({
     templateSound?.lengthSeconds ??
     autoReel.total_seconds ??
     null;
-  // The reel's music now (null = none; undefined when the server doesn't say).
-  // Edits and auto-built reels start from it — nothing to choose unless changed.
-  const currentMusic =
-    (edit || isAutoBuiltReel(autoReel)) && design && "music" in design
-      ? (design.music ?? null)
-      : undefined;
-  // Silent designs need music on every build (the server doesn't keep it):
-  // an edit sends the current one unless changed, and asks when it's unknown
-  const showMusic = edit
-    ? section === "music" ||
-      (!section && silent) ||
-      (silent && currentMusic === undefined)
-    : silent;
+  // Where the music starts (null = none; undefined = not known → chosen).
+  // The server answers `music: null` also when the template's own song was
+  // used, so: the reel's track, else the create step's choice (this session),
+  // else — once the template loads — its own song, else the server's "none".
+  const hasMusicKey = !!design && "music" in design;
+  const templateMusic = templateSound?.music ?? null;
+  const templateLoaded = templateSound != null;
+  const [knownStartMusic] = useState<AutoReelMusic | null | undefined>(() =>
+    design?.music ? design.music : createMusicFor(autoReel.id),
+  );
+  const startMusic: AutoReelMusic | null | undefined =
+    knownStartMusic !== undefined
+      ? knownStartMusic
+      : (templateMusic ??
+        ((edit || isAutoBuiltReel(autoReel)) &&
+        hasMusicKey &&
+        (templateLoaded || !needsTemplateInfo)
+          ? null
+          : undefined));
+  // Review: silent designs choose music (or "No music"). Edit: only the
+  // music part — the server keeps the reel's music when none is sent
+  const showMusic = edit ? section === "music" || (!section && silent) : silent;
 
   // Edit: the last build, read once — changes are measured against it
   const [lastBuild] = useState(() => (edit ? readLastBuild(autoReel) : null));
@@ -415,18 +431,23 @@ export default function DesignReview({
   );
   const [textValues, setTextValues] =
     useState<Record<string, string>>(startTexts);
-  // Every text is sent, so one the last build didn't give is asked for in any part
-  const showTexts =
-    !edit ||
-    !section ||
-    section === "text" ||
-    texts.some((slot) => !startTexts[slot.key]?.trim());
+  const showTexts = !edit || !section || section === "text";
   // Review: undefined = not chosen yet. Edit: starts at the current music
   // (undefined only when the server doesn't say)
   const [music, setMusic] = useState<AutoReelMusic | null | undefined>(
-    currentMusic,
+    startMusic,
   );
-  const musicChanged = music !== undefined && !sameMusic(music, currentMusic);
+  const musicChanged = music !== undefined && !sameMusic(music, startMusic);
+  // Known once the template loads — fill it in unless the user already chose
+  useEffect(() => {
+    if (startMusic === undefined) return;
+    setMusic((prev) => (prev === undefined ? startMusic : prev));
+  }, [startMusic]);
+  const textChanged = useCallback(
+    (key: string) =>
+      (textValues[key] ?? "").trim() !== (startTexts[key] ?? "").trim(),
+    [startTexts, textValues],
+  );
   const [slotErrors, setSlotErrors] = useState<Record<string, string>>({});
   const [textErrors, setTextErrors] = useState<Record<string, string>>({});
   const [musicError, setMusicError] = useState<string | null>(null);
@@ -594,9 +615,13 @@ export default function DesignReview({
   const complete =
     // Edit: a slot the last build didn't tell us about stays as it is
     (edit || slotsFilled) &&
-    texts.every((slot) => !!textValues[slot.key]?.trim()) &&
-    // Silent designs always send music (an edit starts at the current one)
-    (!silent || music !== undefined);
+    // Edit: a text left as it was isn't sent (the server keeps it)
+    texts.every(
+      (slot) =>
+        (edit && !textChanged(slot.key)) || !!textValues[slot.key]?.trim(),
+    ) &&
+    // Review of a silent design: music or "No music" is chosen
+    (edit || !silent || music !== undefined);
 
   // Edit: something to save
   const dirty =
@@ -604,11 +629,7 @@ export default function DesignReview({
     (slots.some((slot) =>
       choiceChanged(choices[slot.key], lastBuild?.slots[slot.key]),
     ) ||
-      texts.some(
-        (slot) =>
-          (textValues[slot.key] ?? "").trim() !==
-          (startTexts[slot.key] ?? "").trim(),
-      ) ||
+      texts.some((slot) => textChanged(slot.key)) ||
       (showMusic && musicChanged));
 
   // Review only — an edit starts from a finished build
@@ -680,24 +701,33 @@ export default function DesignReview({
       }
       setUploadPercent(null);
 
+      // Review: every text. Edit: only the changed ones (the server keeps the rest)
       const payloadTexts: Record<string, string> = {};
       for (const slot of texts) {
+        if (edit && !textChanged(slot.key)) continue;
         payloadTexts[slot.key] = (textValues[slot.key] ?? "").trim();
       }
-      // Silent designs always say (null = No music) — the server refuses a build
-      // without it, an edit too (it sends the current music unless changed).
-      // Designs with their own sound: only a new choice.
-      const musicPayload: Pick<BuildAutoReelPayload, "music"> = silent
-        ? { music: music ?? null }
-        : edit && showMusic && musicChanged
+      // Review of a silent design: the choice (null = No music) — the
+      // template's own song goes unsaid (the server uses it; it refuses that
+      // track in `music`). Edit: only a new choice — left out, the server
+      // keeps the reel's music.
+      const keepsTemplateSong =
+        !!templateMusic && !!music && music.url === templateMusic.url;
+      const musicPayload: Pick<BuildAutoReelPayload, "music"> = edit
+        ? showMusic && musicChanged
+          ? { music: music ?? null }
+          : {}
+        : silent && !keepsTemplateSong
           ? { music: music ?? null }
           : {};
       const data = await buildAutoReel(autoReel.id, {
-        // Edit: no `slots` at all when no clip changed
+        // Edit: no `slots` / `texts` at all when none changed
         ...(edit && !Object.keys(payloadSlots).length
           ? {}
           : { slots: payloadSlots }),
-        texts: payloadTexts,
+        ...(edit && !Object.keys(payloadTexts).length
+          ? {}
+          : { texts: payloadTexts }),
         ...musicPayload,
       });
       accepted = true;
@@ -753,6 +783,8 @@ export default function DesignReview({
     silent,
     slots,
     t,
+    templateMusic,
+    textChanged,
     textValues,
     texts,
   ]);
@@ -1222,6 +1254,7 @@ export default function DesignReview({
               error={musicError}
               disabled={disabled}
               compact
+              defaultMusic={templateMusic}
             />
           </>
         ) : null}
