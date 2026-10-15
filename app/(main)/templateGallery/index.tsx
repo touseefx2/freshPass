@@ -1949,7 +1949,7 @@ export default function TemplateGalleryScreen() {
       }
     >
       <TouchableOpacity
-        style={styles.backButton}
+        style={[styles.backButton, overlay && styles.videoGlass]}
         onPress={() => router.back()}
         activeOpacity={0.7}
         hitSlop={8}
@@ -1962,13 +1962,16 @@ export default function TemplateGalleryScreen() {
           color={theme.white}
         />
       </TouchableOpacity>
-      <View style={styles.segment} accessibilityRole="tablist">
+      <View
+        style={[styles.segment, overlay && styles.videoGlass]}
+        accessibilityRole="tablist"
+      >
         {KINDS.map((k) => {
           const selected = k.kind === kind;
           return (
             <TouchableOpacity
               key={k.kind}
-              style={styles.segmentTab}
+              style={[styles.segmentTab, selected && styles.segmentTabActive]}
               onPress={() => selectKind(k.kind)}
               activeOpacity={0.85}
               accessibilityRole="tab"
@@ -1976,19 +1979,18 @@ export default function TemplateGalleryScreen() {
             >
               <Ionicons
                 name={k.icon}
-                size={moderateWidthScale(21)}
-                color={selected ? theme.white : theme.white85}
+                size={moderateWidthScale(18)}
+                color={selected ? theme.darkGreen : theme.white85}
               />
               <Text
                 style={[
                   styles.segmentText,
                   selected && styles.segmentTextActive,
-                  overlay && styles.videoSegmentText,
+                  overlay && !selected && styles.videoSegmentText,
                 ]}
               >
                 {t(k.labelKey)}
               </Text>
-              {selected ? <View style={styles.segmentIndicator} /> : null}
             </TouchableOpacity>
           );
         })}

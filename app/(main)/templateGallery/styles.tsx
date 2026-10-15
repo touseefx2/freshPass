@@ -66,22 +66,25 @@ export const createStyles = (theme: Theme) =>
     swipeArea: {
       flex: 1,
     },
-    // Full-width tabs straight under the header, on its green: the
-    // selected one in bold white with a short orange line under it
+    // Header row: round back button + one capsule holding both tabs, the
+    // selected one a white pill; on the app's green (or over the video)
     segmentBar: {
       flexDirection: "row",
       alignItems: "center",
-      paddingLeft: moderateWidthScale(8),
+      gap: moderateWidthScale(10),
+      paddingHorizontal: moderateWidthScale(12),
+      paddingBottom: moderateHeightScale(10),
       backgroundColor: theme.darkGreen,
     },
-    // Back: a soft glass circle, readable on the green or on the video
     backButton: {
-      width: moderateWidthScale(40),
-      height: moderateWidthScale(40),
-      borderRadius: moderateWidthScale(20),
+      width: moderateWidthScale(42),
+      height: moderateWidthScale(42),
+      borderRadius: moderateWidthScale(21),
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: GLASS,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: GLASS_BORDER,
     },
     padded: {
       paddingHorizontal: GUTTER,
@@ -89,33 +92,32 @@ export const createStyles = (theme: Theme) =>
     segment: {
       flex: 1,
       flexDirection: "row",
+      height: moderateWidthScale(42),
+      padding: 3,
+      borderRadius: moderateWidthScale(21),
+      backgroundColor: GLASS,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: GLASS_BORDER,
     },
     segmentTab: {
       flex: 1,
-      minHeight: moderateHeightScale(48),
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
-      gap: moderateWidthScale(8),
+      gap: moderateWidthScale(6),
+      borderRadius: moderateWidthScale(18),
     },
-    // Short orange line under the selected label
-    segmentIndicator: {
-      position: "absolute",
-      bottom: moderateHeightScale(4),
-      alignSelf: "center",
-      width: moderateWidthScale(28),
-      height: 3,
-      borderRadius: 2,
-      backgroundColor: theme.orangeBrown,
+    segmentTabActive: {
+      backgroundColor: theme.white,
     },
     segmentText: {
-      fontSize: fontSize.size15,
+      fontSize: fontSize.size14,
       fontFamily: fonts.fontMedium,
       color: theme.white85,
     },
     segmentTextActive: {
       fontFamily: fonts.fontBold,
-      color: theme.white,
+      color: theme.darkGreen,
     },
 
     // ── Heading ─────────────────────────────────────────────────────
@@ -359,6 +361,10 @@ export const createStyles = (theme: Theme) =>
       top: 0,
       left: 0,
       right: 0,
+    },
+    // Over the video: darker glass so the controls hold on bright frames
+    videoGlass: {
+      backgroundColor: "rgba(24, 33, 14, 0.4)",
     },
     // A soft shadow keeps the white labels readable on any video frame
     videoSegmentText: {
