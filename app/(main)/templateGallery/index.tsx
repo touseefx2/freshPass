@@ -6,7 +6,6 @@ import React, {
   useState,
 } from "react";
 import {
-  Alert,
   AppState,
   Modal,
   Platform,
@@ -54,7 +53,6 @@ import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import StackHeader from "@/src/components/StackHeader";
 import Button from "@/src/components/button";
 import { useTheme } from "@/src/hooks/hooks";
 import Logger from "@/src/services/logger";
@@ -114,7 +112,6 @@ const KINDS: {
   kind: TemplateGalleryKind;
   icon: React.ComponentProps<typeof Ionicons>["name"];
   labelKey: string;
-  headerKey: string;
   /** Chip on the cover */
   chipKey: string;
   chipIcon: IconName;
@@ -123,7 +120,6 @@ const KINDS: {
     kind: "video",
     icon: "videocam",
     labelKey: "templateGalleryVideoTab",
-    headerKey: "templateGalleryHeaderVideo",
     chipKey: "reelTypeAutoTitle",
     chipIcon: "auto-awesome",
   },
@@ -131,7 +127,6 @@ const KINDS: {
     kind: "photo",
     icon: "image-outline",
     labelKey: "templateGalleryPhotoTab",
-    headerKey: "templateGalleryHeaderPhoto",
     chipKey: "reelTypeTemplateTitle",
     chipIcon: "photo-library",
   },
@@ -1557,9 +1552,6 @@ export default function TemplateGalleryScreen() {
     [width],
   );
 
-  const showInfo = () =>
-    Alert.alert(t("templateGalleryInfoTitle"), t("templateGalleryInfoBody"));
-
   const handleUseTemplate = () => {
     if (!current || noCredits) return;
     // Stop the sample now, before the next screen opens over it
@@ -1938,13 +1930,15 @@ export default function TemplateGalleryScreen() {
   );
 
   /**
-   * Video / Photo tabs. On a playing Video tab cover they float over its
-   * top, joined to the header by its green fading into the video
+   * The screen's only header: back button + Video / Photo tabs. On a
+   * playing Video tab cover it floats over the video's top (status bar
+   * included); otherwise it sits on the app's green
    */
   const renderTabs = () => (
     <View
       style={[
         styles.segmentBar,
+        { paddingTop: insets.top + moderateHeightScale(4) },
         isVideoTab && styles.videoTabs,
         overlay && styles.videoTabsOverlay,
       ]}
@@ -1954,6 +1948,20 @@ export default function TemplateGalleryScreen() {
           : undefined
       }
     >
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+        activeOpacity={0.7}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={t("back")}
+      >
+        <MaterialIcons
+          name="keyboard-backspace"
+          size={iconScale(24)}
+          color={theme.white}
+        />
+      </TouchableOpacity>
       <View style={styles.segment} accessibilityRole="tablist">
         {KINDS.map((k) => {
           const selected = k.kind === kind;
@@ -1990,23 +1998,8 @@ export default function TemplateGalleryScreen() {
 
   return (
     <View style={styles.safeArea}>
-      <StackHeader
-        title={t(activeKind.headerKey)}
-        // No divider: the header runs straight into the tabs
-        showLine={false}
-        rightIcon={
-          <MaterialIcons
-            name="info-outline"
-            size={iconScale(24)}
-            color={theme.white}
-          />
-        }
-        onRightPress={showInfo}
-        rightAccessibilityLabel={t("templateGalleryInfoTitle")}
-      />
-
       {isVideoTab ? (
-        // Video tab: the covers fill everything under the header; the tabs
+        // Video tab: the covers fill the whole screen; back button and tabs
         // float over their top, dots / credits / button over their bottom
         <View
           style={[styles.videoStage, overlay && styles.videoStageDark]}
@@ -2026,12 +2019,12 @@ export default function TemplateGalleryScreen() {
           {overlay ? (
             // The header's green running down into the video behind the tabs
             <LinearGradient
-              // Solid at the header, easing off behind the tabs so the video
-              // shows through, then gone: no hard edge
+              // Dark at the very top (status bar, back button), easing off
+              // behind the tabs so the video shows through: no hard edge
               colors={[
-                theme.darkGreen,
-                `${theme.darkGreen}99`,
-                `${theme.darkGreen}00`,
+                `${theme.darkGreenDeep}B3`,
+                `${theme.darkGreenDeep}59`,
+                `${theme.darkGreenDeep}00`,
               ]}
               locations={[0, 0.5, 1]}
               style={[

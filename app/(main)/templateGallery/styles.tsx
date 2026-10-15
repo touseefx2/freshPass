@@ -69,12 +69,25 @@ export const createStyles = (theme: Theme) =>
     // Full-width tabs straight under the header, on its green: the
     // selected one in bold white with a short orange line under it
     segmentBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingLeft: moderateWidthScale(8),
       backgroundColor: theme.darkGreen,
+    },
+    // Back: a soft glass circle, readable on the green or on the video
+    backButton: {
+      width: moderateWidthScale(40),
+      height: moderateWidthScale(40),
+      borderRadius: moderateWidthScale(20),
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: GLASS,
     },
     padded: {
       paddingHorizontal: GUTTER,
     },
     segment: {
+      flex: 1,
       flexDirection: "row",
     },
     segmentTab: {
