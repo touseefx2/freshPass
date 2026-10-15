@@ -24,10 +24,9 @@ export const ART_CENTER = 0.81;
 export const MEDALLION_RATIO = 0.38;
 
 /**
- * Video Reel tab, CapCut style: full-width covers from just under the tabs to
- * the bottom of the screen (rounded top corners), VIDEO_CARD_GAP apart
+ * Video Reel tab, CapCut style: full-screen covers from under the header to
+ * the bottom of the screen, VIDEO_CARD_GAP apart
  */
-export const VIDEO_STAGE_TOP = moderateHeightScale(8);
 export const VIDEO_CARD_GAP = moderateWidthScale(8);
 export const VIDEO_HEADLINE_WIDTH = 0.86;
 /** Brand art medallion centre (share of the cover height) and size (of its width) */
@@ -310,24 +309,53 @@ export const createStyles = (theme: Theme) =>
     videoCardFlat: {
       shadowOpacity: 0,
       elevation: 0,
-      borderBottomLeftRadius: 0,
-      borderBottomRightRadius: 0,
+      borderRadius: 0,
     },
     // Everything under the tabs; the footer is laid over its bottom
     videoStage: {
       flex: 1,
       overflow: "hidden",
     },
+    // Dark between covers mid-swipe instead of cream
+    videoStageDark: {
+      backgroundColor: theme.darkGreenDeep,
+    },
     videoSwipeArea: {
       flex: 1,
     },
-    videoCarousel: {
-      paddingTop: VIDEO_STAGE_TOP,
-    },
-    // Rounded at the top only: the cover runs off the bottom of the screen
+    // Full screen: no rounded corners
     videoCardShape: {
-      borderBottomLeftRadius: 0,
-      borderBottomRightRadius: 0,
+      borderRadius: 0,
+    },
+    // Tabs over the top of the cover (cream bar while nothing is playing)
+    videoTabs: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+    },
+    videoTabsOverlay: {
+      backgroundColor: "transparent",
+    },
+    videoTopFade: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+    },
+    // Glass tabs on the video: dark see-through bar, white active tab
+    videoSegment: {
+      backgroundColor: "rgba(24, 33, 14, 0.45)",
+      borderColor: GLASS_BORDER,
+    },
+    videoSegmentTabActive: {
+      backgroundColor: theme.white,
+    },
+    videoSegmentText: {
+      color: theme.white,
+    },
+    videoSegmentTextActive: {
+      color: theme.darkGreen,
     },
     videoFooter: {
       position: "absolute",

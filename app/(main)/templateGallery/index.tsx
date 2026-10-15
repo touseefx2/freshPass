@@ -93,7 +93,6 @@ import {
   SKELETON_BG,
   SKELETON_HIGHLIGHT,
   VIDEO_CARD_GAP,
-  VIDEO_STAGE_TOP,
   VIDEO_ART_CENTER,
   VIDEO_HEADLINE_WIDTH,
   VIDEO_MEDALLION_RATIO,
@@ -1207,14 +1206,7 @@ function GallerySkeleton({
         backgroundColor={SKELETON_BG}
         highlightColor={SKELETON_HIGHLIGHT}
       >
-        <View
-          style={{
-            width: cardWidth,
-            height: cardHeight,
-            borderTopLeftRadius: CARD_RADIUS,
-            borderTopRightRadius: CARD_RADIUS,
-          }}
-        />
+        <View style={{ width: cardWidth, height: cardHeight }} />
       </SkeletonPlaceholder>
     );
   }
@@ -1316,6 +1308,8 @@ export default function TemplateGalleryScreen() {
   // screen, with the dots / credits / button laid over its bottom
   const [stageHeight, setStageHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(0);
+  // Tabs laid over the top of the Video tab's cover
+  const [tabsHeight, setTabsHeight] = useState(0);
 
   const [kind, setKind] = useState<TemplateGalleryKind>(
     params.kind === "photo" ? "photo" : "video",
@@ -1407,7 +1401,7 @@ export default function TemplateGalleryScreen() {
   const isVideoTab = kind === "video";
   const coverWidth = isVideoTab ? width : cardWidth;
   const cardHeight = isVideoTab
-    ? Math.max(0, Math.round(stageHeight - VIDEO_STAGE_TOP))
+    ? Math.round(stageHeight)
     : Math.round(cardWidth * CARD_RATIO);
   const gap = isVideoTab ? VIDEO_CARD_GAP : CARD_GAP;
   const pageInset = isVideoTab ? 0 : sideInset;
@@ -1556,7 +1550,10 @@ export default function TemplateGalleryScreen() {
       return (
         <GallerySkeleton
           cardWidth={coverWidth}
-          cardHeight={cardHeight}
+          // Video tab: under the tabs, which sit on the cream here
+          cardHeight={
+            isVideoTab ? Math.max(0, cardHeight - tabsHeight) : cardHeight
+          }
           sideInset={sideInset}
           withInfo={!isVideoTab}
           styles={styles}
@@ -1606,11 +1603,7 @@ export default function TemplateGalleryScreen() {
         entering={FadeIn.duration(220).reduceMotion(ReduceMotion.System)}
       >
         <View
-          style={
-            isVideoTab
-              ? styles.videoCarousel
-              : [styles.carousel, styles.carouselContent]
-          }
+          style={isVideoTab ? null : [styles.carousel, styles.carouselContent]}
         >
           <Animated.View
             style={[
@@ -1786,7 +1779,12 @@ export default function TemplateGalleryScreen() {
         styles.footer,
         isVideoTab && styles.videoFooter,
         overlay && styles.videoFooterOverlay,
-        { paddingBottom: Math.max(insets.bottom, moderateWidthScale(12)) },
+        {
+          paddingBottom: overlay
+            ? // Over the video: lifted clear of the bottom edge
+              insets.bottom + moderateHeightScale(24)
+            : Math.max(insets.bottom, moderateWidthScale(12)),
+        },
       ]}
       onLayout={
         isVideoTab
@@ -1895,10 +1893,78 @@ export default function TemplateGalleryScreen() {
     </View>
   );
 
+  /**
+   * Video / Photo tabs. On a playing Video tab cover they float over its
+   * top, joined to the header by its green fading into the video
+   */
+  const renderTabs = () => (
+    <View
+      style={[
+        styles.segmentBar,
+        isVideoTab && styles.videoTabs,
+        overlay && styles.videoTabsOverlay,
+      ]}
+      onLayout={
+        isVideoTab
+          ? (e) => setTabsHeight(e.nativeEvent.layout.height)
+          : undefined
+      }
+    >
+      <View
+        style={[styles.segment, overlay && styles.videoSegment]}
+        accessibilityRole="tablist"
+      >
+        {KINDS.map((k) => {
+          const selected = k.kind === kind;
+          return (
+            <TouchableOpacity
+              key={k.kind}
+              style={[
+                styles.segmentTab,
+                selected && styles.segmentTabActive,
+                overlay && selected && styles.videoSegmentTabActive,
+              ]}
+              onPress={() => selectKind(k.kind)}
+              activeOpacity={0.85}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+            >
+              <Ionicons
+                name={k.icon}
+                size={moderateWidthScale(21)}
+                color={
+                  overlay
+                    ? selected
+                      ? theme.darkGreen
+                      : theme.white
+                    : selected
+                      ? theme.white
+                      : theme.lightGreen
+                }
+              />
+              <Text
+                style={[
+                  styles.segmentText,
+                  selected && styles.segmentTextActive,
+                  overlay && styles.videoSegmentText,
+                  overlay && selected && styles.videoSegmentTextActive,
+                ]}
+              >
+                {t(k.labelKey)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.safeArea}>
       <StackHeader
         title={t(activeKind.headerKey)}
+        // Video tab: no divider, the header runs straight into the tabs
+        showLine={!overlay}
         rightIcon={
           <MaterialIcons
             name="info-outline"
@@ -1910,55 +1976,47 @@ export default function TemplateGalleryScreen() {
         rightAccessibilityLabel={t("templateGalleryInfoTitle")}
       />
 
-      {/* Tabs stay pinned under the header */}
-      <View style={styles.segmentBar}>
-        <View style={styles.segment} accessibilityRole="tablist">
-          {KINDS.map((k) => {
-            const selected = k.kind === kind;
-            return (
-              <TouchableOpacity
-                key={k.kind}
-                style={[styles.segmentTab, selected && styles.segmentTabActive]}
-                onPress={() => selectKind(k.kind)}
-                activeOpacity={0.85}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-              >
-                <Ionicons
-                  name={k.icon}
-                  size={moderateWidthScale(21)}
-                  color={selected ? theme.white : theme.lightGreen}
-                />
-                <Text
-                  style={[
-                    styles.segmentText,
-                    selected && styles.segmentTextActive,
-                  ]}
-                >
-                  {t(k.labelKey)}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
       {isVideoTab ? (
-        // Video tab: the covers fill everything under the tabs; dots,
-        // credits and the button sit over the bottom of the playing cover
+        // Video tab: the covers fill everything under the header; the tabs
+        // float over their top, dots / credits / button over their bottom
         <View
-          style={styles.videoStage}
+          style={[styles.videoStage, overlay && styles.videoStageDark]}
           onLayout={(e) => setStageHeight(e.nativeEvent.layout.height)}
         >
           <GestureDetector gesture={swipe}>
-            <View style={styles.videoSwipeArea} collapsable={false}>
+            <View
+              style={[
+                styles.videoSwipeArea,
+                !overlay && { paddingTop: tabsHeight },
+              ]}
+              collapsable={false}
+            >
               {renderBody()}
             </View>
           </GestureDetector>
+          {overlay ? (
+            // The header's green running down into the video behind the tabs
+            <LinearGradient
+              colors={[
+                theme.darkGreen,
+                `${theme.darkGreen}CC`,
+                `${theme.darkGreen}00`,
+              ]}
+              locations={[0, 0.4, 1]}
+              style={[
+                styles.videoTopFade,
+                { height: tabsHeight + moderateHeightScale(56) },
+              ]}
+              pointerEvents="none"
+            />
+          ) : null}
+          {renderTabs()}
           {renderFooter()}
         </View>
       ) : (
         <>
+          {/* Tabs stay pinned under the header */}
+          {renderTabs()}
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
