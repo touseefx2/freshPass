@@ -1795,21 +1795,9 @@ export default function TemplateGalleryScreen() {
   };
 
   const showCounter = !tab.loading && !tab.error && count > 0;
-  // Video tab, once the credits are known: how many are left, or that none
-  // are for this one-video design
-  const creditsLine =
-    kind !== "video" || !credits
-      ? null
-      : noCredits
-        ? t("templateGalleryNoCredits")
-        : typeof credits.monthly_limit === "number"
-          ? t("templateGalleryCreditsLeft", {
-              count: Math.max(0, credits.remaining),
-              total: credits.monthly_limit,
-            })
-          : t("autoBuildCreditsLeft", {
-              count: Math.max(0, credits.remaining),
-            });
+  // Video tab: only when no reel credits are left for this one-video design
+  // (the count itself shows on the next screen)
+  const creditsLine = noCredits ? t("templateGalleryNoCredits") : null;
 
   // Video tab with a cover showing: footer laid over the video
   // (also while loading, so the skeleton has the same layout)
@@ -1887,15 +1875,6 @@ export default function TemplateGalleryScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      ) : null}
-      {/* Video tab loading: room for the credits line, so nothing jumps */}
-      {overlay && tab.loading && !creditsLine ? (
-        <SkeletonPlaceholder
-          backgroundColor={VIDEO_SKELETON_BG}
-          highlightColor={VIDEO_SKELETON_HIGHLIGHT}
-        >
-          <View style={styles.videoSkeletonCredits} />
-        </SkeletonPlaceholder>
       ) : null}
       {creditsLine ? (
         <View
@@ -1981,7 +1960,7 @@ export default function TemplateGalleryScreen() {
           return (
             <TouchableOpacity
               key={k.kind}
-              style={[styles.segmentTab, selected && styles.segmentTabActive]}
+              style={styles.segmentTab}
               onPress={() => selectKind(k.kind)}
               activeOpacity={0.85}
               accessibilityRole="tab"
@@ -2001,6 +1980,7 @@ export default function TemplateGalleryScreen() {
               >
                 {t(k.labelKey)}
               </Text>
+              {selected ? <View style={styles.segmentIndicator} /> : null}
             </TouchableOpacity>
           );
         })}
@@ -2046,16 +2026,17 @@ export default function TemplateGalleryScreen() {
           {overlay ? (
             // The header's green running down into the video behind the tabs
             <LinearGradient
-              // Light enough for the video to show behind the tabs
+              // Solid at the header, easing off behind the tabs so the video
+              // shows through, then gone: no hard edge
               colors={[
-                `${theme.darkGreen}8C`,
-                `${theme.darkGreen}33`,
+                theme.darkGreen,
+                `${theme.darkGreen}99`,
                 `${theme.darkGreen}00`,
               ]}
-              locations={[0, 0.45, 1]}
+              locations={[0, 0.5, 1]}
               style={[
                 styles.videoTopFade,
-                { height: tabsHeight + moderateHeightScale(56) },
+                { height: tabsHeight + moderateHeightScale(64) },
               ]}
               pointerEvents="none"
             />

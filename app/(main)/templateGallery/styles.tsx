@@ -67,7 +67,7 @@ export const createStyles = (theme: Theme) =>
       flex: 1,
     },
     // Full-width tabs straight under the header, on its green: the
-    // selected one in bold white with an orange underline
+    // selected one in bold white with a short orange line under it
     segmentBar: {
       backgroundColor: theme.darkGreen,
     },
@@ -84,11 +84,16 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       gap: moderateWidthScale(8),
-      borderBottomWidth: 3,
-      borderBottomColor: "transparent",
     },
-    segmentTabActive: {
-      borderBottomColor: theme.orangeBrown,
+    // Short orange line under the selected label
+    segmentIndicator: {
+      position: "absolute",
+      bottom: moderateHeightScale(4),
+      alignSelf: "center",
+      width: moderateWidthScale(28),
+      height: 3,
+      borderRadius: 2,
+      backgroundColor: theme.orangeBrown,
     },
     segmentText: {
       fontSize: fontSize.size15,
@@ -331,9 +336,10 @@ export const createStyles = (theme: Theme) =>
       left: 0,
       right: 0,
     },
-    // Over the video: the header's green, see-through so the video shows
+    // Over the video: no bar of its own, the header's green fades down
+    // behind the tabs instead
     videoTabsOverlay: {
-      backgroundColor: "rgba(40, 54, 24, 0.55)",
+      backgroundColor: "transparent",
     },
     videoTopFade: {
       position: "absolute",
@@ -417,13 +423,6 @@ export const createStyles = (theme: Theme) =>
     videoSkeleton: {
       justifyContent: "flex-end",
       paddingHorizontal: moderateWidthScale(16),
-    },
-    videoSkeletonCredits: {
-      alignSelf: "center",
-      width: moderateWidthScale(250),
-      height: moderateHeightScale(30),
-      borderRadius: moderateWidthScale(999),
-      marginBottom: moderateHeightScale(8),
     },
     videoSkeletonChips: {
       marginTop: moderateHeightScale(12),

@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -337,9 +343,7 @@ export default function ReelTemplatesScreen() {
 
   // Picked on the template gallery → that was the choice; start at the video
   const fromGallery = !!params.templateId;
-  const [step, setStep] = useState<WizardStep>(
-    fromGallery ? "video" : "style",
-  );
+  const [step, setStep] = useState<WizardStep>(fromGallery ? "video" : "style");
   const [templates, setTemplates] = useState<AutoReelTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [templatesError, setTemplatesError] = useState<string | null>(null);
@@ -445,7 +449,9 @@ export default function ReelTemplatesScreen() {
   const [textErrors, setTextErrors] = useState<Record<string, string>>({});
   const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   /** undefined = not chosen yet, null = "No music" */
-  const [music, setMusic] = useState<AutoReelMusic | null | undefined>(undefined);
+  const [music, setMusic] = useState<AutoReelMusic | null | undefined>(
+    undefined,
+  );
   /** One-video design: set when the editor hands the video back — starts the reel */
   const [autoStartAt, setAutoStartAt] = useState(0);
   const [musicError, setMusicError] = useState<string | null>(null);
@@ -602,7 +608,10 @@ export default function ReelTemplatesScreen() {
     (async () => {
       try {
         setServices(
-          await fetchReelServiceOptions({ userRole, businessId: userBusinessId }),
+          await fetchReelServiceOptions({
+            userRole,
+            businessId: userBusinessId,
+          }),
         );
       } catch (error) {
         Logger.error("Failed to load auto reel services:", error);
@@ -824,7 +833,8 @@ export default function ReelTemplatesScreen() {
       if (durationSeconds == null) {
         // Some Android gallery items report no length — measure it
         const measured = await measureVideoDurationSeconds(item.uri);
-        durationSeconds = measured != null ? Math.max(1, Math.round(measured)) : null;
+        durationSeconds =
+          measured != null ? Math.max(1, Math.round(measured)) : null;
       }
       let thumbnailUri: string | null = null;
       try {
@@ -845,7 +855,10 @@ export default function ReelTemplatesScreen() {
   }, []);
 
   const addPicks = useCallback(
-    (assets: ImagePicker.ImagePickerAsset[], sourceType: MediaUploadSourceType) => {
+    (
+      assets: ImagePicker.ImagePickerAsset[],
+      sourceType: MediaUploadSourceType,
+    ) => {
       const room = MAX_EDITOR_CLIPS - picksRef.current.length;
       const items = assets
         .slice(0, Math.max(0, room))
@@ -984,7 +997,9 @@ export default function ReelTemplatesScreen() {
         return;
       }
       setEditorMusicCredit(
-        result.musicCredit ? { uri: result.uri, credit: result.musicCredit } : null,
+        result.musicCredit
+          ? { uri: result.uri, credit: result.musicCredit }
+          : null,
       );
       void applyEditorResult(result, request.sourceType).then(() =>
         setStep(nextStep),
@@ -992,7 +1007,12 @@ export default function ReelTemplatesScreen() {
       if (result.savedToGallery) {
         showBanner(t("success"), t("editedVideoSaved"), "success", 3000);
       } else if (result.edited) {
-        showBanner(t("autoReelTrimTitle"), t("editedVideoNotSaved"), "warning", 4000);
+        showBanner(
+          t("autoReelTrimTitle"),
+          t("editedVideoNotSaved"),
+          "warning",
+          4000,
+        );
       }
     }, [applyEditorResult, isAutoBuild, minVideoSeconds, showBanner, t]),
   );
@@ -1343,7 +1363,9 @@ export default function ReelTemplatesScreen() {
         fieldError(error, "category_id") ||
         fieldError(error, "service_id") ||
         fieldError(error, "caption") ||
-        (error instanceof VideoTooLargeError ? t("autoReelVideoTooLarge") : null) ||
+        (error instanceof VideoTooLargeError
+          ? t("autoReelVideoTooLarge")
+          : null) ||
         error?.message ||
         t("failedToStartGeneration");
       showBanner(t("error"), message, "error", 4000);
@@ -1450,9 +1472,7 @@ export default function ReelTemplatesScreen() {
       if (mediaError) {
         // Server can't use that upload — drop the id so the next tap uploads
         // the picked file again (or asks for a video if there's no local file)
-        setSourceVideo((prev) =>
-          prev?.local ? { ...prev, id: null } : null,
-        );
+        setSourceVideo((prev) => (prev?.local ? { ...prev, id: null } : null));
       }
       if (templateError) {
         // Admin may have turned it off — refresh the list
@@ -1570,9 +1590,7 @@ export default function ReelTemplatesScreen() {
       if (mediaError) {
         // Server can't use that upload — drop the id so the next tap uploads
         // the picked file again (or asks for a video if there's no local file)
-        setSourceVideo((prev) =>
-          prev?.local ? { ...prev, id: null } : null,
-        );
+        setSourceVideo((prev) => (prev?.local ? { ...prev, id: null } : null));
       }
       if (templateError) {
         // Admin may have turned it off — refresh the list and let them choose
@@ -1630,8 +1648,7 @@ export default function ReelTemplatesScreen() {
     !needsPhotos && picks.length === 0 && !!sourceVideo && !sourceVideo.local;
   // Photo design: style → photos + texts → details; one-video design: style → video
   const stepTotal = isAutoBuild ? 2 : serverOnly || needsPhotos ? 3 : 5;
-  const stepNumber =
-    step === "style" ? 1 : step === "video" ? 2 : stepTotal;
+  const stepNumber = step === "style" ? 1 : step === "video" ? 2 : stepTotal;
 
   /** One step back; false on the first step (the caller leaves). */
   const stepBack = useCallback((): boolean => {
@@ -1677,26 +1694,33 @@ export default function ReelTemplatesScreen() {
       }
       if (guardRef.current.uploading) {
         event.preventDefault();
-        Alert.alert(t("autoReelLeaveUploadTitle"), t("autoReelLeaveUploadMessage"), [
-          { text: t("autoReelKeepUploading"), style: "cancel" },
-          {
-            text: t("autoReelLeave"),
-            style: "destructive",
-            // Really cancel: stop compression / upload, no reel is started
-            onPress: () => {
-              // Upload finished meanwhile: the reel is starting — stay
-              if (!guardRef.current.uploading) return;
-              uploadAbortRef.current?.abort();
-              allowLeaveRef.current = true;
-              navigation.dispatch(event.data.action);
+        Alert.alert(
+          t("autoReelLeaveUploadTitle"),
+          t("autoReelLeaveUploadMessage"),
+          [
+            { text: t("autoReelKeepUploading"), style: "cancel" },
+            {
+              text: t("autoReelLeave"),
+              style: "destructive",
+              // Really cancel: stop compression / upload, no reel is started
+              onPress: () => {
+                // Upload finished meanwhile: the reel is starting — stay
+                if (!guardRef.current.uploading) return;
+                uploadAbortRef.current?.abort();
+                allowLeaveRef.current = true;
+                navigation.dispatch(event.data.action);
+              },
             },
-          },
-        ]);
+          ],
+        );
         return;
       }
       // Only back presses step back — resets (e.g. sign-out) go through
       const type = event?.data?.action?.type;
-      if ((type === "GO_BACK" || type === "POP") && guardRef.current.stepBack()) {
+      if (
+        (type === "GO_BACK" || type === "POP") &&
+        guardRef.current.stepBack()
+      ) {
         event.preventDefault();
       }
     });
@@ -1717,8 +1741,7 @@ export default function ReelTemplatesScreen() {
         description: tpl.description,
         imageUrl: tpl.preview_image_url,
         icon: (tpl.kind === "haircut" ? "content-cut" : "auto-awesome") as
-          | "content-cut"
-          | "auto-awesome",
+          "content-cut" | "auto-awesome",
       })),
     [templates],
   );
@@ -1729,7 +1752,7 @@ export default function ReelTemplatesScreen() {
       sum +
       (p.kind === "image"
         ? IMAGE_CLIP_DEFAULT_MS / 1000
-        : p.durationSeconds ?? 0),
+        : (p.durationSeconds ?? 0)),
     0,
   );
   const picksMaxSeconds = isAutoBuild
@@ -1838,6 +1861,22 @@ export default function ReelTemplatesScreen() {
 
   // ── Steps ─────────────────────────────────────────────────────────
 
+  /** One-video designs: reel credits left this month (nothing while unknown) */
+  const renderCreditsNote = () =>
+    credits ? (
+      <InfoNote
+        icon={noCreditsLeft ? "block" : "toll"}
+        tone={
+          noCreditsLeft ? "error" : credits.remaining <= 2 ? "warm" : "info"
+        }
+        text={
+          noCreditsLeft
+            ? t("autoBuildNoCredits")
+            : t("autoBuildCreditsLeft", { count: credits.remaining })
+        }
+      />
+    ) : null;
+
   const renderStyleStep = () => (
     <>
       <ScrollView
@@ -1852,23 +1891,7 @@ export default function ReelTemplatesScreen() {
         />
         {isAutoBuild ? (
           // One-video designs use reel credits, not the monthly AI-reel limit
-          credits ? (
-            <InfoNote
-              icon={noCreditsLeft ? "block" : "toll"}
-              tone={
-                noCreditsLeft
-                  ? "error"
-                  : credits.remaining <= 2
-                    ? "warm"
-                    : "info"
-              }
-              text={
-                noCreditsLeft
-                  ? t("autoBuildNoCredits")
-                  : t("autoBuildCreditsLeft", { count: credits.remaining })
-              }
-            />
-          ) : null
+          renderCreditsNote()
         ) : reelsRemaining != null ? (
           <QuotaBanner
             remaining={reelsRemaining}
@@ -1973,7 +1996,9 @@ export default function ReelTemplatesScreen() {
                 tone="warm"
                 icon="content-cut"
                 text={t(
-                  picks.length > 1 ? "flowAutoTooLongMany" : "flowAutoTooLongNote",
+                  picks.length > 1
+                    ? "flowAutoTooLongMany"
+                    : "flowAutoTooLongNote",
                   { max: formatVideoDuration(MAX_AUTO_REEL_SOURCE_SECONDS) },
                 )}
               />
@@ -2007,7 +2032,9 @@ export default function ReelTemplatesScreen() {
                     seconds: Math.ceil(minVideoSeconds),
                   })
                 : null,
-              slotNames ? t("designVideoPartsNote", { parts: slotNames }) : null,
+              slotNames
+                ? t("designVideoPartsNote", { parts: slotNames })
+                : null,
             ]
               .filter(Boolean)
               .join(" ")}
@@ -2069,7 +2096,8 @@ export default function ReelTemplatesScreen() {
     const maxLabel = formatVideoDuration(sourceMaxSeconds);
     const minLabel =
       minVideoSeconds != null ? formatVideoDuration(minVideoSeconds) : null;
-    const serverVideo = !!sourceVideo && !sourceVideo.local && picks.length === 0;
+    const serverVideo =
+      !!sourceVideo && !sourceVideo.local && picks.length === 0;
     // Same rounding as the warnings ("0:25 … at least 0:30")
     const serverLength = formatVideoDuration(
       sourceExactSeconds == null
@@ -2091,6 +2119,8 @@ export default function ReelTemplatesScreen() {
             title={t("autoBuildAddTitle")}
             subtitle={t("autoBuildAddSubtitle")}
           />
+          {/* The gallery no longer shows the count; it shows here instead */}
+          {renderCreditsNote()}
           <SourceCardRow>
             <SourceCard
               icon="video-library"
@@ -2348,7 +2378,9 @@ export default function ReelTemplatesScreen() {
                 onChangeText={(v) => {
                   setSlotTexts((prev) => ({
                     ...prev,
-                    [slot.key]: slot.max_length ? v.slice(0, slot.max_length) : v,
+                    [slot.key]: slot.max_length
+                      ? v.slice(0, slot.max_length)
+                      : v,
                   }));
                   if (textErrors[slot.key]) {
                     setTextErrors((prev) => {
@@ -2420,7 +2452,9 @@ export default function ReelTemplatesScreen() {
                       ? t("designPhotosAdded", {
                           count: designMediaSlots.length,
                         })
-                      : formatVideoDuration(sourceVideo?.durationSeconds ?? null),
+                      : formatVideoDuration(
+                          sourceVideo?.durationSeconds ?? null,
+                        ),
                     reelLengthLabel,
                   ]
                     .filter(Boolean)
@@ -2566,8 +2600,7 @@ export default function ReelTemplatesScreen() {
                           : t("flowSelectingHighlightsSub")
                         : t("flowStartingReel"),
                       state: (uploading ? "pending" : "active") as
-                        | "pending"
-                        | "active",
+                        "pending" | "active",
                     },
                   ]),
               {
@@ -2575,11 +2608,12 @@ export default function ReelTemplatesScreen() {
                 title: isAutoBuild
                   ? t("autoBuildStepBuild")
                   : t("flowBuildingReel"),
-                subtitle: needsPhotos && !uploading
-                  ? t("flowStartingReel")
-                  : isAutoBuild
-                    ? t("autoBuildStepBuildSub")
-                    : t("flowBuildingReelSub"),
+                subtitle:
+                  needsPhotos && !uploading
+                    ? t("flowStartingReel")
+                    : isAutoBuild
+                      ? t("autoBuildStepBuildSub")
+                      : t("flowBuildingReelSub"),
                 state: needsPhotos && !uploading ? "active" : "pending",
               },
             ]}
@@ -2648,19 +2682,19 @@ export default function ReelTemplatesScreen() {
         backIcon={step === "style" ? "close" : "back"}
       />
       {step === "style" ? renderStyleStep() : null}
-      {step === "video"
-        ? !selected && loadingTemplates
-          ? (
-            <View style={styles.loading}>
-              <ActivityIndicator size="large" color={theme.buttonBack} />
-            </View>
-          )
-          : needsPhotos
-            ? renderPhotosStep()
-            : isAutoBuild
-              ? renderAutoBuildVideoStep()
-              : renderVideoStep()
-        : null}
+      {step === "video" ? (
+        !selected && loadingTemplates ? (
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color={theme.buttonBack} />
+          </View>
+        ) : needsPhotos ? (
+          renderPhotosStep()
+        ) : isAutoBuild ? (
+          renderAutoBuildVideoStep()
+        ) : (
+          renderVideoStep()
+        )
+      ) : null}
       {step === "details" ? renderDetailsStep() : null}
       {step === "creating" ? renderCreatingStep() : null}
     </View>
