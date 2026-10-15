@@ -2578,6 +2578,5 @@
   "designSlotVideoTooShortHave": "Este video es muy corto. Esta parte necesita al menos {{seconds}} segundos; el tuyo dura {{have}} s.",
   "designSlotVideoLengthUnknown": "No se pudo leer la duración de este video. Prueba con otro.",
   "designSheetFileVideoMinSub": "Un video de {{seconds}} s o más desde tu teléfono",
-  "designMusicPickMin": "Elige una pista · {{seconds}} s+",
-  "flowReadyBadge": "Listo"
+  "designMusicPickMin": "Elige una pista · {{seconds}} s+"
 }

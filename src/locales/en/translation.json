@@ -2634,6 +2634,5 @@
   "designSlotVideoTooShortHave": "This video is too short. This part needs at least {{seconds}} seconds — yours is {{have}} s.",
   "designSlotVideoLengthUnknown": "Couldn't read this video's length. Try another video.",
   "designSheetFileVideoMinSub": "A video of {{seconds}}s or longer from your phone",
-  "designMusicPickMin": "Pick a track · {{seconds}}s+",
-  "flowReadyBadge": "Ready"
+  "designMusicPickMin": "Pick a track · {{seconds}}s+"
 }

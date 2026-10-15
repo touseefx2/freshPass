@@ -174,38 +174,21 @@ function formatClock(seconds: number | null | undefined): string {
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     readyHeader: {
-      alignItems: "center",
-      gap: moderateHeightScale(8),
-    },
-    readyBadge: {
       flexDirection: "row",
       alignItems: "center",
-      gap: moderateWidthScale(6),
-      paddingHorizontal: moderateWidthScale(12),
-      paddingVertical: moderateHeightScale(5),
-      borderRadius: moderateWidthScale(20),
-      backgroundColor: theme.lightGreen07,
-    },
-    readyBadgeText: {
-      fontSize: fontSize.size13,
-      fontFamily: fonts.fontBold,
-      color: theme.darkGreen,
-      fontVariant: ["tabular-nums"],
+      justifyContent: "center",
+      gap: moderateWidthScale(8),
     },
     readyTitle: {
-      fontSize: fontSize.size26,
+      flexShrink: 1,
+      fontSize: fontSize.size20,
       fontFamily: fonts.fontBold,
       color: theme.darkGreen,
-      lineHeight: fontSize.size32,
-      textAlign: "center",
     },
-    readySubtitle: {
-      fontSize: fontSize.size15,
-      fontFamily: fonts.fontRegular,
+    readyLength: {
+      fontFamily: fonts.fontMedium,
       color: theme.lightGreen,
-      lineHeight: fontSize.size22,
-      textAlign: "center",
-      paddingHorizontal: moderateWidthScale(12),
+      fontVariant: ["tabular-nums"],
     },
     toolRow: {
       flexDirection: "row",
@@ -909,22 +892,20 @@ export default function AutoReelScreen() {
         ).padStart(2, "0")}`
       : null;
 
-  const renderReadyHeader = (subtitle: string | null) => (
+  // One line: ✓ Your reel is ready · 0:30
+  const renderReadyHeader = () => (
     <View style={styles.readyHeader}>
-      <View style={styles.readyBadge}>
-        <MaterialIcons
-          name="check-circle"
-          size={moderateWidthScale(16)}
-          color={theme.buttonBack}
-        />
-        <Text style={styles.readyBadgeText}>
-          {[t("flowReadyBadge"), readyLength].filter(Boolean).join(" · ")}
-        </Text>
-      </View>
-      <Text style={styles.readyTitle} accessibilityRole="header">
+      <MaterialIcons
+        name="check-circle"
+        size={moderateWidthScale(22)}
+        color={theme.buttonBack}
+      />
+      <Text style={styles.readyTitle} accessibilityRole="header" numberOfLines={1}>
         {t("flowReadyTitle")}
+        {readyLength ? (
+          <Text style={styles.readyLength}>{` · ${readyLength}`}</Text>
+        ) : null}
       </Text>
-      {subtitle ? <Text style={styles.readySubtitle}>{subtitle}</Text> : null}
     </View>
   );
 
@@ -1352,7 +1333,7 @@ export default function AutoReelScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {renderReadyHeader(t("flowReadySubtitle"))}
+          {renderReadyHeader()}
           {videoUrl ? (
             <ReelPlayer
               uri={videoUrl}
@@ -1430,7 +1411,7 @@ export default function AutoReelScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {renderReadyHeader(remakeOpen ? t("autoBuildReadySubtitle") : null)}
+          {renderReadyHeader()}
           {videoUrl ? (
             <ReelPlayer
               uri={videoUrl}
