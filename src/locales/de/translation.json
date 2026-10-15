@@ -2577,5 +2577,6 @@
   "designCutFailed": "Das Video konnte nicht geschnitten werden. Versuch es erneut oder wähle ein anderes.",
   "designSlotVideoTooShortHave": "Dieses Video ist zu kurz. Dieser Teil braucht mindestens {{seconds}} Sekunden – deins hat {{have}} s.",
   "designSlotVideoLengthUnknown": "Die Länge dieses Videos konnte nicht gelesen werden. Versuch ein anderes Video.",
-  "designSheetFileVideoMinSub": "Ein Video ab {{seconds}} s von deinem Handy"
+  "designSheetFileVideoMinSub": "Ein Video ab {{seconds}} s von deinem Handy",
+  "designMusicPickMin": "Track wählen · {{seconds}} s+"
 }

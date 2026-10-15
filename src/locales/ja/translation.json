@@ -2577,5 +2577,6 @@
   "designCutFailed": "この動画を切り取れませんでした。もう一度試すか、別の動画を選んでください。",
   "designSlotVideoTooShortHave": "この動画は短すぎます。このパートには{{seconds}}秒以上必要です（この動画は{{have}}秒）。",
   "designSlotVideoLengthUnknown": "この動画の長さを読み取れませんでした。別の動画を試してください。",
-  "designSheetFileVideoMinSub": "スマホから{{seconds}}秒以上の動画"
+  "designSheetFileVideoMinSub": "スマホから{{seconds}}秒以上の動画",
+  "designMusicPickMin": "曲を選ぶ · {{seconds}}秒以上"
 }

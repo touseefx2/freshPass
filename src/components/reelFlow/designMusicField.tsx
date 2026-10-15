@@ -28,6 +28,7 @@ import Logger from "@/src/services/logger";
  * "No music" is a small checkbox at the right of the section title. Checking
  * it disables "Pick a track"; unchecking goes back to not chosen.
  * The server adds the music credit to the caption — the app doesn't.
+ * `compact`: one card (label, choice, "No music" chip) for busy screens.
  */
 
 export function trackToAutoReelMusic(track: LibraryTrack): AutoReelMusic {
@@ -48,6 +49,8 @@ type Props = {
   lengthSeconds?: number | null;
   error?: string | null;
   disabled?: boolean;
+  /** One-card layout without the heading row and hint */
+  compact?: boolean;
 };
 
 const createStyles = (theme: Theme) =>
@@ -91,6 +94,72 @@ const createStyles = (theme: Theme) =>
       fontFamily: fonts.fontMedium,
       color: theme.red,
     },
+    // ── compact ── (same card as the flow's OptionRow)
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(12),
+      minHeight: moderateHeightScale(68),
+      paddingVertical: moderateHeightScale(12),
+      paddingLeft: moderateWidthScale(14),
+      paddingRight: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(20),
+      borderWidth: 1,
+      borderColor: theme.borderLight,
+      backgroundColor: theme.white,
+      shadowColor: theme.darkGreen,
+      shadowOffset: { width: 0, height: moderateHeightScale(4) },
+      shadowOpacity: 0.08,
+      shadowRadius: moderateWidthScale(10),
+      elevation: 2,
+    },
+    cardError: { borderColor: theme.lightRedBorder },
+    cardIcon: {
+      width: moderateWidthScale(44),
+      height: moderateWidthScale(44),
+      borderRadius: moderateWidthScale(14),
+      backgroundColor: theme.orangeBrown01,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cardIconOff: { backgroundColor: theme.lightGreen07 },
+    cardTexts: { flex: 1, minWidth: 0, gap: moderateHeightScale(2) },
+    cardTitle: {
+      fontSize: fontSize.size17,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    cardValue: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
+    cardValuePicked: {
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(5),
+      minHeight: moderateHeightScale(36),
+      paddingLeft: moderateWidthScale(8),
+      paddingRight: moderateWidthScale(12),
+      borderRadius: moderateWidthScale(18),
+      backgroundColor: theme.lightGreen07,
+    },
+    chipOn: { backgroundColor: theme.darkGreen },
+    chipText: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontMedium,
+      color: theme.darkGreen,
+    },
+    chipTextOn: { color: theme.white, fontFamily: fonts.fontBold },
+    note: {
+      fontSize: fontSize.size12,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+    },
   });
 
 export default function DesignMusicField({
@@ -99,6 +168,7 @@ export default function DesignMusicField({
   lengthSeconds,
   error,
   disabled = false,
+  compact = false,
 }: Props) {
   const { t } = useTranslation();
   const { colors } = useTheme();
@@ -188,6 +258,114 @@ export default function DesignMusicField({
     ? t("designMusicMinLength", { seconds: Math.ceil(lengthSeconds) })
     : null;
 
+  const playButton = value ? (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={togglePreview}
+      disabled={disabled || previewLoading}
+      hitSlop={6}
+      style={styles.playButton}
+      accessibilityRole="button"
+      accessibilityLabel={previewPlaying ? t("pause") : t("play")}
+    >
+      {previewLoading ? (
+        <ActivityIndicator size="small" color={theme.white} />
+      ) : (
+        <MaterialIcons
+          name={previewPlaying ? "pause" : "play-arrow"}
+          size={moderateWidthScale(26)}
+          color={theme.white}
+        />
+      )}
+    </TouchableOpacity>
+  ) : undefined;
+
+  const librarySheet = (
+    <MusicLibrarySheet
+      visible={sheetOpen}
+      onClose={() => setSheetOpen(false)}
+      onSelect={(track) => {
+        onChange(trackToAutoReelMusic(track));
+        setSheetOpen(false);
+      }}
+      tone="light"
+      minDurationMs={lengthSeconds ? Math.ceil(lengthSeconds) * 1000 : null}
+    />
+  );
+
+  if (compact) {
+    const valueText = value
+      ? [value.title, value.artist].filter(Boolean).join(" · ")
+      : noMusic
+        ? t("designNoMusicSub")
+        : lengthSeconds
+          ? t("designMusicPickMin", { seconds: Math.ceil(lengthSeconds) })
+          : t("designMusicPickTrack");
+    return (
+      <View style={styles.wrap}>
+        {/* Card opens the library (also from No music — picking a track replaces it) */}
+        <TouchableOpacity
+          activeOpacity={0.75}
+          onPress={() => setSheetOpen(true)}
+          disabled={disabled}
+          style={[styles.card, !!error && styles.cardError, disabled && styles.disabled]}
+          accessibilityRole="button"
+          accessibilityLabel={`${t("designMusicTitle")}, ${valueText}`}
+          accessibilityHint={t("designMusicPickTrack")}
+        >
+          {playButton ?? (
+            <View style={[styles.cardIcon, noMusic && styles.cardIconOff]}>
+              <MaterialIcons
+                name={noMusic ? "music-off" : "library-music"}
+                size={moderateWidthScale(24)}
+                color={noMusic ? theme.lightGreen : theme.selectCard}
+              />
+            </View>
+          )}
+          <View style={styles.cardTexts}>
+            <Text style={styles.cardTitle}>
+              {t("designMusicTitle")}
+              <Text style={{ color: theme.selectCard }}> *</Text>
+            </Text>
+            <Text
+              style={[styles.cardValue, !!value && styles.cardValuePicked]}
+              numberOfLines={1}
+            >
+              {valueText}
+            </Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onChange(noMusic ? undefined : null)}
+            disabled={disabled}
+            hitSlop={6}
+            style={[styles.chip, noMusic && styles.chipOn]}
+            accessibilityRole="checkbox"
+            accessibilityLabel={`${t("templateGalleryNoMusic")}, ${t("designNoMusicSub")}`}
+            accessibilityState={{ checked: noMusic, disabled }}
+          >
+            <MaterialIcons
+              name={noMusic ? "check-box" : "check-box-outline-blank"}
+              size={moderateWidthScale(18)}
+              color={noMusic ? theme.white : theme.darkGreen}
+            />
+            <Text style={[styles.chipText, noMusic && styles.chipTextOn]}>
+              {t("templateGalleryNoMusic")}
+            </Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+        {error ? (
+          <Text style={styles.error} accessibilityRole="alert">
+            {error}
+          </Text>
+        ) : value ? (
+          <Text style={styles.note}>{t("designMusicCreditNote")}</Text>
+        ) : null}
+        {librarySheet}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrap}>
       <View style={styles.header}>
@@ -213,29 +391,7 @@ export default function DesignMusicField({
       <Text style={styles.hint}>{t("designMusicHint")}</Text>
       <OptionRow
         icon="library-music"
-        iconNode={
-          value ? (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={togglePreview}
-              disabled={disabled || previewLoading}
-              hitSlop={6}
-              style={styles.playButton}
-              accessibilityRole="button"
-              accessibilityLabel={previewPlaying ? t("pause") : t("play")}
-            >
-              {previewLoading ? (
-                <ActivityIndicator size="small" color={theme.white} />
-              ) : (
-                <MaterialIcons
-                  name={previewPlaying ? "pause" : "play-arrow"}
-                  size={moderateWidthScale(26)}
-                  color={theme.white}
-                />
-              )}
-            </TouchableOpacity>
-          ) : undefined
-        }
+        iconNode={playButton}
         title={value ? value.title : t("designMusicPickTrack")}
         subtitle={value ? value.artist : lengthLabel}
         done={!!value}
@@ -248,16 +404,7 @@ export default function DesignMusicField({
           {error}
         </Text>
       ) : null}
-      <MusicLibrarySheet
-        visible={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        onSelect={(track) => {
-          onChange(trackToAutoReelMusic(track));
-          setSheetOpen(false);
-        }}
-        tone="light"
-        minDurationMs={lengthSeconds ? Math.ceil(lengthSeconds) * 1000 : null}
-      />
+      {librarySheet}
     </View>
   );
 }

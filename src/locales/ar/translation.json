@@ -2577,5 +2577,6 @@
   "designCutFailed": "تعذّر قص هذا الفيديو. حاول مرة أخرى أو اختر فيديو آخر.",
   "designSlotVideoTooShortHave": "هذا الفيديو قصير جدًا. يحتاج هذا الجزء إلى {{seconds}} ثوانٍ على الأقل — مدة الفيديو {{have}} ث.",
   "designSlotVideoLengthUnknown": "تعذّرت قراءة مدة هذا الفيديو. جرّب فيديو آخر.",
-  "designSheetFileVideoMinSub": "فيديو مدته {{seconds}} ث أو أكثر من هاتفك"
+  "designSheetFileVideoMinSub": "فيديو مدته {{seconds}} ث أو أكثر من هاتفك",
+  "designMusicPickMin": "اختر مقطعًا · {{seconds}} ث+"
 }

@@ -1222,6 +1222,7 @@ export default function DesignReview({
               lengthSeconds={reelSeconds}
               error={musicError}
               disabled={disabled}
+              compact
             />
           </>
         ) : null}
