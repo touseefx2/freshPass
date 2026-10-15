@@ -232,11 +232,14 @@ function PreviewVideo({
   playing,
   muted,
   onFirstFrame,
+  onPlayingChange,
 }: {
   uri: string;
   playing: boolean;
   muted: boolean;
   onFirstFrame: () => void;
+  /** The video really playing (not buffering / paused), for a song to follow */
+  onPlayingChange?: (isPlaying: boolean) => void;
 }) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = true;
@@ -246,6 +249,14 @@ function PreviewVideo({
   useEffect(() => {
     player.muted = muted;
   }, [player, muted]);
+
+  useEffect(() => {
+    if (!onPlayingChange) return;
+    const sub = player.addListener("playingChange", ({ isPlaying }) =>
+      onPlayingChange(isPlaying),
+    );
+    return () => sub.remove();
+  }, [player, onPlayingChange]);
 
   useEffect(() => {
     if (!playing) {
@@ -800,10 +811,11 @@ function TemplateCover({
 }
 
 /**
- * The template's own song under its Video Reel sample: loops while `playing`,
+ * The template's own song under its Video Reel sample: a fresh copy per
+ * template (so it starts from 0:00 with its video), loops while `playing`,
  * pauses with it and stops when the cover is left (unmount / new url).
- * Returns true when the song couldn't be loaded, so the video's own sound
- * plays instead of silence.
+ * Returns true only when the song couldn't be loaded, so the video's own
+ * sound plays instead of silence; a failed start is just tried again.
  */
 function useTemplateMusic(url: string | null, playing: boolean): boolean {
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -816,26 +828,32 @@ function useTemplateMusic(url: string | null, playing: boolean): boolean {
     if (!url) return;
     let alive = true;
     (async () => {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+      }).catch(() => {});
+      let sound: Audio.Sound;
       try {
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-        });
-        const { sound } = await Audio.Sound.createAsync(
+        ({ sound } = await Audio.Sound.createAsync(
           { uri: url },
           { isLooping: true, shouldPlay: false },
-        );
-        if (!alive) {
-          await sound.unloadAsync();
-          return;
-        }
-        soundRef.current = sound;
-        // The video usually starts while the song is still downloading:
-        // catch up with it now that the song is ready
-        if (playingRef.current) await sound.playAsync();
+        ));
       } catch (error) {
-        Logger.warn("Template music preview failed:", error);
+        Logger.warn("Template music could not be loaded:", error);
         if (alive) setFailed(true);
+        return;
+      }
+      if (!alive) {
+        await sound.unloadAsync().catch(() => {});
+        return;
+      }
+      soundRef.current = sound;
+      // The video usually starts while the song is still downloading:
+      // catch up with it now that the song is ready
+      if (playingRef.current) {
+        await sound.playAsync().catch((error) => {
+          Logger.warn("Template music could not start:", error);
+        });
       }
     })();
     return () => {
@@ -932,10 +950,16 @@ function VideoTemplateCover({
     if (!videoOn) setPaused(false);
   }, [videoOn]);
   const playing = videoOn && !paused;
+  // The video really playing: the song starts / stops with it (also while
+  // it buffers), not with its first frame
+  const [videoPlaying, setVideoPlaying] = useState(false);
+  useEffect(() => {
+    if (!videoOn) setVideoPlaying(false);
+  }, [videoOn]);
   // The template's song starts with the first frame, in place of the video's sound
   const musicFailed = useTemplateMusic(
     videoOn ? item.musicUrl : null,
-    playing && frameShown,
+    playing && videoPlaying,
   );
 
   const motion = useAnimatedStyle(() => {
@@ -1075,6 +1099,7 @@ function VideoTemplateCover({
             // The template's song plays instead (unless it failed to load)
             muted={!!item.musicUrl && !musicFailed}
             onFirstFrame={showFrame}
+            onPlayingChange={setVideoPlaying}
           />
         ) : null}
 
