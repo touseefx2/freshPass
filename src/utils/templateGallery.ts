@@ -22,6 +22,13 @@ import type {
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
+/** Video Reel sample shown when a template's `preview_video_url` is empty */
+const FALLBACK_VIDEO_PREVIEW_URL =
+  "https://freshpass-media.nyc3.cdn.digitaloceanspaces.com/media/videos/WhatsApp%20Video%202026-10-15%20at%2016.48.53.mp4";
+
+const videoPreviewUrl = (url?: string | null) =>
+  url?.trim() || FALLBACK_VIDEO_PREVIEW_URL;
+
 const TEXT_FIELD_LABELS: Record<string, string> = {
   business_name: "businessNameField",
   tagline: "taglineField",
@@ -285,7 +292,7 @@ export function autoReelGalleryItem(
       name: tpl.name,
       description: tpl.description?.trim() ?? "",
       coverUrl: tpl.preview_image_url || null,
-      previewVideoUrl: tpl.preview_video_url || null,
+      previewVideoUrl: videoPreviewUrl(tpl.preview_video_url),
       icon: photos
         ? "photo-library"
         : tpl.kind === "haircut"
@@ -317,7 +324,7 @@ export function autoReelGalleryItem(
     name: tpl.name,
     description: tpl.description?.trim() ?? "",
     coverUrl: tpl.preview_image_url || null,
-    previewVideoUrl: tpl.preview_video_url || null,
+    previewVideoUrl: videoPreviewUrl(tpl.preview_video_url),
     icon: tpl.kind === "haircut" ? "content-cut" : "movie-filter",
     // Short forms of the step 1 requirements
     features: [

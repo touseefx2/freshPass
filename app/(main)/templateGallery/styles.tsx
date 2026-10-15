@@ -23,6 +23,27 @@ export const SIDE_OPACITY = 0.55;
 export const ART_CENTER = 0.81;
 export const MEDALLION_RATIO = 0.38;
 
+/**
+ * Video Reel cover, CapCut style: a tall card up to 9:16 (never squatter than
+ * VIDEO_CARD_MIN_RATIO), sized to the space between the heading and the footer
+ */
+export const VIDEO_CARD_MAX_RATIO = 16 / 9;
+export const VIDEO_CARD_MIN_RATIO = 1.25;
+export const VIDEO_HEADLINE_WIDTH = 0.86;
+/** Brand art medallion centre (share of the cover height) and size (of its width) */
+export const VIDEO_ART_CENTER = 0.4;
+export const VIDEO_MEDALLION_RATIO = 0.34;
+
+/** Space around the covers, top to bottom: carousel margin + padding, page padding */
+const CAROUSEL_MARGIN = moderateHeightScale(6);
+const CAROUSEL_PAD_TOP = moderateHeightScale(12);
+const CAROUSEL_PAD_BOTTOM = moderateHeightScale(24);
+const PAGE_PAD_BOTTOM = moderateHeightScale(24);
+/** Video tab: the cover runs down to the dots, with room for its shadow only */
+const VIDEO_CAROUSEL_PAD_BOTTOM = moderateHeightScale(14);
+export const VIDEO_CAROUSEL_SPACE =
+  CAROUSEL_MARGIN + CAROUSEL_PAD_TOP + VIDEO_CAROUSEL_PAD_BOTTOM;
+
 /** Same colors as the app's other skeletons */
 export const SKELETON_BG = "#E8DFB8";
 export const SKELETON_HIGHLIGHT = "#DCCF9E";
@@ -40,7 +61,7 @@ export const createStyles = (theme: Theme) =>
     },
     scrollContent: {
       flexGrow: 1,
-      paddingBottom: moderateHeightScale(24),
+      paddingBottom: PAGE_PAD_BOTTOM,
     },
     // Swipe target: fills the space under the tabs even when content is short
     swipeArea: {
@@ -129,12 +150,12 @@ export const createStyles = (theme: Theme) =>
 
     // ── Cover carousel ──────────────────────────────────────────────
     carousel: {
-      marginTop: moderateHeightScale(6),
+      marginTop: CAROUSEL_MARGIN,
     },
     // Room above / below so the list doesn't clip the cover shadow
     carouselContent: {
-      paddingTop: moderateHeightScale(12),
-      paddingBottom: moderateHeightScale(24),
+      paddingTop: CAROUSEL_PAD_TOP,
+      paddingBottom: CAROUSEL_PAD_BOTTOM,
     },
     // Rows that slide as one: covers (peek spacing) and info pages (full width)
     coverRow: {
@@ -293,6 +314,55 @@ export const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: DEEP_SCRIM,
+    },
+
+    // ── Video Reel cover (CapCut style) ─────────────────────────────
+    // No drop shadow: it was cut off in a grey band just above the dots
+    videoCardFlat: {
+      shadowOpacity: 0,
+      elevation: 0,
+    },
+    videoCarouselContent: {
+      paddingBottom: VIDEO_CAROUSEL_PAD_BOTTOM,
+    },
+    videoScrollContent: {
+      paddingBottom: 0,
+    },
+    videoCardInner: {
+      paddingBottom: moderateWidthScale(20),
+    },
+    // Dark fades over the sample: behind the chip / sound button, and under
+    // the title, facts and song at the bottom
+    videoTopFade: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: "22%",
+    },
+    videoBottomFade: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: "55%",
+    },
+    videoTitleBlock: {
+      maxWidth: `${VIDEO_HEADLINE_WIDTH * 100}%`,
+    },
+    // No expand button on this cover, so the facts can run to the edge
+    videoMeta: {
+      marginRight: 0,
+    },
+    // Brand art medallion, centred on the rings (VIDEO_ART_CENTER of the height)
+    videoArtCentre: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: `${VIDEO_ART_CENTER * 200}%`,
+      alignItems: "center",
+      justifyContent: "center",
     },
 
     // ── Info row + name card (cross-fade per template) ──────────────

@@ -69,7 +69,6 @@ import {
 import type { MediaUploadSourceType } from "@/src/types/media";
 import { ensureLocalMediaFileUri } from "@/src/utils/localMediaUri";
 import { MIN_REEL_SECONDS, REEL_LIMIT_FALLBACK } from "@/src/utils/reelLimits";
-import ClipTimeline from "@/src/components/videoEditor/clipTimeline";
 import StickerLayer, {
   type StickerTransformPatch,
 } from "@/src/components/videoEditor/stickerLayer";
@@ -144,6 +143,7 @@ import FlowHeader from "@/src/components/reelFlow/flowHeader";
 import FlowFooter from "@/src/components/reelFlow/flowFooter";
 import ExportOverlay from "@/src/components/reelFlow/exportOverlay";
 import StudioTrimPanel from "@/src/components/reelFlow/studioTrimPanel";
+import ReelStrip from "@/src/components/reelFlow/reelStrip";
 import StudioPublishStep, {
   type StudioVideo,
 } from "@/src/components/reelFlow/studioPublishStep";
@@ -2697,26 +2697,6 @@ export default function ReelStudioScreen() {
     [pushHistory],
   );
 
-  /** Drag-to-reorder result from the clips row. */
-  const reorderClips = useCallback(
-    (orderedIds: string[]) => {
-      const list = clipsRef.current;
-      const byId = new Map(list.map((c) => [c.id, c]));
-      const next = orderedIds
-        .map((id) => byId.get(id))
-        .filter((c): c is EditorClip => !!c);
-      if (
-        next.length !== list.length ||
-        next.every((c, i) => c.id === list[i].id)
-      ) {
-        return;
-      }
-      pushHistory();
-      clipsRef.current = next;
-      setClips(next);
-    },
-    [pushHistory],
-  );
 
   /** "Add clip" → sheet (gallery / record / photo). */
   const openAddClipChooser = useCallback(() => {
@@ -3784,27 +3764,21 @@ export default function ReelStudioScreen() {
     if (!editingClip) return null;
     return (
       <View style={styles.trimArea}>
-        {clips.length > 1 ? (
-          <ClipTimeline
-            tone="light"
-            title={null}
-            hint={null}
-            selectedId={editingClip.id}
-            clips={clips}
-            thumbs={thumbs}
-            totalMs={totalMs}
-            maxMs={maxClipMs}
-            canAdd={clips.length < MAX_EDITOR_CLIPS}
-            adding={addingClips}
-            disabled={busy}
-            formatMs={formatMs}
-            onOpen={setEditingClipId}
-            onAdd={openAddClipChooser}
-            onRemove={(id) => removeClip(id)}
-            onMove={moveClip}
-            onReorder={reorderClips}
-          />
-        ) : null}
+        {/* Every clip in one strip with the total and "+" */}
+        <ReelStrip
+          clips={clips}
+          thumbs={thumbs}
+          totalMs={totalMs}
+          minMs={Math.round(minReelSeconds * 1000)}
+          maxMs={maxClipMs}
+          selectedId={editingClip.id}
+          canAdd={clips.length < MAX_EDITOR_CLIPS}
+          adding={addingClips}
+          disabled={busy}
+          onSelect={setEditingClipId}
+          onAdd={openAddClipChooser}
+          onMove={(direction) => moveClip(editingClip.id, direction)}
+        />
         <StudioTrimPanel
           compact={compact}
           clip={editingClip}
@@ -3817,8 +3791,11 @@ export default function ReelStudioScreen() {
           multi={clips.length > 1}
           canAddClip={clips.length < MAX_EDITOR_CLIPS}
           addingClip={addingClips}
-          // Trim only (AI auto reel source): cut / split and add clips
-          onlyTools={trimOnly ? ["split", "add"] : null}
+          // The trimmer + Split / Mute / Remove (the strip above adds clips);
+          // no Mute for an AI auto reel (its clips are always silent)
+          simple
+          simpleMute={!trimOnly}
+          onRemoveClip={() => removeClip(editingClip.id)}
           onSplit={() => splitSelectedClip(editingClip.id)}
           onReset={() => resetClip(editingClip.id)}
           onToggleMute={() => toggleClipMuted(editingClip.id)}
@@ -4461,7 +4438,11 @@ export default function ReelStudioScreen() {
 
   const renderEditStep = () => {
     const isTrim = step === "trim";
-    const title = isTrim ? t("flowTrimTitle") : t("flowStyleTitle");
+    const title = isTrim
+      ? trimOnly
+        ? t("autoBuildCutTitle")
+        : t("flowTrimTitle")
+      : t("flowStyleTitle");
     const subtitle = isTrim
       ? trimOnly && templateMinSeconds
         ? // AI auto reel: the reel's length is the shortest it may be

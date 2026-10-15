@@ -53,6 +53,15 @@ type Props = {
   compact?: boolean;
   /** Only these tool buttons (e.g. ["split"] for a plain trim); all when unset */
   onlyTools?: string[] | null;
+  /**
+   * Just the trimmer and one line ("Keep 0:15 – 0:17") — no Start / End
+   * boxes, no tools (the AI auto reel strip shows the total and "+").
+   */
+  simple?: boolean;
+  /** Simple mode: "Remove clip" next to Split (shown when there are several) */
+  onRemoveClip?: (() => void) | null;
+  /** Simple mode: also a Mute button (not for an AI auto reel — always silent) */
+  simpleMute?: boolean;
   onSplit: () => void;
   onReset: () => void;
   onToggleMute: () => void;
@@ -175,6 +184,51 @@ const createStyles = (theme: Theme, compact: boolean) =>
       color: theme.darkGreen,
     },
     toolLabelActive: { color: theme.orangeBrownText },
+    // Simple mode: Split / Remove as one row of small buttons
+    simpleActions: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: moderateWidthScale(10),
+    },
+    simpleAction: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: moderateWidthScale(6),
+      minHeight: 44,
+      paddingHorizontal: moderateWidthScale(16),
+      borderRadius: moderateWidthScale(22),
+      borderWidth: 1.5,
+      borderColor: theme.borderNormal,
+      backgroundColor: theme.white,
+    },
+    simpleActionText: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+    },
+    simpleActionDanger: { color: theme.red },
+    simpleLines: { alignItems: "center", gap: moderateHeightScale(2) },
+    simpleLine: {
+      fontSize: fontSize.size15,
+      fontFamily: fonts.fontBold,
+      color: theme.darkGreen,
+      textAlign: "center",
+      fontVariant: ["tabular-nums"],
+    },
+    simpleTotal: {
+      fontSize: fontSize.size14,
+      fontFamily: fonts.fontMedium,
+      color: theme.lightGreen,
+      textAlign: "center",
+      fontVariant: ["tabular-nums"],
+    },
+    simpleHint: {
+      fontSize: fontSize.size13,
+      fontFamily: fonts.fontRegular,
+      color: theme.lightGreen,
+      textAlign: "center",
+    },
     photoPresets: {
       flexDirection: "row",
       gap: moderateWidthScale(8),
@@ -220,6 +274,9 @@ export default function StudioTrimPanel({
   addingClip,
   compact = false,
   onlyTools = null,
+  simple = false,
+  onRemoveClip = null,
+  simpleMute = false,
   onSplit,
   onReset,
   onToggleMute,
@@ -429,6 +486,113 @@ export default function StudioTrimPanel({
         />
       )}
 
+      {simple ? (
+        <>
+          {/* What this clip keeps, then all clips together vs the limits */}
+          <View style={styles.simpleLines} accessibilityLiveRegion="polite">
+            <Text style={styles.simpleLine}>
+              {isPhoto
+                ? t("photoClipHint")
+                : t(multi ? "flowTrimClipLine" : "flowTrimVideoLine", {
+                    length: formatVideoDuration(lengthMs / 1000),
+                    start: formatVideoDuration(viewClip.trimStartMs / 1000),
+                    end: formatVideoDuration(viewClip.trimEndMs / 1000),
+                  })}
+            </Text>
+            <Text style={[styles.simpleTotal, overLimit && styles.hintOver]}>
+              {t(multi ? "flowTrimTotalLine" : "flowTrimTotalLineOne", {
+                total: formatVideoDuration(reelTotalMs / 1000),
+              })}
+              {minLabel
+                ? t("flowTrimNeedsRange", {
+                    min: minLabel,
+                    max: formatVideoDuration(maxMs / 1000),
+                  })
+                : t("flowTrimNeedsMax", { max: formatVideoDuration(maxMs / 1000) })}
+            </Text>
+          </View>
+          <View style={styles.simpleActions}>
+            {/* Split where the white line is → two boxes in the strip */}
+            {!isPhoto ? (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={onSplit}
+              disabled={disabled || !canSplit}
+              style={[
+                styles.simpleAction,
+                (disabled || !canSplit) && styles.toolDisabled,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("flowSplitHere")}
+              accessibilityHint={t("clipSplitToolHint")}
+              accessibilityState={{ disabled: disabled || !canSplit }}
+            >
+              <MaterialIcons
+                name="content-cut"
+                size={moderateWidthScale(18)}
+                color={theme.darkGreen}
+              />
+              <Text style={styles.simpleActionText}>{t("flowSplitHere")}</Text>
+            </TouchableOpacity>
+            ) : null}
+            {simpleMute && !isPhoto ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={onToggleMute}
+                disabled={disabled}
+                style={[
+                  styles.simpleAction,
+                  clip.muted && styles.toolActive,
+                  disabled && styles.toolDisabled,
+                ]}
+                accessibilityRole="switch"
+                accessibilityLabel={t("muteClip")}
+                accessibilityState={{ checked: !!clip.muted, disabled }}
+              >
+                <MaterialIcons
+                  name={clip.muted ? "volume-off" : "volume-up"}
+                  size={moderateWidthScale(18)}
+                  color={clip.muted ? theme.selectCard : theme.darkGreen}
+                />
+                <Text
+                  style={[
+                    styles.simpleActionText,
+                    clip.muted && styles.toolLabelActive,
+                  ]}
+                >
+                  {clip.muted ? t("clipMuted") : t("muteClip")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            {onRemoveClip && multi ? (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={onRemoveClip}
+                disabled={disabled}
+                style={[styles.simpleAction, disabled && styles.toolDisabled]}
+                accessibilityRole="button"
+                accessibilityLabel={t("flowRemoveClip")}
+                accessibilityState={{ disabled }}
+              >
+                <MaterialIcons
+                  name="delete-outline"
+                  size={moderateWidthScale(18)}
+                  color={theme.red}
+                />
+                <Text style={[styles.simpleActionText, styles.simpleActionDanger]}>
+                  {t("flowRemoveClip")}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {/* Why Split is off: the white line sits on the clip's edge */}
+          {!isPhoto && !canSplit && !disabled ? (
+            <Text style={styles.simpleHint}>{t("flowSplitHint")}</Text>
+          ) : null}
+        </>
+      ) : null}
+
+      {simple ? null : (
       <View style={styles.timeRow}>
         {!isPhoto ? (
           <View style={styles.timeCol}>
@@ -475,8 +639,10 @@ export default function StudioTrimPanel({
         ) : null}
       </View>
 
+      )}
+
       {/* Short screens keep only the "too long" warning */}
-      {!compact || overLimit ? (
+      {!simple && (!compact || overLimit) ? (
         <Text
           style={[styles.hint, overLimit && styles.hintOver]}
           accessibilityLiveRegion="polite"
@@ -495,6 +661,7 @@ export default function StudioTrimPanel({
         </Text>
       ) : null}
 
+      {simple ? null : (
       <View style={styles.tools}>
         {tools.map((tool) => {
           const enabled = tool.enabled && !disabled;
@@ -532,6 +699,7 @@ export default function StudioTrimPanel({
           );
         })}
       </View>
+      )}
     </View>
   );
 }

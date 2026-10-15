@@ -81,6 +81,12 @@ import {
   SIDE_SCALE,
   SKELETON_BG,
   SKELETON_HIGHLIGHT,
+  VIDEO_CAROUSEL_SPACE,
+  VIDEO_ART_CENTER,
+  VIDEO_CARD_MAX_RATIO,
+  VIDEO_CARD_MIN_RATIO,
+  VIDEO_HEADLINE_WIDTH,
+  VIDEO_MEDALLION_RATIO,
   createStyles,
 } from "./styles";
 
@@ -120,7 +126,10 @@ const KINDS: {
   },
 ];
 
-/** Rings around the cover medallion: radius (share of cover height) + opacity */
+/**
+ * Rings around the cover medallion: radius (share of cover height; of its
+ * width on a Video Reel cover) + opacity
+ */
 const RINGS = [
   { r: 0.29, opacity: 0.16 },
   { r: 0.43, opacity: 0.1 },
@@ -151,7 +160,11 @@ function coverTitleSize(words: string[], maxWidth: number): number {
   const longest = Math.max(1, ...words.map((w) => w.length));
   const total = words.join(" ").length;
   const base =
-    total > 16 ? fontSize.size24 : total > 10 ? fontSize.size28 : fontSize.size34;
+    total > 16
+      ? fontSize.size24
+      : total > 10
+        ? fontSize.size28
+        : fontSize.size34;
   return Math.floor(Math.min(base, maxWidth / (longest * 0.68)));
 }
 
@@ -334,15 +347,19 @@ function CoverArt({
   width,
   height,
   theme,
+  portrait = false,
 }: {
   id: string;
   width: number;
   height: number;
   theme: Theme;
+  /** Tall Video Reel cover: glow and rings centred, sized by the width */
+  portrait?: boolean;
 }) {
-  const cx = width * ART_CENTER;
-  const cy = height / 2;
-  const glowR = height * 0.62;
+  const cx = portrait ? width / 2 : width * ART_CENTER;
+  const cy = portrait ? height * VIDEO_ART_CENTER : height / 2;
+  const base = portrait ? width : height;
+  const glowR = base * 0.62;
   return (
     <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
       <Defs>
@@ -380,7 +397,7 @@ function CoverArt({
           key={ring.r}
           cx={cx}
           cy={cy}
-          r={height * ring.r}
+          r={base * ring.r}
           fill="none"
           stroke={theme.white}
           strokeOpacity={ring.opacity}
@@ -778,6 +795,341 @@ function TemplateCover({
 }
 
 /**
+ * Template name for a Video Reel cover without the "Template" word, the
+ * number and the brackets: "Template #1 - ( Before & After)" → "Before &
+ * After". The full name when nothing is left.
+ */
+function videoCoverTitle(name: string): string {
+  const title = name
+    .trim()
+    .replace(/^templates?\b\s*/i, "")
+    .replace(/^#?\d+\s*[-–—:.)]?\s*/, "")
+    .replace(/^\(\s*(.*?)\s*\)$/, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  return title || name.trim();
+}
+
+/**
+ * Video Reel cover, CapCut style: the sample fills the tall card and plays on
+ * its own with its music (no seek bar or play / pause); title, facts and song
+ * sit over a dark fade at the bottom. Neighbours shrink and fade while
+ * swiping; tapping one brings it to the centre.
+ */
+function VideoTemplateCover({
+  item,
+  index,
+  width,
+  height,
+  progress,
+  reduceMotion,
+  chip,
+  videoOn,
+  muted,
+  centred,
+  onSelect,
+  onToggleSound,
+  styles,
+  theme,
+}: {
+  item: TemplateGalleryItem;
+  index: number;
+  width: number;
+  height: number;
+  /** Swipe position in templates (0 = first) */
+  progress: SharedValue<number>;
+  reduceMotion: boolean;
+  chip: { label: string; icon: IconName };
+  /** Its sample plays: the centred template, with this screen in front */
+  videoOn: boolean;
+  muted: boolean;
+  /** The template in the middle (side covers are tappable) */
+  centred: boolean;
+  onSelect: () => void;
+  onToggleSound: () => void;
+  styles: Styles;
+  theme: Theme;
+}) {
+  const { t } = useTranslation();
+  // The poster stays under the sample until its first frame is on screen
+  const [frameShown, setFrameShown] = useState(false);
+  useEffect(() => {
+    if (!videoOn) setFrameShown(false);
+  }, [videoOn]);
+  const showFrame = useCallback(() => setFrameShown(true), []);
+
+  const motion = useAnimatedStyle(() => {
+    const range = [index - 1, index, index + 1];
+    const opacity = interpolate(
+      progress.value,
+      range,
+      [SIDE_OPACITY, 1, SIDE_OPACITY],
+      Extrapolation.CLAMP,
+    );
+    if (reduceMotion) return { opacity };
+    const scale = interpolate(
+      progress.value,
+      range,
+      [SIDE_SCALE, 1, SIDE_SCALE],
+      Extrapolation.CLAMP,
+    );
+    // Shrinking pulls the near edge away; shift it back so the peek stays
+    const shift = ((1 - SIDE_SCALE) * width) / 2;
+    const translateX = interpolate(
+      progress.value,
+      range,
+      [-shift, 0, shift],
+      Extrapolation.CLAMP,
+    );
+    return { opacity, transform: [{ translateX }, { scale }] };
+  }, [index, width, reduceMotion]);
+
+  const hasMedia = !!item.coverUrl || !!item.previewVideoUrl;
+  // "Template #1 - (Before & After)" → "Before & After": the word
+  // "Template" and the number say nothing on the card
+  const words = videoCoverTitle(item.headline.join(" ")).split(" ");
+  const size = coverTitleSize(
+    words,
+    (width - moderateWidthScale(32)) * VIDEO_HEADLINE_WIDTH,
+  );
+  const titleSize = { fontSize: size, lineHeight: Math.round(size * 1.04) };
+  const medallion = Math.round(width * VIDEO_MEDALLION_RATIO);
+  const medallionStyle = {
+    width: medallion,
+    height: medallion,
+    borderRadius: medallion / 2,
+  };
+  const facts = coverFacts(item, t);
+  const layer = (order: number, children: React.ReactNode, style?: object) => (
+    <SwipeLayer
+      progress={progress}
+      index={index}
+      order={order}
+      distance={width}
+      reduceMotion={reduceMotion}
+      style={style}
+    >
+      {children}
+    </SwipeLayer>
+  );
+
+  return (
+    <Animated.View
+      style={[
+        styles.cardShadow,
+        styles.videoCardFlat,
+        { width, height },
+        motion,
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onSelect}
+        disabled={centred}
+        activeOpacity={0.9}
+        accessible={!centred}
+        accessibilityRole={centred ? undefined : "button"}
+        accessibilityLabel={centred ? undefined : item.name}
+      >
+        {/* Poster (photo, else brand art) under the sample until its first frame */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            videoOn && frameShown && styles.posterHidden,
+          ]}
+          pointerEvents="none"
+        >
+          {item.coverUrl ? (
+            <Image
+              source={{ uri: item.coverUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              transition={200}
+              cachePolicy="memory-disk"
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <CoverArt
+              id={`${item.kind}-${item.id}`}
+              width={width}
+              height={height}
+              theme={theme}
+              portrait
+            />
+          )}
+          {/* Brand art with nothing to play: the template's icon on the rings */}
+          {!hasMedia ? (
+            <View
+              style={styles.videoArtCentre}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              {layer(
+                2,
+                <View style={[styles.medallion, medallionStyle]}>
+                  <MaterialIcons
+                    name={item.icon}
+                    size={Math.round(medallion * 0.46)}
+                    color={theme.white}
+                  />
+                </View>,
+              )}
+            </View>
+          ) : null}
+        </View>
+        {videoOn ? (
+          <PreviewVideo
+            uri={item.previewVideoUrl!}
+            playing
+            muted={muted}
+            onFirstFrame={showFrame}
+          />
+        ) : null}
+
+        {/* Keeps the chip / sound button and the bottom text readable on any frame */}
+        <LinearGradient
+          colors={["rgba(24, 33, 14, 0.45)", "transparent"]}
+          style={styles.videoTopFade}
+          pointerEvents="none"
+        />
+        <LinearGradient
+          colors={[
+            "transparent",
+            "rgba(24, 33, 14, 0.55)",
+            "rgba(24, 33, 14, 0.94)",
+          ]}
+          locations={[0, 0.45, 1]}
+          style={styles.videoBottomFade}
+          pointerEvents="none"
+        />
+
+        <View
+          style={[styles.cardInner, styles.videoCardInner]}
+          pointerEvents="none"
+        >
+          {/* Room on the right for the sound button */}
+          <View
+            style={[
+              styles.cardTop,
+              item.previewVideoUrl ? styles.cardTopSound : null,
+            ]}
+          >
+            {layer(
+              0,
+              <View style={styles.kindChip}>
+                <MaterialIcons
+                  name={chip.icon}
+                  size={moderateWidthScale(13)}
+                  color={theme.orangeBrown}
+                />
+                <Text style={styles.kindChipText} numberOfLines={1}>
+                  {chip.label}
+                </Text>
+              </View>,
+              styles.shrink,
+            )}
+          </View>
+          <View>
+            <View style={styles.videoTitleBlock}>
+              {words.length
+                ? layer(
+                    1,
+                    <Text
+                      style={[
+                        styles.coverTitle,
+                        styles.coverTitleAccent,
+                        titleSize,
+                      ]}
+                      numberOfLines={2}
+                    >
+                      {words.join(" ")}
+                    </Text>,
+                  )
+                : null}
+            </View>
+            {facts.length
+              ? layer(
+                  4,
+                  <View style={[styles.coverFacts, styles.videoMeta]}>
+                    {facts.map((fact) => (
+                      <View
+                        key={fact.key}
+                        style={[
+                          styles.coverFact,
+                          fact.key === "tagline" && styles.shrink,
+                        ]}
+                        accessible
+                        accessibilityLabel={fact.a11y ?? fact.text}
+                      >
+                        <MaterialIcons
+                          name={fact.icon}
+                          size={moderateWidthScale(15)}
+                          color={theme.orangeBrown}
+                        />
+                        <Text
+                          style={
+                            fact.key === "tagline"
+                              ? styles.metaText
+                              : styles.coverFactText
+                          }
+                          numberOfLines={1}
+                        >
+                          {fact.text}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>,
+                )
+              : null}
+            {item.musicTitle
+              ? layer(
+                  5,
+                  <View
+                    style={[styles.coverMusic, styles.videoMeta]}
+                    accessible
+                    accessibilityLabel={t("includesMusicNamed", {
+                      name: item.musicTitle,
+                    })}
+                  >
+                    <MaterialIcons
+                      name="music-note"
+                      size={moderateWidthScale(15)}
+                      color={theme.orangeBrown}
+                    />
+                    <Text style={styles.metaText} numberOfLines={1}>
+                      {item.musicTitle}
+                    </Text>
+                  </View>,
+                )
+              : null}
+          </View>
+        </View>
+
+        {/* Sound on / off; the choice holds for every sample while swiping */}
+        {item.previewVideoUrl && centred ? (
+          <TouchableOpacity
+            style={styles.soundButton}
+            onPress={onToggleSound}
+            activeOpacity={0.7}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={
+              muted ? t("templateGallerySoundOn") : t("templateGallerySoundOff")
+            }
+          >
+            <MaterialIcons
+              name={muted ? "volume-off" : "volume-up"}
+              size={moderateWidthScale(18)}
+              color={theme.white}
+            />
+          </TouchableOpacity>
+        ) : null}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+/**
  * Loading placeholder in the shape of the covers, info row and info card.
  * Leaf shapes take one style object — SkeletonPlaceholder reads width /
  * height / borderRadius straight off it (a style array loses them).
@@ -786,11 +1138,14 @@ function GallerySkeleton({
   cardWidth,
   cardHeight,
   sideInset,
+  withInfo,
   styles,
 }: {
   cardWidth: number;
   cardHeight: number;
   sideInset: number;
+  /** Photo tab: the info row and name card under the covers */
+  withInfo: boolean;
   styles: Styles;
 }) {
   return (
@@ -825,39 +1180,41 @@ function GallerySkeleton({
           </View>
         </View>
       </SkeletonPlaceholder>
-      <View style={styles.padded}>
-        <View style={styles.featuresCard}>
-          {/* The card is a row — without flex the skeleton collapses to nothing */}
-          <View style={styles.flex}>
+      {withInfo ? (
+        <View style={styles.padded}>
+          <View style={styles.featuresCard}>
+            {/* The card is a row — without flex the skeleton collapses to nothing */}
+            <View style={styles.flex}>
+              <SkeletonPlaceholder
+                backgroundColor={SKELETON_BG}
+                highlightColor={SKELETON_HIGHLIGHT}
+              >
+                <View style={styles.skeletonFeatures}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <View key={i} style={styles.feature}>
+                      <View style={styles.skeletonFeatureIcon} />
+                      <View style={styles.skeletonFeatureLine} />
+                      <View style={styles.skeletonFeatureLineShort} />
+                    </View>
+                  ))}
+                </View>
+              </SkeletonPlaceholder>
+            </View>
+          </View>
+          <View style={styles.infoCard}>
             <SkeletonPlaceholder
               backgroundColor={SKELETON_BG}
               highlightColor={SKELETON_HIGHLIGHT}
             >
-              <View style={styles.skeletonFeatures}>
-                {[0, 1, 2, 3].map((i) => (
-                  <View key={i} style={styles.feature}>
-                    <View style={styles.skeletonFeatureIcon} />
-                    <View style={styles.skeletonFeatureLine} />
-                    <View style={styles.skeletonFeatureLineShort} />
-                  </View>
-                ))}
+              <View>
+                <View style={styles.skeletonTitle} />
+                <View style={styles.skeletonLine} />
+                <View style={styles.skeletonLineShort} />
               </View>
             </SkeletonPlaceholder>
           </View>
         </View>
-        <View style={styles.infoCard}>
-          <SkeletonPlaceholder
-            backgroundColor={SKELETON_BG}
-            highlightColor={SKELETON_HIGHLIGHT}
-          >
-            <View>
-              <View style={styles.skeletonTitle} />
-              <View style={styles.skeletonLine} />
-              <View style={styles.skeletonLineShort} />
-            </View>
-          </SkeletonPlaceholder>
-        </View>
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -885,7 +1242,10 @@ export default function TemplateGalleryScreen() {
   // One cover centred, the neighbours peeking in on both sides
   const sideInset = PEEK + CARD_GAP;
   const cardWidth = width - sideInset * 2;
-  const cardHeight = Math.round(cardWidth * CARD_RATIO);
+  // Video tab: tall 9:16 cover filling the space between the heading and
+  // the footer; Photo tab: the wide cover with its info under it
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [headingHeight, setHeadingHeight] = useState(0);
   const snap = cardWidth + CARD_GAP;
 
   const [kind, setKind] = useState<TemplateGalleryKind>(
@@ -900,6 +1260,8 @@ export default function TemplateGalleryScreen() {
   const [pausedId, setPausedId] = useState<number | null>(null);
   // Samples start muted; the viewer's choice holds while swiping
   const [muted, setMuted] = useState(true);
+  // Video tab samples play with their music unless muted there
+  const [videoMuted, setVideoMuted] = useState(false);
   // False while another screen is in front (set early by Use This Template)
   const [focused, setFocused] = useState(true);
   // This month's reel credits (Video tab); null = unknown, nothing blocked
@@ -973,6 +1335,21 @@ export default function TemplateGalleryScreen() {
         alive = false;
       };
     }, [kind]),
+  );
+
+  const isVideoTab = kind === "video";
+  const cardHeight = Math.round(
+    !isVideoTab
+      ? cardWidth * CARD_RATIO
+      : viewportHeight
+        ? Math.min(
+            cardWidth * VIDEO_CARD_MAX_RATIO,
+            Math.max(
+              cardWidth * VIDEO_CARD_MIN_RATIO,
+              viewportHeight - headingHeight - VIDEO_CAROUSEL_SPACE,
+            ),
+          )
+        : cardWidth * VIDEO_CARD_MIN_RATIO,
   );
 
   const tab = tabs[kind];
@@ -1063,7 +1440,10 @@ export default function TemplateGalleryScreen() {
           const from = Math.round(dragStart.value);
           const flung = progress.value - (e.velocityX / width) * 0.25;
           // One template per swipe
-          const step = Math.min(from + 1, Math.max(from - 1, Math.round(flung)));
+          const step = Math.min(
+            from + 1,
+            Math.max(from - 1, Math.round(flung)),
+          );
           const target = Math.min(count - 1, Math.max(0, step));
           progress.value = reduceMotion ? target : withTiming(target, SETTLE);
         }),
@@ -1117,6 +1497,7 @@ export default function TemplateGalleryScreen() {
           cardWidth={cardWidth}
           cardHeight={cardHeight}
           sideInset={sideInset}
+          withInfo={!isVideoTab}
           styles={styles}
         />
       );
@@ -1163,7 +1544,13 @@ export default function TemplateGalleryScreen() {
         key={kind}
         entering={FadeIn.duration(220).reduceMotion(ReduceMotion.System)}
       >
-        <View style={[styles.carousel, styles.carouselContent]}>
+        <View
+          style={[
+            styles.carousel,
+            styles.carouselContent,
+            isVideoTab && styles.videoCarouselContent,
+          ]}
+        >
           <Animated.View
             style={[
               styles.coverRow,
@@ -1176,116 +1563,139 @@ export default function TemplateGalleryScreen() {
           >
             {templates.map((item, i) => (
               <View key={item.id} {...offscreen(i)}>
-                <TemplateCover
-                  item={item}
-                  index={i}
-                  width={cardWidth}
-                  height={cardHeight}
-                  progress={progress}
-                  reduceMotion={reduceMotion}
-                  chip={chip}
-                  videoOn={videoId === item.id}
-                  // Held while the full screen preview plays it with sound
-                  playing={
-                    videoId === item.id &&
-                    pausedId !== item.id &&
-                    fullItem == null
-                  }
-                  muted={muted}
-                  onTogglePlay={() => {
-                    // A side cover's button brings it to the centre (it plays there)
-                    if (i !== index) {
-                      goTo(i);
-                      return;
+                {isVideoTab ? (
+                  <VideoTemplateCover
+                    item={item}
+                    index={i}
+                    width={cardWidth}
+                    height={cardHeight}
+                    progress={progress}
+                    reduceMotion={reduceMotion}
+                    chip={chip}
+                    videoOn={videoId === item.id}
+                    muted={videoMuted}
+                    centred={i === index}
+                    onSelect={() => goTo(i)}
+                    onToggleSound={() => setVideoMuted((m) => !m)}
+                    styles={styles}
+                    theme={theme}
+                  />
+                ) : (
+                  <TemplateCover
+                    item={item}
+                    index={i}
+                    width={cardWidth}
+                    height={cardHeight}
+                    progress={progress}
+                    reduceMotion={reduceMotion}
+                    chip={chip}
+                    videoOn={videoId === item.id}
+                    // Held while the full screen preview plays it with sound
+                    playing={
+                      videoId === item.id &&
+                      pausedId !== item.id &&
+                      fullItem == null
                     }
-                    setPausedId(pausedId === item.id ? null : item.id);
-                  }}
-                  onToggleSound={() => setMuted((m) => !m)}
-                  onExpand={() => setFullItem(item)}
-                  styles={styles}
-                  theme={theme}
-                />
+                    muted={muted}
+                    onTogglePlay={() => {
+                      // A side cover's button brings it to the centre (it plays there)
+                      if (i !== index) {
+                        goTo(i);
+                        return;
+                      }
+                      setPausedId(pausedId === item.id ? null : item.id);
+                    }}
+                    onToggleSound={() => setMuted((m) => !m)}
+                    onExpand={() => setFullItem(item)}
+                    styles={styles}
+                    theme={theme}
+                  />
+                )}
               </View>
             ))}
           </Animated.View>
         </View>
 
-        {/* Each template's info as a page that slides with the covers */}
-        <Animated.View
-          style={[styles.infoRow, { width: count * width }, infoTrack]}
-        >
-          {templates.map((item, i) => (
-            <View
-              key={item.id}
-              style={[styles.infoPage, { width }]}
-              {...offscreen(i)}
-            >
-              <View style={styles.featuresCard}>
-                {item.features.map((f, order) => (
-                  <SwipeLayer
-                    key={f.icon}
-                    style={styles.feature}
-                    progress={progress}
-                    index={i}
-                    order={order}
-                    distance={width}
-                    reduceMotion={reduceMotion}
-                  >
-                    <MaterialIcons
-                      name={f.icon}
-                      size={moderateWidthScale(28)}
-                      color={theme.darkGreen}
-                      accessibilityElementsHidden
-                      importantForAccessibility="no"
-                    />
-                    <Text style={styles.featureLabel} numberOfLines={3}>
-                      {f.label}
-                    </Text>
-                  </SwipeLayer>
-                ))}
-              </View>
-              <SwipeLayer
-                style={styles.infoCard}
-                progress={progress}
-                index={i}
-                order={item.features.length}
-                distance={width}
-                reduceMotion={reduceMotion}
+        {/* Photo tab: each template's info as a page that slides with the covers */}
+        {isVideoTab ? null : (
+          <Animated.View
+            style={[styles.infoRow, { width: count * width }, infoTrack]}
+          >
+            {templates.map((item, i) => (
+              <View
+                key={item.id}
+                style={[styles.infoPage, { width }]}
+                {...offscreen(i)}
               >
-                <Text style={styles.infoTitle} accessibilityRole="header">
-                  {item.name}
-                </Text>
-                {item.description ? (
-                  <Text style={styles.infoDesc}>{item.description}</Text>
-                ) : null}
-                {item.slots?.length ? (
-                  <View style={styles.slotList}>
-                    <Text style={styles.slotListTitle}>
-                      {t("designWhatYouNeed")}
-                    </Text>
-                    {item.slots.map((slot, n) => (
-                      <View key={`${slot.label}-${n}`} style={styles.slotRow}>
-                        <View style={styles.slotIcon}>
-                          <MaterialIcons
-                            name={slot.icon}
-                            size={moderateWidthScale(16)}
-                            color={theme.darkGreen}
-                          />
+                <View style={styles.featuresCard}>
+                  {item.features.map((f, order) => (
+                    <SwipeLayer
+                      key={f.icon}
+                      style={styles.feature}
+                      progress={progress}
+                      index={i}
+                      order={order}
+                      distance={width}
+                      reduceMotion={reduceMotion}
+                    >
+                      <MaterialIcons
+                        name={f.icon}
+                        size={moderateWidthScale(28)}
+                        color={theme.darkGreen}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no"
+                      />
+                      <Text style={styles.featureLabel} numberOfLines={3}>
+                        {f.label}
+                      </Text>
+                    </SwipeLayer>
+                  ))}
+                </View>
+                <SwipeLayer
+                  style={styles.infoCard}
+                  progress={progress}
+                  index={i}
+                  order={item.features.length}
+                  distance={width}
+                  reduceMotion={reduceMotion}
+                >
+                  <Text style={styles.infoTitle} accessibilityRole="header">
+                    {item.name}
+                  </Text>
+                  {item.description ? (
+                    <Text style={styles.infoDesc}>{item.description}</Text>
+                  ) : null}
+                  {item.slots?.length ? (
+                    <View style={styles.slotList}>
+                      <Text style={styles.slotListTitle}>
+                        {t("designWhatYouNeed")}
+                      </Text>
+                      {item.slots.map((slot, n) => (
+                        <View key={`${slot.label}-${n}`} style={styles.slotRow}>
+                          <View style={styles.slotIcon}>
+                            <MaterialIcons
+                              name={slot.icon}
+                              size={moderateWidthScale(16)}
+                              color={theme.darkGreen}
+                            />
+                          </View>
+                          <View style={styles.slotText}>
+                            <Text style={styles.slotLabel}>{slot.label}</Text>
+                            {slot.detail ? (
+                              <Text style={styles.slotDetail}>
+                                {slot.detail}
+                              </Text>
+                            ) : null}
+                          </View>
                         </View>
-                        <View style={styles.slotText}>
-                          <Text style={styles.slotLabel}>{slot.label}</Text>
-                          {slot.detail ? (
-                            <Text style={styles.slotDetail}>{slot.detail}</Text>
-                          ) : null}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                ) : null}
-              </SwipeLayer>
-            </View>
-          ))}
-        </Animated.View>
+                      ))}
+                    </View>
+                  ) : null}
+                </SwipeLayer>
+              </View>
+            ))}
+          </Animated.View>
+        )}
       </Animated.View>
     );
   };
@@ -1303,7 +1713,9 @@ export default function TemplateGalleryScreen() {
               count: Math.max(0, credits.remaining),
               total: credits.monthly_limit,
             })
-          : t("autoBuildCreditsLeft", { count: Math.max(0, credits.remaining) });
+          : t("autoBuildCreditsLeft", {
+              count: Math.max(0, credits.remaining),
+            });
 
   return (
     <View style={styles.safeArea}>
@@ -1354,12 +1766,19 @@ export default function TemplateGalleryScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isVideoTab && styles.videoScrollContent,
+        ]}
         showsVerticalScrollIndicator={false}
+        onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
       >
         <GestureDetector gesture={swipe}>
           <View style={styles.swipeArea} collapsable={false}>
-            <View style={styles.padded}>
+            <View
+              style={styles.padded}
+              onLayout={(e) => setHeadingHeight(e.nativeEvent.layout.height)}
+            >
               <View style={styles.headingBlock}>
                 <View style={styles.headingRow}>
                   <Text style={styles.title} accessibilityRole="header">
@@ -1405,12 +1824,15 @@ export default function TemplateGalleryScreen() {
           { paddingBottom: Math.max(insets.bottom, moderateWidthScale(12)) },
         ]}
       >
-        {/* Content fades out under the footer instead of a hard cut */}
-        <LinearGradient
-          colors={[`${theme.background}00`, theme.background]}
-          style={styles.footerFade}
-          pointerEvents="none"
-        />
+        {/* Content fades out under the footer instead of a hard cut (the
+            Video tab's cover ends just above it, so no fade there) */}
+        {isVideoTab ? null : (
+          <LinearGradient
+            colors={[`${theme.background}00`, theme.background]}
+            style={styles.footerFade}
+            pointerEvents="none"
+          />
+        )}
         {tab.loading ? (
           <SkeletonPlaceholder
             backgroundColor={SKELETON_BG}
@@ -1420,7 +1842,9 @@ export default function TemplateGalleryScreen() {
               {[0, 1, 2, 3].map((i) => (
                 <View key={i} style={styles.dotHit}>
                   <View
-                    style={i === 0 ? styles.skeletonDotActive : styles.skeletonDot}
+                    style={
+                      i === 0 ? styles.skeletonDotActive : styles.skeletonDot
+                    }
                   />
                 </View>
               ))}
