@@ -373,7 +373,10 @@ export default function DesignReview({
     (design?.has_sound == null ||
       design?.length_seconds == null ||
       // No track on the reel: the template's own song may be the music
-      design?.music == null) &&
+      design?.music == null ||
+      // Edit → music: the template's own song gets its own row (with the
+      // library and "Change" beside it), even when the reel already has a track
+      edit) &&
     // Only the music field uses it
     (!edit || !section || section === "music");
   useEffect(() => {
